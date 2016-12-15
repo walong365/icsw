@@ -119,6 +119,20 @@ angular.module(
     $scope.do_action = (srv_info, instance, type) ->
         if $scope.struct.cur_to
             $timeout.cancel($scope.struct.cur_to)
+        _srv = srv_info.service_lut[instance]
+        if type == "state"
+            # toggle service status
+            if _srv.$$enabled
+                command = "disable"
+            else
+                command = "enable"
+        else
+            # toggle monitor status
+            if _srv.$$monitor
+                command = "ignore"
+            else
+                command = "monitor"
+        console.log "t=", type, instance, srv_info
         blockUI.start()
         icswSimpleAjaxCall(
             url     : ICSW_URLS.MAIN_SERVER_CONTROL
@@ -126,7 +140,7 @@ angular.module(
                 cmd: angular.toJson(
                     server_id: srv_info.$$srv_id
                     instance: instance
-                    type: type
+                    type: command
                 )
             }
         ).then(
@@ -214,11 +228,15 @@ angular.module(
             }
             # console.log instance, _meta_xml[0]
             if _meta_xml.length
+                salted.$$statechange_ok = true
                 salted.$$enabled = if parseInt(_meta_xml.attr("target_state")) == 1 then true else false
                 salted.$$disabled = !salted.$$enabled
                 salted.$$ignore = if parseInt(_meta_xml.attr("ignore")) == 1 then true else false
                 salted.$$monitor = !salted.$$ignore
+                salted.$$service_state = salted.$$enabled
+                salted.$$monitor_state = salted.$$monitor
             else
+                salted.$$statechange_ok = false
                 salted.$$enabled = false
                 salted.$$disabled = false
                 salted.$$ignore = false
@@ -319,7 +337,7 @@ angular.module(
             "$$state": 0
         }
 
-    $scope.do_action = (action) ->
+    $scope.do_action = ($event, action) ->
         $scope.server_info.do_action($scope.service_name, action)
 
     $scope.$on("$destroy", () ->

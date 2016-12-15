@@ -64,6 +64,7 @@ icsw_app = angular.module(
         "ui.bootstrap",
         "ui.router",
         "ui.ace",
+        "ui.toggle",
         "restangular",
         "blockUI",
         "toaster",

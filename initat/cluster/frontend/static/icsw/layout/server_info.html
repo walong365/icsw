@@ -149,15 +149,35 @@
 
 <script type="text/ng-template" id="icsw.service.enable.disable">
     <div ng-show="acl_modify(null, 'backbone.user.server_control') && service.$$startstop && service.$$enable_disable_allowed">
+        <toggle
+            ng-if="service.$$statechange_ok"
+            ng-model="service.$$service_state"
+            on="run"
+            off="stop"
+            ng-click="do_action($event, 'state')"
+            size="btn-xs"
+        ></toggle>
+        <!--
         <icsw-tools-button type="disable" size="xs" ng-click="do_action('disable')" ng-show="service.$$enabled"></icsw-tools-button>
         <icsw-tools-button type="enable" size="xs" ng-click="do_action('enable')" ng-show="service.$$disabled"></icsw-tools-button>
+        -->
     </div>
 </script>
 
 <script type="text/ng-template" id="icsw.service.monitor.ignore">
     <div ng-show="acl_modify(null, 'backbone.user.server_control') && service.$$startstop && service.$$enable_disable_allowed">
+        <toggle
+            ng-if="service.$$statechange_ok"
+            ng-model="service.$$monitor_state"
+            on="monitor"
+            off="ignore"
+            ng-click="do_action($event, 'monitor')"
+            size="btn-xs"
+        ></toggle>
+        <!--
         <icsw-tools-button type="disable" size="xs" ng-click="do_action('ignore')" ng-show="service.$$monitor"></icsw-tools-button>
         <icsw-tools-button type="enable" size="xs" ng-click="do_action('monitor')" ng-show="service.$$ignore"></icsw-tools-button>
+        -->
     </div>
 </script>
 

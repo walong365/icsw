@@ -101,6 +101,7 @@ sources = {
             "frontend/static/css/font-awesome.min.css",  #before theme
             "frontend/static/css/toaster.css",
             "frontend/static/css/angular-gridster.min.css",
+            "frontend/static/css/angular-bootstrap-toggle.min.css",
             "frontend/static/css/hotkeys.css",
         ]
         "css"
@@ -204,6 +205,7 @@ sources = {
             "frontend/static/js/angular-simple-logger.js",
             "frontend/static/js/angular-google-maps.min.js",
             "frontend/static/js/bootstrap-dialog.js",
+            "frontend/static/js/angular-bootstrap-toggle.min.js",
             # should be removed, use CSV export only via server-side calls
             "frontend/static/js/ng-csv.min.js",
             "frontend/static/js/sprintf.js",
