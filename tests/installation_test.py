@@ -49,7 +49,7 @@ def install_icsw_base_system(host, username, password, package_manager, machine_
 
     commands = [
         ("Installing latest icsw-server and icsw-client ... ", setup_command),
-        ("Perfoming icsw setup ... ", "/opt/cluster/sbin/icsw setup --ignore-existing --engine psql --port 5432"),
+        ("Performing icsw setup ... ", "/opt/cluster/sbin/icsw setup --ignore-existing --engine psql --port 5432"),
         ("Resetting admin password ... ", '/opt/cluster/sbin/clustermanage.py shell -c "{}"'.format(RESET_PW_SCRIPT)),
         ("Enabling uwsgi-init ... ", "/opt/cluster/sbin/icsw service enable uwsgi-init"),
         ("Enabling nginx ... ", "/opt/cluster/sbin/icsw service enable nginx"),
