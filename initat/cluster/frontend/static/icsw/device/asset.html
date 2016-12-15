@@ -107,7 +107,7 @@
     </h3>
     <div>
         <button type="button" class="btn btn-xs btn-warning" ng-disabled="device.$$scan_device_button_disabled" ng-click="scan_device()">{{ device.$$scan_device_button_disabled ? "Please wait..." : "Scan this device now" }}</button>
-        <button type="button" class="btn btn-xs btn-danger" ng-disabled="true" ng-click="scan_device()">Delete Selected</button>
+        <button type="button" class="btn btn-xs btn-danger" ng-disabled="device.$$assetbatch_ids_selected_for_delete.length < 1" ng-click="delete_selected()">Delete Selection ({{ device.$$assetbatch_ids_selected_for_delete.length }})</button>
     </div>
     <br/>
     <icsw-asset-asset-batch-table
@@ -172,6 +172,7 @@
             </tr>
             <tr>
                 <th st-sort="idx" st-sort-default="reverse" class="text-center">Scan ID</th>
+                <th class="text-center">Selection</th>
                 <th st-sort="$$run_start_time" class="text-center">Scantime</th>
                 <th class="text-center">Scan Runtime</th>
                 <th class="text-center">Package Info</th>
@@ -187,8 +188,13 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="assetbatch in assetbatches_shown" ng-click="select_assetbatch(assetbatch)" ng-class="assetbatch.$$table_class_str">
+            <tr ng-repeat="assetbatch in assetbatches_shown">
                 <td class="text-center">{{ assetbatch.idx }}</td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-xs" ng-class="assetbatch.$$selected && 'btn-success' || 'btn-default'" ng-click="select_assetbatch(assetbatch)" value="sel">
+                        <span class="glyphicon" ng-class="assetbatch.$$selected && 'glyphicon-ok' || 'glyphicon-minus'"></span>
+                    </button>
+                </td>
                 <td class="text-center">{{ assetbatch.$$run_start_time }}</td>
                 <td class="text-center">{{ assetbatch.$$run_time }}</td>
                 <td class="text-center"><div ng-class="assetbatch.$$installed_packages_availability_class"><strong>{{ assetbatch.$$installed_packages_availability_text }}</strong></div></td>
@@ -727,12 +733,14 @@
                         <thead>
                             <tr>
                                 <th>Mountpoint</th>
+                                <th>Filesystem</th>
                                 <th>Size</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr ng-repeat="partition in obj.partitions">
                                 <td>{{ partition.mountpoint }}</td>
+                                <td>{{ partition.filesystem }}</td>
                                 <td>{{ partition.size }}</td>
                             </tr>
                         </tbody>
