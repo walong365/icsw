@@ -324,7 +324,7 @@ class AssetPartitionSerializer(serializers.ModelSerializer):
 class AssetLogicalDiscSerializer(serializers.ModelSerializer):
     class Meta:
         model = LogicalDisc
-        fields = ("idx", "device_name", "size", "free_space", "filesystem_name")
+        fields = ("idx", "device_name", "size", "free_space", "filesystem_name", "mountpoint")
 
 
 class AssetPartitionDiscSerializer(serializers.ModelSerializer):

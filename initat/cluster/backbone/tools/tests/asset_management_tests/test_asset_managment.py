@@ -124,6 +124,8 @@ class TestAssetManagement(TestCase):
                 print("FS: {}".format(logical_disk.partition_fs.name))
                 print("SIZE: {}".format(logical_disk.size))
                 print("FREE: {}".format(logical_disk.free_space))
+                print("MOUNTPOINT: {}".format(logical_disk.mountpoint))
+
                 print("")
 
 
@@ -166,6 +168,10 @@ class TestAssetManagement(TestCase):
         idx = 0
         for result_obj in self.TEST_DATA:
             identifier = result_obj.identifier
+
+            if identifier != "oov02.init.at_15.12.2016":
+                continue
+
             result_dict = result_obj.result_dict
             idx += 1
             if result_obj in self.assetbatch_dict:

@@ -144,6 +144,7 @@ class LogicalDisc(models.Model):
     partitions = models.ManyToManyField("partition")
     size = models.BigIntegerField(null=True)
     free_space = models.BigIntegerField(null=True)
+    mountpoint = models.CharField(max_length=192, default="/", blank=True)
 
     @property
     def filesystem_name(self):
