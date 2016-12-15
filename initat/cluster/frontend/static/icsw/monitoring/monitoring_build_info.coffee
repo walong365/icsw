@@ -173,11 +173,11 @@ monitoring_build_info_module = angular.module(
     )
 ]).controller("icswMonitoringBuildInfoCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$window",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$window", "ICSW_SIGNALS",
     "$q", "$uibModal", "icswAccessLevelService", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceTreeService",
     "icswMonitoringSysInfoTreeService", "blockUI", "icswSimpleAjaxCall",
 (
-    $scope, $compile, $filter, $templateCache, Restangular, $window,
+    $scope, $compile, $filter, $templateCache, Restangular, $window, ICSW_SIGNALS,
     $q, $uibModal, icswAccessLevelService, $timeout, icswTools, ICSW_URLS, icswDeviceTreeService,
     icswMonitoringSysInfoTreeService, blockUI, icswSimpleAjaxCall,
 ) ->
@@ -200,6 +200,9 @@ monitoring_build_info_module = angular.module(
 
     $scope.load = (initial) ->
         $scope.struct.loading = true
+        if $scope.struct.reload_to?
+            $timeout.cancel($scope.struct.reload_to)
+        $scope.struct.reload_to = undefined
         if initial
             _wait_list = [
                 icswMonitoringSysInfoTreeService.load($scope.$id)
@@ -237,6 +240,10 @@ monitoring_build_info_module = angular.module(
                     10000
                 )
         )
+
+    $scope.$on(ICSW_SIGNALS("_ICSW_FETCH_MON_BUILD_INFO"), () ->
+        $scope.load()
+    )
 
     $scope.$on("$destroy", () ->
         if $scope.struct.reload_to
@@ -302,19 +309,31 @@ monitoring_build_info_module = angular.module(
 ]).controller("icswMonitoringSysInfoNodeCtrl",
 [
     "$scope", "icswSimpleAjaxCall", "ICSW_URLS", "blockUI", "icswAccessLevelService",
+    "ICSW_SIGNALS",
 (
     $scope, icswSimpleAjaxCall, ICSW_URLS, blockUI, icswAccessLevelService,
+    ICSW_SIGNALS,
 ) ->
     icswAccessLevelService.install($scope)
     $scope.struct = {
         # list of all nodes
         nodes: []
+        # target flags
+        start_process: null
+        ignore_process: null
+        # flagchange pending
+        change_pending: false
     }
 
     $scope.$watch("master", (new_val) ->
         if new_val
             $scope.struct.nodes.length = 0
             new_val.name = "master"
+            # copy current flags
+            _sinfo = $scope.master.sysinfo
+            for _fl in ["start_process", "ignore_process"]
+                $scope.struct[_fl] = _sinfo[_fl]
+            $scope.struct.change_pending = false
             $scope.struct.nodes.push(new_val)
             for entry in $scope.slaves
                 $scope.struct.nodes.push(entry)
@@ -322,6 +341,8 @@ monitoring_build_info_module = angular.module(
 
     $scope.toggle_flag = ($event, flag_name) ->
         blockUI.start()
+        $scope.struct[flag_name] = !$scope.struct[flag_name]
+        $scope.struct.change_pending = true
         icswSimpleAjaxCall(
             {
                 url: ICSW_URLS.MON_TOGGLE_SYS_FLAG
@@ -335,6 +356,7 @@ monitoring_build_info_module = angular.module(
             }
         ).then(
             (result) ->
+                $scope.$emit(ICSW_SIGNALS("_ICSW_FETCH_MON_BUILD_INFO"))
                 blockUI.stop()
         )
 ])

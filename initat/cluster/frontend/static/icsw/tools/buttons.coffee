@@ -91,12 +91,13 @@ angular.module(
             ret_obj.icon_class = "fa fa-refresh"
         else if type == "enable"
             ret_obj.icon_class = "fa fa-check"
-            ret_obj.button_value = "enable"
-            ret_obj.css_class = "btn-ok"
+            # these values are set by the onChanges handler
+            # ret_obj.button_value = "enable"
+            # ret_obj.css_class = "btn-ok"
         else if type == "lock"
             ret_obj.icon_class = "fa fa-lock"
-            ret_obj.button_value = "lock"
-            ret_obj.css_class = "btn-ok"
+            # ret_obj.button_value = "lock"
+            # ret_obj.css_class = "btn-ok"
         else if type == "disable"
             ret_obj.css_class = "btn-danger"
             ret_obj.button_value = "disable"
@@ -303,8 +304,8 @@ angular.module(
         showValue: "<"
         hideValue: "<"
         disabled: '<icswDisabled'
-        isEnable: '@'
-        isLock: '@'
+        isEnable: '<'
+        isLock: '<'
         value: "@"
         buttonType: "@"
         icsw_value: "<icswValue"
@@ -343,9 +344,7 @@ angular.module(
             @is_disabled = false
 
     @$onChanges = (changes) =>
-        # console.log "Cx", changes
         if "disabled" of changes and changes.disabled.currentValue?
-            console.log changes.disabled.currentValue
             @is_disabled = changes.disabled.currentValue
         if @type == "show" and "isShow" of changes
             if changes.isShow.currentValue

@@ -152,13 +152,16 @@
                     size="xs"
                     is-enable="master.sysinfo.start_process"
                     ng-click="toggle_flag($event, 'start_process')"
+                    icsw-disabled="struct.change_pending"
                 ></icsw-tools-button>
                 Ignore Process: <icsw-tools-button
                     type="enable"
                     size="xs"
                     is-enable="master.sysinfo.ignore_process"
                     ng-click="toggle_flag($event, 'ignore_process')"
+                    icsw-disabled="struct.change_pending"
                 ></icsw-tools-button>
+                <span ng-show="struct.change_pending"> ... change pending ...</span>
             </div>
             <h3 ng-show="!struct.nodes[0].$$sysinfo_ok" class="text-warning">No master syncer found</h3>
         </div>
