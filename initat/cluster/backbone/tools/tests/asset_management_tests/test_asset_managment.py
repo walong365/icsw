@@ -118,7 +118,7 @@ class TestAssetManagement(TestCase):
 
             self.assertGreater(asset_batch.partition_table.logicaldisc_set.all().count(), 0,
                 "Failed for {}".format(identifier))
-            for logical_disk in asset_batch.partition_table.logicaldisc_set.all():
+            #for logical_disk in asset_batch.partition_table.logicaldisc_set.all():
                 # print("")
                 # print("NAME: {}".format(logical_disk.device_name))
                 # print("FS: {}".format(logical_disk.partition_fs.name))
