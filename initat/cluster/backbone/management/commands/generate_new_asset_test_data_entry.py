@@ -54,11 +54,12 @@ class ExpectedPartition(object):
 
 
 class ExpectedLogicalVolume(object):
-    def __init__(self, device_name, size, free, filesystem):
+    def __init__(self, device_name, size, free, filesystem, mountpoint):
         self.device_name = device_name
         self.size = size
         self.free = free
         self.filesystem = filesystem
+        self.mountpoint = mountpoint
 
 
 class ResultObject(object):

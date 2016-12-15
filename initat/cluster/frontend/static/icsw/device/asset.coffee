@@ -622,6 +622,7 @@ device_asset_module = angular.module(
                             "identifier": "N/A"
                             "serialnumber": "N/A"
                             "size": "N/A"
+                            "size_sort_hint": 0
                             "partitions": []
                         }
 
@@ -633,6 +634,7 @@ device_asset_module = angular.module(
 
                         if disc.size
                             o["size"] = icswTools.get_size_str(disc.size, 1024, "Byte")
+                            o["size_sort_hint"] = disc["size"]
 
                         for partition in disc.partition_set
                             new_partition_o = {
@@ -653,10 +655,14 @@ device_asset_module = angular.module(
                         o = {
                             "name": disc.device_name
                             "size": "N/A"
+                            "size_sort_hint": disc.size
                             "free": "N/A"
+                            "free_sort_hint": disc.free
                             "filesystem_name": disc.filesystem_name
                             "fill_percentage": 100
+                            "fill_percentage_sort_hint": 0
                             "fill_bar_style": {}
+                            "mountpoint": disc.mountpoint
                         }
 
                         o["fill_bar_style"]["width"] = 100 + "%"
@@ -670,6 +676,8 @@ device_asset_module = angular.module(
 
                         if disc.size && disc.free_space
                             o["fill_percentage"] = (100 - (((disc.free_space / disc.size) * 100))).toFixed(2)
+                            o["fill_percentage_sort_hint"] = disc.free_space / disc.size
+
 
                         tab.asset_batch.logical_discs.push(o)
                 asset_batch.$$device.info_tabs.push(tab)

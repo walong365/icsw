@@ -1221,6 +1221,7 @@ class AssetBatch(models.Model):
                 partition_fs=partition_fs_,
                 size=logical.size,
                 free_space=logical.free_space,
+                mountpoint=logical.mount_point
             )
             logical_db.save()
             if partition_ is not None:
