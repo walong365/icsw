@@ -751,6 +751,10 @@ angular.module(
 
     _install_trees = () ->
         $scope.struct.data_ready = false
+        _load_defer = $q.defer()
+        _timeout_defer = $q.defer()
+        _blocking = false
+        _loaded = false
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
@@ -764,8 +768,25 @@ angular.module(
                 $scope.struct.selection = icswActiveSelectionService.get_selection()
                 $scope.struct.selection_valid = true
                 $scope.struct.data_ready = true
+                _load_defer.resolve("done")
+                if _blocking
+                    blockUI.stop()
+                    _blocking = false
+                _loaded = true
                 _set_class_filter_name()
                 _build_tree()
+        )
+        $timeout(
+            # wait for 20 milliseconds before we show the loading info
+            () ->
+                _timeout_defer.resolve("timeout")
+            20
+        )
+        $q.race([_load_defer.promise, _timeout_defer.promise]).then(
+            (res) ->
+                if res == "timeout" and not _loaded
+                    _blocking = true
+                    blockUI.start("Loading trees ...")
         )
 
     _install_trees()
