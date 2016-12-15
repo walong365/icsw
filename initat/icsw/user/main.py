@@ -41,7 +41,11 @@ from .. import icsw_logging
 def get_users(cur_opts, log_com):
     from initat.cluster.backbone.models import user
     from django.db.models import Q
-    all_users = user.objects.all().select_related("group").order_by("group__groupname", "login")
+    all_users = user.objects.all().select_related(
+        "group"
+    ).prefetch_related(
+        "user_variable_set"
+    ).order_by("group__groupname", "login")
     if cur_opts.only_active:
         all_users = all_users.filter(
             Q(active=True) &
@@ -133,6 +137,7 @@ def do_list(cur_opts, log_com):
                 logging_tools.form_entry(_user.email, header="email"),
                 logging_tools.form_entry(_user.login_count, header="logincount"),
                 logging_tools.form_entry(_user.login_fail_count, header="failedcount"),
+                logging_tools.form_entry(_user.user_variable_set.all().count(), header="#vars"),
                 logging_tools.form_entry(_user.comment, header="comment"),
             ]
         )
@@ -268,7 +273,8 @@ def _get_user(user_name):
         _user = _uo.select_related(
             "group"
         ).prefetch_related(
-            "user_quota_setting_set__quota_capable_blockdevice__device"
+            "user_quota_setting_set__quota_capable_blockdevice__device",
+            "user_variable_set",
         ).get(
             Q(login=user_name)
         )
@@ -352,7 +358,23 @@ def do_info(cur_opts, log_com):
                         get_quota_str(_local),
                     )
                 )
-        return _ret_state
+        if cur_opts.show_vars:
+            out_list = logging_tools.new_form_list()
+            for _var in _user.user_variable_set.all().order_by("name"):
+                out_list.append(
+                    [
+                        logging_tools.form_entry(_var.name, header="name"),
+                        logging_tools.form_entry(_var.var_type, header="type"),
+                        logging_tools.form_entry_right(_var.value if _var.var_type != "j" else "{:d} Bytes".format(len(_var.json_value)), header="value"),
+                        logging_tools.form_entry_center("yes" if _var.editable else "no", header="editable"),
+                        logging_tools.form_entry_center("yes" if _var.hidden else "no", header="hidden"),
+                        logging_tools.form_entry(_var.date.strftime("%H:%m:%S %a, %d. %b %Y"), header="created"),
+                        logging_tools.form_entry(_var.description, header="description"),
+                    ]
+                )
+            print(unicode(out_list))
+
+    return _ret_state
 
 
 def get_pass(prompt=">"):

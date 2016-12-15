@@ -77,6 +77,7 @@ class Parser(object):
             parser.add_argument("--default-group", type=str, default="", help="default group from import [%(default)s]")
             parser.add_argument("--with-email", default=False, action="store_true", help="filter for users with a valid email address [%(default)s]")
             parser.add_argument("--sendit", default=False, action="store_true", help="really send email [%(default)s]")
+            parser.add_argument("--show-vars", default=False, action="store_true", help="show user variables [%(default)s]")
             if hel.exp_dict:
                 # build dict
                 parser.add_argument(

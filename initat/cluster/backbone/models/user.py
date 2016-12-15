@@ -37,6 +37,7 @@ from enum import Enum
 
 import django.core.serializers
 from django.apps import apps
+from django.utils import timezone
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
@@ -770,6 +771,13 @@ class user_manager(models.Manager):
                 cur_var = user_obj.user_variable_set.get(Q(name=_var_name))
             except user_variable.DoesNotExist:
                 user_variable.create_system_variable(user_obj, _var_name, _var_value)
+
+    def cleanup_before_login(self, user_obj):
+        # cleans user vars no longer needed
+        user_obj.user_variable_set.filter(
+            Q(name__startswith="$$saved_selection_") &
+            Q(date__lte=timezone.now() - datetime.timedelta(days=1))
+        ).delete()
 
     def create_superuser(self, login, email, password):
         if not password:

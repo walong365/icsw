@@ -206,6 +206,7 @@ def _login(request, _user_object, login_credentials=None):
     _user_object.login_count += 1
     _user_object.save(update_fields=["login_count"])
     user.objects.ensure_default_variables(_user_object)
+    user.objects.cleanup_before_login(_user_object)
     # log user
 
     _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
