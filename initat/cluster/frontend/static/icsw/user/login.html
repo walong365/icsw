@@ -11,14 +11,11 @@
 </script>
 
 <script type="text/ng-template" id="icsw.user.login.page">
-    <div class="login-background"></div>
     <div class="container-fluid" ng-show="struct.data_valid">
         <div class="row">
-            <div class="col-md-12 hidden-xs text-center">
+            <div class="col-xs-12 col-md-12 hidden-xs text-center">
                 <img width="90%;" style="max-width:333px;" ng-attr-src="{{ initProduct.menu_gfx_big_url }}" alt="{{ initProduct.name }} logo"/>
             </div>
-        </div>
-        <div class="row">
             <div class="col-xs-12 col-md-12">
                 <!-- <h2 ng-show="struct.cluster_data">
                     Welcome to {{ struct.cluster_data.CLUSTER_NAME }}
@@ -124,7 +121,7 @@
     <form ng-submit="do_login()" name="form_data">
         <fieldset>
             <legend>
-                Please enter your login credentials
+                Welcome at '{{ struct.cluster_data.CLUSTER_NAME }}'<br>
             </legend>
             <div class="form-group row">
                 <label class="control-label col-sm-3 requiredField" style="margin-top:5px;">
@@ -142,6 +139,11 @@
                     <input ng-disabled="struct.disabled" class="textinput textInput form-control" name="password" ng-model="login_data.password" placeholder="password" required="True" type="password"/>
                 </div>
             </div>
+        </fieldset>
+        <fieldset>
+            <legend>
+                Please enter your login credentials.
+            </legend>
         </fieldset>
         <div class="form-group row">
             <div class="control col-sm-12">

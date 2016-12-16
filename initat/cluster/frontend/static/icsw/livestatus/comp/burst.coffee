@@ -25,7 +25,7 @@ angular.module(
     ]
 ).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegisterProvider) ->
     icswLivestatusPipeRegisterProvider.add("icswLivestatusFullBurst", true)
-]).factory("icswBurstReactSegment",
+]).service("icswBurstReactSegment",
 [
     "$q",
 (
@@ -78,7 +78,7 @@ angular.module(
             # console.log "ml"
             # @setState({focus: false})
     )
-]).factory("icswBurstReactSegmentText",
+]).service("icswBurstReactSegmentText",
 [
     "$q",
 (
@@ -139,7 +139,7 @@ angular.module(
             else
                 return null
     )
-]).factory("icswDeviceLivestatusBurstReactContainer",
+]).service("icswDeviceLivestatusBurstReactContainer",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswNetworkTopologyReactSVGContainer",
     "icswDeviceLivestatusFunctions", "icswBurstDrawParameters", "icswBurstReactSegment",
