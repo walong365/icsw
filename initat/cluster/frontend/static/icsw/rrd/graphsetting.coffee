@@ -41,6 +41,8 @@ angular.module(
             @show_tree = true
             # draw on init
             @draw_on_init = false
+            # ordering, should be on graph level
+            @ordering = ""
             # search string, not used for seleciton on initial load 
             @search_string = ""
             # initial select keys, can be used for initial selection

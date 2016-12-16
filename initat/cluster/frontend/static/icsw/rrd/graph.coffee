@@ -544,6 +544,7 @@ angular.module(
                         end_time: moment($scope.timeframe.to_date_mom).format(DT_FORM)
                         job_mode: $scope.struct.job_mode.short
                         selected_job: $scope.selected_job
+                        ordering: $scope.struct.base_setting.ordering
                         graph_setting: angular.toJson($scope.struct.user_settings.resolve(_setting))
                     }
                 ).then(

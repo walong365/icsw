@@ -53,7 +53,7 @@ from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.cluster.backbone.routing import SrvTypeRouting
 from initat.cluster.backbone.serializers import rms_job_run_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.tools import logging_tools, server_command
+from initat.tools import logging_tools, server_command, process_tools
 
 try:
     from initat.tools import sge_tools
@@ -311,7 +311,12 @@ class get_rms_current_json(View):
                 try:
                     _value_list = json.loads(_mcc.get("cc_hc_{}".format(_struct["uuid"])))
                 except:
-                    logger.error("error decoding json.loads")
+                    logger.error(
+                        "error decoding json.loads: {}".format(
+                            process_tools.get_except_info()
+
+                        )
+                    )
                 else:
                     for _list in _value_list:
                         if req_keys.match(_list[1]):
