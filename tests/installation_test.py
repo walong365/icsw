@@ -15,6 +15,21 @@ except ImportError:
 from common import Webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
+try:
+    from lxml import etree
+except ImportError:
+    try:
+        import xml.etree.cElementTree as etree
+    except ImportError:
+        try:
+            import xml.etree.ElementTree as etree
+        except ImportError:
+            try:
+                import cElementTree as etree
+            except ImportError:
+                import elementtree.ElementTree as etree
+
+
 RESET_PW_SCRIPT = "from initat.cluster.backbone.models import user;" \
                   "u = user.objects.get(login='admin');u.password = 'abc123';u.save()"
 
@@ -26,29 +41,38 @@ def install_icsw_base_system(host, username, password, package_manager, machine_
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-    while True:
+    retries = 60
+    while retries:
+        retries -= 1
         try:
             ssh.connect(host, username=username, password=password)
             sys.stdout.write("done\n")
             sys.stdout.flush()
             break
-        except socket.error as e:
-            if e.errno != 111:
-                raise e
-            else:
-                time.sleep(1)
+        except socket.error:
+            time.sleep(1)
 
+    setup_command = ""
+    refresh_command = ""
     if package_manager == "zypper":
-        setup_command = "zypper --non-interactive --no-gpg-checks ref && zypper --non-interactive --no-gpg-checks in icsw-server icsw-client nginx-init"
+        refresh_command = "zypper --non-interactive --no-gpg-checks ref"
+        # icsw_server_version_command = "zypper info icsw-server"
+        # icsw_client_version_command = "zypper info icsw-client"
+        setup_command = "zypper --non-interactive --no-gpg-checks in icsw-server icsw-client nginx-init"
     elif package_manager == "apt-get":
-        setup_command = "apt-get update && apt-get -y --force-yes install icsw-server icsw-client nginx-init"
+        refresh_command = "apt-get update"
+        # icsw_server_version_command = "apt-cache madison icsw-server"
+        # icsw_client_version_command = "apt-cache madison icsw-client"
+        setup_command = "apt-get -y --force-yes install icsw-server icsw-client nginx-init"
     elif package_manager == "yum":
-        setup_command = "yum check-update & yum -y --nogpgcheck install icsw-server icsw-client nginx-init"
-    else:
-        setup_command = ""
+        refresh_command = "yum check-update"
+        # icsw_server_version_command = "yum info icsw-server"
+        # icsw_client_version_command = "yum info icsw-client"
+        setup_command = "yum -y --nogpgcheck install icsw-server icsw-client nginx-init"
 
     commands = [
-        ("Installing latest icsw-server and icsw-client ... ", setup_command),
+        ("Refreshing package manager ... ", refresh_command),
+        ("Installing icsw-server and icsw-client ... ", setup_command),
         ("Performing icsw setup ... ", "/opt/cluster/sbin/icsw setup --ignore-existing --engine psql --port 5432"),
         ("Resetting admin password ... ", '/opt/cluster/sbin/clustermanage.py shell -c "{}"'.format(RESET_PW_SCRIPT)),
         ("Enabling uwsgi-init ... ", "/opt/cluster/sbin/icsw service enable uwsgi-init"),
@@ -89,21 +113,26 @@ def reset_test_server(user, password, server_id, snapshot_id, machine_name):
         "-H", "Content-type: application/xml",
     ]
 
-    # command structure is ([Print/Status Message], [api uri to perform action on], [GET/POST action_type],
-    # [output to check for])
+    # command structure is ([print(Status Message)], [api-uri to perform action on], [GET/POST action_type],
+    # [output to check for], [id to save (raw) output with (saved into output_dict)])
     commands = [
-        ("Powering off test system ... ", "{}/{}/stop".format(base_uri, server_id), "POST", None),
+        ("Powering off test system ... ", "{}/{}/stop".format(base_uri, server_id), "POST", None, None),
         ("Waiting for system to power off ... ", "{}/{}".format(base_uri, server_id), "GET",
-         "<status>down</status>"),
+         "<status>down</status>", None),
         ("Restoring snapshot ... ", "{}/{}/snapshots/{}/restore".format(base_uri, server_id, snapshot_id), "POST",
+         None, None),
+        ("Waiting for snapshot restore ... ", "{}/{}".format(base_uri, server_id), "GET", "<status>down</status>",
          None),
-        ("Waiting for snapshot restore ... ", "{}/{}".format(base_uri, server_id), "GET", "<status>down</status>"),
-        ("Powering up test system ... ", "{}/{}/start".format(base_uri, server_id), "POST", None),
-        ("Waiting for system to be up ... ", "{}/{}".format(base_uri, server_id), "GET", "<status>up</status>")
+        ("Powering up test system ... ", "{}/{}/start".format(base_uri, server_id), "POST", None, None),
+        ("Waiting for system to be up ... ", "{}/{}".format(base_uri, server_id), "GET", "<status>up</status>", None),
+        ("Retreiving system ip ... ", "{}/{}/nics".format(base_uri, server_id), "GET",
+         "<description>guest reported data</description>", "address")
     ]
 
+    output_dict = {}
+
     with open("{}.log".format(machine_name), "a", 0) as log_file:
-        for status_msg, action_uri, method, check_output in commands:
+        for status_msg, action_uri, method, check_output, output_save_identifier in commands:
             sys.stdout.write(status_msg)
             sys.stdout.flush()
 
@@ -123,6 +152,7 @@ def reset_test_server(user, password, server_id, snapshot_id, machine_name):
 
                 if check_output:
                     if check_output in output:
+                        output_dict[output_save_identifier] = output
                         break
                     else:
                         time.sleep(5)
@@ -135,22 +165,28 @@ def reset_test_server(user, password, server_id, snapshot_id, machine_name):
             sys.stdout.write("done (execution took {})\n".format((end_time - start_time)))
             sys.stdout.flush()
 
+    return output_dict
 
-def basic_availability_test(host):
+
+def basic_availability_test(host, test_system_name):
     sys.stdout.write("Checking availability of icsw interface ... ")
     sys.stdout.flush()
 
     time.sleep(60)
 
     driver = Webdriver(
-        base_url='http://{}/icsw/main.html'.format(host),
+        base_url='http://{}'.format(host),
         command_executor='http://192.168.1.246:4444/wd/hub',
         desired_capabilities=DesiredCapabilities.CHROME,
     )
     driver.maximize_window()
 
-    driver.log_in('admin', 'abc123')
-    title = driver.title
+    try:
+        driver.log_in('admin', 'abc123')
+        title = driver.title
+    except Exception as e:
+        driver.save_screenshot("{}_error.png".format(test_system_name))
+        raise(e)
 
     if title and title == 'Dashboard':
         sys.stdout.write("done\n")
@@ -184,14 +220,26 @@ def main():
     test_system_name = args.test_machine[0]
     test_system_id = config.get(test_system_name, "id")
     snapshot_id = config.get(test_system_name, "snapshot_id")
-    ip = config.get(test_system_name, "ip")
     password = config.get(test_system_name, "password")
     package_manager = config.get(test_system_name, "package_manager")
 
-    reset_test_server(args.ovirt_user[0], args.ovirt_pass[0], test_system_id, snapshot_id, test_system_name)
-    install_icsw_base_system(ip, "root", password, package_manager, test_system_name)
-    basic_availability_test(ip)
+    output_dict = reset_test_server(args.ovirt_user[0],
+                                    args.ovirt_pass[0], test_system_id, snapshot_id, test_system_name)
+    output_dict = parse_output_dict(output_dict)
 
+    install_icsw_base_system(output_dict['ip'], "root", password, package_manager, test_system_name)
+    basic_availability_test(output_dict['ip'], test_system_name)
+
+
+def parse_output_dict(output_dict):
+    new_output_dict = {}
+    root = etree.fromstring(output_dict['address'])
+    ip_elements = root.findall(".//ip")
+    for ip_element in ip_elements:
+        if ip_element.find("version").text == "v4":
+            new_output_dict['ip'] = ip_element.find("address").text
+
+    return new_output_dict
 
 if __name__ == "__main__":
     main()
