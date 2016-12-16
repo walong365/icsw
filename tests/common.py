@@ -42,7 +42,7 @@ class Toast(object):
 class Webdriver(webdriver.Remote):
     XPATH_TOAST_CONTAINER = '//div[@id="toast-container"]/div'
 
-    def __init__(self, base_url, timeout=30, *args, **kw_args):
+    def __init__(self, base_url, timeout=180, *args, **kw_args):
         super(Webdriver, self).__init__(*args, **kw_args)
         self.shot_names = set()
         self.timeout = timeout
@@ -71,13 +71,13 @@ class Webdriver(webdriver.Remote):
 
     def log_in(self, user, password):
         self.get(self.base_url)
-        time.sleep(60)
+        time.sleep(120)
         self.find_element_by_name('username').send_keys(user)
         self.find_element_by_name('password').send_keys(password)
         self.find_element_by_name('button').click()
         self.wait_overlay()
         # confirm the warning about a concurrent login
-        xpath_logged_in = '//a[@href="#/main/dashboard"]'
+        xpath_logged_in = '//a[@href="#!/main/dashboard"]'
         find_elements = [
             ('concurrent', '//div[@class="bootstrap-dialog-message" and '
                 'starts-with(., "Another user is already using this '
