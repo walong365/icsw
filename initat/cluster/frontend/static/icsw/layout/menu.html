@@ -51,11 +51,11 @@
             <li class="pull-right cursorpointer">
                 <span ng-repeat="entry in struct.bc_list">
                     <button type="button" ng-show="!entry.state.icswData.hasDevselFunc" class="btn btn-xs btn-default" ng-click="activate_state(entry)">
-                        <!-- <span class="fa" ng-class="entry.icon"/> -->
+                        <span class="fa" ng-class="entry.state.icswData.menu_entries[0].icon"/>
                         {{ entry.name }}
                     </button>
                     <button type="button" ng-show="entry.state.icswData.hasDevselFunc" class="btn btn-xs btn-default" ng-click="activate_state(entry)">
-                        <!-- <span class="fa" ng-class="entry.icon"/> -->
+                        <span class="fa" ng-class="entry.state.icswData.menu_entries[0].icon"/>
                         <strong>{{ entry.name }}</strong>
                     </button>
                 </span>
@@ -75,8 +75,16 @@
                 >No Devices selected</span>
                 <icsw-tools-button
                     type="lock"
-                    icsw-hide-text
-                    is-lock="struct.sel_unsynced"
+                    ng-show="!struct.sel_unsynced"
+                    value=""
+                    size="xs"
+                    title="{{ struct.lock_info }}"
+                    ng-click="device_selection_ss($event)"
+                ></icsw-tools-button>
+                <icsw-tools-button
+                    type="unlock"
+                    ng-show="struct.sel_unsynced"
+                    value=""
                     size="xs"
                     title="{{ struct.lock_info }}"
                     ng-click="device_selection_ss($event)"

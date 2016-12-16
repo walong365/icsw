@@ -96,8 +96,12 @@ angular.module(
             # ret_obj.css_class = "btn-ok"
         else if type == "lock"
             ret_obj.icon_class = "fa fa-lock"
-            # ret_obj.button_value = "lock"
-            # ret_obj.css_class = "btn-ok"
+            ret_obj.button_value = "locked"
+            ret_obj.css_class = "btn-success"
+        else if type == "unlock"
+            ret_obj.icon_class = "fa fa-unlock"
+            ret_obj.button_value = "unlocked"
+            ret_obj.css_class = "btn-warning"
         else if type == "disable"
             ret_obj.css_class = "btn-danger"
             ret_obj.button_value = "disable"
@@ -304,12 +308,9 @@ angular.module(
         showValue: "<"
         hideValue: "<"
         disabled: '<icswDisabled'
-        isEnable: '<'
-        isLock: '<'
         value: "@"
         buttonType: "@"
         icsw_value: "<icswValue"
-        hide_text: "@icswHideText"
         size: "@"
 
 }).controller("icswToolsButtonCtrl",
@@ -325,11 +326,6 @@ angular.module(
         # console.log "I", @type, icswToolsButtonConfigService.get_config_for_button_type(@type)
         # sane starting value
 
-        if @hide_text?
-            @show_text = false
-            @button_value = ""
-        else
-            @show_text = true
         if @value?
             @button_value = @value
         if not @button_type?
@@ -351,27 +347,6 @@ angular.module(
                 @button_value = @hideValue or gettextCatalog.getString("hide")
             else
                 @button_value = @showValue or gettextCatalog.getString("show")
-        else if @type == "enable" and "isEnable" of changes
-            if changes.isEnable.currentValue
-                @button_value = gettextCatalog.getString("disable")
-                @css_class = "btn-warning"
-            else
-                @button_value = gettextCatalog.getString("enable")
-                @css_class = "btn-success"
-            if @icsw_value?
-                @button_value = @icsw_value
-        else if @type == "lock" and "isLock" of changes
-            if changes.isLock.currentValue
-                if @show_text
-                    @button_value = gettextCatalog.getString("unlock")
-                @css_class = "btn-warning"
-                @icon_class = "fa fa-unlock"
-            else
-                if @show_text
-                    @button_value = gettextCatalog.getString("lock")
-                @css_class = "btn-success"
-                @icon_class = "fa fa-lock"
-
     return null
 
 ]).directive('icswToolsButtonOld',

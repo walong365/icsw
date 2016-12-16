@@ -1003,6 +1003,7 @@ menu_module = angular.module(
         $scope.struct.bc_list.length = 0
         for entry in bc_list
             $scope.struct.bc_list.push(entry)
+            console.log "*", entry
     )
     $rootScope.$on(ICSW_SIGNALS("ICSW_STATE_CHANGED"), () ->
         $scope.struct.menupath = icswMenuPath.generate_path()

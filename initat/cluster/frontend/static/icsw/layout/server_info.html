@@ -151,7 +151,7 @@
     <div ng-show="acl_modify(null, 'backbone.user.server_control') && service.$$startstop && service.$$enable_disable_allowed">
         <toggle
             ng-if="service.$$statechange_ok"
-            ng-model="service.$$service_state"
+            ng-model="service.$$service_state_target"
             on="run"
             onstyle="btn-success"
             off="stop"
@@ -166,7 +166,7 @@
     <div ng-show="acl_modify(null, 'backbone.user.server_control') && service.$$startstop && service.$$enable_disable_allowed">
         <toggle
             ng-if="service.$$statechange_ok"
-            ng-model="service.$$monitor_state"
+            ng-model="service.$$monitor_state_target"
             on="monitor"
             onstyle="btn-success"
             off="ignore"

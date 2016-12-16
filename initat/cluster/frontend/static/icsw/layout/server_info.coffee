@@ -132,7 +132,7 @@ angular.module(
                 command = "ignore"
             else
                 command = "monitor"
-        console.log "t=", type, instance, srv_info
+        # console.log "t=", type, instance, srv_info, command
         blockUI.start()
         icswSimpleAjaxCall(
             url     : ICSW_URLS.MAIN_SERVER_CONTROL
@@ -231,6 +231,9 @@ angular.module(
                 salted.$$statechange_ok = true
                 salted.$$service_state = if parseInt(_meta_xml.attr("target_state")) == 1 then true else false
                 salted.$$monitor_state = if parseInt(_meta_xml.attr("ignore")) == 1 then false else true
+                # copy to target flags
+                salted.$$service_state_target = salted.$$service_state
+                salted.$$monitor_state_target = salted.$$monitor_state
             else
                 salted.$$statechange_ok = false
             if _xml.length

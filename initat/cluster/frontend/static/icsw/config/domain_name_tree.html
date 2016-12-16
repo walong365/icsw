@@ -7,11 +7,11 @@
 <script type="text/ng-template" id="icsw.config.domain.name.tree.row">
     <td style="font-family:monospace;"><span ng-bind-html="get_space(obj.depth )"></span>{{ obj.name || '[TLN]' }}</td>
     <td><span ng-show="obj.depth">*{{ obj.node_postfix }}.{{ obj.full_name }}</span></td>
-    <td>{{ obj.depth }}</td>
+    <td class="text-center">{{ obj.depth }}</td>
     <td>{{ obj.comment }}</td>
-    <td>{{ obj.create_short_names | yesno1 }}</td>
-    <td>{{ obj.always_create_ip | yesno1 }}</td>
-    <td>{{ obj.write_nameserver_config | yesno1 }}</td>
+    <td class="text-center"><span ng-bind-html="obj.create_short_names | yesno3"></span></td>
+    <td class="text-center"><span ng-bind-html="obj.always_create_ip | yesno3"></span></td>
+    <td class="text-center"><span ng-bind-html="obj.write_nameserver_config | yesno3"></span></td>
     <td>
         <icsw-tools-button type="modify" ng-click="edit($event, obj)" ng-show="obj.depth" size="xs"/>
     </td>
@@ -59,9 +59,9 @@
                                     <th>Nodename</th>
                                     <th>Depth</th>
                                     <th>Comment</th>
-                                    <th>SN</th>
+                                    <th>ShortNames</th>
                                     <th>IP</th>
-                                    <th>NS</th>
+                                    <th>configure NS</th>
                                     <th colspan="2">Actions</th>
                                 </tr>
                             </thead>
