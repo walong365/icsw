@@ -186,7 +186,7 @@ angular.module(
         return _cur_rotation
 
     $scope.toggle_autorotate = () ->
-        $scope.struct.autorotate = !$scope.struct.autorotate
+        # $scope.struct.autorotate = !$scope.struct.autorotate
         if $scope.struct.autorotate
             _activate_rotation()
         else

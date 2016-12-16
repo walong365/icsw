@@ -122,13 +122,13 @@ angular.module(
         _srv = srv_info.service_lut[instance]
         if type == "state"
             # toggle service status
-            if _srv.$$enabled
+            if _srv.$$service_state
                 command = "disable"
             else
                 command = "enable"
         else
             # toggle monitor status
-            if _srv.$$monitor
+            if _srv.$$monitor_state
                 command = "ignore"
             else
                 command = "monitor"
@@ -229,18 +229,10 @@ angular.module(
             # console.log instance, _meta_xml[0]
             if _meta_xml.length
                 salted.$$statechange_ok = true
-                salted.$$enabled = if parseInt(_meta_xml.attr("target_state")) == 1 then true else false
-                salted.$$disabled = !salted.$$enabled
-                salted.$$ignore = if parseInt(_meta_xml.attr("ignore")) == 1 then true else false
-                salted.$$monitor = !salted.$$ignore
-                salted.$$service_state = salted.$$enabled
-                salted.$$monitor_state = salted.$$monitor
+                salted.$$service_state = if parseInt(_meta_xml.attr("target_state")) == 1 then true else false
+                salted.$$monitor_state = if parseInt(_meta_xml.attr("ignore")) == 1 then false else true
             else
                 salted.$$statechange_ok = false
-                salted.$$enabled = false
-                salted.$$disabled = false
-                salted.$$ignore = false
-                salted.$$monitor = false
             if _xml.length
                 salted.$$startstop = if parseInt(_xml.attr("startstop")) then true else false
                 salted.$$version_class = if parseInt(_xml.find("result").attr("version_ok")) then "text-success" else "text-danger"

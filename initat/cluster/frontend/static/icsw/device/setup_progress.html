@@ -62,14 +62,22 @@
                                     ></icsw-tools-button>
                                 </td>
                                 <td class="text-center vertical-align">
-                                    <icsw-tools-button
+                                    <toggle
+                                        ng-show="!task.fulfilled"
+                                        ng-model="task.ignore"
+                                        on="{{ task.ignore_text }}"
+                                        onstyle="btn-warning"
+                                        size="btn-sm
+                                        ng-click="ignore_issue(task)"
+                                    ></toggle>
+                                    <!-- <icsw-tools-button
                                         type="enable"
                                         ng-show="!task.fulfilled"
                                         ng-click="ignore_issue(task)"
                                         is-enable="task.ignore"
                                         size="sm"
                                         icsw-value="task.ignore_text"
-                                    ></icsw-tools-button>
+                                    ></icsw-tools-button> -->
                                 </td>
                             </tr>
                         </tbody>

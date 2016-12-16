@@ -41,7 +41,6 @@
                 <div class="controls col-sm-7">
                     <ui-select ng-model="struct.cur_gfx_size" style="width:200px;">
                         <ui-select-match class="ui-select-match" placeholder="choose size ...">
-                        <ui-select-match class="ui-select-match" placeholder="choose size ...">
                             {{ $select.selected }}
                         </ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="value in struct.gfx_sizes">
@@ -55,7 +54,13 @@
                    Autorotate
                 </label>
                 <div class="controls col-sm-7">
-                    <icsw-tools-button type="enable" is-enable="struct.autorotate" ng-click="toggle_autorotate()"></icsw-tools-button>
+                    <toggle
+                        ng-model="struct.autorotate"
+                        on="rotate"
+                        onstyle="btn-success"
+                        off="ignore"
+                        size="btn-sm"
+                    ></toggle>
                 </div>
             </div>
         </fieldset>

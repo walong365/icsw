@@ -153,14 +153,12 @@
             ng-if="service.$$statechange_ok"
             ng-model="service.$$service_state"
             on="run"
+            onstyle="btn-success"
             off="stop"
+            offstyle="btn-danger"
             ng-click="do_action($event, 'state')"
-            size="btn-xs"
+            size="btn-sm"
         ></toggle>
-        <!--
-        <icsw-tools-button type="disable" size="xs" ng-click="do_action('disable')" ng-show="service.$$enabled"></icsw-tools-button>
-        <icsw-tools-button type="enable" size="xs" ng-click="do_action('enable')" ng-show="service.$$disabled"></icsw-tools-button>
-        -->
     </div>
 </script>
 
@@ -170,14 +168,12 @@
             ng-if="service.$$statechange_ok"
             ng-model="service.$$monitor_state"
             on="monitor"
+            onstyle="btn-success"
             off="ignore"
+            offstyle="btn-warning"
             ng-click="do_action($event, 'monitor')"
-            size="btn-xs"
+            size="btn-sm"
         ></toggle>
-        <!--
-        <icsw-tools-button type="disable" size="xs" ng-click="do_action('ignore')" ng-show="service.$$monitor"></icsw-tools-button>
-        <icsw-tools-button type="enable" size="xs" ng-click="do_action('monitor')" ng-show="service.$$ignore"></icsw-tools-button>
-        -->
     </div>
 </script>
 
