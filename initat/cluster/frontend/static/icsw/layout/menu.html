@@ -75,8 +75,16 @@
                 >No Devices selected</span>
                 <icsw-tools-button
                     type="lock"
-                    icsw-hide-text
-                    is-lock="struct.sel_unsynced"
+                    ng-show="!struct.sel_unsynced"
+                    value=""
+                    size="xs"
+                    title="{{ struct.lock_info }}"
+                    ng-click="device_selection_ss($event)"
+                ></icsw-tools-button>
+                <icsw-tools-button
+                    type="unlock"
+                    ng-show="struct.sel_unsynced"
+                    value=""
                     size="xs"
                     title="{{ struct.lock_info }}"
                     ng-click="device_selection_ss($event)"

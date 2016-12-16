@@ -149,7 +149,15 @@
                     <td>
                         <div class="btn-group" ng-if="dml.$$selected">
                             <icsw-tools-button type="delete" size="xs" ng-show="!dml.locked" ng-click="remove_dml(dml)"/>
-                            <icsw-tools-button type="lock" size="xs" is-lock="dml.locked" ng-click="toggle_locked(dml)"/>
+                            <toggle
+                                ng-model="dml.locked"
+                                on="locked"
+                                onstyle="btn-success"
+                                off="unlocked"
+                                offstyle="btn-warning"
+                                ng-click="toggle_locked($event, dml)"
+                                size="btn-sm"
+                            ></toggle>
                         </div>
                     </td>
                 </tr>

@@ -325,18 +325,25 @@ monitoring_build_info_module = angular.module(
         change_pending: false
     }
 
+    _update_master = () ->
+        console.log "um", $scope.master
+        $scope.struct.nodes.length = 0
+        $scope.master.name = "master"
+        # copy current flags
+        _sinfo = $scope.master.sysinfo
+        for _fl in ["start_process", "ignore_process"]
+            $scope.struct[_fl] = _sinfo[_fl]
+        $scope.struct.change_pending = false
+        $scope.struct.nodes.push($scope.master)
+        for entry in $scope.slaves
+            $scope.struct.nodes.push(entry)
+
+    if $scope.master?
+        _update_master()
+
     $scope.$watch("master", (new_val) ->
         if new_val
-            $scope.struct.nodes.length = 0
-            new_val.name = "master"
-            # copy current flags
-            _sinfo = $scope.master.sysinfo
-            for _fl in ["start_process", "ignore_process"]
-                $scope.struct[_fl] = _sinfo[_fl]
-            $scope.struct.change_pending = false
-            $scope.struct.nodes.push(new_val)
-            for entry in $scope.slaves
-                $scope.struct.nodes.push(entry)
+            _update_master()
     )
 
     $scope.toggle_flag = ($event, flag_name) ->

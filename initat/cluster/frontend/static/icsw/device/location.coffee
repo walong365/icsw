@@ -722,9 +722,9 @@ angular.module(
                 blockUI.stop()
         )
 
-    $scope.toggle_locked = (dml) ->
+    $scope.toggle_locked = ($event, dml) ->
         # toggle dml locked state
-        dml.locked = !dml.locked
+        # dml.locked = !dml.locked
         dml.put().then(
             (ok) ->
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_GFX_UPDATED"))
