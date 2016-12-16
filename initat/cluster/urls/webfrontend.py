@@ -47,6 +47,7 @@ report_patterns = [
 ]
 
 asset_patterns = [
+    url("^asset_package_loader$", asset_views.AssetPackageLoader.as_view(), name="asset_package_loader"),
     url("^asset_batch_deleter$", asset_views.AssetBatchDeleter.as_view(), name="asset_batch_deleter"),
     url("^get_fieldvalues_for_template$", asset_views.get_fieldvalues_for_template.as_view(), name="get_fieldvalues_for_template"),
     url("^simple_asset_batch_loader$", asset_views.SimpleAssetBatchLoader.as_view(), name="simple_asset_batch_loader"),

@@ -674,3 +674,21 @@ class get_fieldvalues_for_template(View):
             )
         )
 
+from initat.cluster.backbone.models import AssetPackage
+from initat.cluster.backbone.serializers import ReverseSimpleAssetPackageSerializer, AssetPackageVersionSerializer
+
+class AssetPackageLoader(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        if request.POST['type'] == "AssetPackage":
+            queryset = AssetPackage.objects.prefetch_related("assetpackageversion_set").all()
+
+            serializer = ReverseSimpleAssetPackageSerializer(queryset, many=True)
+
+            return HttpResponse(json.dumps(serializer.data))
+        elif request.POST['type'] == "AssetPackageVersion":
+            asset_package_id = int(request.POST["asset_package_id"])
+            ap = AssetPackage.objects.prefetch_related("assetpackageversion_set").get(idx=asset_package_id)
+            serializer = AssetPackageVersionSerializer(ap.assetpackageversion_set.all(), many=True)
+            return HttpResponse(json.dumps(serializer.data))
+

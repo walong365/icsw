@@ -38,6 +38,7 @@ __all__ = [
     "AssetRunDetailSerializer",
     "AssetBatchSerializer",
     "AssetPackageSerializer",
+    "ReverseSimpleAssetPackageSerializer",
     "AssetPackageVersionInstallInfo",
     "AssetPackageVersionSerializer",
     "ShallowPastAssetRunSerializer",
@@ -102,6 +103,17 @@ class AssetPackageSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetPackage
         fields = ("idx", "name", "package_type", "assetpackageversion_set")
+
+
+class ReverseSimpleAssetPackageSerializer(serializers.ModelSerializer):
+    num_versions = serializers.SerializerMethodField()
+
+    def get_num_versions(self, obj):
+        return obj.assetpackageversion_set.all().count()
+
+    class Meta:
+        model = AssetPackage
+        fields = ("idx", "name", "package_type", "num_versions")
 
 
 class AssetRunSimpleSerializer(serializers.ModelSerializer):

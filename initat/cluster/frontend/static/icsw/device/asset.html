@@ -48,7 +48,7 @@
                             </uib-tab-heading>
 
                             <icsw-asset-known-packages
-                                icsw-asset-package-tree="struct.package_tree"
+                                icsw-asset-package-list="struct.package_list"
                             ></icsw-asset-known-packages>
                         </uib-tab>
                     </uib-tabset>
@@ -265,18 +265,18 @@
 </script>
 
 <script type="text/ng-template" id="icsw.asset.known.packages">
-    <h3 ng-if="!package_tree.list.length">
+    <h3 ng-if="!package_list.length">
         <span>No know Packages! Start an AssetRun to populate this list</span>
     </h3>
-    <h3 ng-if="package_tree.list.length">
+    <h3 ng-if="package_list.length">
         <span>Known Packages</span>
     </h3>
 
     <table
         class="table table-condensed table-striped simple-border"
-        ng-if="package_tree.list.length > 0"
+        ng-if="package_list.length > 0"
         st-table="packages_shown"
-        st-safe-src="package_tree.list"
+        st-safe-src="package_list"
         st-set-filter="packageFilter"
     >
         <thead>
@@ -293,7 +293,7 @@
             <tr>
                 <th st-sort="name">Name</th>
                 <th st-sort="$$package_type">Package Type</th>
-                <th st-sort="$$num_versions" class="text-right">#Versions</th>
+                <th st-sort="num_versions" class="text-right">#Versions</th>
                 <th class="text-right"><icsw-tools-button  type="modify" value="Download CSV" ng-click="downloadCsv()" size="xs">Export to CSV</icsw-tools-button></th>
             </tr>
             <tr>
@@ -311,9 +311,9 @@
             <tr ng-repeat-start="package in packages_shown">
                 <td>{{ package.name }}</td>
                 <td>{{ package.$$package_type }}</td>
-                <td class="text-right">{{ package.$$num_versions }}</td>
+                <td class="text-right">{{ package.num_versions }}</td>
                 <td class="text-right">
-                    <icsw-tools-button size="xs" type="show" is-show="!package.$$expanded" ng-click="expand($event, package)"></icsw-tools-button>
+                    <icsw-tools-button size="xs" type="show" is-show="!package.$$expanded" ng-click="expand_package($event, package)"></icsw-tools-button>
                 </td>
             </tr>
 
@@ -343,7 +343,7 @@
                             <td>{{ version.version }}</td>
                             <td>{{ version.$$release }}</td>
                             <td class="text-right">
-                                <icsw-tools-button size="xs" type="show" is-show="!obj.$$expanded" ng-click="expand($event, version)"></icsw-tools-button>
+                                <icsw-tools-button size="xs" type="show" is-show="!obj.$$expanded" ng-click="expand_version($event, version)"></icsw-tools-button>
                             </td>
                         </tr>
                         <tr ng-repeat-end ng-if="version.$$expanded">
@@ -361,13 +361,6 @@
                                             <td>{{ device_obj.device_name }}</td>
                                             <td>{{ get_history_timeline(device_obj, true) }}</td>
                                             <td>{{ get_history_timeline(device_obj, false) }}</td>
-                                            <!--<td>
-                                                <div class="timeline">
-                                                    <div class="timeline-entry" ng-repeat="time_str in device_obj.install_history_list">
-                                                        <h1>{{ format_time(time_str) }}</h1>
-                                                    </div>
-                                                </div>
-                                            </td>-->
                                         </tr>
                                     </tbody>
                                 </table>

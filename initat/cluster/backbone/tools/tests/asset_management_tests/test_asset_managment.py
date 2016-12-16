@@ -101,32 +101,15 @@ class TestAssetManagement(TestCase):
             self.assertGreater(asset_batch.partition_table.partition_disc_set.all().count(), 0,
                                "Failed for {}".format(identifier))
             for disk in asset_batch.partition_table.partition_disc_set.all():
-                # print("HDD: {}".format(disk.disc))
-                # print("SERIAL: {}".format(disk.serial))
-                # print("SIZE: {}".format(disk.size))
-
                 self.assertTrue(disk.size is not None, "Failed for {}".format(identifier))
                 self.assertGreater(disk.size, 0, "Failed for {}".format(identifier))
                 for partition in disk.partition_set.all():
-                    # print("\_MOUNTPOINT: {}".format(partition.mountpoint))
-                    # print("\_SIZE: {}".format(partition.size))
-                    # print("\_FS: {}".format(partition.partition_fs.name))
-                    # print("")
-
                     self.assertTrue(partition.size is not None, "Failed for {}".format(identifier))
                     self.assertGreater(partition.size, 0, "Failed for {}".format(identifier))
 
             self.assertGreater(asset_batch.partition_table.logicaldisc_set.all().count(), 0,
-                "Failed for {}".format(identifier))
-            #for logical_disk in asset_batch.partition_table.logicaldisc_set.all():
-                # print("")
-                # print("NAME: {}".format(logical_disk.device_name))
-                # print("FS: {}".format(logical_disk.partition_fs.name))
-                # print("SIZE: {}".format(logical_disk.size))
-                # print("FREE: {}".format(logical_disk.free_space))
-                # print("MOUNTPOINT: {}".format(logical_disk.mountpoint))
-                # print("")
-
+                               "Failed for {}".format(identifier))
+            # for logical_disk in asset_batch.partition_table.logicaldisc_set.all():
 
             for expected_hdd in result_obj.expected_hdds:
                 try:

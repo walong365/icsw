@@ -174,19 +174,27 @@ def basic_availability_test(host, test_system_name):
 
     time.sleep(60)
 
-    driver = Webdriver(
-        base_url='http://{}'.format(host),
-        command_executor='http://192.168.1.246:4444/wd/hub',
-        desired_capabilities=DesiredCapabilities.CHROME,
-    )
-    driver.maximize_window()
+    exception = None
+    title = None
+    for i in range(5):
+        try:
+            driver = Webdriver(
+                base_url='http://{}'.format(host),
+                command_executor='http://192.168.1.246:4444/wd/hub',
+                desired_capabilities=DesiredCapabilities.CHROME,
+            )
+            driver.maximize_window()
 
-    try:
-        driver.log_in('admin', 'abc123')
-        title = driver.title
-    except Exception as e:
-        driver.save_screenshot("{}_error.png".format(test_system_name))
-        raise(e)
+            driver.log_in('admin', 'abc123')
+            title = driver.title
+        except Exception as e:
+            exception = e
+        else:
+            exception = None
+            break
+
+    if exception:
+        raise exception
 
     if title and title == 'Dashboard':
         sys.stdout.write("done\n")

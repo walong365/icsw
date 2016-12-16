@@ -191,7 +191,7 @@ class AssetPackageVersion(models.Model):
                     _dict[assetbatch.device.idx]["device_name"] = assetbatch.device.full_name
                     _dict[assetbatch.device.idx]["install_history_list"] = []
 
-                _dict[assetbatch.device.idx]["install_history_list"].append(assetbatch.run_start_time)
+                _dict[assetbatch.device.idx]["install_history_list"].append(str(assetbatch.run_start_time))
 
         return _dict
 

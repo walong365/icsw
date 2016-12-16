@@ -95,6 +95,8 @@ device_asset_module = angular.module(
         reload_timer: undefined
 
         websocket: undefined
+
+        package_list: []
     }
 
     $scope.struct.websocket = icswWebSocketService.register_ws("asset_batch")
@@ -192,16 +194,34 @@ device_asset_module = angular.module(
         stop_timer()
     )
 
+#    $scope.load_package_tree = () ->
+#        blockUI.start("Loading Data ...")
+#        $q.all(
+#            [
+#                icswAssetPackageTreeService.load($scope.$id)
+#            ]
+#        ).then(
+#            (data) ->
+#                $scope.struct.package_tree = data[0]
+#                blockUI.stop()
+#        )
+
     $scope.load_package_tree = () ->
         blockUI.start("Loading Data ...")
-        $q.all(
-            [
-                icswAssetPackageTreeService.load($scope.$id)
-            ]
-        ).then(
-            (data) ->
-                $scope.struct.package_tree = data[0]
-                blockUI.stop()
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.ASSET_ASSET_PACKAGE_LOADER
+                data:
+                    type: "AssetPackage"
+                dataType: "json"
+            }
+        ).then((result) ->
+            blockUI.stop()
+            console.log(result)
+            $scope.struct.package_list.length = 0
+            for entry in result
+                entry.$$package_type = icswAssetHelperFunctions.resolve("package_type", entry.package_type)
+                $scope.struct.package_list.push(entry)
         )
 
     $scope.new_devsel = (devs) ->
@@ -430,17 +450,43 @@ device_asset_module = angular.module(
         restrict: "E"
         template: $templateCache.get("icsw.asset.known.packages")
         scope: {
-            package_tree: "=icswAssetPackageTree"
+            package_list: "=icswAssetPackageList"
         }
         controller: "icswAssetKnownPackagesCtrl"
     }
 ]).controller("icswAssetKnownPackagesCtrl",
 [
-    "$scope", "$q", "ICSW_URLS", "icswSimpleAjaxCall"
+    "$scope", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI"
 (
-    $scope, $q, ICSW_URLS, icswSimpleAjaxCall
+    $scope, ICSW_URLS, icswSimpleAjaxCall, blockUI
 ) ->
-    $scope.expand = ($event, obj) ->
+    $scope.expand_package = ($event, obj) ->
+        if obj.$$expanded == undefined
+            obj.$$expanded = false
+        obj.$$expanded = !obj.$$expanded
+
+        if obj.$$expanded == true
+            blockUI.start("Please wait ...")
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.ASSET_ASSET_PACKAGE_LOADER
+                    data:
+                        type: "AssetPackageVersion"
+                        asset_package_id: obj.idx
+                    dataType: "json"
+                }
+            ).then((result) ->
+                console.log(result)
+                for version in result
+                    version.$$release = "N/A"
+                    if version.release
+                        version.$$release = version.release
+
+                obj.assetpackageversion_set = result
+                blockUI.stop()
+            )
+
+    $scope.expand_version = ($event, obj) ->
         if obj.$$expanded == undefined
             obj.$$expanded = false
         obj.$$expanded = !obj.$$expanded
@@ -449,7 +495,6 @@ device_asset_module = angular.module(
          return moment(string).format("YYYY-MM-DD HH:mm:ss")
 
     $scope.get_history_timeline = (obj, from) ->
-        console.log(obj.install_history_list)
         moment_list = []
         for timestring in obj.install_history_list
             moment_obj = moment(timestring)
