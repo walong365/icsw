@@ -496,6 +496,10 @@ class GraphTarget(object):
     def draw_keys(self):
         return self.__draw_keys
 
+    @draw_keys.setter
+    def draw_keys(self, value):
+        self.__draw_keys = value
+
     def remove_keys(self, remove_keys):
         self.__draw_keys = [_key for _key in self.__draw_keys if _key not in remove_keys]
 
@@ -548,6 +552,12 @@ class GraphTarget(object):
         # 1) scaling
         # 2) to get copied into the result XML
         self.vars[key].set_draw_result(draw_res)
+
+    def get_draw_result(self, only_valid=True):
+        if only_valid:
+            return {key: draw_res.draw_result for key, draw_res in self.vars.iteritems() if draw_res.draw_result is not None}
+        else:
+            return {key: draw_res.draw_result for key, draw_res in self.vars.iteritems()}
 
     def adjust_max_y(self, max_val):
         [_val.adjust_max_y(max_val) for _val in self.vars.itervalues()]

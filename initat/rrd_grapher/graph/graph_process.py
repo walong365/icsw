@@ -56,7 +56,12 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
         self.register_func("graph_rrd", self._graph_rrd)
         self.graph_root = global_config["GRAPH_ROOT"]
         self.graph_root_debug = global_config["GRAPH_ROOT_DEBUG"]
-        self.log("graphs go into {} for non-debug calls and into {} for debug calls".format(self.graph_root, self.graph_root_debug))
+        self.log(
+            "graphs go into {} for non-debug calls and into {} for debug calls".format(
+                self.graph_root,
+                self.graph_root_debug,
+            )
+        )
         self.colorizer = Colorizer(self.log)
         self.__rrdcached_socket = None
 

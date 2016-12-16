@@ -110,6 +110,7 @@ class graph_rrds(View):
             E.end_time(unicode(end_time)),
             E.job_mode(_post.get("job_mode", "none")),
             E.selected_job(_post.get("selected_job", "0")),
+            E.ordering(_post.get("ordering", "")),
         )
         result = contact_server(request, icswServiceEnum.grapher_server, srv_com, timeout=30)
         if result:

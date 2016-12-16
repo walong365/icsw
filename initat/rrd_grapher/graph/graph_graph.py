@@ -23,6 +23,7 @@ from __future__ import print_function, unicode_literals
 
 import datetime
 import os
+import math
 import rrdtool
 import stat
 
@@ -49,6 +50,7 @@ class RRDGraph(object):
         }
         self.dt_1970 = dateutil.parser.parse("1970-01-01 00:00 +0000")
         self.para_dict.update(para_dict)
+        # check ordering
         self.colorizer = colorizer
         self.proc = proc
 
@@ -294,7 +296,13 @@ class RRDGraph(object):
             # set header
             [_gt.set_header("all") for _gt in sum(graph_key_list, [])]
         _num_g = sum([len(_graph_line) for _graph_line in graph_key_list])
-        self.log("number of graphs to create: {:d}".format(_num_g))
+        ORDER_MODE = self.para_dict["ordering"].upper()
+        self.log("number of graphs to create: {:d}, ORDER_MODE is '{}'".format(_num_g, ORDER_MODE))
+        if ORDER_MODE.startswith("-"):
+            _order_reverse = True
+            ORDER_MODE = ORDER_MODE[1:]
+        else:
+            _order_reverse = False
         graph_list = E.graph_list()
         _job_add_dict = self._get_jobs(dev_dict)
         for _graph_line in graph_key_list:
@@ -446,7 +454,7 @@ class RRDGraph(object):
                                 _zero_keys = [
                                     key for key, value in val_dict.iteritems() if all(
                                         [
-                                            _v[0] in [0.0, None] for _k, _v in value.iteritems()
+                                            _v[0] in [0.0, None] or math.isnan(_v[0]) for _k, _v in value.iteritems()
                                         ]
                                     )
                                 ]
@@ -485,35 +493,54 @@ class RRDGraph(object):
                         _graph_target.removed_keys = removed_keys
                     else:
                         self.log("no DEFs for graph_key_dict {}".format(_graph_target.graph_key), logging_tools.LOG_LEVEL_ERROR)
+                # check if we should rerun the graphing process
                 _iterate_line = False
                 _valid_graphs = [_entry for _entry in _graph_line if _entry.valid]
-                if _line_iteration == 0 and self.para_dict["graph_setting"].scale_mode in [
-                    GraphScaleModeEnum.level.value, GraphScaleModeEnum.to100
-                ] and (len(_valid_graphs) > 1 or self.para_dict["graph_setting"].scale_mode == GraphScaleModeEnum.to100):
-                    _line_iteration += 1
-                    if self.para_dict["graph_setting"].scale_mode == GraphScaleModeEnum.level:
-                        _vmin_v, _vmax_v = (
-                            [_entry.draw_result["value_min"] for _entry in _valid_graphs],
-                            [_entry.draw_result["value_max"] for _entry in _valid_graphs],
-                        )
-                        if set(_vmin_v) > 1 or set(_vmax_v) > 1:
-                            _vmin, _vmax = (
-                                FLOAT_FMT.format(min(_vmin_v)),
-                                FLOAT_FMT.format(max(_vmax_v)),
-                            )
-                            self.log(
-                                "setting y_min / y_max for {} to {} / {}".format(
-                                    _valid_graphs[0].graph_key,
-                                    _vmin,
-                                    _vmax,
+                if _line_iteration == 0:
+                    _iterate_scale = self.para_dict["graph_setting"].scale_mode in [
+                        GraphScaleModeEnum.level.value, GraphScaleModeEnum.to100
+                    ] and (
+                        len(_valid_graphs) > 1 or self.para_dict["graph_setting"].scale_mode == GraphScaleModeEnum.to100
+                    )
+                    _iterate_order = True if self.para_dict["ordering"] else False
+                    if _iterate_order or _iterate_scale:
+                        _line_iteration += 1
+                        if _iterate_scale:
+                            if self.para_dict["graph_setting"].scale_mode == GraphScaleModeEnum.level:
+                                _vmin_v, _vmax_v = (
+                                    [_entry.draw_result["value_min"] for _entry in _valid_graphs],
+                                    [_entry.draw_result["value_max"] for _entry in _valid_graphs],
                                 )
-                            )
-                            [_entry.set_y_mm(_vmin, _vmax) for _entry in _valid_graphs]
-                            _iterate_line = True
-                    else:
-                        [_entry.adjust_max_y(100) for _entry in _valid_graphs]
-                        self.log("set max y_val to 100 for all graphs")
-                        _iterate_line = True
+                                if set(_vmin_v) > 1 or set(_vmax_v) > 1:
+                                    _vmin, _vmax = (
+                                        FLOAT_FMT.format(min(_vmin_v)),
+                                        FLOAT_FMT.format(max(_vmax_v)),
+                                    )
+                                    self.log(
+                                        "setting y_min / y_max for {} to {} / {}".format(
+                                            _valid_graphs[0].graph_key,
+                                            _vmin,
+                                            _vmax,
+                                        )
+                                    )
+                                    [_entry.set_y_mm(_vmin, _vmax) for _entry in _valid_graphs]
+                                    _iterate_line = True
+                            else:
+                                [_entry.adjust_max_y(100) for _entry in _valid_graphs]
+                                self.log("set max y_val to 100 for all graphs")
+                                _iterate_line = True
+                        if _iterate_order:
+                            _order_any = False
+                            for _graph in _valid_graphs:
+                                if len(_graph.draw_keys):
+                                    _draw_res = _graph.get_draw_result(only_valid=True)
+                                    new_draw_keys = sorted(_graph.draw_keys, key=lambda entry: _draw_res[entry][ORDER_MODE][0], reverse=_order_reverse)
+                                    if _graph.draw_keys != new_draw_keys:
+                                        _graph.draw_keys = new_draw_keys
+                                        _order_any = True
+                            if _order_any:
+                                _line_iteration += 1
+                                _iterate_line = True
                 if not _iterate_line:
                     graph_list.extend(
                         [_graph_target.graph_xml(dev_dict) for _graph_target in _graph_line]

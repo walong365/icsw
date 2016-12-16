@@ -2069,6 +2069,7 @@ rms_module = angular.module(
                 base_setting.show_tree = false
                 base_setting.show_settings = false
                 base_setting.display_tree_switch = false
+                base_setting.ordering = "AVERAGE"
                 base_setting.auto_select_keys = [
                     # "rms.fairshare\\..*\\.cpu$"
                     "rms.fairshare\\..*\.share.actual"
