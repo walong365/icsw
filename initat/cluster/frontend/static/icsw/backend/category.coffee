@@ -91,6 +91,7 @@ angular.module(
                     entry.reference_dict[ref_name].length = 0
 
         link: () =>
+            @full_name_lut = {}
             for entry in @list
                 # gfx references, only idx
                 if not entry.$gfx_list?
@@ -104,9 +105,11 @@ angular.module(
             # clear all child entries
             set_name = (cat, full_name, depth) =>
                 cat.full_name = "#{full_name}/#{cat.name}"
+                @full_name_lut[cat.full_name] = cat
                 cat.info_string = cat.full_name
                 cat.depth = depth + 1
                 (set_name(@lut[child], cat.full_name, depth + 1) for child in cat.children)
+            console.log @full_name_lut
             # links
             for entry in @list
                 entry.children = []
@@ -125,7 +128,10 @@ angular.module(
                 entry.$dml_list.length = 0
                 if entry.depth == 1
                     entry.info_string = entry.full_name
+                    @full_name_lut[entry.full_name] = entry
                     (set_name(@lut[child], entry.full_name, 1) for child in entry.children)
+                else if entry.depth == 0
+                    @full_name_lut[entry.full_name] = entry
             # gfx list
             for gfx in @gfx_list
                 # for speedup

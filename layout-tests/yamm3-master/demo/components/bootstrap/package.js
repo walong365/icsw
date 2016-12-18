@@ -1,4 +1,4 @@
-// package metadata file for Meteor.js
+k// package metadata file for Meteor.js
 
 Package.describe({
   name: 'twbs:bootstrap',  // http://atmospherejs.com/twbs/bootstrap

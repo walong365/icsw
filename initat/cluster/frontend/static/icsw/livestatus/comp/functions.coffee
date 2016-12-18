@@ -80,6 +80,9 @@ angular.module(
             @segments_omitted = 0
             @segments_drawn = 0
 
+        end_feed: () =>
+            # dummy function (for now)
+
         draw_segment: (val) =>
             _draw = if @omit_small_segments and val < @small_segment_threshold then false else true
             if _draw
@@ -380,7 +383,28 @@ angular.module(
             )
         return _result
 
+    _recalc_burst = (root_node, draw_params) ->
+        # draw
+        _ring_keys= (
+            _entry for _entry in _.map(
+                _.keys(root_node.ring_lut)
+                (_key) ->
+                    return parseInt(_key)
+            ).sort() when _entry >= draw_params.start_ring
+        )
+
+        # reset some draw parameters (omitted segments)
+        draw_params.start_feed()
+
+        for [_ring, _inner_rad, _outer_rad, _arc_offset] in draw_params.create_ring_draw_list(_ring_keys)
+            root_node.element_list = _.concat(
+                root_node.element_list
+                build_burst_ring(_inner_rad, _outer_rad, _arc_offset, "ring#{_ring}", root_node.ring_lut[_ring], draw_params)
+            )
+        draw_params.end_feed()
+
     build_structured_burst = (mon_data, draw_params) ->
+        # build burst for monitoring data (system -> group -> device -> check)
         _root_node = new icswStructuredBurstNode(
             null
             "System"
@@ -445,30 +469,83 @@ angular.module(
                         _entry.check.state = 3
                     icswSaltMonitoringResultService.salt_device_state(_entry.check)
 
-        # draw
-        _ring_keys= (
-            _entry for _entry in _.map(
-                _.keys(_root_node.ring_lut)
-                (_key) ->
-                    return parseInt(_key)
-            ).sort() when _entry >= draw_params.start_ring
-        )
+        _recalc_burst(_root_node, draw_params)
 
-        # reset some draw parameters (omitted segments)
-        draw_params.start_feed()
-
-        for [_ring, _inner_rad, _outer_rad, _arc_offset] in draw_params.create_ring_draw_list(_ring_keys)
-            _root_node.element_list = _.concat(
-                _root_node.element_list
-                build_burst_ring(_inner_rad, _outer_rad, _arc_offset, "ring#{_ring}", _root_node.ring_lut[_ring], draw_params)
-            )
         return _root_node
-        
+
+    build_structured_category_burst = (mon_data, root_pk, cat_pks, cat_tree, draw_params) ->
+        _to_add = _.clone(cat_pks)
+        _already_added = []
+        # pks of parent ring
+        parent_pks = []
+        # dummy idx
+        dummy_idx = -1
+        # node lut
+        node_lut = {}
+        while _to_add.length
+            console.log "a", parent_pks
+            if not _already_added.length
+                # get root pk
+                _added = [root_pk]
+            else
+                # second and other
+                # get all nodes which are direct parents
+                _added = (_pk for _pk in _to_add when cat_tree.lut[_pk].parent in parent_pks)
+            _to_add = _.difference(_to_add, _added)
+            if not _already_added.length
+                # build burst for category subtree (root_node -> sub_node -> ...)
+                _root_node = new icswStructuredBurstNode(
+                    null
+                    "System"
+                    root_pk
+                    icswSaltMonitoringResultService.get_dummy_service_entry()
+                )
+                node_lut[root_pk] = _root_node
+            else
+                touched_parents = []
+                for _pk in _added
+                    _parent_pk = cat_tree.lut[_pk].parent
+                    if _parent_pk not in touched_parents
+                        touched_parents.push(_parent_pk)
+                    sub_node = new icswStructuredBurstNode(
+                        node_lut[_parent_pk]
+                        "sub"
+                        _pk
+                        icswSaltMonitoringResultService.get_dummy_service_entry("test")
+                    )
+                    node_lut[_pk] = sub_node
+                for _dummy_pk in _.difference(parent_pks, touched_parents)
+                    dummy_idx--
+                    sub_node = new icswStructuredBurstNode(
+                        node_lut[_dummy_pk]
+                        "dummy"
+                        dummy_idx
+                        icswSaltMonitoringResultService.get_dummy_service_entry("---")
+                        false
+                        true
+                    )
+                    _added.push(dummy_idx)
+                    node_lut[dummy_idx] = sub_node
+                    console.log "d=", _dummy_pk
+            if not _added.length
+                break
+            else
+                _already_added = _.concat(_already_added, _added)
+                parent_pks = _added
+        _root_node.balance()
+
+        _recalc_burst(_root_node, draw_params)
+
+        return _root_node
+
     return {
 
         build_structured_burst: (mon_data, draw_params) ->
             # mon_data is a filtered instance of icswMonitoringResult
             return build_structured_burst(mon_data, draw_params)
+
+        build_structured_category_burst: (mon_data, root_pk, display_cat_pks, cat_tree, draw_params) ->
+            return build_structured_category_burst(mon_data, root_pk, display_cat_pks, cat_tree, draw_params)
 
         ring_segment_path: ring_segment_path
         ring_path: ring_path

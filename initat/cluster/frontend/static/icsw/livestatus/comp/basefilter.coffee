@@ -657,7 +657,7 @@ angular.module(
                                                     y: 5
                                                     x: 10
                                                     className: "svg-filter-head-text"
-                                                    style: {"font-size" : head_text_width(_host_text)}
+                                                    style: {fontSize : head_text_width(_host_text)}
                                                 }
                                                 "#{_host_text}"
                                             )
@@ -693,7 +693,7 @@ angular.module(
                                                     y: 5
                                                     x: -10
                                                     className: "svg-filter-head-text"
-                                                    style: {"font-size" : head_text_width(_service_text)}
+                                                    style: {fontSize : head_text_width(_service_text)}
                                                 }
                                                 "#{_service_text}"
                                             )
