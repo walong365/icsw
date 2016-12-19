@@ -988,38 +988,44 @@ class Dispatcher(object):
 
     def asset_schedule_handler(self, schedule_item):
         # check for allowed
-        _device = device.objects.get(idx=schedule_item.object_id)
-        
-        if self.discovery_process.EC.consume("asset", _device):
-            cap_dict = {
-                _com.matchcode: True for _com in _device.com_capability_list.all()
-                }
+        try:
+            _device = device.objects.get(idx=schedule_item.object_id)
+        except device.DoesNotExist:
+            self.log(
+                "device with id {:d} does not exist".format(schedule_item.object_id),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+        else:
+            if self.discovery_process.EC.consume("asset", _device):
+                cap_dict = {
+                    _com.matchcode: True for _com in _device.com_capability_list.all()
+                    }
 
-            _dev = _device
-            _user = schedule_item.user
-            if _dev.idx not in self.__device_planned_runs:
-                self.__device_planned_runs[_dev.idx] = []
+                _dev = _device
+                _user = schedule_item.user
+                if _dev.idx not in self.__device_planned_runs:
+                    self.__device_planned_runs[_dev.idx] = []
 
-            self.discovery_process.get_route_to_devices([_dev])
-            self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
-            new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip, _user)
-            new_pr.nrpe_port = device_variable.objects.get_device_variable_value(_dev, "NRPE_PORT", DEFAULT_NRPE_PORT)
+                self.discovery_process.get_route_to_devices([_dev])
+                self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
+                new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip, _user)
+                new_pr.nrpe_port = device_variable.objects.get_device_variable_value(_dev, "NRPE_PORT", DEFAULT_NRPE_PORT)
 
-            if cap_dict.get("hm", False):
-                self.__device_planned_runs[_dev.idx].append(new_pr)
-                self._do_hm_scan(schedule_item, new_pr)
-            elif cap_dict.get("nrpe", False):
-                self.__device_planned_runs[_dev.idx].append(new_pr)
-                self._do_nrpe_scan(schedule_item, new_pr)
-            else:
-                self.log(
-                    "Skipping non-capable device {}".format(
-                        unicode(_device)
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-                new_pr.asset_batch.state_finished()
-                new_pr.asset_batch.save()
+                if cap_dict.get("hm", False):
+                    self.__device_planned_runs[_dev.idx].append(new_pr)
+                    self._do_hm_scan(schedule_item, new_pr)
+                elif cap_dict.get("nrpe", False):
+                    self.__device_planned_runs[_dev.idx].append(new_pr)
+                    self._do_nrpe_scan(schedule_item, new_pr)
+                else:
+                    self.log(
+                        "Skipping non-capable device {}".format(
+                            unicode(_device)
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                    new_pr.asset_batch.state_finished()
+                    new_pr.asset_batch.save()
 
     def network_scan_schedule_handler(self, schedule_item):
         target_device = device.objects.get(idx=int(schedule_item.schedule_handler_data))
