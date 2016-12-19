@@ -259,6 +259,7 @@ angular.module(
                         {
                             key: "foc.#{_element.key}"
                             element: _element
+                            clicked: node.clicked
                         }
                     )
                 )

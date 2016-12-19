@@ -232,7 +232,7 @@ class BuildControl(object):
             self.__process.send_to_process(
                 _p_name,
                 "fetch_dyn_config",
-                BuildModesEnum.dyn_master,
+                BuildModesEnum.dyn_master.name,
                 self.__master_config.serialize(),
                 unicode(srv_com),
                 *dev_pks

@@ -86,17 +86,22 @@ angular.module(
     return React.createClass(
         propTypes: {
             element: React.PropTypes.object
+            clicked: React.PropTypes.bool
         }
 
         displayName: "icswBurstReactFocusSegment"
 
         render: () ->
             _path_el = @props.element
+            if @props.clicked
+                _cls = "sb-lines svg-clicked"
+            else
+                _cls = "sb-lines svg-hovered"
             return path(
                 {
                     key: _path_el.key
                     d: _path_el.d
-                    className: "sb-lines svg-clicked"
+                    className: _cls
                 }
             )
     )
@@ -357,6 +362,7 @@ angular.module(
                         {
                             key: "foc.#{_element.key}"
                             element: _element
+                            clicked: true
                         }
                     )
                 )
