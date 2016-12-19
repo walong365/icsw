@@ -711,7 +711,7 @@ angular.module(
             @generation++
 
         apply_category_filter: (cat_list, src_data, filter_name) =>
-            # filter name is mon or device
+            # filter_name is mon or device
             @__luts_set = false
             # show uncategorized entries
             _zero_cf = 0 in cat_list

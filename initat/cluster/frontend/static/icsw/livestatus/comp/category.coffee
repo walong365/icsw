@@ -135,19 +135,17 @@ angular.module(
             @focus_name = ring_el.name
             @clear_timeout()
             # delay export by 200 milliseconds
-            if @props.return_data?
+            if @props.return_data? and ring_el.category
                 @export_timeout = $timeout(
                     () =>
-                        # console.log "UPDATE"
-                        _services = (el.check for el in ring_el.get_self_and_childs() when el.check.$$ct == "service")
-                        _hosts = []
-                        _host_idxs = []
-                        for _service in _services
-                            if not _service.$$dummy
-                                if _service.$$host_mon_result.$$icswDevice.idx not in _host_idxs
-                                    _host_idxs.push(_service.$$host_mon_result.$$icswDevice.idx)
-                                    _hosts.push(_service.$$host_mon_result)
-                        @props.return_data.update(_hosts, _services, [], [])
+                        # console.log "UPDATE", ring_el
+                        @props.return_data.apply_category_filter(
+                            [ring_el.category.idx]
+                            @props.monitoring_data
+                            if @props.sub_tree == "device" then "device" else "mon"
+                        )
+                        # send data downstream
+                        @props.return_data.notify()
                     if @clicked_focus then 0 else 50
                 )
             # console.log _services
@@ -439,9 +437,6 @@ angular.module(
 
         new_data_received: (data) ->
             @_latest_data = data
-            # console.log @_latest_data
-            # if @_cat_filter?
-            #    @_emit_data.apply_category_filter(@_cat_filter, @_latest_data, "mon")
             @new_data_notifier.notify(data)
             return @_emit_data
 
@@ -477,9 +472,6 @@ angular.module(
 
         new_data_received: (data) ->
             @_latest_data = data
-            # console.log @_latest_data
-            # if @_cat_filter?
-            #    @_emit_data.apply_category_filter(@_cat_filter, @_latest_data, "mon")
             @new_data_notifier.notify(data)
             return @_emit_data
 
@@ -540,7 +532,7 @@ angular.module(
             @set_template(
                 '<h4>Device Category Filter</h4>
                 <icsw-config-category-tree-select icsw-mode="filter" icsw-sub-tree="\'device\'" icsw-mode="filter" icsw-connect-element="con_element"></icsw-config-category-tree-select>'
-                "Device Category Filter"
+                "Device Category Filter (Tree)"
                 4
                 2
             )

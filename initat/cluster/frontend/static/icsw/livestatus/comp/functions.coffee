@@ -130,8 +130,9 @@ angular.module(
             @sel_by_child = false
             @filter = false
             @placeholder = false
+            @category = null
             for key, value of args
-                if not @[key]?
+                if key not of @
                     console.error "Unknown key/value pair '#{key}/#{value}' for icswStructuredBurstNode"
                 else
                     @[key] = value
@@ -566,6 +567,9 @@ angular.module(
                         _cat.full_name
                         _pk
                         icswSaltMonitoringResultService.get_dummy_service_entry(_cat.full_name)
+                        {
+                            category: _cat
+                        }
                     )
                     node_lut[_pk] = sub_node
                 for _dummy_pk in _.difference(parent_pks, touched_parents)
@@ -609,7 +613,7 @@ angular.module(
                 cat_node.end_ds_feed()
         for pk, cat_node of node_lut
             pk = parseInt(pk)
-            if pk > 0
+            if pk > 111110
                 cat_node.set_state_from_children()
         _root_node.balance()
 
