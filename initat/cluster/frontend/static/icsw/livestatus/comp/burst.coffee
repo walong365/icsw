@@ -377,7 +377,7 @@ angular.module(
                                 h4(
                                     {
                                         key: "graph.header"
-                                        style: { }
+                                        style: {}
                                     }
                                     "Burst Graph (" + @props.draw_parameters.get_segment_info()
                                     if @clicked_focus then span(
@@ -500,8 +500,6 @@ angular.module(
                 }
             )
             scope.con_element.set_async_emit_data(scope.set_notifier(scope.con_element.new_data_notifier, element[0], draw_params))
-            # console.log "+++", scope.con_element
-            # omitted segments
             scope.width = parseInt(attrs["initialWidth"] or "600")
             _mounted = false
 

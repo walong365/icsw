@@ -183,7 +183,10 @@ angular.module(
             # for ordering
             orderint: -10
             height: 15
+            # weight for mean value calculation
             weight: 1
+            # weight for determination of worst state
+            ws_weight: 8
         }
         1: {
             svgClassName:  "svg-dev-down"
@@ -196,6 +199,7 @@ angular.module(
             orderint: -8
             height: 30
             weight: 2
+            ws_weight: 9
         }
         2: {
             svgClassName: "svg-dev-unreach"
@@ -208,6 +212,7 @@ angular.module(
             orderint: -6
             height: 22
             weight: 3
+            ws_weight: 10
         }
         3: {
             svgClassName: "svg-dev-unknown"
@@ -220,6 +225,7 @@ angular.module(
             orderint: -4
             height: 18
             weight: 4
+            ws_weight: 7
         }
         4: {
             svgClassName: "svg-dev-notmonitored"
@@ -233,6 +239,7 @@ angular.module(
             orderint: 0
             height: 30
             weight: 5
+            ws_weight: 6
         }
         5: {
             svgClassName: "svg-dev-pending"
@@ -244,9 +251,22 @@ angular.module(
             orderint: -5
             height: 18
             weight: 6
+            ws_weight: 5
         }
         # planned down is missing ...
         # flapping is missing ...
+        # for display
+        10: {
+            svgClassName: "svg-srv-omitted"
+            info: "omitted"
+            # no iconCode needed
+            StateString: "Omitted"
+            weigth: 0
+            pycode: "???"
+            orderint: 0
+            height: 0
+            ws_weight: 0
+        }
     }
 
     _service_lut = {
@@ -262,6 +282,7 @@ angular.module(
             # for ordering
             orderint: -10
             height: 15
+            ws_weight: 8
         }
         1: {
             svgClassName: "svg-srv-warn"
@@ -274,6 +295,7 @@ angular.module(
             # for ordering
             orderint: -9
             height: 22
+            ws_weight: 9
         }
         2: {
             svgClassName: "svg-srv-crit"
@@ -286,6 +308,7 @@ angular.module(
             # for ordering
             orderint: -8
             height: 30
+            ws_weight: 10
         }
         3: {
             svgClassName: "svg-srv-unknown"
@@ -298,6 +321,7 @@ angular.module(
             # for ordering
             orderint: -5
             height: 18
+            ws_weight: 7
         }
         4: {
             svgClassName: "svg-srv-notmonitored"
@@ -310,6 +334,7 @@ angular.module(
             # for ordering
             orderint: -4
             height: 30
+            ws_weight: 6
         }
         5: {
             svgClassName: "svg-srv-pending"
@@ -322,6 +347,7 @@ angular.module(
             # for ordering
             orderint: -3
             height: 18
+            ws_weight: 5
         }
         # planned down is missing ...
         # flapping is missing ...
@@ -334,6 +360,7 @@ angular.module(
             pycode: "???"
             orderint: 0
             height: 0
+            ws_weight: 0
         }
     }
 
@@ -509,6 +536,13 @@ angular.module(
                         _val.$$data = _py_service_lut[_val.state]
         return obj
 
+    get_worst_state = (state_list, state_type) ->
+        # takes a list of states (as ints) and return the worst one
+        # state type is device or service
+        _lut = _struct["#{state_type}_lut"]
+        _worst_state = _.sortBy(state_list, (entry) -> return -_lut[entry].ws_weight)[0]
+        return _worst_state
+
     return {
         get_struct: () ->
             return _struct
@@ -523,6 +557,8 @@ angular.module(
 
         salt_device_state: salt_device_state
 
+        salt_service_state: salt_service_state
+
         salt_host: salt_host
 
         calculate_service_weight: calculate_service_weight
@@ -534,6 +570,8 @@ angular.module(
         salt_hist_device_data: salt_hist_device_data
 
         salt_hist_service_data: salt_hist_service_data
+
+        get_worst_state: get_worst_state
     }
 ]).service("icswMonitoringResult",
 [

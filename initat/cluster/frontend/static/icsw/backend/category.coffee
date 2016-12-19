@@ -109,7 +109,7 @@ angular.module(
                 cat.info_string = cat.full_name
                 cat.depth = depth + 1
                 (set_name(@lut[child], cat.full_name, depth + 1) for child in cat.children)
-            console.log @full_name_lut
+            # console.log @full_name_lut
             # links
             for entry in @list
                 entry.children = []

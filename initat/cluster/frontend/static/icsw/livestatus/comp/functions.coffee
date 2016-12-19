@@ -107,12 +107,12 @@ angular.module(
 
 ]).service("icswStructuredBurstNode",
 [
-    "$q",
+    "$q", "icswSaltMonitoringResultService",
 (
-    $q,
+    $q, icswSaltMonitoringResultService,
 ) ->
     class icswStructuredBurstNode
-        constructor: (@parent, @name, @idx, @check, @filter=false, @placeholder=false) ->
+        constructor: (@parent, @name, @idx, @check, args) ->
             # attributes:
             # o root (top level element)
             # o parent (parent element)
@@ -128,8 +128,13 @@ angular.module(
             # selection flags
             @sel_by_parent = false
             @sel_by_child = false
-            # no longer used
-            # @show = true
+            @filter = false
+            @placeholder = false
+            for key, value of args
+                if not @[key]?
+                    console.error "Unknown key/value pair '#{key}/#{value}' for icswStructuredBurstNode"
+                else
+                    @[key] = value
             @clicked = false
             if @depth == 0
                 # only for root-nodes
@@ -157,6 +162,10 @@ angular.module(
         iterate_downward: (cb_func) ->
             cb_func(@)
             (_child.iterate_downward(cb_func) for _child in @children)
+
+        iter_childs: (cb_f) ->
+            cb_f(@)
+            (_entry.iter_childs(cb_f) for _entry in @children)
 
         set_clicked: () ->
             @root.iter_childs((node) -> node.clicked = false)
@@ -240,10 +249,6 @@ angular.module(
                 _r = _.concat(_r, node.get_self_and_childs())
             return _r
 
-        iter_childs: (cb_f) ->
-            cb_f(@)
-            (_entry.iter_childs(cb_f) for _entry in @children)
-
         get_childs: (filter_f) ->
             _field = []
             if filter_f(@)
@@ -251,6 +256,38 @@ angular.module(
             for _entry in @children
                 _field = _field.concat(_entry.get_childs(filter_f))
             return _field
+
+        start_ds_feed: (state_type) ->
+            @__state_type = state_type
+            @state_dict = {}
+
+        end_ds_feed: () ->
+            if _.keys(@state_dict).length
+                # get all state keys
+                _state_keys = (parseInt(_key) for _key in _.keys(@state_dict))
+                @_set_worst_state_from_list(_state_keys)
+
+        set_state_from_children: () ->
+            # get states from all children
+            all_states = _.uniq((entry.check.state for entry in @get_self_and_childs()))
+            @_set_worst_state_from_list(all_states)
+
+        _set_worst_state_from_list: (in_list) ->
+            # set it
+            @check.state = icswSaltMonitoringResultService.get_worst_state(in_list, @__state_type)
+            icswSaltMonitoringResultService["salt_#{@__state_type}_state"](@check)
+
+        feed_service: (srv) ->
+            return @_feed_ds(srv)
+
+        feed_device: (dev) ->
+            return @_feed_ds(dev)
+
+        _feed_ds: (entry) ->
+            state = entry.state
+            if state not of @state_dict
+                @state_dict[state] = 0
+            @state_dict[state]++
 
 ]).service("icswDeviceLivestatusFunctions",
 [
@@ -443,7 +480,7 @@ angular.module(
                 for service in host.$$service_list
                     # check for filter
                     if service.$$idx in _sts
-                        new icswStructuredBurstNode(_dev, service.description, service.$$idx, service, true)
+                        new icswStructuredBurstNode(_dev, service.description, service.$$idx, service, {filter: true})
                 if not _dev.children.length
                     # add dummy service for devices without services
                     new icswStructuredBurstNode(
@@ -451,8 +488,10 @@ angular.module(
                         ""
                         0
                         icswSaltMonitoringResultService.get_dummy_service_entry("---")
-                        false
-                        true
+                        {
+                            filter: false
+                            placeholder: true
+                        }
                     )
 
         # balance nodes, set width of each segment, create ring lut
@@ -464,7 +503,7 @@ angular.module(
             if _ring_idx of _root_node.ring_lut
                 for _entry in _root_node.ring_lut[_ring_idx]
                     if _entry.children.length
-                        _entry.check.state = _.max((_child.check.state for _child in _entry.children))
+                        _entry.check.state = icswSaltMonitoringResultService.get_worst_state((_child.check.state for _child in _entry.children), "device")
                     else
                         _entry.check.state = 3
                     icswSaltMonitoringResultService.salt_device_state(_entry.check)
@@ -473,8 +512,22 @@ angular.module(
 
         return _root_node
 
-    build_structured_category_burst = (mon_data, root_pk, cat_pks, cat_tree, draw_params) ->
-        _to_add = _.clone(cat_pks)
+    build_structured_category_burst = (mon_data, sub_tree, cat_tree, draw_params) ->
+        cat_pks = mon_data["used_#{sub_tree}_cats"]
+        _display_pks = _.clone(cat_pks)
+        _root_node = cat_tree.full_name_lut["/#{sub_tree}"]
+        if _root_node.idx in _display_pks
+            console.error "rootnode for #{sub_tree} already in list, strange ..."
+        else
+            _display_pks.push(_root_node.idx)
+        for _cat_pk in cat_pks
+            _node = cat_tree.lut[_cat_pk]
+            while _node.parent
+                _node = cat_tree.lut[_node.parent]
+                if _node.idx not in _display_pks and _node.depth
+                    _display_pks.push(_node.idx)
+        root_pk = _root_node.idx
+        _to_add = _.clone(_display_pks)
         _already_added = []
         # pks of parent ring
         parent_pks = []
@@ -483,7 +536,6 @@ angular.module(
         # node lut
         node_lut = {}
         while _to_add.length
-            console.log "a", parent_pks
             if not _already_added.length
                 # get root pk
                 _added = [root_pk]
@@ -494,24 +546,26 @@ angular.module(
             _to_add = _.difference(_to_add, _added)
             if not _already_added.length
                 # build burst for category subtree (root_node -> sub_node -> ...)
+                _cat = cat_tree.lut[root_pk]
                 _root_node = new icswStructuredBurstNode(
                     null
-                    "System"
+                    _cat.full_name
                     root_pk
-                    icswSaltMonitoringResultService.get_dummy_service_entry()
+                    icswSaltMonitoringResultService.get_dummy_service_entry(_cat.full_name)
                 )
                 node_lut[root_pk] = _root_node
             else
                 touched_parents = []
                 for _pk in _added
+                    _cat = cat_tree.lut[_pk]
                     _parent_pk = cat_tree.lut[_pk].parent
                     if _parent_pk not in touched_parents
                         touched_parents.push(_parent_pk)
                     sub_node = new icswStructuredBurstNode(
                         node_lut[_parent_pk]
-                        "sub"
+                        _cat.full_name
                         _pk
-                        icswSaltMonitoringResultService.get_dummy_service_entry("test")
+                        icswSaltMonitoringResultService.get_dummy_service_entry(_cat.full_name)
                     )
                     node_lut[_pk] = sub_node
                 for _dummy_pk in _.difference(parent_pks, touched_parents)
@@ -520,18 +574,43 @@ angular.module(
                         node_lut[_dummy_pk]
                         "dummy"
                         dummy_idx
-                        icswSaltMonitoringResultService.get_dummy_service_entry("---")
-                        false
-                        true
+                        icswSaltMonitoringResultService.get_dummy_service_entry("omitted", 10)
+                        {
+                            filter: false
+                            placeholder: true
+                        }
                     )
                     _added.push(dummy_idx)
                     node_lut[dummy_idx] = sub_node
-                    console.log "d=", _dummy_pk
+                    # console.log "d=", _dummy_pk
             if not _added.length
                 break
             else
                 _already_added = _.concat(_already_added, _added)
                 parent_pks = _added
+        # check categories
+        # src list
+        for pk, cat_node of node_lut
+            # sigh ...
+            pk = parseInt(pk)
+            if pk > 0
+                # ignore dummy nodes
+                cat_node.start_ds_feed(if sub_tree == "mon" then "service" else "device")
+                # console.log pk, src_list.length
+                if sub_tree == "mon"
+                    for el in mon_data.services
+                        if "cat_pks" of el.custom_variables
+                            if pk in el.custom_variables.cat_pks
+                                cat_node.feed_service(el)
+                else
+                    for el in mon_data.hosts
+                        if pk in el.$$device_categories
+                            cat_node.feed_device(el)
+                cat_node.end_ds_feed()
+        for pk, cat_node of node_lut
+            pk = parseInt(pk)
+            if pk > 0
+                cat_node.set_state_from_children()
         _root_node.balance()
 
         _recalc_burst(_root_node, draw_params)
@@ -544,8 +623,8 @@ angular.module(
             # mon_data is a filtered instance of icswMonitoringResult
             return build_structured_burst(mon_data, draw_params)
 
-        build_structured_category_burst: (mon_data, root_pk, display_cat_pks, cat_tree, draw_params) ->
-            return build_structured_category_burst(mon_data, root_pk, display_cat_pks, cat_tree, draw_params)
+        build_structured_category_burst: (mon_data, sub_tree, cat_tree, draw_params) ->
+            return build_structured_category_burst(mon_data, sub_tree, cat_tree, draw_params)
 
         ring_segment_path: ring_segment_path
         ring_path: ring_path

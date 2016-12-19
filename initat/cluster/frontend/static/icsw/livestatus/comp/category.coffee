@@ -60,17 +60,16 @@ angular.module(
         displayName: "icswLivestatusCategoryFilterBurstReact"
 
         componentDidMount: () ->
-            console.log "dm", @props.monitoring_data
             @category_tree = null
             react_id++
-            icswCategoryTreeService.load("#{@displayName}.#{react_id}").then(
+            @filter_id = react_id
+            icswCategoryTreeService.load("lsfilterb.#{react_id}").then(
                 (data) =>
                     @category_tree = data
                     @setState({cat_tree_defined: true})
             )
 
         getInitialState: () ->
-            console.log "is"
             @export_timeout = undefined
             @leave_timeout = undefined
             @focus_name = ""
@@ -164,24 +163,9 @@ angular.module(
 
         render: () ->
             if not @state.cat_tree_defined
-                return null
-
+                return div({}, "waiting for server data...")
             # console.log "ct=", @category_tree, @props.sub_tree
             # get all used cats (also parents)
-            _cat_pks = @props.monitoring_data["used_#{@props.sub_tree}_cats"]
-            _display_pks = _.clone(_cat_pks)
-            _root_node = @category_tree.full_name_lut["/#{@props.sub_tree}"]
-            if _root_node.idx in _display_pks
-                console.error "rootnode for #{@props.sub_tree} already in list, strange ..."
-            else
-                _display_pks.push(_root_node.idx)
-            console.log "*", _cat_pks, _root_node
-            for _cat_pk in _cat_pks
-                _node = @category_tree.lut[_cat_pk]
-                while _node.parent
-                    _node = @category_tree.lut[_node.parent]
-                    if _node.idx not in _display_pks and _node.depth
-                        _display_pks.push(_node.idx)
             # not the most elegant way but working for now
             if @props.external_trigger?
                 if @props.external_trigger != @current_trigger
@@ -196,8 +180,7 @@ angular.module(
             if not @root_node?
                 @root_node = icswDeviceLivestatusFunctions.build_structured_category_burst(
                     @props.monitoring_data
-                    _root_node.idx
-                    _display_pks
+                    @props.sub_tree
                     @category_tree
                     @props.draw_parameters
                 )
@@ -230,8 +213,8 @@ angular.module(
             @props.draw_parameters.do_layout()
             _outer = @props.draw_parameters.outer_radius
             # console.log _outer
-            if _ia and false
-                console.log "RN=", root_node
+            if _ia
+                # console.log "RN=", root_node
                 # interactive, pathes have mouseover and click handler
                 _g_list = (
                     React.createElement(
