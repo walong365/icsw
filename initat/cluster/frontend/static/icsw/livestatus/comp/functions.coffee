@@ -79,16 +79,21 @@ angular.module(
         start_feed: () =>
             @segments_omitted = 0
             @segments_drawn = 0
+            @segments_hidden = 0
 
         end_feed: () =>
             # dummy function (for now)
 
-        draw_segment: (val) =>
-            _draw = if @omit_small_segments and val < @small_segment_threshold then false else true
-            if _draw
-                @segments_drawn++
+        draw_segment: (burst_node, val) =>
+            if burst_node.no_display
+                @segments_hidden++
+                _draw = false
             else
-                @segments_omitted++
+                _draw = if @omit_small_segments and val < @small_segment_threshold then false else true
+                if _draw
+                    @segments_drawn++
+                else
+                    @segments_omitted++
             return _draw
 
         get_segment_info: () =>
@@ -130,6 +135,7 @@ angular.module(
             @sel_by_child = false
             @filter = false
             @placeholder = false
+            @no_display = false
             @category = null
             for key, value of args
                 if key not of @
@@ -146,6 +152,11 @@ angular.module(
                 @parent.add_child(@)
             else
                 @root = @
+                # set global luts
+                @root_lut = {}
+                @name_lut = {}
+                @root_lut[@idx] = @
+                @name_lut[@name] = @
 
         clear_focus: () ->
             # clear all show_legend flags downwards
@@ -243,6 +254,8 @@ angular.module(
             entry.depth = @depth + 1
             @children.push(entry)
             @lut[entry.idx] = entry
+            @root.root_lut[entry.idx] = entry
+            @root.name_lut[entry.name] = entry
 
         get_self_and_childs: () ->
             _r = [@]
@@ -346,7 +359,7 @@ angular.module(
                 start_arc = end_arc
                 end_num += node.width
                 end_arc = 2 * Math.PI * end_num / _len + arc_offset
-                if draw_params.draw_segment((end_arc - start_arc) * outer)
+                if draw_params.draw_segment(node, (end_arc - start_arc) * outer)
                     if _len == 1 and draw_params.collapse_one_element_rings
                         _path = ring_path(inner, outer)
                     else if _len == node.width
@@ -373,7 +386,8 @@ angular.module(
                         _el.$$mean_arc = (start_arc + end_arc) / 2.0
                         _el.$$mean_radius = (outer + inner) / 2.0
                     _result.push(_el)
-                else
+                    node.$$path = _el
+                else if not node.no_display
                     _omit_list.push([end_num - node.width, end_num])
             if _omit_list.length
                 _dummy = icswSaltMonitoringResultService.get_dummy_service_entry("omitted", 10)
@@ -381,13 +395,13 @@ angular.module(
                 if _omit_list.length == r_data.length
                     # all segments omitted, draw dummy graph
                     _omit_idx++
-                    _result.push(
-                        {
-                            key: "path.#{key_prefix}.omit#{_omit_idx}"
-                            d: ring_path(inner, outer)
-                            $$service: _dummy
-                        }
-                    )
+                    _el = {
+                        key: "path.#{key_prefix}.omit#{_omit_idx}"
+                        d: ring_path(inner, outer)
+                        $$service: _dummy
+                    }
+                    _result.push(_el)
+                    node.$$path = _el
                 else
                     # not all omitted, get optimized omit-list
                     _new_omit_list = []
@@ -434,11 +448,19 @@ angular.module(
         # reset some draw parameters (omitted segments)
         draw_params.start_feed()
 
+        # create the actual draw element list
+        # maybe we should change this to salting the structured nodes with draw info
+        # attention:
+        # - some burstnodes have no element to draw
+        # - some burstnodes are linked together
+        # - ???
         for [_ring, _inner_rad, _outer_rad, _arc_offset] in draw_params.create_ring_draw_list(_ring_keys)
+            # console.log "s", root_node.element_list.length
             root_node.element_list = _.concat(
                 root_node.element_list
                 build_burst_ring(_inner_rad, _outer_rad, _arc_offset, "ring#{_ring}", root_node.ring_lut[_ring], draw_params)
             )
+            # console.log "e", root_node.element_list.length
         draw_params.end_feed()
 
     build_structured_burst = (mon_data, draw_params) ->
@@ -582,6 +604,7 @@ angular.module(
                         {
                             filter: false
                             placeholder: true
+                            no_display: true
                         }
                     )
                     _added.push(dummy_idx)

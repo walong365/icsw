@@ -71,6 +71,8 @@
 .svg-clicked {
     stroke-width: 2px !important;
     stroke: #2222ff;
+    fill: none;
+    pointer-events: none;
 }
 
 .svg-d3link { stroke: #ff7788; stroke-width: 4px; opacity: 1; }

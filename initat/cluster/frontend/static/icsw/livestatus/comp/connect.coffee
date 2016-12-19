@@ -1141,8 +1141,9 @@ angular.module(
         }
         template: $templateCache.get("icsw.livestatus.tooltip")
         link: (scope, element, attrs) ->
-            struct =
+            struct = {
                 divlayer: element.children().first()
+            }
 
             struct.show = (content) ->
                 scope.display = "block"

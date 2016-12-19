@@ -39,6 +39,8 @@ angular.module(
             focus_cb: React.PropTypes.func
         }
 
+        displayName: "icswBurstReactSegment"
+
         render: () ->
             _path_el = @props.element
             # focus element
@@ -48,14 +50,10 @@ angular.module(
                 # console.log "*", @props
                 if _bn.sel_by_child or _bn.sel_by_parent
                     _cls = "#{_cls} svg-sel"
-                if _bn.clicked
-                    _cls = "#{_cls} svg-clicked"
             _segment = {
                 key: _path_el.key
                 d: _path_el.d
                 className: _cls
-                #stroke: _path_el.stroke
-                #strokeWidth: _path_el.strokeWidth
                 onMouseEnter: @on_mouse_enter
                 onMouseMove: @props.draw_parameters.tooltip.pos
                 onMouseLeave: @on_mouse_leave
@@ -77,6 +75,30 @@ angular.module(
             # @props.clear_focus()
             # console.log "ml"
             # @setState({focus: false})
+    )
+]).service("icswBurstReactFocusSegment",
+[
+    "$q",
+(
+    $q,
+) ->
+    {div, g, text, circle, path, svg, polyline} = React.DOM
+    return React.createClass(
+        propTypes: {
+            element: React.PropTypes.object
+        }
+
+        displayName: "icswBurstReactFocusSegment"
+
+        render: () ->
+            _path_el = @props.element
+            return path(
+                {
+                    key: _path_el.key
+                    d: _path_el.d
+                    className: "sb-lines svg-clicked"
+                }
+            )
     )
 ]).service("icswBurstReactSegmentText",
 [
@@ -144,12 +166,12 @@ angular.module(
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswNetworkTopologyReactSVGContainer",
     "icswDeviceLivestatusFunctions", "icswBurstDrawParameters", "icswBurstReactSegment",
     "icswBurstReactSegmentText", "icswMonitoringResult",
-    "$timeout",
+    "$timeout", "icswBurstReactFocusSegment",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, icswNetworkTopologyReactSVGContainer,
     icswDeviceLivestatusFunctions, icswBurstDrawParameters, icswBurstReactSegment,
     icswBurstReactSegmentText, icswMonitoringResult,
-    $timeout,
+    $timeout, icswBurstReactFocusSegment,
 ) ->
     # Network topology container, including selection and redraw button
     react_dom = ReactDOM
@@ -294,12 +316,7 @@ angular.module(
                 )
             # console.log _outer_width, _outer_height
             root_node = @root_node
-            # if _outer_width
-            #    _outer = _.min([_outer_width, _outer_height])
-            # else
             @props.draw_parameters.do_layout()
-            _outer = @props.draw_parameters.outer_radius
-            # console.log _outer
             if _ia
                 # interactive, pathes have mouseover and click handler
                 _g_list = (
@@ -332,7 +349,17 @@ angular.module(
             else
                 # not interactive, simple list of graphs
                 _g_list = (path(_.pickBy(_element, (value, key) -> return not key.match(/\$/))) for _element in root_node.element_list)
-            # _g_list = []
+            if @state.focus_element
+                _element = @state.focus_element.$$path
+                _g_list.push(
+                    React.createElement(
+                        icswBurstReactFocusSegment
+                        {
+                            key: "foc.#{_element.key}"
+                            element: _element
+                        }
+                    )
+                )
             _svg = svg(
                 {
                     key: "svg.top"

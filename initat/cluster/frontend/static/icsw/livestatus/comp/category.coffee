@@ -35,12 +35,12 @@ angular.module(
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswNetworkTopologyReactSVGContainer",
     "icswDeviceLivestatusFunctions", "icswBurstDrawParameters", "icswBurstReactSegment",
     "icswBurstReactSegmentText", "icswMonitoringResult", "icswCategoryTreeService",
-    "$timeout",
+    "$timeout", "icswBurstReactFocusSegment",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, icswNetworkTopologyReactSVGContainer,
     icswDeviceLivestatusFunctions, icswBurstDrawParameters, icswBurstReactSegment,
     icswBurstReactSegmentText, icswMonitoringResult, icswCategoryTreeService,
-    $timeout,
+    $timeout, icswBurstReactFocusSegment,
 ) ->
     # Network topology container, including selection and redraw button
     react_dom = ReactDOM
@@ -60,6 +60,7 @@ angular.module(
         displayName: "icswLivestatusCategoryFilterBurstReact"
 
         componentDidMount: () ->
+            console.log "mount"
             @category_tree = null
             react_id++
             @filter_id = react_id
@@ -72,14 +73,16 @@ angular.module(
         getInitialState: () ->
             @export_timeout = undefined
             @leave_timeout = undefined
-            @focus_name = ""
-            @clicked_focus = ""
+            # list of elements now in focus
+            # structure of one element is
+            # name: name of node
+            # clicked: true if clicked or only hover (only one can be hovered)
+            @focus_elements = []
             # current trigger, for external trigger, NOT in state
             @current_trigger = @props.external_trigger
             return {
                 # to trigger redraw
                 draw_counter: 0
-                focus_element: undefined
                 cat_tree_defined: false
             }
 
@@ -104,60 +107,72 @@ angular.module(
 
         focus_cb: (action, ring_el) ->
             if action == "enter"
-                if not @clicked_focus or @clicked_focus == ring_el.name
-                    @_set_focus(ring_el)
+                # remove old hover
+                _.remove(@focus_elements, (entry) -> return not entry.clicked)
+                if not _.some(@focus_elements, (entry) -> return entry.name == ring_el.name)
+                    @focus_elements.push({name: ring_el.name, clicked: false})
+                @_set_focus(true)
             else if action == "leave"
                 if @leave_timeout?
                     $timeout.cancel(@leave_timeout)
-                if not @clicked_focus
-                    _cur_focus = @focus_name
-                    @leave_timeout = $timeout(
-                        () =>
-                            if _cur_focus == @focus_name
-                                # focus_name not changed -> moved outside burst
-                                @_clear_focus(true)
-                                @clear_timeout()
-                        2
-                    )
+                _cur_focus = _.clone(@focus_elements)
+                @leave_timeout = $timeout(
+                    () =>
+                        if _.isEqual(_cur_focus, @focus_elements)
+                            # focus_elements not changed -> moved outside burst
+                            # remove element
+                            _.remove(@focus_elements, (entry) -> return not entry.clicked and entry.name == ring_el.name)
+                            @clear_timeout()
+                            @_set_focus(true)
+                    2
+                )
             else if action == "click"
-                if ring_el.clicked
-                    ring_el.clear_clicked()
-                    @clicked_focus = ""
+                _current = (entry for entry in @focus_elements when entry.name == ring_el.name)
+                if _current.length
+                    _current = _current[0]
+                    if _current.clicked
+                        # remove
+                        _.remove(@focus_elements, (entry) -> return entry.name == ring_el.name)
+                    else
+                        # was hovered, now click
+                        _current.clicked = true
                 else
-                    ring_el.set_clicked()
-                    @clicked_focus = ring_el.name
-                @_set_focus(ring_el)
+                    # not in list, add clicked verison
+                    @focus_elements.push({name: ring_el.name, clicked: true})
+                @_set_focus(true)
 
-        _set_focus: (ring_el) ->
-            @_clear_focus(false)
-            ring_el.set_focus()
-            # store focus name
-            @focus_name = ring_el.name
+        _set_focus: (redraw) ->
             @clear_timeout()
             # delay export by 200 milliseconds
-            if @props.return_data? and ring_el.category
+            if @props.return_data?
+                _cats = []
+                for s_node in @focus_elements
+                    node = @root_node.name_lut[s_node.name]
+                    if node.category
+                        _cats.push(node.category.idx)
                 @export_timeout = $timeout(
                     () =>
                         # console.log "UPDATE", ring_el
                         @props.return_data.apply_category_filter(
-                            [ring_el.category.idx]
+                            _cats
                             @props.monitoring_data
-                            if @props.sub_tree == "device" then "device" else "mon"
+                            @props.sub_tree
                         )
                         # send data downstream
                         @props.return_data.notify()
                     if @clicked_focus then 0 else 50
                 )
             # console.log _services
-            @setState({focus_element: ring_el})
+            if redraw
+                @trigger_redraw()
 
         _clear_focus: (do_export) ->
             if @root_node?
                 @root_node.clear_focus()
-            @focus_name = ""
+            @focus_elements.length = 0
             if do_export and @props.return_data?
                 @props.return_data.update([], [], [], [])
-            @setState({focus_element: undefined})
+            @trigger_redraw()
 
         render: () ->
             if not @state.cat_tree_defined
@@ -170,9 +185,6 @@ angular.module(
                     # clear root node
                     @root_node = undefined
                     @current_trigger = @props.external_trigger
-            [_outer_width, _outer_height] = [0, 0]
-            if @burst_element? and @burst_element.width()
-                [_outer_width, _outer_height] = [@burst_element.width(), @burst_element.height()]
             # check if burst is interactive
             _ia = @props.draw_parameters.is_interactive
             if not @root_node?
@@ -182,35 +194,30 @@ angular.module(
                     @category_tree
                     @props.draw_parameters
                 )
-                _focus_el = undefined
-                if @clicked_focus
-                    # persistent when new monitoring data arrives
-                    @focus_name = @clicked_focus
-                if @focus_name
-                    @root_node.iter_childs(
-                        (node) =>
-                            if node.name == @focus_name
-                                _focus_el = node
-                    )
-                    if @clicked_focus and _focus_el?
-                        _focus_el.set_clicked()
+                @_set_focus(false)
+                #_focus_el = undefined
+                #if @clicked_focus
+                #    # persistent when new monitoring data arrives
+                #    @focus_names = @clicked_focus
+                #if @focus_names
+                #    @root_node.iter_childs(
+                #        (node) =>
+                #            if node.name == @focus_names
+                #                _focus_el = node
+                #    )
+                #    if @clicked_focus and _focus_el?
+                #        _focus_el.set_clicked()
                 # delay to avoid React Error
-                $timeout(
-                    () =>
-                        if _focus_el
-                            @focus_cb("enter", _focus_el)
-                        else
-                            @_clear_focus(true)
-                    0
-                )
-            # console.log _outer_width, _outer_height
+                #$timeout(
+                #    () =>
+                #        if _focus_el
+                #            @focus_cb("enter", _focus_el)
+                #        else
+                #            @_clear_focus(true)
+                #    0
+                #)
             root_node = @root_node
-            # if _outer_width
-            #    _outer = _.min([_outer_width, _outer_height])
-            # else
             @props.draw_parameters.do_layout()
-            _outer = @props.draw_parameters.outer_radius
-            # console.log _outer
             if _ia
                 # console.log "RN=", root_node
                 # interactive, pathes have mouseover and click handler
@@ -239,12 +246,22 @@ angular.module(
                                     }
                                 )
                             )
-                # if @clicked_focus
-                #    console.log "*", @clicked_focus, root_node
             else
                 # not interactive, simple list of graphs
-                _g_list = (path(_.pickBy(_element, (value, key) -> return not key.match(/\$/))) for _element in root_node.element_list)
-            # _g_list = []
+                _g_list = (
+                    path(_.pickBy(_element, (value, key) -> return not key.match(/\$/))) for _element in root_node.element_list
+                )
+            for node in @focus_elements
+                _element = @root_node.name_lut[node.name].$$path
+                _g_list.push(
+                    React.createElement(
+                        icswBurstReactFocusSegment
+                        {
+                            key: "foc.#{_element.key}"
+                            element: _element
+                        }
+                    )
+                )
             _svg = svg(
                 {
                     key: "svg.top"
@@ -268,11 +285,6 @@ angular.module(
                 ]
             )
             if _ia
-                # console.log _fe
-                if @state.focus_element?
-                    _fe = @state.focus_element.check
-                else
-                    _fe = undefined
                 # graph has a focus component
                 _graph = div(
                     {
@@ -298,7 +310,7 @@ angular.module(
                                             className: "text-warning"
                                         }
                                         ", clicked"
-                                    ) else ""
+                                    ) else null
                                     ")"
                                 )
                                 _svg
