@@ -68,14 +68,20 @@
 .svg-stroke { stroke: #ffffff; stroke-width: 0.5; }
 .pie-segment { stroke-width: 1; stroke-miterlimit: 2; stroke: #ffffff; }
 .svg-sel { opacity: 0.7; }
-.svg-clicked {
-    stroke-width: 2px !important;
+.svg-clicked-outer {
+    stroke-width: 3px !important;
     stroke: #444488;
     fill: none;
     pointer-events: none;
 }
+.svg-clicked-inner {
+    stroke-width: 2px !important;
+    stroke: #ffffff;
+    fill: none;
+    pointer-events: none;
+}
 .svg-hovered {
-    stroke-width: 3px !important;
+    stroke-width: 4px !important;
     stroke-dasharray: 5, 5;
     stroke: #444488;
     fill: none;

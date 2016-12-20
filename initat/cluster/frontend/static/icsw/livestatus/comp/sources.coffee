@@ -148,6 +148,8 @@ angular.module(
         entry.state = 4
         entry.state_type = 1
         entry.check_type = 0
+        # for serviceWeight
+        entry.$$serviceWeight = 0.001
         # custom vars
         entry.custom_variables = {
             device_pk: dev.idx
@@ -510,7 +512,12 @@ angular.module(
     calculate_service_weight = (entry) ->
         if entry.$$service_list.length
             entry.$$serviceWeight = _.round(
-                _.sumBy(entry.$$service_list, (srv) -> return srv.$$data.weight) / entry.$$service_list.length, 3
+                _.sumBy(
+                    entry.$$service_list
+                    (srv) ->
+                        return srv.$$data.weight
+                ) / entry.$$service_list.length
+                3
             )
         else
             # just a tad above zero

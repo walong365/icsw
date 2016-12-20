@@ -44,7 +44,7 @@ angular.module(
 ) ->
     # Network topology container, including selection and redraw button
     react_dom = ReactDOM
-    {div, g, text, line, polyline, path, svg, h3, span, h4} = React.DOM
+    {div, g, button, path, svg, h3, span, h4} = React.DOM
     react_id = 0
     return React.createClass(
         propTypes: {
@@ -104,6 +104,18 @@ angular.module(
                 $timeout.cancel(@export_timeout)
                 @export_timeout = undefined
 
+        select_none: () ->
+            @focus_elements.length = 0
+            @_set_focus(true)
+
+        select_all: () ->
+            if @root_node?
+                @focus_elements.length = 0
+                for node in @root_node.get_self_and_childs()
+                    if node.category
+                        @focus_elements.push({name: node.name, clicked: true})
+                @_set_focus(true)
+
         focus_cb: (action, ring_el) ->
             if action == "enter"
                 # remove old hover
@@ -145,10 +157,13 @@ angular.module(
             # delay export by 200 milliseconds
             if @props.return_data?
                 _cats = []
+                any_clicked = false
                 for s_node in @focus_elements
                     node = @root_node.name_lut[s_node.name]
                     if node.category
                         _cats.push(node.category.idx)
+                        if s_node.clicked
+                            any_clicked = true
                 @export_timeout = $timeout(
                     () =>
                         # console.log "UPDATE", ring_el
@@ -159,7 +174,7 @@ angular.module(
                         )
                         # send data downstream
                         @props.return_data.notify()
-                    if @clicked_focus then 0 else 50
+                    if any_clicked then 0 else 50
                 )
             # console.log _services
             if redraw
@@ -286,6 +301,16 @@ angular.module(
                 ]
             )
             if _ia
+                num_clicked = (entry for entry in @focus_elements when entry.clicked).length
+                _header = [
+                    if @props.sub_tree == "mon" then "Service" else "Device"
+                    " ("
+                    @props.draw_parameters.get_segment_info()
+                ]
+                if num_clicked
+                    _header.push(", #{num_clicked} selected")
+                _header.push(")")
+                _header = _header.join("")
                 # graph has a focus component
                 _graph = div(
                     {
@@ -298,24 +323,39 @@ angular.module(
                                 key: "svg.div"
                                 className: "col-xs-12"
                             }
-                            [
-                                h4(
+                            h4(
+                                {
+                                    key: "graph.header"
+                                    style: { }
+                                }
+                                button(
                                     {
-                                        key: "graph.header"
-                                        style: { }
+                                        type: "button"
+                                        key: "selall"
+                                        className: "btn btn-xs btn-primary"
+                                        onClick: (event) =>
+                                            @select_all()
                                     }
-                                    "Category Burst Filter for #{@props.sub_tree} (" + @props.draw_parameters.get_segment_info()
-                                    if @clicked_focus then span(
-                                        {
-                                            key: "sel.span"
-                                            className: "text-warning"
-                                        }
-                                        ", clicked"
-                                    ) else null
-                                    ")"
+                                    "all"
                                 )
-                                _svg
-                            ]
+                                button(
+                                    {
+                                        type: "button"
+                                        key: "selnone"
+                                        className: "btn btn-xs btn-warning"
+                                        onClick: (event) =>
+                                            @select_none()
+                                    }
+                                    "none"
+                                )
+                                span(
+                                    {
+                                        key: "hs"
+                                    }
+                                    _header
+                                )
+                            )
+                            _svg
                         )
                     ]
                 )

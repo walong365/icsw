@@ -94,15 +94,22 @@ angular.module(
         render: () ->
             _path_el = @props.element
             if @props.clicked
-                _cls = "svg-clicked"
+                _cls = [["o", "svg-clicked-outer"], ["i", "svg-clicked-inner"]]
             else
-                _cls = "svg-hovered"
-            return path(
+                _cls = [["", "svg-hovered"]]
+            return g(
                 {
                     key: _path_el.key
-                    d: _path_el.d
-                    className: _cls
                 }
+                (
+                    path(
+                        {
+                            key: _path_el.key + _pf
+                            d: _path_el.d
+                            className: _cl
+                        }
+                    ) for [_pf, _cl] in _cls
+                )
             )
     )
 ]).service("icswBurstReactSegmentText",
