@@ -60,7 +60,6 @@ angular.module(
         displayName: "icswLivestatusCategoryFilterBurstReact"
 
         componentDidMount: () ->
-            console.log "mount"
             @category_tree = null
             react_id++
             @filter_id = react_id
@@ -171,6 +170,7 @@ angular.module(
                 @root_node.clear_focus()
             @focus_elements.length = 0
             if do_export and @props.return_data?
+                console.log "clear"
                 @props.return_data.update([], [], [], [])
             @trigger_redraw()
 
@@ -304,7 +304,7 @@ angular.module(
                                         key: "graph.header"
                                         style: { }
                                     }
-                                    "Burst Graph (" + @props.draw_parameters.get_segment_info()
+                                    "Category Burst Filter for #{@props.sub_tree} (" + @props.draw_parameters.get_segment_info()
                                     if @clicked_focus then span(
                                         {
                                             key: "sel.span"
@@ -392,7 +392,7 @@ angular.module(
         link: (scope, element, attrs) ->
             draw_params = new icswBurstDrawParameters(
                 {
-                    inner_radius: 40
+                    inner_radius: 0
                     outer_radius: 160
                     start_ring: 0
                     is_interactive: true
@@ -436,25 +436,25 @@ angular.module(
                 5
                 4
             )
-            @_emit_data = new icswMonitoringResult()
-            @_cat_filter = undefined
-            @_latest_data = undefined
+            # @_emit_data = new icswMonitoringResult()
+            # @_cat_filter = undefined
+            @__dp_async_emit = true
             @new_data_notifier = $q.defer()
             #  @new_data_notifier = $q.defer()
 
-        get_category_filter: () ->
-            return @_cat_filter
+        #get_category_filter: () ->
+        #    return @_cat_filter
 
-        restore_settings: (f_list) ->
-            @_cat_filter = f_list
+        #restore_settings: (f_list) ->
+        #    @_cat_filter = f_list
 
         new_data_received: (data) ->
-            @_latest_data = data
             @new_data_notifier.notify(data)
-            return @_emit_data
+            return null
 
         pipeline_reject_called: (reject) ->
-            # ignore, stop processing
+            @new_data_notifier.reject("stop")
+
 ]).service('icswLivestatusDeviceCategoryFilterBurst',
 [
     "$q", "icswMonLivestatusPipeBase", "icswMonitoringResult",
@@ -471,25 +471,26 @@ angular.module(
                 5
                 4
             )
-            @_emit_data = new icswMonitoringResult()
-            @_cat_filter = undefined
-            @_latest_data = undefined
+            #@_emit_data = new icswMonitoringResult()
+            #@_cat_filter = undefined
+            #@_latest_data = undefined
+            @__dp_async_emit = true
             @new_data_notifier = $q.defer()
             #  @new_data_notifier = $q.defer()
 
-        get_category_filter: () ->
-            return @_cat_filter
+        #get_category_filter: () ->
+        #    return @_cat_filter
 
-        restore_settings: (f_list) ->
-            @_cat_filter = f_list
+        #restore_settings: (f_list) ->
+        #    @_cat_filter = f_list
 
         new_data_received: (data) ->
-            @_latest_data = data
             @new_data_notifier.notify(data)
-            return @_emit_data
+            return null
 
         pipeline_reject_called: (reject) ->
-            # ignore, stop processing
+            @new_data_notifier.reject("stop")
+
 ]).service('icswLivestatusMonCategoryFilter',
 [
     "$q", "icswMonLivestatusPipeBase", "icswMonitoringResult",
@@ -516,7 +517,7 @@ angular.module(
             @_cat_filter = sel_cat
             @pipeline_settings_changed(@_cat_filter)
             if @_latest_data?
-                @emit_data_downstream(@new_data_received(@_latest_data))
+                @emit_data_downstream(@new_data_received_cached(@_latest_data))
 
         get_category_filter: () ->
             return @_cat_filter
@@ -559,7 +560,7 @@ angular.module(
             @_cat_filter = sel_cat
             @pipeline_settings_changed(@_cat_filter)
             if @_latest_data?
-                @emit_data_downstream(@new_data_received(@_latest_data))
+                @emit_data_downstream(@new_data_received_cached(@_latest_data))
 
         get_category_filter: () ->
             return @_cat_filter

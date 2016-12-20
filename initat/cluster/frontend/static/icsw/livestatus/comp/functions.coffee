@@ -556,8 +556,19 @@ angular.module(
         parent_pks = []
         # dummy idx
         dummy_idx = -1
+        # root node for unspecified categories
+        uncat_root_node = new icswStructuredBurstNode(
+            null
+            "uncat"
+            0
+            icswSaltMonitoringResultService.get_dummy_service_entry("uncategorized")
+            {
+                category: {idx: 0}
+            }
+        )
         # node lut
         node_lut = {}
+        node_lut[0] = uncat_root_node
         while _to_add.length
             if not _already_added.length
                 # get root pk
@@ -571,7 +582,7 @@ angular.module(
                 # build burst for category subtree (root_node -> sub_node -> ...)
                 _cat = cat_tree.lut[root_pk]
                 _root_node = new icswStructuredBurstNode(
-                    null
+                    uncat_root_node
                     _cat.full_name
                     root_pk
                     icswSaltMonitoringResultService.get_dummy_service_entry(_cat.full_name)
@@ -620,7 +631,7 @@ angular.module(
         for pk, cat_node of node_lut
             # sigh ...
             pk = parseInt(pk)
-            if pk > 0
+            if pk >= 0
                 # ignore dummy nodes
                 cat_node.start_ds_feed(if sub_tree == "mon" then "service" else "device")
                 # console.log pk, src_list.length
@@ -629,20 +640,29 @@ angular.module(
                         if "cat_pks" of el.custom_variables
                             if pk in el.custom_variables.cat_pks
                                 cat_node.feed_service(el)
+                            else if pk == 0 and not el.custom_variables.cat_pks.length
+                                # add to uncat service
+                                uncat_root_node.feed_service(el)
+                        else if pk == 0
+                            # add to uncat service
+                            uncat_root_node.feed_service(el)
                 else
                     for el in mon_data.hosts
                         if pk in el.$$device_categories
                             cat_node.feed_device(el)
+                        else if pk == 0 and not el.$$device_categories.length
+                            # add to uncat service
+                            uncat_root_node.feed_service(el)
                 cat_node.end_ds_feed()
         for pk, cat_node of node_lut
             pk = parseInt(pk)
             if pk > 111110
                 cat_node.set_state_from_children()
-        _root_node.balance()
+        uncat_root_node.balance()
 
-        _recalc_burst(_root_node, draw_params)
+        _recalc_burst(uncat_root_node, draw_params)
 
-        return _root_node
+        return uncat_root_node
 
     return {
 

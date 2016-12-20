@@ -94,9 +94,9 @@ angular.module(
         render: () ->
             _path_el = @props.element
             if @props.clicked
-                _cls = "sb-lines svg-clicked"
+                _cls = "svg-clicked"
             else
-                _cls = "sb-lines svg-hovered"
+                _cls = "svg-hovered"
             return path(
                 {
                     key: _path_el.key

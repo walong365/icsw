@@ -185,11 +185,6 @@ angular.module(
             if not @is_emitter or @is_receiver
                 throw new error("node is not an emitter but a receiver")
 
-        feed_data: (mon_data) ->
-            # feed data, used to insert data into the pipeline
-            # console.log "fd", mon_data
-            (_child.__dp_parent_notifier.notify(mon_data) for _child in @__dp_childs)
-
         add_child_node: (node) ->
             @__dp_is_leaf_node = false
             if not @is_emitter
@@ -197,10 +192,19 @@ angular.module(
             @__dp_childs.push(node)
             node.link_to_parent(@)
 
+        new_data_received_cached: (new_data) =>
+            # cache it to re-emit it if necessary
+            # this function must NOT be overwritten
+            if new_data?
+                @__dp_cached_data = new_data
+                return @new_data_received(new_data)
+            else
+                return @new_data_received(@__dp_cached_data)
+
         new_data_received: (new_data) =>
             @error "new data received, to be overwritten", new_data
             return new_data
-            
+
         pipeline_resolve_called: (resolved) =>
             @error "resolve called #{resolved} for #{@name}"
 
@@ -296,7 +300,7 @@ angular.module(
                     else 
                         _notify = true
                     if _notify
-                        emit_data = @new_data_received(recv_data)
+                        emit_data = @new_data_received_cached(recv_data)
                         if @is_emitter
                             if @__dp_async_emit
                                 # asynchronous emitter, emit_data must be none
@@ -754,6 +758,7 @@ angular.module(
                     _name = sub_scope.struct.new_element
                     # resolve element name to object
                     struct = connector.create_and_add_element(parent_node, _name)
+                    parent_node.node.new_data_received_cached()
                     # node = struct.node
                     # parent_node.node.add_child_node(node)
                     d.resolve("created")

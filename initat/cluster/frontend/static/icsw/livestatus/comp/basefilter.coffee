@@ -70,7 +70,7 @@ angular.module(
         filter_changed: () ->
             # callback from React
             if @_latest_data?
-                @new_data_received(@_latest_data)
+                @new_data_received_cached(@_latest_data)
 
         new_data_received: (data) =>
             @_latest_data = data
