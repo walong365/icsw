@@ -21,6 +21,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from __future__ import print_function, unicode_literals
+
 import commands
 import getopt
 import os
@@ -237,11 +239,11 @@ class license_tree(object):
 
 
 def main():
-    print " ",
+    print(" ")
     try:
         opts, args = getopt.getopt(sys.argv[1:], "u:g:l:")
     except getopt.GetoptError:
-        print "Commandline error : {}".format(process_tools.get_except_info())
+        print("Commandline error : {}".format(process_tools.get_except_info()))
         sys.exit(1)
     target_user, target_group, target_license = ("root", "root", None)
     for opt, arg in opts:
@@ -265,18 +267,20 @@ def main():
     )
     ok_commands = ["start", "stop", "status"]
     if len(args) != 1:
-        print "Need argument (one of %s)" % (", ".join(ok_commands))
+        print("Need argument (one of %s)" % (", ".join(ok_commands)))
         sys.exit(1)
     command = args[0]
     if command not in ok_commands:
-        print "Wrong argument (one of %s)" % (", ".join(ok_commands))
+        print("Wrong argument (one of %s)" % (", ".join(ok_commands)))
         sys.exit(1)
     lic_tree = license_tree(DEFAULT_CFG_DIR)
     error_lics = lic_tree.get_error_licenses()
     if error_lics:
-        print "error reading {}: {}".format(
-            logging_tools.get_plural("license file", len(error_lics)),
-            ", ".join(error_lics)
+        print(
+            "error reading {}: {}".format(
+                logging_tools.get_plural("license file", len(error_lics)),
+                ", ".join(error_lics)
+            )
         )
         sys.exit(1)
     if lic_tree:

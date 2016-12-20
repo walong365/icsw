@@ -656,15 +656,6 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="icsw.rms.license.graph">
-    <uib-progress max="1000">
-        <uib-bar ng-repeat="stack in lic.license_stack track by $index"
-             value="stack.value"
-             title="{{ stack.title }}"
-             type="{{ stack.type }}">{{ stack.out }}</uib-bar>
-    </uib-progress>
-</script>
-
 <script type="text/ng-template" id="icsw.rms.detail.popover">
     <div>
         <h4>Priority details for Job {{ j.job_id.value }}</h4>

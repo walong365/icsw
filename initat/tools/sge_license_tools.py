@@ -28,6 +28,7 @@ import datetime
 import os
 import re
 import subprocess
+import random
 import sys
 import time
 
@@ -47,6 +48,8 @@ DEFAULT_CONFIG = {
 }
 
 EXPIRY_DT = "%d-%b-%Y"
+
+DEBUG = process_tools.get_machine_name(short=True) in ["eddie"]
 
 
 # dummy logger
@@ -102,7 +105,7 @@ def get_sge_complexes(sge_dict):
     return defined_complexes, [_line.split()[0] for _line in defined_complexes]
 
 
-class sge_license(object):
+class SGELicense(object):
     def __init__(self, attribute, **kwargs):
         # default values
         self.__lic_servers = []
@@ -110,7 +113,9 @@ class sge_license(object):
         self.expires = None
         self.site = kwargs.get("site", "unknown")
         self.used = 0
-        if etree.iselement(attribute):  # @UndefinedVariable
+        self.sge_used_requested = 0
+        self.sge_used_issued = 0
+        if etree.iselement(attribute):
             # init from xml
             _xml = attribute
             # print etree.tostring(_xml, pretty_print=True)
@@ -133,6 +138,11 @@ class sge_license(object):
                 self.added = "unknown"
                 if _version is not None and _version.get("expiry", ""):
                     self.expires = datetime.datetime.strptime(_version.get("expiry"), EXPIRY_DT)
+                self.__match_str = ""
+                # add server info
+                for server in kwargs["server_info"].findall(".//server"):
+                    _port, _addr = server.attrib["info"].split("@")
+                    self.__lic_servers.append((int(_port), _addr))
             else:
                 self.name = _xml.get("name")
                 self.attribute = _xml.get("attribute")
@@ -173,15 +183,18 @@ class sge_license(object):
             self.added = "unknown"
 
     def update(self, other):
-        if isinstance(other, sge_license):
+        if isinstance(other, SGELicense):
             if other.expires:
                 self.expires = other.expires
             self.total = other.total
             self.reserved = other.reserved
+            # update list of license servers
+            self.__lic_servers = other.license_servers
         else:
             # xml input from server
             self.total = int(other.get("issued", "0"))
             self.reserved = int(other.get("reserved", "0"))
+            # no change in license servers, has to be done via fetch
 
     @property
     def full_name(self):
@@ -331,11 +344,18 @@ class sge_license(object):
         return self.total - self.used
     free = property(_get_free)
 
+    @property
+    def license_servers(self):
+        return self.__lic_servers
+
     def get_port(self, idx=0):
         return self.__lic_servers[idx][0]
 
     def get_host(self, idx=0):
         return self.__lic_servers[idx][1]
+
+    def get_license_server_addresses(self):
+        return ["{:d}@{}".format(_port, _addr) for _port, _addr in self.__lic_servers]
 
     def set_eval_str(self, eval_str):
         self.__eval_str = eval_str
@@ -345,7 +365,7 @@ class sge_license(object):
         log_lines = []
         _simple_keys = [_key for _key, _value in lic_dict.iteritems() if _value.license_type == "simple"]
         # return log_lines
-        for _type in ["total", "used", "limit", "sge_used_requested", "sge_used_issued"]:
+        for _type in {"total", "used", "limit", "sge_used_requested", "sge_used_issued"}:
             # if self.license_type == "complex" and _type in ["used", "limit"]:
             #    continue
             t_attr = "{}".format(_type)
@@ -380,6 +400,15 @@ class sge_license(object):
         return log_lines
 
 
+def get_default_site(base_dir):
+    _act_site_file = LicenseTextFile(
+        os.path.join(base_dir, ACT_SITE_NAME),
+        ignore_missing=True,
+        content=[DEFAULT_SITE],
+    )
+    return _act_site_file.lines[0]
+
+
 def get_site_license_file_name(base_dir, act_site):
     return os.path.normpath(os.path.join(base_dir, "lic_{}.conf".format(act_site)))
 
@@ -400,7 +429,7 @@ def handle_license_policy(base_dir, flag=None):
     return flag
 
 
-class text_file(object):
+class LicenseTextFile(object):
     def __init__(self, f_name, **kwargs):
         self.__name = f_name
         self.__opts = {key: value for key, value in kwargs.iteritems()}
@@ -453,6 +482,9 @@ class text_file(object):
             ]
         }
 
+    def __unicode__(self):
+        return "LicenseTextFile {}".format(self._Name)
+
 
 def read_text_file(tf_name, ignore_hashes=False):
     tfr_name = os.path.normpath(tf_name)
@@ -491,16 +523,20 @@ def parse_license_lines(lines, act_site, **kwargs):
         )
     )
     # complex license
-    clic_re = re.compile("^clic_{}_(?P<name>\S+)\s+(?P<attribute>\S+)\s+(?P<eval_str>\S+)\s*$".format(act_site))
+    clic_re = re.compile(
+        "^clic_{}_(?P<name>\S+)\s+(?P<attribute>\S+)\s+(?P<eval_str>\S+)\s*$".format(
+            act_site
+        )
+    )
     if lines and lines[0].startswith("<"):
         # XML format
-        _tree = etree.fromstring("\n".join(lines))  # @UndefinedVariable
+        _tree = etree.fromstring("\n".join(lines))
         _site = _tree.attrib["site"]
         # todo, compare _site with act_site
         # print _site, act_site
         new_dict = {}
         for _lic_xml in _tree.findall("license"):
-            new_lic = sge_license(_lic_xml, site=_site)
+            new_lic = SGELicense(_lic_xml, site=_site)
             new_dict[new_lic.name] = new_lic
     else:
         # old format, convert
@@ -514,7 +550,7 @@ def parse_license_lines(lines, act_site, **kwargs):
             simple_lic = slic_re.match(line)
             complex_lic = clic_re.match(line)
             if simple_lic:
-                new_lic = sge_license(
+                new_lic = SGELicense(
                     simple_lic.group("attribute"),
                     license_server=simple_lic.group("act_lic_server_setting"),
                     license_type="simple",
@@ -523,7 +559,7 @@ def parse_license_lines(lines, act_site, **kwargs):
                 )
                 new_lic.total = int(simple_lic.group("tot_num"))
             elif complex_lic:
-                new_lic = sge_license(
+                new_lic = SGELicense(
                     complex_lic.group("attribute"),
                     license_type="complex",
                     ng_dict=kwargs.get("ng_dict", {}),
@@ -568,7 +604,7 @@ def parse_sge_used(sge_dict, log_com=None):
     c_stat, out = call_command(act_com, log_com=log_com)
     _used = {}
     if not c_stat:
-        _tree = etree.fromstring(out)  # @UndefinedVariable
+        _tree = etree.fromstring(out)
         for _job in _tree.findall(".//job_list[@state='running']"):
             _slots_el = _job.find("slots")
             if _slots_el is not None:
@@ -647,34 +683,87 @@ def call_command(command, exit_on_fail=0, show_output=False, log_com=None):
     return _stat, _out
 
 
-class license_check(object):
+class LicenseServer(object):
+    def __init__(self, in_str):
+        _port, _address = in_str.split("@")
+        if _address.startswith("/"):
+            # address is a file
+            _address = file(_address, "r").read().strip().split()[0]
+        if _port.startswith("/"):
+            # port is a file
+            _port = file(_port, "r").read().strip().split()[0]
+        self.port = int(_port)
+        self.address = _address
+
+    def get_license_info_element(self):
+        return E.license_info(
+            server_address=self.address,
+            server_port="{:d}".format(self.port)
+        )
+
+    def get_license_address(self):
+        return "{:d}@{}".format(self.port, self.address)
+
+    def __unicode__(self):
+        return "LicenseServer {}({:d})".format(
+            self.address,
+            self.port,
+        )
+
+
+class LicenseFile(object):
+    def __init__(self, lic_file_def):
+        self.lic_file_def = lic_file_def
+        self.parse()
+
+    def parse(self):
+        self.multi_server = False
+        self.server_list = []
+        _parsed = False
+        if isinstance(self.lic_file_def, basestring):
+            if self.lic_file_def.count("@"):
+                _parsed = True
+                self.server_list = [
+                    LicenseServer(entry.strip()) for entry in self.lic_file_def.split(":")
+                ]
+        elif isinstance(self.lic_file_def, tuple):
+            # server / port tuple
+            _parsed = True
+            self.server_list = [
+                LicenseServer("{}@{}".format(self.lic_file_def[1], self.lic_file_def[0]))
+            ]
+        if not _parsed:
+            raise SyntaxError(
+                "dont know how to handle LicenseFile '{}' ({})".format(
+                    str(self.lic_file_def),
+                    str(type(self.lic_file_def)),
+                )
+            )
+        self.multi_server = True if len(self.server_list) > 1 else False
+        self.num_servers = len(self.server_list)
+
+    def __unicode__(self):
+        return "LicenseFile with {} ({})".format(
+            logging_tools.get_plural("server", self.num_servers),
+            ", ".join([unicode(_srv) for _srv in self.server_list])
+        )
+
+
+class LicenseCheck(object):
     def __init__(self, **kwargs):
         self.log_com = kwargs.get("log_com", None)
         self.verbose = kwargs.get("verbose", True)
         self.lmutil_path = kwargs.get("lmutil_path", "/opt/cluster/bin/lmutil")
         if "license_file" in kwargs:
-            _lic_file = kwargs["license_file"]
-            if _lic_file.count("@"):
-                _port, self.server_addr = _lic_file.split("@")
-                self.server_port = int(_port)
-            else:
-                print("unknown license_file '{}'".format(_lic_file))
-                sys.exit(-1)
+            self.license_file = LicenseFile(kwargs["license_file"])
         else:
-            self.server_addr = kwargs.get("server", "localhost")
-            if self.server_addr.startswith("/"):
-                self.server_addr = file(self.server_addr, "r").read().strip().split()[0]
-            self.server_port = kwargs.get("port", "1055")
-            if not isinstance(self.server_port, int) and not isinstance(self.server_port, long):
-                if self.server_port.startswith("/"):
-                    self.server_port = file(self.server_port, "r").read().strip().split()[0]
-                self.server_port = int(self.server_port)
-        self.log(
-            "license server {} (port {:d})".format(
-                self.server_addr,
-                self.server_port
+            self.license_file = LicenseFile(
+                (
+                    kwargs.get("server", "localhost"),
+                    kwargs.get("port", "1055"),
+                )
             )
-        )
+        self.log(unicode(self.license_file))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if log_level == logging_tools.LOG_LEVEL_OK and not self.verbose:
@@ -686,6 +775,135 @@ class license_check(object):
             logging_tools.my_syslog("[{:d}] {}".format(log_level, what))
 
     def call_external(self, com_line):
+        if DEBUG:
+            # debug code
+            if com_line.count("lwnsv42022"):
+                ret_code = 0
+                usages = [random.randint(0, 12) for _idx in xrange(4)]
+                out = """
+lmutil - Copyright (c) 1989-2014 Flexera Software LLC. All Rights Reserved.
+Flexible License Manager status on Tue 12/20/2016 10:39
+
+License server status: 1055@lwnsv42022
+    License file(s) on lwnsv42022: C:\Program Files\ANSYS Inc\Shared Files\Licensing\license_files\nsyslmd.lic:
+
+lwnsv42022: license server UP (MASTER) v11.13.1
+
+Vendor daemon status (on lwnsv42022):
+
+  ansyslmd: UP v11.13.1
+Feature usage info:
+
+Users of struct:  (Total of 4 licenses issued;  Total of 4 licenses in use)
+
+  "struct" v2017.0630, vendor: ansyslmd, expiry: 1-jan-0
+  floating license
+
+    lwnlar1 LWNWS81360.lwn.liebherr.i LWNWS81360.lwn.liebherr.i (v2015.1110) (lwnsv42022/1055 2324), start Tue 12/20 8:26
+    lwndoc0 LWNWS78440.lwn.liebherr.i LWNWS78440.lwn.liebherr.i (v2014.1110) (lwnsv42022/1055 110), start Tue 12/20 8:38
+    lwnkuv0 LWNWS71510.lwn.liebherr.i LWNWS71510.lwn.liebherr.i (v2015.1110) (lwnsv42022/1055 5508), start Tue 12/20 9:53
+    mcrwim6 MCRWS28500.lwn.liebherr.i MCRWS28500.lwn.liebherr.i (v2013.1008) (lwnsv42022/1055 1430), start Tue 12/20 10:06
+
+Users of preppost:  (Total of 12 licenses issued;  Total of {:d} licenses in use)
+
+  "preppost" v2017.0630, vendor: ansyslmd, expiry: 1-jan-0
+  floating license
+
+    lwnfag0 LWNWS71490.lwn.liebherr.i LWNWS71490.lwn.liebherr.i (v2015.1110) (lwnsv42022/1055 4926), start Tue 12/20 8:41
+    lwnpfa0 LWNWS71500.lwn.liebherr.i LWNWS71500.lwn.liebherr.i (v2015.1110) (lwnsv42022/1055 2228), start Tue 12/20 9:00
+    lwnosd0 LWNWS71470.lwn.liebherr.i LWNWS71470.lwn.liebherr.i (v2016.0711) (lwnsv42022/1055 2636), start Tue 12/20 9:51
+    mcrgrf3 MCRWS25380.lwn.liebherr.i MCRWS25380.lwn.liebherr.i (v2013.1008) (lwnsv42022/1055 4031), start Tue 12/20 10:01
+
+Users of stba:  (Total of 20 licenses issued;  Total of {:d} licenses in use)
+
+  "stba" v2017.0630, vendor: ansyslmd, expiry: 1-jan-0
+  floating license
+
+    mcrbah2 lwnsu62024.init.prod lwnsu62024 (v2013.1008) (lwnsv42022/1055 2839), start Tue 12/20 8:15
+    mcrdrc1 lwnsu62024.init.prod lwnsu62024 (v2013.1008) (lwnsv42022/1055 3807), start Tue 12/20 8:35
+    mcrwim6 MCRWS28500.lwn.liebherr.i MCRWS28500.lwn.liebherr.i (v2013.1008) (lwnsv42022/1055 1943), start Tue 12/20 8:43
+    lwnpfa0 lwnsu62024.init.prod lwnsu62024 (v2015.1110) (lwnsv42022/1055 3067), start Tue 12/20 9:28
+    lwnpfa0 lwnsu62024.init.prod lwnsu62024 (v2015.1110) (lwnsv42022/1055 2142), start Tue 12/20 9:29
+    lwnosd0 lwnsu62021.init.prod lwnsu62021 (v2013.1008) (lwnsv42022/1055 4228), start Tue 12/20 9:38
+    lwnham4 LWNWS62100.lwn.liebherr.i LWNWS62100.lwn.liebherr.i (v2013.1008) (lwnsv42022/1055 3539), start Tue 12/20 10:23
+
+Users of piproe:  (Total of 4 licenses issued;  Total of 0 licenses in use)
+
+Users of agppi:  (Total of 6 licenses issued;  Total of 2 licenses in use)
+
+  "agppi" v2017.0630, vendor: ansyslmd, expiry: 1-jan-0
+  floating license
+
+    lwndoc0 LWNWS78440.lwn.liebherr.i LWNWS78440.lwn.liebherr.i (v2014.1110) (lwnsv42022/1055 3350), start Tue 12/20 8:38
+    mcrwim6 MCRWS28500.lwn.liebherr.i MCRWS28500.lwn.liebherr.i (v2013.1008) (lwnsv42022/1055 4830), start Tue 12/20 10:06
+
+Users of kinemat:  (Total of 1 license issued;  Total of 0 licenses in use)
+
+Users of dynamics:  (Total of 1 license issued;  Total of 0 licenses in use)
+
+Users of anshpc:  (Total of 128 licenses issued;  Total of {:d} licenses in use)
+
+  "anshpc" v2017.0630, vendor: ansyslmd, expiry: 1-jan-0
+  floating license
+
+    mcrmas0 MCRWS25370.lwn.liebherr.i MCRWS25370.lwn.liebherr.i (v2013.1008) (lwnsv42022/1055 4519), start Tue 12/20 8:01, 2 licenses
+    mcrwic0 MCRWS20200.lwn.liebherr.i MCRWS20200.lwn.liebherr.i (v2013.1008) (lwnsv42022/1055 2008), start Tue 12/20 8:11, 3 licenses
+    mcrbah2 lwnsu62024.init.prod lwnsu62024 (v2013.1008) (lwnsv42022/1055 848), start Tue 12/20 8:15, 6 licenses
+    mcrdrc1 lwnsu62024.init.prod lwnsu62024 (v2013.1008) (lwnsv42022/1055 1229), start Tue 12/20 8:35, 14 licenses
+    lwnpfa0 lwnsu62024.init.prod lwnsu62024 (v2015.1110) (lwnsv42022/1055 4628), start Tue 12/20 9:28, 6 licenses
+    lwnpfa0 lwnsu62024.init.prod lwnsu62024 (v2015.1110) (lwnsv42022/1055 730), start Tue 12/20 9:29, 14 licenses
+    lwnosd0 lwnsu62021.init.prod lwnsu62021 (v2013.1008) (lwnsv42022/1055 649), start Tue 12/20 9:38, 6 licenses
+    lwnham4 LWNWS62100.lwn.liebherr.i LWNWS62100.lwn.liebherr.i (v2013.1008) (lwnsv42022/1055 4720), start Tue 12/20 10:24, 2 licenses
+    lwnsca7 LWNWS71530.lwn.liebherr.i LWNWS71530.lwn.liebherr.i (v2013.1008) (lwnsv42022/1055 3434), start Tue 12/20 10:28, 2 licenses
+
+Users of ans_act:  (Total of 1 license issued;  Total of 0 licenses in use)
+""".format(usages[0], usages[1], usages[2])
+            elif com_line.count("mcrsvtblic"):
+                ret_code = 0
+                out = """
+lmutil - Copyright (c) 1989-2014 Flexera Software LLC. All Rights Reserved.
+Flexible License Manager status on Tue 12/20/2016 10:40
+
+License server status: 1055@MCRSVTBLIC
+    License file(s) on MCRSVTBLIC: C:\Program Files\ANSYS Inc\Shared Files\Licensing\license_files\nsyslmd.lic:
+
+MCRSVTBLIC: license server UP (MASTER) v11.12.1
+
+Vendor daemon status (on MCRSVTBLIC):
+
+  ansyslmd: UP v11.12.1
+Feature usage info:
+
+Users of struct:  (Total of 3 licenses issued;  Total of 1 license in use)
+
+  "struct" v2016.1231, vendor: ansyslmd, expiry: 1-jan-0
+  floating license
+
+    lwnsca7 LWNWS71530.lwn.liebherr.i LWNWS71530.lwn.liebherr.i (v2013.1008) (MCRSVTBLIC/1055 564), start Tue 12/20 10:28
+
+Users of preppost:  (Total of 8 licenses issued;  Total of 4 licenses in use)
+
+  "preppost" v2016.1231, vendor: ansyslmd, expiry: 1-jan-0
+  floating license
+
+    mcrbah2 MCRWS25340.lwn.liebherr.i MCRWS25340.lwn.liebherr.i (v2013.1008) (MCRSVTBLIC/1055 852), start Tue 12/20 8:05
+    mcrmas0 MCRWS25370.lwn.liebherr.i MCRWS25370.lwn.liebherr.i (v2013.1008) (MCRSVTBLIC/1055 1308), start Tue 12/20 8:47
+    mcrwic0 MCRWS20200.lwn.liebherr.i MCRWS20200.lwn.liebherr.i (v2013.1008) (MCRSVTBLIC/1055 1632), start Tue 12/20 9:20
+    mcrwic0 MCRWS20200.lwn.liebherr.i MCRWS20200.lwn.liebherr.i (v2013.1008) (MCRSVTBLIC/1055 1267), start Tue 12/20 10:37
+
+Users of stba:  (Total of 8 licenses issued;  Total of 2 licenses in use)
+
+  "stba" v2016.1231, vendor: ansyslmd, expiry: 1-jan-0
+  floating license
+
+    mcrmas0 MCRWS25370.lwn.liebherr.i MCRWS25370.lwn.liebherr.i (v2013.1008) (MCRSVTBLIC/1055 362), start Tue 12/20 8:01
+    mcrwic0 MCRWS20200.lwn.liebherr.i MCRWS20200.lwn.liebherr.i (v2013.1008) (MCRSVTBLIC/1055 977), start Tue 12/20 8:11
+
+Users of piproe:  (Total of 3 licenses issued;  Total of 0 licenses in use)
+
+Users of agppi:  (Total of 3 licenses issued;  Total of 0 licenses in use)
+"""
+            return ret_code, out
         popen = subprocess.Popen(com_line, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         ret_code = popen.wait()
         return ret_code, popen.stdout.read()
@@ -698,53 +916,107 @@ class license_check(object):
 
     def check(self, license_names=None):
         s_time = time.time()
-        self.log("starting check")
-        ret_struct = E.license_info(
-            server_address=self.server_addr,
-            server_port="{:d}".format(self.server_port)
+        self.log(
+            "starting check (on {})".format(
+                logging_tools.get_plural("server", self.license_file.num_servers)
+            )
         )
-        if not os.path.isfile(self.lmutil_path):
-            _error_str = "LMUTIL_PATH '{}' is not a file".format(self.lmutil_path)
-            self.log(_error_str, logging_tools.LOG_LEVEL_ERROR)
-            ret_struct.attrib.update({
-                "state": "{:d}".format(logging_tools.LOG_LEVEL_ERROR),
-                "info": "{}".format(_error_str)}
-            )
-            line_num = 0
-        else:
-
-            ext_code, ext_lines = self.call_external(
-                "{} lmstat -a -c {:d}@{}".format(
-                    self.lmutil_path,
-                    self.server_port,
-                    self.server_addr
-                )
-            )
-            if ext_code:
+        result = E.ms_license_info()
+        for _srv in self.license_file.server_list[:]:
+            ret_struct = _srv.get_license_info_element()
+            if not os.path.isfile(self.lmutil_path):
+                _error_str = "LMUTIL_PATH '{}' is not a file".format(self.lmutil_path)
+                self.log(_error_str, logging_tools.LOG_LEVEL_ERROR)
                 ret_struct.attrib.update({
                     "state": "{:d}".format(logging_tools.LOG_LEVEL_ERROR),
-                    "info": "{}".format(ext_lines)}
+                    "info": "{}".format(_error_str)}
                 )
                 line_num = 0
             else:
-                ret_struct.attrib.update(
-                    {
-                        "state": "{:d}".format(logging_tools.LOG_LEVEL_OK),
-                        "info": "call successfull"
-                    }
+                ext_code, ext_lines = self.call_external(
+                    "{} lmstat -a -c {}".format(
+                        self.lmutil_path,
+                        _srv.get_license_address(),
+                    )
                 )
-                line_num = self._interpret_result(ret_struct, ext_lines, license_names)
-        e_time = time.time()
-        ret_struct.attrib["run_time"] = "{:.3f}".format(e_time - s_time)
-        self.log(
-            "done, {:d} lines in {}".format(
-                line_num,
-                logging_tools.get_diff_time_str(e_time - s_time)
+                # print(ext_code, ext_lines)
+                if ext_code:
+                    ret_struct.attrib.update({
+                        "state": "{:d}".format(logging_tools.LOG_LEVEL_ERROR),
+                        "info": "{}".format(ext_lines)}
+                    )
+                    line_num = 0
+                else:
+                    ret_struct.attrib.update(
+                        {
+                            "state": "{:d}".format(logging_tools.LOG_LEVEL_OK),
+                            "info": "call successfull"
+                        }
+                    )
+                    line_num = self._interpret_result(ret_struct, ext_lines, license_names)
+            e_time = time.time()
+            ret_struct.attrib["run_time"] = "{:.3f}".format(e_time - s_time)
+            self.log(
+                "done, {:d} lines in {}".format(
+                    line_num,
+                    logging_tools.get_diff_time_str(e_time - s_time)
+                )
             )
-        )
-        return ret_struct
+            result.append(ret_struct)
+            # merge state
+            if "state" not in result.attrib:
+                _take = True
+            else:
+                _new_state = int(ret_struct.attrib["state"])
+                if _new_state > int(result.attrib["state"]):
+                    _take = True
+                else:
+                    _take = False
+            if _take:
+                result.attrib["state"] = ret_struct.attrib["state"]
+                result.attrib["info"] = ret_struct.attrib["info"]
+        self._merge_results(result)
+        # print(etree.tostring(result, pretty_print=True))
+        return result
+
+    def _merge_results(self, result):
+        _license_servers = E.license_servers()
+        _licenses = E.licenses()
+        result.append(_license_servers)
+        result.append(_licenses)
+        # merge
+        for server in result.findall("license_info/license_servers/server"):
+            _license_servers.append(server)
+        # license name
+        lic_names = set(result.xpath(".//license_info/licenses/license/@name"))
+        for lic_name in lic_names:
+            src_licenses = result.xpath(".//license_info/licenses/license[@name='{}']".format(lic_name))
+            license = src_licenses.pop(0)
+            _licenses.append(license)
+            for _add_lic in src_licenses:
+                # add attributes
+                for _attr_name in {"used", "reserved", "issued", "free"}:
+                    license.attrib[_attr_name] = "{:d}".format(
+                        int(license.attrib.get(_attr_name, "0")) +
+                        int(_add_lic.attrib.get(_attr_name, "0"))
+                    )
+                for _version in _add_lic.findall("version"):
+                    _current_version = license.xpath(".//version[@version='{}']".format(_version.attrib["version"]))
+                    if len(_current_version):
+                        if _version.find(".//usage") is not None:
+                            # add usages
+                            for _usage in _version.findall("usages/usage"):
+                                _current_version[0].find("usages").append(_usage)
+                    else:
+                        license.append(_version)
+                _add_lic.getparent().remove(_add_lic)
+        # remove old license infos
+        for li in result.findall("license_info"):
+            li.getparent().remove(li)
 
     def _interpret_result(self, ret_struct, ext_lines, license_names):
+        # interpret the result from one server
+        # print(etree.tostring(ret_struct, pretty_print=True))
         ret_struct.append(E.license_servers())
         ret_struct.append(E.licenses())
         found_server = set()
@@ -793,6 +1065,7 @@ class license_check(object):
                         version=self._strip_string(lparts[1]),
                         # vendor=lparts[-1],
                         floating="false",
+                        server_info=server_info,
                     )
                     if "vendor:" in lparts and "expiry:" in lparts:
                         _v_idx = lparts.index("vendor:")
@@ -810,10 +1083,10 @@ class license_check(object):
                     cur_lic.append(cur_lic_version)
                 else:
                     if cur_lic_version is not None:
-                        self._feed_license_version(cur_lic, cur_lic_version, lparts)
+                        self._feed_license_version(cur_lic, cur_lic_version, lparts, server_info)
         return line_num
 
-    def _feed_license_version(self, cur_lic, cur_lic_version, lparts):
+    def _feed_license_version(self, cur_lic, cur_lic_version, lparts, server_info):
         cur_year = datetime.datetime.now().year
         if lparts[0] == "floating":
             cur_lic_version.attrib["floating"] = "true"
@@ -854,6 +1127,7 @@ class license_check(object):
                     client_short=lparts[2].split(".")[0],
                     client_version=lparts[3][1:-1],
                     checkout_time="{:.2f}".format(time.mktime(co_datetime.timetuple())),
+                    server_info=server_info,
                 )
             )
 
@@ -865,7 +1139,7 @@ class ExternalLicenses(object):
         self.__base = act_base
         self.__site = act_site
         self.__lic_file_name = get_site_license_file_name(self.__base, self.__site)
-        self.__conf = text_file(
+        self.__conf = LicenseTextFile(
             get_site_config_file_name(self.__base, self.__site),
             content=DEFAULT_CONFIG,
             create=True,
@@ -880,7 +1154,7 @@ class ExternalLicenses(object):
 
     def read(self):
         self.__license_dict = parse_license_lines(
-            text_file(
+            LicenseTextFile(
                 self.__lic_file_name,
                 ignore_missing=True,
                 strip_empty=False,

@@ -91,7 +91,7 @@ class LicenseProcess(threading_tools.process_obj):
         self.__lt_cache = {}
         # store currently configured values, used for logging
         self._sge_lic_set = {}
-        self.__lc_dict = {}
+        self.__lc_object = None
         self.log(
             "init sge environment for license tracking in {} ({}, database tracking is {})".format(
                 self._license_base,
@@ -196,7 +196,7 @@ class LicenseProcess(threading_tools.process_obj):
     def _update(self):
         if not self._track:
             return
-        _act_site_file = sge_license_tools.text_file(
+        _act_site_file = sge_license_tools.LicenseTextFile(
             os.path.join(sge_license_tools.BASE_DIR, sge_license_tools.ACT_SITE_NAME),
             ignore_missing=True,
         )
@@ -221,7 +221,9 @@ class LicenseProcess(threading_tools.process_obj):
             srv_com["server_usage"] = self._update_lic(self.__elo_obj)
             srv_com["license_usage"] = E.license_overview(
                 E.licenses(
-                    *[_lic.get_xml(with_usage=True) for _lic in self.__elo_obj.licenses.itervalues()]
+                    *[
+                        _lic.get_xml(with_usage=True) for _lic in self.__elo_obj.licenses.itervalues()
+                    ]
                 )
             )
             srv_com.set_result("set license information")
@@ -589,25 +591,25 @@ class LicenseProcess(threading_tools.process_obj):
         # build different license-server calls
         # see loadsensor.py
         all_server_addrs = set(
-            [
-                "{:d}@{}".format(act_lic.get_port(), act_lic.get_host()) for act_lic in actual_licenses.values() if act_lic.license_type == "simple"
-            ]
+            sum(
+                [
+                    act_lic.get_license_server_addresses() for act_lic in actual_licenses.values() if act_lic.license_type == "simple"
+                ],
+                []
+            )
         )
         # print "asa:", all_server_addrs
         q_s_time = time.time()
-        for server_addr in all_server_addrs:
-            if server_addr not in self.__lc_dict:
-                self.log("init new license_check object for server {}".format(server_addr))
-                self.__lc_dict[server_addr] = sge_license_tools.license_check(
-                    lmutil_path=os.path.join(
-                        act_conf["LMUTIL_PATH"]
-                    ),
-                    port=int(server_addr.split("@")[0]),
-                    server=server_addr.split("@")[1],
-                    log_com=self.log
-                )
-            lic_xml = self.__lc_dict[server_addr].check(license_names=actual_licenses)
-            # FIXME, srv_result should be stored in a list and merged
+        if not self.__lc_object:
+            self.log("init new license_check object")
+            self.__lc_object = sge_license_tools.LicenseCheck(
+                lmutil_path=os.path.join(
+                    act_conf["LMUTIL_PATH"]
+                ),
+                license_file=":".join(all_server_addrs),
+                log_com=self.log
+            )
+        lic_xml = self.__lc_object.check(license_names=actual_licenses)
         q_e_time = time.time()
         self.log(
             "{} to query, took {}: {}".format(

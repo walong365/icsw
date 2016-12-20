@@ -73,30 +73,28 @@ def raw_read(fd):
     return ret_str
 
 
-def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict):
+def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_object):
     # build different license-server calls
     # see license.py in rms-server
     all_server_addrs = set(
-        [
-            "{:d}@{}".format(
-                act_lic.get_port(),
-                act_lic.get_host()
-            ) for act_lic in actual_licenses.values() if act_lic.license_type == "simple"
-        ]
+        sum(
+            [
+                act_lic.get_license_server_addresses() for act_lic in actual_licenses.values() if act_lic.license_type == "simple"
+                ],
+            []
+        )
     )
     # print "asa:", all_server_addrs
     q_s_time = time.time()
-    for server_addr in all_server_addrs:
-        if server_addr not in lc_dict:
-            lc_dict[server_addr] = sge_license_tools.license_check(
-                lmutil_path=os.path.join(
-                    act_conf["LMUTIL_PATH"]
-                ),
-                port=int(server_addr.split("@")[0]),
-                server=server_addr.split("@")[1],
-                log_com=log_template.log
-            )
-        srv_result = lc_dict[server_addr].check()
+    if lc_object is None:
+        lc_object = sge_license_tools.LicenseCheck(
+            lmutil_path=os.path.join(
+                act_conf["LMUTIL_PATH"]
+            ),
+            license_file=":".join(all_server_addrs),
+            log_com=log_template.log
+        )
+    srv_result = lc_object.check()
     q_e_time = time.time()
     log_template.info(
         "{} to query, took {}: {}".format(
@@ -152,7 +150,7 @@ def main():
     sge_dict = sge_license_tools.get_sge_environment()
     log_template.info("starting for pid {:d}, base_dir is {}".format(my_pid, base_dir))
     log_template.info(sge_license_tools.get_sge_log_line(sge_dict))
-    _act_site_file = sge_license_tools.text_file(
+    _act_site_file = sge_license_tools.LicenseTextFile(
         os.path.join(base_dir, sge_license_tools.ACT_SITE_NAME),
     )
     act_site = _act_site_file.lines
@@ -161,7 +159,7 @@ def main():
         sys.exit(1)
     act_site = act_site[0]
 
-    act_conf = sge_license_tools.text_file(
+    act_conf = sge_license_tools.LicenseTextFile(
         sge_license_tools.get_site_config_file_name(base_dir, act_site),
     ).dict
     log_template.info("read config for actual site '{}'".format(act_site))
@@ -176,7 +174,7 @@ def main():
     # read node_grouping file
     # ng_dict = sge_license_tools.read_ng_file(log_template)
     # license_check_dict
-    lc_dict = {}
+    lc_object = None
     # vector socket
     try:
         while True:
@@ -194,7 +192,7 @@ def main():
                     if not actual_licenses or file_time > lic_read_time:
                         log_template.info("reading license_file for site {}".format(act_site))
                         actual_licenses = sge_license_tools.parse_license_lines(
-                            sge_license_tools.text_file(
+                            sge_license_tools.LicenseTextFile(
                                 sge_license_tools.get_site_license_file_name(base_dir, act_site),
                                 ignore_missing=True,
                                 strip_empty=False,
@@ -205,7 +203,7 @@ def main():
                         lic_read_time = file_time
                     if not sge_license_tools.handle_license_policy(base_dir):
                         cur_used = {_key: _value.used for _key, _value in actual_licenses.iteritems()}
-                        srv_result = parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
+                        srv_result = parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_object)
                         sge_license_tools.update_usage(actual_licenses, srv_result)
                         # [cur_lic.handle_node_grouping() for cur_lic in actual_licenses.itervalues()]
                         for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses):

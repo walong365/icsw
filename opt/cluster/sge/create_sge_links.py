@@ -23,6 +23,8 @@
 
 """ create links for SGE """
 
+from __future__ import unicode_literals, print_function
+
 import commands
 import os
 import shutil
@@ -35,14 +37,14 @@ def read_base_config():
     for var_name in ["SGE_{}".format(var_name) for var_name in ["ROOT", "CELL", "SERVER"]]:
         file_name = "/etc/sge_{}".format(var_name.split("_")[1].lower())
         if not os.path.isfile(file_name):
-            print "File {} not found".format(file_name)
+            print("File {} not found".format(file_name))
             files_ok = False
         else:
             var_value = file(file_name, "r").read().split("\n")[0].strip()
             var_dict[var_name] = var_value
             os.environ[var_name] = var_value
     if not files_ok:
-        print "exiting ..."
+        print("exiting ...")
         sys.exit(1)
     return var_dict
 
@@ -50,11 +52,11 @@ def read_base_config():
 def call_command(com):
     c_stat, out = commands.getstatusoutput(com)
     if c_stat:
-        print "Calling {} resulted in an error ({:d}):".format(com, c_stat)
-        print out
+        print("Calling {} resulted in an error ({:d}):".format(com, c_stat))
+        print(out)
         sys.exit(3)
     else:
-        print "Calling {} successfull".format(com)
+        print("Calling {} successfull".format(com))
     return out.split("\n")
 
 
@@ -74,7 +76,7 @@ def copy_files(var_dict, src_name, dst_dir):
                 os.path.join(var_dict["SGE_DIST_DIR"], file_name),
                 os.path.join(var_dict["SGE_ROOT"], dst_dir))
     else:
-        print "cannot find file {}, exiting ...".format(file_name)
+        print("cannot find file {}, exiting ...".format(file_name))
         sys.exit(5)
 
 
@@ -98,10 +100,10 @@ def generate_links(l_dict):
                 if not os.path.isabs(link_targ):
                     link_targ = os.path.realpath(os.path.join(s_dir, link_targ))
                 if link_targ != l_target:
-                    print "Removing link {} (pointing to {} instead of {})".format(s_file, link_targ, l_target)
+                    print("Removing link {} (pointing to {} instead of {})".format(s_file, link_targ, l_target))
                     os.unlink(s_file)
             if not os.path.islink(s_file):
-                print "Linking from {} to {}".format(s_file, l2_target)
+                print("Linking from {} to {}".format(s_file, l2_target))
                 os.symlink(l2_target, s_file)
 
 
@@ -151,13 +153,13 @@ def main():
     # check for util-dir
     util_dir = "{}/util".format(var_dict["SGE_ROOT"])
     if not os.path.isdir(util_dir):
-        print "Dir '{}' not found, exiting ...".format(util_dir)
+        print("Dir '{}' not found, exiting ...".format(util_dir))
         sys.exit(2)
     # get SGE_ARCH
     var_dict["SGE_ARCH"] = call_command("{}/util/arch".format(var_dict["SGE_ROOT"]))[0]
     # show variables
     for key, value in var_dict.iteritems():
-        print "{:<12s} : {}".format(key, value)
+        print("{:<12s} : {}".format(key, value))
     # check for missing dirs
     mis_dirs = [os.path.join(var_dict["SGE_ROOT"], _entry) for _entry in [
         "bin/noarch",
@@ -166,7 +168,7 @@ def main():
         "3rd_party/epilogue.d"]]
     for mis_dir in mis_dirs:
         if not os.path.isdir(mis_dir):
-            print "Creating directory {} ...".format(mis_dir)
+            print("Creating directory {} ...".format(mis_dir))
             os.mkdir(mis_dir)
     # remove python-files
     remove_py_files(var_dict)

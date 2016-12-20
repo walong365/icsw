@@ -4,19 +4,19 @@
 
 <script type="text/ng-template" id="icsw.license.liveview">
     <div class="container-fluid">
-        <uib-accordion close-others="no" ng-show="lic_overview.length">
+        <uib-accordion close-others="no" ng-show="struct.lic_overview.length">
             <div uib-accordion-group class="panel-default" is-open="overview_open">
                 <uib-accordion-heading>
                     <div class="row">
                         <div class="col-md-2">
                             <i class="glyphicon" ng-class="{'glyphicon-chevron-down': overview_open, 'glyphicon-chevron-right': !overview_open}"></i>
-                            License Overview ({{ lic_overview.length }} Entries)
+                            License Overview ({{ struct.lic_overview.length }} Entries)
                         </div>
                         <div class="col-md-8">
                         </div>
                     </div>
                 </uib-accordion-heading>
-                <table class="table table-condensed table-hover table-striped" style="width:auto;" ng-show="lic_overview.length">
+                <table class="table table-condensed table-hover table-striped" style="width:auto;" ng-show="struct.lic_overview.length">
                     <thead>
                         <tr class="info">
                             <th>License</th>
@@ -31,7 +31,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr ng-repeat="ov in lic_overview">
+                        <tr ng-repeat="ov in struct.lic_overview">
                             <td>{{ ov.name }}</td>
                             <td>
                                 <span class="label label-primary" ng-show="ov.sge_used">RMS</span>
@@ -44,7 +44,7 @@
                             <td class="text-right">{{ ov.external_used }}</td>
                             <td>
                                 <div style="width:200px;height:10px;margin-bottom:0px;" ng-show="ov.total">
-                                    <icsw-rms-license-graph license="ov"></icsw-rms-license-graph>
+                                    <icsw-rms-license-graph icsw-license="ov"></icsw-rms-license-graph>
                                 </div>
                             </td>
                         </tr>
@@ -52,9 +52,9 @@
                 </table>
             </div>
         </uib-accordion>
-        <h3>Licenses from Licenseserver: {{ licenses.length }}</h3>
-        <uib-accordion close-others="no" ng-show="licenses.length">
-            <div uib-accordion-group class="panel-default" ng-repeat="license in licenses" is-open="license.open">
+        <h3>Licenses from Licenseserver: {{ struct.licenses.length }}</h3>
+        <uib-accordion close-others="no" ng-show="struct.licenses.length">
+            <div uib-accordion-group class="panel-default" ng-repeat="license in struct.licenses" is-open="license.open">
                 <uib-accordion-heading>
                     <div class="row">
                         <div class="col-md-2">
@@ -73,6 +73,7 @@
                 <table class="table table-condensed table-hover table-striped" style="width:auto;" ng-show="license.used">
                     <thead>
                         <tr class="info">
+                            <th>Server</th>
                             <th>Vendor</th>
                             <th>(Version)</th>
                             <th>User</th>
@@ -85,6 +86,7 @@
                     </thead>
                     <tbody>
                         <tr ng-repeat="usage in license.all_usages">
+                            <td>{{ usage.server_info }}</td>
                             <td>{{ usage.version.vendor }}</td>
                             <td>{{ usage.version.version }}</td>
                             <td>{{ usage.user }}</td>
@@ -109,20 +111,29 @@
                 </ul>
             </div>
         </uib-accordion>
-        <uib-accordion close-others="no" ng-show="servers.length">
+        <uib-accordion close-others="no" ng-show="struct.servers.length">
             <div uib-accordion-group class="panel-default" is-open="server_open">
                 <uib-accordion-heading>
                     <i class="glyphicon" ng-class="{'glyphicon-chevron-down': server_open, 'glyphicon-chevron-right': !server_open}"></i>
-                    License Servers: {{ servers.length }}
+                    License Servers: {{ struct.servers.length }}
                 </uib-accordion-heading>
-                <ul class="list-group" ng-show="servers.length">
-                    <li ng-repeat="server in servers" class="list-group-item">
-                        {{ server.info }}
+                <ul class="list-group" ng-show="struct.servers.length">
+                    <li ng-repeat="server in struct.servers" class="list-group-item">
+                        {{ server.info }} (Licensefile = {{ server.license_file }})
                     </li>
                 </ul>
             </div>
         </uib-accordion>
     </div>
+</script>
+
+<script type="text/ng-template" id="icsw.rms.license.graph">
+    <uib-progress max="1000">
+        <uib-bar ng-repeat="stack in license.license_stack track by $index"
+             value="stack.value"
+             title="{{ stack.title }}"
+             type="{{ stack.type }}">{{ stack.out }}</uib-bar>
+    </uib-progress>
 </script>
 
 <script type="text/ng-template" id="icsw.license.overview">

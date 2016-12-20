@@ -21,26 +21,31 @@
 # NOTE: ui.bootstrap and angular-dimple both define a bar directive and therefore can not be used in the same module
 
 class license_overview
-    constructor : (@xml) ->
+    constructor: (@xml) ->
         for _sa in ["name", "attribute"]
             @[_sa] = @xml.attr(_sa)
+        @license_stack = []
+        @update(@xml)
+
+    update: (xml) =>
         for _si in [
             "sge_used_issued", "external_used", "used",
             "reserved", "in_use", "free", "limit", "sge_used_requested",
             "total", "sge_used"
         ]
-            @[_si] = parseInt(@xml.attr(_si))
-        @is_used = if parseInt(@xml.attr("in_use")) then true else false
-        @show = if parseInt(@xml.attr("show")) then true else false
+            @[_si] = parseInt(xml.attr(_si))
+        @is_used = if parseInt(xml.attr("in_use")) then true else false
+        @show = if parseInt(xml.attr("show")) then true else false
 
 class license_server
-    constructor : (@xml) ->
+    constructor: (@xml) ->
         @info = @xml.attr("info")
         @port = parseInt(@xml.attr("port"))
         @address = @xml.attr("address")
+        @license_file = @xml.find("license_file").text()
 
 class license
-    constructor : (@xml) ->
+    constructor: (@xml) ->
         @open = false
         @name = @xml.attr("name")
         @key = @name
@@ -61,15 +66,19 @@ class license
         @all_usages = _.sortBy(usage for usage in @all_usages, (entry) -> return entry.user)
 
 class license_version
-    constructor : (@xml, @license) ->
+    constructor: (@xml, @license) ->
         @vendor = @xml.attr("vendor")
         @version = @xml.attr("version")
         @key = @license.key + "." + @version
-        @usages = _.sortBy(new license_usage($(sub_xml), @) for sub_xml in @xml.find("usages > usage"), (entry) -> return entry.user)
+        @usages = _.sortBy(
+            new license_usage($(sub_xml), @) for sub_xml in @xml.find("usages > usage")
+            (entry) ->
+                return entry.user
+        )
 
 class license_usage
     constructor: (@xml, @version) ->
-        for _ta in ["client_long", "client_short", "user", "client_version"]
+        for _ta in ["client_long", "client_short", "user", "client_version", "server_info"]
             @[_ta] = @xml.attr(_ta)
         @num = parseInt(@xml.attr("num"))
         @checkout_time = moment.unix(parseInt(@xml.attr("checkout_time")))
@@ -103,35 +112,61 @@ lic_module = angular.module("icsw.license.overview",
     $scope, $compile, $filter, $templateCache, Restangular, $q,
     $uibModal, icswAccessLevelService, $timeout, ICSW_URLS, icswSimpleAjaxCall
 ) ->
-    $scope.servers = []
-    $scope.licenses = []
-    $scope.lic_overview = []
+    $scope.struct = {
+        servers: []
+        licenses: []
+        lic_overview: []
+    }
     $scope.server_open = false
     $scope.overview_open = true
+
     $scope.update = () ->
         icswSimpleAjaxCall(
             url: ICSW_URLS.LIC_LICENSE_LIVEVIEW
             dataType: "xml"
         ).then(
             (xml) ->
-                _open_list = (_license.name for _license in $scope.licenses when _license.open)
-                $scope.servers = (new license_server($(_entry)) for _entry in $(xml).find("license_info > license_servers > server"))
-                $scope.licenses = (new license($(_entry)) for _entry in $(xml).find("license_info > licenses > license"))
-                $scope.lic_overview = (new license_overview($(_entry)) for _entry in $(xml).find("license_overview > licenses > license"))
-                for _lic in $scope.licenses
-                    if _lic.name in _open_list
-                        _lic.open = true
-                for _ov in $scope.lic_overview
+                _ov_lut = {}
+                for entry in $scope.struct.lic_overview
+                    _ov_lut[entry.name] = entry
+                _open_list = (_license.name for _license in $scope.struct.licenses when _license.open)
+                $scope.struct.servers.length = 0
+                for entry in $(xml).find("ms_license_info > license_servers > server")
+                    $scope.struct.servers.push(new license_server($(entry)))
+                $scope.struct.licenses.length = 0
+                for entry in $(xml).find("ms_license_info > licenses > license")
+                    new_lic = new license($(entry))
+                    $scope.struct.licenses.push(new_lic)
+                    if new_lic.name in _open_list
+                        new_lic.open = true
+                _updated = []
+                for entry in $(xml).find("license_overview > licenses > license")
+                    _name = $(entry).attr("name")
+                    if _name of _ov_lut
+                        # update
+                        _ov_lut[_name].update($(entry))
+                        _updated.push(_name)
+                    else
+                        # new entry
+                        $scope.struct.lic_overview.push(new license_overview($(entry)))
+                        _updated.push(_name)
+                # check to remove
+                _to_remove = _.difference(_.keys(_ov_lut), _updated)
+                # console.log _.keys(_ov_lut), _updated, _to_remove
+                _.remove($scope.struct.lic_overview, (entry) -> return entry.name in _to_remove)
+                for _ov in $scope.struct.lic_overview
                     $scope.build_stack(_ov)
+                $scope.cur_timeout = $timeout($scope.update, 30000)
+            (error) ->
                 $scope.cur_timeout = $timeout($scope.update, 30000)
         )
 
     $scope.build_stack = (lic) ->
         total = lic.total
-        stack = []
+        lic.license_stack.length = 0
         if lic.used
             if lic.sge_used
-                stack.push(
+                lic.license_stack.push(
                     {
                         value: parseInt(lic.sge_used * 1000 / total)
                         type: "primary"
@@ -140,7 +175,7 @@ lic_module = angular.module("icsw.license.overview",
                     }
                 )
             if lic.external_used
-                stack.push(
+                lic.license_stack.push(
                     {
                         value: parseInt(lic.external_used * 1000 / total)
                         type: "warning"
@@ -149,7 +184,7 @@ lic_module = angular.module("icsw.license.overview",
                     }
                 )
         if lic.free
-            stack.push(
+            lic.license_stack.push(
                 {
                     value: parseInt(lic.free * 1000 / total)
                     type: "success"
@@ -157,7 +192,6 @@ lic_module = angular.module("icsw.license.overview",
                     title: "#{lic.free} free"
                 }
             )
-        lic.license_stack = stack
     $scope.update()
 ]).directive("icswRmsLicenseGraph",
 [
@@ -167,12 +201,10 @@ lic_module = angular.module("icsw.license.overview",
 ) ->
     return {
         restrict : "EA"
-        scope: true
+        scope: {
+            license: "=icswLicense"
+        }
         template : $templateCache.get("icsw.rms.license.graph")
-        link : (scope, el, attrs) ->
-            scope.$watch(attrs["license"], (new_val) ->
-                scope.lic = new_val
-            )
     }
 ]).controller("icswLicenseOverviewCtrl",
 [

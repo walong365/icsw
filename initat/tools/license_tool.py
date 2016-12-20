@@ -36,13 +36,19 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=1055, help="license server [%(default)d]")
     parser.add_argument("--server", type=str, default="localhost", help="license port [%(default)s]")
+    parser.add_argument("--license-file", type=str, default="", help="to query multiple servers, format is {PORT@ADDR}:{PORT@ADDR} [%(default)s]")
     parser.add_argument("--mode", type=str, default="xml", choices=["xml", "check", "csv", "list"], help="output mode [%(default)s]")
     parser.add_argument("--check-eval", type=str, default="true", help="check string, should return true or false")
     opts = parser.parse_args()
-    my_lc = sge_license_tools.license_check(
-        server=opts.server,
-        port=opts.port,
-    )
+    if opts.license_file:
+        my_lc = sge_license_tools.LicenseCheck(
+            license_file=opts.license_file
+        )
+    else:
+        my_lc = sge_license_tools.LicenseCheck(
+            server=opts.server,
+            port=opts.port,
+        )
     xml_res = my_lc.check()
     ret_code = 0
     if opts.mode == "xml":
