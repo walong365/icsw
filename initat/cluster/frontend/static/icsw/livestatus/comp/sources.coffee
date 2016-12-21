@@ -845,7 +845,7 @@ angular.module(
         # this is additional to schedule_load
         if cur_interval?
             $interval.cancel(cur_interval)
-        cur_interval = $interval(load_data, 20000) #20000)
+        cur_interval = $interval(load_data, 20000)
 
     stop_interval = () ->
         # stop regular update

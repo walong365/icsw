@@ -601,7 +601,7 @@ angular.module(
     )
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_LAYOUT_CHANGED"), (event) ->
-        console.log "mlc"
+        # console.log "mlc"
         _check_rights()
     )
 

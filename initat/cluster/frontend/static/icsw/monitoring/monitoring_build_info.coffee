@@ -326,7 +326,6 @@ monitoring_build_info_module = angular.module(
     }
 
     _update_master = () ->
-        console.log "um", $scope.master
         $scope.struct.nodes.length = 0
         $scope.master.name = "master"
         # copy current flags

@@ -31,7 +31,6 @@ from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, mon_contactgroup, network_type, user, \
     config, config_catalog, mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
     mon_check_command_special, mon_check_command, BackgroundJobState
-from initat.host_monitoring.ipc_comtools import IPCClientHandler
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, MainConfig, MonAllCommands, \
     MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, \
@@ -39,12 +38,13 @@ from initat.md_config_server.config import global_config, MainConfig, MonAllComm
     MON_VAR_IP_NAME
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_sync_server.mixins import VersionCheckMixin
-from ..special_commands.struct import DynamicCheckMode
 from initat.tools import config_tools, logging_tools, server_mixins, server_command
 from initat.tools.bgnotify import create_bg_job
+from .ipc_comtool import IPCClientHandler
 from ..config.build_cache import BuildCache, HostBuildCache
 from ..constants import BuildModesEnum
 from ..mixins import ImageMapMixin, DistanceMapMixin, NagVisMixin
+from ..special_commands.struct import DynamicCheckMode
 
 
 class BuildProcess(

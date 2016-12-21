@@ -13,7 +13,9 @@
         <div
             uib-alert
             class="alert-warning"
-            ng-show="!struct.data_loaded">Fetching Data from Server ...
+            ng-show="!struct.data_loaded"
+        >
+            Fetching Data from Server ...
         </div>
         <div ng-if="struct.data_loaded">
             <uib-tabset active="struct.activetab">
@@ -66,7 +68,8 @@
                                 <td class="vertical-align">{{ obj.device_group_name }}</td>
                                 <td class="text-center vertical-align" ng-class="obj.$$device_log_entries_bg_color_class"><strong>{{ obj.$$device_log_entries_count }}</strong></td>
                                 <td class="text-center vertical-align">
-                                    <button ng-disabled="obj.$$device_log_entries_count == 0"
+                                    <button
+                                        ng-disabled="obj.$$device_log_entries_count == 0"
                                         class="btn btn-primary btn-sm"
                                         ng-click="open_in_new_tab_for_system(task)"
                                     >Show Logs</button>
@@ -81,7 +84,7 @@
                         <icsw-tools-button size="xs" type="close" value="" ng-click="close_tab(tab)"></icsw-tools-button>
                     </uib-tab-heading>
                     <br/>
-                    <icsw-device-log-table icsw-device="tab.device"></icsw-device-log-table>
+                    <icsw-device-log-table icsw-device-list="[tab.device]"></icsw-device-log-table>
                 </uib-tab>
             </uib-tabset>
         </div>
@@ -92,12 +95,14 @@
     <div
         uib-alert
         class="alert-warning"
-        ng-show="!struct.data_loaded">Fetching Data from Server ...
+        ng-show="!struct.data_loaded"
+    >
+        Fetching Data from Server ...
     </div>
     <div ng-if="struct.data_loaded">
         <table
             st-table="entries_displayed"
-            st-safe-src="struct.device_log_entries"
+            st-safe-src="struct.filtered_device_log_entries"
             class="table table-condensed table-striped table-hover simple-border"
         >
             <thead>
@@ -113,6 +118,7 @@
                     </td>
                 </tr>
                 <tr>
+                    <th st-sort="$$full_name">Device</th>
                     <th st-sort="date" st-sort-default="reverse" style="width: 150px">Time</th>
                     <th st-sort="user_resolved" style="width: 150px">User</th>
                     <th st-sort="source.identifier" style="width: 150px">Source</th>
@@ -120,9 +126,20 @@
                     <th>Text</th>
                 </tr>
                 <tr>
-                    <th></th>
                     <th>
-                        <ui-select on-select="on_selected_user($select.selected)" ng-model="struct.selected_username">
+                        <ui-select ng-model="struct.selected_device_name" ng-change="update_filter($event)">
+                            <ui-select-match class="ui-select-match" placeholder="Select Device">
+                                {{ $select.selected }}
+                            </ui-select-match>
+                            <ui-select-choices repeat="devname in struct.device_names | filter: $select.search">
+                                <div ng-bind="devname"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </th>
+                    <th>
+                    </th>
+                    <th>
+                        <ui-select ng-model="struct.selected_username" ng-change="update_filter($event)">
                             <ui-select-match class="ui-select-match" placeholder="Select User">
                                 {{ $select.selected }}
                             </ui-select-match>
@@ -132,7 +149,7 @@
                         </ui-select>
                     </th>
                     <th>
-                        <ui-select on-select="on_selected_source($select.selected)" ng-model="struct.selected_source">
+                        <ui-select ng-model="struct.selected_source"  ng-change="update_filter($event)">
                             <ui-select-match class="ui-select-match" placeholder="Select Source">
                                 {{ $select.selected }}
                             </ui-select-match>
@@ -142,7 +159,7 @@
                         </ui-select>
                     </th>
                     <th>
-                        <ui-select on-select="on_selected_level($select.selected)" ng-model="struct.selected_level">
+                        <ui-select ng-model="struct.selected_level" ng-change="update_filter($event)">
                             <ui-select-match class="ui-select-match" placeholder="Select Level">
                                 {{ $select.selected }}
                             </ui-select-match>
@@ -158,7 +175,10 @@
             </thead>
 
             <tbody>
-                <tr ng-repeat="obj in entries_displayed" ng-if="!is_excluded_obj(obj)">
+                <tr ng-repeat="obj in entries_displayed">
+                    <td>
+                        {{ obj.$$full_name }}
+                    </td>
                     <td>
                         {{ obj.pretty_date }}
                     </td>
@@ -168,8 +188,8 @@
                     <td>
                         {{ obj.source.identifier }}
                     </td>
-                    <td>
-                        {{ obj.level.name }}
+                    <td class="text-center">
+                        <span ng-class="obj.$$level_class">{{ obj.level.name }}</span>
                     </td>
                     <td>
                         {{ obj.text }}

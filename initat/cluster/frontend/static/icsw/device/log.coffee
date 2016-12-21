@@ -81,22 +81,23 @@ device_logs = angular.module(
                     device_pks: (dev.idx for dev in devices)
                 dataType: "json"
             }
-        ).then((result) ->
-            $scope.struct.devices.length = 0
+        ).then(
+            (result) ->
+                $scope.struct.devices.length = 0
 
-            for device in devices
-                if !device.is_meta_device
-                    $scope.struct.device_lut[device.idx] = device
+                for device in devices
+                    if !device.is_meta_device
+                        $scope.struct.device_lut[device.idx] = device
 
-                    device.$$device_log_entries_count = 0
-                    device.$$device_log_entries_bg_color_class = info_warning_class
-                    if result[device.idx] != undefined && result[device.idx] > 0
-                        device.$$device_log_entries_count = result[device.idx]
-                        device.$$device_log_entries_bg_color_class = info_available_class
+                        device.$$device_log_entries_count = 0
+                        device.$$device_log_entries_bg_color_class = info_warning_class
+                        if result[device.idx] != undefined && result[device.idx] > 0
+                            device.$$device_log_entries_count = result[device.idx]
+                            device.$$device_log_entries_bg_color_class = info_available_class
 
-                    $scope.struct.devices.push(device)
+                        $scope.struct.devices.push(device)
 
-            $scope.struct.data_loaded = true
+                $scope.struct.data_loaded = true
         )
 
     $scope.show_device = ($event, dev) ->
@@ -154,7 +155,7 @@ device_logs = angular.module(
         template: $templateCache.get("icsw.device.log.table")
         controller: "icswDeviceLogTableCtrl"
         scope: {
-            device: "=icswDevice"
+            device_list: "=icswDeviceList"
         }
     }
 ]).controller("icswDeviceLogTableCtrl",
@@ -180,56 +181,77 @@ device_logs = angular.module(
         levels: ['All Levels']
         selected_level: undefined
 
+        device_names: ["All Devices"]
+        selected_device_name: undefined
+
         device_log_entries: []
+        filtered_device_log_entries: []
         device_log_entries_lut: {}
 
         reload_timer: undefined
+        device_idxs: []
+        device_lut: {}
     }
 
-    $scope.on_selected_user = (username) ->
-        if username == 'All Users'
-            $scope.struct.selected_username = undefined
+    for entry in $scope.device_list
+        $scope.struct.device_idxs.push(entry.idx)
+        $scope.struct.device_lut[entry.idx] = entry
+        $scope.struct.device_names.push(entry.full_name)
 
-    $scope.on_selected_source = (source) ->
-        if source == 'All Sources'
-            $scope.struct.selected_source = undefined
-
-    $scope.on_selected_level = (level) ->
-        if level == 'All Levels'
-            $scope.struct.selected_level = undefined
-
-
-    $scope.is_excluded_obj = (obj) ->
-        excluded = false
-
-        if $scope.struct.selected_username != undefined && $scope.struct.selected_username != obj.user_resolved
-            excluded = true
-
-        if $scope.struct.selected_source != undefined && $scope.struct.selected_source != obj.source.identifier
-            excluded = true
-
-        if $scope.struct.selected_level != undefined && $scope.struct.selected_level != obj.level.name
-            excluded = true
-
-        return excluded
+    $scope.update_filter = ($event) ->
+        $scope.struct.filtered_device_log_entries.length = 0
+        _uname = $scope.struct.selected_username
+        if _uname == "All Users"
+            _uname = undefined
+        _source = $scope.struct.selected_source
+        if _source == "All Sources"
+            _source = undefined
+        _level = $scope.struct.selected_level
+        if _level == "All Levels"
+            _level = undefined
+        _dname = $scope.struct.selected_device_name
+        if _dname == "All Devices"
+            _dname = undefined
+        for entry in $scope.struct.device_log_entries
+            _add = true
+            if _uname? and entry.user_resolved != _uname
+                _add = false
+            if _source? and entry.source.identifier != _source
+                _add = false
+            if _level? and entry.level.name != _level
+                _add = false
+            if _dname? and entry.$$full_name != _dname
+                _add = false
+            if _add
+                $scope.struct.filtered_device_log_entries.push(entry)
 
     update_filter_lists = (device_log_entry) ->
-        if !(device_log_entry.user_resolved in $scope.struct.user_names)
+        # only used onee
+        if device_log_entry.user_resolved not in $scope.struct.user_names
             $scope.struct.user_names.push(device_log_entry.user_resolved)
-        if !(device_log_entry.source.identifier in $scope.struct.sources)
+        if device_log_entry.source.identifier not in $scope.struct.sources
             $scope.struct.sources.push(device_log_entry.source.identifier)
-        if !(device_log_entry.level.name in $scope.struct.levels)
+        if device_log_entry.level.name not in $scope.struct.levels
             $scope.struct.levels.push(device_log_entry.level.name)
 
-
-    device = $scope.device
-
     handle_log_entry = (log_entry) ->
-        if log_entry.device == device.idx && $scope.struct.device_log_entries_lut[log_entry.idx] == undefined
+        if log_entry.device in $scope.struct.device_idxs and $scope.struct.device_log_entries_lut[log_entry.idx] == undefined
             log_entry.pretty_date = moment(log_entry.date).format("YYYY-MM-DD HH:mm:ss")
-            log_entry.user_resolved = "N/A"
             if log_entry.user != null
                 log_entry.user_resolved = $scope.struct.user_tree.user_lut[log_entry.user].$$long_name
+            else
+                log_entry.user_resolved = "N/A"
+            # salt level
+            _lev = log_entry.level.name
+            # see create icsw_fixtures, line 395ff
+            if _lev == "ok"
+                log_entry.$$level_class = "label label-success"
+            else if _lev == "warning"
+                log_entry.$$level_class = "label label-warn"
+            else
+                log_entry.$$level_class = "label label-danger"
+
+            log_entry.$$full_name = $scope.struct.device_lut[log_entry.device].full_name
 
             $scope.struct.device_log_entries.push(log_entry)
             $scope.struct.device_log_entries_lut[log_entry.idx] = log_entry
@@ -241,14 +263,14 @@ device_logs = angular.module(
             {
                 url: ICSW_URLS.DEVICE_DEVICE_LOG_ENTRY_LOADER
                 data:
-                    device_pk: device.idx
+                    device_pks: angular.toJson($scope.struct.device_idxs)
                     excluded_device_log_entry_pks: (entry.idx for entry in $scope.struct.device_log_entries)
                 dataType: "json"
             }
         ).then(
             (result) ->
-                for log_entry in result
-                    handle_log_entry(log_entry)
+                (handle_log_entry(log_entry) for log_entry in result)
+                $scope.update_filter()
                 start_timer()
         )
 
@@ -266,19 +288,30 @@ device_logs = angular.module(
             $timeout.cancel($scope.struct.reload_timer)
             $scope.struct.reload_timer = undefined
 
-    icswUserGroupRoleTreeService.load($scope.$id).then((result) ->
-        $scope.struct.user_tree = result
+    $q.all(
+        [
+            icswUserGroupRoleTreeService.load($scope.$id)
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.DEVICE_DEVICE_LOG_ENTRY_LOADER
+                    data:
+                        device_pks: angular.toJson($scope.struct.device_idxs)
+                        excluded_device_log_entry_pks: []
+                    dataType: "json"
+                }
+            )
+        ]
+    ).then(
+        (data) ->
+            $scope.struct.user_tree = data[0]
+            (handle_log_entry(log_entry) for log_entry in data[1])
+            # initial load, set default levels
+            $scope.struct.selected_username = $scope.struct.user_names[0]
+            $scope.struct.selected_source = $scope.struct.sources[0]
+            $scope.struct.selected_level = $scope.struct.levels[0]
+            $scope.struct.selected_device_name = $scope.struct.device_names[0]
 
-        icswSimpleAjaxCall(
-            {
-                url: ICSW_URLS.DEVICE_DEVICE_LOG_ENTRY_LOADER
-                data:
-                    device_pk: device.idx
-                    excluded_device_log_entry_pks: []
-                dataType: "json"
-        }).then((result) ->
-            for log_entry in result
-                handle_log_entry(log_entry)
+            $scope.update_filter()
 
             $scope.struct.data_loaded = true
 
@@ -286,33 +319,12 @@ device_logs = angular.module(
 
             $scope.struct.websocket = icswWebSocketService.register_ws("device_log_entries")
             $scope.struct.websocket.onmessage = (data) ->
-                json_dict = JSON.parse(data.data)
-                if json_dict.device == device.idx && $scope.struct.device_log_entries_lut[json_dict.idx] == undefined
-                    new_log_entry = {}
-
-                    new_log_entry.device = json_dict.device
-                    new_log_entry.idx = json_dict.idx
-                    new_log_entry.pretty_date = moment(json_dict.date).format("YYYY-MM-DD HH:mm:ss")
-                    new_log_entry.user_resolved = "N/A"
-                    if json_dict.user != null
-                        log_entry.user_resolved = $scope.struct.user_tree.user_lut[json_dict.user].$$long_name
-
-                    new_log_entry.source = {}
-                    new_log_entry.source.identifier = json_dict.source
-                    new_log_entry.level = {}
-                    new_log_entry.level.name = json_dict.level
-                    new_log_entry.text = json_dict.text
-
-                    $scope.struct.device_log_entries_lut[new_log_entry.idx] = new_log_entry
-
-                    $timeout(
-                        () ->
-                            $scope.struct.device_log_entries.push(new_log_entry)
-                            update_filter_lists(new_log_entry)
-                        0
-                    )
-
-        )
+                json_dict = angular.fromJson(data.data)
+                $timeout(
+                    () ->
+                        handle_log_entry(json_dict)
+                    0
+                )
     )
 
     $scope.$on("$destroy", () ->

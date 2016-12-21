@@ -945,28 +945,20 @@ class DeviceLogEntry(models.Model):
         return cur_log
 
     def __unicode__(self):
-        return u"{} ({}, {}:{:d})".format(
+        return u"{} ({}, {}:{:d}, {})".format(
             self.text,
             self.source.identifier,
             self.level.identifier,
             self.level.level,
+            "with user" if self.user_id else "without user",
         )
 
 
 @receiver(signals.post_save, sender=DeviceLogEntry)
 def device_log_entry_post_save(sender, **kwargs):
+    from initat.cluster.backbone.serializers import DeviceLogEntrySerializer
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        # todo: use serializer for sending
-        info_obj = {
-            "idx": cur_inst.idx,
-            "text": cur_inst.text,
-            "date": str(cur_inst.date),
-            "device": cur_inst.device.idx,
-            "user": cur_inst.user.idx if cur_inst.user else None,
-            "level": cur_inst.level.name,
-            "source": cur_inst.source.identifier,
-        }
-
+        info_obj = DeviceLogEntrySerializer(cur_inst).data
         propagate_channel_object("device_log_entries", info_obj)
         # print("[{}] pushed into channel... {}".format(datetime.datetime.now().ctime(),  cur_inst.text))

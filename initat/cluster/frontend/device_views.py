@@ -1492,7 +1492,7 @@ class DeviceLogEntryCount(View):
 class DeviceLogEntryLoader(View):
     @method_decorator(login_required)
     def post(self, request):
-        device_pk = request.POST.get("device_pk")
+        device_pks = json.loads(request.POST.get("device_pks"))
         excluded_device_log_entry_pks = [int(obj) for obj in request.POST.getlist("excluded_device_log_entry_pks[]")]
 
         prefetch_list = [
@@ -1500,8 +1500,13 @@ class DeviceLogEntryLoader(View):
             "level"
         ]
 
-        queryset = DeviceLogEntry.objects.prefetch_related(*prefetch_list).filter(device=device_pk).\
-            exclude(idx__in=excluded_device_log_entry_pks)
+        queryset = DeviceLogEntry.objects.prefetch_related(
+            *prefetch_list
+        ).filter(
+            Q(device__in=device_pks)
+        ).exclude(
+            idx__in=excluded_device_log_entry_pks
+        )
 
         serializer = DeviceLogEntrySerializer(queryset, many=True)
 

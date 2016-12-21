@@ -29,7 +29,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 from initat.tools import logging_tools
-from initat.cluster.backbone.models import DeviceLogEntry, LogLevel, device, LogSource
+from initat.cluster.backbone.models import DeviceLogEntry, LogLevel, device, LogSource, user
 from django.db.models import Q
 
 
@@ -68,6 +68,12 @@ def populate_log_parser(child_parser):
             default="",
             choices=device.objects.all().values_list("name", flat=True).order_by("name"),
             help="device to show logs for [%(default)s]"
+        )
+        parser.add_argument(
+            "--user",
+            type=str,
+            default="",
+            choices=user.objects.all().values_list("login", flat=True).order_by("login")
         )
         parser.add_argument("text", nargs="*")
 
@@ -109,6 +115,10 @@ def main(opts):
         print(unicode(new_entry))
         ret_code = 0
     elif opts.mode == "create":
+        if opts.user:
+            _user = user.objects.get(Q(login=opts.user))
+        else:
+            _user = None
         if not opts.text:
             print("no text entered")
         else:
@@ -117,6 +127,7 @@ def main(opts):
                 device=log_dev,
                 # todo, fixme
                 # source=def_source,
+                user=_user,
                 level=LogLevel.objects.get(Q(identifier=opts.level)),
                 text=" ".join(opts.text),
             )

@@ -391,7 +391,7 @@ class Command(BaseCommand):
         factories.PartitionFS(name="ntfs", identifier="f", descr="NTFS", hexid="07")
         factories.PartitionFS(name="fat", identifier="f", descr="Windows FAT", need_hexid=False, hexid="")
         factories.PartitionFS(name="linux_raid_member", identifier="f", descr="Linux raid auto", hexid="fd")
-        # LogLevel
+        # LogLevel, see log.coffee lines 230ff
         factories.LogLevelFactory(identifier="c", level=logging_tools.LOG_LEVEL_CRITICAL, name="critical")
         factories.LogLevelFactory(identifier="e", level=logging_tools.LOG_LEVEL_ERROR, name="error")
         factories.LogLevelFactory(identifier="w", level=logging_tools.LOG_LEVEL_WARN, name="warning")
