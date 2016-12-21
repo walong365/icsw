@@ -54,8 +54,10 @@ angular.module(
             return_data: React.PropTypes.object
             # subtree
             sub_tree: React.PropTypes.string
-            # external trigger, changing this prop will result in a full recalc of the burst
-            external_trigger: React.PropTypes.number
+            # settings changed
+            settings_changed: React.PropTypes.func
+            # initial filter
+            start_filter: React.PropTypes.array
         }
         displayName: "icswLivestatusCategoryFilterBurstReact"
 
@@ -77,13 +79,22 @@ angular.module(
             # name: name of node
             # clicked: true if clicked or only hover (only one can be hovered)
             @focus_elements = []
+            # currently exported filter list
+            @cur_click_list = []
+            @first_call = true
             # current trigger, for external trigger, NOT in state
-            @current_trigger = @props.external_trigger
             return {
                 # to trigger redraw
                 draw_counter: 0
                 cat_tree_defined: false
             }
+
+        new_click_list: (new_list) ->
+            if not _.isEqual(new_list, @cur_click_list)
+                @cur_click_list.length = 0
+                for entry in new_list
+                    @cur_click_list.push(entry)
+                @props.settings_changed(@cur_click_list)
 
         new_monitoring_data_result: () ->
             # force recalc of burst, todo: incremental root_node update
@@ -106,15 +117,23 @@ angular.module(
 
         select_none: () ->
             @focus_elements.length = 0
-            @_set_focus(true)
+            @update_filter_settings(true)
 
-        select_all: () ->
+        select_all: (update) ->
             if @root_node?
                 @focus_elements.length = 0
                 for node in @root_node.get_self_and_childs()
                     if node.category
                         @focus_elements.push({name: node.name, clicked: true})
-                @_set_focus(true)
+                @update_filter_settings(update)
+
+        select_some: (filter_list, update) ->
+            if @root_node?
+                @focus_elements.length = 0
+                for node in @root_node.get_self_and_childs()
+                    if node.category and node.category.idx in filter_list
+                        @focus_elements.push({name: node.name, clicked: true})
+                @update_filter_settings(update)
 
         focus_cb: (action, ring_el) ->
             if action == "enter"
@@ -122,7 +141,7 @@ angular.module(
                 _.remove(@focus_elements, (entry) -> return not entry.clicked)
                 if not _.some(@focus_elements, (entry) -> return entry.name == ring_el.name)
                     @focus_elements.push({name: ring_el.name, clicked: false})
-                @_set_focus(true)
+                @update_filter_settings(true)
             else if action == "leave"
                 if @leave_timeout?
                     $timeout.cancel(@leave_timeout)
@@ -134,7 +153,7 @@ angular.module(
                             # remove element
                             _.remove(@focus_elements, (entry) -> return not entry.clicked and entry.name == ring_el.name)
                             @clear_timeout()
-                            @_set_focus(true)
+                            @update_filter_settings(true)
                     2
                 )
             else if action == "click"
@@ -150,20 +169,22 @@ angular.module(
                 else
                     # not in list, add clicked verison
                     @focus_elements.push({name: ring_el.name, clicked: true})
-                @_set_focus(true)
+                @update_filter_settings(true)
 
-        _set_focus: (redraw) ->
+        update_filter_settings: (redraw) ->
             @clear_timeout()
+            _click_list = []
             # delay export by 200 milliseconds
+            _cats = []
+            any_clicked = false
+            for s_node in @focus_elements
+                node = @root_node.name_lut[s_node.name]
+                if node.category
+                    _cats.push(node.category.idx)
+                    if s_node.clicked
+                        any_clicked = true
+                        _click_list.push(node.category.idx)
             if @props.return_data?
-                _cats = []
-                any_clicked = false
-                for s_node in @focus_elements
-                    node = @root_node.name_lut[s_node.name]
-                    if node.category
-                        _cats.push(node.category.idx)
-                        if s_node.clicked
-                            any_clicked = true
                 @export_timeout = $timeout(
                     () =>
                         # console.log "UPDATE", ring_el
@@ -176,6 +197,7 @@ angular.module(
                         @props.return_data.notify()
                     if any_clicked then 0 else 50
                 )
+            @new_click_list(_click_list)
             # console.log _services
             if redraw
                 @trigger_redraw()
@@ -195,11 +217,6 @@ angular.module(
             # console.log "ct=", @category_tree, @props.sub_tree
             # get all used cats (also parents)
             # not the most elegant way but working for now
-            if @props.external_trigger?
-                if @props.external_trigger != @current_trigger
-                    # clear root node
-                    @root_node = undefined
-                    @current_trigger = @props.external_trigger
             # check if burst is interactive
             _ia = @props.draw_parameters.is_interactive
             if not @root_node?
@@ -209,28 +226,14 @@ angular.module(
                     @category_tree
                     @props.draw_parameters
                 )
-                @_set_focus(false)
-                #_focus_el = undefined
-                #if @clicked_focus
-                #    # persistent when new monitoring data arrives
-                #    @focus_names = @clicked_focus
-                #if @focus_names
-                #    @root_node.iter_childs(
-                #        (node) =>
-                #            if node.name == @focus_names
-                #                _focus_el = node
-                #    )
-                #    if @clicked_focus and _focus_el?
-                #        _focus_el.set_clicked()
-                # delay to avoid React Error
-                #$timeout(
-                #    () =>
-                #        if _focus_el
-                #            @focus_cb("enter", _focus_el)
-                #        else
-                #            @_clear_focus(true)
-                #    0
-                #)
+                if @first_call
+                    @first_call = false
+                    if @props.start_filter.length and @props.start_filter[0] == -1
+                        @select_all(false)
+                    else
+                        @select_some(@props.start_filter, false)
+                else
+                    @update_filter_settings(false)
             root_node = @root_node
             @props.draw_parameters.do_layout()
             if _ia
@@ -334,7 +337,7 @@ angular.module(
                                         key: "selall"
                                         className: "btn btn-xs btn-primary"
                                         onClick: (event) =>
-                                            @select_all()
+                                            @select_all(true)
                                     }
                                     "all"
                                 )
@@ -384,7 +387,7 @@ angular.module(
         mounted: false
     }
 
-    _mount_burst = (element, new_data, draw_params, sub_tree) ->
+    _mount_burst = (element, new_data, draw_params, sub_tree, filter_changed, start_filter) ->
         $scope.struct.react_element = ReactDOM.render(
             React.createElement(
                 icswLivestatusCategoryFilterBurstReact
@@ -393,13 +396,15 @@ angular.module(
                     draw_parameters: draw_params
                     return_data: $scope.struct.return_data
                     sub_tree: sub_tree
+                    settings_changed: filter_changed
+                    start_filter: start_filter
                 }
             )
             element
         )
 
 
-    $scope.set_notifier = (notify, element, draw_params, sub_tree) ->
+    $scope.set_notifier = (notify, element, draw_params, sub_tree, filter_changed, start_filter) ->
         notify.promise.then(
             (ok) ->
                 # console.log "ok"
@@ -409,7 +414,7 @@ angular.module(
             (new_data) ->
                 if not $scope.struct.mounted
                     $scope.struct.mounted = true
-                    _mount_burst(element, new_data, draw_params, sub_tree)
+                    _mount_burst(element, new_data, draw_params, sub_tree, filter_changed, start_filter)
                 else
                     $scope.struct.react_element.new_monitoring_data_result()
         )
@@ -446,6 +451,8 @@ angular.module(
                     element[0]
                     draw_params
                     scope.icsw_sub_tree
+                    scope.con_element.filter_changed
+                    scope.con_element.filter_settings
                 )
             )
             # console.log "+++", scope.con_element
@@ -476,17 +483,16 @@ angular.module(
                 5
                 4
             )
-            # @_emit_data = new icswMonitoringResult()
-            # @_cat_filter = undefined
             @__dp_async_emit = true
             @new_data_notifier = $q.defer()
-            #  @new_data_notifier = $q.defer()
+            # default for not set
+            @filter_settings = [-1]
 
-        #get_category_filter: () ->
-        #    return @_cat_filter
+        restore_settings: (f_list) ->
+            @filter_settings = f_list
 
-        #restore_settings: (f_list) ->
-        #    @_cat_filter = f_list
+        filter_changed: (f_list) =>
+            @pipeline_settings_changed(f_list)
 
         new_data_received: (data) ->
             @new_data_notifier.notify(data)
@@ -511,18 +517,16 @@ angular.module(
                 5
                 4
             )
-            #@_emit_data = new icswMonitoringResult()
-            #@_cat_filter = undefined
-            #@_latest_data = undefined
             @__dp_async_emit = true
             @new_data_notifier = $q.defer()
-            #  @new_data_notifier = $q.defer()
+            # default for not set
+            @filter_settings = [-1]
 
-        #get_category_filter: () ->
-        #    return @_cat_filter
+        restore_settings: (f_list) ->
+            @filter_settings = f_list
 
-        #restore_settings: (f_list) ->
-        #    @_cat_filter = f_list
+        filter_changed: (f_list) =>
+            @pipeline_settings_changed(f_list)
 
         new_data_received: (data) ->
             @new_data_notifier.notify(data)
