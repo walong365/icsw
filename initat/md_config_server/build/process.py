@@ -159,6 +159,7 @@ class BuildProcess(
         self.build_mode = args.pop(0)
         self.__gen_config = MainConfig(self, args.pop(0))
         self.srv_com = server_command.srv_command(source=args.pop(0))
+        # print(self.srv_com.pretty_print())
         self.log("received fetch_dyn_config")
         self.single_build = True if len(args) > 0 else False
         # print("*", self.single_build, args)
@@ -173,7 +174,7 @@ class BuildProcess(
             global_config["SERVER_IDX"],
             None,
             "fetch dynamic config",
-            "manualk start",
+            "manual start",
             None,
             state=BackgroundJobState.pending,
             # set timeout to 30 minutes for big installs
@@ -184,6 +185,13 @@ class BuildProcess(
         gbc.background_job = _bgj
         self.fetch_dyn_configs(gbc, args)
         _bgj.set_state(BackgroundJobState.done)
+        if self.single_build:
+            self.srv_com.set_result(
+                "run DynConfig on {}".format(
+                    logging_tools.get_plural("host", len(args)),
+                )
+            )
+            self.send_pool_message("remote_call_async_result", unicode(self.srv_com))
         self._exit_process()
 
     def fetch_dyn_configs(self, gbc, pk_list):
@@ -372,8 +380,8 @@ class BuildProcess(
                 for key in constants.SINGLE_BUILD_MAPS:
                     if key in self.__gen_config:
                         self.__gen_config[key].refresh(self.__gen_config)
-            # hosts to build
-            total_hosts = self._get_number_of_hosts()
+            # hosts to build, not needed ?
+            # total_hosts = self._get_number_of_hosts()
             if self.build_mode in [BuildModesEnum.all_master, BuildModesEnum.all_slave]:
                 # build distance map
                 cur_dmap, unreachable_pks, unreachable_names = self.DM_build_distance_map(
@@ -508,6 +516,8 @@ class BuildProcess(
                         found_dev = device.objects.get(Q(name=full_h_name))
                 except device.DoesNotExist:
                     pass
+                except device.MultipleObjectsReturned:
+                    self.log("multiple objects returned for host_name '{}'".format(full_h_name), logging_tools.LOG_LEVEL_ERROR)
                 else:
                     pk_list.append(found_dev.pk)
             h_filter = Q(pk__in=pk_list)

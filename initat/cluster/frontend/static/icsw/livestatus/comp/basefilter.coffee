@@ -138,10 +138,14 @@ angular.module(
 
             # host / service filters are linked
             @linked = false
-            # show active results
-            @active_results = true
-            # show passive results
-            @passive_results = true
+            # show active host results
+            @active_host_results = true
+            # show active service results
+            @active_service_results = true
+            # show passive host results
+            @passive_host_results = true
+            # show passive host results
+            @passive_service_results = true
 
             # default values for service states
             @service_states = {}
@@ -183,13 +187,24 @@ angular.module(
             if _flags.length == 1
                 # old format
                 @linked = if _flags == "l" then true else false
-                @active_results = true
-                @passive_results = true
+                @active_host_results = true
+                @active_service_results = true
+                @passive_host_results = true
+                @passive_service_results = true
             else
                 _flags = _flags.split(":")
                 @linked = if _flags[0] == "l" then true else false
-                @active_results = if _flags[1] == "ar" then true else false
-                @passive_results = if _flags[2] == "pr" then true else false
+                if _flags.length == 3
+                    # old format
+                    @active_host_results = if _flags[1] == "ar" then true else false
+                    @passive_host_results = if _flags[2] == "pr" then true else false
+                    @active_service_results = @active_host_results
+                    @passive_service_results = @passive_host_results
+                else
+                    @active_host_results = if _flags[1] == "ahr" then true else false
+                    @passive_host_results = if _flags[2] == "phr" then true else false
+                    @active_service_results = if _flags[3] == "asr" then true else false
+                    @passive_service_results = if _flags[4] == "psr" then true else false
 
             for [_field, _attr_prefix] in [
                 [_ss, "service_state"]
@@ -214,12 +229,20 @@ angular.module(
             @linked = !@linked
             @_settings_changed()
 
-        toggle_active_results: () =>
-            @active_results = !@active_results
+        toggle_active_host_results: () =>
+            @active_host_results = !@active_host_results
             @_settings_changed()
 
-        toggle_passive_results: () =>
-            @passive_results = !@passive_results
+        toggle_passive_host_results: () =>
+            @passive_host_results = !@passive_host_results
+            @_settings_changed()
+
+        toggle_active_service_results: () =>
+            @active_service_results = !@active_service_results
+            @_settings_changed()
+
+        toggle_passive_service_results: () =>
+            @passive_service_results = !@passive_service_results
             @_settings_changed()
 
         toggle_service_state: (code) =>
@@ -258,8 +281,10 @@ angular.module(
         _get_flags_str: () =>
             return [
                 if @linked then "l" else "ul"
-                if @active_results then "ar" else "r"
-                if @passive_results then "pr" else "r"
+                if @active_host_results then "ahr" else "hr"
+                if @passive_host_results then "phr" else "hr"
+                if @active_service_results then "asr" else "sr"
+                if @passive_service_results then "psr" else "sr"
             ].join(":")
 
         get_filter_state_str: () ->
@@ -287,6 +312,65 @@ angular.module(
     # display of livestatus filter
     {span, rect, title, span, svg, path, g, text, div} = React.DOM
 
+    ap_filter = React.createFactory(
+        React.createClass(
+            propTypes: {
+                for_active: React.PropTypes.bool
+                enabled: React.PropTypes.bool
+                change_callback: React.PropTypes.func
+                update_filter: React.PropTypes.func
+                offset_x: React.PropTypes.number
+                offset_y: React.PropTypes.number
+                object_name: React.PropTypes.string
+            }
+
+            render: () ->
+                if @props.for_active
+                    _str = "active"
+                else
+                    _str = "passive"
+
+                return g(
+                    {}
+                    rect(
+                        {
+                            key: "activerect"
+                            x: @props.offset_x - 10 # -21
+                            y: -18
+                            width: 20
+                            height: 20
+                            rx: 2
+                            ry: 2
+                            className: "svg-box"
+                            style: {fill: if @props.enabled then "#ffffff" else "#888888"}
+                        }
+                    )
+                    text(
+                        {
+                            key: "linktexta"
+                            x: @props.offset_x  # -11
+                            y: -1
+                            fontFamily: "fontAwesome"
+                            className: "cursorpointer svg-box-content"
+                            fontSize: "20px"
+                            # alignmentBaseline: "middle"  # bad for browser/ os compat
+                            textAnchor: "middle"
+                            pointerEvents: "painted"
+                            onClick: (event) =>
+                                @props.change_callback()
+                                @props.update_filter()
+                        }
+                        title(
+                            {
+                                key: "title.activetext"
+                            }
+                            if @props.for_active then "Show #{_str} #{@props.object_name} results" else "Show no #{_str} #{@props.object_name} results"
+                        )
+                        if @props.for_active then "\uf062" else "\uf063"
+                    )
+                )
+        )
+    )
     return React.createClass(
         propTypes: {
             livestatus_filter: React.PropTypes.object
@@ -329,6 +413,9 @@ angular.module(
                 @props.livestatus_filter.filter_changed()
                 @props.filter_changed_cb()
 
+            _update_filter = () =>
+                @setState({filter_state_str: _lf.get_filter_state_str()})
+                _filter_changed()
             _active_class = "svg-active"
             _inact_class = "svg-inactive"
             # console.log "r", @props.livestatus_filter
@@ -510,79 +597,49 @@ angular.module(
                                         transform: "translate(0, 50)"
                                     }
                                     [
-                                        rect(
+                                        ap_filter(
                                             {
-                                                key: "activerect"
-                                                x: -21
-                                                y: -18
-                                                width: 20
-                                                height: 20
-                                                rx: 2
-                                                ry: 2
-                                                className: "svg-box"
-                                                style: {fill: if _lf.active_results then "#ffffff" else "#888888"}
+                                                key: "active0"
+                                                for_active: true
+                                                object_name: "host"
+                                                enabled: _lf.active_host_results
+                                                change_callback: _lf.toggle_active_host_results
+                                                update_filter: _update_filter
+                                                offset_x: -92
                                             }
                                         )
-                                        text(
+                                        ap_filter(
                                             {
-                                                key: "linktexta"
-                                                x: -11
-                                                y: -1
-                                                fontFamily: "fontAwesome"
-                                                className: "cursorpointer svg-box-content"
-                                                fontSize: "20px"
-                                                # alignmentBaseline: "middle"  # bad for browser/ os compat
-                                                textAnchor: "middle"
-                                                pointerEvents: "painted"
-                                                onClick: (event) =>
-                                                    _lf.toggle_active_results()
-                                                    @setState({filter_state_str: _lf.get_filter_state_str()})
-                                                    _filter_changed()
-                                            }
-                                            title(
-                                                {
-                                                    key: "title.activetext"
-                                                }
-                                                if _lf.active_results then "Show active results" else "Show no active results"
-                                            )
-                                            "\uf062"
-                                        )
-                                        rect(
-                                            {
-                                                key: "passiverect"
-                                                x: 1
-                                                y: -18
-                                                width: 20
-                                                height: 20
-                                                rx: 2
-                                                ry: 2
-                                                className: "svg-box"
-                                                style: {fill: if _lf.passive_results then "#ffffff" else "#888888"}
+                                                key: "passive0"
+                                                for_active: false
+                                                object_name: "host"
+                                                enabled: _lf.passive_host_results
+                                                change_callback: _lf.toggle_passive_host_results
+                                                update_filter: _update_filter
+                                                offset_x: -70
                                             }
                                         )
-                                        text(
+                                        ap_filter(
                                             {
-                                                key: "linktextb"
-                                                x: 11
-                                                y: -1
-                                                fontFamily: "fontAwesome"
-                                                className: "cursorpointer svg-box-content"
-                                                fontSize: "20px"
-                                                # alignmentBaseline: "middle"  # bad for browser/ os compat
-                                                textAnchor: "middle"
-                                                pointerEvents: "painted"
-                                                onClick: (event) =>
-                                                    _lf.toggle_passive_results()
-                                                    @setState({filter_state_str: _lf.get_filter_state_str()})
-                                                    _filter_changed()
+                                                key: "active1"
+                                                for_active: true
+                                                object_name: "service"
+                                                enabled: _lf.active_service_results
+                                                change_callback: _lf.toggle_active_service_results
+                                                update_filter: _update_filter
+                                                offset_x: 70
                                             }
-                                            title(
-                                                {
-                                                    key: "title.linktext"
-                                                }
-                                                if _lf.passive_results then "Show passive results" else "Show no passive results"
-                                            )
-                                            "\uf063"
+                                        )
+                                        ap_filter(
+                                            {
+                                                key: "passive1"
+                                                for_active: false
+                                                object_name: "service"
+                                                enabled: _lf.passive_service_results
+                                                change_callback: _lf.toggle_passive_service_results
+                                                update_filter: _update_filter
+                                                offset_x: 92
+                                            }
                                         )
                                     ]
                                 )

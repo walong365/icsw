@@ -108,6 +108,7 @@ class fetch_dyn_config(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        # run global fetch command
         srv_com = server_command.srv_command(
             command="fetch_dyn_config",
         )
@@ -202,15 +203,15 @@ class get_node_config(View):
             ]
         )
         result = contact_server(request, icswServiceEnum.monitor_server, srv_com, timeout=30)
-        # print("R")
         if result:
-            node_results = result.xpath(".//config", smart_strings=False)
-            if len(node_results):
-                request.xml_response["result"] = node_results[0]
-            else:
-                request.xml_response.error("no config", logger=logger)
+            if _post["mode"] != "fetch":
+                node_results = result.xpath(".//config", smart_strings=False)
+                if len(node_results):
+                    request.xml_response["result"] = node_results[0]
+                else:
+                    request.xml_response.error("no config", logger=logger)
         else:
-            request.xml_response.error("no config", logger=logger)
+            request.xml_response.error("no result", logger=logger)
 
 
 class toggle_sys_flag(View):

@@ -71,12 +71,12 @@ angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal",
     "$timeout", "icswAccessLevelService", "ICSW_URLS", "blockUI",
     "icswSimpleAjaxCall", "toaster", "icswDeviceTreeService", "icswMonConfigTable",
-    "icswDeviceTreeHelperService", "icswToolsSimpleModalService",
+    "icswDeviceTreeHelperService", "icswToolsSimpleModalService", "DeviceOverviewService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal,
     $timeout, icswAccessLevelService, ICSW_URLS, blockUI,
     icswSimpleAjaxCall, toaster, icswDeviceTreeService, icswMonConfigTable,
-    icswDeviceTreeHelperService, icswToolsSimpleModalService,
+    icswDeviceTreeHelperService, icswToolsSimpleModalService, DeviceOverviewService,
 ) ->
 
     $scope.struct = {
@@ -144,8 +144,10 @@ angular.module(
                 pk_list: angular.toJson((dev.idx for dev in $scope.struct.devices))
                 mode: "fetch"
             }
+            timeout: 30000
         ).then(
             (done) ->
+                fetch_hint_config()
                 $scope.struct.trigger_fetch = false
             (error) ->
                 $scope.struct.trigger_fetch = false
@@ -201,6 +203,11 @@ angular.module(
             return "success"
         else
             return ""
+
+    $scope.show_device = ($event, device) ->
+        $event.stopPropagation()
+        $event.preventDefault()
+        DeviceOverviewService($event, [device])
 
     $scope.expand_vt = (device) ->
         device.$$hints_expanded = not device.$$hints_expanded

@@ -93,14 +93,18 @@
                     ></icsw-tools-button>
                     <icsw-tools-button
                         type="create"
+                        value="Fetch config"
                         size="sm"
                         ng-click="trigger_fetch_run($event)"
                         ng-show="!struct.trigger_fetch"
                     ></icsw-tools-button>
+                    <span ng-show="struct.trigger_fetch" class="text-warning">
+                        Fetching DynConfig...
+                    </span>
                 </uib-accordion-heading>
                 <table
-                    ng-show="struct.devices.length"
-                    class="table table-condensed table-hover"
+                    ng-show="struct.devices.length && !struct.trigger_fetch"
+                    class="table table-condensed table-hover table-striped"
                     style="width:auto;"
                 >
                     <thead>
@@ -133,7 +137,13 @@
             <span ng_class="get_expand_class(device)"/>
         </button>
     </td>
-    <td>{{ device.full_name }}</td>
+    <td>
+        <button
+            type="button"
+            class="btn btn-xs btn-primary"
+            ng-click="show_device($event, device)"
+        >{{ device.full_name }}</button>
+    </td>
     <td>{{ device.device_group_name }}</td>
     <td>{{ device.comment }}</td>
     <td class="text-center">{{ device.monitoring_hint_set.length }}</td>

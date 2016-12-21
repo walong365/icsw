@@ -72,7 +72,7 @@ angular.module(
         entry.state = parseInt(entry.state)
         entry.$$numComments = entry._comments.length
         # console.log entry.last_check, typeof(entry.last_check)
-        if entry.last_check in ["0"] and entry.state != 4
+        if entry.last_check in [0] and entry.state != 4
             entry.state = 5
         #if entry.state_type in ["0", "1"]
         #    entry.state_type = parseInt(entry.state_type)
@@ -89,10 +89,10 @@ angular.module(
         }[entry.state_type]
         entry.$$icswCheckTypeString = {
             null: "???"
-            0: "active"
-            1: "passive"
-        }[entry.check_type]
-        entry.$$icswPassiveCheck = if entry.check_type then true else false
+            0: "passive"
+            1: "active"
+        }[entry.active_checks_enabled]
+        entry.$$icswPassiveCheck = if entry.active_checks_enabled == 0 then true else false
         # console.log entry.check_type, typeof(entry.check_type), entry.$$icswPassiveCheck  #, entry
         entry.$$icswAttemptLabelClass = _get_attempt_class(entry)
         entry.$$icswAttemptInfo = _get_attempt_info(entry)
@@ -129,6 +129,7 @@ angular.module(
         entry.state = state
         entry.state_type = 1
         entry.check_type = 0
+        entry.active_checks_enabled = 1
         salt_service_state(entry)
         return entry
 
@@ -150,6 +151,8 @@ angular.module(
         entry.check_type = 0
         # for serviceWeight
         entry.$$serviceWeight = 0.001
+        # active check enabled
+        entry.active_checks_enabled = 1
         # custom vars
         entry.custom_variables = {
             device_pk: dev.idx
@@ -430,6 +433,7 @@ angular.module(
             # special state: pending
             5: "default"
         }[entry.state]
+        # if entry.state == 0 and entry.last_
         entry.$$data = _service_lut[entry.state]
         #    0: "svg-srv-ok"
         #    1: "svg-srv-warn"
@@ -687,14 +691,19 @@ angular.module(
             @hosts.length = 0
             device_cat_counters = {}
             # results types (active / passive)
-            valid_check_types = []
-            if filter.active_results
-                valid_check_types.push(0)
-            if filter.passive_results
-                valid_check_types.push(1)
+            valid_host_ap_checks = []
+            if filter.active_host_results
+                valid_host_ap_checks.push(1)
+            if filter.passive_host_results
+                valid_host_ap_checks.push(0)
+            valid_service_ap_checks = []
+            if filter.active_service_results
+                valid_service_ap_checks.push(1)
+            if filter.passive_service_results
+                valid_service_ap_checks.push(0)
             # _device_cats = []
             for entry in src_data.hosts
-                if filter.host_types[entry.state_type] and filter.host_states[entry.state] and entry.check_type in valid_check_types
+                if filter.host_types[entry.state_type] and filter.host_states[entry.state] and entry.active_checks_enabled in valid_host_ap_checks
                     @hosts.push(entry)
                     device_cat_counters = icswTools.merge_count_dict(device_cat_counters, _.countBy(entry.$$device_categories))
                     _host_pks.push(entry.$$icswDevice.idx)
@@ -704,7 +713,7 @@ angular.module(
             for entry in src_data.services
                 if filter.linked and entry.$$host_mon_result.$$icswDevice.idx not in _host_pks
                     true
-                else if filter.service_types[entry.state_type] and filter.service_states[entry.state] and entry.check_type in valid_check_types
+                else if filter.service_types[entry.state_type] and filter.service_states[entry.state] and entry.active_checks_enabled in valid_service_ap_checks
                     @services.push(entry)
                     if entry.custom_variables? and entry.custom_variables.cat_pks?
                         mon_cat_counters = icswTools.merge_count_dict(mon_cat_counters, _.countBy(entry.custom_variables.cat_pks))

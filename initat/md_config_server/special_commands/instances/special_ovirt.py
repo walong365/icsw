@@ -60,7 +60,6 @@ class SpecialOvirtDomains(SpecialBase):
 
     def feed_result(self, dc_action, srv_reply):
         _hints = []
-        a = b
         VALID_STATES = {"up", "down"}
         if srv_reply is not None:
             # print srv_reply.pretty_print()

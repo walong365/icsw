@@ -149,6 +149,7 @@ class StatusProcess(threading_tools.process_obj):
                             "custom_variables",
                             "acknowledged",
                             "acknowledgement_type",
+                            "active_checks_enabled",
                         ).filter("host_name", "=", dev_names)
                         fetch_dict["host"] = cur_sock.hosts.columns(
                             "name",
@@ -164,6 +165,7 @@ class StatusProcess(threading_tools.process_obj):
                             "custom_variables",
                             "acknowledged",
                             "acknowledgement_type",
+                            "active_checks_enabled",
                         ).filter("name", "=", dev_names)
                         fetch_dict["host_comment"] = cur_sock.comments.columns(
                             "host_name",

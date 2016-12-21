@@ -168,6 +168,7 @@ class LiveSocket(object):
 
     @classmethod
     def init_enum(cls, log_com, sock_name):
+        DEBUG = False
         # init enum for livestatus queries
         s_time = time.time()
         _result = LiveSocket(log_com, sock_name).columns.call()
@@ -175,18 +176,30 @@ class LiveSocket(object):
         _dict = {}
         for entry in _result:
             _dict.setdefault(entry["table"], []).append(entry)
-        # self.log("tables found: {:d}".format(len(_dict.keys())))
+        if DEBUG:
+            log_com("tables found: {:d}".format(len(_dict.keys())))
         for _table in sorted(_dict.keys()):
-            # self.log("dump for table {} ({}):".format(_table, len(_dict[_table])))
+            _len = len(_dict[_table])
+            if DEBUG:
+                log_com("dump for table {} ({} entries):".format(_table, _len))
             _enum_name_list = []
-            for _entry in _dict[_table]:
+            for _num, _entry in enumerate(_dict[_table], 1):
                 _enum_name_list.append(
                     (
                         _entry["name"],
                         {"type": _entry["type"], "name": _entry["name"]}
                     )
                 )
-                # self.log("    [{:<6s}] {}: {})".format(_entry["type"], _entry["name"], _entry["description"]))
+                if DEBUG:
+                    log_com(
+                        "    [{:3d}/{:3d} {:<6s}] {}: {}".format(
+                            _num,
+                            _len,
+                            _entry["type"],
+                            _entry["name"],
+                            _entry["description"]
+                        )
+                    )
             table_enum = Enum(
                 value="Livestatus{}TableEnum".format(_table.title()),
                 names=_enum_name_list

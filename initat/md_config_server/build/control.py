@@ -114,8 +114,10 @@ class BuildControl(object):
         # dummy call, should be build_host_config, name needed
         # to distinguish call in server.py
         if srv_com["*mode"] == "config":
+            # get config
             return self.build_host_config(srv_com)
         else:
+            # call dynconfig fetch
             return self.fetch_dyn_config(srv_com)
 
     def sync_http_users(self, srv_com):
