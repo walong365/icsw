@@ -44,7 +44,7 @@ angular.module(
 ) ->
     # Network topology container, including selection and redraw button
     react_dom = ReactDOM
-    {div, g, button, path, svg, h3, span, h4} = React.DOM
+    {div, g, button, path, svg, input, span, h4} = React.DOM
     react_id = 0
     return React.createClass(
         propTypes: {
@@ -57,7 +57,7 @@ angular.module(
             # settings changed
             settings_changed: React.PropTypes.func
             # initial filter
-            start_filter: React.PropTypes.array
+            start_settings: React.PropTypes.object
         }
         displayName: "icswLivestatusCategoryFilterBurstReact"
 
@@ -80,21 +80,27 @@ angular.module(
             # clicked: true if clicked or only hover (only one can be hovered)
             @focus_elements = []
             # currently exported filter list
-            @cur_click_list = []
+            @settings = _.clone(@props.start_settings)
             @first_call = true
+            if not @settings.sum_childs?
+                @settings.sum_childs = false
             # current trigger, for external trigger, NOT in state
             return {
                 # to trigger redraw
                 draw_counter: 0
                 cat_tree_defined: false
+                sum_childs: @settings.sum_childs
             }
 
         new_click_list: (new_list) ->
-            if not _.isEqual(new_list, @cur_click_list)
-                @cur_click_list.length = 0
+            if not @settings.filter?
+                @settings.filter = []
+            if not _.isEqual(new_list, @settings.filter)
+                @settings.filter.length = 0
+                console.log @settings
                 for entry in new_list
-                    @cur_click_list.push(entry)
-                @props.settings_changed(@cur_click_list)
+                    @settings.filter.push(entry)
+                @props.settings_changed(@settings)
 
         new_monitoring_data_result: () ->
             # force recalc of burst, todo: incremental root_node update
@@ -219,19 +225,27 @@ angular.module(
             # not the most elegant way but working for now
             # check if burst is interactive
             _ia = @props.draw_parameters.is_interactive
+            _redraw = false
             if not @root_node?
+                _redraw = true
+            if @settings.sum_childs != @state.sum_childs
+                @settings.sum_childs = @state.sum_childs
+                @props.settings_changed(@settings)
+                _redraw = true
+            if _redraw
                 @root_node = icswDeviceLivestatusFunctions.build_structured_category_burst(
                     @props.monitoring_data
                     @props.sub_tree
                     @category_tree
                     @props.draw_parameters
+                    @state.sum_childs
                 )
                 if @first_call
                     @first_call = false
-                    if @props.start_filter.length and @props.start_filter[0] == -1
+                    if not @props.start_settings.filter?
                         @select_all(false)
                     else
-                        @select_some(@props.start_filter, false)
+                        @select_some(@props.start_settings.filter, false)
                 else
                     @update_filter_settings(false)
             root_node = @root_node
@@ -351,6 +365,16 @@ angular.module(
                                     }
                                     "none"
                                 )
+                                input(
+                                    {
+                                        type: "checkbox"
+                                        key: "parent"
+                                        title: "Take info from childs"
+                                        checked: @state.sum_childs
+                                        onClick: (event) =>
+                                            @setState({sum_childs: !@state.sum_childs})
+                                    }
+                                )
                                 span(
                                     {
                                         key: "hs"
@@ -387,7 +411,7 @@ angular.module(
         mounted: false
     }
 
-    _mount_burst = (element, new_data, draw_params, sub_tree, filter_changed, start_filter) ->
+    _mount_burst = (element, new_data, draw_params, sub_tree, filter_changed, start_settings) ->
         $scope.struct.react_element = ReactDOM.render(
             React.createElement(
                 icswLivestatusCategoryFilterBurstReact
@@ -397,14 +421,14 @@ angular.module(
                     return_data: $scope.struct.return_data
                     sub_tree: sub_tree
                     settings_changed: filter_changed
-                    start_filter: start_filter
+                    start_settings: start_settings
                 }
             )
             element
         )
 
 
-    $scope.set_notifier = (notify, element, draw_params, sub_tree, filter_changed, start_filter) ->
+    $scope.set_notifier = (notify, element, draw_params, sub_tree, filter_changed, start_settings) ->
         notify.promise.then(
             (ok) ->
                 # console.log "ok"
@@ -414,7 +438,7 @@ angular.module(
             (new_data) ->
                 if not $scope.struct.mounted
                     $scope.struct.mounted = true
-                    _mount_burst(element, new_data, draw_params, sub_tree, filter_changed, start_filter)
+                    _mount_burst(element, new_data, draw_params, sub_tree, filter_changed, start_settings)
                 else
                     $scope.struct.react_element.new_monitoring_data_result()
         )
@@ -486,13 +510,13 @@ angular.module(
             @__dp_async_emit = true
             @new_data_notifier = $q.defer()
             # default for not set
-            @filter_settings = [-1]
+            @filter_settings = {}
 
-        restore_settings: (f_list) ->
-            @filter_settings = f_list
+        restore_settings: (f_obj) ->
+            @filter_settings = f_obj
 
-        filter_changed: (f_list) =>
-            @pipeline_settings_changed(f_list)
+        filter_changed: (f_obj) =>
+            @pipeline_settings_changed(f_obj)
 
         new_data_received: (data) ->
             @new_data_notifier.notify(data)
@@ -520,13 +544,13 @@ angular.module(
             @__dp_async_emit = true
             @new_data_notifier = $q.defer()
             # default for not set
-            @filter_settings = [-1]
+            @filter_settings = {}
 
-        restore_settings: (f_list) ->
-            @filter_settings = f_list
+        restore_settings: (f_obj) ->
+            @filter_settings = f_obj
 
-        filter_changed: (f_list) =>
-            @pipeline_settings_changed(f_list)
+        filter_changed: (f_obj) =>
+            @pipeline_settings_changed(f_obj)
 
         new_data_received: (data) ->
             @new_data_notifier.notify(data)

@@ -535,7 +535,7 @@ angular.module(
 
         return _root_node
 
-    build_structured_category_burst = (mon_data, sub_tree, cat_tree, draw_params) ->
+    build_structured_category_burst = (mon_data, sub_tree, cat_tree, draw_params, sum_childs) ->
         cat_pks = mon_data["used_#{sub_tree}_cats"]
         _display_pks = _.clone(cat_pks)
         _root_node = cat_tree.full_name_lut["/#{sub_tree}"]
@@ -654,10 +654,11 @@ angular.module(
                             # add to uncat service
                             uncat_root_node.feed_service(el)
                 cat_node.end_ds_feed()
-        for pk, cat_node of node_lut
-            pk = parseInt(pk)
-            if pk > 111110
-                cat_node.set_state_from_children()
+        if sum_childs
+            for pk, cat_node of node_lut
+                pk = parseInt(pk)
+                if pk > 0
+                    cat_node.set_state_from_children()
         uncat_root_node.balance()
 
         _recalc_burst(uncat_root_node, draw_params)
@@ -670,8 +671,8 @@ angular.module(
             # mon_data is a filtered instance of icswMonitoringResult
             return build_structured_burst(mon_data, draw_params)
 
-        build_structured_category_burst: (mon_data, sub_tree, cat_tree, draw_params) ->
-            return build_structured_category_burst(mon_data, sub_tree, cat_tree, draw_params)
+        build_structured_category_burst: (mon_data, sub_tree, cat_tree, draw_params, sum_childs) ->
+            return build_structured_category_burst(mon_data, sub_tree, cat_tree, draw_params, sum_childs)
 
         ring_segment_path: ring_segment_path
         ring_path: ring_path
