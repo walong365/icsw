@@ -618,7 +618,7 @@ class SyncConfig(object):
                         _size_data += len(_content)
                         _num_files += 1
                         if _send_size + len(_content) > MAX_SEND_SIZE:
-                            self._send(self._build_file_content(_send_list))
+                            _to_send.append(self._build_file_content(_send_list))
                             _send_list, _send_size = ([], 0)
                         # format: uid, gid, path, content_len, content
                         _send_list.append((os.stat(full_r_path)[stat.ST_UID], os.stat(full_r_path)[stat.ST_GID], full_w_path, len(_content), _content))

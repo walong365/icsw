@@ -71,7 +71,8 @@
 .svg-clicked-outer {
     stroke-width: 3px !important;
     stroke: #444488;
-    fill: none;
+    fill: #ffffff;
+    opacity: 0.3;
     pointer-events: none;
 }
 .svg-clicked-inner {
@@ -80,11 +81,19 @@
     fill: none;
     pointer-events: none;
 }
-.svg-hovered {
+.svg-hovered-outer {
     stroke-width: 4px !important;
     stroke-dasharray: 5, 5;
     stroke: #444488;
     fill: none;
+    pointer-events: none;
+    animation: dash 2s linear;
+}
+.svg-hovered-inner {
+    stroke-width: 0px !important;
+    stroke: #444488;
+    fill: #ffffff;
+    opacity: 0.2;
     pointer-events: none;
     animation: dash 2s linear;
 }

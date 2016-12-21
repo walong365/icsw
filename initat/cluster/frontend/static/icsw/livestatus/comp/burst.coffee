@@ -96,7 +96,7 @@ angular.module(
             if @props.clicked
                 _cls = [["o", "svg-clicked-outer"], ["i", "svg-clicked-inner"]]
             else
-                _cls = [["", "svg-hovered"]]
+                _cls = [["o", "svg-hovered-outer"], ["i", "svg-hovered-inner"]]
             return g(
                 {
                     key: _path_el.key

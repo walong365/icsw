@@ -110,7 +110,7 @@ device_logs = angular.module(
         o = {
             device: device
             tabindex: device.idx
-            }
+        }
         device_in_tablist = false
         for tab in $scope.struct.tabs when tab.device == o.device
             device_in_tablist = true

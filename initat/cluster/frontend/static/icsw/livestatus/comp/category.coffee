@@ -145,8 +145,8 @@ angular.module(
             if action == "enter"
                 # remove old hover
                 _.remove(@focus_elements, (entry) -> return not entry.clicked)
-                if not _.some(@focus_elements, (entry) -> return entry.name == ring_el.name)
-                    @focus_elements.push({name: ring_el.name, clicked: false})
+                # if not _.some(@focus_elements, (entry) -> return entry.name == ring_el.name)
+                @focus_elements.push({name: ring_el.name, clicked: false})
                 @update_filter_settings(true)
             else if action == "leave"
                 if @leave_timeout?
@@ -163,15 +163,15 @@ angular.module(
                     2
                 )
             else if action == "click"
-                _current = (entry for entry in @focus_elements when entry.name == ring_el.name)
+                _current = (entry for entry in @focus_elements when entry.name == ring_el.name and entry.clicked)
                 if _current.length
-                    _current = _current[0]
-                    if _current.clicked
-                        # remove
-                        _.remove(@focus_elements, (entry) -> return entry.name == ring_el.name)
-                    else
-                        # was hovered, now click
-                        _current.clicked = true
+                    # _current = _current[0]
+                    # if _current.clicked
+                    # remove
+                    _.remove(@focus_elements, (entry) -> return entry.name == ring_el.name and entry.clicked)
+                    # else
+                    #     # was hovered, now click
+                    #     _current.clicked = true
                 else
                     # not in list, add clicked verison
                     @focus_elements.push({name: ring_el.name, clicked: true})
@@ -240,6 +240,8 @@ angular.module(
                     @props.draw_parameters
                     @state.sum_childs
                 )
+                # remove no longer existing nodes from focus_elements
+                _.remove(@focus_elements, (node) => return node.name not of @root_node.name_lut)
                 if @first_call
                     @first_call = false
                     if not @props.start_settings.filter?
@@ -284,17 +286,31 @@ angular.module(
                     path(_.pickBy(_element, (value, key) -> return not key.match(/\$/))) for _element in root_node.element_list
                 )
             for node in @focus_elements
-                _element = @root_node.name_lut[node.name].$$path
-                _g_list.push(
-                    React.createElement(
-                        icswBurstReactFocusSegment
-                        {
-                            key: "foc.#{_element.key}"
-                            element: _element
-                            clicked: node.clicked
-                        }
+                if node.clicked
+                    _element = @root_node.name_lut[node.name].$$path
+                    _g_list.push(
+                        React.createElement(
+                            icswBurstReactFocusSegment
+                            {
+                                key: "foc.#{_element.key}"
+                                element: _element
+                                clicked: node.clicked
+                            }
+                        )
                     )
-                )
+            for node in @focus_elements
+                if not node.clicked
+                    _element = @root_node.name_lut[node.name].$$path
+                    _g_list.push(
+                        React.createElement(
+                            icswBurstReactFocusSegment
+                            {
+                                key: "hov.#{_element.key}"
+                                element: _element
+                                clicked: node.clicked
+                            }
+                        )
+                    )
             _svg = svg(
                 {
                     key: "svg.top"

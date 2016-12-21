@@ -1176,5 +1176,4 @@ angular.module(
              scope.con_element.tooltip = struct
              struct.hide()
     }
-
 ])
