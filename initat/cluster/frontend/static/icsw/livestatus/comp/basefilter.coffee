@@ -317,7 +317,6 @@ angular.module(
             propTypes: {
                 for_active: React.PropTypes.bool
                 enabled: React.PropTypes.bool
-                change_callback: React.PropTypes.func
                 update_filter: React.PropTypes.func
                 offset_x: React.PropTypes.number
                 offset_y: React.PropTypes.number
@@ -326,17 +325,20 @@ angular.module(
 
             render: () ->
                 if @props.for_active
-                    _str = "active"
+                    _ap_str = "active"
                 else
-                    _str = "passive"
-
+                    _ap_str = "passive"
+                if @props.enabled
+                    _info_str = "Show #{_ap_str} #{@props.object_name} results"
+                else
+                    _info_str = "Show no #{_ap_str} #{@props.object_name} results"
                 return g(
                     {}
                     rect(
                         {
                             key: "activerect"
-                            x: @props.offset_x - 10 # -21
-                            y: -18
+                            x: @props.offset_x - 10
+                            y: @props.offset_y - 18
                             width: 20
                             height: 20
                             rx: 2
@@ -348,8 +350,8 @@ angular.module(
                     text(
                         {
                             key: "linktexta"
-                            x: @props.offset_x  # -11
-                            y: -1
+                            x: @props.offset_x
+                            y: @props.offset_y - 1
                             fontFamily: "fontAwesome"
                             className: "cursorpointer svg-box-content"
                             fontSize: "20px"
@@ -357,14 +359,13 @@ angular.module(
                             textAnchor: "middle"
                             pointerEvents: "painted"
                             onClick: (event) =>
-                                @props.change_callback()
-                                @props.update_filter()
+                                @props.update_filter(_ap_str, @props.object_name)
                         }
                         title(
                             {
                                 key: "title.activetext"
                             }
-                            if @props.for_active then "Show #{_str} #{@props.object_name} results" else "Show no #{_str} #{@props.object_name} results"
+                            _info_str
                         )
                         if @props.for_active then "\uf062" else "\uf063"
                     )
@@ -413,7 +414,8 @@ angular.module(
                 @props.livestatus_filter.filter_changed()
                 @props.filter_changed_cb()
 
-            _update_filter = () =>
+            _update_filter = (ap_string, object_name) =>
+                _lf["toggle_#{ap_string}_#{object_name}_results"]()
                 @setState({filter_state_str: _lf.get_filter_state_str()})
                 _filter_changed()
             _active_class = "svg-active"
@@ -603,9 +605,9 @@ angular.module(
                                                 for_active: true
                                                 object_name: "host"
                                                 enabled: _lf.active_host_results
-                                                change_callback: _lf.toggle_active_host_results
                                                 update_filter: _update_filter
                                                 offset_x: -92
+                                                offset_y: 0
                                             }
                                         )
                                         ap_filter(
@@ -614,9 +616,9 @@ angular.module(
                                                 for_active: false
                                                 object_name: "host"
                                                 enabled: _lf.passive_host_results
-                                                change_callback: _lf.toggle_passive_host_results
                                                 update_filter: _update_filter
                                                 offset_x: -70
+                                                offset_y: 0
                                             }
                                         )
                                         ap_filter(
@@ -625,9 +627,9 @@ angular.module(
                                                 for_active: true
                                                 object_name: "service"
                                                 enabled: _lf.active_service_results
-                                                change_callback: _lf.toggle_active_service_results
                                                 update_filter: _update_filter
                                                 offset_x: 70
+                                                offset_y: 0
                                             }
                                         )
                                         ap_filter(
@@ -636,9 +638,9 @@ angular.module(
                                                 for_active: false
                                                 object_name: "service"
                                                 enabled: _lf.passive_service_results
-                                                change_callback: _lf.toggle_passive_service_results
                                                 update_filter: _update_filter
                                                 offset_x: 92
+                                                offset_y: 0
                                             }
                                         )
                                     ]
