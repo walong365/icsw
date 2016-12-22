@@ -84,12 +84,15 @@ angular.module(
             @first_call = true
             if not @settings.sum_childs?
                 @settings.sum_childs = false
+            if not @settings.select_all?
+                @settings.select_all = false
             # current trigger, for external trigger, NOT in state
             return {
                 # to trigger redraw
                 draw_counter: 0
                 cat_tree_defined: false
                 sum_childs: @settings.sum_childs
+                select_all: @settings.select_all
             }
 
         new_click_list: (new_list) ->
@@ -97,7 +100,6 @@ angular.module(
                 @settings.filter = []
             if not _.isEqual(new_list, @settings.filter)
                 @settings.filter.length = 0
-                console.log @settings
                 for entry in new_list
                     @settings.filter.push(entry)
                 @props.settings_changed(@settings)
@@ -123,6 +125,7 @@ angular.module(
 
         select_none: () ->
             @focus_elements.length = 0
+            @setState({select_all: false})
             @update_filter_settings(true)
 
         select_all: (update) ->
@@ -169,6 +172,8 @@ angular.module(
                     # if _current.clicked
                     # remove
                     _.remove(@focus_elements, (entry) -> return entry.name == ring_el.name and entry.clicked)
+                    # deactvate select_all
+                    @setState({select_all: false})
                     # else
                     #     # was hovered, now click
                     #     _current.clicked = true
@@ -228,8 +233,17 @@ angular.module(
             _redraw = false
             if not @root_node?
                 _redraw = true
+            _settings_changed = false
             if @settings.sum_childs != @state.sum_childs
                 @settings.sum_childs = @state.sum_childs
+                _settings_changed = true
+            if @settings.select_all != @state.select_all
+                @settings.select_all = @state.select_all
+                _settings_changed = true
+                if @settings.select_all
+                    # force redraw when select_all is set
+                    _redraw = true
+            if _settings_changed
                 @props.settings_changed(@settings)
                 _redraw = true
             if _redraw
@@ -242,14 +256,17 @@ angular.module(
                 )
                 # remove no longer existing nodes from focus_elements
                 _.remove(@focus_elements, (node) => return node.name not of @root_node.name_lut)
-                if @first_call
-                    @first_call = false
-                    if not @props.start_settings.filter?
-                        @select_all(false)
-                    else
-                        @select_some(@props.start_settings.filter, false)
+                if @settings.select_all
+                    @select_all(false)
                 else
-                    @update_filter_settings(false)
+                    if @first_call
+                        @first_call = false
+                        if not @props.start_settings.filter?
+                            @select_all(false)
+                        else
+                            @select_some(@props.start_settings.filter, false)
+                    else
+                        @update_filter_settings(false)
             root_node = @root_node
             @props.draw_parameters.do_layout()
             if _ia
@@ -361,15 +378,18 @@ angular.module(
                                     key: "graph.header"
                                     style: { }
                                 }
-                                button(
+                                "all:"
+                                input(
                                     {
-                                        type: "button"
+                                        type: "checkbox"
                                         key: "selall"
-                                        className: "btn btn-xs btn-primary"
+                                        title: "keep all categories selected"
+                                        checked: @settings.select_all
+                                        # className: "btn btn-xs btn-primary"
                                         onClick: (event) =>
-                                            @select_all(true)
+                                            @setState({select_all: !@state.select_all})
+                                            # @select_all(true)
                                     }
-                                    "all"
                                 )
                                 button(
                                     {
@@ -381,6 +401,7 @@ angular.module(
                                     }
                                     "none"
                                 )
+                                "sum:"
                                 input(
                                     {
                                         type: "checkbox"
