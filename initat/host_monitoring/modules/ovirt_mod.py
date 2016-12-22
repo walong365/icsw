@@ -38,8 +38,10 @@ class _general(hm_classes.hm_module):
 
 
 class FilterList(list):
-    """ A list class that adds support for basic filtering. Currently only
-    AND and equality are supported. """
+    """
+    A list class that adds support for basic filtering. Currently only
+    AND and equality are supported.
+    """
     def filter(self, **kwargs):
         for i in self:
             for name, given_value in kwargs.items():
@@ -49,8 +51,10 @@ class FilterList(list):
 
 
 class XpathPropertyMeta(type):
-    """ Create properties based on xpath expressions provided in the
-    xpath_properties attribute of the class. """
+    """
+    Create properties based on xpath expressions provided in the
+    xpath_properties attribute of the class.
+    """
     def __new__(cls, cls_name, bases, attrs):
         for name, (xpath, post_func) in attrs["xpath_properties"].items():
             # This forces a new environment for the closure
@@ -424,12 +428,13 @@ class ovirt_overview_command(hm_classes.hm_command, OvirtBaseMixin):
             arguments.ca_cert,
             arguments.username,
             arguments.password,
-            VM
+            VM,
         )
         return OvirtCheck(api, srv_command_obj)
 
     def interpret(self, srv_com, ns, *args, **kwargs):
         if ns.reference not in ["", "-"]:
+            # reference is a compressed dict (base64 encoded)
             _ref = process_tools.decompress_struct(ns.reference)
             _passive_dict = {
                 "source": "ovirt_overview",
@@ -449,29 +454,52 @@ class ovirt_overview_command(hm_classes.hm_command, OvirtBaseMixin):
                 _prefix = "ovirt Domain {}".format(run_name)
                 if len(_vm):
                     _vm = _vm[0]
-                    _memory = int(_vm.findtext("memory"))
-                    _sockets = int(_vm.find("cpu/topology").get("sockets"))
-                    _cores = int(_vm.find("cpu/topology").get("cores"))
-                    _state = _vm.findtext("status/state")
-                    _ret_f = [
-                        "state is {}".format(_state),
-                        "memory {}".format(logging_tools.get_size_str(_memory, long_format=True)),
-                        "CPU info: {}, {}".format(
-                            logging_tools.get_plural("socket", _sockets),
-                            logging_tools.get_plural("core", _cores),
+                    try:
+                        _memory = int(_vm.findtext("memory"))
+                        _topology = _vm.find("cpu/topology")
+                        if "sockets" in _topology.attrib:
+                            # old format
+                            _sockets = int(_vm.find("cpu/topology").get("sockets"))
+                            _cores = int(_vm.find("cpu/topology").get("cores"))
+                        else:
+                            # new format
+                            _sockets = int(_topology.findtext("sockets"))
+                            _cores = int(_topology.findtext("cores"))
+                        _state = _vm.findtext("status/state")
+                        if _state is None:
+                            # try new format
+                            _state = _vm.findtext("status")
+                        _ret_f = [
+                            "state is {}".format(_state),
+                            "memory {}".format(
+                                logging_tools.get_size_str(
+                                    _memory, long_format=True
+                                )
+                            ),
+                            "CPU info: {}, {}".format(
+                                logging_tools.get_plural("socket", _sockets),
+                                logging_tools.get_plural("core", _cores),
+                            )
+                        ]
+                        if _state in ["up"]:
+                            _nag_state = limits.mon_STATE_OK
+                        else:
+                            _nag_state = limits.mon_STATE_CRITICAL
+                        _passive_dict["list"].append(
+                            (
+                                _prefix,
+                                _nag_state,
+                                ", ".join(_ret_f),
+                            )
                         )
-                    ]
-                    if _state in ["up"]:
-                        _nag_state = limits.mon_STATE_OK
-                    else:
-                        _nag_state = limits.mon_STATE_CRITICAL
-                    _passive_dict["list"].append(
-                        (
-                            _prefix,
-                            _nag_state,
-                            ", ".join(_ret_f),
+                    except:
+                        _passive_dict["list"].append(
+                            (
+                                _prefix,
+                                limits.mon_STATE_CRITICAL,
+                                process_tools.get_except_info()
+                            )
                         )
-                    )
                 else:
                     _passive_dict["list"].append(
                         (
@@ -488,9 +516,10 @@ class ovirt_overview_command(hm_classes.hm_command, OvirtBaseMixin):
                 _current = _state_dict.get(_state, 0)
                 if _current != _ref[_state]:
                     _error_list.append(
-                        "{} should by {:d}".format(
+                        "{} should by {:d} (found: {:d})".format(
                             _state,
                             _ref[_state],
+                            _current,
                         )
                     )
                     ret_state = max(ret_state, limits.mon_STATE_WARNING)
@@ -560,7 +589,11 @@ class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
                 _sd = sds.xpath(".//storage_domain[@id='{}']".format(run_id))
                 if len(_sd):
                     _sd = _sd[0]
+                    # print(etree.tostring(_sd, pretty_print=True))
                     _state = _sd.findtext(".//external_status/state")
+                    if _state is None:
+                        # new format
+                        _state = _sd.findtext(".//external_status")
                     if _state in ["ok"]:
                         _nag_state = limits.mon_STATE_OK
                     else:
