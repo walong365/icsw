@@ -26,13 +26,12 @@ import os
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.rms.functions import call_command
 from initat.rms.accounting import AccountingProcess
 from initat.rms.config import global_config
+from initat.rms.functions import call_command
 from initat.rms.license import LicenseProcess
 from initat.rms.rmsmon import RMSMonProcess
-from initat.tools import cluster_location, configfile, logging_tools, process_tools, \
-    threading_tools, server_mixins, sge_license_tools
+from initat.tools import configfile, logging_tools, threading_tools, server_mixins, sge_license_tools
 
 
 @server_mixins.RemoteCallProcess

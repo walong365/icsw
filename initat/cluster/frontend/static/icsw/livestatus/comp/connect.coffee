@@ -1135,29 +1135,49 @@ angular.module(
         $scope.con_element.close()
 ]).directive('icswLivestatusTooltip',
 [
-    "$templateCache", "$window",
+    "$templateCache", "$window", "$compile",
 (
-    $templateCache, $window
+    $templateCache, $window, $compile,
 ) ->
     return {
         restrict: "EA"
         scope: {
             con_element: "=icswConnectElement"
         }
-        template: $templateCache.get("icsw.livestatus.tooltip")
         link: (scope, element, attrs) ->
             struct = {
-                divlayer: element.children().first()
+                # current divlayer element
+                divlayer: null
+                # flag: currently shown
+                is_shown: false
+                # node type, to create new tooltips on the fly
+                node_type: null
             }
 
-            struct.show = (content) ->
-                scope.display = "block"
-                scope.tooltip_content = content
+            struct.show = (bnode) ->
+                if struct.divlayer
+                    if struct.node_type and struct.node_type != bnode.node_type
+                        # remove old divlayer
+                        struct.divlayer.remove()
+                        struct.divlayer = null
+                if not struct.divlayer
+                    # template
+                    _templ = $templateCache.get("icsw.livestatus.tooltip.#{bnode.node_type}")
+                    if not _templ?
+                        _templ = $templateCache.get("icsw.livestatus.tooltip.unknown")
+                    struct.divlayer = $compile(_templ)(scope)
+                    element.append(struct.divlayer)
+                # copy node_type to detect node_type changes
+                struct.node_type = bnode.node_type
+                # bnode is a burstnode object with $$ct set
+                struct.is_shown = true
+                # display variables
+                scope.burst_node = bnode
                 scope.$apply()
                 return
 
             struct.pos = (event) ->
-                if scope.display == "block"
+                if struct.is_shown
                     t_os = 10  # Tooltip offset
                     top_scroll = $window.innerHeight - event.clientY - struct.divlayer[0].offsetHeight - t_os > 0
                     top_offset = if top_scroll then t_os else (struct.divlayer[0].offsetHeight + t_os) * -1
@@ -1168,12 +1188,14 @@ angular.module(
                     struct.divlayer.css('top', "#{event.clientY + top_offset}px")
 
             struct.hide = () ->
-                struct.divlayer.css('left', "-10000px")
-                struct.divlayer.css('top', "-10000px")
-                scope.display = "none"
-                scope.tooltip_content = ""
+                if struct.is_shown
+                    struct.divlayer.css('left', "-10000px")
+                    struct.divlayer.css('top', "-10000px")
+                    scope.is_shown = false
+                    scope.burst_node = null
 
-             scope.con_element.tooltip = struct
-             struct.hide()
+            # link
+            scope.con_element.tooltip = struct
+            struct.hide()
     }
 ])

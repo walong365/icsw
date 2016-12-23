@@ -284,8 +284,8 @@ angular.module(
                     ) for _element in root_node.element_list
                 )
                 for _element in root_node.element_list
-                    if _element.$$segment?
-                        _seg = _element.$$segment
+                    if _element.$$burstNode?
+                        _seg = _element.$$burstNode
                         if _seg.show_legend and false
                             _g_list.push(
                                 React.createElement(

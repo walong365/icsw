@@ -1,24 +1,74 @@
-<script type="text/ng-template" id="icsw.livestatus.tooltip">
+<script type="text/ng-template" id="icsw.livestatus.tooltip.unknown">
+    <div class="svg-tooltip">
+        <div uib-alert class="alert-danger">
+            Unknown BurstNodeType '{{ burst_node.node_type }}'
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.livestatus.tooltip.system">
     <div class="panel panel-default svg-tooltip">
         <div class="panel-heading">
-            {{ tooltip_content.display_name }}
+            <b>System</b>
+            {{ burst_node.check }}
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.livestatus.tooltip.devicegroup">
+    <div class="panel panel-default svg-tooltip">
+        <div class="panel-heading">
+            <b>DeviceGroup</b>
+            {{ burst_node.check }}
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.livestatus.tooltip.device">
+    <div class="panel panel-default svg-tooltip">
+        <div class="panel-heading">
+            <b>Device {{ burst_node.check.display_name }}</b>
         </div>
         <div class="svg-tooltip-content">
-            <table class="table-condensed" >
+            <table class="table table-condensed">
                 <tbody>
-                    <tr ng-if="tooltip_content.host_name">
-                        <td><b>Host:</b></td>
-                        <td>{{ tooltip_content.host_name }}</td>
+                    <tr ng-if="burst_node.check.plugin_output">
+                        <td><label>Output</label></td>
+                        <td>{{ burst_node.check.plugin_output }}</td>
                     </tr>
-                    <tr ng-if="tooltip_content.plugin_output">
-                        <td><b>Output:</b></td>
-                        <td>{{ tooltip_content.plugin_output }}</td>
-                    </tr>
-                    <tr ng-if="tooltip_content.last_check">
-                        <td class="text-nowrap">
-                            <b>Last Check:</b>
+                    <tr ng-if="burst_node.check.last_check">
+                        <td class="text-nowrap"><label>Last check</label></td>
+                        <td>
+                            {{ burst_node.check.last_check * 1000 | date: 'yyyy-MM-dd HH:mm' }}
                         </td>
-                        <td>{{ tooltip_content.last_check * 1000 | date: 'yyyy-MM-dd HH:mm' }}</td>
+                    </tr>
+                </tbody>
+           </table>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.livestatus.tooltip.service">
+    <div class="panel panel-default svg-tooltip">
+        <div class="panel-heading">
+            <b>Service '{{ burst_node.check.display_name }}'</b>
+        </div>
+        <div class="svg-tooltip-content">
+            <table class="table table-condensed">
+                <tbody>
+                    <tr ng-if="burst_node.check.host_name">
+                        <td><label>Host</label></td>
+                        <td>{{ burst_node.check.host_name }}</td>
+                    </tr>
+                    <tr ng-if="burst_node.check.plugin_output">
+                        <td><label>Output</label></td>
+                        <td>{{ burst_node.check.plugin_output }}</td>
+                    </tr>
+                    <tr ng-if="burst_node.check.last_check">
+                        <td class="text-nowrap"><label>Last check</label></td>
+                        <td>
+                            {{ burst_node.check.last_check * 1000 | date: 'yyyy-MM-dd HH:mm' }}
+                        </td>
                     </tr>
                 </tbody>
            </table>

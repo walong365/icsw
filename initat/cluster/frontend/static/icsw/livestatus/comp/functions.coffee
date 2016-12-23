@@ -116,13 +116,21 @@ angular.module(
 (
     $q, icswSaltMonitoringResultService,
 ) ->
+    ALLOWED_NODE_TYPES = ["system", "devicegroup", "device", "service", "category"]
     class icswStructuredBurstNode
-        constructor: (@parent, @name, @idx, @check, args) ->
+        constructor: (@parent, @node_type, @name, @idx, @check, args) ->
             # attributes:
             # o root (top level element)
             # o parent (parent element)
+            # node_type (one of system, devicegroup, device, service or category)
+            # idx (unique for the burst or null / undefined)
             # name
             # check (may also be a dummy dict)
+            #
+            # check node_type
+            if @node_type not in ALLOWED_NODE_TYPES
+                throw new Error("node type '#{@node_type}' not allowed")
+            # for balancing
             @value = 1
             # childre lookup table
             @lut = {}
@@ -368,7 +376,7 @@ angular.module(
                     else
                         _path = ring_segment_path(inner, outer, start_arc, end_arc)
                     # _el is a path element, (nearly) ready to be rendered via SVG
-                    # $$segment is the pointer to the StructuredBurstNode and holds important flags and
+                    # $$burstNode is the pointer to the StructuredBurstNode and holds important flags and
                     #    structural information
                     # $$service is the pointer to the linked service check (may be a dummy check)
                     if not srvc.$$data?
@@ -376,7 +384,7 @@ angular.module(
                     _el = {
                         key: "path.#{key_prefix}.#{_idx}"
                         d: _path
-                        $$segment: node
+                        $$burstNode: node
                         # link to check (node or device or devicegroup or system)
                         $$service: srvc
                         className: srvc.$$icswStateSvgClass
@@ -467,6 +475,7 @@ angular.module(
         # build burst for monitoring data (system -> group -> device -> check)
         _root_node = new icswStructuredBurstNode(
             null
+            "system"
             "System"
             0
             icswSaltMonitoringResultService.get_system_entry("System")
@@ -487,6 +496,7 @@ angular.module(
                     # add device group ring
                     _devg = new icswStructuredBurstNode(
                         _root_node
+                        "devicegroup"
                         devg.name
                         devg.idx
                         icswSaltMonitoringResultService.get_device_group_entry(devg.name)
@@ -496,6 +506,7 @@ angular.module(
                 # _devg holds now the structured node for the device group
                 _dev = new icswStructuredBurstNode(
                     _devg
+                    "device"
                     dev.name
                     dev.idx
                     host
@@ -503,11 +514,21 @@ angular.module(
                 for service in host.$$service_list
                     # check for filter
                     if service.$$idx in _sts
-                        new icswStructuredBurstNode(_dev, service.description, service.$$idx, service, {filter: true})
+                        new icswStructuredBurstNode(
+                            _dev
+                            "service"
+                            service.description
+                            service.$$idx
+                            service
+                            {
+                                filter: true
+                            }
+                        )
                 if not _dev.children.length
                     # add dummy service for devices without services
                     new icswStructuredBurstNode(
                         _dev
+                        "service"
                         ""
                         0
                         icswSaltMonitoringResultService.get_dummy_service_entry("---")
@@ -559,6 +580,7 @@ angular.module(
         # root node for unspecified categories
         uncat_root_node = new icswStructuredBurstNode(
             null
+            "category"
             "uncat"
             0
             icswSaltMonitoringResultService.get_dummy_service_entry("uncategorized")
@@ -583,6 +605,7 @@ angular.module(
                 _cat = cat_tree.lut[root_pk]
                 _root_node = new icswStructuredBurstNode(
                     uncat_root_node
+                    "category"
                     _cat.full_name
                     root_pk
                     icswSaltMonitoringResultService.get_dummy_service_entry(_cat.full_name)
@@ -597,6 +620,7 @@ angular.module(
                         touched_parents.push(_parent_pk)
                     sub_node = new icswStructuredBurstNode(
                         node_lut[_parent_pk]
+                        "category"
                         _cat.full_name
                         _pk
                         icswSaltMonitoringResultService.get_dummy_service_entry(_cat.full_name)
@@ -609,6 +633,7 @@ angular.module(
                     dummy_idx--
                     sub_node = new icswStructuredBurstNode(
                         node_lut[_dummy_pk]
+                        "category"
                         "dummy"
                         dummy_idx
                         icswSaltMonitoringResultService.get_dummy_service_entry("omitted", 10)

@@ -1148,6 +1148,7 @@ angular.module(
                     struct.divlayer.css('top', "-10000px")
                     struct.divlayer = undefined
 
+            # link with confighelper
              scope.helper.tooltip = struct
     }
 

@@ -45,8 +45,8 @@ angular.module(
             _path_el = @props.element
             # focus element
             _cls = "sb-lines #{_path_el.$$service.$$data.svgClassName}"
-            if @props.element.$$segment?
-                _bn = @props.element.$$segment
+            if @props.element.$$burstNode?
+                _bn = @props.element.$$burstNode
                 # console.log "*", @props
                 if _bn.sel_by_child or _bn.sel_by_parent
                     _cls = "#{_cls} svg-sel"
@@ -58,20 +58,20 @@ angular.module(
                 onMouseMove: @props.draw_parameters.tooltip.pos
                 onMouseLeave: @on_mouse_leave
                 onClick: (event) =>
-                    if @props.element.$$segment
-                        @props.focus_cb("click", @props.element.$$segment)
+                    if @props.element.$$burstNode
+                        @props.focus_cb("click", @props.element.$$burstNode)
             }
             return path(_segment)
 
         on_mouse_enter: (event) ->
-            if @props.element.$$segment?
-                @props.draw_parameters.tooltip.show(@props.element.$$service)
-                @props.focus_cb("enter", @props.element.$$segment)
+            if @props.element.$$burstNode?
+                @props.draw_parameters.tooltip.show(@props.element.$$burstNode)
+                @props.focus_cb("enter", @props.element.$$burstNode)
 
         on_mouse_leave: (event) ->
-            if @props.element.$$segment?
-                @props.focus_cb("leave", @props.element.$$segment)
+            if @props.element.$$burstNode?
                 @props.draw_parameters.tooltip.hide()
+                @props.focus_cb("leave", @props.element.$$burstNode)
             # @props.clear_focus()
             # console.log "ml"
             # @setState({focus: false})
@@ -129,7 +129,7 @@ angular.module(
             _path_el = @props.element
 
             # add info
-            if _path_el.$$segment? and not _path_el.$$segment.placeholder
+            if _path_el.$$burstNode? and not _path_el.$$burstNode.placeholder
                 _g_list = []
                 {text_radius, text_width} = @props.draw_parameters
                 _sx = _path_el.$$mean_radius * Math.cos(_path_el.$$mean_arc)
@@ -343,8 +343,8 @@ angular.module(
                     ) for _element in root_node.element_list
                 )
                 for _element in root_node.element_list
-                    if _element.$$segment?
-                        _seg = _element.$$segment
+                    if _element.$$burstNode?
+                        _seg = _element.$$burstNode
                         if _seg.show_legend and false
                             _g_list.push(
                                 React.createElement(
