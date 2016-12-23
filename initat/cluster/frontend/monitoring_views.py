@@ -234,19 +234,16 @@ class DummyLogger(object):
         logger.log(log_level, u"[DL] {}".format(what))
 
 
-class get_node_status(View):
+class NodeStatusViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-
+    def get_all(self, request):
         def _to_fqdn(_vals):
             if _vals[2]:
                 return u"{}.{}".format(_vals[1], _vals[2])
             else:
                 return _vals[1]
 
-        _post = request.POST
-        pk_list = json.loads(_post["pk_list"])
+        pk_list = json.loads(request.data["pk_list"])
         srv_com = server_command.srv_command(command="get_node_status")
         # noinspection PyUnresolvedReferences
         # print list(device.objects.filter(Q(pk__in=pk_list)).values_list("pk", "name", "domain_tree_node__full_name"))
@@ -260,15 +257,16 @@ class get_node_status(View):
                 ).values_list("pk", "name", "domain_tree_node__full_name")
             ]
         )
-        result = contact_server(
+        result, log_lines = contact_server(
             request,
             icswServiceEnum.monitor_server,
             srv_com,
             timeout=30,
-            connect_port_enum=icswServiceEnum.monitor_slave
+            connect_port_enum=icswServiceEnum.monitor_slave,
         )
         _eco = server_mixins.EggConsumeObject(DummyLogger())
         _eco.init({"SERVICE_ENUM_NAME": icswServiceEnum.monitor_server.name})
+        _result = {"messages": log_lines}
         if result:
             # print result.pretty_print()
             host_results = result.xpath(".//ns:host_result/text()", smart_strings=False)
@@ -300,15 +298,19 @@ class get_node_status(View):
                         else:
                             any_locked = True
             if any_locked:
-                request.xml_response.warn(
-                    "Some entries got no ova and are therefore not displayed."
+                _result["messages"].append(
+                    (
+                        logging_tools.LOG_LEVEL_WARN,
+                        "Some entries got no ova and are therefore not displayed.",
+                    )
                 )
 
             # import pprint
             # pprint.pprint(host_results_filtered)
             # simply copy json dump
-            request.xml_response["host_result"] = json.dumps(host_results_filtered)
-            request.xml_response["service_result"] = json.dumps(service_results_filtered)
+            _result["host_result"] = host_results_filtered
+            _result["service_result"] = service_results_filtered
+        return Response(_result)
 
 
 class get_mon_vars(View):

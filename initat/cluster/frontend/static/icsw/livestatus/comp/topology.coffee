@@ -81,7 +81,7 @@ angular.module(
         gen_path_dict = (_path, tooltip_obj) ->
             path_data = _.pickBy(_path, (value, key) -> return not key.match(/\$/))
             path_data.onMouseEnter = (e) ->
-                tooltip_obj.show(_path.$$service)
+                tooltip_obj.show(_path.$$burstNode)
             path_data.onMouseMove = tooltip_obj.pos
             path_data.onMouseLeave = (event) -> tooltip_obj.hide()
             path_data

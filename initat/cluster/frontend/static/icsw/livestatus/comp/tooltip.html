@@ -32,6 +32,10 @@
         <div class="svg-tooltip-content">
             <table class="table table-condensed">
                 <tbody>
+                    <tr>
+                        <td><label>State</label></td>
+                        <td ng-class="burst_node.check.$$data.tdStateClass">{{ burst_node.check.$$data.StateString }}</td>
+                    </tr>
                     <tr ng-if="burst_node.check.plugin_output">
                         <td><label>Output</label></td>
                         <td>{{ burst_node.check.plugin_output }}</td>
@@ -60,6 +64,10 @@
                         <td><label>Host</label></td>
                         <td>{{ burst_node.check.host_name }}</td>
                     </tr>
+                    <tr>
+                        <td><label>State</label></td>
+                        <td ng-class="burst_node.check.$$data.tdStateClass">{{ burst_node.check.$$data.StateString }}</td>
+                    </tr>
                     <tr ng-if="burst_node.check.plugin_output">
                         <td><label>Output</label></td>
                         <td>{{ burst_node.check.plugin_output }}</td>
@@ -72,6 +80,53 @@
                     </tr>
                 </tbody>
            </table>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.livestatus.tooltip.serviceoverview">
+    <div class="panel panel-default svg-tooltip">
+        <div class="panel-heading">
+            <b>ServiceOverview for '{{ burst_node.device.display_name }}' weight={{ burst_node.device.$$serviceWeight }}</b>
+        </div>
+        <div class="svg-tooltip-content">
+            <table class="table table-condensed">
+                <tbody>
+                    <tr ng-repeat="state in burst_node.state_list">
+                        <td><label>{{ state.StateString }}</label></td>
+                        <td class="text-center">
+                            {{ state.num }}
+                        </td>
+                    </tr>
+                </tbody>
+           </table>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.livestatus.tooltip.category">
+    <div class="panel panel-default svg-tooltip">
+        <div class="panel-heading">
+            <b>Category {{ burst_node.category.full_name }}</b>
+        </div>
+        <div class="svg-tooltip-content">
+            <table class="table table-condensed">
+                <tbody>
+                    <tr>
+                        <td>Type</td>
+                        <td>
+                            <span ng-show="burst_node.category.physical">Physical</span>
+                            <span ng-show="!burst_node.category.physical">Structural</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Depth</td>
+                        <td>
+                            {{ burst_node.category.depth }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </script>

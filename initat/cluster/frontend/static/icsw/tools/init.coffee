@@ -1308,6 +1308,7 @@ angular.module(
     $q, $timeout,
 ) ->
     return (info, timeout=0) ->
+        timeout = 0
         if timeout
             info = "#{info}, closing in #{timeout / 1000} seconds"
         d = $q.defer()

@@ -387,7 +387,7 @@ angular.module(
                         $$burstNode: node
                         # link to check (node or device or devicegroup or system)
                         $$service: srvc
-                        className: srvc.$$icswStateSvgClass
+                        className: srvc.$$data.svgClassName
                     }
                     if _ia
                         # add values for interactive display
@@ -585,7 +585,7 @@ angular.module(
             0
             icswSaltMonitoringResultService.get_dummy_service_entry("uncategorized")
             {
-                category: {idx: 0}
+                category: {idx: 0, depth: 0}
             }
         )
         # node lut
@@ -609,6 +609,9 @@ angular.module(
                     _cat.full_name
                     root_pk
                     icswSaltMonitoringResultService.get_dummy_service_entry(_cat.full_name)
+                    {
+                        category: _cat
+                    }
                 )
                 node_lut[root_pk] = _root_node
             else

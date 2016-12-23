@@ -97,14 +97,14 @@
 </script>
 
 <script type="text/ng-template" id="icsw.livestatus.mon.table.row">
-    <td ng-class="service.$$host_mon_result.$$icswStateClass" class="text-nowrap">
+    <td ng-class="service.$$host_mon_result.$$data.tdStateClass" class="text-nowrap">
         <icsw-tools-button
             size="xs"
             type="display"
             icsw-value=""
             ng-click="focus_device($event, service.$$host_mon_result)"
         ></icsw-tools-button>
-        <button type="button" class="btn btn-xs" ng-class="service.$$host_mon_result.$$icswStateBtnClass" ng-click="show_device($event, service.$$host_mon_result)">
+        <button type="button" class="btn btn-xs" ng-class="service.$$host_mon_result.$$data.btnStateClass" ng-click="show_device($event, service.$$host_mon_result)">
             {{ service.$$host_mon_result.display_name }}
         </button>
     </td>
@@ -117,10 +117,10 @@
     <td ng-show="show_column.DevCats" class="text-nowrap">
         {{ service.$$host_mon_result.$$icswCategories }}
     </td>
-    <td class="text-nowrap" ng-show="show_column.State" ng-class="service.$$icswStateClass">
+    <td class="text-nowrap" ng-show="show_column.State" ng-class="service.$$data.tdStateClass">
         {{ service.$$data.StateString }}
     </td>
-    <td ng-show="show_column.State" ng-class="service.$$icswStateClass">
+    <td ng-show="show_column.State" ng-class="service.$$data.tdStateClass">
         <span ng-show="show_column.StateType" class="badge">{{ service.$$icswStateTypeString|capitalize }}</span>
     </td>
     <td class="text-nowrap" ng-show="show_column.Description">{{ service.display_name }}</td>
@@ -142,6 +142,9 @@
 
 <script type="text/ng-template" id="icsw.livestatus.device.table.view">
     <div uib-alert class="alert-warning" ng-show="!struct.monitoring_data.hosts.length">No Device Results</div>
+    <icsw-livestatus-tooltip
+        icsw-set-tooltip-target="set_tooltip($event, struct)"
+    ></icsw-livestatus-tooltip>
     <table
         st-table="entries_displayed"
         st-safe-src="struct.source_list"
@@ -212,7 +215,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.livestatus.device.table.row">
-    <td ng-class="host.$$icswStateClass" class="text-nowrap">
+    <td ng-class="host.$$data.tdStateClass" class="text-nowrap">
         <icsw-tools-button
             size="xs"
             type="display"
@@ -222,25 +225,28 @@
         <button
             type="button"
             class="btn btn-xs"
-            ng-class="host.$$icswStateBtnClass"
+            ng-class="host.$$data.btnStateClass"
             ng-click="show_device($event, host)"
         >{{ host.display_name }}</button>
     </td>
     <td ng-show="show_column.Services" class="text-center">
-        <icsw-livestatus-device-service-overview mon-device="host"></icsw-livestatus-device-service-overview>
+        <icsw-livestatus-device-service-overview
+            mon-device="host"
+            icsw-tooltip="struct.tooltip"
+        ></icsw-livestatus-device-service-overview>
     </td>
     <td ng-show="show_column.DevCats" class="text-nowrap">
         {{ host.$$icswCategories }}
     </td>
-    <td class="text-nowrap" ng-show="show_column.State" ng-class="host.$$icswStateClass">
+    <td class="text-nowrap" ng-show="show_column.State" ng-class="host.$$data.tdStateClass">
         {{ host.$$data.StateString }}
     </td>
-    <td ng-show="show_column.State" ng-class="host.$$icswStateClass">
+    <td ng-show="show_column.State" ng-class="host.$$data.tdStateClass">
         <span ng-show="show_column.StateType" class="badge">{{ host.$$icswStateTypeString }}</span>
     </td>
     <td class="text-nowrap text-center" ng-show="show_column.Flags">
         <span class="label text-center" ng-class="host.$$icswAttemptLabelClass" title="attempt info">{{ host.$$icswAttemptInfo }}</span>
-        <span class="fa fa-pencil" title="acknowledgment status" ng-show="host.acknowledged == '1'"></span>
+        <span class="fa fa-pencil cursorpointer" title="acknowledgment status" ng-show="host.acknowledged == '1'"></span>
         <span ng-show="host.$$numComments" title="number of comments">{{ host._comments.length }}</span>
         <span ng-show="host.$$icswPassiveCheck" title="host is passive checked" class="glyphicon glyphicon-download"></span>
     </td>

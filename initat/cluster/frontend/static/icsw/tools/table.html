@@ -30,7 +30,7 @@
                 </span>
 
                 <span ng-if="numPages < 6 && !noNumberOfElements">
-                    showing Entries
+                    showing
                     <span ng-if="table_controller.getFilteredCollection().length == 0">0</span>
                     <span ng-if="table_controller.getFilteredCollection().length > 0">{{ ((currentPage-1)  * stItemsByPage) + 1 }}</span>
                     to
@@ -44,7 +44,6 @@
 
         <span class="table-entry-block">
             <span> <!-- ng-show= pagSettings.conf.modify_epp -->
-                show
                 <div class="form-group">
                     <select class="form-control input-sm" ng-model="stItemsByPage" ng-options="value as value for value in possibleItemsByPage"></select>
                 </div>

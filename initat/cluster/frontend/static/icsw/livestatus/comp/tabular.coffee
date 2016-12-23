@@ -339,7 +339,12 @@ angular.module(
         source_list: []
         # current page (saved for focus)
         saved_page: 0
+        # tooltip structure
+        tooltip: undefined
     }
+
+    $scope.set_tooltip = ($event, tt) ->
+        $scope.struct.tooltip = tt
 
     # pagination control
     $scope.pag_control = {
@@ -495,6 +500,7 @@ angular.module(
         displayName: "DeviceServiceOverview"
         propTypes: {
             mon_device: React.PropTypes.object
+            tooltip: React.PropTypes.object
         }
         getInitialState: () ->
             return {}
@@ -521,8 +527,8 @@ angular.module(
             idx = 0
             state_idxs = _.keys(state_lut)
             state_idxs.sort()
-            title_str = ["w=#{dev.$$serviceWeight}"]
-            # rect list and title string
+            # rect list and title
+            state_list = []
             for state_idx in state_idxs
                 state = state_lut[state_idx]
                 _rect_list.push(
@@ -537,7 +543,7 @@ angular.module(
                         }
                     )
                 )
-                title_str.push("#{state.num} #{state.info}")
+                state_list.push(state)
                 idx += state.num
             # border
             _rect_list.push(
@@ -555,12 +561,23 @@ angular.module(
             return div(
                 {
                     key: "top"
-                    title: title_str.join(", ")
                 }
                 svg(
                     {
                         width: "#{_w}px"
                         height: "#{_h}px"
+                        onMouseEnter: (event) =>
+                            @props.tooltip.show(
+                                {
+                                    node_type: "serviceoverview"
+                                    device: dev
+                                    state_list: state_list
+                                }
+                            )
+                        onMouseMove: (event) =>
+                            @props.tooltip.pos(event)
+                        onMouseLeave: (event) =>
+                            @props.tooltip.hide()
                     }
                     _rect_list
                 )
@@ -581,6 +598,7 @@ angular.module(
                     icswLivestatusDeviceServiceOverviewReact
                     {
                         mon_device: scope.$eval(attrs.monDevice)
+                        tooltip: scope.$eval(attrs.icswTooltip)
                     }
                 )
                 $(element)[0]

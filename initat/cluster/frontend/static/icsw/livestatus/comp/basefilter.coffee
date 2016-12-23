@@ -794,7 +794,7 @@ angular.module(
 
             scope.filter_changed = () ->
                 _cur_fs = scope.filter.get_filter_state_str()
-                console.log "fs=", _cur_fs
+                # console.log "fs=", _cur_fs
                 scope.struct.cur_filter = scope.filter_list[0]
                 for entry in scope.filter_list
                     if entry.filter_str == _cur_fs

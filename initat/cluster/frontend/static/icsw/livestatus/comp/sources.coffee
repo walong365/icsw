@@ -185,6 +185,8 @@ angular.module(
             iconFaName: "fa-check"
             StateString: "Up"
             pycode: "UP"
+            # for tabluar output
+            tdStateClass: "success"
             # for ordering
             orderint: -10
             height: 15
@@ -200,6 +202,7 @@ angular.module(
             iconFaName: "fa-bolt"
             StateString: "Down"
             pycode: "D"
+            tdStateClass: "danger"
             # for ordering
             orderint: -8
             height: 30
@@ -213,6 +216,7 @@ angular.module(
             iconFaName: "fa-warning"
             StateString: "Unreachable"
             pycode: "UR"
+            tdStateClass: "danger"
             # for ordering
             orderint: -6
             height: 22
@@ -226,6 +230,7 @@ angular.module(
             iconFaName: "fa-question-circle-o"
             StateString: "Not set"
             pycode: "U"
+            tdStateClass: "warning"
             # for ordering
             orderint: -4
             height: 18
@@ -240,6 +245,7 @@ angular.module(
             StateString: "Not Monitored"
             # not present in code
             pycode: "???"
+            tdStateClass: "default"
             # for ordering
             orderint: 0
             height: 30
@@ -253,6 +259,7 @@ angular.module(
             iconFaName: "fa-circle-o"
             StateString: "pending"
             pycode: "UD"
+            tdStateClass: "default"
             orderint: -5
             height: 18
             weight: 6
@@ -268,6 +275,7 @@ angular.module(
             StateString: "Omitted"
             weigth: 0
             pycode: "???"
+            tdStateClass: "default"
             orderint: 0
             height: 0
             ws_weight: 0
@@ -284,6 +292,8 @@ angular.module(
             weight: 1
             weight: 0
             pycode: "O"
+            # for tabular output
+            tdStateClass: "success"
             # for ordering
             orderint: -10
             height: 15
@@ -297,6 +307,7 @@ angular.module(
             StateString: "Warning"
             weight: 1
             pycode: "W"
+            tdStateClass: "warning"
             # for ordering
             orderint: -9
             height: 22
@@ -310,6 +321,7 @@ angular.module(
             StateString: "Critical"
             weight: 5
             pycode: "C"
+            tdStateClass: "danger"
             # for ordering
             orderint: -8
             height: 30
@@ -323,6 +335,7 @@ angular.module(
             StateString: "Unknown"
             weight: 10
             pycode: "U"
+            tdStateClass: "danger"
             # for ordering
             orderint: -5
             height: 18
@@ -336,6 +349,7 @@ angular.module(
             StateString: "unmon"
             weight: 2
             pycode: "???"
+            tdStateClass: "default"
             # for ordering
             orderint: -4
             height: 30
@@ -349,6 +363,7 @@ angular.module(
             StateString: "pending"
             weight: 3
             pycode: "UD"
+            tdStateClass: "default"
             # for ordering
             orderint: -3
             height: 18
@@ -363,6 +378,7 @@ angular.module(
             StateString: "Omitted"
             weigth: 0
             pycode: "???"
+            tdStateClass: "default"
             orderint: 0
             height: 0
             ws_weight: 0
@@ -375,6 +391,7 @@ angular.module(
     _orderint_device_lut = {}
     for key, value of _device_lut
         value.idx = parseInt(key)
+        value.btnStateClass = "btn-#{value.tdStateClass}"
         _py_device_lut[value.pycode] = value
         _orderint_device_lut[value.orderint] = value
 
@@ -382,6 +399,7 @@ angular.module(
     _ordering_service_lut = {}
     for key, value of _service_lut
         value.idx = parseInt(key)
+        value.btnStateClass = "btn-#{value.tdStateClass}"
         _py_service_lut[value.pycode] = value
         _ordering_service_lut[value.orderint] = value
 
@@ -401,52 +419,9 @@ angular.module(
 
     salt_device_state = (entry) ->
         entry.$$data = _device_lut[entry.state]
-        #    0: "svg-dev-up"
-        #    1: "svg-srv-warn"
-        #    2: "svg-srv-crit"
-        #    3: "svg-dev-unknown"
-        #    4: "svg-dev-unknown"
-        #    5: "svg-dev-unknown"
-        # }[entry.state]
-        _r_str = {
-            0: "success"
-            1: "danger"
-            2: "danger"
-            3: "warning"
-            4: "default"
-            5: "default"
-        }[entry.state]
-        entry.$$icswStateClass = _r_str
-        entry.$$icswStateSvgClass = _device_lut[entry.state].svgClassName
-        # entry.$$icswStateLabelClass = "label-#{_r_str}"
-        entry.$$icswStateTextClass = "text-#{_r_str}"
-        entry.$$icswStateBtnClass = "btn-#{_r_str}"
 
     salt_service_state = (entry) ->
-        _r_str = {
-            0: "success"
-            1: "warning"
-            2: "danger"
-            3: "danger"
-            # special state: unmonitored
-            4: "default"
-            # special state: pending
-            5: "default"
-        }[entry.state]
-        # if entry.state == 0 and entry.last_
         entry.$$data = _service_lut[entry.state]
-        #    0: "svg-srv-ok"
-        #    1: "svg-srv-warn"
-        #    2: "svg-srv-crit"
-        #    3: "svg-danger"
-        #    4: "svg-srv-unknown"
-        #    5: "svg-srv-unknown"
-        # }[entry.state]
-        entry.$$icswStateClass = _r_str
-        entry.$$icswStateSvgClass = _service_lut[entry.state].svgClassName
-        # entry.$$icswStateLabelClass = "label-#{_r_str}"
-        entry.$$icswStateTextClass = "text-#{_r_str}"
-        entry.$$icswStateBtnClass = "btn-#{_r_str}"
 
     salt_host = (entry, device_tree, cat_tree, device_cat_pks) ->
         if not entry.$$icswSalted?
@@ -820,9 +795,11 @@ angular.module(
 [
     "ICSW_URLS", "$interval", "$timeout", "icswSimpleAjaxCall", "$q", "icswDeviceTreeService",
     "icswMonitoringResult", "icswSaltMonitoringResultService", "icswCategoryTreeService", "icswTools",
+    "Restangular",
 (
     ICSW_URLS, $interval, $timeout, icswSimpleAjaxCall, $q, icswDeviceTreeService,
     icswMonitoringResult, icswSaltMonitoringResultService, icswCategoryTreeService, icswTools,
+    Restangular,
 ) ->
     # dict: device.idx -> watcher ids
     watch_dict = {}
@@ -889,12 +866,10 @@ angular.module(
                     watched_devs.push(dev)
 
             _waiters = [
-                icswSimpleAjaxCall(
-                    url: ICSW_URLS.MON_GET_NODE_STATUS
-                    data: {
+                Restangular.all(ICSW_URLS.MON_GET_NODE_STATUS.slice(1)).post(
+                    {
                         pk_list: angular.toJson(watched_devs)
                     }
-                    show_error: false
                 )
             ]
             if not device_tree?
@@ -923,11 +898,11 @@ angular.module(
                     _unknown_hosts = (parseInt(_idx) for _idx in watched_devs)
                     if result[0].state == "fulfilled"
                         # fill service and host_entries, used cats
-                        xml = result[0].value
-                        $(xml).find("value[name='service_result']").each (idx, node) =>
-                            service_entries = service_entries.concat(angular.fromJson($(node).text()))
-                        $(xml).find("value[name='host_result']").each (idx, node) =>
-                            host_entries = host_entries.concat(angular.fromJson($(node).text()))
+                        # extract pure json
+                        json = result[0].value.plain()
+                        # json rules
+                        service_entries = json.service_result
+                        host_entries = json.host_result
                         # get all device cats
                         _dev_cat_pks = (_entry.idx for _entry in category_tree.list when _entry.full_name.match(/\/device\//))
                         for entry in host_entries
@@ -975,6 +950,8 @@ angular.module(
                                     for check in entry.$$service_list
                                         services_client.push(check)
                         _result.update(hosts_client, services_client, mon_cat_counters, device_cat_counters)
+                (error) ->
+                    console.error "Livestatus error:", error
             )
 
     return {

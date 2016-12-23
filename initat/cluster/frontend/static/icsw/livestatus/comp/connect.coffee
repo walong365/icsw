@@ -1143,6 +1143,7 @@ angular.module(
         restrict: "EA"
         scope: {
             con_element: "=icswConnectElement"
+            set_tooltip_target: "&icswSetTooltipTarget"
         }
         link: (scope, element, attrs) ->
             struct = {
@@ -1155,6 +1156,7 @@ angular.module(
             }
 
             struct.show = (bnode) ->
+                # bnode is an object with the propery node_type
                 if struct.divlayer
                     if struct.node_type and struct.node_type != bnode.node_type
                         # remove old divlayer
@@ -1173,6 +1175,7 @@ angular.module(
                 struct.is_shown = true
                 # display variables
                 scope.burst_node = bnode
+                console.log "bn=", bnode
                 scope.$apply()
                 return
 
@@ -1194,8 +1197,11 @@ angular.module(
                     scope.is_shown = false
                     scope.burst_node = null
 
-            # link
-            scope.con_element.tooltip = struct
             struct.hide()
+            # link
+            if scope.con_element?
+                scope.con_element.tooltip = struct
+            else
+                scope.set_tooltip_target({struct: struct})
     }
 ])
