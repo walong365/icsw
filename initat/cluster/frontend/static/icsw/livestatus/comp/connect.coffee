@@ -1125,11 +1125,9 @@ angular.module(
 
     }
 ]).controller("icswConnectElementCtrl", [
-    "$scope", "icswRouteHelper", "$templateCache", "$compile", "$q",
-    "$state",
+    "$scope",
 (
-    $scope, icswRouteHelper, $templateCache, $compile, $q,
-    $state,
+    $scope,
 ) ->
     $scope.close = () ->
         $scope.con_element.close()
