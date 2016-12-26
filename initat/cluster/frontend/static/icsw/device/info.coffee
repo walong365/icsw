@@ -437,6 +437,7 @@ angular.module(
                     $scope.edit_obj = $scope.struct.device_tree.get_group($scope.icsw_struct.edit_obj)
                 else
                     $scope.edit_obj = $scope.icsw_struct.edit_obj
+                $scope.edit_obj.$$show_atfv = false
                 create_info_fields($scope.edit_obj)
                 # console.log $scope.edit_obj
                 $scope.struct.data_valid = true

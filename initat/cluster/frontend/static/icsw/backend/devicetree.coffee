@@ -410,24 +410,34 @@ angular.module(
                 (done) =>
                     # runtime in milliseconds
                     _run_time = icswTools.get_diff_time_ms(_end - @start_time)
-                    console.log "*** enrichment_request for #{_.keys(@all_lut)} took #{_run_time}"
-                    # step 1: clear all infos
-                    for _pk, _dev of @all_devs
-                        _dev.$$_enrichment_info.clear_infos(@all_lut)
-                    # step 2: feed results
-                    for _key, _list of @defer_lut
-                        [defer, dth, en_list, en_req] = _list
-                        # filtering is done in feed_results
-                        enricher.feed_results(result, dth, en_req)
-                    # step 3: build luts
-                    for _key, _list of @defer_lut
-                        [defer, dth, en_list, en_req] = _list
-                        # build local luts
-                        (dev.$$_enrichment_info.build_luts(en_list) for dev in dth.devices)
-                        # build global luts
-                        enricher.build_g_luts(en_list, dth)
-                        # resolve
-                        defer.resolve(dth.devices)
+                    if _.keys(@all_lut).length
+                        # request was not empty
+                        console.log "*** enrichment_request for #{_.keys(@all_lut)} took #{_run_time}"
+                        # step 1: clear all infos
+                        for _pk, _dev of @all_devs
+                            _dev.$$_enrichment_info.clear_infos(@all_lut)
+                        # step 2: feed results
+                        for _key, _list of @defer_lut
+                            [defer, dth, en_list, en_req] = _list
+                            # filtering is done in feed_results
+                            enricher.feed_results(result, dth, en_req)
+                        # step 3: build luts
+                        for _key, _list of @defer_lut
+                            [defer, dth, en_list, en_req] = _list
+                            # build local luts
+                            (dev.$$_enrichment_info.build_luts(en_list) for dev in dth.devices)
+                            # build global luts
+                            enricher.build_g_luts(en_list, dth)
+                            # resolve
+                            defer.resolve(dth.devices)
+                    else
+                        # in case of an empty enrichment requests the result
+                        # object is the empty object ({})
+                        console.warn "*** empty enrichment_request took #{_run_time}"
+                        for _key, _list of @defer_lut
+                            [defer, dth, en_list, en_req] = _list
+                            # resolve
+                            defer.resolve(dth.devices)
             )
 ]).service("icswEnrichmentInfo",
 [
@@ -1080,31 +1090,6 @@ angular.module(
 
         # enrichment functions
         enrich_devices: (dth, en_list, force=false) =>
-            _resolve_local = (result, dth, en_list, defer) ->
-            # no longer needed, now handled by enrichment request
-                _reqs = $q.defer()
-                # fetch missing requirements
-                # FIXME: make this more dynamic
-                if "network_info" in en_list
-                    true
-                else
-                    _reqs.resolve("not needed")
-                _reqs.promise.then(
-                    (ok) =>
-                        # clear previous values
-                        # console.log "clear previous enrichment values"
-                        (dev.$$_enrichment_info.clear_infos(en_req) for dev in dth.devices)
-                        # console.log "set new enrichment values"
-                        # feed results back to enricher
-                        @enricher.feed_results(result, en_req)
-                        # build local luts
-                        (dev.$$_enrichment_info.build_luts(en_list) for dev in dth.devices)
-                        # build global luts
-                        @build_helper_luts(en_list, dth)
-                        # resolve with device list
-                        defer.resolve(dth.devices)
-                )
-
             # dth ... icswDeviceTreeHelper
             # en_list .. enrichment list
             defer  = $q.defer()
@@ -1132,9 +1117,9 @@ angular.module(
                                 _local_req = new icswEnrichmentRequest()
                                 # feed info
                                 _local_req.feed(dth, en_list, en_req, defer)
+                                # console.log "empty"
                                 # resolve with empty result
                                 _local_req.feed_result(@enricher, {})
-                                # _resolve_local({}, dth, en_list, defer)
                             else
                                 all_reqs.feed(dth, en_list, en_req, defer)
                         # reset list

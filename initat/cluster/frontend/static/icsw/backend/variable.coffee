@@ -41,8 +41,8 @@ angular.module(
             @init()
 
         init: () =>
-            @scope_structs = []
-            @scope_struct_lut = {}
+            @var_scope_structs = []
+            @var_scope_struct_lut = {}
             @update()
 
         update: () =>
@@ -60,32 +60,36 @@ angular.module(
                     # get dev var
                     _struct = {
                         def: entry
+                        $$name: entry.name
+                        $$description: entry.description
                     }
                     if entry.name of _inv_var_lut
                         _struct.set = true
                         _struct.var = _inv_var_lut[entry.name]
+                        _struct.$$td_class = ""
                     else
                         _struct.set = false
                         _struct.var = null
+                        _struct.$$td_class = "warning"
                     _local_list.push(_struct)
                 @add_fixed_scope(_fixed_scope, _local_list)
 
-        add_fixed_scope: (scope, local_list) =>
+        add_fixed_scope: (varscope, local_list) =>
             total_local = local_list.length
             local_set = (entry for entry in local_list when entry.set).length
             # check for existing
-            if scope.idx of @scope_struct_lut
-                _struct = @scope_struct_lut[scope.idx]
+            if varscope.idx of @var_scope_struct_lut
+                _struct = @var_scope_struct_lut[varscope.idx]
                 _struct.list.length = 0
                 for _entry in local_list
                     _struct.list.push(_entry)
             else
                 _struct = {
-                    scope: scope
+                    var_scope: varscope
                     list: local_list
                 }
-                @scope_structs.push(_struct)
-                @scope_struct_lut[scope.idx] = _struct
+                @var_scope_structs.push(_struct)
+                @var_scope_struct_lut[varscope.idx] = _struct
             _struct.num_total = total_local
             _struct.num_set = local_set
             @num_total_vars += total_local

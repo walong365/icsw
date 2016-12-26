@@ -340,24 +340,50 @@
 <script type="text/ng-template" id="icsw.device.fixed.scope.vars.overview">
     <fieldset>
         <legend>
-            Fixed Variable Fields ({{ struct.fixed_var_helper.num_used_vars }} Variables in {{ struct.fixed_var_helper.scope_structs.length }} Scopes)
-            <icsw-tools-button type="show" size="xs" is-show="struct.shown" ng-click="struct.shown = !struct.shown"></icsw-tools-button>
+            Fixed Variable Fields ({{ struct.fixed_var_helper.num_used_vars }} Variables in {{ struct.fixed_var_helper.var_scope_structs.length }} Scopes)
+            <!-- <icsw-tools-button type="show" size="xs" is-show="struct.shown" ng-click="struct.shown = !struct.shown"></icsw-tools-button> -->
         </legend>
-        <uib-tabset ng-show="struct.shown">
-            <uib-tab ng-repeat="scope_struct in struct.fixed_var_helper.scope_structs">
+        <uib-tabset> <!--  ng-show="struct.shown"> -->
+            <uib-tab ng-repeat="var_scope_struct in struct.fixed_var_helper.var_scope_structs">
                 <uib-tab-heading>
-                    {{ scope_struct.scope.name }}
+                    {{ var_scope_struct.var_scope.name }}
                 </uib-tab-heading>
-                {{ scope_struct.num_set }} of {{ scope_struct.num_total }} Variables set
-                <icsw-tools-button size="sm" type="modify" ng-click="modify_fixed_scope($event, scope_struct.scope)"></icsw-tools-button>
-                <ul class="list-group">
-                    <li class="list-group-item" ng-repeat="ivar in scope_struct.list">
-                        <code>{{ ivar.def.name }}</code>
-                        ({{ ivar.def.description }}):
-                        <span ng-show="ivar.set">{{ ivar.var.$var_value }}</span>
-                        <span ng-show="!ivar.set">N/A</span>
-                    </li>
-                </ul>
+                {{ var_scope_struct.num_set }} of {{ var_scope_struct.num_total }} Variables set
+                <icsw-tools-button size="sm" type="modify" ng-click="modify_fixed_scope($event, var_scope_struct.var_scope)"></icsw-tools-button>
+                <table
+                    st-table="vars_shown"
+                    st-safe-src="var_scope_struct.list"
+                    class="table table-condensed table-hover table-striped"
+                    style="width:auto;"
+                >
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <div
+                                    icsw-tools-pagination
+                                    st-items-by-page="20"
+                                    st-displayed-pages="11"
+                                    possible-items-by-page="10,20,50,100"
+                                ></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th st-sort="$$name">Name</th>
+                            <th st-sort="$$description">Description</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="ivar in vars_shown">
+                            <td>{{ ivar.$$name }}</td>
+                            <td>{{ ivar.$$description }}</td>
+                            <td ng-class="ivar.$$td_class" class="text-right">
+                                <span ng-show="ivar.set">{{ ivar.var.$var_value }}</span>
+                                <span ng-show="!ivar.set">N/A</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </uib-tab>
         </uib-tabset>
     </fieldset>
@@ -390,14 +416,14 @@
     <fieldset>
         <legend>
             Static Inventory Entries ({{ struct.asset_struct.num_set }} used)
-            <icsw-tools-button
+            <!-- <icsw-tools-button
                 type="show"
                 size="xs"
                 is-show="struct.shown"
                 ng-click="struct.shown = !struct.shown"
-            ></icsw-tools-button>
+            ></icsw-tools-button>-->
         </legend>
-        <div ng-show="struct.shown">
+        <div>
             <h4>
                 {{ struct.asset_struct.to_remove.length }} Inventory Entries Shown
                 <icsw-tools-button

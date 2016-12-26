@@ -530,8 +530,8 @@ device_variable_module = angular.module(
         dvs_tree: undefined
         # fixed variable helper
         fixed_var_helper: undefined
-        # toggle: show / hide
-        shown: false
+        # toggle: show / hide, no longer needed
+        # shown: false
     }
 
     _build_struct = (device) ->
@@ -566,7 +566,7 @@ device_variable_module = angular.module(
 
     $scope.modify_fixed_scope = ($event, scope) ->
         sub_scope = $scope.$new(true)
-        _struct = $scope.struct.fixed_var_helper.scope_struct_lut[scope.idx]
+        _struct = $scope.struct.fixed_var_helper.var_scope_struct_lut[scope.idx]
         # salt structure
         _slist = []
         for _struct in _struct.list
@@ -710,13 +710,13 @@ device_variable_module = angular.module(
         user: undefined
         # available assets (not set and enabled)
         num_available: 0
-        # flag: shown or not
-        shown: false
+        # flag: shown or not, no longer needed
+        # shown: false
         # asset helper struct
         asset_struct: {}
     }
 
-    _reload_assets = () ->
+    load_assets = (reload) ->
         defer = $q.defer()
         $q.all(
             [
@@ -727,7 +727,7 @@ device_variable_module = angular.module(
                         "variable_info",
                         "static_asset_info",
                     ]
-                    true
+                    reload
                 )
             ]
         ).then(
@@ -753,7 +753,7 @@ device_variable_module = angular.module(
 
             trace_devices =  $scope.struct.device_tree.get_device_trace([$scope.struct.device])
             $scope.struct.helper = icswDeviceTreeHelperService.create($scope.struct.device_tree, trace_devices)
-            _reload_assets()
+            load_assets(false)
     )
 
     $scope.delete_asset = ($event, asset) ->
@@ -765,7 +765,7 @@ device_variable_module = angular.module(
                 Restangular.restangularizeElement(null, asset, ICSW_URLS.ASSET_DEVICE_ASSET_DETAIL.slice(1).slice(0, -2))
                 asset.remove().then(
                     (del) ->
-                        _reload_assets().then(
+                        load_assets(true).then(
                             (ok) ->
                                 blockUI.stop()
                         )
@@ -822,7 +822,7 @@ device_variable_module = angular.module(
                             ) for _us in _to_add
                         ).then(
                             (new_assets) ->
-                                _reload_assets().then(
+                                load_assets(true).then(
                                     (ok) ->
                                         blockUI.stop()
                                         d.resolve("done")
@@ -868,7 +868,7 @@ device_variable_module = angular.module(
                             }
                         ).then(
                             (new_assets) ->
-                                _reload_assets().then(
+                                load_assets(true).then(
                                     (ok) ->
                                         blockUI.stop()
                                         d.resolve("done")
@@ -974,7 +974,7 @@ device_variable_module = angular.module(
                         }
                     ).then(
                         (res) ->
-                            _reload_assets().then(
+                            load_assets(true).then(
                                 (ok) ->
                                     d.resolve("done")
                             )
@@ -1097,7 +1097,7 @@ device_variable_module = angular.module(
             $scope.struct.structs.push(
                 {
                     helper: entry
-                    scope: entry.scope_struct_lut[$scope.var_scope.idx]
+                    scope: entry.var_scope_struct_lut[$scope.var_scope.idx]
                 }
             )
 ])

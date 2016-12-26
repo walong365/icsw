@@ -147,10 +147,8 @@ sources = {
         "partb.js"
         [
             # angular
-            "frontend/static/js/angular-1.6.0.js",
+            "frontend/static/js/angular-1.6.1.js",
             "frontend/static/js/lodash.js",
-            # no longer needed ... ?
-            # "frontend/static/js/bluebird.js",
             "frontend/static/js/bootstrap.js",
             "frontend/static/js/jquery.color.js",
             "frontend/static/js/jquery.blockUI.js",
