@@ -338,7 +338,8 @@ angular.module(
                             $scope.struct.data_valid = true
                             $timeout(
                                 () ->
-                                    # delay activation
+                                    # delay activation (otherwise the subcontrollers
+                                    # will simply not be here)
                                     $scope.activate_tab(null, $scope.struct.slist[0])
                                 0
                             )
