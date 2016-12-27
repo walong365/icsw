@@ -564,6 +564,9 @@ device_variable_module = angular.module(
             )
     )
 
+    $scope.toggle_only_set = ($event, var_scope) ->
+        _build_struct($scope.device)
+
     $scope.modify_fixed_scope = ($event, scope) ->
         sub_scope = $scope.$new(true)
         _struct = $scope.struct.fixed_var_helper.var_scope_struct_lut[scope.idx]

@@ -350,9 +350,10 @@
                 </uib-tab-heading>
                 {{ var_scope_struct.num_set }} of {{ var_scope_struct.num_total }} Variables set
                 <icsw-tools-button size="sm" type="modify" ng-click="modify_fixed_scope($event, var_scope_struct.var_scope)"></icsw-tools-button>
+                only set: <input type="checkbox" ng-model="var_scope_struct.only_set" ng-click="toggle_only_set($event, var_scope_struct)"/>
                 <table
                     st-table="vars_shown"
-                    st-safe-src="var_scope_struct.list"
+                    st-safe-src="var_scope_struct.filtered_list"
                     class="table table-condensed table-hover table-striped"
                     style="width:auto;"
                 >

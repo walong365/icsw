@@ -72,7 +72,8 @@ angular.module(
                         _struct.var = null
                         _struct.$$td_class = "warning"
                     _local_list.push(_struct)
-                @add_fixed_scope(_fixed_scope, _local_list)
+                scope_struct = @add_fixed_scope(_fixed_scope, _local_list)
+                @filter_scope(scope_struct)
 
         add_fixed_scope: (varscope, local_list) =>
             total_local = local_list.length
@@ -81,12 +82,15 @@ angular.module(
             if varscope.idx of @var_scope_struct_lut
                 _struct = @var_scope_struct_lut[varscope.idx]
                 _struct.list.length = 0
+                _struct.filtered_list.length = 0
                 for _entry in local_list
                     _struct.list.push(_entry)
             else
                 _struct = {
                     var_scope: varscope
                     list: local_list
+                    filtered_list: []
+                    only_set: false
                 }
                 @var_scope_structs.push(_struct)
                 @var_scope_struct_lut[varscope.idx] = _struct
@@ -94,6 +98,16 @@ angular.module(
             _struct.num_set = local_set
             @num_total_vars += total_local
             @num_used_vars += local_set
+            return _struct
+
+        filter_scope: (struct) ->
+            struct.filtered_list.length = 0
+            for entry in struct.list
+                _add = true
+                if struct.only_set and not entry.set
+                    _add = false
+                if _add
+                    struct.filtered_list.push(entry)
 
 
 ]).service("icswDeviceVariableScopeTree",
