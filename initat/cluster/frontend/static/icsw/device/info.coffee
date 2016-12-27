@@ -252,6 +252,129 @@ angular.module(
         template: $templateCache.get("icsw.device.info.tab.modify")
         scope: true
     }
+]).controller("icswSimpleDeviceInfoOverviewCtrl",
+[
+    "$scope", "Restangular", "$q", "ICSW_URLS", "$timeout", "icswTools",
+    "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
+    "icswAccessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
+    "icswDeviceTreeHelperService",
+(
+    $scope, Restangular, $q, ICSW_URLS, $timeout, icswTools,
+    $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
+    icswAccessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
+    icswDeviceTreeHelperService,
+) ->
+    icswAccessLevelService.install($scope)
+
+    $scope.struct = {
+        # data is valid
+        data_valid: false
+        # waiting clients
+        waiting_clients: 0
+        # device tree
+        device_tree: undefined
+        # structured list, includes template name
+        slist: []
+        # list unable to display (too many devs)
+        tmd_list: []
+        # active tab
+        active_tab: 0
+    }
+    # create info fields
+    create_small_info_fields = (struct) ->
+        obj = struct.edit_obj
+        if struct.is_devicegroup
+            obj.$$full_device_name = obj.name.substr(8)
+            # not really needed
+            obj.$$snmp_scheme_info = "N/A"
+            obj.$$snmp_info = "N/A"
+            obj.$$ip_info = "N/A"
+        else
+            obj.$$full_device_name = obj.full_name
+
+    $scope.new_devsel = (in_list) ->
+        $scope.struct.data_valid = false
+        if in_list.length > 0
+            $scope.struct.slist.length = 0
+            $scope.struct.tmd_list.length = 0
+            icswDeviceTreeService.load($scope.$id).then(
+                (tree) ->
+                    $scope.struct.device_tree = tree
+                    trace_devices =  $scope.struct.device_tree.get_device_trace(in_list)
+                    dt_hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, trace_devices)
+                    $q.all(
+                        [
+                            icswDomainTreeService.load($scope.$id)
+                            $scope.struct.device_tree.enrich_devices(
+                                dt_hs
+                                [
+                                    "network_info", "monitoring_hint_info", "disk_info", "com_info",
+                                    "snmp_info", "snmp_schemes_info", "scan_lock_info",
+                                ]
+                            )
+                       ]
+                    ).then(
+                        (data) ->
+                            $scope.struct.domain_tree = data[0]
+                            MAX_DEVS_TO_SHOW = 10
+                            for dev in in_list
+                                if dev.is_meta_device
+                                    new_struct = {
+                                        edit_obj: dev
+                                        is_devicegroup: true
+                                        init_called: false
+                                    }
+                                else
+                                    new_struct = {
+                                        edit_obj: dev
+                                        is_devicegroup: false
+                                        init_called: false
+                                    }
+                                create_small_info_fields(new_struct)
+                                if $scope.struct.slist.length >= MAX_DEVS_TO_SHOW
+                                    $scope.struct.tmd_list.push(new_struct)
+                                else
+                                    $scope.struct.slist.push(new_struct)
+                            $scope.struct.data_valid = true
+                            $timeout(
+                                () ->
+                                    # delay activation
+                                    $scope.activate_tab(null, $scope.struct.slist[0])
+                                0
+                            )
+                    )
+            )
+        else
+            $scope.struct.slist.length = 0
+            $scope.struct.data_valid = true
+            $scope.struct.active_tab = null
+
+    $scope.activate_tab = (event, entry) ->
+        $scope.struct.active_tab = entry.edit_obj.idx
+        $scope.$broadcast(ICSW_SIGNALS("_ICSW_DEVICE_INFO_ACTIVATE_TAB"), entry.edit_obj.idx)
+
+    $scope.show_device = (event, entry) ->
+        _.remove(
+            $scope.struct.tmd_list,
+            (el) ->
+                return el.edit_obj.idx == entry.edit_obj.idx
+        )
+        last = _.last($scope.struct.slist)
+        $scope.struct.slist.push(entry)
+        _.remove($scope.struct.slist, (el) -> return el.edit_obj.idx == last.edit_obj.idx)
+        $scope.struct.tmd_list.push(last)
+        icswTools.order_in_place(
+            $scope.struct.tmd_list
+            ["edit_obj.$$full_device_name"]
+            ["asc"]
+        )
+        icswTools.order_in_place(
+            $scope.struct.slist
+            ["edit_obj.$$full_device_name"]
+            ["asc"]
+        )
+
+
 ]).controller("icswDeviceInfoTabModifyCtrl",
 [
     "$scope", "icswDeviceOverviewTabs", "DeviceOverviewSettings", "ICSW_SIGNALS",
@@ -311,14 +434,12 @@ angular.module(
             icsw_struct: "=icswStruct"
         }
         link: (scope, element, attrs) ->
-            scope.do_init().then(
-                (done) ->
-                    if scope.icsw_struct.is_devicegroup
-                        _t_name = "icsw.devicegroup.info.form"
-                    else
-                        _t_name = "icsw.device.info.form"
-                    element.append($compile($templateCache.get(_t_name))(scope))
-            )
+            scope.install_template = () ->
+                if scope.icsw_struct.is_devicegroup
+                    _t_name = "icsw.devicegroup.info.form"
+                else
+                    _t_name = "icsw.device.info.form"
+                element.append($compile($templateCache.get(_t_name))(scope))
     }
 ]).controller("icswSimpleDeviceInfoCtrl",
 [
@@ -348,10 +469,8 @@ angular.module(
         # device group
         is_devicegroup: false
     }
-
     create_info_fields = (obj) ->
         if $scope.struct.is_devicegroup
-            obj.$$full_device_name = obj.name.substr(8)
             # not really needed
             obj.$$snmp_scheme_info = "N/A"
             obj.$$snmp_info = "N/A"
@@ -359,7 +478,6 @@ angular.module(
             hints = "---"
             cats = "---"
         else
-            obj.$$full_device_name = obj.full_name
             _sc = obj.snmp_schemes
             if _sc.length
                 obj.$$snmp_scheme_info = ("#{_entry.snmp_scheme_vendor.name}.#{_entry.name}" for _entry in _sc).join(", ")
@@ -411,12 +529,21 @@ angular.module(
             create_info_fields($scope.edit_obj)
     )
 
+    _dereg_1 = $scope.$on(ICSW_SIGNALS("_ICSW_DEVICE_INFO_ACTIVATE_TAB"), (event, idx) ->
+        if $scope.icsw_struct.edit_obj.idx == idx
+            if not $scope.icsw_struct.init_called
+                $scope.icsw_struct.init_called = true
+                $scope.do_init()
+        # console.log "*", event, idx, $scope.icsw_struct
+    )
+
     $scope.$on("$destroy", () ->
         _dereg_0()
+        _dereg_1()
     )
 
     $scope.do_init = () ->
-        defer = $q.defer()
+        # defer = $q.defer()
         $scope.struct.data_valid = false
         $scope.struct.is_devicegroup = $scope.icsw_struct.is_devicegroup
         $q.all(
@@ -441,10 +568,11 @@ angular.module(
                 create_info_fields($scope.edit_obj)
                 # console.log $scope.edit_obj
                 $scope.struct.data_valid = true
-                defer.resolve("done")
+                $scope.install_template()
+                # defer.resolve("done")
         )
 
-        return defer.promise
+        # return defer.promise
 
     $scope.modify = () ->
         if $scope.struct.is_devicegroup
@@ -530,115 +658,5 @@ angular.module(
                 # recreate info fields
                 create_info_fields($scope.edit_obj)
         )
-
-]).controller("icswSimpleDeviceInfoOverviewCtrl",
-[
-    "$scope", "Restangular", "$q", "ICSW_URLS",
-    "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
-    "icswAccessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
-    "icswDeviceTreeHelperService", "icswComplexModalService", "toaster", "$compile", "$templateCache",
-(
-    $scope, Restangular, $q, ICSW_URLS,
-    $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
-    icswAccessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
-    icswDeviceTreeHelperService, icswComplexModalService, toaster, $compile, $templateCache,
-) ->
-    icswAccessLevelService.install($scope)
-
-    $scope.struct = {
-        # data is valid
-        data_valid: false
-        # waiting clients
-        waiting_clients: 0
-        # device tree
-        device_tree: undefined
-        # domain tree
-        # devices
-        devices: []
-        # structured list, includes template name
-        slist: []
-        # list unable to display (too many devs)
-        tmd_list: []
-        # active tab
-        active_tab: 0
-    }
-    # create info fields
-    create_small_info_fields = (struct) ->
-        obj = struct.edit_obj
-        group = $scope.struct.device_tree.get_group(obj)
-        if struct.is_devicegroup
-            obj.$$full_device_name = obj.name.substr(8)
-            # not really needed
-            obj.$$snmp_scheme_info = "N/A"
-            obj.$$snmp_info = "N/A"
-            obj.$$ip_info = "N/A"
-        else
-            obj.$$full_device_name = group.full_name
-
-    $scope.new_devsel = (in_list) ->
-        $scope.struct.data_valid = false
-        if in_list.length > 0
-            $scope.struct.devices.length = 0
-            $scope.struct.slist.length = 0
-            $scope.struct.tmd_list.length = 0
-            icswDeviceTreeService.load($scope.$id).then(
-                (tree) ->
-                    $scope.struct.device_tree = tree
-                    trace_devices =  $scope.struct.device_tree.get_device_trace(in_list)
-                    dt_hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, trace_devices)
-                    $q.all(
-                        [
-                            icswDomainTreeService.load($scope.$id)
-                            $scope.struct.device_tree.enrich_devices(
-                                dt_hs
-                                [
-                                    "network_info", "monitoring_hint_info", "disk_info", "com_info",
-                                    "snmp_info", "snmp_schemes_info", "scan_lock_info",
-                                ]
-                            )
-                       ]
-                    ).then(
-                        (data) ->
-                            $scope.struct.domain_tree = data[0]
-                            MAX_DEVS_TO_SHOW = 10
-                            for dev in in_list
-                                if $scope.struct.slist.length >= MAX_DEVS_TO_SHOW
-                                    if dev.is_meta_device
-                                        $scope.struct.tmd_list.push(
-                                            {
-                                                is_devicegroup: true
-                                                name: dev.full_name.substring(8)
-                                            }
-                                        )
-                                    else
-                                        $scope.struct.tmd_list.push(
-                                            {
-                                                is_devicegroup: false
-                                                name: dev.full_name
-                                            }
-                                        )
-                                else
-                                    $scope.struct.devices.push(dev)
-                                    if dev.is_meta_device
-                                        new_struct = {
-                                            edit_obj: dev
-                                            is_devicegroup: true
-                                        }
-                                    else
-                                        new_struct = {
-                                            edit_obj: dev
-                                            is_devicegroup: false
-                                        }
-                                    $scope.struct.slist.push(new_struct)
-                                    create_small_info_fields(new_struct)
-                            $scope.struct.data_valid = true
-                            $scope.struct.active_tab = 0
-                    )
-            )
-        else
-            $scope.struct.devices.length = 0
-            $scope.struct.slist.length = 0
-            $scope.struct.data_valid = true
-            $scope.struct.active_tab = 0
 
 ])

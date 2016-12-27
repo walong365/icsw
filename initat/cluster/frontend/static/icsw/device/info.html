@@ -99,12 +99,20 @@
 <script type="text/ng-template" id="icsw.device.info.overview">
     <div class="container-fluid">
         <div uib-alert class="alert-warning" ng-if="!struct.data_valid">Fetching Data from Server ...</div>
-        <div uib-alert class="alert-warning" ng-if="struct.data_valid && struct.devices.length == 0">No Devices selected</div>
-        <uib-tabset ng-if="struct.data_valid && struct.slist.length > 1" active="struct.active_tab">
-            <uib-tab ng-repeat="entry in struct.slist">
+        <div uib-alert class="alert-warning" ng-if="struct.data_valid && structslist.length == 0">No Devices selected</div>
+        <uib-tabset
+            ng-if="struct.data_valid && struct.slist.length > 1"
+            active="struct.active_tab"
+        >
+            <uib-tab
+                ng-repeat="entry in struct.slist"
+                select="activate_tab($event, entry)"
+                index="entry.edit_obj.idx"
+            >
                 <uib-tab-heading>
                     <span ng-show="entry.edit_obj.is_meta_device" class="glyphicon glyphicon-list"></span>
-                    {{ entry.edit_obj.$$full_device_name }}
+                    <span ng-show="entry.init_called">{{ entry.edit_obj.$$full_device_name }}</span>
+                    <em ng-show="!entry.init_called">{{ entry.edit_obj.$$full_device_name }}</em>
                     <img ng-if="entry.edit_obj.mon_ext_host" ng-src="{{ entry.edit_obj.$$image_source }}" width="16"></img>
                 </uib-tab-heading>
                 <icsw-device-info-device icsw-struct="entry"></icsw-device-info-device>
@@ -116,8 +124,14 @@
                 <h4>Entries not shown</h4>
                 <ul class="list-group">
                     <li class="list-group-item" ng-repeat="entry in struct.tmd_list">
-                        <span ng-show="entry.is_devicegroup" class="glyphicon glyphicon-list"></span>
-                        {{ entry.name }}
+                        <icsw-tools-button
+                            type="create"
+                            size="xs"
+                            value="Show device"
+                            ng-click="show_device($event, entry)"
+                        ></icsw-tools-button>
+                        <span ng-show="entry.edit_obj.is_devicegroup" class="glyphicon glyphicon-list"></span>
+                        {{ entry.edit_obj.$$full_device_name }}
                     </li>
                 </ul>
             </uib-tab>
@@ -127,7 +141,6 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.info.form">
-    <div class="container-floid">
     <fieldset>
         <legend>
             Base Information for '{{ edit_obj.$$full_device_name }}'
@@ -251,33 +264,6 @@
         </div>
     </fieldset>
     <fieldset>
-        <legend>
-            Static Asset Templates and fixed Variables
-            <icsw-tools-button
-                type="show"
-                size="xs"
-                is-show="edit_obj.$$show_atfv"
-                ng-click="edit_obj.$$show_atfv = !edit_obj.$$show_atfv"
-            ></icsw-tools-button>
-        </legend>
-        <div class="panel panel-default" ng-if="edit_obj.$$show_atfv">
-            <div class="panel-body">
-                <div class="row">
-                    <div class="col-lg-6 col-md-6 col-xs-12">
-                        <icsw-device-fixed-scope-vars-overview
-                            icsw-device="edit_obj"
-                        ></icsw-device-fixed-scope-vars-overview>
-                    </div>
-                    <div class="col-lg-6 col-md-6 col-xs-12">
-                        <icsw-device-static-asset-overview
-                            icsw-device="edit_obj"
-                        ></icsw-device-static-asset-overview>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </fieldset>
-    <fieldset>
         <legend>Device Flags</legend>
         <div class="row">
             <div class="col-xs-4 col-sm-4" ng-show="struct.monitoring_tree.mon_device_templ_list.length">
@@ -338,19 +324,33 @@
             <icsw-tools-button type="modify" button-type="submit" ng-click="modify()"></icsw-tools-button>
         </div>
     </fieldset>
+    <fieldset>
+        <legend>
+            Static Asset Templates and fixed Variables
+            <icsw-tools-button
+                type="show"
+                size="xs"
+                is-show="edit_obj.$$show_atfv"
+                ng-click="edit_obj.$$show_atfv = !edit_obj.$$show_atfv"
+            ></icsw-tools-button>
+        </legend>
+        <div class="panel panel-default" ng-if="edit_obj.$$show_atfv">
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-lg-6 col-md-6 col-xs-12">
+                        <icsw-device-fixed-scope-vars-overview
+                            icsw-device="edit_obj"
+                        ></icsw-device-fixed-scope-vars-overview>
+                    </div>
+                    <div class="col-lg-6 col-md-6 col-xs-12">
+                        <icsw-device-static-asset-overview
+                            icsw-device="edit_obj"
+                        ></icsw-device-static-asset-overview>
+                    </div>
+                </div>
+            </div>
         </div>
-    <!-- <fieldset>
-        <legend>UUID Info</legend>
-        <h4>Copy the following snippet to <code>/opt/cluster/etc/cstores.d/icsw.device_config.xml</code> :</h4>
-        <pre><code>&lt;?xml version='1.0' encoding='ASCII'?&gt;
-&lt;config-store name="icsw.device"&gt;
-  &lt;key-list&gt;
-    &lt;key type="str" name="cluster.device.uuid"&gt;urn:uuid:{{ edit_obj.uuid }}&lt;/key&gt;
-  &lt;/key-list&gt;
-&lt;/config-store&gt;
-</code></pre>
-        <h4>and restart host-monitoring with <code>icsw service restart host-monitoring</code></h4>
-    </fieldset> -->
+    </fieldset>
 </script>
 
 <script type="text/ng-template" id="icsw.device.info.edit.form">
