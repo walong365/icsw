@@ -52,6 +52,8 @@ rms_module = angular.module(
     $q, $rootScope, $templateCache, $compile, $timeout,
 ) ->
     failed_lut = {
+        # the boolean in the first row makes no sense any more and is hence
+        # ignored
         0 : [true, "no failure", "ran and exited normally"]
         1 : [false, "assumedly before job", "failed early in execd"]
         3 : [false, "before writing config", "failed before execd set up local spool"]
@@ -87,7 +89,7 @@ rms_module = angular.module(
         36 : [false, "checking configured daemons", "failed because of configured remote startup daemon"]
         37 : [true, "qmaster enforced h_rt, h_cpu or h_vmem limit", "ran, but killed due to exceeding run time limit"]
         38 : [false, "adding supplementary group", "failed adding supplementary gid to job "]
-        100 : [true, "assumedly after job", "ran, but killed by a signal (perhaps due to exceeding resources), task died, shepherd died (e.g. node crash),"]
+        100 : [false, "assumedly after job", "ran, but killed by a signal (perhaps due to exceeding resources), task died, shepherd died (e.g. node crash),"]
     }
 
     exit_status_lut = {
@@ -532,10 +534,10 @@ rms_module = angular.module(
                         _span = 1
                     if attr.sort?
                         _sort = attr.sort
-                        _header_class = "bg-info cursorpointer"
+                        _header_class = "text-nowrap cursorpointer"
                     else
                         _sort = ""
-                        _header_class = "bg-info"
+                        _header_class = "text-nowrap st-never-sort"
                     @$$display_headers.push(
                         {
                             name: entry
@@ -878,13 +880,16 @@ rms_module = angular.module(
 
                 # failed state
                 if entry.failed of icswRMSTools.failed_lut
-                    [_cls, _str, _title] = icswRMSTools.failed_lut[entry.failed]
-                    if _title
-                        _glyph = "glyphicon glyphicon-ok"
+                    # _cls_flag is ignored
+                    [_cls_flag, _str, _title] = icswRMSTools.failed_lut[entry.failed]
+                    if entry.failed == 0
+                        _cls = "text-success"
+                        _glyph = "fa fa-check-square-o fa-fw"
                     else
-                        _glyph = "glyphicon glyphicon-minus"
+                        _cls = "text-danger"
+                        _glyph = "fa fa-times-rectangle fa-fw"
                 else
-                    [_cls, _str, _title, _glyph] = ["label-warning", entry.failed, "", "glyphicon glyphicon-minus"]
+                    [_cls, _str, _title, _glyph] = ["label label-warning", entry.failed, "", "fa fa-circle-o"]
                 entry.$$failed_class = _cls
                 entry.$$failed_str = _str
                 entry.$$failed_glyph = _glyph
@@ -943,7 +948,7 @@ rms_module = angular.module(
         feed_list: (in_dict) =>
             @vars = in_dict
 
-]).service("icswRMSNodeStruct",
+]).service("icswRMSQueueStruct",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSQueue", "icswRMSTools",
     "icswRMSHeaderStruct",
@@ -951,10 +956,24 @@ rms_module = angular.module(
     $q, ICSW_URLS, icswSimpleAjaxCall, icswRMSQueue, icswRMSTools,
     icswRMSHeaderStruct,
 ) ->
-    class icswRMSNodeStruct extends icswRMSHeaderStruct
+    class icswNameQueueStruct
+        constructor: (name) ->
+            @name = name
+            @search_string = ""
+            @list = []
+
+        start_feed: () =>
+            @list.length = 0
+
+        feed: (queue) =>
+            @list.push(queue)
+
+    class icswRMSQueueStruct extends icswRMSHeaderStruct
         constructor: (h_struct, struct) ->
             super("node", h_struct, struct)
-            @queue_list = []
+            @all_queue_list = []
+            @queue_by_name_list = []
+            @queue_by_name_lut = {}
             # disable display of this headers
             @hidden_headers = ["state", "slots_reserved", "slots_total"]
 
@@ -997,11 +1016,25 @@ rms_module = angular.module(
                         _rd[_name] = _value
                 return _rd
             # empty old list
-            @queue_list.length = 0
+            @all_queue_list.length = 0
 
+            _queue_names_found = []
             for entry in @list
 
+                # queue names
                 queues = entry.queues.value.split("/")
+                # check for new queue_names
+                for _name in queues
+                    if _name not in _queue_names_found
+                        _queue_names_found.push(_name)
+                        if _name not of @queue_by_name_lut
+                            # new struct
+                            new_qbn = new icswNameQueueStruct(_name)
+                            @queue_by_name_list.push(new_qbn)
+                            @queue_by_name_lut[_name] = new_qbn
+                        else
+                            new_qbn = @queue_by_name_lut[_name]
+                        new_qbn.start_feed()
                 _number_queues = queues.length
 
                 states = i_split(entry.state.value, _number_queues)
@@ -1063,9 +1096,11 @@ rms_module = angular.module(
                         queue.jobs = {value: job_dict[_vals[0]]}
                     else
                         queue.jobs = {value: ""}
-                    @queue_list.push(queue)
+                    @all_queue_list.push(queue)
+                    @queue_by_name_lut[_vals[0]].feed(queue)
                     _idx++
-            @info = "queue (#{@queue_list.length} queues on #{@list.length} nodes, #{slot_info.used} of #{slot_info.total} slots used)"
+            # todo: remove stale queues
+            @info = "queue (#{@all_queue_list.length} queues on #{@list.length} nodes, #{slot_info.used} of #{slot_info.total} slots used)"
 
 
 ]).controller("icswRMSOverviewCtrl",
@@ -1074,7 +1109,7 @@ rms_module = angular.module(
     "$q", "icswAccessLevelService", "$timeout", "ICSW_URLS", "$rootScope",
     "icswSimpleAjaxCall", "icswDeviceTreeService", "icswUserService",
     "icswRMSTools", "icswRMSHeaderStruct", "icswRMSSlotInfo", "icswRMSRunningStruct",
-    "icswRMSWaitingStruct", "icswRMSDoneStruct", "icswRMSNodeStruct",
+    "icswRMSWaitingStruct", "icswRMSDoneStruct", "icswRMSQueueStruct",
     "icswComplexModalService", "icswRMSJobVarStruct", "$window", "icswRMSSchedulerStruct",
     "icswRRDGraphUserSettingService", "icswRRDGraphBasicSetting",
 (
@@ -1082,7 +1117,7 @@ rms_module = angular.module(
     $q, icswAccessLevelService, $timeout, ICSW_URLS, $rootScope,
     icswSimpleAjaxCall, icswDeviceTreeService, icswUserService,
     icswRMSTools, icswRMSHeaderStruct, icswRMSSlotInfo, icswRMSRunningStruct,
-    icswRMSWaitingStruct, icswRMSDoneStruct, icswRMSNodeStruct,
+    icswRMSWaitingStruct, icswRMSDoneStruct, icswRMSQueueStruct,
     icswComplexModalService, icswRMSJobVarStruct, $window, icswRMSSchedulerStruct,
     icswRRDGraphUserSettingService, icswRRDGraphBasicSetting,
 ) ->
@@ -1165,7 +1200,6 @@ rms_module = angular.module(
             running: ""
             waiting: ""
             done: ""
-            node: ""
         }
         # rms structs
         rms: {}
@@ -1226,7 +1260,7 @@ rms_module = angular.module(
                     running: new icswRMSRunningStruct(data[2].running_headers, $scope.struct)
                     waiting: new icswRMSWaitingStruct(data[2].waiting_headers, $scope.struct)
                     done: new icswRMSDoneStruct(data[2].done_headers, $scope.struct)
-                    node: new icswRMSNodeStruct(data[2].node_headers, $scope.struct)
+                    queue: new icswRMSQueueStruct(data[2].node_headers, $scope.struct)
                     sched: new icswRMSSchedulerStruct($scope.struct)
                 }
                 # apply user settings
@@ -1295,7 +1329,7 @@ rms_module = angular.module(
 
                     $scope.struct.rms.running.feed_list(json.run_table, json.files)
                     $scope.struct.rms.waiting.feed_list(json.wait_table)
-                    $scope.struct.rms.node.feed_list(json.node_table, json.node_values)
+                    $scope.struct.rms.queue.feed_list(json.node_table, json.node_values)
 
                     $scope.struct.fstree = json.fstree
                     $scope.struct.fstree_present = _.keys(json.fstree).length > 0
@@ -1323,8 +1357,9 @@ rms_module = angular.module(
                     $scope.struct.updating = false
                     $scope.struct.fetch_current_timeout = $timeout(fetch_current_data, 15000)
                 (error) ->
+                    console.error "error in fetch"
                     $scope.struct.updating = false
-#                        $scope.struct.fetch_current_timeout = $timeout(fetch_current_data, 15000)
+                    $scope.struct.fetch_current_timeout = $timeout(fetch_current_data, 15000)
         )
 
     $scope.close_io = ($event, io_struct) ->

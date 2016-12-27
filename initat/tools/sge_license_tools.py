@@ -984,6 +984,11 @@ Users of agppi:  (Total of 3 licenses issued;  Total of 0 licenses in use)
         _licenses = E.licenses()
         result.append(_license_servers)
         result.append(_licenses)
+        # run time
+        _run_time = 0.0
+        for lic_info in result.findall("license_info"):
+            _run_time += float(lic_info.get("run_time"))
+        result.attrib["run_time"] = "{:.3f}".format(_run_time)
         # merge
         for server in result.findall("license_info/license_servers/server"):
             _license_servers.append(server)

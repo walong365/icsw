@@ -434,8 +434,13 @@ angular.module(
                         # in case of an empty enrichment requests the result
                         # object is the empty object ({})
                         console.warn "*** empty enrichment_request took #{_run_time}"
+                        # step 1: build luts
                         for _key, _list of @defer_lut
                             [defer, dth, en_list, en_req] = _list
+                            # build local luts
+                            (dev.$$_enrichment_info.build_luts(en_list) for dev in dth.devices)
+                            # build global luts
+                            enricher.build_g_luts(en_list, dth)
                             # resolve
                             defer.resolve(dth.devices)
             )

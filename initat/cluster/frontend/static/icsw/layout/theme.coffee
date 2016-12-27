@@ -123,7 +123,7 @@ angular.module(
         if _theme_list.length == 1
             return
         current_theme = $window.sessionStorage.getItem('current_theme')
-        console.log current_theme, _theme_lut
+        # console.log current_theme, _theme_lut
         _idx = _theme_lut[current_theme].idx + 1
         if _idx == _theme_list.length
             _idx = 0

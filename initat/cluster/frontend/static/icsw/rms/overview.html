@@ -19,8 +19,8 @@
             <uib-tab heading="{{ struct.rms.done.info }}">
                 <icsw-rms-job-done-table icsw-rms-struct="struct.rms.done" icsw-rms-global="struct"></icsw-rms-job-done-table>
             </uib-tab>
-            <uib-tab heading="{{ struct.rms.node.info }}">
-                <icsw-rms-queue-table icsw-rms-struct="struct.rms.node" icsw-rms-global="struct"></icsw-rms-queue-table>
+            <uib-tab heading="{{ struct.rms.queue.info }}">
+                <icsw-rms-queue-table icsw-rms-struct="struct.rms.queue" icsw-rms-global="struct"></icsw-rms-queue-table>
             </uib-tab>
             <uib-tab ng-if="struct.fstree_present" select="select_fairshare_tree()">
                 <uib-tab-heading>
@@ -153,37 +153,44 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rms.queue.table">
-    <table
-        st-table="struct.displayed_entries"
-        st-safe-src="struct.queue_list"
-        class="table table-condensed table-hover table-striped"
-        style="width:auto;"
-    >
-        <thead>
-            <tr icsw-rms-table-headers icsw-rms-struct="struct"></tr>
-            <tr>
-                <td colspan="99">
-                    <div
-                        icsw-tools-pagination
-                        st-items-by-page="20"
-                        st-displayed-pages="11"
-                        possible-items-by-page="10,20,50,100,200,500,1000"
-                    ></div>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="99">
-                    <input st-search="" ng-model="gstruct.search.node" class="form-control" placeholder="filter ..." type="text"/>
-                </td>
-            </tr>
-        </thead>
-        <tbody>
-            <tr icsw-rms-queue-line ng-repeat="queue in struct.displayed_entries" ng-class="queue.$$tr_class"></tr>
-        </tbody>
-        <tfoot>
-            <tr icsw-rms-table-header-toggle icsw-rms-struct="struct"></tr>
-        </tfoot>
-    </table>
+    <uib-tabset>
+        <uib-tab ng-repeat="queue in struct.queue_by_name_list">
+            <uib-tab-heading>
+                <span class="fa fa-reorder"></span> {{ queue.name }} {{ queue.list.length }}
+            </uib-tab-heading>
+            <table
+                st-table="queue.displayed_entries"
+                st-safe-src="queue.list"
+                class="table table-condensed table-hover table-striped"
+                style="width:auto;"
+            >
+                <thead>
+                    <tr icsw-rms-table-headers icsw-rms-struct="struct"></tr>
+                    <tr>
+                        <td colspan="99">
+                            <div
+                                icsw-tools-pagination
+                                st-items-by-page="20"
+                                st-displayed-pages="11"
+                                possible-items-by-page="10,20,50,100,200,500,1000"
+                            ></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="99">
+                            <input st-search="" ng-model="queue.search_string" class="form-control" placeholder="filter ..." type="text"/>
+                        </td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr icsw-rms-queue-line ng-repeat="queue in queue.displayed_entries" ng-class="queue.$$tr_class"></tr>
+                </tbody>
+                <tfoot>
+                    <tr icsw-rms-table-header-toggle icsw-rms-struct="struct"></tr>
+                </tfoot>
+            </table>
+        </uib-tab>
+    </uib-tabset>
 </script>
 
 <script type="text/ng-template" id="icsw.rms.iostruct">
@@ -211,8 +218,7 @@
         class="text-center"
         ng-class="entry.classname"
     >
-        <u ng-show="entry.sort">{{ entry.header }}</u>
-        <span ng-show="!entry.sort">{{ entry.header }}</span>
+        {{ entry.header }}
     </th>
 </script>
 
@@ -329,7 +335,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rms.job.done.line">
-    <td ng-show="struct.toggle['job_id']">
+    <td class="text-right" ng-show="struct.toggle['job_id']">
         {{ job.rms_job.jobid }}&nbsp;
         <icsw-tools-button type="draw" size="xs" ng-show="job.$$has_rrd" ng-click="gstruct.draw_rrd($event, job.$$rrd_device_ids)"></icsw-tools-button>
     </td>
@@ -360,22 +366,29 @@
     <td ng-show="struct.toggle['run_time']">
         {{ job.$$runtime }}
     </td>
-    <td ng-show="struct.toggle['queue']">
+    <td
+        class="text-center"
+        ng-show="struct.toggle['queue']"
+    >
         {{ job.rms_queue.name }}
     </td>
-    <td ng-show="struct.toggle['exit_status']" ng-class="job.$$exit_status_class">
+    <td
+        class="text-center"
+        ng-show="struct.toggle['exit_status']"
+        ng-class="job.$$exit_status_class"
+    >
         {{ job.$$exit_status_str }} {{ job.exit_status_str }}
         <div class="pull-right" ng-show="job.$$exit_status_class">
             <span ng-class="job.$$exit_status_glyph"></span>
         </div>
     </td>
     <td ng-show="struct.toggle['failed']" title="{{ job.$$failed_title }}">
-        <span class="label" ng-class="job.$$failed_class">
+        <span ng-class="job.$$failed_class">
             <span ng-class="job.$$failed_glyph"></span>
-        </span>&nbsp;{{ job.$$failed_str }} {{ job.failed_str }}
+        </span>&nbsp;{{ job.$$failed_str }}
     </td>
     <td ng-show="struct.toggle['failed']" class="text-center">
-        {{ job.failed }}
+        [<code>{{ job.failed }}</code>]
     </td>
     <td ng-show="struct.toggle['nodelist']">
         {{ job.$$pe_info }}
