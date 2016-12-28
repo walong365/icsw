@@ -296,13 +296,16 @@ class RRDGraph(object):
             # set header
             [_gt.set_header("all") for _gt in sum(graph_key_list, [])]
         _num_g = sum([len(_graph_line) for _graph_line in graph_key_list])
-        ORDER_MODE = self.para_dict["ordering"].upper()
-        self.log("number of graphs to create: {:d}, ORDER_MODE is '{}'".format(_num_g, ORDER_MODE))
-        if ORDER_MODE.startswith("-"):
-            _order_reverse = True
-            ORDER_MODE = ORDER_MODE[1:]
+        if self.para_dict["ordering"]:
+            ORDER_MODE = self.para_dict["ordering"].upper()
+            if ORDER_MODE.startswith("-"):
+                _order_reverse = True
+                ORDER_MODE = ORDER_MODE[1:]
+            else:
+                _order_reverse = False
         else:
-            _order_reverse = False
+            ORDER_MODE = "none"
+        self.log("number of graphs to create: {:d}, ORDER_MODE is '{}'".format(_num_g, ORDER_MODE))
         graph_list = E.graph_list()
         _job_add_dict = self._get_jobs(dev_dict)
         for _graph_line in graph_key_list:

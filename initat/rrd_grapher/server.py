@@ -115,6 +115,7 @@ class ServerProcess(
 
     @server_mixins.RemoteCall()
     def get_node_rrd(self, srv_com, **kwargs):
+        # print("got", unicode(srv_com))
         node_results = []
         dev_list = srv_com.xpath(".//device_list", smart_strings=False)[0]
         pk_list = [int(cur_pk) for cur_pk in dev_list.xpath(".//device/@pk", smart_strings=False)]
@@ -147,6 +148,7 @@ class ServerProcess(
 
     @server_mixins.RemoteCall(sync=False, target_process="graph")
     def graph_rrd(self, srv_com, **kwargs):
+        # print("graph", unicode(srv_com))
         # here we have to possibility to modify srv_com before we send it to the remote process
         return srv_com
 

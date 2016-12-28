@@ -768,9 +768,9 @@ rms_module = angular.module(
                     _running_slots += parseInt(entry.granted_pe.value.split("(")[1].split(")")[0])
             if @list.length
                 icswRMSTools.calc_queue_details(@struct.rms.sched, @list, _open_pops)
-                @info = "running (#{@list.length} jobs, #{_running_slots} slots)"
+                @info = "Running (#{@list.length} jobs, #{_running_slots} slots)"
             else
-                @info = "no running"
+                @info = "No running"
             @set_rrd_flags()
 
 ]).service("icswRMSWaitingStruct",
@@ -817,9 +817,9 @@ rms_module = angular.module(
                 icswRMSTools.calc_queue_details(@struct.rms.sched, @list, _open_pops)
 
                 @calc_details_global()
-                @info = "waiting (#{@list.length} jobs, #{_waiting_slots} slots)"
+                @info = "Waiting (#{@list.length} jobs, #{_waiting_slots} slots)"
             else
-                @info = "no jobs waiting"
+                @info = "No Jobs waiting"
 
         calc_details_global: () =>
             _tot_min = _.min((entry.queue_details.raw.total_contr for entry in @list))
@@ -927,9 +927,9 @@ rms_module = angular.module(
                 else
                     entry.$$pe_info = "N/A"
             if @list.length
-                @info = "done (#{@list.length} jobs)"
+                @info = "Done (#{@list.length} jobs)"
             else
-                @info = "no jobs finished"
+                @info = "No jobs finished"
             @set_rrd_flags()
 
 ]).service("icswRMSSchedulerStruct",
@@ -1100,7 +1100,7 @@ rms_module = angular.module(
                     @queue_by_name_lut[_vals[0]].feed(queue)
                     _idx++
             # todo: remove stale queues
-            @info = "queue (#{@all_queue_list.length} queues on #{@list.length} nodes, #{slot_info.used} of #{slot_info.total} slots used)"
+            @info = "Queue (#{@all_queue_list.length} queues on #{@list.length} nodes, #{slot_info.used} of #{slot_info.total} slots used)"
 
 
 ]).controller("icswRMSOverviewCtrl",
@@ -2070,6 +2070,86 @@ rms_module = angular.module(
     icswDeviceTreeService, $rootScope, ICSW_SIGNALS,
 ) ->
     # ???
+    moment().utc()
+    $scope.struct = {
+        # base data set
+        base_data_set: false
+        # base settings
+        base_setting: undefined
+        # graph setting
+        local_setting: undefined
+        # from and to date
+        from_date: undefined
+        to_date: undefined
+        # devices
+        devices: []
+        # load_called
+        load_called: false
+    }
+    _load = () ->
+        $scope.struct.load_called = true
+        $q.all(
+            [
+                icswRRDGraphUserSettingService.load($scope.$id)
+                icswDeviceTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                _user_setting = data[0]
+                local_setting = _user_setting.get_default()
+                _user_setting.set_custom_size(local_setting, 1024, 400)
+                _dt = data[1]
+                base_setting = new icswRRDGraphBasicSetting()
+                base_setting.draw_on_init = true
+                base_setting.show_tree = false
+                base_setting.show_settings = false
+                base_setting.display_tree_switch = false
+                base_setting.ordering = "AVERAGE"
+                base_setting.auto_select_keys = [
+                    # "rms.fairshare\\..*\\.cpu$"
+                    "rms.fairshare\\..*\.share.actual"
+                    "compound.sge.shares"
+                ]
+                $scope.struct.local_setting = local_setting
+                $scope.struct.base_setting = base_setting
+                $scope.struct.base_data_set = true
+                _routes = icswAccessLevelService.get_routing_info().routing
+                $scope.struct.to_date = moment()
+                $scope.struct.from_date = moment().subtract(moment.duration(4, "week"))
+                if "rms_server" of _routes
+                    _server = _routes["rms_server"][0]
+                    _device = _dt.all_lut[_server[2]]
+                    if _device?
+                        $scope.struct.devices.push(_device)
+        )
+    $rootScope.$on(ICSW_SIGNALS("ICSW_RMS_FAIR_SHARE_TREE_SELECTED"), () ->
+        if not $scope.struct.load_called
+            _load()
+    )
+]).directive("icswRmsQueueOverview",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "E"
+        controller: "icswRmsQueueOverviewCtrl"
+        template: $templateCache.get("icsw.rms.queue.overview")
+        scope: {
+            queue_name: "=icswQueueName"
+        }
+    }
+]).controller("icswRmsQueueOverviewCtrl",
+[
+    "$scope", "icswRRDGraphUserSettingService", "icswRRDGraphBasicSetting", "$q", "icswAccessLevelService"
+    "icswDeviceTreeService", "$rootScope", "ICSW_SIGNALS",
+(
+    $scope, icswRRDGraphUserSettingService, icswRRDGraphBasicSetting, $q, icswAccessLevelService,
+    icswDeviceTreeService, $rootScope, ICSW_SIGNALS,
+) ->
+    # ???
+    console.log "go"
     moment().utc()
     $scope.struct = {
         # base data set

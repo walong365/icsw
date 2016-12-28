@@ -10,21 +10,33 @@
             <span class="text-danger" ng-show="struct.updating">Updating Data</span>
         </h3>
         <uib-tabset ng-if="struct.initial_data_present">
-            <uib-tab heading="{{ struct.rms.running.info }}">
+            <uib-tab>
+                <uib-tab-heading>
+                    <span class="fa fa-play"></span> {{ struct.rms.running.info }}
+                </uib-tab-heading>
                 <icsw-rms-job-running-table icsw-rms-struct="struct.rms.running" icsw-rms-global="struct"></icsw-rms-job-running-table>
             </uib-tab>
-            <uib-tab heading="{{ struct.rms.waiting.info }}">
+            <uib-tab>
+                <uib-tab-heading>
+                    <span class="fa fa-pause"></span> {{ struct.rms.waiting.info }}
+                </uib-tab-heading>
                 <icsw-rms-job-waiting-table icsw-rms-struct="struct.rms.waiting" icsw-rms-global="struct"></icsw-rms-job-waiting-table>
             </uib-tab>
-            <uib-tab heading="{{ struct.rms.done.info }}">
+            <uib-tab>
+                <uib-tab-heading>
+                    <span class="fa fa-stop"></span> {{ struct.rms.done.info }}
+                </uib-tab-heading>
                 <icsw-rms-job-done-table icsw-rms-struct="struct.rms.done" icsw-rms-global="struct"></icsw-rms-job-done-table>
             </uib-tab>
-            <uib-tab heading="{{ struct.rms.queue.info }}">
+            <uib-tab>
+                <uib-tab-heading>
+                    <span class="fa fa-reorder"></span> {{ struct.rms.queue.info }}
+                </uib-tab-heading>
                 <icsw-rms-queue-table icsw-rms-struct="struct.rms.queue" icsw-rms-global="struct"></icsw-rms-queue-table>
             </uib-tab>
             <uib-tab ng-if="struct.fstree_present" select="select_fairshare_tree()">
                 <uib-tab-heading>
-                    FairShare tree
+                    <span class="fa fa-tree"></span> FairShare tree
                 </uib-tab-heading>
                 <icsw-rms-fair-share-tree></icsw-rms-fair-share-tree>
             </uib-tab>
@@ -154,6 +166,23 @@
 
 <script type="text/ng-template" id="icsw.rms.queue.table">
     <uib-tabset>
+        <uib-tab>
+            <uib-tab-heading>
+                Overview
+            </uib-tab-heading>
+            <h3>{{ struct.queue_by_name_list.length }} Queues defined</h3>
+            <div class="container-fluid">
+                <div class="row">
+                    <div
+                        class="col-xs-6 col-md-4 col-lg-3"
+                        ng-repeat="queue in struct.queue_by_name_list"
+                    >
+                        {{ queue.name }}
+                        <icsw-rms-queue-overview icsw-queue-name="queue.name"></icsw-rms-queue-overview>
+                    </div>
+                </div>
+            </div>
+        </uib-tab>
         <uib-tab ng-repeat="queue in struct.queue_by_name_list">
             <uib-tab-heading>
                 <span class="fa fa-reorder"></span> {{ queue.name }} {{ queue.list.length }}
@@ -519,7 +548,7 @@
         <button
             type="button"
             class="btn btn-xs btn-primary"
-            popover-placement="right-top"
+            popover-placement="right"
             popover-trigger="none"
             popover-is-open="job.queue_details.$$open"
             uib-popover-html="job.queue_details.popover"
@@ -591,7 +620,7 @@
         <button
             type="button"
             class="btn btn-xs btn-primary"
-            popover-placement="right-top"
+            popover-placement="right"
             popover-trigger="none"
             popover-is-open="job.queue_details.$$open"
             uib-popover-html="job.queue_details.popover"
@@ -826,14 +855,21 @@
         icsw-device-list="devices"
         icsw-graph-setting="local_settings"
         icsw-base-setting="base_setting"
-        <!-- fromdt="#{start_time}"
-        # todt="#{end_time}"
-        # jobmode="#{job_mode}"
-        # selectedjob="#{selected_job}" -->
-    ></icsw-rrd-graph>
+    ></icsw-rrd-graph-remote>
 </script>
 
 <script type="text/ng-template" id="icsw.rms.fair.share.tree">
+    <icsw-rrd-graph-remote
+        ng-if="struct.base_data_set"
+        icsw-device-list="struct.devices"
+        icsw-graph-setting="struct.local_setting"
+        icsw-base-setting="struct.base_setting"
+        icsw-from-date="struct.from_date"
+        icsw-to-date="struct.to_date"
+    ></icsw-rrd-graph-remote>
+</script>
+
+<script type="text/ng-template" id="icsw.rms.queue.overview">
     <icsw-rrd-graph-remote
         ng-if="struct.base_data_set"
         icsw-device-list="struct.devices"

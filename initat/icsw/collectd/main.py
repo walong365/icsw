@@ -46,7 +46,7 @@ class BaseCom(object):
             srv_com["arg_list"] = " ".join(args)
             srv_com["host_filter"] = self.options.host_filter
             srv_com["key_filter"] = self.options.key_filter
-            self.srv_com = srv_com  #
+            self.srv_com = srv_com
         self.ret_state = 1
 
     def __getitem__(self, key):
@@ -56,7 +56,11 @@ class BaseCom(object):
         return unicode(self.srv_com)
 
     def get_mc(self):
-        return memcache.Client(["{}:{:d}".format(self.options.mc_addr, self.options.mc_port)])
+        return memcache.Client(
+            [
+                "{}:{:d}".format(self.options.mc_addr, self.options.mc_port)
+            ]
+        )
 
     def compile_re(self, re_str):
         try:

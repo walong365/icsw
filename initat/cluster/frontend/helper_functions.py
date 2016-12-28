@@ -24,6 +24,8 @@
 
 from __future__ import print_function, unicode_literals
 
+import memcache
+from django.conf import settings
 from django.http import HttpResponse
 from lxml import etree
 from lxml.builder import E
@@ -239,6 +241,31 @@ class xml_wrapper(object):
             return ret_value
 
 
+class CachedMemcacheClient(object):
+    def __init__(self):
+        self.__read = False
+        self.__client = None
+
+    @property
+    def address(self):
+        if not self.__read:
+            from initat.icsw.service.instance import InstanceXML
+            _xml = InstanceXML(quiet=True)
+            _port = _xml.get_port_dict("memcached", command=True)
+            self.__address = ["127.0.0.1:{:d}".format(_port)]
+            self.__read = True
+        return self.__address
+
+    @property
+    def client(self):
+        if self.__client is None:
+            self.__client = memcache.Client(self.address, cache_cas=True)
+        return self.__client
+
+
+_C_MCC = CachedMemcacheClient()
+
+
 def contact_server(request, srv_type_enum, send_com, **kwargs):
     # log lines
     _log_lines = []
@@ -251,11 +278,46 @@ def contact_server(request, srv_type_enum, send_com, **kwargs):
         cur_router = routing.SrvTypeRouting(force=True)
 
     if srv_type_enum.name in cur_router:
+        # com = send_com["*command"]
+        # connection id
+        _conn_id = kwargs.get("connection_id", "webfrontend")
+        # memcache key to catch multi-calls to server with this is
+        # mc_key = "$$MCTS_KD_{}".format(_conn_id)
+        # memcache key for connection dict
+        mc_key = "{}_WebConDict".format(settings.ICSW_CACHE_KEY)
+        mc_client = _C_MCC.client
+        # print(dir(mc_client))
+        # print("c=", _conn_id)
+        # try to set default value (will most likely fail but never mind)
+        _default_c = {"open": []}
+        mc_client.add(mc_key, _default_c)
+        _run_idx = 0
+        while True:
+            _c = mc_client.gets(mc_key)
+            # print("gets={}".format(str(_c)))
+            if _c is None:
+                # should never happen, set default value again
+                mc_client.add(mc_key, _default_c)
+                continue
+            while True:
+                _run_idx += 1
+                cur_conn_id = "{}_{:d}".format(_conn_id, _run_idx)
+                if cur_conn_id not in _c["open"]:
+                    break
+            _c["open"].append(cur_conn_id)
+            _ret = mc_client.cas(mc_key, _c)
+            # print("_ret={}".format(_ret))
+            if _ret:
+                break
+            else:
+                print("ERRLoop")
+        # print("CurConnId={}".format(cur_conn_id))
+        # print("list='{}' ({})".format(_c["open"], com))
         # print send_com.pretty_print()
         if request.user:
             send_com["user_id"] = request.user.pk
         _conn = net_tools.ZMQConnection(
-            kwargs.get("connection_id", "webfrontend"),
+            cur_conn_id,
             timeout=kwargs.get("timeout", 10)
         )
         # split to node-local servers ?
@@ -313,6 +375,23 @@ def contact_server(request, srv_type_enum, send_com, **kwargs):
             result = cur_router.result
         else:
             result = None
+        # remove cur_conn_id from cache
+        while True:
+            _c = mc_client.gets(mc_key)
+            if _c is None:
+                # should never happen, set default value again
+                mc_client.add(mc_key, _default_c)
+                continue
+            if cur_conn_id in _c["open"]:
+                _c["open"].remove(cur_conn_id)
+            _ret = mc_client.cas(mc_key, _c)
+            # print("_ret={}".format(_ret))
+            if _ret:
+                break
+            else:
+                # try again
+                continue
+        # print("done", cur_conn_id)
     else:
         result = None
         _err_str = u"ServiceType '{}' not defined in routing".format(srv_type_enum.name)

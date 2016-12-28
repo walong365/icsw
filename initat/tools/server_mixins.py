@@ -754,8 +754,16 @@ class RemoteCallMixin(object):
         in_data = []
         while True:
             in_data.append(zmq_sock.recv())
-            if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
+            # if not in_data[-1].startswith("<"):
+            #    print("r", in_data[-1])
+            if not zmq_sock.getsockopt(zmq.RCVMORE):
                 break
+        #try:
+        #    _extra = zmq_sock.recv(zmq.NOBLOCK)
+        #except:
+        #    print("no")
+        #else:
+        #    print("got", _extra)
         com_type = "router" if len(in_data) == 2 else "pull"
         if com_type in self.remote_call_lut:
             if com_type == "router":
@@ -895,6 +903,7 @@ class RemoteCallMixin(object):
     def remote_call_async_result(self, *args, **kwargs):
         _src_proc, _src_pid, srv_com = args
         srv_com = server_command.srv_command(source=srv_com)
+        # print("done")
         _sock, _src_id, _reply, _msg_type, _log_str = self.remote_async_helper.result(srv_com)
         if _sock is not None:
             self._send_remote_call_reply(_sock, _src_id, _reply, _msg_type, _log_str)
@@ -927,11 +936,11 @@ class RemoteCallSignature(object):
 
         self.sync = kwargs.get("sync", sync_default)
 
-        if not self.sync and (self.com_type, self.msg_type, self.send_async_return) not in [
+        if not self.sync and (self.com_type, self.msg_type, self.send_async_return) not in {
             ("router", RemoteCallMessageType.xml, True),
             ("router", RemoteCallMessageType.xml, False),
             ("router", RemoteCallMessageType.flat, False),
-        ]:
+        }:
             raise ValueError("async calls only possible for XML router calls or calls without return message")
         # if not self.sync and not self.target_process:
         #     raise ValueError("need target process for async calls")
@@ -954,6 +963,7 @@ class RemoteCallSignature(object):
             id_filter_dict[re.compile(self.id_filter)] = self
 
     def handle(self, instance, src_id, srv_com, **kwargs):
+        # print("h", src_id)
         # print 'RemoteCall handle', self, instance, src_id, srv_com, 'target', self.target_process, self.func.__name__
         _result = self.func(instance, srv_com, src_id=src_id, **kwargs)
         if self.sync:
