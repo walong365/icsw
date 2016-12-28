@@ -92,6 +92,25 @@ angular.module(
             return _allowed_durations
     }
 
+]).directive("icswDeviceStatusHistoryOverview",
+[
+    "$q", "$compile", "$templateCache",
+(
+    $q, $compile, $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        # templateUrl: "icsw.device.status_history_overview.big"
+        controller: 'icswDeviceStatusHistoryCtrl'
+        scope: true
+        link: (scope, element, attrs) ->
+            console.log "a=", attrs
+            if attrs["icswMode"] == "multi"
+                _tn = "icsw.device.status_history_overview.multi"
+            else
+                _tn = "icsw.device.status_history_overview.single"
+            element.append($compile($templateCache.get(_tn))(scope))
+    }
 ]).controller("icswDeviceStatusHistoryCtrl",
 [
     "$scope", "icswDeviceTreeService", "$q", "icswStatusHistorySettings", "status_utils_functions",
@@ -238,7 +257,7 @@ angular.module(
         scope: {
             "device": "=icswDevice"
         }
-        link : (scope, el, attrs, status_history_ctrl) ->
+        link: (scope, el, attrs, status_history_ctrl) ->
 
             scope.struct = {
                 # loading flag
@@ -345,12 +364,5 @@ angular.module(
                     if scope.device?
                         scope.update()
             )
-    }
-]).directive("icswDeviceStatusHistoryOverview",
-[() ->
-    return {
-        restrict: "EA"
-        templateUrl: "icsw.device.status_history_overview"
-        controller: 'icswDeviceStatusHistoryCtrl'
     }
 ])

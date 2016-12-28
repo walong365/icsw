@@ -326,6 +326,26 @@
     </fieldset>
     <fieldset>
         <legend>
+            Monitoring Status
+        </legend>
+        <div class="row">
+            <div class="col-xs-12 col-md-4">
+                <icsw-monitoring-list-overview
+                    icsw-sel-man="1"
+                    icsw-select-device="edit_obj.idx"
+                ></icsw-monitoring-list-overview>
+            </div>
+            <div class="col-xs-12 col-md-8">
+                <icsw-device-status-history-overview
+                    icsw-mode="single"
+                    icsw-sel-man="1"
+                    icsw-select-device="edit_obj.idx"
+                ></icsw-device-status-history-overview>
+            </div>
+        </div>
+    </fieldset>
+    <fieldset>
+        <legend>
             Static Asset Templates and fixed Variables
             <icsw-tools-button
                 type="show"

@@ -1,8 +1,8 @@
 <script type="text/ng-template" id="icsw/main/status_history.html">
-    <icsw-device-status-history-overview icsw-sel-man="0"></icsw-device-status-history-overview>
+    <icsw-device-status-history-overview icsw-mode="multi" icsw-sel-man="0"></icsw-device-status-history-overview>
 </script>
 
-<script type="text/ng-template" id="icsw.device.status_history_overview">
+<script type="text/ng-template" id="icsw.device.status_history_overview.multi">
     <div class="container-fluid">
         <h3>
             Status History
@@ -73,6 +73,47 @@
                 </uib-tab>
             </uib-tabset>
         </icsw-tools-ensure-device-selection>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.status_history_overview.single">
+    <div class="container-fluid" ng-if="struct.device_tree">
+        <div class="form-inline">
+            Timerange:
+            <div class="form-group">
+                &nbsp;
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+                        <span class="glyphicon glyphicon-time"></span>
+                        {{ struct.duration_type }} <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="dur in get_allowed_durations()" ng-click="set_duration_type(dur)">
+                            <a>{{ dur }}</a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="input-group">
+                    <input type="text"
+                        class="form-control"
+                        uib-datepicker-popup="{{ date_options.format }}"
+                        ng-model="struct.startdate_dp"
+                        is-open="date_options.$$opened"
+                        datepicker-options="date_options"
+                        close-text="Close"
+                    >
+                        <span class="input-group-btn">
+                            <button type="button" class="btn btn-default" ng-click="open_popup()">
+                                <i class="glyphicon glyphicon-calendar"></i>
+                            </button>
+                        </span>
+                    </input>
+                </div>
+                <icsw-tools-button type="reload" ng-show="!struct.loading" ng-click="reload_data($event)"></icsw-tools-button>
+            </div>
+        </div>
+        <h4 class="alert alert-danger" style="width: 300px" ng-if="struct.timespan_error ">{{ struct.timespan_error }}</h4>
+        <icsw-device-status-history-device icsw-device="struct.devices[0]"></icsw-device-status-history-device>
     </div>
 </script>
 

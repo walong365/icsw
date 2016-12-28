@@ -683,7 +683,7 @@ angular.module(
                     if _active_selection
                         if attrs["icswSelectDevice"] != undefined
                             _tree = icswDeviceTreeService.current()
-                            _device = _tree.all_lut[attrs["icswSelectDevice"]]
+                            _device = _tree.all_lut[scope.$eval(attrs["icswSelectDevice"])]
 
                             scope.new_devsel([_device])
                         # popup mode, watch for changes (i.e. tab activation)
@@ -1309,7 +1309,6 @@ angular.module(
     $q, $timeout,
 ) ->
     return (info, timeout=0) ->
-        timeout = 0
         if timeout
             info = "#{info}, closing in #{timeout / 1000} seconds"
         d = $q.defer()

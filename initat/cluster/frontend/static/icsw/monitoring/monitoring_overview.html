@@ -1,6 +1,10 @@
+<script type="text/ng-template" id="icsw/monitoring/list/overview">
+    <icsw-monitoring-list-overview icsw-sel-man='0'></icsw-monitoring-list-overview>
+</script>
+
 <script type="text/ng-template" id="icsw.monitoring.list.overview">
     <div class="container-fluid">
-        <h3>Monitoring Overview</h3>
+        <h3 ng-show="struct.devices_filtered.length > 1">Monitoring Overview</h3>
         <span class="text-danger" ng-show="struct.loading">Fetching Data from Server ...</span>
         <table
             st-table="entries_displayed"
@@ -9,7 +13,7 @@
             style="width:auto;"
         >
             <thead>
-                <tr>
+                <tr ng-show="entries_displayed.length > 1">
                     <td colspan="99">
                         <div class="pull-left"><input st-search="" class="form-control form-control-inline" style="margin-right:20px;" placeholder="Filter ..." type="text"/></div>
                         <div
@@ -43,26 +47,45 @@
                 <tr ng-repeat="entry in entries_displayed">
                     <td>{{ entry.full_name }}</td>
                     <td style="width:50px;">
-                        <icsw-device-livestatus-brief icsw-device="entry">
-                        </icsw-device-livestatus-brief>
+                        <icsw-device-livestatus-brief
+                            icsw-device="entry"
+                        ></icsw-device-livestatus-brief>
                     </td>
                     <td class="text-center">
-                        <icsw-tools-device-hist-status-overview data="entry.$$device_data_yesterday" detailed-view="false"></icsw-tools-device-hist-status-overview>
+                        <icsw-tools-device-hist-status-overview
+                            data="entry.$$device_data_yesterday"
+                            detailed-view="false"
+                        ></icsw-tools-device-hist-status-overview>
                     </td>
                     <td class="text-center">
-                        <icsw-tools-service-hist-status-overview data="entry.$$service_data_yesterday" detailed-view="false"></icsw-tools-service-hist-status-overview>
+                        <icsw-tools-service-hist-status-overview
+                            data="entry.$$service_data_yesterday"
+                            detailed-view="false"
+                        ></icsw-tools-service-hist-status-overview>
                     </td>
                     <td class="text-center">
-                        <icsw-tools-device-hist-status-overview data="entry.$$device_data_last_week" detailed-view="false"></icsw-tools-device-hist-status-overview>
+                        <icsw-tools-device-hist-status-overview
+                            data="entry.$$device_data_last_week"
+                            detailed-view="false"
+                        ></icsw-tools-device-hist-status-overview>
                     </td>
                     <td class="text-center">
-                        <icsw-tools-service-hist-status-overview data="entry.$$service_data_last_week" detailed-view="false"></icsw-tools-service-hist-status-overview>
+                        <icsw-tools-service-hist-status-overview
+                            data="entry.$$service_data_last_week"
+                            detailed-view="false"
+                        ></icsw-tools-service-hist-status-overview>
                     </td>
                     <td class="text-center">
-                        <icsw-tools-device-hist-status-overview data="entry.$$device_data_last_month" detailed-view="false"></icsw-tools-device-hist-status-overview>
+                        <icsw-tools-device-hist-status-overview
+                            data="entry.$$device_data_last_month"
+                            detailed-view="false"
+                        ></icsw-tools-device-hist-status-overview>
                     </td>
                     <td class="text-center">
-                        <icsw-tools-service-hist-status-overview data="entry.$$service_data_last_month" detailed-view="false"></icsw-tools-service-hist-status-overview>
+                        <icsw-tools-service-hist-status-overview
+                            data="entry.$$service_data_last_month"
+                            detailed-view="false"
+                        ></icsw-tools-service-hist-status-overview>
                     </td>
                 </tr>
             </tbody>

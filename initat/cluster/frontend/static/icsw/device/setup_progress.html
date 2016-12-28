@@ -15,7 +15,7 @@
             vertical-align:middle;
         }
     </style>
-    <div class="container-fluid" >
+    <div class="container-fluid">
         <div
             uib-alert
             class="alert-warning"
@@ -239,10 +239,10 @@
                         <span>{{ tab.heading }}</span>
                         <icsw-tools-button size="xs" type="close" value="" ng-click="close_tab(tab)"></icsw-tools-button>
                     </uib-tab-heading>
-                    <icsw-device-mon-config-overview ng-if="tab.type == 0" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"></icsw-device-mon-config-overview>
-                    <icsw-device-location-overview ng-if="tab.type == 1" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"></icsw-device-location-overview>
-                    <icsw-device-asset-overview-reduced ng-if="tab.type == 2" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"></icsw-device-asset-overview-reduced>
-                    <icsw-rrd-graph-normal ng-if="tab.type == 3" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"></icsw-rrd-graph-normal>
+                    <icsw-device-mon-config-overview ng-if="tab.type == 0" icsw-sel-man="1" icsw-select-device="tab.device_id"></icsw-device-mon-config-overview>
+                    <icsw-device-location-overview ng-if="tab.type == 1" icsw-sel-man="1" icsw-select-device="tab.device_id"></icsw-device-location-overview>
+                    <icsw-device-asset-overview-reduced ng-if="tab.type == 2" icsw-sel-man="1" icsw-select-device="tab.device_id"></icsw-device-asset-overview-reduced>
+                    <icsw-rrd-graph-normal ng-if="tab.type == 3" icsw-sel-man="1" icsw-select-device="tab.device_id"></icsw-rrd-graph-normal>
                     <icsw-device-tree-overview ng-if="tab.type == 4 && tab.devices_available == true"></icsw-device-tree-overview>
                     <icsw-device-create-mask ng-if="tab.type == 4 && tab.devices_available == false"></icsw-device-create-mask>
                     <br ng-if="tab.type == 5"/><icsw-config-moncheck-overview ng-if="tab.type == 5"></icsw-config-moncheck-overview>
