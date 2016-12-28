@@ -1238,9 +1238,9 @@ angular.module(
     return product
 
 ]).run([
-    "Restangular", "toaster",
+    "Restangular", "toaster", "icswInfoModalService", "$window",
 (
-    Restangular, toaster
+    Restangular, toaster, icswInfoModalService, $window,
 ) ->
     Restangular.setRestangularFields(
         {
@@ -1270,36 +1270,51 @@ angular.module(
         return data
     )
 
+    error_info_open = false
     Restangular.setErrorInterceptor(
         (resp, deferred, response_handler) ->
             # console.log "*", resp
-            error_list = []
-            if typeof(resp.data) == "string"
-                if resp.data
-                    resp.data = {
-                        error: resp.data
-                    }
-                else
-                    resp.data = {}
-            for key, value of resp.data
-                key_str = if key == "__all__" then "error: " else "#{key} : "
-                if key != "_reset_list"
-                    if Array.isArray(value)
-                        for sub_val in value
-                            if sub_val.non_field_errors
-                                error_list.push(key_str + sub_val.non_field_errors.join(", "))
-                            else
-                                error_list.push(key_str + String(sub_val))
+            if resp.status in [405]
+                # handle 405 (not allowed due to session expire)
+                if not error_info_open
+                    error_info_open = true
+                    icswInfoModalService(
+                        "A critical error occured: #{resp.statusText} (#{resp.status})"
+                        # wait for ten seconds
+                        10000
+                    ).then(
+                        (done) ->
+                            error_info_open = false
+                            # reduce flicker
+                            $(document.body).hide()
+                            $window.location.reload()
+                    )
+            else
+                error_list = []
+                if typeof(resp.data) == "string"
+                    if resp.data
+                        resp.data = {
+                            error: resp.data
+                        }
                     else
-                        if (typeof(value) == "object" or typeof(value) == "string") and (not key.match(/^_/) or key == "__all__")
-                            error_list.push(key_str + if typeof(value) == "string" then value else value.join(", "))
-            new_error_list = []
-            for _err in error_list
-                if _err not in new_error_list
-                    new_error_list.push(_err)
-                    toaster.pop("error", _err, "")
-            # console.log deferred, response_handler
-            # deferred.reject("no")
+                        resp.data = {}
+                for key, value of resp.data
+                    key_str = if key == "__all__" then "error: " else "#{key} : "
+                    if key != "_reset_list"
+                        if angular.isArray(value)
+                            for sub_val in value
+                                if sub_val.non_field_errors
+                                    error_list.push(key_str + sub_val.non_field_errors.join(", "))
+                                else
+                                    error_list.push(key_str + String(sub_val))
+                        else
+                            if (typeof(value) == "object" or typeof(value) == "string") and (not key.match(/^_/) or key == "__all__")
+                                error_list.push(key_str + if typeof(value) == "string" then value else value.join(", "))
+                new_error_list = []
+                for _err in error_list
+                    if _err not in new_error_list
+                        new_error_list.push(_err)
+                        toaster.pop("error", _err, "")
             return true
     )
 ]).service("icswInfoModalService",

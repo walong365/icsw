@@ -104,7 +104,6 @@ angular.module(
         controller: 'icswDeviceStatusHistoryCtrl'
         scope: true
         link: (scope, element, attrs) ->
-            console.log "a=", attrs
             if attrs["icswMode"] == "multi"
                 _tn = "icsw.device.status_history_overview.multi"
             else
