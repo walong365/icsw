@@ -47,6 +47,8 @@ angular.module(
             @search_string = ""
             # initial select keys, can be used for initial selection
             @auto_select_keys = []
+            # title String
+            @title_string = "Graphing"
             
         clear_search_string: () =>
             @search_string = ""

@@ -1221,10 +1221,16 @@ rms_module = angular.module(
         fstree_present: false
         # fairshare tree
         fstree: undefined
+        # active tab
+        active_tab: null
     }
 
-    $scope.select_fairshare_tree = () ->
-        $rootScope.$emit(ICSW_SIGNALS("ICSW_RMS_FAIR_SHARE_TREE_SELECTED"))
+    $scope.activate_tab = ($event, tab_name) ->
+        $scope.struct.active_tab = tab_name
+        $scope.$broadcast(ICSW_SIGNALS("_ICSW_RMS_MAIN_TAB_CHANGED"))
+
+    $scope.select_fairshare_tree = ($event) ->
+        $scope.$broadcast(ICSW_SIGNALS("_ICSW_RMS_FAIR_SHARE_TREE_SELECTED"))
 
     $scope.initial_load = () ->
         $scope.struct.loading = true
@@ -1451,12 +1457,89 @@ rms_module = angular.module(
     }
 ]).controller("icswRmsQueueTableCtrl",
 [
-    "$scope", "icswRMSIOStruct", "ICSW_SIGNALS", "DeviceOverviewService",
+    "$scope", "icswRMSIOStruct", "ICSW_SIGNALS", "DeviceOverviewService", "$q",
+    "icswRRDGraphUserSettingService", "icswDeviceTreeService", "icswAccessLevelService",
+    "icswRRDGraphBasicSetting",
 (
-    $scope, icswRMSIOStruct, ICSW_SIGNALS, DeviceOverviewService,
+    $scope, icswRMSIOStruct, ICSW_SIGNALS, DeviceOverviewService, $q,
+    icswRRDGraphUserSettingService, icswDeviceTreeService, icswAccessLevelService,
+    icswRRDGraphBasicSetting,
 ) ->
+    $scope.local_struct = {
+        # base data set
+        base_data_set: false
+        # graph setting
+        local_setting: undefined
+        # from and to date
+        from_date: undefined
+        to_date: undefined
+        # devices
+        devices: []
+        # load_called
+        load_called: false
+        # graph lists
+        graph_list: []
+    }
+
+    _load_queue_overview = () ->
+        console.log "load"
+        $scope.local_struct.load_called = true
+        $q.all(
+            [
+                icswRRDGraphUserSettingService.load($scope.$id)
+                icswDeviceTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                _user_setting = data[0]
+                local_setting = _user_setting.get_default()
+                _user_setting.set_custom_size(local_setting, 600, 200)
+                _dt = data[1]
+                $scope.local_struct.local_setting = local_setting
+                $scope.local_struct.base_setting = base_setting
+                $scope.local_struct.base_data_set = true
+                _routes = icswAccessLevelService.get_routing_info().routing
+                $scope.local_struct.to_date = moment()
+                $scope.local_struct.from_date = moment().subtract(moment.duration(4, "week"))
+                if "rms_server" of _routes
+                    _server = _routes["rms_server"][0]
+                    _device = _dt.all_lut[_server[2]]
+                    if _device?
+                        $scope.local_struct.devices.push(_device)
+                    $scope.local_struct.graph_list.length = 0
+                    for queue in $scope.struct.queue_by_name_list
+                        new_struct = {
+                            queue: queue
+                        }
+                        base_setting = new icswRRDGraphBasicSetting()
+                        base_setting.draw_on_init = true
+                        base_setting.show_tree = false
+                        base_setting.show_settings = false
+                        base_setting.display_tree_switch = false
+                        base_setting.display_settings_switch = false
+                        base_setting.ordering = "AVERAGE"
+                        base_setting.title_string = "Queue #{queue.name}"
+                        _queue_name = _.replace(queue.name, ".", "_")
+                        base_setting.auto_select_keys = [
+                            "compound.sge.queue_#{_queue_name}"
+                        ]
+                        new_struct.base_setting = base_setting
+                        # console.log "q=", queue
+                        $scope.local_struct.graph_list.push(new_struct)
+        )
     $scope.click_node = ($event, device) ->
         DeviceOverviewService($event, [device])
+
+    $scope.select_queue_overview = ($event) ->
+        # console.log "act"
+
+    $scope.$on(ICSW_SIGNALS("_ICSW_RMS_MAIN_TAB_CHANGED"), ($event) ->
+        if $scope.gstruct.active_tab == "queue"
+            if not $scope.local_struct.load_called
+                _load_queue_overview()
+        # console.log "mtc", $scope.gstruct
+    )
+
 
 ]).directive("icswRmsIoStruct",
 [
@@ -2122,87 +2205,7 @@ rms_module = angular.module(
                     if _device?
                         $scope.struct.devices.push(_device)
         )
-    $rootScope.$on(ICSW_SIGNALS("ICSW_RMS_FAIR_SHARE_TREE_SELECTED"), () ->
-        if not $scope.struct.load_called
-            _load()
-    )
-]).directive("icswRmsQueueOverview",
-[
-    "$q", "$templateCache",
-(
-    $q, $templateCache,
-) ->
-    return {
-        restrict: "E"
-        controller: "icswRmsQueueOverviewCtrl"
-        template: $templateCache.get("icsw.rms.queue.overview")
-        scope: {
-            queue_name: "=icswQueueName"
-        }
-    }
-]).controller("icswRmsQueueOverviewCtrl",
-[
-    "$scope", "icswRRDGraphUserSettingService", "icswRRDGraphBasicSetting", "$q", "icswAccessLevelService"
-    "icswDeviceTreeService", "$rootScope", "ICSW_SIGNALS",
-(
-    $scope, icswRRDGraphUserSettingService, icswRRDGraphBasicSetting, $q, icswAccessLevelService,
-    icswDeviceTreeService, $rootScope, ICSW_SIGNALS,
-) ->
-    # ???
-    console.log "go"
-    moment().utc()
-    $scope.struct = {
-        # base data set
-        base_data_set: false
-        # base settings
-        base_setting: undefined
-        # graph setting
-        local_setting: undefined
-        # from and to date
-        from_date: undefined
-        to_date: undefined
-        # devices
-        devices: []
-        # load_called
-        load_called: false
-    }
-    _load = () ->
-        $scope.struct.load_called = true
-        $q.all(
-            [
-                icswRRDGraphUserSettingService.load($scope.$id)
-                icswDeviceTreeService.load($scope.$id)
-            ]
-        ).then(
-            (data) ->
-                _user_setting = data[0]
-                local_setting = _user_setting.get_default()
-                _user_setting.set_custom_size(local_setting, 1024, 400)
-                _dt = data[1]
-                base_setting = new icswRRDGraphBasicSetting()
-                base_setting.draw_on_init = true
-                base_setting.show_tree = false
-                base_setting.show_settings = false
-                base_setting.display_tree_switch = false
-                base_setting.ordering = "AVERAGE"
-                base_setting.auto_select_keys = [
-                    # "rms.fairshare\\..*\\.cpu$"
-                    "rms.fairshare\\..*\.share.actual"
-                    "compound.sge.shares"
-                ]
-                $scope.struct.local_setting = local_setting
-                $scope.struct.base_setting = base_setting
-                $scope.struct.base_data_set = true
-                _routes = icswAccessLevelService.get_routing_info().routing
-                $scope.struct.to_date = moment()
-                $scope.struct.from_date = moment().subtract(moment.duration(4, "week"))
-                if "rms_server" of _routes
-                    _server = _routes["rms_server"][0]
-                    _device = _dt.all_lut[_server[2]]
-                    if _device?
-                        $scope.struct.devices.push(_device)
-        )
-    $rootScope.$on(ICSW_SIGNALS("ICSW_RMS_FAIR_SHARE_TREE_SELECTED"), () ->
+    $scope.$on(ICSW_SIGNALS("_ICSW_RMS_FAIR_SHARE_TREE_SELECTED"), () ->
         if not $scope.struct.load_called
             _load()
     )

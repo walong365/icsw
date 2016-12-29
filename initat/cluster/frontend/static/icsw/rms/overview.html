@@ -28,13 +28,13 @@
                 </uib-tab-heading>
                 <icsw-rms-job-done-table icsw-rms-struct="struct.rms.done" icsw-rms-global="struct"></icsw-rms-job-done-table>
             </uib-tab>
-            <uib-tab>
+            <uib-tab ng-if="struct.initial_data_present" select="activate_tab($event, 'queue')">
                 <uib-tab-heading>
                     <span class="fa fa-reorder"></span> {{ struct.rms.queue.info }}
                 </uib-tab-heading>
                 <icsw-rms-queue-table icsw-rms-struct="struct.rms.queue" icsw-rms-global="struct"></icsw-rms-queue-table>
             </uib-tab>
-            <uib-tab ng-if="struct.fstree_present" select="select_fairshare_tree()">
+            <uib-tab ng-if="struct.fstree_present" select="select_fairshare_tree($event)">
                 <uib-tab-heading>
                     <span class="fa fa-tree"></span> FairShare tree
                 </uib-tab-heading>
@@ -166,7 +166,7 @@
 
 <script type="text/ng-template" id="icsw.rms.queue.table">
     <uib-tabset>
-        <uib-tab>
+        <uib-tab select="select_queue_overview($event)">
             <uib-tab-heading>
                 Overview
             </uib-tab-heading>
@@ -174,11 +174,17 @@
             <div class="container-fluid">
                 <div class="row">
                     <div
-                        class="col-xs-6 col-md-4 col-lg-3"
-                        ng-repeat="queue in struct.queue_by_name_list"
+                        class="col-xs-12 col-md-12 col-lg-6"
+                        ng-repeat="graph in local_struct.graph_list"
                     >
-                        {{ queue.name }}
-                        <icsw-rms-queue-overview icsw-queue-name="queue.name"></icsw-rms-queue-overview>
+                        <icsw-rrd-graph-remote
+                            ng-if="local_struct.base_data_set"
+                            icsw-device-list="local_struct.devices"
+                            icsw-graph-setting="local_struct.local_setting"
+                            icsw-base-setting="graph.base_setting"
+                            icsw-from-date="local_struct.from_date"
+                            icsw-to-date="local_struct.to_date"
+                        ></icsw-rrd-graph-remote>
                     </div>
                 </div>
             </div>
@@ -870,12 +876,4 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rms.queue.overview">
-    <icsw-rrd-graph-remote
-        ng-if="struct.base_data_set"
-        icsw-device-list="struct.devices"
-        icsw-graph-setting="struct.local_setting"
-        icsw-base-setting="struct.base_setting"
-        icsw-from-date="struct.from_date"
-        icsw-to-date="struct.to_date"
-    ></icsw-rrd-graph-remote>
 </script>

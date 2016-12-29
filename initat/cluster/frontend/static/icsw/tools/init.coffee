@@ -794,8 +794,6 @@ angular.module(
         ICSW_ROUTE_RIGHTS_VALID: "icsw.route.rights.valid"
         # route rights updated, user and acls are valid
         ICSW_ROUTE_RIGHTS_INVALID: "icsw.route.rights.invalid"
-        # send when fair-share tree is selected
-        ICSW_RMS_FAIR_SHARE_TREE_SELECTED: "icsw.rms.fair.share.tree.selected"
         # overall style changed
         ICSW_OVERALL_STYLE_CHANGED: "icsw.overall.style.changed"
         # task settings changed
@@ -823,6 +821,10 @@ angular.module(
         _ICSW_ROLE_ADD_PERMISSIONS: "_icsw.role.add.permissions"
         _ICSW_FETCH_MON_BUILD_INFO: "_icsw.fetch.mon.build.info"
         _ICSW_DEVICE_INFO_ACTIVATE_TAB: "_icsw.device.info.activate.tab"
+        # send when fair-share tree is selected
+        _ICSW_RMS_FAIR_SHARE_TREE_SELECTED: "_icsw.rms.fair.share.tree.selected"
+        # tab has changed
+        _ICSW_RMS_MAIN_TAB_CHANGED: "_icsw.rms.main.tab.changed"
     }
     _rev_dict = {}
     for key, value of _dict
