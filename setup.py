@@ -48,6 +48,7 @@ setup(
         "initat.icsw.collectd",
         "initat.icsw.user",
         "initat.tools",
+        "initat.tools.mock",
         "initat.tools.bgnotify",
         "initat.tools.bgnotify.tasks",
         "initat.tools.nameserver_tools",
