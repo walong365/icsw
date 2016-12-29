@@ -23,8 +23,17 @@
 
 from __future__ import unicode_literals, print_function
 
+try:
+    import multiprocessing
+except NotImplementedError:
+    # /dev/urandom is not found in chroot
+    class dummy_class(object):
+        pass
+
+    class multiprocessing(object):
+        Process = dummy_class
+
 import inspect
-import multiprocessing
 import os
 import setproctitle
 import signal
@@ -32,9 +41,7 @@ import socket
 import sys
 import threading
 import time
-import traceback
 
-import psutil
 import six
 import zmq
 
@@ -644,6 +651,7 @@ class ExceptionHandlingMixin(object):
             self.log("no exception handlers defined")
 
     def handle_exception(self):
+        import traceback
         _handled = False
         exc_info = sys.exc_info()
         # store info
@@ -1402,6 +1410,8 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
         self["exit_requested"] = True
 
     def _process_exit(self, t_name, t_pid):
+        # late import of psutil to avoid chroot errors
+        import psutil
         self.__processes_running -= 1
         if t_pid:
             self.log("process {} ({:d}) exited".format(t_name, t_pid))

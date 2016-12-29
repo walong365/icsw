@@ -29,7 +29,6 @@ import signal
 import stat
 import subprocess
 
-import psutil
 from lxml.builder import E
 
 from initat.constants import VERSION_CS_NAME, INITAT_BASE
@@ -469,6 +468,8 @@ class Service(object):
         pass
 
     def cleanup(self, act_proc_dict):
+        # late import of psutil to avoid chroot errors
+        import psutil
         if not int(self.entry.get("startstop", "1")):
             return
         _meta_pids = set([int(_val.text) for _val in self.entry.findall(".//pids/pid")])

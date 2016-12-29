@@ -49,11 +49,14 @@ from initat.tools import logging_tools
 
 from initat.constants import META_SERVER_DIR
 
-try:
-    import psutil
-except (NotImplementedError, ImportError, IOError):
-    # handle chrooted calls
-    print("cannot import psutil, running chrooted ? setting psutil to None")
+if os.path.exists("/proc/stat"):
+    try:
+        import psutil
+    except (NotImplementedError, ImportError, IOError):
+        # handle chrooted calls
+        print("cannot import psutil, running chrooted ? setting psutil to None")
+        psutil = None
+else:
     psutil = None
 from lxml.builder import E
 
