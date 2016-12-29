@@ -239,6 +239,7 @@ setup_progress = angular.module(
                     return
 
         o = {
+            global: false
             type: setup_type
             heading: heading + " (" + device.name + ")"
             device_id: device.idx
@@ -256,24 +257,21 @@ setup_progress = angular.module(
         )
 
     $scope.open_in_new_tab_for_system = (task) ->
-        setup_type = task.setup_type
         heading = task.header
-        if setup_type == 4
-            heading = "Device Tree"
-            special_flag_name = "devices_available"
-            special_flag_value = true
-
-            if not task.fulfilled
-                special_flag_value = false
-                heading = "Create new Device"
 
         o = {
-            type: setup_type
+            global: true
+            task: task
             heading: heading
         }
 
-        if special_flag_name != undefined
-            o[special_flag_name] = special_flag_value
+        if task.name == "devices"
+            if task.fulfilled
+                o.devices_available = true
+                o.heading = "Device Tree"
+            else
+                o.devices_available = false
+                o.heading = "Create new Device"
 
         for tab in $scope.struct.tabs
             if tab.heading == o.heading
@@ -289,16 +287,8 @@ setup_progress = angular.module(
     $scope.close_tab = (to_be_closed_tab) ->
         $timeout(
             () ->
-                tabs_tmp = []
-
-                for tab in $scope.struct.tabs
-                    if tab != to_be_closed_tab
-                        tabs_tmp.push(tab)
-                $scope.struct.tabs.length = 0
-                for tab in tabs_tmp
-                    $scope.struct.tabs.push(tab)
-
-                if tabs_tmp.length == 0
+                _.remove($scope.struct.tabs, (el) -> return el.type == to_be_closed_tab.type)
+                if $scope.struct.tabs.length == 0
                     perform_refresh_for_device_status(true)
             0
         )
@@ -433,5 +423,22 @@ setup_progress = angular.module(
     return {
         unfulfilled_setup_tasks: () ->
             return _unfulfilled_setup_tasks()
+    }
+]).directive("icswSetupProgressTab",
+[
+    "$templateCache", "$compile",
+(
+    $templateCache, $compile,
+) ->
+    return {
+        restrict: "EA"
+        scope: {
+            tab: "=icswTab"
+        }
+        link: (scope, element, attrs) ->
+            if scope.tab.global
+                _tn = "icsw.setup.tab.type.#{scope.tab.task.name}"
+                console.log "*", _tn
+                element.append($compile($templateCache.get(_tn))(scope))
     }
 ])

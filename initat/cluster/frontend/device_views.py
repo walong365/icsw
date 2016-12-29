@@ -1270,11 +1270,10 @@ VAR_IGNORE_RE = re.compile("^__ISSUES_IGNORE_(?P<name>.+)__$")
 
 
 class SystemTask(object):
-    def __init__(self, name, header, description, setup_type, points):
+    def __init__(self, name, header, description, points):
         self.name = name
         self.header = header
         self.description = description
-        self.setup_type = setup_type
         self.points = points
         SystemTask.add_task(self)
 
@@ -1291,7 +1290,6 @@ class SystemTask(object):
             "ignore": ignore_dict.get(self.name, False),
             "name": self.name,
             "description": self.description,
-            "setup_type": self.setup_type,
             "points": self.points,
         }
         _dict.update(self.handle(request, ignore_dict))
@@ -1466,12 +1464,12 @@ class FQDNSystemTask(SystemTask):
 
 
 SystemTask.setup()
-DeviceSystemTask("devices", "Devices", "Add at least one Device to the system", 4, 25)
-MonitoringCheckSystemTask("monitoring_checks", "Monitoring checks", "Add at least one monitoring check to the system", 5, 25)
-UserSystemTask("users", "Users", "Add at least one user to the system (excluding the admin user)", 6, 25)
-LocationSystemTask("locations", "Locations", "Add at least one location to the system", 7, 25)
-FQDNSystemTask("fqdn", "FQDN", "Add at least one Domain name tree entry", 9, 25)
-DeviceCategorySystemTask("devcat", "Device Categories", "Add at at least one device category", 8, 40)
+DeviceSystemTask("devices", "Devices", "Add at least one Device to the system", 25)
+MonitoringCheckSystemTask("monitoring_checks", "Monitoring checks", "Add at least one monitoring check to the system", 25)
+UserSystemTask("users", "Users", "Add at least one user to the system (excluding the admin user)", 25)
+LocationSystemTask("locations", "Locations", "Add at least one location to the system", 25)
+FQDNSystemTask("fqdn", "FQDN", "Add at least one Domain name tree entry", 25)
+DeviceCategorySystemTask("devcat", "Device Categories", "Add at at least one device category", 40)
 
 
 # todo move somwhere sane

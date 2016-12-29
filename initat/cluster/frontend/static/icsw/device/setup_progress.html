@@ -239,19 +239,40 @@
                         <span>{{ tab.heading }}</span>
                         <icsw-tools-button size="xs" type="close" value="" ng-click="close_tab(tab)"></icsw-tools-button>
                     </uib-tab-heading>
+                    <icsw-setup-progress-tab icsw-tab="tab"></icsw-setup-progress-tab>
                     <icsw-device-mon-config-overview ng-if="tab.type == 0" icsw-sel-man="1" icsw-select-device="tab.device_id"></icsw-device-mon-config-overview>
                     <icsw-device-location-overview ng-if="tab.type == 1" icsw-sel-man="1" icsw-select-device="tab.device_id"></icsw-device-location-overview>
                     <icsw-device-asset-overview-reduced ng-if="tab.type == 2" icsw-sel-man="1" icsw-select-device="tab.device_id"></icsw-device-asset-overview-reduced>
                     <icsw-rrd-graph-normal ng-if="tab.type == 3" icsw-sel-man="1" icsw-select-device="tab.device_id"></icsw-rrd-graph-normal>
-                    <icsw-device-tree-overview ng-if="tab.type == 4 && tab.devices_available == true"></icsw-device-tree-overview>
-                    <icsw-device-create-mask ng-if="tab.type == 4 && tab.devices_available == false"></icsw-device-create-mask>
-                    <br ng-if="tab.type == 5"/><icsw-config-moncheck-overview ng-if="tab.type == 5"></icsw-config-moncheck-overview>
-                    <br ng-if="tab.type == 6"/><icsw-user-tree ng-if="tab.type == 6"></icsw-user-tree>
-                    <br ng-if="tab.type == 7"/><icsw-config-location ng-if="tab.type == 7"></icsw-config-location>
-                    <icsw-config-category-tree-edit ng-if="tab.type == 8" mode="device"></icsw-config-category-tree-edit>
-                    <icsw-config-domain-name-tree ng-if="tab.type == 9"></icsw-config-domain-name-tree>
                 </uib-tab>
             </uib-tabset>
         </div>
     </div>
+</script>
+
+<script type="text/ng-template" id="icsw.setup.tab.type.devices">
+    <div>
+        <icsw-device-tree-overview ng-if="tab.devices_available"></icsw-device-tree-overview>
+        <icsw-device-create-mask ng-if="!tab.devices_available"></icsw-device-create-mask>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.setup.tab.type.monitoring_checks">
+    <icsw-config-moncheck-overview></icsw-config-moncheck-overview>
+</script>
+
+<script type="text/ng-template" id="icsw.setup.tab.type.users">
+    <icsw-user-tree></icsw-user-tree>
+</script>
+
+<script type="text/ng-template" id="icsw.setup.tab.type.locations">
+    <icsw-config-location></icsw-config-location>
+</script>
+
+<script type="text/ng-template" id="icsw.setup.tab.type.fqdn">
+    <icsw-config-category-tree-edit mode="device"></icsw-config-category-tree-edit>
+</script>
+
+<script type="text/ng-template" id="icsw.setup.tab.type.devcat">
+    <icsw-config-domain-name-tree></icsw-config-domain-name-tree>
 </script>
