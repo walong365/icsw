@@ -927,6 +927,8 @@ class ServiceState(object):
                 services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
             else:
                 services = []
+            days_to_consider = int(srv_com.get("days_to_consider", "1"))
+            db_limit = int(srv_com.get("db_limit", "100"))
             with self.get_cursor() as crsr:
                 with self.get_cursor() as state_crsr:
                     for _srv_id, name, target_state, active, ignore in crsr.execute(
@@ -946,8 +948,8 @@ class ServiceState(object):
                                             proc_info_str=proc_info_str,
                                         ) for p_state, c_state, license_state, created, proc_info_str in state_crsr.execute(
                                             "SELECT pstate, cstate, license_state, created, proc_info_str FROM state "
-                                            "WHERE service=? AND created > ? ORDER BY -created LIMIT 100",
-                                            (_srv_id, cur_time - 24 * 3600),
+                                            "WHERE service=? AND created > ? ORDER BY -created LIMIT ?",
+                                            (_srv_id, cur_time - days_to_consider * 24 * 3600, db_limit),
                                         )
                                     ]
                                 ),
@@ -961,8 +963,8 @@ class ServiceState(object):
                                             created="{:d}".format(int(created)),
                                         ) for action, success, runtime, finished, created in state_crsr.execute(
                                             "SELECT action, success, runtime, finished, created FROM action "
-                                            "WHERE service=? AND created > ? ORDER BY -created LIMIT 100",
-                                            (_srv_id, cur_time - 24 * 3600),
+                                            "WHERE service=? AND created > ? ORDER BY -created LIMIT ?",
+                                            (_srv_id, cur_time - days_to_consider * 24 * 3600, db_limit),
                                         )
                                     ]
                                 ),

@@ -7,14 +7,8 @@
         <uib-accordion close-others="no" ng-show="struct.lic_overview.length">
             <div uib-accordion-group class="panel-default" is-open="overview_open">
                 <uib-accordion-heading>
-                    <div class="row">
-                        <div class="col-md-2">
-                            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': overview_open, 'glyphicon-chevron-right': !overview_open}"></i>
-                            License Overview ({{ struct.lic_overview.length }} Entries)
-                        </div>
-                        <div class="col-md-8">
-                        </div>
-                    </div>
+                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': overview_open, 'glyphicon-chevron-right': !overview_open}"></i>
+                    License Overview ({{ struct.lic_overview.length }} Entries)
                 </uib-accordion-heading>
                 <table class="table table-condensed table-hover table-striped" style="width:auto;" ng-show="struct.lic_overview.length">
                     <thead>
@@ -51,68 +45,69 @@
                     </tbody>
                 </table>
             </div>
-        </uib-accordion>
-        <h3>Licenses from Licenseserver: {{ struct.licenses.length }}</h3>
-        <uib-accordion close-others="no" ng-show="struct.licenses.length">
-            <div uib-accordion-group class="panel-default" ng-repeat="license in struct.licenses" is-open="license.open">
+            <div uib-accordion-group class="panel-default" is-open="licenses_open">
                 <uib-accordion-heading>
-                    <div class="row">
-                        <div class="col-md-2">
-                        <i class="glyphicon" ng-class="{'glyphicon-chevron-down': license.open, 'glyphicon-chevron-right': !license.open}"></i>
-                        {{ license.name }}
-                        </div>
-                        <div class="col-md-8">
-                            <span class="label label-warning" ng-show="license.used">{{ license.used }} used</span>
-                            <span class="label label-success" ng-show="license.free">{{ license.free }} free</span>
-                            <span class="label label-critical" ng-show="license.reserved">{{ license.reserved }} free</span>
-                            <span class="label label-primary">{{ license.issued }} issued</span>
-                        </div>
-                    </div>
+                    <icsw-tools-accordion-chevron icsw-left="true" icsw-flag="licenses_open"></icsw-tools-accordion-chevron>
+                    Licenses from Licenseserver: {{ struct.licenses.length }}
                 </uib-accordion-heading>
-                <h4 ng-show="!license.used">No licenses in use</h4>
-                <table class="table table-condensed table-hover table-striped" style="width:auto;" ng-show="license.used">
-                    <thead>
-                        <tr class="info">
-                            <th>Server</th>
-                            <th>Vendor</th>
-                            <th>(Version)</th>
-                            <th>User</th>
-                            <th>Total Licenses</th>
-                            <th>Client</th>
-                            <th>(Version)</th>
-                            <th>#</th>
-                            <th colspan="2">Checkout Time</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr ng-repeat="usage in license.all_usages">
-                            <td>{{ usage.server_info }}</td>
-                            <td>{{ usage.version.vendor }}</td>
-                            <td>{{ usage.version.version }}</td>
-                            <td>{{ usage.user }}</td>
-                            <td class="text-right">{{ usage.user_usage }}</td>
-                            <td>{{ usage.client_long }}</td>
-                            <td>{{ usage.client_version }}</td>
-                            <td>{{ usage.num }}</td>
-                            <td>{{ usage.absolute_co }}</td>
-                            <td>{{ usage.relative_co }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <ul class="list-group" ng-show="license.versions.length && 0">
-                    <li ng-repeat="version in license.versions" class="list-group-item">
-                        {{ version.vendor }} {{ version.version }}
-                        <ul class="list-group" ng-show="version.usages.length">
-                            <li ng-repeat="usage in version.usages" class="list-group-item">
-                                {{ usage.client_short }} {{ usage.user }} {{ usage.num }}
-                            </li>
-                        </ul>
-                    </li>
-                </ul>
+                <div uib-accordion-group class="panel-default" ng-repeat="license in struct.licenses" is-open="license.open">
+                    <uib-accordion-heading>
+                        <div class="row">
+                            <div class="col-md-2">
+                            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': license.open, 'glyphicon-chevron-right': !license.open}"></i>
+                            {{ license.name }}
+                            </div>
+                            <div class="col-md-8">
+                                <span class="label label-warning" ng-show="license.used">{{ license.used }} used</span>
+                                <span class="label label-success" ng-show="license.free">{{ license.free }} free</span>
+                                <span class="label label-critical" ng-show="license.reserved">{{ license.reserved }} free</span>
+                                <span class="label label-primary">{{ license.issued }} issued</span>
+                            </div>
+                        </div>
+                    </uib-accordion-heading>
+                    <h4 ng-show="!license.used">No licenses in use</h4>
+                    <table class="table table-condensed table-hover table-striped" style="width:auto;" ng-show="license.used">
+                        <thead>
+                            <tr class="info">
+                                <th>Server</th>
+                                <th>Vendor</th>
+                                <th>(Version)</th>
+                                <th>User</th>
+                                <th>Total Licenses</th>
+                                <th>Client</th>
+                                <th>(Version)</th>
+                                <th>#</th>
+                                <th colspan="2">Checkout Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="usage in license.all_usages">
+                                <td>{{ usage.server_info }}</td>
+                                <td>{{ usage.version.vendor }}</td>
+                                <td>{{ usage.version.version }}</td>
+                                <td>{{ usage.user }}</td>
+                                <td class="text-right">{{ usage.user_usage }}</td>
+                                <td>{{ usage.client_long }}</td>
+                                <td>{{ usage.client_version }}</td>
+                                <td>{{ usage.num }}</td>
+                                <td>{{ usage.absolute_co }}</td>
+                                <td>{{ usage.relative_co }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <ul class="list-group" ng-show="license.versions.length && 0">
+                        <li ng-repeat="version in license.versions" class="list-group-item">
+                            {{ version.vendor }} {{ version.version }}
+                            <ul class="list-group" ng-show="version.usages.length">
+                                <li ng-repeat="usage in version.usages" class="list-group-item">
+                                    {{ usage.client_short }} {{ usage.user }} {{ usage.num }}
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
             </div>
-        </uib-accordion>
-        <uib-accordion close-others="no" ng-show="struct.servers.length">
-            <div uib-accordion-group class="panel-default" is-open="server_open">
+            <div uib-accordion-group class="panel-default" is-open="server_open" ng-show="struct.servers.length">
                 <uib-accordion-heading>
                     <i class="glyphicon" ng-class="{'glyphicon-chevron-down': server_open, 'glyphicon-chevron-right': !server_open}"></i>
                     License Servers: {{ struct.servers.length }}

@@ -28,12 +28,14 @@ import os
 from initat.tools import net_tools, server_command
 
 
-def query_local_meta_server(inst_xml, command, services=None):
+def query_local_meta_server(inst_xml, command, services=None, days_to_consider=1, db_limit=100):
     srv_com = server_command.srv_command(
         command="state{}".format(command),
     )
     if services:
         srv_com["services"] = ",".join(services)
+    srv_com["days_to_consider"] = "{:d}".format(days_to_consider)
+    srv_com["db_limit"] = "{:d}".format(db_limit)
     return net_tools.ZMQConnection(
         "icsw_state_{:d}".format(os.getpid())
     ).add_connection(

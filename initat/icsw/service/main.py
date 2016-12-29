@@ -66,7 +66,7 @@ def _state_overview(opt_ns, result):
             _states.append(_src_state)
         _actions = result.xpath(".//ns:action", start_el=_inst)
         print(
-            "{:<30s}, target state is {:<20s} [{}, {}], {} / {} in the last 24 hours".format(
+            "{:<30s}, target state is {:<20s} [{}, {}], {} / {} in the last {}".format(
                 _inst.get("name"),
                 {
                     0: "stopped",
@@ -76,30 +76,56 @@ def _state_overview(opt_ns, result):
                 "ignored" if int(_inst.attrib["ignore"]) else "watched",
                 logging_tools.get_plural("state", len(_states)),
                 logging_tools.get_plural("action", len(_actions)),
+                logging_tools.get_diff_time_str(24 * 3600 * int(result.get("days_to_consider", "1"))),
             )
         )
+        _out_list = []
         if opt_ns.state:
-            for _cur_s in _states:
-                print(
-                    "    {} pstate={}, cstate={}, license_state={} [{}]".format(
-                        time.ctime(int(_cur_s.attrib["created"])),
-                        STATE_DICT[int(_cur_s.attrib["pstate"])],
-                        CONF_STATE_DICT[int(_cur_s.attrib["cstate"])],
-                        LIC_STATE_DICT[int(_cur_s.attrib["license_state"])],
-                        _cur_s.attrib["proc_info_str"],
-                    )
-                )
+            _out_list.extend(
+                [
+                    {
+                        "ts": int(_el.attrib["created"]),
+                        "type": "state",
+                        "struct": _el,
+                    } for _el in _states
+                ]
+            )
         if opt_ns.action:
-            for _cur_a in _actions:
-                print(
-                    "    {} action={}, runtime={} [{} / {}]".format(
-                        time.ctime(int(_cur_a.attrib["created"])),
-                        _cur_a.attrib["action"],
-                        _cur_a.attrib["runtime"],
-                        _cur_a.attrib["finished"],
-                        _cur_a.attrib["success"],
+            _out_list.extend(
+                [
+                    {
+                        "ts": int(_el.attrib["created"]),
+                        "type": "action",
+                        "struct": _el,
+                    } for _el in _actions
+                ]
+            )
+        if _out_list:
+            if opt_ns.merge:
+                _out_list.sort(lambda x, y: x["ts"] > y["ts"])
+                # print("*")
+            for _list_el in _out_list:
+                _el = _list_el["struct"]
+                if _list_el["type"] == "state":
+                    print(
+                        "    {} pstate={}, cstate={}, license_state={} [{}]".format(
+                            time.ctime(int(_el.attrib["created"])),
+                            STATE_DICT[int(_el.attrib["pstate"])],
+                            CONF_STATE_DICT[int(_el.attrib["cstate"])],
+                            LIC_STATE_DICT[int(_el.attrib["license_state"])],
+                            _el.attrib["proc_info_str"],
+                        )
                     )
-                )
+                else:
+                    print(
+                        "    {} action={}, runtime={} [{} / {}]".format(
+                            time.ctime(int(_el.attrib["created"])),
+                            _el.attrib["action"],
+                            _el.attrib["runtime"],
+                            _el.attrib["finished"],
+                            _el.attrib["success"],
+                        )
+                    )
 
 
 def version_command(opt_ns):
@@ -204,7 +230,13 @@ def main(opt_ns):
             print("Warning: meta-server is not running")
 
         # contact meta-server at localhost
-        _result = query_local_meta_server(inst_xml, opt_ns.childcom, services=opt_ns.service)
+        _result = query_local_meta_server(
+            inst_xml,
+            opt_ns.childcom,
+            services=opt_ns.service,
+            days_to_consider=opt_ns.days,
+            db_limit=opt_ns.db_limit,
+        )
         if _result is None:
             log_com("Got no result from meta-server")
             sys.exit(1)

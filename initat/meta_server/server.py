@@ -202,8 +202,8 @@ class MainProcess(ICSWBasePoolClient):
         conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
         if hm_classes and global_config["TRACK_CSW_MEMORY"]:
             self.log("CSW memory tracking enabled, target is {}".format(conn_str))
-            vector_socket = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
-            vector_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
+            vector_socket = self.zmq_context.socket(zmq.PUSH)
+            vector_socket.setsockopt(zmq.LINGER, 0)
             vector_socket.connect(conn_str)
         else:
             vector_socket = None
@@ -214,14 +214,17 @@ class MainProcess(ICSWBasePoolClient):
     def _recv_command(self, zmq_sock):
         trigger_sm = False
         src_id = zmq_sock.recv()
-        more = zmq_sock.getsockopt(zmq.RCVMORE)  # @UndefinedVariable
+        more = zmq_sock.getsockopt(zmq.RCVMORE)
         if more:
             data = zmq_sock.recv()
-            more = zmq_sock.getsockopt(zmq.RCVMORE)  # @UndefinedVariable
+            # more = zmq_sock.getsockopt(zmq.RCVMORE)
             srv_com = server_command.srv_command(source=data)
-            self.log("got command '{}' from '{}'".format(
-                srv_com["command"].text,
-                srv_com["source"].attrib["host"]))
+            self.log(
+                "got command '{}' from '{}'".format(
+                    srv_com["command"].text,
+                    srv_com["source"].attrib["host"]
+                )
+            )
             srv_com.update_source()
             srv_com.set_result("ok")
             if srv_com["command"].text.startswith("state"):
@@ -238,8 +241,8 @@ class MainProcess(ICSWBasePoolClient):
                     server_command.SRV_REPLY_STATE_ERROR
                 )
             try:
-                zmq_sock.send_unicode(src_id, zmq.SNDMORE | zmq.NOBLOCK)  # @UndefinedVariable
-                zmq_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)  # @UndefinedVariable
+                zmq_sock.send_unicode(src_id, zmq.SNDMORE | zmq.NOBLOCK)
+                zmq_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)
             except:
                 self.log(
                     "error sending reply to {}: {}".format(

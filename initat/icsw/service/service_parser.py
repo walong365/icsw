@@ -107,6 +107,9 @@ class Parser(object):
         _act.set_defaults(childcom="overview")
         _act.add_argument("--state", default=False, action="store_true", help="show states [%(default)s]")
         _act.add_argument("--action", default=False, action="store_true", help="show actions [%(default)s]")
+        _act.add_argument("--days", default=1, type=int, help="days to consider [%(default)d]")
+        _act.add_argument("--db-limit", default=100, type=int, help="database query limit [%(default)d]")
+        _act.add_argument("--merge", default=False, action="store_true", help="merge action and state list [%(default)s]")
         self._add_iccs_sel(_act)
 
     def _add_state_enable_parser(self, sub_parser):

@@ -1941,6 +1941,11 @@ angular.module(
         scope: {
             flag: "=icswFlag"
         }
+        link: (scope, element, attrs) ->
+            if attrs.icswLeft?
+                scope.left_side = true
+            else
+                scope.left_side = false
     }
 ]).service("icswLanguageTool",
 [
