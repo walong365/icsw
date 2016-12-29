@@ -104,7 +104,8 @@ angular.module(
         controller: 'icswDeviceStatusHistoryCtrl'
         scope: true
         link: (scope, element, attrs) ->
-            if attrs["icswMode"] == "multi"
+            scope.icsw_device_mode = attrs["icswDeviceMode"]
+            if attrs["icswDeviceMode"] == "multi"
                 _tn = "icsw.device.status_history_overview.multi"
             else
                 _tn = "icsw.device.status_history_overview.single"
@@ -244,10 +245,10 @@ angular.module(
 ]).directive("icswDeviceStatusHistoryDevice",
 [
     "status_utils_functions", "Restangular", "ICSW_URLS", "$q", "icswStatusHistorySettings",
-    "icswSaltMonitoringResultService",
+    "icswSaltMonitoringResultService", "$compile", "$templateCache",
 (
     status_utils_functions, Restangular, ICSW_URLS, $q, icswStatusHistorySettings,
-    icswSaltMonitoringResultService,
+    icswSaltMonitoringResultService, $compile, $templateCache,
 ) ->
     return {
         restrict : "EA"
@@ -256,8 +257,13 @@ angular.module(
         scope: {
             "device": "=icswDevice"
         }
-        link: (scope, el, attrs, status_history_ctrl) ->
-
+        link: (scope, element, attrs, status_history_ctrl) ->
+            scope.icsw_device_mode = attrs["icswDeviceMode"]
+            if attrs["icswDeviceMode"] == "multi"
+                _tn = "icsw.device.status_history_device.multi"
+            else
+                _tn = "icsw.device.status_history_device.single"
+            element.append($compile($templateCache.get(_tn))(scope))
             scope.struct = {
                 # loading flag
                 loading: false

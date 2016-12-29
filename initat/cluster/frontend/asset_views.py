@@ -45,9 +45,9 @@ from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.models.functions import can_delete_obj, get_change_reset_list
 from initat.cluster.backbone.serializers import ScheduleItemSerializer, \
-    AssetPackageSerializer, StaticAssetTemplateSerializer, \
+    AssetPackageSerializer, StaticAssetTemplateSerializer, ReverseSimpleAssetPackageSerializer, \
     StaticAssetTemplateFieldSerializer, StaticAssetSerializer, StaticAssetTemplateRefsSerializer, \
-    AssetBatchSerializer, SimpleAssetBatchSerializer
+    AssetBatchSerializer, SimpleAssetBatchSerializer, AssetPackageVersionSerializer
 from initat.cluster.frontend.helper_functions import xml_wrapper
 
 # moved to views
@@ -674,8 +674,6 @@ class get_fieldvalues_for_template(View):
             )
         )
 
-from initat.cluster.backbone.models import AssetPackage
-from initat.cluster.backbone.serializers import ReverseSimpleAssetPackageSerializer, AssetPackageVersionSerializer
 
 class AssetPackageLoader(View):
     @method_decorator(login_required)
@@ -691,4 +689,3 @@ class AssetPackageLoader(View):
             ap = AssetPackage.objects.prefetch_related("assetpackageversion_set").get(idx=asset_package_id)
             serializer = AssetPackageVersionSerializer(ap.assetpackageversion_set.all(), many=True)
             return HttpResponse(json.dumps(serializer.data))
-

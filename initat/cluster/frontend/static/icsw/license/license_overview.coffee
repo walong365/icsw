@@ -49,6 +49,8 @@ class license
         @open = false
         @name = @xml.attr("name")
         @key = @name
+        # link to overview object
+        @overview = null
         for _lc in ["used", "reserved", "free", "issued"]
             @[_lc] = parseInt(@xml.attr(_lc))
         @versions = (new license_version($(sub_xml), @) for sub_xml in @xml.find("version"))
@@ -148,8 +150,14 @@ lic_module = angular.module("icsw.license.overview",
                         _updated.push(_name)
                     else
                         # new entry
-                        $scope.struct.lic_overview.push(new license_overview($(entry)))
+                        new_ov = new license_overview($(entry))
+                        _ov_lut[_name] = new_ov
+                        $scope.struct.lic_overview.push(new_ov)
                         _updated.push(_name)
+                # link license-overview object with license
+                for entry in $scope.struct.licenses
+                    if entry.name of _ov_lut
+                        entry.overview = _ov_lut[entry.name]
                 # check to remove
                 _to_remove = _.difference(_.keys(_ov_lut), _updated)
                 # console.log _.keys(_ov_lut), _updated, _to_remove

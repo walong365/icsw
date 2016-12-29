@@ -531,6 +531,7 @@ class DispatcherLinkLoader(View):
         serializer = DispatcherLinkSerializer(queryset, many=True)
         return HttpResponse(json.dumps(serializer.data))
 
+
 class DispatcherLinkSyncer(View):
     @method_decorator(login_required)
     def post(self, request):

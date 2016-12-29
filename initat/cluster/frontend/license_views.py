@@ -69,8 +69,7 @@ class LicenseViewSet(viewsets.ViewSet):
                     'id': lic.id,
                     'name': lic.name,
                     'description': lic.description,
-                    'parameter_usage': {
-                    },
+                    'parameter_usage': {},
                     "fp_state": License.objects.fingerprint_ok(lic.enum_value)
                 } for lic in get_available_licenses()
             ]

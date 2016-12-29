@@ -1,5 +1,5 @@
 <script type="text/ng-template" id="icsw/main/status_history.html">
-    <icsw-device-status-history-overview icsw-mode="multi" icsw-sel-man="0"></icsw-device-status-history-overview>
+    <icsw-device-status-history-overview icsw-device-mode="multi" icsw-sel-man="0"></icsw-device-status-history-overview>
 </script>
 
 <script type="text/ng-template" id="icsw.device.status_history_overview.multi">
@@ -69,7 +69,10 @@
                     heading="{{ device.full_name }}"
                     select="enabled_device_lut[device.idx] = device.idx"
                 >
-                    <icsw-device-status-history-device icsw-device="device"></icsw-device-status-history-device>
+                    <icsw-device-status-history-device
+                        icsw-device-mode="multi"
+                        icsw-device="device"
+                    ></icsw-device-status-history-device>
                 </uib-tab>
             </uib-tabset>
         </icsw-tools-ensure-device-selection>
@@ -113,11 +116,14 @@
             </div>
         </div>
         <h4 class="alert alert-danger" style="width: 300px" ng-if="struct.timespan_error ">{{ struct.timespan_error }}</h4>
-        <icsw-device-status-history-device icsw-device="struct.devices[0]"></icsw-device-status-history-device>
+        <icsw-device-status-history-device
+            icsw-device-mode="single"
+            icsw-device="struct.devices[0]"
+        ></icsw-device-status-history-device>
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.device.status_history_device">
+<script type="text/ng-template" id="icsw.device.status_history_device.multi">
     <div class="panel panel-default">
         <div class="panel-heading">
             <h3>
@@ -199,5 +205,86 @@
                 </tbody>
             </table>
         </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.status_history_device.single">
+    <div>
+        <h3>
+            {{ device.full_name }}
+            <small>
+                (<ng-pluralize count="service_data.length" when="{'0': 'No services', 'one': '1 service', 'other': '{} services'}">
+                <!-- weird formatting here because there shouldn't be a space before ')' in any case -->
+                </ng-pluralize>
+                <span ng-show="get_time_frame() != undefined">
+                    from {{ get_time_frame().start_str }} to {{ get_time_frame().end_str }}
+                </span>)
+                <span ng-show="get_time_frame().partial" class="text-warning">, timerange not fully covered</span>
+            </small>
+        </h3>
+        <icsw-tools-device-hist-status-overview
+            icsw-device="device"
+            detailed-view="true"
+        ></icsw-tools-device-hist-status-overview>
+
+        <div uib-alert class="alert-danger" ng-show="service_data.length == 0 && !struct.loading">
+            No services for this device and time span.
+        </div>
+
+        <div uib-alert class="alert-warning" ng-show="struct.loading">
+            Loading data from Server ...
+        </div>
+
+        <table class="table table-condensed table-hover icsw-table-striped-4" style="margin-top: 10px" ng-show="service_data.length > 0 && !struct.loading">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Service</th>
+                    <th style="width: 10%;" class="text-center"><!-- chart --></th>
+                    <th
+                        style="width: 50px;"
+                        class="text-center"
+                        ng-repeat="ss in struct.salt_struct.service_states"
+                    >
+                        {{ struct.salt_struct.service_lut[ss].info }}
+                    </th>
+                    <th class="text-center">Timeline</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    ng-repeat-start="entry in service_data"
+                    ng-click="entry.log_viewer_enabled = !entry.log_viewer_enabled"
+                    style="cursor: pointer"
+                >
+                    <td>
+                        <i ng-class="entry.log_viewer_enabled && 'glyphicon glyphicon-chevron-down' || 'glyphicon glyphicon-chevron-right'"></i>
+                    </td>
+                    <td>{{ entry.name }}</td>
+                    <td class="text-right">
+                        <icsw-tools-piechart diameter="28" data="entry.pie_data"></icsw-tools-piechart>
+                    </td>
+                    <td
+                        class="text-right"
+                        style="vertical-align: middle"
+                        ng-repeat="ss in struct.salt_struct.service_states"
+                    >
+                        {{ struct.service_cache[entry.name][ss] }}
+                    </td>
+                    <td>
+                        <icsw-tools-hist-line-graph for-host="false" data="entry.line_graph_data" click="TODO"></icsw-tools-hist-line-graph>
+                    </td>
+                </tr>
+                <tr ng-repeat-end ng-if="entry.log_viewer_enabled">
+                    <td colspan="99">
+                        <icsw-tools-hist-log-viewer
+                            data="entry.line_graph_data"
+                            enabled="entry.log_viewer_enabled"
+                        ></icsw-tools-hist-log-viewer>
+                        <!-- TODO: focus entry which was clicked upon? -->
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </script>

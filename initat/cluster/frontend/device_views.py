@@ -357,6 +357,7 @@ class EnrichmentObject(object):
         _data = self.serializer(_result, many=True).data
         return _data
 
+
 class DispatchLinkEnrichment(object):
     def fetch(self, pk_list):
         links = DispatcherLink.objects.filter(model_name="device", object_id__in=pk_list)
@@ -367,6 +368,7 @@ class DispatchLinkEnrichment(object):
             entry['device'] = entry['object_id']
 
         return data
+
 
 class ComCapabilityEnrichment(object):
     def fetch(self, pk_list):
@@ -920,6 +922,7 @@ from initat.cluster.backbone.models import DeviceFlagsAndSettings, mon_check_com
 import pytz
 import ast
 
+
 class DeviceTask(object):
     def __init__(self, name, header, description, setup_type, points):
         self.name = name
@@ -1010,7 +1013,6 @@ class DeviceTask(object):
         return HttpResponse(
             json.dumps(1)
         )
-
 
     @staticmethod
     def handle_request(request):
@@ -1111,6 +1113,7 @@ class LocationsDeviceTask(DeviceTask):
 
         return info_dict
 
+
 class AssetScanDeviceTask(DeviceTask):
     def handle(self, request, ignore_dict):
         device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
@@ -1132,6 +1135,7 @@ class AssetScanDeviceTask(DeviceTask):
             info_dict[_device.idx] = _dict
 
         return info_dict
+
 
 class GraphingDataDeviceTask(DeviceTask):
     def handle(self, request, ignore_dict):
@@ -1192,7 +1196,7 @@ class GraphingDataDeviceTask(DeviceTask):
                     _dict['text'] = "Last update {} hour(s) ago".format(age_in_hours)
                 if rrd_age_in_seconds > (60 * 60 * 24):
                     age_in_days = round(rrd_age_in_seconds / (60.0 * 60.0 * 24), 1)
-                    _dict['text'] =  "Last update {} day(s) ago".format(age_in_days)
+                    _dict['text'] = "Last update {} day(s) ago".format(age_in_days)
                 if rrd_age_in_seconds > (60 * 60 * 24 * 7):
                     age_in_weeks = round(rrd_age_in_seconds / (60.0 * 60.0 * 24 * 7), 1)
                     _dict['text'] = "Last update {} week(s) ago".format(age_in_weeks)
@@ -1223,10 +1227,12 @@ LocationsDeviceTask("locations", "Locations", "Assign at least one location", 1,
 AssetScanDeviceTask("asset_scans", "Asset Scans", "Perform at least one asset scan", 2, 25)
 GraphingDataDeviceTask("graphing_data", "Graphing Data", "Have graphing information enabled", 3, 25)
 
+
 class DeviceCompletion(View):
     @method_decorator(login_required)
     def post(self, request):
         return DeviceTask.handle_request(request)
+
 
 class SimpleGraphSetup(View):
     @method_decorator(login_required)
@@ -1252,6 +1258,7 @@ class SimpleGraphSetup(View):
         return HttpResponse(
             json.dumps(_status)
         )
+
 
 class DeviceTaskIgnoreToggle(View):
     @method_decorator(login_required)
@@ -1355,7 +1362,8 @@ class SystemTask(object):
         )
 
         _ignore_dict = {
-            SystemTask.extract_var_name(_var.name): _var.get_value() for _var in system_device.device_variable_set.all() if SystemTask.extract_var_name(_var.name)
+            SystemTask.extract_var_name(_var.name): _var.get_value() for _var in
+            system_device.device_variable_set.all() if SystemTask.extract_var_name(_var.name)
         }
         _r_list = [
             _task.get_dict(request, _ignore_dict) for _task in SystemTask.tasks
@@ -1447,11 +1455,22 @@ class DeviceCategorySystemTask(SystemTask):
         }
 
 
+class FQDNSystemTask(SystemTask):
+    def handle(self, request, ignore_dict):
+        _c = domain_tree_node.objects.all().count()
+        return {
+            "count": _c,
+            "fulfilled": _c > 1,
+            "text": logging_tools.get_plural("Domain name tree entry", _c),
+        }
+
+
 SystemTask.setup()
 DeviceSystemTask("devices", "Devices", "Add at least one Device to the system", 4, 25)
 MonitoringCheckSystemTask("monitoring_checks", "Monitoring checks", "Add at least one monitoring check to the system", 5, 25)
 UserSystemTask("users", "Users", "Add at least one user to the system (excluding the admin user)", 6, 25)
 LocationSystemTask("locations", "Locations", "Add at least one location to the system", 7, 25)
+FQDNSystemTask("fqdn", "FQDN", "Add at least one Domain name tree entry", 9, 25)
 DeviceCategorySystemTask("devcat", "Device Categories", "Add at at least one device category", 8, 40)
 
 

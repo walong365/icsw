@@ -54,14 +54,17 @@
                     <uib-accordion-heading>
                         <div class="row">
                             <div class="col-md-2">
-                            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': license.open, 'glyphicon-chevron-right': !license.open}"></i>
-                            {{ license.name }}
+                                <icsw-tools-accordion-chevron icsw-left="true" icsw-flag="license.open"></icsw-tools-accordion-chevron>
+                                {{ license.name }}
                             </div>
-                            <div class="col-md-8">
+                            <div class="col-md-4">
                                 <span class="label label-warning" ng-show="license.used">{{ license.used }} used</span>
                                 <span class="label label-success" ng-show="license.free">{{ license.free }} free</span>
                                 <span class="label label-critical" ng-show="license.reserved">{{ license.reserved }} free</span>
                                 <span class="label label-primary">{{ license.issued }} issued</span>
+                            </div>
+                            <div class="col-md-4" ng-show="license.overview">
+                                <icsw-rms-license-graph icsw-license="license.overview"></icsw-rms-license-graph>
                             </div>
                         </div>
                     </uib-accordion-heading>
