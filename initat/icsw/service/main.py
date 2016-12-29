@@ -102,8 +102,7 @@ def _state_overview(opt_ns, result):
             )
         if _out_list:
             if opt_ns.merge:
-                _out_list.sort(lambda x, y: x["ts"] > y["ts"])
-                # print("*")
+                _out_list.sort(cmp=lambda x, y: x["ts"] - y["ts"], reverse=True)
             for _list_el in _out_list:
                 _el = _list_el["struct"]
                 if _list_el["type"] == "state":
