@@ -927,11 +927,9 @@ menu_module = angular.module(
     }
 ]).directive("icswLayoutSubMenubar",
 [
-    "$templateCache", "icswUserService", "$rootScope", "$compile", "ICSW_SIGNALS",
-    "$state",
+    "$templateCache",
 (
-    $templateCache, icswUserService, $rootScope, $compile, ICSW_SIGNALS,
-    $state,
+    $templateCache,
 ) ->
     return {
         restrict: "E"

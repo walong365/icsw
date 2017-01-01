@@ -1493,6 +1493,7 @@ rms_module = angular.module(
             (data) ->
                 _user_setting = data[0]
                 local_setting = _user_setting.get_default()
+                local_setting.hide_empty = false
                 _user_setting.set_custom_size(local_setting, 600, 200)
                 _dt = data[1]
                 $scope.local_struct.local_setting = local_setting

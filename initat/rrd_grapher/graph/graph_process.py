@@ -153,6 +153,21 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
         # fake name
         _raw["name"] = uuid.uuid4().get_urn()
         _setting = GraphSettingSerializerCustom(data=_raw)
+
+        self._early_return_sent = False
+
+        def early_return_call(xml_el):
+            if not self._early_return_sent:
+                srv_com["graphs"] = xml_el
+                self._early_return_sent = True
+                srv_com.set_result(
+                    "generated {}".format(logging_tools.get_plural("graph", len(xml_el))),
+                    server_command.SRV_REPLY_STATE_OK
+                )
+                self.send_pool_message("remote_call_async_result", unicode(srv_com))
+            else:
+                self.log("return already sent", logging_tools.LOG_LEVEL_ERROR)
+
         if _setting.is_valid():
             para_dict["graph_setting"] = _setting.save()
             for key, _default in [
@@ -166,7 +181,8 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
                     self.log,
                     self.colorizer,
                     para_dict,
-                    self
+                    self,
+                    early_return_call,
                 ).graph(dev_pks, graph_keys)
             except:
                 for _line in process_tools.exception_info().log_lines:
@@ -177,11 +193,13 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
                     server_command.SRV_REPLY_STATE_CRITICAL
                 )
             else:
-                srv_com["graphs"] = graph_list
-                srv_com.set_result(
-                    "generated {}".format(logging_tools.get_plural("graph", len(graph_list))),
-                    server_command.SRV_REPLY_STATE_OK
-                )
+                if not self._early_return_sent:
+                    early_return_call(graph_list)
+                # srv_com["graphs"] = graph_list
+                # srv_com.set_result(
+                #    "generated {}".format(logging_tools.get_plural("graph", len(graph_list))),
+                #    server_command.SRV_REPLY_STATE_OK
+                # )
         else:
             srv_com["graphs"] = []
             srv_com.set_result(
@@ -190,4 +208,5 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
             )
 
         self._close_rrdcached_socket()
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        if not self._early_return_sent:
+            self.send_pool_message("remote_call_async_result", unicode(srv_com))

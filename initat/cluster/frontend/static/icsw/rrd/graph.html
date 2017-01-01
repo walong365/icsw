@@ -129,10 +129,10 @@
             </div>
             <div
                 ng-class="graph_tree.base_setting.show_tree && 'col-md-9' || 'col-md-12'"
-                ng-show="graph_tree.graphs.list.length"
+                ng-show="graph_tree.graph_result.list.length"
             >
                 <icsw-rrd-graph-result
-                    icsw-graph-result="graph_tree.graphs"
+                    icsw-graph-result="graph_tree.graph_result"
                 ></icsw-rrd-graph-result>
             </div>
         </div>
@@ -140,20 +140,25 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rrd.graph.list.header">
-    <h3>
-        {{ graph_result.list.length }} Graphs,
-        {{ graph_result.list[0].get_tv(graph_result.list[0].ts_start_mom) }} to
-        {{ graph_result.list[0].get_tv(graph_result.list[0].ts_end_mom) }}
-    </h3>
-    <table class="table-condensed">
-        <tr ng-repeat="gkey in $$graph_keys">
-            <td ng-repeat="(dkey, graph) in graph_result.matrix[gkey]" style="vertical-align:top;">
-                <icsw-rrd-graph-list-graph
-                    icsw-graph="graph"
-                ></icsw-rrd-graph-list-graph>
-            </td>
-        </tr>
-    </table>
+    <div>
+        <h3>
+            <ng-pluralize
+                count="graph_result.list.length"
+                when="{'0': 'No Graphs', 'one': 'One Graph', 'other': '{} Graphs'}"
+            ></ng-pluralize>,
+            {{ graph_result.list[0].get_tv(graph_result.list[0].ts_start_mom) }} to
+            {{ graph_result.list[0].get_tv(graph_result.list[0].ts_end_mom) }}
+        </h3>
+        <table class="table-condensed">
+            <tr ng-repeat="gkey in $$graph_keys">
+                <td ng-repeat="(dkey, graph) in graph_result.matrix[gkey]" style="vertical-align:top;">
+                    <icsw-rrd-graph-list-graph
+                        icsw-graph="graph"
+                    ></icsw-rrd-graph-list-graph>
+                </td>
+            </tr>
+        </table>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.rrd.graph.sensor">
@@ -161,8 +166,8 @@
         <uib-accordion close-others="false">
             <div uib-accordion-group class="panel-default" ng-repeat="sensor in graph.sensors" is-open="sensor.open">
                 <uib-accordion-heading>
-                    Sensor Key: <code>{{ sensor.mv_key }}</code>, Device: {{ graph.device_tree.all_lut[sensor.device_id].full_name }}
-                    <span ng-show="sensor.thresholds.length">, #thresholds: {{  sensor.thresholds.length }}</span>
+                    Sensor Key: <code>{{ sensor.mv_key }}</code>, Device: {{ graph.graph_result.tree.device_tree.all_lut[sensor.device_id].full_name }}
+                    <span ng-show="sensor.thresholds.length">, # of Thresholds: {{  sensor.thresholds.length }}</span>
                     <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': sensor.open, 'glyphicon-chevron-right': !sensor.open}"></i>
                 </uib-accordion-heading>
                 <div>

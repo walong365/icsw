@@ -32,16 +32,16 @@ from django.db.models import Q
 from lxml import etree
 from lxml.builder import E
 
-from initat.cluster.backbone.models import device, rms_job_run, GraphScaleModeEnum
-from initat.cluster.backbone.models.license import License
+from initat.cluster.backbone.models import device, rms_job_run, GraphScaleModeEnum, License
 from initat.tools import logging_tools, process_tools
+from initat.tools.bgnotify.create import propagate_channel_object
 from .base_functions import FLOAT_FMT, full_graph_key, rrd_escape, strftime
 from .graph_struct import GraphVar, GraphTarget, DataSource
 from ..config import global_config
 
 
 class RRDGraph(object):
-    def __init__(self, graph_root, log_com, colorizer, para_dict, proc):
+    def __init__(self, graph_root, log_com, colorizer, para_dict, proc, earyl_return_call):
         self.log_com = log_com
         self.para_dict = {
             "graph_root": graph_root,
@@ -53,6 +53,7 @@ class RRDGraph(object):
         # check ordering
         self.colorizer = colorizer
         self.proc = proc
+        self.early_return_call = earyl_return_call
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com(u"[RRDG] {}".format(what), log_level)
@@ -305,7 +306,18 @@ class RRDGraph(object):
                 _order_reverse = False
         else:
             ORDER_MODE = "none"
-        self.log("number of graphs to create: {:d}, ORDER_MODE is '{}'".format(_num_g, ORDER_MODE))
+        self.log(
+            "number of graphs to create: {:d}, ORDER_MODE is '{}'".format(_num_g, ORDER_MODE)
+        )
+        graph_list = E.graph_list()
+        for _graph_line in graph_key_list:
+            graph_list.extend(
+                [
+                    _graph_target.graph_xml(dev_dict) for _graph_target in _graph_line
+                ]
+            )
+        self.early_return_call(graph_list)
+        # print(etree.tostring(graph_list, pretty_print=True))
         graph_list = E.graph_list()
         _job_add_dict = self._get_jobs(dev_dict)
         for _graph_line in graph_key_list:
@@ -545,8 +557,20 @@ class RRDGraph(object):
                                 _line_iteration += 1
                                 _iterate_line = True
                 if not _iterate_line:
+                    # graph list is no longer needed because we transfer the results via WebSocket
+                    # to the frontend
                     graph_list.extend(
-                        [_graph_target.graph_xml(dev_dict) for _graph_target in _graph_line]
+                        [
+                            _graph_target.graph_xml(dev_dict) for _graph_target in _graph_line
+                        ]
                     )
-        # print etree.tostring(graph_list, pretty_print=True)
+                    propagate_channel_object(
+                        "rrd_graph",
+                        {
+                            "list": [
+                                _graph_target.graph_json(dev_dict) for _graph_target in _graph_line
+                            ]
+                        }
+                    )
+        # print(etree.tostring(graph_list, pretty_print=True))
         return graph_list

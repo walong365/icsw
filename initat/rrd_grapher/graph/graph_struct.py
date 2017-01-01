@@ -555,9 +555,13 @@ class GraphTarget(object):
 
     def get_draw_result(self, only_valid=True):
         if only_valid:
-            return {key: draw_res.draw_result for key, draw_res in self.vars.iteritems() if draw_res.draw_result is not None}
+            return {
+                key: draw_res.draw_result for key, draw_res in self.vars.iteritems() if draw_res.draw_result is not None
+            }
         else:
-            return {key: draw_res.draw_result for key, draw_res in self.vars.iteritems()}
+            return {
+                key: draw_res.draw_result for key, draw_res in self.vars.iteritems()
+            }
 
     def adjust_max_y(self, max_val):
         [_val.adjust_max_y(max_val) for _val in self.vars.itervalues()]
@@ -601,6 +605,18 @@ class GraphTarget(object):
         )
 
     @property
+    def removed_key_json(self):
+        return {
+            "removed_keys": [
+                {
+                    "struct_key": _key[0],
+                    "value_key": _key[1],
+                    "device": _pk
+                } for _pk, _key in self.removed_keys
+            ]
+        }
+
+    @property
     def valid(self):
         return True if self.__draw_keys and (self.draw_result is not None) else False
 
@@ -614,6 +630,47 @@ class GraphTarget(object):
             }
         return self.__result_dict
 
+    def graph_json(self, dev_dict):
+        _json = {
+            "name": self.graph_name,
+            "devices": [
+                {
+                    "name": dev_dict[_dev_key[1]],
+                    "pk": _dev_key[1],
+                } for _dev_key in self.dev_list
+            ],
+            "removed": self.removed_key_json,
+            "fmt_graph_key": "gk_{}".format(self.graph_key),
+            # devices key
+            "fmt_device_key": "dk_{}".format(self.dev_id_str),
+        }
+        if self.valid:
+            _json["href"] = self.rel_file_loc
+            _json["abssrc"] = self.abs_file_loc
+            for _key, _value in self.result_dict.iteritems():
+                if _key.count("value"):
+                    _json[_key] = float(_value)
+                else:
+                    _json[_key] = int(_value)
+
+        _var_dict = self._get_var_dict()
+        if _var_dict:
+            _json["values"] = [
+                {
+                    "cfs": [
+                        {
+                            "cf": _cf_key,
+                            "value": _cf_value,
+                        } for _cf_key, _cf_value in _value.iteritems()
+                    ],
+                    "device": _key[2],
+                    "nan": True if _key[3] else False,
+                    "db_key": _key[0],
+                    "mv_key": _key[1],
+                } for _key, _value in _var_dict.iteritems()
+            ]
+        return _json
+
     def graph_xml(self, dev_dict):
         _xml = E.graph(
             E.devices(
@@ -625,6 +682,7 @@ class GraphTarget(object):
                 ]
             ),
             self.removed_key_xml,
+            name=self.graph_name,
             fmt_graph_key="gk_{}".format(self.graph_key),
             # devices key
             fmt_device_key="dk_{}".format(self.dev_id_str),
@@ -634,27 +692,7 @@ class GraphTarget(object):
             _xml.attrib["abssrc"] = self.abs_file_loc
             for _key, _value in self.result_dict.iteritems():
                 _xml.attrib[_key] = _value
-            _var_dict = {}
-            for _var in self.vars.itervalues():
-                if _var.draw_result:
-                    for _val, _v_xml in _var.draw_result.itervalues():
-                        _mvs_id, _mvv_id = (_v_xml.get("mvs_id"), _v_xml.get("mvv_id"))
-                        # unset keys will be transformed to the empty string
-                        _mvs_id = "" if _mvs_id == "None" else _mvs_id
-                        _mvv_id = "" if _mvv_id == "None" else _mvv_id
-                        _full_key = "{}{}".format(
-                            _v_xml.get("mvs_key"),
-                            ".{}".format(_v_xml.get("mvv_key")) if _v_xml.get("mvv_key") else "",
-                        )
-                        _var_dict.setdefault(
-                            (
-                                "{}.{}".format(_mvs_id, _mvv_id),
-                                _full_key,
-                                int(_v_xml.get("device")),
-                                _v_xml.text.count("nan"),
-                            ),
-                            {}
-                        )[_v_xml.get("cf")] = _v_xml.text
+                _var_dict = self._get_var_dict()
             if _var_dict:
                 _xml.append(
                     E.graph_values(
@@ -678,6 +716,30 @@ class GraphTarget(object):
                 )
             # pprint.pprint(_var_dict)
         return _xml
+
+    def _get_var_dict(self):
+        _var_dict = {}
+        for _var in self.vars.itervalues():
+            if _var.draw_result:
+                for _val, _v_xml in _var.draw_result.itervalues():
+                    _mvs_id, _mvv_id = (_v_xml.get("mvs_id"), _v_xml.get("mvv_id"))
+                    # unset keys will be transformed to the empty string
+                    _mvs_id = "" if _mvs_id == "None" else _mvs_id
+                    _mvv_id = "" if _mvv_id == "None" else _mvv_id
+                    _full_key = "{}{}".format(
+                        _v_xml.get("mvs_key"),
+                        ".{}".format(_v_xml.get("mvv_key")) if _v_xml.get("mvv_key") else "",
+                    )
+                    _var_dict.setdefault(
+                        (
+                            "{}.{}".format(_mvs_id, _mvv_id),
+                            _full_key,
+                            int(_v_xml.get("device")),
+                            _v_xml.text.count("nan"),
+                        ),
+                        {}
+                    )[_v_xml.get("cf")] = _v_xml.text
+        return _var_dict
 
 
 class DataSource(object):
