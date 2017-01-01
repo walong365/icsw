@@ -25,6 +25,7 @@
 from __future__ import print_function, unicode_literals
 
 import memcache
+import time
 from django.conf import settings
 from django.http import HttpResponse
 from lxml import etree
@@ -289,8 +290,12 @@ def contact_server(request, srv_type_enum, send_com, **kwargs):
         # print(dir(mc_client))
         # print("c=", _conn_id)
         # try to set default value (will most likely fail but never mind)
-        _default_c = {"open": []}
+        _default_c = {"open": {}}
+        # the open dict has the format
+        # conn_id -> (last_time_used, request_pending)
         mc_client.add(mc_key, _default_c)
+        _cur_time = time.time()
+        _default_time = _cur_time - 3600
         _run_idx = 0
         while True:
             _c = mc_client.gets(mc_key)
@@ -299,18 +304,26 @@ def contact_server(request, srv_type_enum, send_com, **kwargs):
                 # should never happen, set default value again
                 mc_client.add(mc_key, _default_c)
                 continue
+            if isinstance(_c["open"], list):
+                _c["open"] = {}
             while True:
                 _run_idx += 1
                 cur_conn_id = "{}_{:d}".format(_conn_id, _run_idx)
-                if cur_conn_id not in _c["open"]:
+                _open_entry = _c["open"].get(cur_conn_id, (_default_time, False))
+                # connection has to be closed for at least 10 seconds
+                if not _open_entry[1] and _open_entry[0] < _cur_time - 10:
+                    # print("reuse")
                     break
-            _c["open"].append(cur_conn_id)
+            _c["open"][cur_conn_id] = (_cur_time, True)
+            # import pprint
+            # pprint.pprint(_c["open"])
             _ret = mc_client.cas(mc_key, _c)
             # print("_ret={}".format(_ret))
             if _ret:
                 break
             else:
-                print("ERRLoop")
+                # print("ERRLoop")
+                pass
         # print("CurConnId={}".format(cur_conn_id))
         # print("list='{}' ({})".format(_c["open"], com))
         # print send_com.pretty_print()
@@ -382,8 +395,9 @@ def contact_server(request, srv_type_enum, send_com, **kwargs):
                 # should never happen, set default value again
                 mc_client.add(mc_key, _default_c)
                 continue
-            if cur_conn_id in _c["open"]:
-                _c["open"].remove(cur_conn_id)
+            # if cur_conn_id in _c["open"]:
+            #    _c["open"].remove(cur_conn_id)
+            _c["open"][cur_conn_id] = (time.time(), False)
             _ret = mc_client.cas(mc_key, _c)
             # print("_ret={}".format(_ret))
             if _ret:

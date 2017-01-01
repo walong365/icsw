@@ -123,7 +123,7 @@ class graph_rrds(View):
             icswServiceEnum.grapher_server,
             srv_com,
             timeout=30,
-            connection_id="graphing",
+            # connection_id="graphing",
         )
         if result:
             graph_list = result.xpath(".//graph_list", smart_strings=False)

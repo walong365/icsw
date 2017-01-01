@@ -185,6 +185,21 @@ angular.module(
             "build_info": node.build_info
         }
 
+    _expand_info = (info, g_key) ->
+        _num = 0
+        for _var in g_key.split(".")
+            _num++
+            info = info.replace("$#{_num}", _var)
+        return info
+
+    _child_sort = (list, new_node) ->
+        _idx = 0
+        for _entry in list
+            if _entry._display_name > new_node._display_name
+                break
+            _idx++
+        return _idx
+
     class icswRRDGraphResult
         # holds all resulting graphs
         constructor: (@tree) ->
@@ -404,7 +419,7 @@ angular.module(
                         @tree.show_selected(false)
                         @selection_changed()
                         if @base_setting.draw_on_init and @vector_data.num_mve_sel
-                            $scope.draw_graph()
+                            @draw_graphs()
                 else
                     @_set_error("No vector found")
 
@@ -430,21 +445,6 @@ angular.module(
                 _struct = @_add_structural_entry(entry, lut, root_node)
                 for _sub in entry.mvvs
                     @_add_value_entry(_sub, lut, _struct, entry)
-
-        _expand_info: (info, g_key) =>
-            _num = 0
-            for _var in g_key.split(".")
-                _num++
-                info = info.replace("$#{_num}", _var)
-            return info
-
-        _child_sort: (list, new_node) ->
-            _idx = 0
-            for _entry in list
-                if _entry._display_name > new_node._display_name
-                    break
-                _idx++
-            return _idx
 
         _add_structural_entry: (entry, lut, parent) =>
             parts = entry.key.split(".")
@@ -481,7 +481,7 @@ angular.module(
                     @vector_data.num_struct++
                     # create lut entry
                     lut[pn] = cur_node
-                    parent.add_child(cur_node, @_child_sort)
+                    parent.add_child(cur_node, _child_sort)
                 parent = cur_node
             return parent
 
@@ -529,9 +529,9 @@ angular.module(
                 cur_node.entries_with_sensors = 0
                 _vd.num_mve++
                 lut[g_key] = cur_node
-                parent.add_child(cur_node, @_child_sort)
+                parent.add_child(cur_node, _child_sort)
             cur_node._key_pair = [top.key, entry.key]
-            cur_node._display_name = @_expand_info(entry.info, g_key)
+            cur_node._display_name = _expand_info(entry.info, g_key)
             if @_mv_dev_pk not in cur_node._dev_pks
                 cur_node._dev_pks.push(@_mv_dev_pk)
             cur_node._node_type = "e"
@@ -719,7 +719,6 @@ angular.module(
             #    scope.job_mode = attrs["jobmode"]
             #if attrs["selectedjob"]?
             #    scope.selected_job = attrs["selectedjob"]
-            console.log "gt=", scope.graph_tree
             if scope.icsw_graph_setting?
                 scope.graph_tree.set_custom_setting(scope.icsw_graph_setting)
             if scope.icsw_base_setting?
@@ -727,7 +726,7 @@ angular.module(
             if scope.devices?
                 scope.new_devsel(scope.devices)
             if scope.from_date?
-                scope.graph_tree.timeframe.set_from_and_to_date(scope.from_date, scope.to_date)
+                scope.graph_tree.timeframe.set_from_to_mom(scope.from_date, scope.to_date)
     }
 ]).directive("icswRrdGraphResult",
 [
