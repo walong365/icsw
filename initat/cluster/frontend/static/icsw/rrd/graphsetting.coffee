@@ -245,7 +245,7 @@ angular.module(
                     _mv_lut[entry.mv_value_entry] = []
                 _mv_lut[entry.mv_value_entry].push(entry)
             @threshold_lut_by_mvv_id = _mv_lut
-            console.log "mv_lut=", _mv_lut
+            # console.log "mv_lut=", _mv_lut
 
         get_active: () =>
             return @_active

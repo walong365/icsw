@@ -154,18 +154,20 @@ angular.module(
 
 ]).service("icswRRDGraphTools",
 [
-    "$q", "icswRRDGraphReactTree", "icswDeviceTreeHelperService",
+    "$q", "icswDeviceTreeHelperService", "icswReactTreeConfig",
     "icswDeviceTreeService", "icswTools", "icswSimpleAjaxCall", "ICSW_URLS",
     "toaster", "$timeout", "icswRRDGraphBasicSetting", "icswTimeFrameService",
     "icswRRDGraphUserSettingService", "icswParseXMLResponseService",
     "icswRRDDisplayGraph", "icswUserGroupRoleTreeService", "icswSavedSelectionService",
 (
-    $q, icswRRDGraphReactTree, icswDeviceTreeHelperService,
+    $q, icswDeviceTreeHelperService, icswReactTreeConfig,
     icswDeviceTreeService, icswTools, icswSimpleAjaxCall, ICSW_URLS,
     toaster, $timeout, icswRRDGraphBasicSetting, icswTimeFrameService,
     icswRRDGraphUserSettingService, icswParseXMLResponseService,
     icswRRDDisplayGraph, icswUserGroupRoleTreeService, icswSavedSelectionService,
+
 ) ->
+    {span} = React.DOM
     _get_empty_vector_data = () ->
         return {
             num_struct: 0
@@ -210,6 +212,69 @@ angular.module(
             )
             @matrix[graph_key][dev_key] = cur_graph
             @list.push(cur_graph)
+
+    class icswRRDGraphReactTree extends icswReactTreeConfig
+        constructor: (@_refresh_call, @_selection_changed, args) ->
+            super(args)
+
+        get_name : (t_entry) ->
+            if t_entry._node_type == "h"
+                return "vector"
+            else
+                node_name = t_entry._display_name
+                if t_entry._dev_pks.length > 1
+                    return "#{node_name} (#{t_entry._dev_pks.length})"
+                else
+                    return node_name
+
+        get_title: (t_entry) ->
+            if t_entry._node_type == "e"
+                return t_entry._g_key
+            else
+                return ""
+
+        handle_click: ($event, entry) =>
+            if entry._node_type == "s"
+                entry.set_expand(!entry.expand)
+            else if entry._node_type == "e"
+                # trigger checkbox
+                @toggle_checkbox_node(entry).then(
+                    (ok) =>
+                        # force redraw
+                        @new_generation()
+                )
+
+        selection_changed: () =>
+            # call outside
+            @_selection_changed()
+            @_refresh_call()
+
+        get_pre_view_element: (entry) ->
+            _rv = []
+            if entry._node_type == "e" and entry.num_sensors
+                _rv.push(
+                    span(
+                        {
+                            key: "arrow"
+                            className: "fa fa-arrows-v"
+                        }
+                    )
+                )
+                if entry.build_info.length > 1
+                    if entry.entries_with_sensors != entry.build_info.length
+                        _str = "#{entry.entries_with_sensors} / #{entry.build_info.length}"
+                    else
+                        _str = entry.build_info.length
+                    _rv.push(
+                        span(
+                            {
+                                key: "batch"
+                                className: "badge"
+                            }
+                            _str
+                        )
+                    )
+            return _rv
 
     class icswRRDGraphTree
         # holds all data for graphing
@@ -572,18 +637,12 @@ angular.module(
 ]).controller("icswGraphOverviewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
-    "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswRRDGraphReactTree", "icswSimpleAjaxCall",
+    "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswSimpleAjaxCall",
     "icswParseXMLResponseService", "toaster", "icswUserService", "icswRRDGraphTools",
-    "icswSavedSelectionService", "icswRRDGraphUserSettingService", "icswDeviceTreeService",
-    "icswUserGroupRoleTreeService", "icswDeviceTreeHelperService", "icswRRDDisplayGraph",
-    "icswRRDGraphBasicSetting", "icswTimeFrameService", "ICSW_SIGNALS",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
-    $q, $uibModal, $timeout, ICSW_URLS, icswRRDGraphReactTree, icswSimpleAjaxCall,
+    $q, $uibModal, $timeout, ICSW_URLS, icswSimpleAjaxCall,
     icswParseXMLResponseService, toaster, icswUserService, icswRRDGraphTools,
-    icswSavedSelectionService, icswRRDGraphUserSettingService, icswDeviceTreeService,
-    icswUserGroupRoleTreeService,  icswDeviceTreeHelperService, icswRRDDisplayGraph,
-    icswRRDGraphBasicSetting, icswTimeFrameService, ICSW_SIGNALS,
 ) ->
         # none, all or selected
         $scope.job_modes = [
@@ -596,12 +655,6 @@ angular.module(
         # helper functions
         $scope.selected_job = 0
         $scope.struct = {
-            # user
-            user: undefined
-            # selected devices
-            devices: []
-            # device tree
-            device_tree: undefined
             # job mode
             job_mode: $scope.job_modes[0]
         }
@@ -676,76 +729,6 @@ angular.module(
             if scope.from_date?
                 scope.graph_tree.timeframe.set_from_and_to_date(scope.from_date, scope.to_date)
     }
-]).service("icswRRDGraphReactTree",
-[
-    "icswReactTreeConfig",
-(
-    icswReactTreeConfig
-) ->
-    {span} = React.DOM
-    class icswRRDGraphReactTree extends icswReactTreeConfig
-        constructor: (@_refresh_call, @_selection_changed, args) ->
-            super(args)
-
-        get_name : (t_entry) ->
-            if t_entry._node_type == "h"
-                return "vector"
-            else
-                node_name = t_entry._display_name
-                if t_entry._dev_pks.length > 1
-                    return "#{node_name} (#{t_entry._dev_pks.length})"
-                else
-                    return node_name
-
-        get_title: (t_entry) ->
-            if t_entry._node_type == "e"
-                return t_entry._g_key
-            else
-                return ""
-
-        handle_click: ($event, entry) =>
-            if entry._node_type == "s"
-                entry.set_expand(!entry.expand)
-            else if entry._node_type == "e"
-                # trigger checkbox
-                @toggle_checkbox_node(entry).then(
-                    (ok) =>
-                        # force redraw
-                        @new_generation()
-                )
-
-        selection_changed: () =>
-            # call outside
-            @_selection_changed()
-            @_refresh_call()
-
-        get_pre_view_element: (entry) ->
-            _rv = []
-            if entry._node_type == "e" and entry.num_sensors
-                _rv.push(
-                    span(
-                        {
-                            key: "arrow"
-                            className: "fa fa-arrows-v"
-                        }
-                    )
-                )
-                if entry.build_info.length > 1
-                    if entry.entries_with_sensors != entry.build_info.length
-                        _str = "#{entry.entries_with_sensors} / #{entry.build_info.length}"
-                    else
-                        _str = entry.build_info.length
-                    _rv.push(
-                        span(
-                            {
-                                key: "batch"
-                                className: "badge"
-                            }
-                            _str
-                        )
-                    )
-            return _rv
-
 ]).directive("icswRrdGraphResult",
 [
     "$templateCache", "$compile",
@@ -780,8 +763,6 @@ angular.module(
         propTypes: {
             # graph object
             graph: React.PropTypes.object
-            # scope
-            scope: React.PropTypes.object
         }
         getInitialState: () ->
             return {
@@ -851,7 +832,7 @@ angular.module(
                                 type: "button"
                                 className: "btn btn-xs btn-primary"
                                 onClick: (event) =>
-                                    icswRRDSensorDialogService(@props.scope, _graph).then(
+                                    icswRRDSensorDialogService(_graph).then(
                                         () ->
                                     )
                             }
@@ -988,11 +969,9 @@ angular.module(
     )
 ]).directive("icswRrdGraphListGraph",
 [
-    "$templateCache", "$compile", "icswRRDSensorDialogService",
-    "icswRrdGraphDisplayReact",
+    "$templateCache", "$compile", "icswRrdGraphDisplayReact",
 (
-    $templateCache, $compile, icswRRDSensorDialogService,
-    icswRrdGraphDisplayReact,
+    $templateCache, $compile, icswRrdGraphDisplayReact,
 ) ->
     return {
         restrict: "E"
@@ -1007,7 +986,6 @@ angular.module(
                     icswRrdGraphDisplayReact
                     {
                         graph: scope.graph
-                        scope: scope
                     }
                 )
                 element[0]
@@ -1058,7 +1036,7 @@ angular.module(
 
             scope.get_device_selection_info = () ->
                 if scope.threshold.device_selection
-                    return (entry.info for entry in scope.sensor.graph.graph_result.tree.selection_list when entry.idx == scope.threshold.device_selection)[0]
+                    return (entry.info for entry in scope.sensor.graph.graph_result.tree.device_selection_list when entry.idx == scope.threshold.device_selection)[0]
                 else
                     return "---"
 
@@ -1068,13 +1046,15 @@ angular.module(
     "$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS",
     "icswToolsSimpleModalService", "$timeout", "icswSimpleAjaxCall",
     "icswComplexModalService", "icswRRDThresholdDialogService",
+    "$rootScope",
 (
     $q, $compile, $templateCache, Restangular, ICSW_URLS,
     icswToolsSimpleModalService, $timeout, icswSimpleAjaxCall,
     icswComplexModalService, icswRRDThresholdDialogService,
+    $rootScope,
 ) ->
-    return (scope, graph) ->
-        sub_scope = scope.$new()
+    return (graph) ->
+        sub_scope = $rootScope.$new()
 
         sub_scope.delete_threshold = (sensor, th) ->
             icswToolsSimpleModalService("Really delete Threshold '#{th.name}' ?").then(
@@ -1149,7 +1129,7 @@ angular.module(
         if !create
             th_scope.threshold.notify_users_obj = threshold.notify_users
 
-            for device_selection in sensor.graph.selection_list
+            for device_selection in sensor.graph.graph_result.tree.device_selection_list
                 if threshold.device_selection == device_selection.idx
                     th_scope.threshold.device_selection_obj = device_selection
 
