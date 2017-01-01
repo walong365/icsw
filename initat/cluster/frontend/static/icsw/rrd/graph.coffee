@@ -60,13 +60,14 @@ angular.module(
 
 ]).service("icswRRDDisplayGraph",
 [
-    "icswRRDSensor",
+    "icswRRDSensor", "toaster",
 (
-    icswRRDSensor,
+    icswRRDSensor, toaster,
 ) ->
 
     class icswRRDDisplayGraph
-        constructor: (@num, @xml, @user_settings, @user_group_tree, @selection_list, @device_tree) ->
+        constructor: (@num, @xml, @graph_result) ->
+            #@user_settings, @user_group_role_tree, @selection_list, @device_tree) ->
             @active = true
             @error = false
             @src = @xml.attr("href") or ""
@@ -108,7 +109,7 @@ angular.module(
                 if $(gv).attr("db_key").match(/\d+\.\d+/)
                     # only a valid sensor when the db-idx has a device (no compound displays)
                     @num_sensors++
-                    @sensors.push(new icswRRDSensor(@, $(gv), @user_settings.threshold_lut_by_mvv_id))
+                    @sensors.push(new icswRRDSensor(@, $(gv), @graph_result.tree.user_settings.threshold_lut_by_mvv_id))
                     # console.log @sensors, gv
             @sensors = _.sortBy(@sensors, (sensor) -> return sensor.mv_key)
 
@@ -141,58 +142,91 @@ angular.module(
 
         toggle_expand: () ->
             @active = !@active
-]).controller("icswGraphOverviewCtrl",
-[
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular",
-    "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswRRDGraphTree", "icswSimpleAjaxCall",
-    "icswParseXMLResponseService", "toaster", "icswUserService",
-    "icswSavedSelectionService", "icswRRDGraphUserSettingService", "icswDeviceTreeService",
-    "icswUserGroupRoleTreeService", "icswDeviceTreeHelperService", "icswRRDDisplayGraph",
-    "icswRRDGraphBasicSetting", "icswTimeFrameService", "ICSW_SIGNALS",
-(
-    $scope, $compile, $filter, $templateCache, Restangular,
-    $q, $uibModal, $timeout, ICSW_URLS, icswRRDGraphTree, icswSimpleAjaxCall,
-    icswParseXMLResponseService, toaster, icswUserService,
-    icswSavedSelectionService, icswRRDGraphUserSettingService, icswDeviceTreeService,
-    icswUserGroupRoleTreeService,  icswDeviceTreeHelperService, icswRRDDisplayGraph,
-    icswRRDGraphBasicSetting, icswTimeFrameService, ICSW_SIGNALS,
-) ->
-        moment().utc()
-        $scope.timeframe = new icswTimeFrameService()
-        $scope.cur_selected = []
-        $scope.graph_list = []
-        # none, all or selected
-        $scope.job_modes = [
-            {short: "none", long: "No jobs"}
-            {short: "all", long: "All Jobs"}
-            {short: "selected", long: "Only selected"}
-        ]
-        $scope.job_mode = $scope.job_modes[0]
 
-        # helper functions
-        _get_empty_sensor_data = () ->
-            return {
-                num_struct: 0
-                num_mve: 0
-                num_devices: 0
-                num_mve_sel: 0
-                num_sensors: 0
-            }
-        $scope.selected_job = 0
-        $scope.struct = {
-            # is drawing
-            is_drawing: false
-            # user
-            user: undefined
-            # selected devices
-            devices: []
-            # device tree
-            device_tree: undefined
-            # helper server
-            dt_helper: undefined
-            # draw tree
-            g_tree: new icswRRDGraphTree(
-                $scope
+        crop: (event) =>
+            event.stopPropagation()
+            if @crop_width > 600
+                @graph_result.tree.timeframe.set_from_to_mom(@cts_start_mom, @cts_end_mom)
+                @graph_result.tree.draw_graphs()
+            else
+                _mins = parseInt(@crop_width / 60)
+                toaster.pop("warning", "", "selected timeframe is too narrow (#{_mins} < 10 min)")
+
+]).service("icswRRDGraphTools",
+[
+    "$q", "icswRRDGraphReactTree", "icswDeviceTreeHelperService",
+    "icswDeviceTreeService", "icswTools", "icswSimpleAjaxCall", "ICSW_URLS",
+    "toaster", "$timeout", "icswRRDGraphBasicSetting", "icswTimeFrameService",
+    "icswRRDGraphUserSettingService", "icswParseXMLResponseService",
+    "icswRRDDisplayGraph", "icswUserGroupRoleTreeService", "icswSavedSelectionService",
+(
+    $q, icswRRDGraphReactTree, icswDeviceTreeHelperService,
+    icswDeviceTreeService, icswTools, icswSimpleAjaxCall, ICSW_URLS,
+    toaster, $timeout, icswRRDGraphBasicSetting, icswTimeFrameService,
+    icswRRDGraphUserSettingService, icswParseXMLResponseService,
+    icswRRDDisplayGraph, icswUserGroupRoleTreeService, icswSavedSelectionService,
+) ->
+    _get_empty_vector_data = () ->
+        return {
+            num_struct: 0
+            num_mve: 0
+            num_devices: 0
+            num_mve_sel: 0
+            num_sensors: 0
+        }
+
+    _get_node_keys = (node) ->
+        # mapping for graph.py
+        return {
+            "struct_key": node._key_pair[0]
+            "value_key": node._key_pair[1]
+            "build_info": node.build_info
+        }
+
+    class icswRRDGraphResult
+        # holds all resulting graphs
+        constructor: (@tree) ->
+            @list = []
+            @clear()
+            @generation = 0
+
+        clear: () =>
+            @list.length = 0
+            @num = 0
+            # graph matrix
+            @matrix = {}
+
+        feed_graph: (graph) =>
+            @generation++
+            @num++
+            graph_key = graph.attr("fmt_graph_key")
+            dev_key = graph.attr("fmt_device_key")
+            if graph_key not of @matrix
+                @matrix[graph_key] = {}
+            cur_graph = new icswRRDDisplayGraph(
+                @num
+                graph
+                @
+            )
+            @matrix[graph_key][dev_key] = cur_graph
+            @list.push(cur_graph)
+
+    class icswRRDGraphTree
+        # holds all data for graphing
+        constructor: () ->
+            @id = icswTools.get_unique_id("RRDGraphTree")
+            @base_setting = new icswRRDGraphBasicSetting()
+            @custom_setting = undefined
+            @timeframe = new icswTimeFrameService()
+            # created graphs
+            @graphs = new icswRRDGraphResult(@)
+            # currently drawing
+            @is_drawing = false
+            # selected entries
+            @cur_selected = []
+            @tree = new icswRRDGraphReactTree(
+                @refresh
+                @selection_changed
                 {
                     show_selection_buttons: true
                     expand_on_selection: true
@@ -202,132 +236,144 @@ angular.module(
                     extra_args: ["build_info"]
                 }
             )
-            # user / group tree
-            user_group_tree: undefined
-            # user settings (RRDGraphUserSetting)
-            user_settings: undefined
-            # selections
-            selection_list: undefined
+            # vector is valid
+            @_set_error("waiting for devices")
+            @devices = []
+            @vector_data = _get_empty_vector_data()
+
+        _set_error: (info) =>
             # vector (==treeView) valid
-            vector_valid: false
-            # vector data
-            vectordata: _get_empty_sensor_data()
-            # error string, if not empty show as top-level warning-div
-            error_string: "Init structures"
-            # job mode
-            job_mode: $scope.job_modes[0]
-            # base settings
-            base_setting: new icswRRDGraphBasicSetting()
-            # custom setting
-            custom_setting: undefined
-            # custom settin set ?
-            custom_setting_set: false
-        }
-        $scope.set_custom_setting = (setting) ->
-            $scope.struct.custom_setting_set = true
-            $scope.struct.custom_setting = setting
+            @vector_valid = false
+            @error_string = info
 
-        $scope.set_base_setting = (setting) ->
-            $scope.struct.base_setting = setting
+        _set_drawing: (info) =>
+            # vector (==treeView) valid
+            @is_drawing = true
+            @error_string = info
 
-        $scope.set_from_and_to_date = (from_dt, to_dt) ->
-            $scope.timeframe.set_from_to_mom(from_dt, to_dt)
+        set_custom_setting: (setting) =>
+            @custom_setting = setting
 
-        $scope.new_devsel = (dev_list) ->
-            # clear graphs
-            $scope.graph_list = []
-            $scope.struct.error_string = "Loading structures"
-            $scope.struct.vector_valid = false
+        set_base_setting: (setting) =>
+            @base_setting = setting
+
+        close: () =>
+            # tear down all substructres
+            console.log "close GraphTree #{@id}"
+        refresh: () =>
+            $timeout(
+                () ->
+                0
+            )
+
+        set_devices: (dev_list) =>
+            # clear graphing list
+            @graphs.clear()
+            # sets the new device list and loads the tree
+            @devices.length = 0
+            @_set_error("Loading Structures")
             $q.all(
                 [
-                    icswUserService.load($scope.$id)
-                    icswDeviceTreeService.load($scope.$id)
-                    icswUserGroupRoleTreeService.load($scope.$id),
-                    icswSavedSelectionService.load_selections($scope.$id),
-                    icswRRDGraphUserSettingService.load($scope.$id),
+                    icswDeviceTreeService.load(@id)
+                    # needed for graphs
+                    icswRRDGraphUserSettingService.load(@id)
+                    icswUserGroupRoleTreeService.load(@id)
+                    icswSavedSelectionService.load_selections(@id)
                 ]
             ).then(
-                (data) ->
-                    $scope.struct.user = data[0].user
-                    $scope.struct.device_tree = data[1]
-                    $scope.struct.user_group_tree = data[2]
-                    $scope.struct.selection_list = data[3]
-                    $scope.struct.user_settings = data[4]
-                    $scope.struct.devices.length = 0
+                (data) =>
+                    @device_tree = data[0]
+                    # user settings (RRDGraphUserSetting)
+                    @user_settings = data[1]
+                    # user / group / role tree
+                    @user_group_role_tree = data[2]
+                    # saved device selections
+                    @device_selection_list = data[3]
                     for entry in dev_list
-                        $scope.struct.devices.push(entry)
-                    hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
-                    $scope.struct.error_string = "Adding sensor info"
-                    $scope.struct.device_tree.enrich_devices(hs, ["sensor_threshold_info"]).then(
-                        (done) ->
-                            # console.log $scope.struct
-                            if $scope.struct.devices.length
-                                $scope.load_tree()
+                        @devices.push(entry)
+                    hs = icswDeviceTreeHelperService.create(@device_tree, @devices)
+                    @_set_error("Adding Sensor Info")
+                    @device_tree.enrich_devices(hs, ["sensor_threshold_info"]).then(
+                        (done) =>
+                            if @devices.length
+                                @_set_error("Loading VectorTree")
+                                @vector_data = _get_empty_vector_data()
+                                icswSimpleAjaxCall(
+                                    url: ICSW_URLS.RRD_DEVICE_RRDS
+                                    data: {
+                                        pks: (dev.idx for dev in @devices)
+                                    }
+                                    dataType: "json"
+                                ).then(
+                                    (json) =>
+                                        @_feed_rrd_json(json)
+                                    (error) =>
+                                        @_set_error("Error loading tree")
+                                )
                             else
-                                $scope.struct.error_string = "No devices selected"
+                                @_set_error("No Devices selected")
                     )
             )
 
-        $scope.load_tree = () ->
-            $scope.struct.error_string = "Loading VectorTree"
-            $scope.struct.vectordata = _get_empty_sensor_data()
-            icswSimpleAjaxCall(
-                url: ICSW_URLS.RRD_DEVICE_RRDS
-                data: {
-                    pks: (dev.idx for dev in $scope.struct.devices)
-                }
-                dataType: "json"
-            ).then(
-                (json) ->
-                    $scope.feed_rrd_json(json)
-                (error) ->
-                    $scope.struct.error_string = "Error loading tree"
-            )
-
-        # $scope.set_job_mode = (new_jm) ->
-        #     $scope.job_mode = new_jm
-
-        $scope.get_job_mode = (_jm) ->
-            if _jm == "selected"
-                return "#{_jm} (#{$scope.selected_job})"
-            else
-                return _jm
-
-        $scope.job_mode_allowed = (cur_jm) ->
-            if cur_jm == "selected" and not $scope.selected_job
-                return false
-            else
-                return true
-
-        $scope.feed_rrd_json = (json) ->
+        _feed_rrd_json: (json) =>
             if "error" of json
                 toaster.pop("error", "", json["error"])
-                $scope.struct.error_string = "Error loading Tree"
+                @_set_error("Error loading Tree")
             else
-                $scope.struct.base_setting.set_auto_select_re()
+                @base_setting.set_auto_select_re()
                 # to machine vector
-                root_node = $scope.init_machine_vector()
+                root_node = @_init_machine_vector()
                 for dev in json
                     if dev.struct? and dev.struct.length
-                        $scope.add_machine_vector(root_node, dev.pk, dev.struct)
+                        @_add_machine_vector(root_node, dev.pk, dev.struct)
                         #if dev._nodes.length > 1
                         #    # compound
                         #    $scope.add_machine_vector(root_node, dev.pk, dev._nodes[1])
-                        $scope.struct.vectordata.num_devices++
-                $scope.struct.g_tree.recalc()
-                $scope.struct.vector_valid = if $scope.struct.vectordata.num_struct then true else false
-                if $scope.struct.vector_valid
-                    $scope.struct.error_string = ""
-                    if $scope.struct.base_setting.auto_select_re or $scope.cur_selected.length
+                        @vector_data.num_devices++
+                @tree.recalc()
+                @vector_valid = if @vector_data.num_struct then true else false
+                if @vector_valid
+                    @error_string = ""
+                    if @base_setting.auto_select_re or @cur_selected.length
                         # recalc tree when an autoselect_re is present
-                        $scope.struct.g_tree.show_selected(false)
-                        $scope.selection_changed()
-                        if $scope.struct.base_setting.draw_on_init and $scope.struct.vectordata.num_mve_sel
+                        @tree.show_selected(false)
+                        @selection_changed()
+                        if @base_setting.draw_on_init and @vector_data.num_mve_sel
                             $scope.draw_graph()
                 else
-                    $scope.struct.error_string = "No vector found"
+                    @_set_error("No vector found")
 
-        _child_sort = (list, new_node) ->
+        _init_machine_vector: () =>
+            @_lut = {}
+            @tree.clear_root_nodes()
+            root_node = @tree.create_node(
+                {
+                    folder: true
+                    expand: true
+                    _node_type: "h"
+                    show_select: true
+                }
+            )
+            root_node.build_info = []
+            @tree.add_root_node(root_node)
+            return root_node
+
+        _add_machine_vector: (root_node, dev_pk, mv) =>
+            @_mv_dev_pk = dev_pk
+            lut = @_lut
+            for entry in mv
+                _struct = @_add_structural_entry(entry, lut, root_node)
+                for _sub in entry.mvvs
+                    @_add_value_entry(_sub, lut, _struct, entry)
+
+        _expand_info: (info, g_key) =>
+            _num = 0
+            for _var in g_key.split(".")
+                _num++
+                info = info.replace("$#{_num}", _var)
+            return info
+
+        _child_sort: (list, new_node) ->
             _idx = 0
             for _entry in list
                 if _entry._display_name > new_node._display_name
@@ -335,9 +381,9 @@ angular.module(
                 _idx++
             return _idx
 
-        $scope._add_structural_entry = (entry, lut, parent) =>
+        _add_structural_entry: (entry, lut, parent) =>
             parts = entry.key.split(".")
-            _pn = ""
+            pn = ""
             _idx = 0
             for _part in parts
                 _idx++
@@ -348,18 +394,18 @@ angular.module(
                     pn = _part
                 if pn of lut
                     cur_node = lut[pn]
-                    if $scope.mv_dev_pk not in cur_node._dev_pks
-                        cur_node._dev_pks.push($scope.mv_dev_pk)
+                    if @_mv_dev_pk not in cur_node._dev_pks
+                        cur_node._dev_pks.push(@_mv_dev_pk)
                 else
                     # override name if display_name is set and this is the structural entry at the bottom
                     # structural
-                    cur_node = $scope.struct.g_tree.create_node(
+                    cur_node = @tree.create_node(
                         {
                             folder: true,
                             expand: false
                             _display_name: if (entry.ti and _last) then entry.ti else _part
                             _mult: 1
-                            _dev_pks:  [$scope.mv_dev_pk]
+                            _dev_pks: [@_mv_dev_pk]
                             _node_type: "s"
                             show_select: false
                             build_info: []
@@ -367,21 +413,15 @@ angular.module(
                             _is_mve: false
                         }
                     )
-                    $scope.struct.vectordata.num_struct++
+                    @vector_data.num_struct++
+                    # create lut entry
                     lut[pn] = cur_node
-                    parent.add_child(cur_node, _child_sort)
+                    parent.add_child(cur_node, @_child_sort)
                 parent = cur_node
             return parent
 
-        $scope._expand_info = (info, g_key) =>
-            _num = 0
-            for _var in g_key.split(".")
-                _num++
-                info = info.replace("$#{_num}", _var)
-            return info
-
-        $scope._add_value_entry = (entry, lut, parent, top) =>
-            _vd = $scope.struct.vectordata
+        _add_value_entry: (entry, lut, parent, top) =>
+            _vd = @vector_data
             # debg ?
             # _vd.a = "ddd"
             # top is the parent node from the value entry (== mvstructentry)
@@ -389,10 +429,10 @@ angular.module(
                 g_key = "#{top.key}.#{entry.key}"
             else
                 g_key = top.key
-            if $scope.cur_selected.length
-                _sel = g_key in $scope.cur_selected
-            else if $scope.struct.base_setting.auto_select_re
-                _sel = $scope.struct.base_setting.auto_select_re.test(g_key)
+            if @cur_selected.length
+                _sel = g_key in @cur_selected
+            else if @base_setting.auto_select_re
+                _sel = @base_setting.auto_select_re.test(g_key)
             else
                 _sel = false
             if g_key of lut
@@ -409,7 +449,7 @@ angular.module(
                     cur_node.entries_with_sensors = 0
                     # console.log "trans", cur_node.build_info, cur_node.num_sensors
             else
-                cur_node = $scope.struct.g_tree.create_node(
+                cur_node = @tree.create_node(
                     {
                         expand : false
                         selected: _sel
@@ -424,128 +464,82 @@ angular.module(
                 cur_node.entries_with_sensors = 0
                 _vd.num_mve++
                 lut[g_key] = cur_node
-                parent.add_child(cur_node, _child_sort)
+                parent.add_child(cur_node, @_child_sort)
             cur_node._key_pair = [top.key, entry.key]
-            cur_node._display_name = $scope._expand_info(entry.info, g_key)
-            if $scope.mv_dev_pk not in cur_node._dev_pks
-                cur_node._dev_pks.push($scope.mv_dev_pk)
+            cur_node._display_name = @_expand_info(entry.info, g_key)
+            if @_mv_dev_pk not in cur_node._dev_pks
+                cur_node._dev_pks.push(@_mv_dev_pk)
             cur_node._node_type = "e"
             cur_node.build_info.push(entry.build_info)
             cur_node.num_sensors += entry.num_sensors
             if entry.num_sensors
                 cur_node.entries_with_sensors++
-            $scope.struct.vectordata.num_sensors += entry.num_sensors
+            @vector_data.num_sensors += entry.num_sensors
             cur_node.folder = false
             cur_node.show_select = true
             cur_node._g_key = g_key
             cur_node.node = entry
             cur_node.selected = _sel
 
-        $scope.init_machine_vector = () =>
-            $scope.lut = {}
-            $scope.struct.g_tree.clear_root_nodes()
-            root_node = $scope.struct.g_tree.create_node(
-                {
-                    folder: true
-                    expand: true
-                    _node_type: "h"
-                    show_select: true
-                }
-            )
-            root_node.build_info = []
-            $scope.struct.g_tree.add_root_node(root_node)
-            return root_node
-
-        $scope.add_machine_vector = (root_node, dev_pk, mv) =>
-            $scope.mv_dev_pk = dev_pk
-            lut = $scope.lut
-            for entry in mv
-                _struct = $scope._add_structural_entry(entry, lut, root_node)
-                for _sub in entry.mvvs
-                    $scope._add_value_entry(_sub, lut, _struct, entry)
-
-        $scope.update_search = () ->
-            if $scope.cur_search_to?
-                $timeout.cancel($scope.cur_search_to)
-            $scope.cur_search_to = $timeout($scope.set_search_filter, 500)
-
-        $scope.clear_selection = () =>
-            $scope.struct.base_setting.clear_search_string()
-            $scope.set_search_filter()
-
-        $scope.select_with_sensor = () =>
-            $scope.struct.g_tree.toggle_tree_state(undefined, -1, false)
-            $scope.struct.g_tree.iter(
-                (entry) ->
-                    if entry._node_type in ["e"]
-                        entry.set_selected(if entry.num_sensors then true else false)
-            )
-            $scope.struct.g_tree.show_selected(false)
-            $scope.selection_changed()
-
-        $scope.set_search_filter = () =>
-            cur_re = $scope.struct.base_setting.get_search_re()
-            # console.log "*", cur_re
-            $scope.struct.g_tree.toggle_tree_state(undefined, -1, false)
-            $scope.struct.g_tree.iter(
-                (entry, cur_re) ->
-                    if entry._node_type in ["e"]
-                        entry.set_selected(if (entry._display_name.match(cur_re) or entry._g_key.match(cur_re)) then true else false)
-                cur_re
-            )
-            $scope.struct.g_tree.show_selected(false)
-            $scope.selection_changed()
-
-        $scope.selection_changed = () =>
-            $scope.cur_selected = $scope.struct.g_tree.get_selected(
+        selection_changed: () =>
+            @cur_selected = @tree.get_selected(
                 (entry) ->
                     if entry._node_type == "e" and entry.selected
                         return [entry._g_key]
                     else
                         return []
             )
-            $scope.struct.vectordata.num_mve_sel = $scope.cur_selected.length
+            @vector_data.num_mve_sel = @cur_selected.length
 
-        $scope.$on(ICSW_SIGNALS("_ICSW_RRD_CROPRANGE_SET"), (event, graph) ->
-            # console.log "g", graph
-            event.stopPropagation()
-            if graph.crop_width > 600
-                $scope.timeframe.set_from_to_mom(graph.cts_start_mom, graph.cts_end_mom)
-                $scope.draw_graph()
-            else
-                _mins = parseInt(graph.crop_width / 60)
-                toaster.pop("warning", "", "selected timeframe is too narrow (#{_mins} < 10 min)")
-        )
+        set_search_filter: () =>
+            cur_re = @base_setting.get_search_re()
+            # console.log "*", cur_re
+            @tree.toggle_tree_state(undefined, -1, false)
+            @tree.iter(
+                (entry, cur_re) ->
+                    if entry._node_type in ["e"]
+                        entry.set_selected(if (entry._display_name.match(cur_re) or entry._g_key.match(cur_re)) then true else false)
+                cur_re
+            )
+            @tree.show_selected(false)
+            @selection_changed()
 
-        $scope.draw_graph = () =>
-            get_node_keys = (node) ->
-                # mapping for graph.py
-                return {
-                    "struct_key": node._key_pair[0]
-                    "value_key": node._key_pair[1]
-                    "build_info": node.build_info
-                }
+        clear_selection: () =>
+            @base_setting.clear_search_string()
+            @set_search_filter()
 
-            if !$scope.struct.is_drawing
-                $scope.struct.is_drawing = true
-                $scope.struct.error_string = "Drawing graphs"
-                # console.log $scope.struct.job_mode
-                if $scope.struct.custom_setting_set
-                    _setting = $scope.struct.custom_setting
+        select_with_sensor: () =>
+            @tree.toggle_tree_state(undefined, -1, false)
+            @tree.iter(
+                (entry) ->
+                    if entry._node_type in ["e"]
+                        entry.set_selected(if entry.num_sensors then true else false)
+            )
+            @tree.show_selected(false)
+            @selection_changed()
+
+        # graph calls
+        draw_graphs: () =>
+            defer = $q.defer()
+            if !@is_drawing
+                @_set_drawing("Drawing graphs")
+                if @custom_setting?
+                    _setting = @custom_setting
                 else
-                    _setting = $scope.struct.user_settings.get_active()
+                    _setting = @user_settings.get_active()
+                @graphs.clear()
                 gfx = $q.defer()
                 icswSimpleAjaxCall(
                     url: ICSW_URLS.RRD_GRAPH_RRDS
                     data: {
-                        keys: angular.toJson((get_node_keys($scope.lut[key]) for key in $scope.cur_selected))
-                        pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
-                        start_time: moment($scope.timeframe.from_date_mom).format(DT_FORM)
-                        end_time: moment($scope.timeframe.to_date_mom).format(DT_FORM)
-                        job_mode: $scope.struct.job_mode.short
-                        selected_job: $scope.selected_job
-                        ordering: $scope.struct.base_setting.ordering
-                        graph_setting: angular.toJson($scope.struct.user_settings.resolve(_setting))
+                        keys: angular.toJson((_get_node_keys(@_lut[key]) for key in @cur_selected))
+                        pks: angular.toJson((dev.idx for dev in @devices))
+                        start_time: moment(@timeframe.from_date_mom).format(DT_FORM)
+                        end_time: moment(@timeframe.to_date_mom).format(DT_FORM)
+                        # job_mode: $scope.struct.job_mode.short
+                        # selected_job: $scope.selected_job
+                        ordering: @base_setting.ordering
+                        graph_setting: angular.toJson(@user_settings.resolve(_setting))
                     }
                 ).then(
                     (xml) ->
@@ -554,39 +548,90 @@ angular.module(
                         gfx.resolve(xml)
                 )
                 gfx.promise.then(
-                    (result) ->
+                    (result) =>
                         xml = result
                         # reorder sensor threshold entries
 
-                        $scope.struct.is_drawing = false
-                        $scope.struct.error_string = ""
-                        graph_list = []
-                        # graph matrix
-                        graph_mat = {}
+                        @is_drawing = false
+                        @error_string = ""
                         if icswParseXMLResponseService(xml, 40, false, true)
-                            num_graph = 0
+                            # num_graph = 0
                             for graph in $(xml).find("graph_list > graph")
                                 graph = $(graph)
-                                graph_key = graph.attr("fmt_graph_key")
-                                dev_key = graph.attr("fmt_device_key")
-                                if !(graph_key of graph_mat)
-                                    graph_mat[graph_key] = {}
-                                num_graph++
-                                cur_graph = new icswRRDDisplayGraph(
-                                    num_graph
-                                    graph
-                                    $scope.struct.user_settings,
-                                    $scope.struct.user_group_tree
-                                    $scope.struct.selection_list
-                                    $scope.struct.device_tree
-                                )
-                                graph_mat[graph_key][dev_key] = cur_graph
-                                graph_list.push(cur_graph)
-                        $scope.graph_mat = graph_mat
-                        $scope.graph_list = graph_list
+                                @graphs.feed_graph(graph)
+                        defer.resolve("drawn")
                 )
+            else
+                defer.reject("already drawing")
+            return defer.promise
+
+    return {
+        create_tree: () =>
+            return new icswRRDGraphTree()
+    }
+]).controller("icswGraphOverviewCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular",
+    "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswRRDGraphReactTree", "icswSimpleAjaxCall",
+    "icswParseXMLResponseService", "toaster", "icswUserService", "icswRRDGraphTools",
+    "icswSavedSelectionService", "icswRRDGraphUserSettingService", "icswDeviceTreeService",
+    "icswUserGroupRoleTreeService", "icswDeviceTreeHelperService", "icswRRDDisplayGraph",
+    "icswRRDGraphBasicSetting", "icswTimeFrameService", "ICSW_SIGNALS",
+(
+    $scope, $compile, $filter, $templateCache, Restangular,
+    $q, $uibModal, $timeout, ICSW_URLS, icswRRDGraphReactTree, icswSimpleAjaxCall,
+    icswParseXMLResponseService, toaster, icswUserService, icswRRDGraphTools,
+    icswSavedSelectionService, icswRRDGraphUserSettingService, icswDeviceTreeService,
+    icswUserGroupRoleTreeService,  icswDeviceTreeHelperService, icswRRDDisplayGraph,
+    icswRRDGraphBasicSetting, icswTimeFrameService, ICSW_SIGNALS,
+) ->
+        # none, all or selected
+        $scope.job_modes = [
+            {short: "none", long: "No jobs"}
+            {short: "all", long: "All Jobs"}
+            {short: "selected", long: "Only selected"}
+        ]
+        $scope.job_mode = $scope.job_modes[0]
+
+        # helper functions
+        $scope.selected_job = 0
+        $scope.struct = {
+            # user
+            user: undefined
+            # selected devices
+            devices: []
+            # device tree
+            device_tree: undefined
+            # job mode
+            job_mode: $scope.job_modes[0]
+        }
+
+        # graph tree
+        $scope.graph_tree = icswRRDGraphTools.create_tree()
+
+        # $scope.set_from_and_to_date = (from_dt, to_dt) ->
+        #    $scope.timeframe.set_from_to_mom(from_dt, to_dt)
+
+        $scope.new_devsel = (dev_list) ->
+            $scope.graph_tree.set_devices(dev_list)
+
+        # $scope.set_job_mode = (new_jm) ->
+        #     $scope.job_mode = new_jm
+
+        $scope.get_job_mode = (_jm) ->
+            if _jm == "selected"
+                return "#{_jm} (#{$scope.selected_job})"
+            else
+                return _jm
+
+        $scope.job_mode_allowed = (cur_jm) ->
+            if cur_jm == "selected" and not $scope.selected_job
+                return false
+            else
+                return true
+
         $scope.$on("$destroy", () ->
-            #console.log "dest"
+            $scope.graph_tree.close()
         )
 ]).directive("icswRrdGraphNormal",
 [
@@ -621,36 +666,26 @@ angular.module(
             #    scope.job_mode = attrs["jobmode"]
             #if attrs["selectedjob"]?
             #    scope.selected_job = attrs["selectedjob"]
+            console.log "gt=", scope.graph_tree
             if scope.icsw_graph_setting?
-                scope.set_custom_setting(scope.icsw_graph_setting)
+                scope.graph_tree.set_custom_setting(scope.icsw_graph_setting)
             if scope.icsw_base_setting?
-                scope.set_base_setting(scope.icsw_base_setting)
+                scope.graph_tree.set_base_setting(scope.icsw_base_setting)
             if scope.devices?
                 scope.new_devsel(scope.devices)
             if scope.from_date?
-                scope.set_from_and_to_date(scope.from_date, scope.to_date)
+                scope.graph_tree.timeframe.set_from_and_to_date(scope.from_date, scope.to_date)
     }
-]).service("icswRRDGraphTree",
+]).service("icswRRDGraphReactTree",
 [
     "icswReactTreeConfig",
 (
     icswReactTreeConfig
 ) ->
     {span} = React.DOM
-    class icswRRDGraphTree extends icswReactTreeConfig
-        constructor: (@scope, args) ->
+    class icswRRDGraphReactTree extends icswReactTreeConfig
+        constructor: (@_refresh_call, @_selection_changed, args) ->
             super(args)
-            @$$digest = false
-
-        do_digest: () =>
-            if !@$$digest
-                @$$digest = true
-                # oh my ...
-                try
-                    @scope.$digest()
-                catch e
-                    true
-                @$$digest = false
 
         get_name : (t_entry) ->
             if t_entry._node_type == "h"
@@ -672,14 +707,17 @@ angular.module(
             if entry._node_type == "s"
                 entry.set_expand(!entry.expand)
             else if entry._node_type == "e"
+                # trigger checkbox
                 @toggle_checkbox_node(entry).then(
                     (ok) =>
+                        # force redraw
+                        @new_generation()
                 )
-            @do_digest()
 
         selection_changed: () =>
-            @scope.selection_changed()
-            @do_digest()
+            # call outside
+            @_selection_changed()
+            @_refresh_call()
 
         get_pre_view_element: (entry) ->
             _rv = []
@@ -708,7 +746,7 @@ angular.module(
                     )
             return _rv
 
-]).directive("icswRrdGraphList",
+]).directive("icswRrdGraphResult",
 [
     "$templateCache", "$compile",
 (
@@ -718,16 +756,17 @@ angular.module(
         restrict: "E"
         replace: true
         scope: {
-            graphList: "=icswGraphList"
-            graphMatrix: "=icswGraphMatrix"
+            graph_result: "=icswGraphResult"
         }
         link: (scope, element, attr) ->
-            scope.$watch("graphList", (new_val) ->
-                element.children().remove()
-                if new_val.length
-                    scope.$$graph_keys = (key for key of scope.graphMatrix)
-                    # console.log "id=", scope.$id
-                    element.append($compile($templateCache.get("icsw.rrd.graph.list.header"))(scope))
+            scope.$watch(
+                "graph_result.generation"
+                (new_val) ->
+                    element.children().remove()
+                    if scope.graph_result.list.length
+                        scope.$$graph_keys = _.keys(scope.graph_result.matrix)
+                        # console.log "id=", scope.$id
+                        element.append($compile($templateCache.get("icsw.rrd.graph.list.header"))(scope))
             )
     }
 ]).service("icswRrdGraphDisplayReact",
@@ -855,8 +894,7 @@ angular.module(
                                 key: "crop.apply"
                                 className: "btn btn-xs btn-success"
                                 onClick: (event) =>
-                                    console.log "Apply"
-                                    @props.scope.$emit(ICSW_SIGNALS("_ICSW_RRD_CROPRANGE_SET"), _graph)
+                                    @props.graph.crop(event)
                             }
                             "Apply"
                         )
@@ -1005,13 +1043,13 @@ angular.module(
             scope.get_sensor_action_name = (type) ->
                 _act = scope.threshold["#{type}_sensor_action"]
                 if _act?
-                    return scope.sensor.graph.user_settings.base.sensor_action_lut[_act].name
+                    return scope.sensor.graph.graph_result.tree.user_settings.base.sensor_action_lut[_act].name
                 else
                     return "---"
 
             scope.resolve_user = () ->
                 if scope.threshold.create_user
-                    return scope.sensor.graph.user_group_tree.user_lut[scope.threshold.create_user].login
+                    return scope.sensor.graph.graph_result.tree.user_group_role_tree.user_lut[scope.threshold.create_user].login
                 else
                     return "---"
 
@@ -1020,7 +1058,7 @@ angular.module(
 
             scope.get_device_selection_info = () ->
                 if scope.threshold.device_selection
-                    return (entry.info for entry in scope.sensor.graph.selection_list when entry.idx == scope.threshold.device_selection)[0]
+                    return (entry.info for entry in scope.sensor.graph.graph_result.tree.selection_list when entry.idx == scope.threshold.device_selection)[0]
                 else
                     return "---"
 
@@ -1069,7 +1107,7 @@ angular.module(
             icswRRDThresholdDialogService(false, sub_scope, sensor, threshold)
 
         sub_scope.create_new_threshold = (sensor) ->
-            threshold = sensor.graph.user_settings.get_new_threshold(sensor)
+            threshold = sensor.graph.graph_result.tree.user_settings.get_new_threshold(sensor)
             icswRRDThresholdDialogService(true, sub_scope, sensor, threshold)
 
         sub_scope.graph = graph
@@ -1103,7 +1141,7 @@ angular.module(
     icswComplexModalService,
 ) ->
     return (create, scope, sensor, threshold) ->
-        user_settings = sensor.graph.user_settings
+        user_settings = sensor.graph.graph_result.tree.user_settings
         th_scope = scope.$new()
         th_scope.sensor = sensor
         th_scope.threshold = threshold

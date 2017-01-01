@@ -1521,7 +1521,7 @@ rms_module = angular.module(
                         base_setting.title_string = "Queue #{queue.name}"
                         _queue_name = _.replace(queue.name, ".", "_")
                         base_setting.auto_select_keys = [
-                            "compound.sge.queue_#{_queue_name}"
+                            "compound.sge.queue_#{_queue_name}$"
                         ]
                         new_struct.base_setting = base_setting
                         # console.log "q=", queue

@@ -6,19 +6,36 @@
     <div class="container-fluid">
         <div>
             <h3>
-                {{ struct.base_setting.title_string }}&nbsp;&nbsp;
-                <icsw-tools-yes-no icsw-yes="show settings" icsw-no="hide settings" flag="struct.base_setting.show_settings" ng-show="struct.base_setting.display_settings_switch"></icsw-tools-yes-no>
-                <icsw-tools-yes-no icsw-yes="show tree" icsw-no="hide tree" flag="struct.base_setting.show_tree" ng-show="struct.base_setting.display_tree_switch"></icsw-tools-yes-no>
-                <span ng-show="struct.error_string" class="text-warning">{{ struct.error_string }}</span>
+                {{ graph_tree.base_setting.title_string }}&nbsp;&nbsp;
+                <icsw-tools-yes-no
+                    icsw-yes="show settings"
+                    icsw-no="hide settings"
+                    flag="graph_tree.base_setting.show_settings"
+                    ng-show="graph_tree.base_setting.display_settings_switch"
+                ></icsw-tools-yes-no>
+                <icsw-tools-yes-no
+                    icsw-yes="show tree"
+                    icsw-no="hide tree"
+                    flag="graph_tree.base_setting.show_tree"
+                    ng-show="graph_tree.base_setting.display_tree_switch"
+                ></icsw-tools-yes-no>
+                <span
+                    ng-show="graph_tree.error_string"
+                    class="text-warning"
+                >{{ graph_tree.error_string }}</span>
             </h3>
         </div>
-        <table class="table table-condensed table-striped table-bordered" style="width:auto;" ng-show="struct.vector_valid && struct.base_setting.show_settings">
+        <table
+            class="table table-condensed table-striped table-bordered"
+            style="width:auto;"
+            ng-show="graph_tree.vector_valid && graph_tree.base_setting.show_settings"
+        >
             <tbody>
                 <tr>
                     <th>Vector Info</th>
                     <td>
                         <div class="input-group form-inline">
-                            <icsw-rrd-vector-info vector-info="struct.vectordata"></icsw-rrd-vector-info>
+                            <icsw-rrd-vector-info vector-info="graph_tree.vector_data"></icsw-rrd-vector-info>
                         </div>
                     </td>
                 </tr>
@@ -27,7 +44,13 @@
                     <td>
                         <div class="input-group form-inline">
                             <icsw-rrd-graph-setting></icsw-rrd-graph-setting>
-                            <button class="btn btn-success btn-xs" ng-disabled="!cur_selected.length || !timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="draw_graph()">
+                            <button
+                                class="btn btn-success btn-xs"
+                                ng-disabled="!graph_tree.cur_selected.length || !graph_tree.timeframe.valid"
+                                type="button"
+                                ladda="graph_tree.is_drawing"
+                                ng-click="graph_tree.draw_graphs()"
+                            >
                                 <span title="Draw Graph(s)" class="glyphicon glyphicon-pencil"></span>
                             </button>
                         </div>
@@ -37,7 +60,7 @@
                     <th>Timeframe</th>
                     <td>
                         <div class="input-group form-inline">
-                            <icsw-rrd-graph-time-frame timeframe="timeframe" detail="1"></icsw-rrd-graph-time-frame>
+                            <icsw-rrd-graph-time-frame timeframe="graph_tree.timeframe" detail="1"></icsw-rrd-graph-time-frame>
                         </div>
                     </td>
                 </tr>
@@ -61,26 +84,56 @@
 
             </tbody>
         </table>
-        <div class="row" ng-if="struct.vector_valid">
-            <div class="col-md-3" ng-show="struct.base_setting.show_tree">
+        <div class="row" ng-if="graph_tree.vector_valid">
+            <div class="col-md-3" ng-show="graph_tree.base_setting.show_tree">
                 <div class="input-group input-group-xs">
-                    <input type="text" class="form-control" ng-disabled="struct.error_string.length" ng-model="struct.base_setting.search_string" placeholder="search ..." ng-change="update_search()"/>
+                    <input
+                        type="text"
+                        class="form-control"
+                        ng-disabled="graph_tree.error_string.length"
+                        ng-model="graph_tree.base_setting.search_string"
+                        placeholder="search ..."
+                        ng-change="graph_tree.set_search_filter()"
+                        ng-model-options="{debounce: {default: 200, blur: 0}}"
+                    />
                     <span class="input-group-addon input-group-addon-button">
-                        <button class="btn btn-success btn-xs" ng-disabled="!cur_selected.length || !timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="draw_graph()">
+                        <button
+                            class="btn btn-success btn-xs"
+                            ng-disabled="!graph_tree.cur_selected.length || !graph_tree.timeframe.valid"
+                            type="button"
+                            ladda="graph_tree.is_drawing"
+                            ng-click="graph_tree.draw_graphs()"
+                        >
                             <span title="Draw Graph(s)" class="glyphicon glyphicon-pencil"></span>
                         </button>
-                        <button class="btn btn-warning btn-xs" ng-disabled="!cur_selected.length || !timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="clear_selection()">
+                        <button
+                            class="btn btn-warning btn-xs"
+                            ng-disabled="!graph_tree.cur_selected.length || !graph_tree.timeframe.valid"
+                            type="button"
+                            ladda="graph_tree.is_drawing"
+                            ng-click="graph_tree.clear_selection()"
+                        >
                             <span title="Clear Selection" class="fa fa-remove"></span>
                         </button>
-                        <button class="btn btn-warning btn-xs" type="button" ladda="struct.is_drawing" ng-click="select_with_sensor()">
+                        <button
+                            class="btn btn-warning btn-xs"
+                            type="button"
+                            ladda="graph_tree.is_drawing"
+                            ng-click="graph_tree.select_with_sensor()"
+                        >
                             <span title="Select all with Sensors" class="fa fa-wrench"></span>
                         </button>
                     </span>
                 </div>
-                <icsw-react-tree icsw-tree-config="struct.g_tree"></icsw-react-tree>
+                <icsw-react-tree icsw-tree-config="graph_tree.tree"></icsw-react-tree>
             </div>
-            <div ng-class="struct.base_setting.show_tree && 'col-md-9' || 'col-md-12'" ng-show="graph_list.length">
-                <icsw-rrd-graph-list icsw-graph-list="graph_list" icsw-graph-matrix="graph_mat"></icsw-rrd-graph-list>
+            <div
+                ng-class="graph_tree.base_setting.show_tree && 'col-md-9' || 'col-md-12'"
+                ng-show="graph_tree.graphs.list.length"
+            >
+                <icsw-rrd-graph-result
+                    icsw-graph-result="graph_tree.graphs"
+                ></icsw-rrd-graph-result>
             </div>
         </div>
     </div>
@@ -88,12 +141,16 @@
 
 <script type="text/ng-template" id="icsw.rrd.graph.list.header">
     <h3>
-        {{ graphList.length }} Graphs, {{ graphList[0].get_tv(graphList[0].ts_start_mom) }} to {{ graphList[0].get_tv(graphList[0].ts_end_mom) }}
+        {{ graph_result.list.length }} Graphs,
+        {{ graph_result.list[0].get_tv(graph_result.list[0].ts_start_mom) }} to
+        {{ graph_result.list[0].get_tv(graph_result.list[0].ts_end_mom) }}
     </h3>
     <table class="table-condensed">
         <tr ng-repeat="gkey in $$graph_keys">
-            <td ng-repeat="(dkey, graph) in graphMatrix[gkey]" style="vertical-align:top;">
-                <icsw-rrd-graph-list-graph icsw-graph="graph"></icsw-rrd-graph-list-graph>
+            <td ng-repeat="(dkey, graph) in graph_result.matrix[gkey]" style="vertical-align:top;">
+                <icsw-rrd-graph-list-graph
+                    icsw-graph="graph"
+                ></icsw-rrd-graph-list-graph>
             </td>
         </tr>
     </table>
@@ -192,7 +249,7 @@
                     <div class="input-group">
                         <ui-select ng-model="threshold.create_user">
                             <ui-select-match class="ui-select-match" placeholder="Pick a user ...">{{ $select.selected.$$user_email }}</ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="user.idx as user in sensor.graph.user_group_tree.user_list">
+                            <ui-select-choices class="ui-select-choices" repeat="user.idx as user in sensor.graph.graph_result.tree.user_group_role_tree.user_list">
                                 <div ng-bind-html="user.$$user_email"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -205,7 +262,7 @@
                     <div class="input-group">
                         <ui-select multiple ng-model="threshold.notify_users_obj">
                             <ui-select-match class="ui-select-match" placeholder="Pick some notify users...">{{ $item.$$user_email }}</ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="user.idx as user in sensor.graph.user_group_tree.user_list">
+                            <ui-select-choices class="ui-select-choices" repeat="user.idx as user in sensor.graph.graph_result.tree.user_group_role_tree.user_list">
                                 <div ng-bind-html="user.$$user_email"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -250,7 +307,7 @@
                     <div class="input-group">
                         <ui-select ng-model="threshold.upper_sensor_action">
                             <ui-select-match class="ui-select-match" placeholder="Pick one...">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="action.idx as action in sensor.graph.user_settings.base.sensor_action_list">
+                            <ui-select-choices class="ui-select-choices" repeat="action.idx as action in sensor.graph.graph_result.tree.user_settings.base.sensor_action_list">
                                 <div ng-bind-html="action.name"></div>
                             </ui-select-choices>
                         </ui-select>
@@ -282,7 +339,7 @@
                     <div class="input-group">
                         <ui-select ng-model="threshold.lower_sensor_action">
                             <ui-select-match class="ui-select-match" placeholder="Pick one...">{{ $select.selected.name }}</ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="action.idx as action in sensor.graph.user_settings.base.sensor_action_list">
+                            <ui-select-choices class="ui-select-choices" repeat="action.idx as action in sensor.graph.graph_result.tree.user_settings.base.sensor_action_list">
                                 <div ng-bind-html="action.name"></div>
                             </ui-select-choices>
                         </ui-select>

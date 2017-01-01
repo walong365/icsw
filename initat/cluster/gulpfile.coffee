@@ -1,4 +1,4 @@
-# Copyright (C) 2016 init.at
+# Copyright (C) 2016-2017 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -192,7 +192,7 @@ sources = {
             "frontend/static/js/restangular.min.js",
             "frontend/static/js/angular-block-ui.js",
             "frontend/static/js/select.js",
-            "frontend/static/js/ui-bootstrap-tpls-2.3.2.min.js",
+            "frontend/static/js/ui-bootstrap-tpls-2.4.0.min.js",
             "frontend/static/js/angular-ui-router.js",
             "frontend/static/js/datetime-picker.js",
             "frontend/static/js/datetime-picker.tpls.js",

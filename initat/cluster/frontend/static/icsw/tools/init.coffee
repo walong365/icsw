@@ -814,7 +814,6 @@ angular.module(
         _ICSW_DEVICE_CONFIG_CHANGED: "_icsw.device.config.changed"
         _ICSW_CLOSE_USER_GROUP: "_icsw.close.user.group"
         _ICSW_RMS_UPDATE_DATA: "_icsw.rms.update.data"
-        _ICSW_RRD_CROPRANGE_SET: "_icsw.rrd.croprange.set"
         _ICSW_DEVICE_TABS_CHANGED: "_icsw.device.tabs.changed"
         _ICSW_CLOSE_CONFIG: "_icsw.close.config"
         _ICSW_DELETE_CONFIG: "_icsw.delete.config"
@@ -1244,6 +1243,9 @@ angular.module(
 (
     Restangular, toaster, icswInfoModalService, $window,
 ) ->
+    # init utc for moment
+    moment().utc()
+    # init restangular
     Restangular.setRestangularFields(
         {
             id: "idx"
