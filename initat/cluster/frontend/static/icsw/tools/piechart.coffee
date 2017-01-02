@@ -31,6 +31,7 @@ angular.module(
         scope:
             data: "=data"  # [{value: 0.34, title: "foo", color: "#ff0000"}]
             diameter: "=diameter"
+            trigger: "=icswTrigger"
         link : (scope, element, attrs) ->
 
             _build_pie = (data) ->
@@ -74,6 +75,8 @@ angular.module(
                     # calc general properties (currently only used in calc_path)
                     part = entry.value / value_total
                     part_angle = part * (Math.PI*2)
+                    perc_value = part * 100
+                    entry.$$perc_value = perc_value
 
                     end_angle = start_angle + part_angle
 
@@ -109,18 +112,31 @@ angular.module(
                             "data-order": i
                         }
                     )
-                    _path = createSVGElement(
-                        "path"
-                        {
-                            class: "pie-segment #{entry.$$data.svgClassName}"
-                            d: cmd.join(" ")
-                        }
-                    )
+                    if entry.$$data?
+                        _path = createSVGElement(
+                            "path"
+                            {
+                                class: "pie-segment #{entry.$$data.svgClassName}"
+                                d: cmd.join(" ")
+                            }
+                        )
+                    else
+                        _path = createSVGElement(
+                            "path"
+                            {
+                                class: "pie-segment"
+                                d: cmd.join(" ")
+                                fill: entry.color
+                            }
+                        )
                     _part_g.append(_path)
                     _g.append(_part_g)
                     _part_g.bind("mouseenter", entry, (event) ->
                         entry = event.data
-                        _tooltip.html("#{entry.title}: #{entry.value}%")
+                        if entry.$$data?
+                            _tooltip.html("#{entry.$$data.StateString}: #{entry.$$perc_value}%")
+                        else
+                            _tooltip.html("#{entry.title}: #{entry.$$perc_value}%")
                         _mousemove(event)
                         _tooltip.show()
                     ).bind("mouseleave", (event) ->
@@ -133,12 +149,19 @@ angular.module(
 
                 element.append(_div)
 
-            scope.$watchGroup(
-                ["data", "diameter"],
-                (new_data) ->
-                    if scope.data?
+            if attrs["icswTrigger"]?
+                scope.$watch(
+                    "trigger"
+                    (new_val) ->
                         _build_pie(scope.data)
                 )
+            else
+                scope.$watchGroup(
+                    ["data", "diameter"],
+                    (new_data) ->
+                        if scope.data?
+                            _build_pie(scope.data)
+                    )
     }
 ])
 

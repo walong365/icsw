@@ -961,6 +961,7 @@ rms_module = angular.module(
             @name = name
             @search_string = ""
             @list = []
+            @slot_info = []
 
         start_feed: () =>
             @list.length = 0
@@ -968,14 +969,44 @@ rms_module = angular.module(
         feed: (queue) =>
             @list.push(queue)
 
+        process: () =>
+            _slot_info = {}
+            for entry in @list
+                if entry.slots_info?
+                    for key, value of entry.slots_info
+                        if not _slot_info[key]?
+                            _slot_info[key] = 0
+                        _slot_info[key] += value
+            # console.log @list, _slot_info
+            @slot_info.length = 0
+            _slot_info["free"] = _slot_info["total"] - _slot_info["used"]
+            for key, value of _slot_info
+                if key not in ["total"]
+                    @slot_info.push(
+                        {
+                            value: value
+                            title: "#{key} (#{value})"
+                            color: {
+                                "free": "#44ff44"
+                                "used": "#6666ff"
+                                "reserved": "#dddd00"
+                            }[key]
+                        }
+                    )
+            # @slot_info = _slot_info
+
     class icswRMSQueueStruct extends icswRMSHeaderStruct
         constructor: (h_struct, struct) ->
             super("node", h_struct, struct)
+            @change_notifier = $q.defer()
             @all_queue_list = []
             @queue_by_name_list = []
             @queue_by_name_lut = {}
             # disable display of this headers
             @hidden_headers = ["state", "slots_reserved", "slots_total"]
+
+        close: () =>
+            @change_notifier.reject("close")
 
         feed_list: (simple_list, values_dict) =>
             @feed_xml_list(simple_list)
@@ -1099,8 +1130,11 @@ rms_module = angular.module(
                     @all_queue_list.push(queue)
                     @queue_by_name_lut[_vals[0]].feed(queue)
                     _idx++
+            for queue in @queue_by_name_list
+                queue.process()
             # todo: remove stale queues
-            @info = "Queue (#{@all_queue_list.length} queues on #{@list.length} nodes, #{slot_info.used} of #{slot_info.total} slots used)"
+            @info = "Queue (#{@all_queue_list.length} instances in #{@queue_by_name_list.length} queues on #{@list.length} nodes, #{slot_info.used} of #{slot_info.total} slots used)"
+            @change_notifier.notify("update")
 
 
 ]).controller("icswRMSOverviewCtrl",
@@ -1289,6 +1323,8 @@ rms_module = angular.module(
             $timeout.cancel($scope.struct.fetch_current_timeout)
         if $scope.struct.fetch_done_timeout
             $timeout.cancel($scope.struct.fetch_done_timeout)
+        if $scope.struct.rms
+            $scope.struct.rms.queue.close()
     )
 
     $scope.initial_load()
@@ -1459,30 +1495,67 @@ rms_module = angular.module(
 [
     "$scope", "icswRMSIOStruct", "ICSW_SIGNALS", "DeviceOverviewService", "$q",
     "icswRRDGraphUserSettingService", "icswDeviceTreeService", "icswAccessLevelService",
-    "icswRRDGraphBasicSetting",
+    "icswRRDGraphBasicSetting", "icswRRDGraphTools", "$timeout",
 (
     $scope, icswRMSIOStruct, ICSW_SIGNALS, DeviceOverviewService, $q,
     icswRRDGraphUserSettingService, icswDeviceTreeService, icswAccessLevelService,
-    icswRRDGraphBasicSetting,
+    icswRRDGraphBasicSetting, icswRRDGraphTools, $timeout,
 ) ->
     $scope.local_struct = {
         # base data set
         base_data_set: false
-        # graph setting
-        local_setting: undefined
-        # from and to date
-        from_date: undefined
-        to_date: undefined
-        # devices
-        devices: []
+        # graphs_drawn
+        graphs_drawn: false
         # load_called
         load_called: false
-        # graph lists
-        graph_list: []
+        # graph tree
+        graph_tree: undefined
+        # reload timeout
+        reload_timeout: undefined
+        # draw results
+        draw_results: []
     }
 
+    _reload_graphs = () ->
+        _stop_auto_reload()
+        $scope.local_struct.graphs_drawn = false
+        $scope.local_struct.graph_tree.timeframe.set_from_to_mom(
+            moment().subtract(moment.duration(1, "week"))
+            moment()
+        )
+        $q.allSettled(
+            (
+                $scope.local_struct.graph_tree.draw_graphs(false, result)
+            ) for result in $scope.local_struct.draw_results
+        ).then(
+            (done) ->
+                $scope.local_struct.graphs_drawn = true
+                _install_auto_reload()
+        )
+
+    _stop_auto_reload = () ->
+        if $scope.local_struct.reload_timeout?
+            $timeout.cancel($scope.local_struct.reload_timeout)
+            $scope.local_struct.reload_timeout = undefined
+
+    _install_auto_reload = () ->
+        $scope.local_struct.reload_timeout = $timeout(
+            () ->
+                _reload_graphs()
+            # reload after 2 minutes
+            2 * 60 * 1000
+        )
+
+    $scope.struct.change_notifier.promise.then(
+        (ok) ->
+        (error) ->
+        (notify) ->
+            # new data ready
+            for entry in $scope.local_struct.draw_results
+                entry.$$queue_trigger++
+    )
+
     _load_queue_overview = () ->
-        console.log "load"
         $scope.local_struct.load_called = true
         $q.all(
             [
@@ -1492,47 +1565,66 @@ rms_module = angular.module(
         ).then(
             (data) ->
                 _user_setting = data[0]
-                local_setting = _user_setting.get_default()
-                local_setting.hide_empty = false
-                _user_setting.set_custom_size(local_setting, 600, 200)
                 _dt = data[1]
-                $scope.local_struct.local_setting = local_setting
-                $scope.local_struct.base_setting = base_setting
                 $scope.local_struct.base_data_set = true
                 _routes = icswAccessLevelService.get_routing_info().routing
-                $scope.local_struct.to_date = moment()
-                $scope.local_struct.from_date = moment().subtract(moment.duration(4, "week"))
                 if "rms_server" of _routes
                     _server = _routes["rms_server"][0]
                     _device = _dt.all_lut[_server[2]]
                     if _device?
-                        $scope.local_struct.devices.push(_device)
-                    $scope.local_struct.graph_list.length = 0
-                    for queue in $scope.struct.queue_by_name_list
-                        new_struct = {
-                            queue: queue
-                        }
-                        base_setting = new icswRRDGraphBasicSetting()
-                        base_setting.draw_on_init = true
-                        base_setting.show_tree = false
-                        base_setting.show_settings = false
-                        base_setting.display_tree_switch = false
-                        base_setting.display_settings_switch = false
-                        base_setting.ordering = "AVERAGE"
-                        base_setting.title_string = "Queue #{queue.name}"
-                        _queue_name = _.replace(queue.name, ".", "_")
-                        base_setting.auto_select_keys = [
-                            "compound.sge.queue_#{_queue_name}$"
-                        ]
-                        new_struct.base_setting = base_setting
-                        # console.log "q=", queue
-                        $scope.local_struct.graph_list.push(new_struct)
+                        $scope.local_struct.graph_tree = icswRRDGraphTools.create_tree()
+                        base_setting = new icswRRDGraphBasicSetting(
+                            {
+                                allow_crop: false
+                                show_tree: false
+                                show_settings: false
+                                display_tree_switch: false
+                                display_settings_switch: false
+                            }
+                        )
+                        _sel_keys = []
+                        for queue in $scope.struct.queue_by_name_list
+                            cur_dr = icswRRDGraphTools.create_result($scope.local_struct.graph_tree)
+                            _queue_name = _.replace(queue.name, ".", "_")
+                            _sel_keys.push("^compound.sge.queue_#{_queue_name}$")
+                            cur_dr.set_auto_select_re("^compound.sge.queue_#{_queue_name}$")
+                            cur_dr.$$queue = queue
+                            cur_dr.$$queue_trigger = 1
+                            $scope.local_struct.draw_results.push(cur_dr)
+                        base_setting.auto_select_keys = _sel_keys
+                        $scope.local_struct.graph_tree.set_base_setting(base_setting)
+                        local_setting = _user_setting.get_default()
+                        local_setting.hide_empty = true
+                        _user_setting.set_custom_size(local_setting, 800, 240)
+                        $scope.local_struct.graph_tree.set_custom_setting(local_setting)
+                        $scope.local_struct.graph_tree.timeframe.set_from_to_mom(
+                            moment().subtract(moment.duration(1, "week"))
+                            moment()
+                        )
+                        $scope.local_struct.graph_tree.set_devices([_device]).then(
+                            (done) ->
+                                for result in $scope.local_struct.draw_results
+                                    $scope.local_struct.graph_tree.draw_graphs(true, result)
+                                $scope.local_struct.graphs_drawn = true
+                                _install_auto_reload()
+                            (error) ->
+                        )
         )
+
+    $scope.reload_overview = ($event) ->
+        _reload_graphs()
+
     $scope.click_node = ($event, device) ->
         DeviceOverviewService($event, [device])
 
     $scope.select_queue_overview = ($event) ->
         # console.log "act"
+
+    $scope.$on(
+        "$destroy",
+        () ->
+            _stop_auto_reload()
+    )
 
     $scope.$on(ICSW_SIGNALS("_ICSW_RMS_MAIN_TAB_CHANGED"), ($event) ->
         if $scope.gstruct.active_tab == "queue"

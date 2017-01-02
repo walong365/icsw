@@ -48,8 +48,8 @@
                                 class="btn btn-success btn-xs"
                                 ng-disabled="!graph_tree.cur_selected.length || !graph_tree.timeframe.valid"
                                 type="button"
-                                ladda="graph_tree.is_drawing"
-                                ng-click="graph_tree.draw_graphs()"
+                                ladda="graph_tree.num_drawing > 0"
+                                ng-click="graph_tree.draw_graphs(true, graph_result)"
                             >
                                 <span title="Draw Graph(s)" class="glyphicon glyphicon-pencil"></span>
                             </button>
@@ -101,8 +101,8 @@
                             class="btn btn-success btn-xs"
                             ng-disabled="!graph_tree.cur_selected.length || !graph_tree.timeframe.valid"
                             type="button"
-                            ladda="graph_tree.is_drawing"
-                            ng-click="graph_tree.draw_graphs()"
+                            ladda="graph_tree.num_drawing > 0"
+                            ng-click="graph_tree.draw_graphs(true, graph_result)"
                         >
                             <span title="Draw Graph(s)" class="glyphicon glyphicon-pencil"></span>
                         </button>
@@ -110,7 +110,7 @@
                             class="btn btn-warning btn-xs"
                             ng-disabled="!graph_tree.cur_selected.length || !graph_tree.timeframe.valid"
                             type="button"
-                            ladda="graph_tree.is_drawing"
+                            ladda="graph_tree.num_drawing > 0"
                             ng-click="graph_tree.clear_selection()"
                         >
                             <span title="Clear Selection" class="fa fa-remove"></span>
@@ -118,7 +118,7 @@
                         <button
                             class="btn btn-warning btn-xs"
                             type="button"
-                            ladda="graph_tree.is_drawing"
+                            ladda="graph_tree.num_drawing > 0"
                             ng-click="graph_tree.select_with_sensor()"
                         >
                             <span title="Select all with Sensors" class="fa fa-wrench"></span>
@@ -129,10 +129,10 @@
             </div>
             <div
                 ng-class="graph_tree.base_setting.show_tree && 'col-md-9' || 'col-md-12'"
-                ng-show="graph_tree.graph_result.list.length"
+                ng-show="graph_result.list.length"
             >
                 <icsw-rrd-graph-result
-                    icsw-graph-result="graph_tree.graph_result"
+                    icsw-graph-result="graph_result"
                 ></icsw-rrd-graph-result>
             </div>
         </div>
@@ -146,8 +146,9 @@
                 count="graph_result.list.length"
                 when="{'0': 'No Graphs', 'one': 'One Graph', 'other': '{} Graphs'}"
             ></ng-pluralize>,
-            {{ graph_result.list[0].get_tv(graph_result.list[0].ts_start_mom) }} to
-            {{ graph_result.list[0].get_tv(graph_result.list[0].ts_end_mom) }}
+            <span ng-show="graph_result.time_range_str">
+                {{ graph_result.time_range_str }}
+            </span>
         </h3>
         <table class="table-condensed">
             <tr ng-repeat="gkey in $$graph_keys">
