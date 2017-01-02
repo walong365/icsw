@@ -62,7 +62,7 @@ class QueueInfo(object):
         # count states
         for _short, _attr in [("E", "error"), ("d", "disabled"), ("u", "unknown"), ("a", "alarm")]:
             if _short in _state:
-                setattr(self, _attr, getattr(self, _attr) + 1)
+                setattr(self, _attr, getattr(self, _attr) + self.total)
 
     @property
     def free(self):

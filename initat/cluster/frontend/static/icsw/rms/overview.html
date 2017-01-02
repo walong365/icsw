@@ -172,28 +172,34 @@
             </uib-tab-heading>
             <h3>
                 {{ struct.queue_by_name_list.length }} Queues defined
-                <span ng-show="struct.graph_tree.graph_result.time_range_str">
-                    , {{ struct.graph_tree.graph_result.time_range_str }}
+                <span ng-show="local_struct.graph_tree.graph_result.time_range_str">
+                    , {{ local_struct.graph_tree.graph_result.time_range_str }}
                 </span>
                 <span
-                    ng-show="struct.graph_tree.error_string"
+                    ng-show="local_struct.graph_tree.error_string"
                     class="text-warning"
-                >{{ struct.graph_tree.error_string }}</span>
+                >{{ local_struct.graph_tree.error_string }}</span>
                 <icsw-tools-button
                     type="reload"
                     size="xs"
-                    ng-if="struct.graphs_drawn"
+                    ng-if="local_struct.graphs_drawn"
                     ng-click="reload_overview($event)"
                 ></icsw-tools-button>
             </h3>
             <div class="container-fluid">
-                <div class="row">
+                <div class="row" ng-repeat="result in local_struct.draw_results">
                     <div
-                        class="col-xs-12 col-md-12 col-lg-12"
-                        ng-repeat="graph in struct.graph_tree.graph_result.list"
+                        class="col-xs-3 col-md-3 col-lg-3 text-center"
+                    >
+                        <h3>Queue {{ result.$$queue.name }}</h3>
+                        <icsw-tools-piechart icsw-trigger="result.$$queue_trigger" data="result.$$queue.slot_info" diameter="240"></icsw-tools-piechart>
+                    </div>
+                    <div
+                            class="col-xs-9 col-md-9 col-lg-9"
                     >
                         <icsw-rrd-graph-list-graph
-                            icsw-graph="graph"
+                            icsw-graph="result.list[0]"
+                            ng-if="result.list.length"
                         ></icsw-rrd-graph-list-graph>
                     </div>
                 </div>
