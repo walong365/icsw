@@ -10,7 +10,7 @@
                     Actions:
                     <icsw-tools-button type="create" value="create" size="sm" ng-click="create($event, null)"></icsw-tools-button>
                     <icsw-tools-button type="modify" value="prune tree" size="sm" ng-click="prune_tree()"/>
-                    <icsw-tools-button type="delete" icsw-disabled="!icsw_config_object.num_active" size="sm" value="delete selected" ng-click="special_fn($event, 'delete_many', null)"/>
+                    <icsw-tools-button type="delete" icsw-disabled="location_or_tln_selected() || !icsw_config_object.num_active" size="sm" value="delete selected" ng-click="special_fn($event, 'delete_many', null)"/>
                     <icsw-tools-button type="close" icsw-disabled="!icsw_config_object.num_active" size="sm" value="clear selection" ng-click="special_fn($event, 'clear_selection', null)"/>
                 </p>
                 <div class="row">
