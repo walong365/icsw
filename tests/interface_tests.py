@@ -28,6 +28,7 @@ class TestIcsw(unittest.TestCase):
             base_url='http://192.168.1.92/icsw/main.html',
             command_executor='http://127.0.0.1:4444/wd/hub',
             desired_capabilities=DesiredCapabilities.CHROME,
+            timeout=30
             )
         cls.driver.maximize_window()
 

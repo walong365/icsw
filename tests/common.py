@@ -67,7 +67,7 @@ class Webdriver(webdriver.Remote):
         return WebDriverWait(self, self.timeout).until(find_toast_)
 
     def get_(self, url):
-        return self.get('{}#{}'.format(self.base_url, url))
+        return self.get('{}#!{}'.format(self.base_url, url))
 
     def log_in(self, user, password):
         self.get(self.base_url)
