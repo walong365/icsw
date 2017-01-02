@@ -110,6 +110,7 @@ angular.module(
             else
                 _tn = "icsw.device.status_history_overview.single"
             element.append($compile($templateCache.get(_tn))(scope))
+            scope.__element_ready.resolve("done")
     }
 ]).controller("icswDeviceStatusHistoryCtrl",
 [
@@ -120,6 +121,7 @@ angular.module(
     # controller takes care of setting the time frame.
     # watch this to get updates
     # setting of time frame is done by outer directive icswDeviceStatusHistoryOverview
+    $scope.__element_ready = $q.defer()
     $scope.struct = {
         # loading flag
         loading: false
@@ -181,15 +183,18 @@ angular.module(
 
     $scope.new_devsel = (devs) ->
         $scope.struct.loading = true
-        $q.all(
-            [
-                icswDeviceTreeService.load($scope.$id)
-            ]
-        ).then(
-            (data) ->
-                $scope.struct.devices = (dev for dev in devs when not dev.is_meta_device)
-                $scope.struct.device_tree = data[0]
-                $scope.struct.loading = false
+        $scope.__element_ready.promise.then(
+            (done) ->
+                $q.all(
+                    [
+                        icswDeviceTreeService.load($scope.$id)
+                    ]
+                ).then(
+                    (data) ->
+                        $scope.struct.devices = (dev for dev in devs when not dev.is_meta_device)
+                        $scope.struct.device_tree = data[0]
+                        $scope.struct.loading = false
+                )
         )
 
     $scope.get_time_frame = () ->
@@ -252,12 +257,12 @@ angular.module(
 ) ->
     return {
         restrict : "EA"
-        templateUrl : "icsw.device.status_history_device"
         require: '^icswDeviceStatusHistoryOverview'
         scope: {
             "device": "=icswDevice"
         }
-        link: (scope, element, attrs, status_history_ctrl) ->
+        link: (scope, element, attrs) ->
+            # element.children().remove()
             scope.icsw_device_mode = attrs["icswDeviceMode"]
             if attrs["icswDeviceMode"] == "multi"
                 _tn = "icsw.device.status_history_device.multi"

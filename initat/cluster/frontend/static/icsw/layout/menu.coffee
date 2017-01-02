@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2016 init.at
+# Copyright (C) 2012-2017 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -36,6 +36,9 @@ menu_module = angular.module(
     $rootScope, ICSW_SIGNALS, $timeout, icswOverallStyle,
 ) ->
     # init service types
+    if $window.$$ICSW_MENU_INSTALLED?
+        console.error "icswMenuBaseCtrl already set"
+    $window.$$ICSW_MENU_INSTALLED = true
     $scope.ICSW_URLS = ICSW_URLS
     $scope.initProduct = initProduct
     $scope.struct = {
@@ -246,6 +249,7 @@ menu_module = angular.module(
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.layout.menubar")
+        controller: "icswMenuBaseCtrl"
     }
 ]).service("icswMenuProgressService",
 [

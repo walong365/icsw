@@ -235,12 +235,16 @@
             Loading data from Server ...
         </div>
 
-        <table class="table table-condensed table-hover icsw-table-striped-4" style="margin-top: 10px" ng-show="service_data.length > 0 && !struct.loading">
+        <table
+            class="table table-condensed table-hover icsw-table-striped-4"
+            style="margin-top: 10px"
+            ng-show="service_data.length > 0 && !struct.loading"
+        >
             <thead>
                 <tr>
                     <th></th>
                     <th>Service</th>
-                    <th style="width: 10%;" class="text-center"><!-- chart --></th>
+                    <th style="width: 10%;" class="text-center"></th>
                     <th
                         style="width: 50px;"
                         class="text-center"
@@ -253,7 +257,7 @@
             </thead>
             <tbody>
                 <tr
-                    ng-repeat-start="entry in service_data"
+                    ng-repeat-start="entry in service_data"x
                     ng-click="entry.log_viewer_enabled = !entry.log_viewer_enabled"
                     style="cursor: pointer"
                 >
