@@ -233,8 +233,8 @@ def main(opt_ns):
             inst_xml,
             opt_ns.childcom,
             services=opt_ns.service,
-            days_to_consider=opt_ns.days,
-            db_limit=opt_ns.db_limit,
+            days_to_consider=opt_ns.days if opt_ns.childcom in ["overview"] else 1,
+            db_limit=opt_ns.db_limit if opt_ns.childcom in ["overview"] else 100,
         )
         if _result is None:
             log_com("Got no result from meta-server")

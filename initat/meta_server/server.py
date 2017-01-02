@@ -314,7 +314,10 @@ class MainProcess(ICSWBasePoolClient):
         )
         for _trans in trans_list:
             if _trans.name in _current_trans:
-                self.log("removing all pending transitions for {}".format(_trans.name), logging_tools.LOG_LEVEL_ERROR)
+                # this should never happen ...
+                self.log("*" * 20, logging_tools.LOG_LEVEL_CRITICAL)
+                self.log("removing all pending transitions for {}".format(_trans.name), logging_tools.LOG_LEVEL_CRITICAL)
+                self.log("*" * 20, logging_tools.LOG_LEVEL_CRITICAL)
                 self.__transitions = [entry for entry in self.__transitions if _trans.name not in entry.service_names]
             _new_t = transition.ServiceTransition(
                 _trans.action,
@@ -441,7 +444,6 @@ class MainProcess(ICSWBasePoolClient):
             new_keys = set()
             for entry in valid_entries:
                 key = entry.name
-                tot_mem = 0
                 mem_el = entry.entry.find(".//memory_info")
                 tot_mem = int(mem_el.text.strip())
                 if mem_el.find("details") is not None:

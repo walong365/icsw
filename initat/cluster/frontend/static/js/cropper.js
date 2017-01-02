@@ -1,11 +1,11 @@
 /*!
- * Cropper v2.3.4
+ * Cropper v2.3.2
  * https://github.com/fengyuanchen/cropper
  *
  * Copyright (c) 2014-2016 Fengyuan Chen and contributors
  * Released under the MIT license
  *
- * Date: 2016-09-03T05:50:45.412Z
+ * Date: 2016-06-08T12:14:46.286Z
  */
 
 (function (factory) {
@@ -64,10 +64,10 @@
   var EVENT_ZOOM = 'zoom.' + NAMESPACE;
 
   // RegExps
-  var REGEXP_ACTIONS = /^(e|w|s|n|se|sw|ne|nw|all|crop|move|zoom)$/;
-  var REGEXP_DATA_URL = /^data:/;
-  var REGEXP_DATA_URL_HEAD = /^data:([^;]+);base64,/;
-  var REGEXP_DATA_URL_JPEG = /^data:image\/jpeg.*;base64,/;
+  var REGEXP_ACTIONS = /e|w|s|n|se|sw|ne|nw|all|crop|move|zoom/;
+  var REGEXP_DATA_URL = /^data\:/;
+  var REGEXP_DATA_URL_HEAD = /^data\:([^\;]+)\;base64,/;
+  var REGEXP_DATA_URL_JPEG = /^data\:image\/jpeg.*;base64,/;
 
   // Data keys
   var DATA_PREVIEW = 'preview';
@@ -178,17 +178,13 @@
     var scaleX = options.scaleX;
     var scaleY = options.scaleY;
 
-    // Rotate should come first before scale to match orientation transform
-    if (isNumber(rotate) && rotate !== 0) {
+    // Scale should come first before rotate (#633)
+    if (isNumber(scaleX) && isNumber(scaleY)) {
+      transforms.push('scale(' + scaleX + ',' + scaleY + ')');
+    }
+
+    if (isNumber(rotate)) {
       transforms.push('rotate(' + rotate + 'deg)');
-    }
-
-    if (isNumber(scaleX) && scaleX !== 1) {
-      transforms.push('scaleX(' + scaleX + ')');
-    }
-
-    if (isNumber(scaleY) && scaleY !== 1) {
-      transforms.push('scaleY(' + scaleY + ')');
     }
 
     return transforms.length ? transforms.join(' ') : 'none';
@@ -267,13 +263,13 @@
       context.translate(translateX, translateY);
     }
 
-    // Rotate should come first before scale as in the "getTransform" function
-    if (rotatable) {
-      context.rotate(rotate * Math.PI / 180);
-    }
-
+    // Scale should come first before rotate (#633, #709)
     if (scalable) {
       context.scale(scaleX, scaleY);
+    }
+
+    if (rotatable) {
+      context.rotate(rotate * Math.PI / 180);
     }
 
     context.drawImage(image, floor(dstX), floor(dstY), floor(dstWidth), floor(dstHeight));
@@ -532,9 +528,9 @@
       var options = this.options;
       var orientation = getOrientation(arrayBuffer);
       var image = this.image;
-      var rotate = 0;
-      var scaleX = 1;
-      var scaleY = 1;
+      var rotate;
+      var scaleX;
+      var scaleY;
 
       if (orientation > 1) {
         this.url = arrayBufferToDataURL(arrayBuffer);
@@ -739,7 +735,7 @@
       $this.one(EVENT_BUILT, options.built);
 
       // Trigger the built event asynchronously to keep `data('cropper')` is defined
-      this.completing = setTimeout($.proxy(function () {
+      setTimeout($.proxy(function () {
         this.trigger(EVENT_BUILT);
         this.trigger(EVENT_CROP, this.getData());
         this.isCompleted = true;
@@ -749,10 +745,6 @@
     unbuild: function () {
       if (!this.isBuilt) {
         return;
-      }
-
-      if (!this.isCompleted) {
-        clearTimeout(this.completing);
       }
 
       this.isBuilt = false;
@@ -1667,8 +1659,8 @@
       if (this.isLimited) {
         minLeft = cropBox.minLeft;
         minTop = cropBox.minTop;
-        maxWidth = minLeft + min(container.width, canvas.width, canvas.left + canvas.width);
-        maxHeight = minTop + min(container.height, canvas.height, canvas.top + canvas.height);
+        maxWidth = minLeft + min(container.width, canvas.left + canvas.width);
+        maxHeight = minTop + min(container.height, canvas.top + canvas.height);
       }
 
       range = {

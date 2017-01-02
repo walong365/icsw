@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015-2016 Andreas Lang-Nevyjel
+# Copyright (C) 2015-2017 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -605,7 +605,7 @@ class ServiceState(object):
                 ),
                 logging_tools.LOG_LEVEL_WARN
             )
-            return []
+            _transition = []
         else:
             with self.get_cursor() as crs:
                 # filter all actions older than TRANSACTION_WINDOW seconds
@@ -632,19 +632,23 @@ class ServiceState(object):
                             self.__transition_lock_dict[name],
                             cur_time,
                             _diff_time,
-                        )
+                        ),
+                        logging_tools.LOG_LEVEL_WARN
                     )
+                    self.__transition_lock_dict[name] = cur_time
+                    _transition = []
                 else:
                     self.log("creating transition lock for {}".format(name))
-                self.__transition_lock_dict[name] = cur_time
-            return [
-                ServiceStateTranstaction(
-                    actions,
-                    name,
-                    action,
-                    trans_id,
-                )
-            ]
+                    self.__transition_lock_dict[name] = cur_time
+                    _transition = [
+                        ServiceStateTranstaction(
+                            actions,
+                            name,
+                            action,
+                            trans_id,
+                        )
+                    ]
+            return _transition
 
     def transition_finished(self, trans):
         t_id = trans.id
@@ -743,7 +747,8 @@ class ServiceState(object):
                 "{} will be disabled: {}".format(
                     logging_tools.get_plural("service", len(dis_list)),
                     ", ".join(sorted(dis_list)),
-                )
+                ),
+                logging_tools.LOG_LEVEL_WARN,
             )
             self._disable_command(
                 server_command.srv_command(
