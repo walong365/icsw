@@ -30,7 +30,7 @@ angular.module(
     $q,
 ) ->
     class icswRRDGraphBasicSetting
-        constructor: () ->
+        constructor: (args) ->
             # settings switch visible
             @display_settings_switch = true
             # show settings
@@ -47,9 +47,17 @@ angular.module(
             @search_string = ""
             # initial select keys, can be used for initial selection
             @auto_select_keys = []
+            # allow to crop
+            @allow_crop = true
             # title String
             @title_string = "Graphing"
-            
+            if args?
+                for key, value of args
+                    if @[key]?
+                        @[key] = value
+                    else
+                        console.error "unknown RRDBasicSetting", key, value
+
         clear_search_string: () =>
             @search_string = ""
             

@@ -143,6 +143,15 @@ angular.module(
             @num_sensors = 0
             @sensors = []
 
+        update_source: (xml) =>
+            # for graph reload
+            @xml = xml
+            @name = @xml.attr("name")
+            @cropped = false
+            @removed_keys = []
+            @num_sensor = 0
+            @sensors = []
+
         close: () =>
             @change_notifier.reject("stop")
 
@@ -188,6 +197,12 @@ angular.module(
             else
                 return "???"
 
+        get_time_range_str: () =>
+            if @ts_start_mom? and @ts_start_mom.isValid()
+                return "#{@get_tv(@ts_start_mom)} to #{@get_tv(@ts_end_mom)}"
+            else
+                return null
+
         set_crop: (sel) ->
             @cropped = true
             ts_range = @json.graph_end - @json.graph_start
@@ -204,7 +219,7 @@ angular.module(
             event.stopPropagation()
             if @crop_width > 600
                 @graph_result.tree.timeframe.set_from_to_mom(@cts_start_mom, @cts_end_mom)
-                @graph_result.tree.draw_graphs()
+                @graph_result.tree.draw_graphs(false)
             else
                 _mins = parseInt(@crop_width / 60)
                 toaster.pop("warning", "", "selected timeframe is too narrow (#{_mins} < 10 min)")
@@ -216,6 +231,7 @@ angular.module(
             @clear()
             @generation = 0
             @ws = undefined
+            @time_range_str = ""
 
         init_ws: () =>
             # start websocket
@@ -246,6 +262,19 @@ angular.module(
             @num_pending = 0
             # graph matrix
             @matrix = {}
+            # full key lut
+            @fk_lut = {}
+            # time range string
+            @time_range_str = ""
+
+        clear_for_redraw: () =>
+            # redraw all graphs
+            @name_lut = {}
+            # (entry.close() for entry in @list)
+            @num = 0
+            # numer of outstanding requests
+            @num_pending = 0
+            @time_range_str = ""
 
         start_feed: () =>
             # set feed flag, while we are feeding
@@ -260,23 +289,32 @@ angular.module(
             (@feed_result(entry) for entry in @__cache)
             @__cache.length = 0
 
-        feed_graph: (graph) =>
-            # console.log "add", graph.attr("name")
+        feed_graph: (graph, add_new) =>
             @num_pending++
             @generation++
-            @num++
             graph_key = graph.attr("fmt_graph_key")
             dev_key = graph.attr("fmt_device_key")
-            if graph_key not of @matrix
-                @matrix[graph_key] = {}
-            cur_graph = new icswRRDDisplayGraph(
-                @num
-                graph
-                @
-            )
-            @name_lut[cur_graph.name] = cur_graph
-            @matrix[graph_key][dev_key] = cur_graph
-            @list.push(cur_graph)
+            _full_key = "#{graph_key}::#{dev_key}"
+            if add_new
+                @num++
+                if graph_key not of @matrix
+                    @matrix[graph_key] = {}
+                cur_graph = new icswRRDDisplayGraph(
+                    @num
+                    graph
+                    @
+                )
+                @fk_lut[_full_key] = cur_graph
+                @name_lut[cur_graph.name] = cur_graph
+                @matrix[graph_key][dev_key] = cur_graph
+                @list.push(cur_graph)
+            else
+                cur_graph = @fk_lut[_full_key]
+                if cur_graph?
+                    cur_graph.update_source(graph)
+                    @name_lut[cur_graph.name] = cur_graph
+                else
+                    console.error "Unknown graph with full_key '#{_full_key}"
 
         feed_result: (json) =>
             if @__feeding
@@ -285,6 +323,14 @@ angular.module(
                 for graph in json.list
                     if graph.name of @name_lut
                         @name_lut[graph.name].feed_result(graph)
+                        if not @time_range_str
+                            @time_range_str = @name_lut[graph.name].get_time_range_str()
+                            # successfull set ?
+                            if @time_range_str
+                                $timeout(
+                                    () =>
+                                    0
+                                )
                         @num_pending--
                         if not @num_pending
                             @close_ws()
@@ -413,6 +459,7 @@ angular.module(
             )
 
         set_devices: (dev_list) =>
+            _defer = $q.defer()
             # clear graphing list
             @graph_result.clear()
             # sets the new device list and loads the tree
@@ -453,13 +500,17 @@ angular.module(
                                 ).then(
                                     (json) =>
                                         @_feed_rrd_json(json)
+                                        _defer.resolve("done")
                                     (error) =>
                                         @_set_error("Error loading tree")
+                                        _defer.reject("error loading tree")
                                 )
                             else
                                 @_set_error("No Devices selected")
+                                _defer.reject("no devices")
                     )
             )
+            return _defer.promise
 
         _feed_rrd_json: (json) =>
             if "error" of json
@@ -485,7 +536,7 @@ angular.module(
                         @tree.show_selected(false)
                         @selection_changed()
                         if @base_setting.draw_on_init and @vector_data.num_mve_sel
-                            @draw_graphs()
+                            @draw_graphs(true)
                 else
                     @_set_error("No vector found")
 
@@ -650,7 +701,7 @@ angular.module(
             @selection_changed()
 
         # graph calls
-        draw_graphs: () =>
+        draw_graphs: (clear_current) =>
             defer = $q.defer()
             if !@is_drawing
                 @_set_drawing("Drawing graphs")
@@ -658,7 +709,10 @@ angular.module(
                     _setting = @custom_setting
                 else
                     _setting = @user_settings.get_active()
-                @graph_result.clear()
+                if clear_current
+                    @graph_result.clear()
+                else
+                    @graph_result.clear_for_redraw()
                 # open websocket
                 @graph_result.start_feed()
                 gfx = $q.defer()
@@ -691,7 +745,7 @@ angular.module(
                             # num_graph = 0
                             for graph in $(xml).find("graph_list > graph")
                                 graph = $(graph)
-                                @graph_result.feed_graph(graph)
+                                @graph_result.feed_graph(graph, clear_current)
                             @graph_result.end_feed()
                         else
                             @graph_result.clear()
@@ -993,6 +1047,8 @@ angular.module(
                                             _graph.state = "e"
                                             @setState({load_error: true})
                                         onLoad: (event) =>
+                                            if not _graph.graph_result.tree.base_setting.allow_crop
+                                                return
                                             _img = event.currentTarget
                                             @image = _img
                                             $(_img).cropper(
@@ -1021,7 +1077,7 @@ angular.module(
                         span(
                             {
                                 key: "graph.nosrc"
-                                className: "text-warning"
+                                className: "label label-warning"
                             }
                             "no graph created"
                         )
@@ -1225,7 +1281,7 @@ angular.module(
                 if threshold.device_selection == device_selection.idx
                     th_scope.threshold.device_selection_obj = device_selection
 
-        console.log "args:", create, sensor, threshold
+        # console.log "args:", create, sensor, threshold
         if create
             title = "Create new Threshold"
         else

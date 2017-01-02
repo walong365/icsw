@@ -170,28 +170,38 @@
             <uib-tab-heading>
                 Overview
             </uib-tab-heading>
-            <h3>{{ struct.queue_by_name_list.length }} Queues defined</h3>
+            <h3>
+                {{ struct.queue_by_name_list.length }} Queues defined
+                <span ng-show="struct.graph_tree.graph_result.time_range_str">
+                    , {{ struct.graph_tree.graph_result.time_range_str }}
+                </span>
+                <span
+                    ng-show="struct.graph_tree.error_string"
+                    class="text-warning"
+                >{{ struct.graph_tree.error_string }}</span>
+                <icsw-tools-button
+                    type="reload"
+                    size="xs"
+                    ng-if="struct.graphs_drawn"
+                    ng-click="reload_overview($event)"
+                ></icsw-tools-button>
+            </h3>
             <div class="container-fluid">
                 <div class="row">
                     <div
-                        class="col-xs-12 col-md-12 col-lg-6"
-                        ng-repeat="graph in local_struct.graph_list"
+                        class="col-xs-12 col-md-12 col-lg-12"
+                        ng-repeat="graph in struct.graph_tree.graph_result.list"
                     >
-                        <icsw-rrd-graph-remote
-                            ng-if="local_struct.base_data_set"
-                            icsw-device-list="local_struct.devices"
-                            icsw-graph-setting="local_struct.local_setting"
-                            icsw-base-setting="graph.base_setting"
-                            icsw-from-date="local_struct.from_date"
-                            icsw-to-date="local_struct.to_date"
-                        ></icsw-rrd-graph-remote>
+                        <icsw-rrd-graph-list-graph
+                            icsw-graph="graph"
+                        ></icsw-rrd-graph-list-graph>
                     </div>
                 </div>
             </div>
         </uib-tab>
         <uib-tab ng-repeat="queue in struct.queue_by_name_list">
             <uib-tab-heading>
-                <span class="fa fa-reorder"></span> {{ queue.name }} {{ queue.list.length }}
+                <span class="fa fa-reorder"></span> {{ queue.name }}
             </uib-tab-heading>
             <table
                 st-table="queue.displayed_entries"

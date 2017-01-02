@@ -146,8 +146,9 @@
                 count="graph_result.list.length"
                 when="{'0': 'No Graphs', 'one': 'One Graph', 'other': '{} Graphs'}"
             ></ng-pluralize>,
-            {{ graph_result.list[0].get_tv(graph_result.list[0].ts_start_mom) }} to
-            {{ graph_result.list[0].get_tv(graph_result.list[0].ts_end_mom) }}
+            <span ng-show="graph_result.time_range_str">
+                {{ graph_result.time_range_str }}
+            </span>
         </h3>
         <table class="table-condensed">
             <tr ng-repeat="gkey in $$graph_keys">
