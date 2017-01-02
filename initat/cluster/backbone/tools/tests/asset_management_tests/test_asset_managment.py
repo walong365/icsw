@@ -6,7 +6,7 @@ from io import StringIO
 from unittest import TestCase
 
 from initat.cluster.backbone.models import AssetRun, AssetBatch, AssetType, RunStatus, RunResult, device, \
-    device_group, partition_disc
+    device_group, partition_disc, LogicalDisc
 from initat.cluster.backbone.management.commands.create_icsw_fixtures import Command as CreateFixturesCommand
 
 
@@ -82,9 +82,10 @@ class TestAssetManagement(TestCase):
         for result_obj, asset_batch in self.assetbatch_dict.items():
             identifier = result_obj.identifier
 
-            print("")
-            print("------")
-            print(identifier)
+            # print("")
+            # print("------")
+            # print(identifier)
+            # print("")
 
             asset_batch.generate_assets()
 
@@ -103,13 +104,30 @@ class TestAssetManagement(TestCase):
             for disk in asset_batch.partition_table.partition_disc_set.all():
                 self.assertTrue(disk.size is not None, "Failed for {}".format(identifier))
                 self.assertGreater(disk.size, 0, "Failed for {}".format(identifier))
+
+                # print("--DISK--")
+                # print(disk.disc)
+                # print(disk.size)
+                # print(disk.serial)
+
                 for partition in disk.partition_set.all():
+                    # print("--PARTITION--")
+                    # print("{}".format(partition.mountpoint))
+                    # print("{}".format(partition.size))
+                    # print("{}".format(partition.partition_fs.name))
                     self.assertTrue(partition.size is not None, "Failed for {}".format(identifier))
                     self.assertGreater(partition.size, 0, "Failed for {}".format(identifier))
 
             self.assertGreater(asset_batch.partition_table.logicaldisc_set.all().count(), 0,
                                "Failed for {}".format(identifier))
+
             # for logical_disk in asset_batch.partition_table.logicaldisc_set.all():
+                # print("--LOGICAL--")
+                # print(logical_disk.device_name)
+                # print(logical_disk.size)
+                # print(logical_disk.free_space)
+                # print(logical_disk.partition_fs.name)
+                # print(logical_disk.mountpoint)
 
             for expected_hdd in result_obj.expected_hdds:
                 try:
@@ -145,6 +163,23 @@ class TestAssetManagement(TestCase):
                             expected_partition.size,
                             expected_partition.filesystem,
                             identifier))
+
+            for expected_logical_volume in result_obj.expected_logical_volumes:
+                try:
+                    asset_batch.partition_table.logicaldisc_set.get(
+                        device_name=expected_logical_volume.device_name,
+                        size=expected_logical_volume.size,
+                        free_space=expected_logical_volume.free,
+                        partition_fs__name=expected_logical_volume.filesystem,
+                        mountpoint=expected_logical_volume.mountpoint
+                    )
+                except LogicalDisc.DoesNotExist:
+                    self.fail("Expected LogicalVolume [{}, {}, {}] for {} not found".format(
+                                                                                expected_logical_volume.device_name,
+                                                                                expected_logical_volume.size,
+                                                                                expected_logical_volume.free,
+                                                                                expected_logical_volume.filesystem,
+                                                                                expected_logical_volume.mountpoint))
 
     def __assetrun_assetbatch_setup_iterator(self, asset_type):
         idx = 0

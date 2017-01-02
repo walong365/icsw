@@ -128,9 +128,158 @@ class Command(BaseCommand):
                             type=str,
                             default=None,
                             dest='expected_logical_volume',
-                            help="Add an expected logical volume. Syntax is index:device_name:size:free:filesystem")
+                            help="Add an expected logical volume."
+                                 " Syntax is index:device_name:size:free:filesystem:mountpoint")
+        parser.add_argument('--parse_hdd_data_output',
+                            action='store',
+                            type=str,
+                            default=None,
+                            dest='parse_file',
+                            help="Parse expected hdd/partition/logical volume information from file")
 
     def handle(self, **options):
+        if options["parse_file"]:
+            f = open("disk_output_data")
+            lines = f.read()
+
+            lines = lines.split("\n")
+
+            f = open(ASSET_MANAGEMENT_TEST_LOCATION, "rb")
+            data = pickle.load(f)
+            f.close()
+
+
+            new_device_for_next_line = False
+            current_device = None
+            parse_partition = False
+            parse_partition_cnt = 0
+            parse_disk = False
+            parse_disk_cnt = 0
+            parse_disk_device_name = ""
+            parse_disk_size = ""
+            parse_partition_mountpount = ""
+            parse_partition_size = ""
+            parse_logical = False
+            parse_logical_cnt = 0
+            parse_logical_device_name = ""
+            parse_logical_size = ""
+            parse_logical_free = ""
+            parse_logical_filesystem = ""
+
+            for line in lines:
+                if line == "------":
+                    new_device_for_next_line = True
+                    continue
+
+                if new_device_for_next_line:
+                    new_device_for_next_line = False
+
+                    for device in data:
+                        if device.identifier == line:
+                            current_device = device
+                            current_device.expected_hdds = []
+                            current_device.expected_partitions = []
+                            current_device.expected_logical_volumes = []
+
+                if line == "--DISK--":
+                    parse_partition = False
+                    parse_partition_cnt = 0
+                    parse_disk = True
+                    parse_disk_cnt = 0
+                    parse_logical = False
+                    parse_logical_cnt = 0
+                    continue
+
+                if parse_disk:
+                    if parse_disk_cnt == 0:
+                        parse_disk_device_name = line
+                        parse_disk_cnt += 1
+
+                    elif parse_disk_cnt == 1:
+                        parse_disk_size = int(line)
+                        parse_disk_cnt += 1
+
+                    elif parse_disk_cnt == 2:
+                        parse_disk_serial = line
+                        parse_disk = False
+                        parse_disk_cnt = 0
+
+                        new_hdd = ExpectedHdd(parse_disk_device_name, parse_disk_serial, parse_disk_size)
+
+                        current_device.expected_hdds.append(new_hdd)
+
+                if line == "--PARTITION--":
+                    parse_partition = True
+                    parse_partition_cnt = 0
+                    parse_disk = False
+                    parse_disk_cnt = 0
+                    parse_logical = False
+                    parse_logical_cnt = 0
+                    continue
+
+                if parse_partition:
+                    if parse_partition_cnt == 0:
+                        parse_partition_mountpount = line
+                        parse_partition_cnt += 1
+
+                    elif parse_partition_cnt == 1:
+                        parse_partition_size = int(line)
+                        parse_partition_cnt += 1
+
+                    elif parse_partition_cnt == 2:
+                        parse_partition = False
+                        parse_partition_cnt = 0
+
+                        _partition = ExpectedPartition(parse_disk_device_name, parse_partition_mountpount,
+                            parse_partition_size, line)
+                        current_device.expected_partitions.append(_partition)
+
+                if line == "--LOGICAL--":
+                    parse_partition = False
+                    parse_partition_cnt = 0
+                    parse_disk = False
+                    parse_disk_cnt = 0
+                    parse_logical = True
+                    parse_logical_cnt = 0
+                    continue
+
+                if parse_logical:
+                    if parse_logical_cnt == 0:
+                        parse_logical_device_name = line
+                        parse_logical_cnt += 1
+
+                    elif parse_logical_cnt == 1:
+                        parse_logical_size = None
+                        if line != "None":
+                            parse_logical_size = int(line)
+
+                        parse_logical_cnt += 1
+
+                    elif parse_logical_cnt == 2:
+                        parse_logical_free = None
+                        if line != "None":
+                            parse_logical_free = int(line)
+
+                        parse_logical_cnt += 1
+
+                    elif parse_logical_cnt == 3:
+                        parse_logical_filesystem = line
+                        parse_logical_cnt += 1
+
+                    elif parse_logical_cnt == 4:
+                        parse_logical = False
+                        parse_logical_cnt = 0
+
+                        elv = ExpectedLogicalVolume(parse_logical_device_name, parse_logical_size,
+                            parse_logical_free, parse_logical_filesystem, line)
+
+                        current_device.expected_logical_volumes.append(elv)
+
+            f = open(ASSET_MANAGEMENT_TEST_LOCATION, "wb")
+            pickle.dump(data, f)
+            f.close()
+
+            return
         if options['delete_index'] is not None:
             self.handle_delete(options['delete_index'])
             return
@@ -269,11 +418,12 @@ class Command(BaseCommand):
 
             expected_logical_volumes_str = ""
             for expected_logical_volume in result_obj.expected_logical_volumes:
-                expected_logical_volume_str = "[{}:{}:{}:{}]".format(
+                expected_logical_volume_str = "[{}:{}:{}:{}:{}]".format(
                     expected_logical_volume.device_name,
                     expected_logical_volume.size,
                     expected_logical_volume.free,
-                    expected_logical_volume.filesystem)
+                    expected_logical_volume.filesystem,
+                    expected_logical_volume.mountpoint)
                 if expected_logical_volumes_str:
                     expected_logical_volumes_str = "{}, {}".format(expected_logical_volumes_str,
                                                                    expected_logical_volume_str)
@@ -337,14 +487,15 @@ class Command(BaseCommand):
 
     @staticmethod
     def handle_add_expected_logical_volume(expected_logical_volume_str):
-        index, device_name, size, free, filesystem = expected_logical_volume_str.split(":")
+        index, device_name, size, free, filesystem, mountpoint = expected_logical_volume_str.split(":")
         index, size, free = int(index), int(size), int(free)
 
         f = open(ASSET_MANAGEMENT_TEST_LOCATION, "rb")
         data = pickle.load(f)
         f.close()
 
-        data[index].expected_partitions.append(ExpectedLogicalVolume(device_name, size, free, filesystem))
+        data[index].expected_logical_volumes.append(ExpectedLogicalVolume(device_name, size, free, filesystem,
+            mountpoint))
 
         f = open(ASSET_MANAGEMENT_TEST_LOCATION, "wb")
         pickle.dump(data, f)
