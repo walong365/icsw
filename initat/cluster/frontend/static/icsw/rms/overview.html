@@ -192,7 +192,11 @@
                         class="col-xs-3 col-md-3 col-lg-3 text-center"
                     >
                         <h3>Queue {{ result.$$queue.name }}</h3>
-                        <icsw-tools-piechart icsw-trigger="result.$$queue_trigger" data="result.$$queue.slot_info" diameter="240"></icsw-tools-piechart>
+                        <icsw-tools-piechart
+                            icsw-trigger="result.$$queue_trigger"
+                            data="result.$$queue.slot_info"
+                            diameter="240"
+                        ></icsw-tools-piechart>
                     </div>
                     <div
                             class="col-xs-9 col-md-9 col-lg-9"

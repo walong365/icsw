@@ -1,7 +1,7 @@
 <script type="text/ng-template" id="icsw.livestatus.tooltip.unknown">
     <div class="svg-tooltip">
         <div uib-alert class="alert-danger">
-            Unknown BurstNodeType '{{ burst_node.node_type }}'
+            Unknown NodeType '{{ node.node_type }}'
         </div>
     </div>
 </script>
@@ -10,7 +10,7 @@
     <div class="panel panel-default svg-tooltip">
         <div class="panel-heading">
             <b>System</b>
-            {{ burst_node.check }}
+            {{ node.check }}
         </div>
     </div>
 </script>
@@ -19,7 +19,7 @@
     <div class="panel panel-default svg-tooltip">
         <div class="panel-heading">
             <b>DeviceGroup</b>
-            {{ burst_node.check }}
+            {{ node.check }}
         </div>
     </div>
 </script>
@@ -27,23 +27,23 @@
 <script type="text/ng-template" id="icsw.livestatus.tooltip.device">
     <div class="panel panel-default svg-tooltip">
         <div class="panel-heading">
-            <b>Device {{ burst_node.check.display_name }}</b>
+            <b>Device {{ node.check.display_name }}</b>
         </div>
         <div class="svg-tooltip-content">
             <table class="table table-condensed">
                 <tbody>
                     <tr>
                         <td><label>State</label></td>
-                        <td ng-class="burst_node.check.$$data.tdStateClass">{{ burst_node.check.$$data.StateString }}</td>
+                        <td ng-class="node.check.$$data.tdStateClass">{{ node.check.$$data.StateString }}</td>
                     </tr>
-                    <tr ng-if="burst_node.check.plugin_output">
+                    <tr ng-if="node.check.plugin_output">
                         <td><label>Output</label></td>
-                        <td>{{ burst_node.check.plugin_output }}</td>
+                        <td>{{ node.check.plugin_output }}</td>
                     </tr>
-                    <tr ng-if="burst_node.check.last_check">
+                    <tr ng-if="node.check.last_check">
                         <td class="text-nowrap"><label>Last check</label></td>
                         <td>
-                            {{ burst_node.check.last_check * 1000 | date: 'yyyy-MM-dd HH:mm' }}
+                            {{ node.check.last_check * 1000 | date: 'yyyy-MM-dd HH:mm' }}
                         </td>
                     </tr>
                 </tbody>
@@ -55,27 +55,27 @@
 <script type="text/ng-template" id="icsw.livestatus.tooltip.service">
     <div class="panel panel-default svg-tooltip">
         <div class="panel-heading">
-            <b>Service '{{ burst_node.check.display_name }}'</b>
+            <b>Service '{{ node.check.display_name }}'</b>
         </div>
         <div class="svg-tooltip-content">
             <table class="table table-condensed">
                 <tbody>
-                    <tr ng-if="burst_node.check.host_name">
+                    <tr ng-if="node.check.host_name">
                         <td><label>Host</label></td>
-                        <td>{{ burst_node.check.host_name }}</td>
+                        <td>{{ node.check.host_name }}</td>
                     </tr>
                     <tr>
                         <td><label>State</label></td>
-                        <td ng-class="burst_node.check.$$data.tdStateClass">{{ burst_node.check.$$data.StateString }}</td>
+                        <td ng-class="node.check.$$data.tdStateClass">{{ node.check.$$data.StateString }}</td>
                     </tr>
-                    <tr ng-if="burst_node.check.plugin_output">
+                    <tr ng-if="node.check.plugin_output">
                         <td><label>Output</label></td>
-                        <td>{{ burst_node.check.plugin_output }}</td>
+                        <td>{{ node.check.plugin_output }}</td>
                     </tr>
-                    <tr ng-if="burst_node.check.last_check">
+                    <tr ng-if="node.check.last_check">
                         <td class="text-nowrap"><label>Last check</label></td>
                         <td>
-                            {{ burst_node.check.last_check * 1000 | date: 'yyyy-MM-dd HH:mm' }}
+                            {{ node.check.last_check * 1000 | date: 'yyyy-MM-dd HH:mm' }}
                         </td>
                     </tr>
                 </tbody>
@@ -87,12 +87,12 @@
 <script type="text/ng-template" id="icsw.livestatus.tooltip.serviceoverview">
     <div class="panel panel-default svg-tooltip">
         <div class="panel-heading">
-            <b>ServiceOverview for '{{ burst_node.device.display_name }}' weight={{ burst_node.device.$$serviceWeight }}</b>
+            <b>ServiceOverview for '{{ node.device.display_name }}' weight={{ node.device.$$serviceWeight }}</b>
         </div>
         <div class="svg-tooltip-content">
             <table class="table table-condensed">
                 <tbody>
-                    <tr ng-repeat="state in burst_node.state_list">
+                    <tr ng-repeat="state in node.state_list">
                         <td><label>{{ state.StateString }}</label></td>
                         <td class="text-center">
                             {{ state.num }}
@@ -107,7 +107,7 @@
 <script type="text/ng-template" id="icsw.livestatus.tooltip.category">
     <div class="panel panel-default svg-tooltip">
         <div class="panel-heading">
-            <b>Category {{ burst_node.category.full_name }}</b>
+            <b>Category {{ node.category.full_name }}</b>
         </div>
         <div class="svg-tooltip-content">
             <table class="table table-condensed">
@@ -115,18 +115,26 @@
                     <tr>
                         <td>Type</td>
                         <td>
-                            <span ng-show="burst_node.category.physical">Physical</span>
-                            <span ng-show="!burst_node.category.physical">Structural</span>
+                            <span ng-show="node.category.physical">Physical</span>
+                            <span ng-show="!node.category.physical">Structural</span>
                         </td>
                     </tr>
                     <tr>
                         <td>Depth</td>
                         <td>
-                            {{ burst_node.category.depth }}
+                            {{ node.category.depth }}
                         </td>
                     </tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.livestatus.tooltip.simplepiechart">
+    <div class="panel panel-default svg-tooltip">
+        <div class="panel-heading">
+            <b>{{ node.data }}</b>
         </div>
     </div>
 </script>

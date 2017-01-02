@@ -118,6 +118,7 @@ icsw_app = angular.module(
         "icsw.device.partition",
         "icsw.livestatus.livestatus",
         "icsw.livestatus.comp.connect",
+        "icsw.livestatus.comp.tooltip",
         "icsw.livestatus.comp.sources",
         "icsw.livestatus.comp.category",
         "icsw.livestatus.comp.burst",
