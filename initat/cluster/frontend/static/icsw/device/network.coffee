@@ -1572,6 +1572,24 @@ angular.module(
 
         return parseInt((dots[0] * 16777216) + (dots[1] * 65536) + (dots[2] * 256) + (dots[3]))
 
+    salt_nmap_device = (device, ip_to_device_lut) ->
+        device.$$mac = "N/A"
+        if device.mac != null
+            device.$$mac = device.mac
+
+        device.$$hostname = "N/A"
+        device.$$hostname_sort_hint = "-1"
+        if device.hostname != null
+            device.$$hostname = device.hostname
+            device.$$hostname_sort_hint = device.hostname
+
+        device.$$ip_sort_hint = convert_ip_str_to_int(device.ip)
+
+        device.linked_devices = []
+        if ip_to_device_lut[device.ip] != undefined
+            device.linked_devices = ip_to_device_lut[device.ip]
+
+
     # network currently displayed
     network_display = {}
 
@@ -1942,22 +1960,7 @@ angular.module(
                                       ip_to_device_lut[net_ip.ip].push(device)
 
                 for device in data.devices
-                    device.$$mac = "N/A"
-                    if device.mac != null
-                        device.$$mac = device.mac
-
-                    device.$$hostname = "N/A"
-                    device.$$hostname_sort_hint = "-1"
-                    if device.hostname != null
-                        device.$$hostname = device.hostname
-                        device.$$hostname_sort_hint = device.hostname
-
-                    device.$$ip_sort_hint = convert_ip_str_to_int(device.ip)
-
-                    device.linked_devices = []
-                    if ip_to_device_lut[device.ip] != undefined
-                        device.linked_devices = ip_to_device_lut[device.ip]
-
+                    salt_nmap_device(device, ip_to_device_lut)
 
                 sub_tab = {
                     index: index
@@ -1989,12 +1992,57 @@ angular.module(
                                 sub_tab.display_devices.push(device)
 
                     else if sub_tab.linked_devices_button_state == 2
-                        sub_tab.linked_devices_button_state = 0
+                        sub_tab.linked_devices_button_state = 3
                         sub_tab.linked_devices_button_value = "All Devices"
                         sub_tab.display_devices.length = 0
 
                         for device in sub_tab.devices
                             sub_tab.display_devices.push(device)
+
+                    else if sub_tab.linked_devices_button_state == 3
+                        sub_tab.linked_devices_button_state = 4
+                        sub_tab.linked_devices_button_value = "New Devices (Last Scan)"
+                        sub_tab.display_devices.length = 0
+                        blockUI.start("Loading Data...")
+
+                        icswSimpleAjaxCall(
+                            {
+                                url: ICSW_URLS.NETWORK_NMAP_SCAN_DIFF
+                                data:
+                                    scan_id: index
+                                    last_scan: true
+                                dataType: "json"
+                            }
+                        ).then((data) ->
+                            for nmap_device in data
+                                salt_nmap_device(nmap_device, ip_to_device_lut)
+                                sub_tab.display_devices.push(nmap_device)
+
+                            blockUI.stop()
+                        )
+
+                    else if sub_tab.linked_devices_button_state == 4
+                        sub_tab.linked_devices_button_state = 0
+                        sub_tab.linked_devices_button_value = "New Devices (Alltime/Never Seen)"
+                        sub_tab.display_devices.length = 0
+                        blockUI.start("Loading Data...")
+
+                        icswSimpleAjaxCall(
+                            {
+                                url: ICSW_URLS.NETWORK_NMAP_SCAN_DIFF
+                                data:
+                                    scan_id: index
+                                    all_time: true
+                                dataType: "json"
+                            }
+                        ).then((data) ->
+                            for nmap_device in data
+                                salt_nmap_device(nmap_device, ip_to_device_lut)
+                                sub_tab.display_devices.push(nmap_device)
+
+                            blockUI.stop()
+                        )
+
 
                 sub_tab.show_device = ($event, dev) ->
                     DeviceOverviewService($event, [dev])

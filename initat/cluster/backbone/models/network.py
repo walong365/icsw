@@ -1117,6 +1117,9 @@ class NmapDevice(object):
             'hostname': self.hostname
         }
 
+    def __eq__(self, other):
+        return self.ip == other.ip and self.mac == other.mac and self.hostname == other.hostname
+
 
 class NmapScan(models.Model):
     idx = models.AutoField(primary_key=True)

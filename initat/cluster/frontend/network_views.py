@@ -327,3 +327,50 @@ class NmapScanDataLoader(View):
             nmap_scan = NmapScan.objects.get(idx=nmap_scan_id)
             serializer = NmapScanSerializerDetailed(nmap_scan)
             return HttpResponse(json.dumps(serializer.data))
+
+
+class NmapScanDiffer(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        scan_id = int(request.POST['scan_id'])
+
+        nmap_scan = NmapScan.objects.get(idx=scan_id)
+
+        if "last_scan" in  request.POST:
+            old_nmap_scan = None
+            while scan_id >= 0:
+                scan_id = scan_id - 1
+                try:
+                    old_nmap_scan = NmapScan.objects.get(network=nmap_scan.network, idx=scan_id)
+                    break
+                except NmapScan.DoesNotExist:
+                    pass
+
+            old_devices = old_nmap_scan.interpret()
+            current_devices = nmap_scan.interpret()
+            new_devices = []
+
+            for device in current_devices:
+                if device not in old_devices:
+                    new_devices.append(device.get_dict())
+
+            return HttpResponse(json.dumps(new_devices))
+        else:
+            old_nmap_scans = NmapScan.objects.filter(network=nmap_scan.network, idx__lt=scan_id)
+            current_devices = nmap_scan.interpret()
+
+            old_device_list = []
+            new_devices = []
+
+            for old_nmap_scan in old_nmap_scans:
+                for old_device in old_nmap_scan.interpret():
+                    if old_device not in old_device_list:
+                        old_device_list.append(old_device)
+
+            for device in current_devices:
+                if device not in old_device_list:
+                    new_devices.append(device)
+
+            print(new_devices)
+
+            return HttpResponse(json.dumps(new_devices))
