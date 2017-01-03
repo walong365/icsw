@@ -198,8 +198,8 @@ class KpiObject(object):
         """Returns all properties of the object which can be passed to KpiObject constructors
         (including respective subclasses)"""
         return {
-            'host_name': self.host_name,
-            'host_pk': self.host_pk,
+            "host_name": self.host_name,
+            "host_pk": self.host_pk,
         }
 
     def __repr__(self, child_repr=""):
@@ -309,14 +309,23 @@ class KpiServiceObject(KpiObject):
             raise ValueError("service_info is None")
         super(KpiServiceObject, self).__init__(**kwargs)
         if self.host_pk is None:
-            logger.warn("KpiServiceObject without host pk: {} {}".format(service_id, service_info))
+            logger.warn(
+                "KpiServiceObject without host pk: {} {}".format(
+                    service_id,
+                    service_info
+                )
+            )
         self.service_id = service_id
         self.service_info = service_info
         try:
             if mcc is None:
                 mcc = mon_check_command.objects.get(pk=service_id)
         except mon_check_command.DoesNotExist:
-            logger.debug("referenced check command which does not exist: {}".format(service_id))
+            logger.debug(
+                "referenced check command which does not exist: {}".format(
+                    service_id
+                )
+            )
             self.check_command = None
             self.check_command_description = None
             self.config = None
@@ -356,9 +365,7 @@ class KpiServiceObject(KpiObject):
 
     def matches_id(self, ident):
         try:
-            return self.service_id == ident[1] and \
-                self.service_info == ident[2] and \
-                super(KpiServiceObject, self).matches_id(ident[0])
+            return self.service_id == ident[1] and self.service_info == ident[2] and super(KpiServiceObject, self).matches_id(ident[0])
         except TypeError:
             return False
 
@@ -438,9 +445,9 @@ class KpiOperation(object):
 
     def serialize(self):
         return {
-            'type': self.type_for_client,
-            'operands': [oper.serialize() for oper in self.operands],
-            'arguments': self.arguments,
+            "type": self.type_for_client,
+            "operands": [oper.serialize() for oper in self.operands],
+            "arguments": self.arguments,
         }
 
 
@@ -525,7 +532,9 @@ class KpiSet(object):
     def serialize(self):
         # for obj in self.objects: print obj.serialize() json.dumps(obj.serialize())
         return {
-            "objects": [obj.serialize() for obj in self.objects],
+            "objects": [
+                obj.serialize() for obj in self.objects
+            ],
             "origin": self.origin.serialize() if self.origin is not None else None,
         }
 
@@ -834,7 +843,7 @@ class KpiSet(object):
                             )
                         )
                 else:
-                    print ("Historical obj found but no kpi obj: {} {} {}".format(ident))
+                    print("Historical obj found but no kpi obj: {} {} {}".format(ident))
                     # TODO: logging is broken in this context
 
         return KpiSet(
@@ -961,7 +970,9 @@ class KpiSet(object):
             )
 
     def dump(self, msg=None):
-        """Debug function: Log set contents and return itself"""
+        """
+        Debug function: Log set contents and return itself
+        """
         print("\nDUMP {}:".format("" if msg is None else msg), self.objects)
         for obj in self.objects:
             print(obj.full_repr())
@@ -974,8 +985,9 @@ class KpiSet(object):
         num_objs_to_show = 3
         return "KpiSet({})".format(
             self.objects if len(self.objects) <= num_objs_to_show else
-            repr(self.objects[:num_objs_to_show]) +
-            "... ({} more)".format(len(self.objects) - num_objs_to_show)
+            repr(self.objects[:num_objs_to_show]) + "... ({} more)".format(
+                len(self.objects) - num_objs_to_show
+            )
         )
 
 

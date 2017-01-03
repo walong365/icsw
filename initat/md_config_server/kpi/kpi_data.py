@@ -179,7 +179,10 @@ class KpiData(object):
         try:
             self.icinga_socket = LiveSocket.get_mon_live_socket(self.log)
         except IOError as e:
-            self.log(u"error when opening monitoring socket: {}".format(e), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                u"error when opening monitoring socket: {}".format(e),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             raise
 
         host_rrd_data = self._get_memcached_data()
@@ -208,7 +211,10 @@ class KpiData(object):
             )
 
         # this is merely internal to this class
-        HostData = collections.namedtuple('HostData', ('rrd_data', 'host_check_results', 'service_check_results'))
+        HostData = collections.namedtuple(
+            'HostData',
+            ('rrd_data', 'host_check_results', 'service_check_results')
+        )
         self.host_data = {}
 
         service_check_results = collections.defaultdict(lambda: {})
@@ -226,8 +232,12 @@ class KpiData(object):
     def _get_dev_mon_tuples_from_category_tuples(self, queryset):
         ":rtype: (set[device, mon_check_command], set[device]) "
         if hasattr(queryset, "prefetch_related"):
-            queryset = queryset.prefetch_related('device_category', 'device_category__device_set')
-            queryset = queryset.prefetch_related('monitoring_category', 'monitoring_category__mon_check_command_set')
+            queryset = queryset.prefetch_related(
+                'device_category',
+                'device_category__device_set',
+                'monitoring_category',
+                'monitoring_category__mon_check_command_set',
+            )
         dev_mon_tuples = set()
         dev_list = set()
         for tup in queryset:
@@ -260,7 +270,10 @@ class KpiData(object):
             if host_list_mc is None:
                 raise Exception("host list is None")
         except Exception as e:
-            self.log(u"error when loading memcache host list: {}".format(e), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                u"error when loading memcache host list: {}".format(e),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
             host_list = json.loads(host_list_mc)
 
@@ -268,11 +281,18 @@ class KpiData(object):
                 try:
                     host_db = device_full_names[host_data[1]]
                 except KeyError:
-                    self.log(u"device {} does not exist but is referenced in rrd data".format(host_data[1]),
-                             logging_tools.LOG_LEVEL_WARN)
+                    self.log(
+                        u"device {} does not exist but is referenced in rrd data".format(host_data[1]),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
                 else:
                     if (host_data[0] + 60 * 60) < time.time():
-                        self.log(u"data for {} is very old ({})".format(host_data[1], time.ctime(host_data[0])))
+                        self.log(
+                            u"data for {} is very old ({})".format(
+                                host_data[1],
+                                time.ctime(host_data[0])
+                            )
+                        )
 
                     host_mc = mc.get("cc_hc_{}".format(host_uuid))
                     if host_mc is not None:
@@ -359,8 +379,7 @@ class KpiData(object):
                 result=KpiResult.from_numeric_icinga_host_state(int(ir['state'])),
                 host_name=dev.full_name,
                 host_pk=dev.pk,
-            )
-            for ir in icinga_result
+            ) for ir in icinga_result
         )
 
         # self.log("got host check results: {}".format(ret))
