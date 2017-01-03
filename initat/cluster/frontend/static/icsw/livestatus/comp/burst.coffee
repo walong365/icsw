@@ -196,6 +196,8 @@ angular.module(
             return_data: React.PropTypes.object
             # external trigger, changing this prop will result in a full recalc of the burst
             external_trigger: React.PropTypes.number
+            maxWidth: React.PropTypes.number
+            minWidth: React.PropTypes.number
         }
 
         componentDidMount: () ->
@@ -298,9 +300,6 @@ angular.module(
                     # clear root node
                     @root_node = undefined
                     @current_trigger = @props.external_trigger
-            [_outer_width, _outer_height] = [0, 0]
-            if @burst_element? and @burst_element.width()
-                [_outer_width, _outer_height] = [@burst_element.width(), @burst_element.height()]
             # check if burst is interactive
             _ia = @props.draw_parameters.is_interactive
             if not @root_node?
@@ -378,6 +377,10 @@ angular.module(
                     key: "svg.top"
                     # width: "#{@props.draw_parameters.total_width}px"
                     width: "100%"
+                    style: {
+                        maxWidth: if @props.maxWidth then "#{@props.maxWidth}px" else null
+                        minWidth: if @props.minWidth then "#{@props.minWidth}px" else null
+                    }
                     # height: "#{@props.draw_parameters.total_height}px"
                     fontFamily: "'Open-Sans', sans-serif"
                     fontSize: "10pt"
@@ -467,6 +470,8 @@ angular.module(
                     monitoring_data: new_data
                     draw_parameters: draw_params
                     return_data: $scope.struct.return_data
+                    maxWidth: $scope.max_width
+                    minWidth: $scope.min_width
                 }
             )
             element
@@ -481,6 +486,7 @@ angular.module(
                 # stop processing
                 # console.log "notok"
             (new_data) ->
+                # console.log "nd"
                 if not $scope.struct.mounted
                     $scope.struct.mounted = true
                     _mount_burst(element, new_data, draw_params)
@@ -562,6 +568,8 @@ angular.module(
         controller: "icswDeviceLivestatusBurstReactContainerCtrl"
         scope:
              device: "=icswDevice"
+             max_width: "@icswMaxWidth"
+             min_width: "@icswMinWidth"
         link : (scope, element, attrs) ->
             draw_params = new icswBurstDrawParameters(
                 {

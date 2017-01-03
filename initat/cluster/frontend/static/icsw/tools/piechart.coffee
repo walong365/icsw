@@ -34,7 +34,7 @@ angular.module(
                 tooltip: React.PropTypes.object
                 data: React.PropTypes.object
                 idx: React.PropTypes.number
-                commands: React.PropTypes.array
+                commands: React.PropTypes.string
             }
             render: () ->
                 entry = @props.data
@@ -91,15 +91,16 @@ angular.module(
             diameter: React.PropTypes.number
             data: React.PropTypes.array
             tooltip: React.PropTypes.object
+            maxWidth: React.PropTypes.number
         }
 
         displayName: "icswToolsPiechart"
 
         render: () ->
             diameter =@props.diameter
-            center_x = diameter/2
-            center_y = diameter/2
-            radius = diameter/2
+            center_x = diameter / 2
+            center_y = diameter / 2
+            radius = diameter / 2
 
             # build rings
             # the ring with ring_id == 0 is outside
@@ -161,44 +162,60 @@ angular.module(
                             )
                         start_angle = end_angle
                         i++
-                    if diameter > 40
-                        # append a black circle
-                        _g_elements.push(
-                            circle(
-                                {
-                                    key: "olc.r#{ring_id}"
-                                    fill: "none"
-                                    cx: 0
-                                    cy: 0
-                                    r: ring_radius - 1
-                                    stroke: "#222222"
-                                    strokeWidth: if diameter > 30 then 2 else 1
-                                }
-                            )
+                else
+                    _g_elements.push(
+                        circle(
+                            {
+                                key: "olc.ir#{ring_id}"
+                                fill: "#cccccc"
+                                cx: 0
+                                cy: 0
+                                r: ring_radius - 1
+                            }
                         )
-            return div(
-                {
-                    key: "top"
-                    className: "icswChart"
-                    style: {width: "#{diameter + 2}px", height: "#{diameter + 2}px"}
-                }
-                svg(
-                    {
-                        key: "svgtop"
-                        style: {
-                            width: "#{diameter + 2}px"
-                            height: "#{diameter + 2}px"
-                            viewBox: "-1 -1 #{diameter + 3} #{diameter + 3}"
-                        }
-                    }
-                    g(
-                        {
-                            key: "gtop"
-                            opacity: 1
-                            transform: "translate(#{center_x + 1},#{center_y + 1})"
-                        }
-                        _g_elements
                     )
+                # if diameter > 0
+                # append a black circle
+                if diameter > 40
+                    _cr = 2
+                else if diameter > 15
+                    _cr = 1
+                else
+                    _cr = 0.5
+                _g_elements.push(
+                    circle(
+                        {
+                            key: "olc.or#{ring_id}"
+                            fill: "none"
+                            cx: 0
+                            cy: 0
+                            r: ring_radius - 1
+                            stroke: "#222222"
+                            strokeWidth: _cr
+                        }
+                    )
+                )
+            return svg(
+                {
+                    key: "svgtop"
+                    width: "100%"
+                    preserveAspectRatio: "xMidYMid meet"
+                    style: {
+                        maxWidth: if @props.maxWidth then "#{@props.maxWidth}px" else null
+                    }
+                    # style: {
+                        # width: "#{diameter + 2}px"
+                        # height: "#{diameter + 2}px"
+                    viewBox: "-1 -1 #{diameter + 3} #{diameter + 3}"
+                    # }
+                }
+                g(
+                    {
+                        key: "gtop"
+                        opacity: 1
+                        transform: "translate(#{center_x + 1},#{center_y + 1})"
+                    }
+                    _g_elements
                 )
             )
     )
@@ -214,8 +231,8 @@ angular.module(
             data: "=data"  # [{value: 0.34, title: "foo", color: "#ff0000"}]
             diameter: "=diameter"
             trigger: "=icswTrigger"
+            max_width: "@icswMaxWidth"
         link : (scope, element, attrs) ->
-
             struct = icswTooltipTools.create_struct(element)
             render = () ->
                 _el = ReactDOM.render(
@@ -225,6 +242,7 @@ angular.module(
                             diameter: scope.diameter
                             data: scope.data
                             tooltip: struct
+                            maxWidth: scope.max_width
                         }
                     )
                     element[0]
