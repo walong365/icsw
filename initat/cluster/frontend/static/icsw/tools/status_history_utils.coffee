@@ -261,7 +261,7 @@ angular.module(
             if d['state'] != "Flapping"  # can't display flapping in pie
                 pie_data.push {
                     "$$data": d.$$data
-                    value: Math.round(d['value'] * 10000) / 100
+                    value: _.round(d.value * 100, 3)
                 }
         return [new_data, pie_data]
 

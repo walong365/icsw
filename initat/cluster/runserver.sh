@@ -2,6 +2,16 @@
 
 base=$(basename $0)
 
+trap 'killall' INT TERM
+
+function killall() {
+    trap '' INT TERM
+    echo "*** Shutting down ***"
+    kill -TERM 0
+    echo "*** done ***"
+    exit 0
+}
+
 function print_help {
     echo "usage:"
     echo
@@ -30,11 +40,12 @@ export ICSW_DEBUG_SOFTWARE=1
 
 [ ! -z "${EXTRA_OPTIONS}" ] && echo "settings: EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
 
-if [ "${base}" = "rundaphne.sh" ] ; then
-    # use local path for asgi layer
-    /opt/python-init/bin/daphne asgi:channel_layer --bind 0.0.0.0 --port 8084
-elif [ "${base}" = "runworker.sh" ] ; then
-    ./manage.py runworker --only-channels=websocket.*
-else
-    ./manage.py runserver --noworker --noasgi --traceback ${EXTRA_OPTIONS} 0.0.0.0:8081
-fi
+echo "Starting daphne, worker and server ..."
+
+/opt/python-init/bin/daphne asgi:channel_layer --bind 0.0.0.0 --port 8084 &
+./manage.py runworker --only-channels=websocket.* &
+./manage.py runserver --noworker --noasgi --traceback ${EXTRA_OPTIONS} 0.0.0.0:8081 &
+
+# wait forever
+
+cat

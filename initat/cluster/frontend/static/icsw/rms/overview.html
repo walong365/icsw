@@ -199,8 +199,11 @@
                         ></icsw-tools-piechart>
                     </div>
                     <div
-                            class="col-xs-9 col-md-9 col-lg-9"
+                        class="col-xs-9 col-md-9 col-lg-9"
                     >
+                        <span ng-show="!result.list.length" class="label label-warning">
+                            Awaiting data
+                        </span>
                         <icsw-rrd-graph-list-graph
                             icsw-graph="result.list[0]"
                             ng-if="result.list.length"

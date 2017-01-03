@@ -26,7 +26,7 @@ angular.module(
 (
     $q, icswTooltipTools,
 ) ->
-    {svg, g, div, path} = React.DOM
+    {svg, g, div, path, circle} = React.DOM
 
     part_fact = React.createFactory(
         React.createClass(
@@ -110,7 +110,7 @@ angular.module(
                 part = entry.value / value_total
                 part_angle = part * (Math.PI*2)
                 perc_value = part * 100
-                entry.$$perc_value = perc_value
+                entry.$$perc_value = _.round(perc_value, 3)
 
                 end_angle = start_angle + part_angle
 
@@ -139,6 +139,7 @@ angular.module(
                 _g_elements.push(
                     part_fact(
                         {
+                            key: "pf#{i}"
                             idx: i
                             tooltip: @props.tooltip
                             data: entry
@@ -148,6 +149,21 @@ angular.module(
                 )
                 start_angle = end_angle
                 i++
+            if diameter > 40
+                # append a black circle
+                _g_elements.push(
+                    circle(
+                        {
+                            key: "olc"
+                            fill: "none"
+                            cx: center_x
+                            cy: center_y
+                            r: radius - 2
+                            stroke: "#222222"
+                            strokeWidth: "2"
+                        }
+                    )
+                )
             return div(
                 {
                     key: "top"

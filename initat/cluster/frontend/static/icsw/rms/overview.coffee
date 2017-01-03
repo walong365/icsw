@@ -985,7 +985,7 @@ rms_module = angular.module(
                     @slot_info.push(
                         {
                             value: value
-                            title: "#{key} (#{value})"
+                            title: "#{key} (#{value} of #{_slot_info.total})"
                             color: {
                                 "free": "#44ff44"
                                 "used": "#6666ff"
