@@ -2,8 +2,10 @@
     <div ng-mouseleave="on_mouse_leave_widget()" ng-style="get_div_height_style()">
         <svg ng-attr-width="{{svg_width}}" ng-attr-height="{{svg_height}}" class="kpi-visualisation-svg" style="float: left"></svg>
         <!-- NOTE: height and width not properly applied below -->
-        <icsw-config-kpi-show-kpi-set kpi-set="kpi_set_to_show"
-                                      ng-attr-style="float:left; width: {{div_width}}px; height: {{div_height}}px; overflow-y: auto; padding-left: 20px"></icsw-config-kpi-show-kpi-set>
+        <icsw-config-kpi-show-kpi-set
+            kpi-set="kpi_set_to_show"
+            ng-attr-style="float:left; width: {{div_width}}px; height: {{div_height}}px; overflow-y: auto; padding-left: 20px"
+        ></icsw-config-kpi-show-kpi-set>
     </div>
 </script>
 
@@ -24,14 +26,16 @@
                     possible-items-by-page="10,20,50,100,200,500,1000"
                 ></div>
                 <ul class="list-group" >
-                    <icsw-config-kpi-show-kpi-object ng-repeat="kpi_obj in entries" kpi-obj="kpi_obj"></icsw-config-kpi-show-kpi-object>
+                    <icsw-config-kpi-show-kpi-object
+                        ng-repeat="kpi_obj in entries"
+                        kpi-obj="kpi_obj"
+                    ></icsw-config-kpi-show-kpi-object>
                 </ul>
             </div>
 
             <div ng-if="kpi_set.objects.length == 0">
                 <div uib-alert type="info">No objects</div>
             </div>
-
 
         </div>
     </div>

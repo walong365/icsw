@@ -307,8 +307,10 @@ angular.module(
 ]).directive("icswConfigKpiShowKpiObject",
 [
     "icswConfigKpiDataService", "icswConfigKpiVisUtils", "status_utils_functions",
+    "icswSaltMonitoringResultService",
 (
-    icswConfigKpiDataService, icswConfigKpiVisUtils, status_utils_functions
+    icswConfigKpiDataService, icswConfigKpiVisUtils, status_utils_functions,
+    icswSaltMonitoringResultService,
 ) ->
     return {
         templateUrl: "icsw.config.kpi.show_kpi_object"
@@ -344,6 +346,9 @@ angular.module(
                     status_util_compat_data = (
                         {state: st, value: val} for st, val of time_line
                     )
+                    for entry in status_util_compat_data
+                        console.log entry
+                        icswSaltMonitoringResultService.salt_device_state(entry)
                     [scope.pie_data_list, scope.pie_data] = status_utils_functions.preprocess_kpi_state_data(status_util_compat_data)
 
             scope.$watch(
