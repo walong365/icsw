@@ -147,8 +147,69 @@ rms_module = angular.module(
             0
         )
 
+    queue_states = [
+        {
+            name: "total"
+            color: "#444444"
+            ring_id: null
+            problem: false
+        }
+        {
+            name: "used"
+            color: "#6666ff"
+            ring_id: 0
+            problem: false
+        }
+        {
+            name: "free"
+            color: "#44ff44"
+            ring_id: 0
+            problem: false
+        }
+        {
+            name: "reserved"
+            color: "#aaaaaa"
+            ring_id: 0
+            problem: false
+        }
+        {
+            name: "alarm"
+            color: "#990000"
+            ring_id: 1
+            problem: true
+        }
+        {
+            name: "error"
+            color: "#ee4444"
+            ring_id: 1
+            problem: true
+        }
+        {
+            name: "unknown"
+            color: "#ffaaaa"
+            ring_id: 1
+            problem: true
+        }
+        {
+            name: "disabled"
+            color: "#ff0044"
+            ring_id: 1
+            problem: true
+        }
+    ]
 
+    qs_by_name = {}
+    for entry in queue_states
+        qs_by_name[entry.name] = entry
+
+    qs_struct = {
+        list: queue_states
+        lut_by_name: qs_by_name
+    }
     return {
+        get_qs_struct: ()->
+            return qs_struct
+
         failed_lut: failed_lut
 
         exit_status_lut: exit_status_lut
@@ -390,6 +451,18 @@ rms_module = angular.module(
                 reserved: slot_info[1]
                 total: slot_info[2]
             }
+            for _struct in [
+                {key: "e", flag: "$$error_state", count: "error"}
+                {key: "a", flag: "$$alarm_state", count: "alarm"}
+                {key: "d", flag: "$$disabled_state", count: "disabled"}
+                {key: "u", flag: "$$unknown_state", count: "unknown"}
+            ]
+                if @state.raw.match(new RegExp(_struct.key, "i"))
+                    @[_struct.flag] = true
+                    @slots_info[_struct.count] = @slots_info.total
+                else
+                    @[_struct.flag] = false
+                    @slots_info[_struct.count] = 0
 
             # topology handling
 
@@ -970,6 +1043,8 @@ rms_module = angular.module(
             @list.push(queue)
 
         process: () =>
+            qs_struct = icswRMSTools.get_qs_struct()
+
             _slot_info = {}
             for entry in @list
                 if entry.slots_info?
@@ -981,16 +1056,17 @@ rms_module = angular.module(
             @slot_info.length = 0
             _slot_info["free"] = _slot_info["total"] - _slot_info["used"]
             for key, value of _slot_info
-                if key not in ["total"]
+                _qs = qs_struct.lut_by_name[key]
+                if _qs.ring_id != null
                     @slot_info.push(
                         {
+                            $$tooltipType: if _qs.problem then "rms.queue.problem" else "rms.queue.ok"
                             value: value
-                            title: "#{key} (#{value} of #{_slot_info.total})"
-                            color: {
-                                "free": "#44ff44"
-                                "used": "#6666ff"
-                                "reserved": "#dddd00"
-                            }[key]
+                            key: key
+                            ring_id: _qs.ring_id
+                            total_slots: _slot_info.total
+                            # title: "#{key} (#{value} of #{_slot_info.total})"
+                            color: _qs.color
                         }
                     )
             # @slot_info = _slot_info
@@ -1595,7 +1671,7 @@ rms_module = angular.module(
                         $scope.local_struct.graph_tree.set_base_setting(base_setting)
                         local_setting = _user_setting.get_default()
                         local_setting.hide_empty = true
-                        _user_setting.set_custom_size(local_setting, 800, 240)
+                        _user_setting.set_custom_size(local_setting, 800, 200)
                         $scope.local_struct.graph_tree.set_custom_setting(local_setting)
                         $scope.local_struct.graph_tree.timeframe.set_from_to_mom(
                             moment().subtract(moment.duration(1, "week"))

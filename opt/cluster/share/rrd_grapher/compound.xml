@@ -74,6 +74,7 @@
             <key match="^rms\.queues\.(?P&lt;key&gt;.*)\.reserved$" required="1" color="#4455ff" draw_type="LINE2"></key>
             <key match="^rms\.queues\.(?P&lt;key&gt;.*)\.disabled$" required="1" color="#ff4444" draw_type="LINE2"></key>
             <key match="^rms\.queues\.(?P&lt;key&gt;.*)\.error$" required="1" color="#ff4444" draw_type="LINE3"></key>
+            <key match="^rms\.queues\.(?P&lt;key&gt;.*)\.alarm" required="1" color="#dd5555" draw_type="LINE3"></key>
         </key_list>
     </compound>
 </compounds>

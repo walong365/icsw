@@ -22,9 +22,9 @@ angular.module(
     "icsw.tools.piechart", ["icsw.tools"]
 ).service("icswToolsPiechartReact",
 [
-    "$q", "icswTooltipTools",
+    "$q", "icswTooltipTools", "icswDeviceLivestatusFunctions",
 (
-    $q, icswTooltipTools,
+    $q, icswTooltipTools, icswDeviceLivestatusFunctions,
 ) ->
     {svg, g, div, path, circle} = React.DOM
 
@@ -44,7 +44,7 @@ angular.module(
                         {
                             key: "path.idx#{i}"
                             className: "pie-segment #{entry.$$data.svgClassName}"
-                            d: @props.commands.join(" ")
+                            d: @props.commands
                         }
                     )
                 else
@@ -52,7 +52,7 @@ angular.module(
                         {
                             key: "path.idx#{i}"
                             className: "pie-segment"
-                            d: @props.commands.join(" ")
+                            d: @props.commands
                             fill: entry.color
                         }
                     )
@@ -62,13 +62,19 @@ angular.module(
                         className: "pie-segment-group"
                         onMouseEnter: (event) =>
                             entry = @props.data
-                            node = {
-                                node_type: "simplepiechart"
-                            }
-                            if entry.$$data?
-                                node.data = "#{entry.$$data.StateString}: #{entry.$$perc_value}%"
+                            if entry.$$tooltipType?
+                                node = {
+                                    node_type: entry.$$tooltipType
+                                    data: entry
+                                }
                             else
-                                node.data = "#{entry.title}: #{entry.$$perc_value}%"
+                                node = {
+                                    node_type: "simplepiechart"
+                                }
+                                if entry.$$data?
+                                    node.data = "#{entry.$$data.StateString}: #{entry.$$perc_value}%"
+                                else
+                                    node.data = "#{entry.title}: #{entry.$$perc_value}%"
                             icswTooltipTools.show(@props.tooltip, node)
                         onMouseMove: (event) =>
                             icswTooltipTools.position(@props.tooltip, event)
@@ -95,94 +101,101 @@ angular.module(
             center_y = diameter/2
             radius = diameter/2
 
-            value_total = 0
-
+            # build rings
+            # the ring with ring_id == 0 is outside
+            rings = {}
             for entry in @props.data
-                value_total += entry.value
-
-            # calculations based on value_total (cant do these in loop above)
-
-            start_angle = -Math.PI/2
-            i = 0
-            _g_elements = []
-            for entry in @props.data
-                # calc general properties (currently only used in calc_path)
-                part = entry.value / value_total
-                part_angle = part * (Math.PI*2)
-                perc_value = part * 100
-                entry.$$perc_value = _.round(perc_value, 3)
-
-                end_angle = start_angle + part_angle
-
-                if part == 1.0  # full circle
-                    cmd = [
-                        'M', center_x, center_y,
-                        'm', -radius, 0,
-                        'a', radius, radius, 0, 1, 0, 2 * radius, 0,
-                        'a', radius, radius, 0, 1, 0, -2 * radius, 0
-                    ]
+                if entry.ring_id?
+                    _ring_id = entry.ring_id
                 else
-                    startX = center_x + Math.cos(start_angle) * radius
-                    startY = center_y + Math.sin(start_angle) * radius
+                    _ring_id = 0
+                if _ring_id not of rings
+                    rings[_ring_id] = []
+                rings[_ring_id].push(entry)
 
-                    endX = center_x + Math.cos(end_angle) * radius
-                    endY = center_y + Math.sin(end_angle) * radius
+            ring_ids = _.sortBy((parseInt(_val) for _val in _.keys(rings)))
 
-                    largeArc = if ((end_angle - start_angle) % (Math.PI * 2)) > Math.PI then 1 else 0
+            _g_elements = []
+            i = 0
+            for ring_id in ring_ids
+                ring_radius = radius * (ring_ids.length - ring_id) / ring_ids.length
+                inner_radius = radius * (ring_ids.length - ring_id - 1) / ring_ids.length
 
-                    cmd = [
-                        'M', startX, startY,  # move
-                        'A', radius, radius, 0, largeArc, 1, endX, endY,  # arc
-                        'L', center_x, center_y,  #line to the center.
-                        'Z'
-                    ]
-                _g_elements.push(
-                    part_fact(
-                        {
-                            key: "pf#{i}"
-                            idx: i
-                            tooltip: @props.tooltip
-                            data: entry
-                            commands: cmd
-                        }
-                    )
-                )
-                start_angle = end_angle
-                i++
-            if diameter > 40
-                # append a black circle
-                _g_elements.push(
-                    circle(
-                        {
-                            key: "olc"
-                            fill: "none"
-                            cx: center_x
-                            cy: center_y
-                            r: radius - 2
-                            stroke: "#222222"
-                            strokeWidth: if diameter > 30 then 2 else 1
-                        }
-                    )
-                )
+                data_stream = rings[ring_id]
+
+                value_total = 0
+                for entry in data_stream
+                    value_total += entry.value
+
+                # calculations based on value_total (cant do these in loop above)
+
+                if value_total > 0
+                    # only draw ring if any segment has a value > 0
+                    start_angle = -Math.PI/2
+                    for entry in data_stream
+                        # calc general properties (currently only used in calc_path)
+                        part = entry.value / value_total
+                        part_angle = part * (Math.PI*2)
+                        perc_value = part * 100
+                        entry.$$perc_value = _.round(perc_value, 3)
+
+                        end_angle = start_angle + part_angle
+
+                        if entry.value == value_total
+                            cmd = icswDeviceLivestatusFunctions.ring_path(inner_radius, ring_radius)
+                        else if entry.value > 0
+                            cmd = icswDeviceLivestatusFunctions.ring_segment_path(inner_radius, ring_radius, start_angle, end_angle)
+                        else
+                            cmd = null
+                        if cmd
+                            _g_elements.push(
+                                part_fact(
+                                    {
+                                        key: "pf#{i}"
+                                        idx: i
+                                        tooltip: @props.tooltip
+                                        data: entry
+                                        commands: cmd
+                                    }
+                                )
+                            )
+                        start_angle = end_angle
+                        i++
+                    if diameter > 40
+                        # append a black circle
+                        _g_elements.push(
+                            circle(
+                                {
+                                    key: "olc.r#{ring_id}"
+                                    fill: "none"
+                                    cx: 0
+                                    cy: 0
+                                    r: ring_radius - 1
+                                    stroke: "#222222"
+                                    strokeWidth: if diameter > 30 then 2 else 1
+                                }
+                            )
+                        )
             return div(
                 {
                     key: "top"
                     className: "icswChart"
-                    style: {width: "#{diameter}px", height: "#{diameter}px"}
+                    style: {width: "#{diameter + 2}px", height: "#{diameter + 2}px"}
                 }
                 svg(
                     {
                         key: "svgtop"
                         style: {
-                            width: "#{diameter}px"
-                            height: "#{diameter}px"
-                            viewBox: "-1 -1 #{diameter + 2} #{diameter + 2}"
+                            width: "#{diameter + 2}px"
+                            height: "#{diameter + 2}px"
+                            viewBox: "-1 -1 #{diameter + 3} #{diameter + 3}"
                         }
                     }
                     g(
                         {
                             key: "gtop"
                             opacity: 1
+                            transform: "translate(#{center_x + 1},#{center_y + 1})"
                         }
                         _g_elements
                     )

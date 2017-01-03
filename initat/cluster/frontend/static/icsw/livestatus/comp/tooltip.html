@@ -138,3 +138,51 @@
         </div>
     </div>
 </script>
+
+<script type="text/ng-template" id="icsw.livestatus.tooltip.rms.queue.ok">
+    <div class="panel panel-default svg-tooltip">
+        <div class="panel-heading">
+            <b>Slots in state {{ node.data.key }}</b>
+        </div>
+        <div class="svg-tooltip-content">
+            <table class="table table-condensed">
+                <tbody>
+                    <tr>
+                        <td class="text-right">#</td>
+                        <td class="text-left">
+                            {{ node.data.value }} ({{ node.data.$$perc_value }} %)
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-right">Slots in Queue</td>
+                        <td class="text-left">{{ node.data.total_slots }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.livestatus.tooltip.rms.queue.problem">
+    <div class="panel panel-default svg-tooltip">
+        <div class="panel-heading">
+            <b>Slots in problem state {{ node.data.key }}</b>
+        </div>
+        <div class="svg-tooltip-content">
+            <table class="table table-condensed">
+                <tbody>
+                    <tr>
+                        <td class="text-right">#</td>
+                        <td class="text-left">
+                            {{ node.data.value }} ({{ node.data.$$perc_value }} %)
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-right">Slots in Queue</td>
+                        <td class="text-left">{{ node.data.total_slots }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</script>
