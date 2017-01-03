@@ -288,7 +288,8 @@ angular.module(
             info: "OK"
             iconCode: "\uf00c"
             iconFaName: "fa-check"
-            StateString: "OK"
+            # Ok instead of OK for compatibility with kpi_visualisation
+            StateString: "Ok"
             weight: 1
             weight: 0
             pycode: "O"
@@ -346,7 +347,7 @@ angular.module(
             info: "not monitored"
             iconCode: "\uf05e"
             iconFaName: "fa-ban"
-            StateString: "unmon"
+            StateString: "Undetermined"
             weight: 2
             pycode: "???"
             tdStateClass: "default"
@@ -389,19 +390,23 @@ angular.module(
     
     _py_device_lut = {}
     _orderint_device_lut = {}
+    _statestring_device_lut = {}
     for key, value of _device_lut
         value.idx = parseInt(key)
         value.btnStateClass = "btn-#{value.tdStateClass}"
         _py_device_lut[value.pycode] = value
         _orderint_device_lut[value.orderint] = value
+        _statestring_device_lut[value.StateString] = value
 
     _py_service_lut = {}
     _ordering_service_lut = {}
+    _statestring_service_lut = {}
     for key, value of _service_lut
         value.idx = parseInt(key)
         value.btnStateClass = "btn-#{value.tdStateClass}"
         _py_service_lut[value.pycode] = value
         _ordering_service_lut[value.orderint] = value
+        _statestring_service_lut[value.StateString] = value
 
     _struct = {
         device_lut: _device_lut
@@ -418,10 +423,20 @@ angular.module(
     # console.log "*", _struct
 
     salt_device_state = (entry) ->
-        entry.$$data = _device_lut[entry.state]
+        if angular.isString(entry.state)
+            # used by kpi_visualisation
+            console.warn "using statestring lut for device salting"
+            entry.$$data = _statestring_device_lut[entry.state]
+        else
+            entry.$$data = _device_lut[entry.state]
 
     salt_service_state = (entry) ->
-        entry.$$data = _service_lut[entry.state]
+        if angular.isString(entry.state)
+            # used by kpi_visualisation
+            console.warn "using statestring lut for service salting"
+            entry.$$data = _statestring_service_lut[entry.state]
+        else
+            entry.$$data = _service_lut[entry.state]
 
     salt_host = (entry, device_tree, cat_tree, device_cat_pks) ->
         if not entry.$$icswSalted?

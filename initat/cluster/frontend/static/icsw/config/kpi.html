@@ -247,8 +247,14 @@
                 <td>{{entry.name}}</td>
                 <td>
                     <div ng-show="!entry._show_full_formula">
-                        <pre>{{entry.formula | limit_text:100:false }} <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = true"
-                            ng-show="entry.formula.length > 100" >show full formula</button> </pre>
+                        <pre>
+                            {{entry.formula | limit_text:100:false }}
+                            <button
+                                class="btn btn-info btn-xs"
+                                ng-click="entry._show_full_formula = true"
+                                ng-show="entry.formula.length > 100"
+                            >show full formula</button>
+                        </pre>
                     </div>
 
                     <div ng-show="entry._show_full_formula">
@@ -256,11 +262,11 @@
                         <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = false">hide full formula</button>
                     </div>
                 </td>
-                <td>{{entry.time_range}}</td>
-                <td>{{get_result_from_kpi_entry(entry)}}</td>
+                <td>{{ entry.time_range }}</td>
+                <td>{{ get_result_from_kpi_entry(entry) }}</td>
                 <td>
                     <div ng-show="entry.result">
-                        {{entry.result.date | datetime_concise}}
+                        {{ entry.result.date | datetime_concise }}
                     </div>
                 </td>
             </tr>

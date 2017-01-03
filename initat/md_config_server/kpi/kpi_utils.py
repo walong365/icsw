@@ -1,4 +1,4 @@
-# Copyright (C) 2015, 2016 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015, 2016-2017 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -49,14 +49,16 @@ def astdump(node, annotate_fields=True, include_attributes=False, indent='  '):
                     '(',
                     ', '.join(
                         (
-                            '%s=%s' % field for field in fields
+                            '{}={}'.format(field, field) for field in fields
                         ) if annotate_fields else (b for a, b in fields)
                     ),
                     ')'
                 ]
             )
         elif isinstance(node, list):
-            lines = ['[']
+            lines = [
+                "["
+            ]
             lines.extend(
                 (
                     indent * (level + 2) + _format(x, level + 2) + ',' for x in node

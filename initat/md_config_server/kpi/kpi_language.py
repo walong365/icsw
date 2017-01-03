@@ -241,7 +241,9 @@ class KpiDetailObject(KpiObject):
             KpiGlobals.current_kpi.soft_states_as_hard_states,
         )
         return dict(
-            aggregated_tl={unicode(k): v for k, v in aggr_tl.iteritems()},
+            aggregated_tl={
+                unicode(k): v for k, v in aggr_tl.iteritems()
+            },
             **super(KpiDetailObject, self).serialize()
         )
 
@@ -384,7 +386,9 @@ class KpiTimeLineObject(KpiObject):
             KpiGlobals.current_kpi.soft_states_as_hard_states,
         )
         return dict(
-            aggregated_tl={unicode(k): v for k, v in aggr_tl.iteritems()},
+            aggregated_tl={
+                unicode(k): v for k, v in aggr_tl.iteritems()
+            },
             **super(KpiTimeLineObject, self).serialize()
         )
 
@@ -843,12 +847,14 @@ class KpiSet(object):
                 aggregated_tl = TimeLineUtils.aggregate_time_line(tl_obj.time_line)
 
                 # also aggregate state types
-                ratio = sum(v for k, v in aggregated_tl.iteritems()
-                            if k[0] <= result)
+                ratio = sum(
+                    v for k, v in aggregated_tl.iteritems() if k[0] <= result
+                )
 
                 if discard_planned_downtimes:
-                    ratio_planned_down = sum(v for k, v in aggregated_tl.iteritems()
-                                             if k[0] == KpiResult.planned_down)
+                    ratio_planned_down = sum(
+                        v for k, v in aggregated_tl.iteritems() if k[0] == KpiResult.planned_down
+                    )
                     # ignore ratio_planned_down
                     try:
                         ratio /= (1 - ratio_planned_down)

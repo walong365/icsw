@@ -160,7 +160,7 @@ angular.module(
                             cy: center_y
                             r: radius - 2
                             stroke: "#222222"
-                            strokeWidth: "2"
+                            strokeWidth: if diameter > 30 then 2 else 1
                         }
                     )
                 )

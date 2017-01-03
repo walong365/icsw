@@ -240,15 +240,6 @@ angular.module(
                         _.remove(icswConfigKpiDataService.kpi, kpi)
                     )
                 )
-            scope.get_result_from_kpi_entry = (kpi) ->
-                if kpi.result and kpi.result.json.objects.length > 0
-                    results = []
-                    for kpi_obj in kpi.result.json.objects
-                        if kpi_obj.result?
-                            results.push(kpi_obj.result)
-                    return results.join(",")
-                else
-                    return "unknown"
     }
 
 ]).service("icswConfigKpiDialogService",
@@ -504,6 +495,21 @@ angular.module(
         templateUrl: "icsw.config.kpi.evaluation_table"
         link: (scope, el, attrs) ->
             icswConfigKpiDataService.add_to_scope(scope)
+            scope.get_result_from_kpi_entry = (kpi) ->
+                if kpi.result and kpi.result.json.objects.length > 0
+                    # console.log "k=", kpi.result.json.objects.length
+                    results = []
+                    for kpi_obj in kpi.result.json.objects
+                        # console.log "o=", kpi_obj
+                        if kpi_obj.result?
+                            results.push(kpi_obj.result)
+                    if results.length
+                        # console.log "r=", results
+                        return results.join(",")
+                    else
+                        return "empty list"
+                else
+                    return "unknown"
     }
 ]).service("icswConfigKpiDataService",
 [
