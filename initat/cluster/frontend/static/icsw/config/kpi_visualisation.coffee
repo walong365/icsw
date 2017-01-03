@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2016 init.at
+# Copyright (C) 2015-2017 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -337,10 +337,13 @@ angular.module(
                     time_line = scope.kpi_obj.aggregated_tl
                 if scope.kpi_obj.detail
                     time_line = scope.kpi_obj.detail
+                console.log "*", time_line
 
                 if time_line?
                     # dict to list representation
-                    status_util_compat_data = ({state: st, value: val} for st, val of time_line)
+                    status_util_compat_data = (
+                        {state: st, value: val} for st, val of time_line
+                    )
                     [scope.pie_data_list, scope.pie_data] = status_utils_functions.preprocess_kpi_state_data(status_util_compat_data)
 
             scope.$watch(

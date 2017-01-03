@@ -116,7 +116,16 @@ class LiveSocket(object):
     @classmethod
     def lookup_enum(cls, t_type, *keys):
         _enum = getattr(cls.livestatus_enum, t_type).value
-        return [getattr(_enum, _key).value["name"] for _key in keys]
+        try:
+            _resolved = [getattr(_enum, _key).value["name"] for _key in keys]
+        except AttributeError:
+            raise AttributeError(
+                "Attribute '{}' not known in enum, possible values: {}".format(
+                    _key,
+                    ", ".join(sorted([_v.name for _v in list(_enum)])),
+                )
+            )
+        return _resolved
 
     @classmethod
     def map_result(cls, log_com, t_type, res_list):

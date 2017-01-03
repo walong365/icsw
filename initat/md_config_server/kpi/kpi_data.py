@@ -1,4 +1,4 @@
-# Copyright (C) 2015,2016 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015,2017 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -339,7 +339,7 @@ class KpiData(object):
 
     def _get_host_check_results(self, dev):
         host_query = self.icinga_socket.hosts.columns(
-            "host_name",
+            "name",
             "state",
             # "address",
             # "last_check",
@@ -350,7 +350,7 @@ class KpiData(object):
             # "display_name",
             # "current_attempt",
         )
-        host_query.filter("host_name", "~", dev.name)
+        host_query.filter("name", "~", dev.name)
         icinga_result = host_query.call()
 
         ret = list(

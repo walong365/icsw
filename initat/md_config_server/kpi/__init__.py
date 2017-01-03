@@ -116,7 +116,13 @@ class KpiProcess(threading_tools.process_obj):
             try:
                 kpi_data = KpiData(self.log)
             except Exception as e:
-                self.log("Exception when gathering kpi data: {}".format(process_tools.get_except_info()))
+                _exc = process_tools.exception_info()
+                self.log(
+                    "Exception when gathering kpi data: {}".format(process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_ERROR,
+                )
+                for _line in _exc.log_lines:
+                    self.log("    {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
             else:
                 # recalculate kpis
                 for kpi_db in enabled_kpis:
@@ -205,7 +211,8 @@ class KpiProcess(threading_tools.process_obj):
         self.log("Finished calculating KPI")
 
     def _evaluate_kpi(self, kpi_set, kpi_db):
-        """Evaluates given kpi on data returning the result as string or raising KpiEvaluationError
+        """
+        Evaluates given kpi on data returning the result as string or raising KpiEvaluationError
         Does not write to the database.
         Kpi context must be set before call.
         Returns json-ified serialized kpi set
@@ -225,7 +232,9 @@ class KpiProcess(threading_tools.process_obj):
         eval_formula = u"def _kpi():\n"
         # indent
         eval_formula += u"\n".join(
-            (u"    {}".format(line.replace("\t", "    ")) for line in kpi_db.formula.split(u"\n"))
+            (
+                u"    {}".format(line.replace("\t", "    ")) for line in kpi_db.formula.split(u"\n")
+            )
         ) + u"\n"
         eval_formula += u"kpi = _kpi()\n"
         try:
