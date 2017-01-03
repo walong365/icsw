@@ -332,11 +332,11 @@ class NmapScanDataLoader(View):
 class NmapScanDiffer(View):
     @method_decorator(login_required)
     def post(self, request):
-        scan_id = int(request.POST['scan_id'])
+        if "last_scan" in request.POST:
+            scan_id = int(request.POST['scan_id'])
 
-        nmap_scan = NmapScan.objects.get(idx=scan_id)
+            nmap_scan = NmapScan.objects.get(idx=scan_id)
 
-        if "last_scan" in  request.POST:
             old_nmap_scan = None
             while scan_id >= 0:
                 scan_id = scan_id - 1
@@ -355,7 +355,11 @@ class NmapScanDiffer(View):
                     new_devices.append(device.get_dict())
 
             return HttpResponse(json.dumps(new_devices))
-        else:
+        elif "all_time" in request.POST:
+            scan_id = int(request.POST['scan_id'])
+
+            nmap_scan = NmapScan.objects.get(idx=scan_id)
+
             old_nmap_scans = NmapScan.objects.filter(network=nmap_scan.network, idx__lt=scan_id)
             current_devices = nmap_scan.interpret()
 
@@ -372,3 +376,37 @@ class NmapScanDiffer(View):
                     new_devices.append(device)
 
             return HttpResponse(json.dumps(new_devices))
+        else:
+            scan_id_1 = int(request.POST['scan_id_1'])
+            scan_id_2 = int(request.POST['scan_id_2'])
+
+            if scan_id_1 > scan_id_2:
+                nmap_scan_new = NmapScan.objects.get(idx=scan_id_1)
+                nmap_scan_old = NmapScan.objects.get(idx=scan_id_2)
+            else:
+                nmap_scan_new = NmapScan.objects.get(idx=scan_id_2)
+                nmap_scan_old = NmapScan.objects.get(idx=scan_id_1)
+
+            old_devices = nmap_scan_old.interpret()
+            new_devices = nmap_scan_new.interpret()
+
+            lost_devices = []
+            added_devices = []
+
+            for old_device in old_devices:
+                if old_device not in new_devices:
+                    lost_devices.append(old_device)
+
+            for new_device in new_devices:
+                if new_device not in old_devices:
+                    added_devices.append(new_device)
+
+            return_dict = {
+                "lost_devices": [lost_device.get_dict() for lost_device in lost_devices],
+                "added_devices": [added_device.get_dict() for added_device in added_devices]
+            }
+
+            print(lost_devices)
+            print(added_devices)
+
+            return HttpResponse(json.dumps(return_dict))

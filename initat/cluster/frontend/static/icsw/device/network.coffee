@@ -1907,6 +1907,10 @@ angular.module(
                         network_display: new_network_display
                         nmap_scans: nmap_scans[obj.idx]
                         sub_tabs: []
+                        selected_row_a: undefined
+                        selected_row_b: undefined
+                        show_difference_text: "Show Difference (select two scans)"
+                        show_difference_disabled: true
                     }
 
                     tab.close_sub_tab = (to_be_closed_tab) ->
@@ -1922,6 +1926,97 @@ angular.module(
                                 for sub_tab in tabs_tmp
                                     tab.sub_tabs.push(sub_tab)
                             0
+                        )
+
+                    tab.select_row = (row) ->
+                        if row.$$selected == undefined
+                            row.$$selected = true
+                        else
+                            row.$$selected = !row.$$selected
+
+                        if row.$$selected == true
+                            if tab.selected_row_a == undefined
+                                tab.selected_row_a = row
+                            else if tab.selected_row_b == undefined
+                                tab.selected_row_b = row
+                            else
+                                tab.selected_row_a.$$selected = false
+                                tab.selected_row_a = tab.selected_row_b
+                                tab.selected_row_b = row
+                        else
+                            if row == tab.selected_row_a
+                                tab.selected_row_a = tab.selected_row_b
+                                tab.selected_row_b = undefined
+                            else
+                                tab.selected_row_b = undefined
+
+                        selected = 0
+                        for row in tab.nmap_scans
+                            if row.$$selected == true
+                                selected += 1
+
+                        if selected == 2
+                            tab.show_difference_text = "Show Difference"
+                            tab.show_difference_disabled = false
+                        else
+                            tab.show_difference_text = "Show Difference (select two scans)"
+                            tab.show_difference_disabled = true
+
+                    tab.open_difference_sub_tab = () ->
+                        scan_id_1 = tab.selected_row_a.idx
+                        scan_id_2 = tab.selected_row_b.idx
+
+                        if scan_id_1 > scan_id_2
+                            scan_id_old = scan_id_2
+                            scan_id_new = scan_id_1
+                        else
+                            scan_id_old = scan_id_1
+                            scan_id_new = scan_id_2
+
+                        for sub_tab in tab.sub_tabs
+                            if sub_tab.type == 2 && sub_tab.scan_id_old == scan_id_old && sub_tab.scan_id_new == scan_id_new
+                                return
+
+                        blockUI.start("Loading Data...")
+                        icswSimpleAjaxCall(
+                            {
+                                url: ICSW_URLS.NETWORK_NMAP_SCAN_DIFF
+                                data:
+                                    scan_id_1: tab.selected_row_a.idx
+                                    scan_id_2: tab.selected_row_b.idx
+                                dataType: "json"
+                            }
+                        ).then((data) ->
+                            ip_to_device_lut = {}
+                            for device in device_tree.all_list
+                                if !device.is_meta_device
+                                    if device.netdevice_set != undefined
+                                        for net_device in device.netdevice_set
+                                            for net_ip in net_device.net_ip_set
+                                                if ip_to_device_lut[net_ip.ip] == undefined
+                                                    ip_to_device_lut[net_ip.ip] = []
+
+                                                if !(device in ip_to_device_lut[net_ip.ip])
+                                                  ip_to_device_lut[net_ip.ip].push(device)
+
+                            for nmap_device in data["lost_devices"]
+                                salt_nmap_device(nmap_device, ip_to_device_lut)
+
+                            for nmap_device in data["added_devices"]
+                                salt_nmap_device(nmap_device, ip_to_device_lut)
+
+                            new_tab = {
+                                type: 2
+                                scan_id_old: scan_id_old
+                                scan_id_new: scan_id_new
+                                lost_devices: data["lost_devices"]
+                                added_devices: data["added_devices"]
+                            }
+                            tab.sub_tabs.push(new_tab)
+
+                            console.log(new_tab)
+
+                            blockUI.stop()
                         )
 
                     dupe = false
