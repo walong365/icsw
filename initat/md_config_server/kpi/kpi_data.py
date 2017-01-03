@@ -1,4 +1,4 @@
-# Copyright (C) 2015,2017 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2017 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -39,7 +39,8 @@ from initat.tools import logging_tools
 
 
 class KpiData(object):
-    """Data retrieval methods (mostly functions actually)
+    """
+    Data retrieval methods (mostly functions actually)
 
     Retrieves all data on construction.
     Data can be retrieved via get_kpi_set_for_kpi and get_kpi_set_for_dev_mon_cat_tuples

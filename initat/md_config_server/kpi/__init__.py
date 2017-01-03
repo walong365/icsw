@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2017 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -17,6 +17,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
+from __future__ import print_function, unicode_literals
 
 import json
 import traceback
@@ -177,7 +179,9 @@ class KpiProcess(threading_tools.process_obj):
                 """
 
     def _calculate_kpi_preview(self, srv_com_src, **kwargs):
-        """Calculate single kpi with data from command and return result without saving"""
+        """
+        Calculate single kpi with data from command and return result without saving
+        """
         srv_com = server_command.srv_command(source=srv_com_src)
         KpiGlobals.set_context()
 
@@ -196,8 +200,12 @@ class KpiProcess(threading_tools.process_obj):
         )
 
         dev_mon_cat_tuples = json.loads(srv_com['dev_mon_cat_tuples'].text)
-        initial_kpi_set = KpiData(self.log, dev_mon_cat_tuples=dev_mon_cat_tuples).get_kpi_set_for_dev_mon_cat_tuples(
-            start=start, end=end,
+        initial_kpi_set = KpiData(
+            self.log,
+            dev_mon_cat_tuples=dev_mon_cat_tuples
+        ).get_kpi_set_for_dev_mon_cat_tuples(
+            start=start,
+            end=end,
         )
 
         self.log("Calculating KPI {} with custom formula".format(kpi_db))
@@ -233,7 +241,9 @@ class KpiProcess(threading_tools.process_obj):
         # indent
         eval_formula += u"\n".join(
             (
-                u"    {}".format(line.replace("\t", "    ")) for line in kpi_db.formula.split(u"\n")
+                u"    {}".format(
+                    line.replace("\t", "    ")
+                ) for line in kpi_db.formula.split(u"\n")
             )
         ) + u"\n"
         eval_formula += u"kpi = _kpi()\n"
@@ -243,7 +253,9 @@ class KpiProcess(threading_tools.process_obj):
             exec (eval_formula, eval_globals, eval_locals)
         except Exception as e:
             self.log(e)
-            error_report = [u"Exception while calculating kpi {}: {}".format(kpi_db, e)]
+            error_report = [
+                u"Exception while calculating kpi {}: {}".format(kpi_db, e)
+            ]
             for idx, line in enumerate(traceback.format_exc().split("\n")):
                 if idx not in (1, 2):  # these are internal
                     error_report.append(line)

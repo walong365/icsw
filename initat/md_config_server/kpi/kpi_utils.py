@@ -39,10 +39,15 @@ def astdump(node, annotate_fields=True, include_attributes=False, indent='  '):
     """
     def _format(node, level=0):
         if isinstance(node, ast.AST):
-            fields = [(a, _format(b, level)) for a, b in ast.iter_fields(node)]
+            fields = [
+                (a, _format(b, level)) for a, b in ast.iter_fields(node)
+            ]
             if include_attributes and node._attributes:
-                fields.extend([(a, _format(getattr(node, a), level))
-                               for a in node._attributes])
+                fields.extend(
+                    [
+                        (a, _format(getattr(node, a), level)) for a in node._attributes
+                    ]
+                )
             return ''.join(
                 [
                     node.__class__.__name__,

@@ -1,4 +1,4 @@
-# Copyright (C) 2015,2016 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2017 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -33,7 +33,7 @@ from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data
 
 # itertools recipe
 def pairwise(iterable):
-    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    """ s -> (s0,s1), (s1,s2), (s2, s3), ... """
     a, b = itertools.tee(iterable)
     next(b, None)
     return itertools.izip(a, b)
@@ -54,10 +54,17 @@ class TimeLineUtils(list):
         from initat.md_config_server.kpi import KpiResult
 
         if is_host:
-            alert_filter = reduce(operator.or_, (Q(device_id=dev_id) for dev_id in identifiers))
+            alert_filter = reduce(
+                operator.or_,
+                (Q(device_id=dev_id) for dev_id in identifiers)
+            )
         else:
-            alert_filter = reduce(operator.or_, (Q(device_id=dev_id, service_id=serv_id, service_info=service_info)
-                                                 for (dev_id, serv_id, service_info) in identifiers))
+            alert_filter = reduce(
+                operator.or_,
+                (
+                    Q(device_id=dev_id, service_id=serv_id, service_info=service_info) for (dev_id, serv_id, service_info) in identifiers
+                )
+            )
 
         alert_list = AlertList(is_host=is_host, alert_filter=alert_filter, start_time=start, end_time=end)
 
@@ -78,9 +85,13 @@ class TimeLineUtils(list):
             if key not in time_lines:
                 # couldn't find initial state, it has not existed at the time of start
                 tl = time_lines[key] = [
-                    TimeLineEntry(date=start,
-                                  state=(convert_state(mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED),
-                                         mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED))
+                    TimeLineEntry(
+                        date=start,
+                        state=(
+                            convert_state(mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED),
+                            mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED
+                        )
+                    )
                 ]
             else:
                 tl = time_lines[key]
@@ -161,8 +172,10 @@ class TimeLineUtils(list):
         future_date = django.utils.timezone.now()
         while any(time_lines):
             # find index of queue with chronological next event
-            next_queue = min(xrange(len(time_lines)),
-                             key=lambda x: time_lines[x][0].date if time_lines[x] else future_date)
+            next_queue = min(
+                xrange(len(time_lines)),
+                key=lambda x: time_lines[x][0].date if time_lines[x] else future_date
+            )
 
             next_entry = time_lines[next_queue].popleft()
             current_tl_states[next_queue] = next_entry.state

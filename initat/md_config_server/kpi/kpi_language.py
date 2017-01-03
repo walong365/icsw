@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel init.at
+# Copyright (C) 2015-2017 Bernhard Mallinger, Andreas Lang-Nevyjel init.at
 #
 # this file is part of md-config-server
 #
@@ -107,7 +107,9 @@ _kpi_to_icinga_service_state_map = {
     KpiResult.undetermined: mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
 }
 
-_icinga_service_to_kpi_state_map = {v: k for k, v in _kpi_to_icinga_service_state_map.iteritems()}
+_icinga_service_to_kpi_state_map = {
+    v: k for k, v in _kpi_to_icinga_service_state_map.iteritems()
+}
 
 _kpi_to_icinga_host_state_map = {
     KpiResult.planned_down: mon_icinga_log_raw_host_alert_data.STATE_PLANNED_DOWN,
@@ -118,7 +120,9 @@ _kpi_to_icinga_host_state_map = {
     KpiResult.undetermined: mon_icinga_log_raw_host_alert_data.STATE_UNDETERMINED,
 }
 
-_icinga_host_to_kpi_state_map = {v: k for k, v in _kpi_to_icinga_host_state_map.iteritems()}
+_icinga_host_to_kpi_state_map = {
+    v: k for k, v in _kpi_to_icinga_host_state_map.iteritems()
+}
 
 
 class KpiObject(object):
@@ -329,8 +333,10 @@ class KpiServiceObject(KpiObject):
         self.mcc = mcc  # saved for convenience, but use other attributes except mcc is needed specifically
 
     def __repr__(self, child_repr=""):
-        my_repr = ";service:{}:{}".format(self.check_command if self.check_command is not None else self.service_id,
-                                          self.service_info)
+        my_repr = ";service:{}:{}".format(
+            self.check_command if self.check_command is not None else self.service_id,
+            self.service_info
+        )
         return super(KpiServiceObject, self).__repr__(child_repr=child_repr + my_repr)
 
     def serialize(self):
@@ -650,7 +656,10 @@ class KpiSet(object):
         If properties are lists or tuples, checks if any of them match.
         """
         objects = self._filter_impl(kwargs, positive=True)
-        return KpiSet(objects, origin=KpiOperation(KpiOperation.Type.filter, arguments=kwargs, operands=[self]))
+        return KpiSet(
+            objects,
+            origin=KpiOperation(KpiOperation.Type.filter, arguments=kwargs, operands=[self])
+        )
 
     def exclude(self, **kwargs):
         """
@@ -659,11 +668,16 @@ class KpiSet(object):
         kpi_set == kpi_set.filter(params) + kpi_set.exclude(params)
         """
         objects = self._filter_impl(kwargs, positive=False)
-        return KpiSet(objects, origin=KpiOperation(KpiOperation.Type.exclude, arguments=kwargs, operands=[self]))
+        return KpiSet(
+            objects,
+            origin=KpiOperation(KpiOperation.Type.exclude, arguments=kwargs, operands=[self])
+        )
 
     def union(self, kpi_set):
-        return KpiSet(self.objects + kpi_set.objects,
-                      origin=KpiOperation(KpiOperation.Type.union, operands=[self, kpi_set]))
+        return KpiSet(
+            self.objects + kpi_set.objects,
+            origin=KpiOperation(KpiOperation.Type.union, operands=[self, kpi_set])
+        )
 
     __add__ = union
 
@@ -677,9 +691,11 @@ class KpiSet(object):
         if num_warn is not None and num_warn > num_ok:
             raise ValueError("num_warn is higher than num_ok ({} > {})".format(num_warn, num_ok))
 
-        origin = KpiOperation(KpiOperation.Type.at_least,
-                              arguments={'num_ok': num_ok, 'num_warn': num_warn, 'result': unicode(result)},
-                              operands=[self])
+        origin = KpiOperation(
+            KpiOperation.Type.at_least,
+            arguments={'num_ok': num_ok, 'num_warn': num_warn, 'result': unicode(result)},
+            operands=[self]
+        )
 
         num = sum(1 for obj in self.result_objects if obj.result <= result)
 
@@ -694,9 +710,11 @@ class KpiSet(object):
         """
         :param method: "or" or "and"
         """
-        origin = KpiOperation(KpiOperation.Type.aggregate_historic,
-                              arguments={'method': method},
-                              operands=[self])
+        origin = KpiOperation(
+            KpiOperation.Type.aggregate_historic,
+            arguments={'method': method},
+            operands=[self]
+        )
         if not self.time_line_objects:
             retval = KpiSet.get_singleton_undetermined(origin=origin)
         else:
@@ -759,12 +777,17 @@ class KpiSet(object):
                 )
 
             if start == end:
-                raise RuntimeError("Same start and end date for get_historic_data(): {}".format(start))
+                raise RuntimeError(
+                    "Same start and end date for get_historic_data(): {}".format(start)
+                )
 
             if start > end:
-                raise RuntimeError("Start date for get_historic_data() is later than end date ({} > {})".format(
-                    start, end
-                ))
+                raise RuntimeError(
+                    "Start date for get_historic_data() is later than end date ({} > {})".format(
+                        start,
+                        end
+                    )
+                )
 
             # have to sort by service and device ids
             idents_by_type = defaultdict(lambda: set())
@@ -775,13 +798,21 @@ class KpiSet(object):
 
             if KpiObject.IdType.service in idents_by_type:
                 time_lines.update(
-                    TimeLineUtils.calculate_time_lines(idents_by_type[KpiObject.IdType.service], is_host=False,
-                                                       start=start, end=end)
+                    TimeLineUtils.calculate_time_lines(
+                        idents_by_type[KpiObject.IdType.service],
+                        is_host=False,
+                        start=start,
+                        end=end
+                    )
                 )
             if KpiObject.IdType.device in idents_by_type:
                 time_lines.update(
-                    TimeLineUtils.calculate_time_lines(idents_by_type[KpiObject.IdType.device], is_host=True,
-                                                       start=start, end=end)
+                    TimeLineUtils.calculate_time_lines(
+                        idents_by_type[KpiObject.IdType.device],
+                        is_host=True,
+                        start=start,
+                        end=end
+                    )
                 )
 
             for ident, time_line in time_lines.iteritems():
@@ -806,8 +837,10 @@ class KpiSet(object):
                     print ("Historical obj found but no kpi obj: {} {} {}".format(ident))
                     # TODO: logging is broken in this context
 
-        return KpiSet(objects=objects,
-                      origin=KpiOperation(KpiOperation.Type.get_historic_data, operands=[self]))
+        return KpiSet(
+            objects=objects,
+            origin=KpiOperation(KpiOperation.Type.get_historic_data, operands=[self])
+        )
 
     # noinspection PyUnresolvedReferences
     def evaluate_historic(self, ratio_ok, ratio_warn=None, result=KpiResult.ok, method='at least',
@@ -891,9 +924,11 @@ class KpiSet(object):
         # usually called through either worst() or best()
         if method not in ('worst', 'best'):
             raise ValueError("method must be either 'worst' or 'best', not {}".format(method))
-        origin = KpiOperation(KpiOperation.Type.evaluate,
-                              arguments={'method': method},
-                              operands=[self])
+        origin = KpiOperation(
+            KpiOperation.Type.evaluate,
+            arguments={'method': method},
+            operands=[self]
+        )
         if not self.result_objects:
             return KpiSet.get_singleton_undetermined(origin=origin)
         else:
@@ -905,9 +940,11 @@ class KpiSet(object):
         """
         :param method: 'at least' or 'at most'
         """
-        origin = KpiOperation(KpiOperation.Type.evaluate_rrd,
-                              arguments={'limit_ok': limit_ok, 'limit_warn': limit_warn, 'method': method},
-                              operands=[self])
+        origin = KpiOperation(
+            KpiOperation.Type.evaluate_rrd,
+            arguments={'limit_ok': limit_ok, 'limit_warn': limit_warn, 'method': method},
+            operands=[self]
+        )
 
         if not self.rrd_objects:
             return KpiSet.get_singleton_undetermined(origin=origin)
@@ -935,9 +972,11 @@ class KpiSet(object):
 
     def __repr__(self):
         num_objs_to_show = 3
-        return "KpiSet({})".format(self.objects if len(self.objects) <= num_objs_to_show else
-                                   repr(self.objects[:num_objs_to_show]) +
-                                   "... ({} more)".format(len(self.objects) - num_objs_to_show))
+        return "KpiSet({})".format(
+            self.objects if len(self.objects) <= num_objs_to_show else
+            repr(self.objects[:num_objs_to_show]) +
+            "... ({} more)".format(len(self.objects) - num_objs_to_show)
+        )
 
 
 """
