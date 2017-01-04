@@ -53,7 +53,8 @@ __all__ = [
     b"snmp_network_type",
     b"NetDeviceDesiredStateEnum",
     b"NetDeviceSNMPMonOptions",
-    b"NmapScan"
+    b"NmapScan",
+    b"NmapScanIgnoredDevice"
 ]
 
 logger = logging.getLogger(__name__)
@@ -1105,16 +1106,18 @@ class snmp_network_type(models.Model):
 
 
 class NmapDevice(object):
-    def __init__(self, ip, mac, hostname):
+    def __init__(self, ip, mac, hostname, ignored):
         self.ip = ip
         self.mac = mac
         self.hostname = hostname
+        self.ignored = ignored
 
     def get_dict(self):
         return {
             'ip': self.ip,
             'mac': self.mac,
-            'hostname': self.hostname
+            'hostname': self.hostname,
+            'ignored': self.ignored
         }
 
     def __eq__(self, other):
@@ -1136,6 +1139,8 @@ class NmapScan(models.Model):
 
         devices = []
 
+        ignored_macs = [nsid.mac for nsid in NmapScanIgnoredDevice.objects.all()]
+
         for host in root.findall('host'):
             mac = None
             ipv4 = None
@@ -1151,9 +1156,15 @@ class NmapScan(models.Model):
                 hostname = hostname_elem.attrib['name']
 
             if ipv4:
-                devices.append(NmapDevice(ipv4, mac, hostname))
+                devices.append(NmapDevice(ipv4, mac, hostname, mac in ignored_macs))
 
         return devices
+
+
+class NmapScanIgnoredDevice(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    mac = models.CharField(max_length=17, unique=True)
 
 
 @receiver(signals.post_save, sender=NmapScan)

@@ -128,14 +128,18 @@ class snmp_network_type_serializer(serializers.ModelSerializer):
 
 class NmapScanSerializerSimple(serializers.ModelSerializer):
     devices_found = serializers.SerializerMethodField()
+    devices_ignored = serializers.SerializerMethodField()
 
     def get_devices_found(self, obj):
-        return len(obj.interpret())
+        return len([dev for dev in obj.interpret() if not dev.ignored])
+
+    def get_devices_ignored(self, obj):
+        return len([dev for dev in obj.interpret() if dev.ignored])
 
     class Meta:
         model = NmapScan
         fields = (
-            "idx", "network", "date", "devices_found"
+            "idx", "network", "date", "devices_found", "devices_ignored"
         )
 
 class NmapScanSerializerDetailed(serializers.ModelSerializer):

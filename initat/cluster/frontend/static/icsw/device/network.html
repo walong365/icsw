@@ -460,6 +460,11 @@
 
 
 <script type="text/ng-template" id="icsw.network.list.service.tabs">
+    <style>
+        .vertical-align {
+            vertical-align: middle !important;
+        }
+    </style>
     <uib-tabset>
         <uib-tab ng-repeat="tab in struct.icsw_network_list_service.get_tabs()" active="true">
             <uib-tab-heading>
@@ -513,21 +518,23 @@
                                     <th class="text-center">Selection</th>
                                     <th st-sort="idx" class="text-center">Scan ID</th>
                                     <th st-sort="devices_found" class="text-center">Devices Found</th>
+                                    <th st-sort="devices_ignored" class="text-center">Devices Ignored</th>
                                     <th class="text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr ng-repeat="obj in entries_displayed">
-                                   <td class="text-center">{{ obj.$$created }}</td>
+                                    <td class="text-center">{{ obj.$$created }}</td>
 
-                                   <td class="text-center">
+                                    <td class="text-center">
                                         <button type="button" class="btn btn-xs" ng-class="obj.$$selected && 'btn-success' || 'btn-default'" ng-click="tab.select_row(obj)" value="sel">
                                             <span class="glyphicon" ng-class="obj.$$selected && 'glyphicon-ok' || 'glyphicon-minus'"></span>
                                         </button>
-                                   </td>
-                                   <td class="text-center">{{ obj.idx }}</td>
-                                   <td class="text-center">{{ obj.devices_found }}</td>
-                                   <td class="text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab_type_0(tab, obj.idx)" class="btn btn-success btn-xs">Show Details</button></td>
+                                    </td>
+                                    <td class="text-center">{{ obj.idx }}</td>
+                                    <td class="text-center">{{ obj.devices_found }}</td>
+                                    <td class="text-center">{{ obj.devices_ignored }}</td>
+                                    <td class="text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab_type_0(tab, obj.idx)" class="btn btn-success btn-xs">Show Details</button></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -545,20 +552,28 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td colspan="99">
-                                    Toggle Linked Devices Display:
+                                <td>Filter Actions:</td>
+                                <td>
                                     <div class="btn-group btn-group-xs">
-                                        <input
-                                            type="button"
-                                            title="Toggle Linked Devices Button"
-                                            ng-value="sub_tab.linked_devices_button_value"
-                                            ng-class="sub_tab.linked_devices_button_class"
-                                            ng-click="sub_tab.linked_devices_button_pressed()">
-                                        </input>
+                                        <input type="button" value="All Devices" ng-class="sub_tab.all_devices_filter_class" ng-click="sub_tab.show_all_devices_filter()"></input>
+                                        <input type="button" value="Linked Only" ng-class="sub_tab.linked_only_filter_class" ng-click="sub_tab.show_linked_devices_only_filter()"></input>
+                                        <input type="button" value="Unlinked Only" ng-class="sub_tab.unlinked_only_filter_class" ng-click="sub_tab.show_unlinked_devices_only_filter()"></input>
+                                        <input type="button" value="New Devices (last scan)" ng-class="sub_tab.new_devices_last_scan_class" ng-click="sub_tab.show_new_devices_sine_last_scan()"></input>
+                                        <input type="button" value="New Devices (Alltime)" ng-class="sub_tab.new_devices_alltime_class" ng-click="sub_tab.show_new_devices_alltime()"></input>
+                                        <input type="button" value="Ignored Devices" ng-class="sub_tab.ignored_devices_class" ng-click="sub_tab.show_ignored_devices()"></input>
                                     </div>
                                 </td>
                             </tr>
                             <tr>
+                                <td>
+                                    Global Actions:
+                                </td>
+                                <td>
+                                    <button type="button" ng-click="sub_tab.handle_selection()" ng-disabled="sub_tab.selected_devices == 0" class="btn btn-success btn-xs">{{ sub_tab.ignore_text }} ({{ sub_tab.selected_devices }} Devices Selected)</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-center">Selection</th>
                                 <th st-sort="$$hostname_sort_hint" class="text-center">Hostname</th>
                                 <th st-sort="$$ip_sort_hint" st-sort-default="true" class="text-center">IP</th>
                                 <th st-sort="mac" class="text-center">MAC</th>
@@ -566,6 +581,7 @@
                                 <th class="text-center">Action</th>
                             </tr>
                             <tr>
+                                <th></th>
                                 <th>
                                     <input st-search="$$hostname" placeholder="filter by hostname" class="input-sm form-control" type="search"/>
                                 </th>
@@ -584,9 +600,14 @@
                         </thead>
                         <tbody>
                             <tr ng-repeat="obj in entries_displayed">
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-xs" ng-class="obj.$$selected && 'btn-success' || 'btn-default'" ng-click="sub_tab.select_nmap_scan_device(obj)" value="sel">
+                                        <span class="glyphicon" ng-class="obj.$$selected && 'glyphicon-ok' || 'glyphicon-minus'"></span>
+                                    </button>
+                                </td>
                                 <td class="text-center">{{ obj.$$hostname }}</td>
                                 <td class="text-center">{{ obj.ip }}</td>
-                                <td class="text-center">{{ obj.$$mac }}</td>
+                                <td class="text-center"><pre>{{ obj.$$mac }}</pre></td>
                                 <td class="text-center"><div ng-if="obj.linked_devices.length == 0">N/A</div><button ng-repeat="device in obj.linked_devices" type="button" class="btn btn-xs btn-success" ng-click="sub_tab.show_device($event, device)">{{ device.full_name }}</button></td>
                                 <td class="text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab_type_1(tab, obj)" class="btn btn-success btn-xs">Create new Device</button></td>
                             </tr>
@@ -639,11 +660,11 @@
                         </thead>
                         <tbody>
                             <tr ng-repeat="obj in entries_displayed_a">
-                                <td class="text-center">{{ obj.$$hostname }}</td>
-                                <td class="text-center">{{ obj.ip }}</td>
-                                <td class="text-center">{{ obj.$$mac }}</td>
-                                <td class="text-center"><div ng-if="obj.linked_devices.length == 0">N/A</div><button ng-repeat="device in obj.linked_devices" type="button" class="btn btn-xs btn-success" ng-click="sub_tab.show_device($event, device)">{{ device.full_name }}</button></td>
-                                <td class="text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab_type_1(tab, obj)" class="btn btn-success btn-xs">Create new Device</button></td>
+                                <td class="vertical-align">{{ obj.$$hostname }}</td>
+                                <td class="vertical-align">{{ obj.ip }}</td>
+                                <td class="vertical-align">{{ obj.$$mac }}</td>
+                                <td class="vertical-align"><div ng-if="obj.linked_devices.length == 0">N/A</div><button ng-repeat="device in obj.linked_devices" type="button" class="btn btn-xs btn-success" ng-click="sub_tab.show_device($event, device)">{{ device.full_name }}</button></td>
+                                <td class="vertical-align"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab_type_1(tab, obj)" class="btn btn-success btn-xs">Create new Device</button></td>
                             </tr>
                         </tbody>
                     </table>
@@ -681,11 +702,11 @@
                         </thead>
                         <tbody>
                             <tr ng-repeat="obj in entries_displayed_b">
-                                <td class="text-center">{{ obj.$$hostname }}</td>
-                                <td class="text-center">{{ obj.ip }}</td>
-                                <td class="text-center">{{ obj.$$mac }}</td>
-                                <td class="text-center"><div ng-if="obj.linked_devices.length == 0">N/A</div><button ng-repeat="device in obj.linked_devices" type="button" class="btn btn-xs btn-success" ng-click="sub_tab.show_device($event, device)">{{ device.full_name }}</button></td>
-                                <td class="text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab_type_1(tab, obj)" class="btn btn-success btn-xs">Create new Device</button></td>
+                                <td class="vertical-align">{{ obj.$$hostname }}</td>
+                                <td class="vertical-align">{{ obj.ip }}</td>
+                                <td class="vertical-align">{{ obj.$$mac }}</td>
+                                <td class="vertical-align"><div ng-if="obj.linked_devices.length == 0">N/A</div><button ng-repeat="device in obj.linked_devices" type="button" class="btn btn-xs btn-success" ng-click="sub_tab.show_device($event, device)">{{ device.full_name }}</button></td>
+                                <td class="vertical-align"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab_type_1(tab, obj)" class="btn btn-success btn-xs">Create new Device</button></td>
                             </tr>
                         </tbody>
                     </table>

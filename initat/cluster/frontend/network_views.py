@@ -37,7 +37,7 @@ from django.views.generic import View
 from networkx.readwrite import json_graph
 
 from initat.cluster.backbone.serializers import NmapScanSerializerSimple, NmapScanSerializerDetailed
-from initat.cluster.backbone.models import device, peer_information, network, network_type, NmapScan
+from initat.cluster.backbone.models import device, peer_information, network, network_type, NmapScan, NmapScanIgnoredDevice
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.tools import config_tools, ipvx_tools, logging_tools
@@ -406,7 +406,25 @@ class NmapScanDiffer(View):
                 "added_devices": [added_device.get_dict() for added_device in added_devices]
             }
 
-            print(lost_devices)
-            print(added_devices)
-
             return HttpResponse(json.dumps(return_dict))
+
+
+class HandleNmapScanDevice(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        mac_list = request.POST.getlist("mac_list[]")
+        print(mac_list)
+
+        if bool(int(request.POST.get("ignore"))):
+            print("Ignoring devices")
+            for mac in mac_list:
+                nsid = NmapScanIgnoredDevice(mac=mac)
+                nsid.save()
+        else:
+            print("Unignoring devices")
+            for mac in mac_list:
+                nsid = NmapScanIgnoredDevice.objects.get(mac=mac)
+                nsid.delete()
+                print("Deleting {}".format(mac))
+
+        return HttpResponse(json.dumps([]))
