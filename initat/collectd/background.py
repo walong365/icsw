@@ -461,6 +461,12 @@ class BackgroundJob(object):
             self.result = self.__ec.finished()
             if self.result is None:
                 if self.check_for_timeout():
+                    DeviceLogEntry.new(
+                        device=self.device_obj,
+                        source=global_config["LOG_SOURCE_IDX"],
+                        level=logging_tools.LOG_LEVEL_CRITICAL,
+                        text="timeout for background job",
+                    )
                     self.log("terminating")
                     self.terminate()
                     self.running = False
@@ -481,6 +487,14 @@ class BackgroundJob(object):
                 if stdout and self.result == 0:
                     if self.builder is not None:
                         _tree, _mon_info = self.builder.build(stdout, name=self.device_name, uuid=self.uuid, time="{:d}".format(int(self.last_start)))
+                        _num_mves = len(_tree.findall(".//mve"))
+                        if not _num_mves:
+                            DeviceLogEntry.new(
+                                device=self.device_obj,
+                                source=global_config["LOG_SOURCE_IDX"],
+                                level=logging_tools.LOG_LEVEL_WARN,
+                                text="reading from IPMI got no sensor results",
+                            )
                         # graphing
                         BackgroundJob.bg_proc.process_data_xml(_tree, len(etree.tostring(_tree)))  # @UndefinedVariable
                         # monitoring
