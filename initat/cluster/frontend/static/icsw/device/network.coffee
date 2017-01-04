@@ -28,6 +28,7 @@ angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.devicenetwork")
+    icswRouteExtensionProvider.add_route("main.networkoverview")
 ]).controller("icswDeviceNetworkCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
@@ -1248,6 +1249,26 @@ angular.module(
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_SVG_FULLSIZELAYOUT_SETUP"))
         controller: "icswDeviceNetworkTotalCtrl"
     }
+]).directive("icswNetworkSimpleOverview", [
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.network.simple.overview")
+        controller: "icswDeviceNetworkTotalCtrl"
+    }
+]).directive("icswNetworkListServiceTabs", [
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.network.list.service.tabs")
+        controller: "icswDeviceNetworkTotalCtrl"
+    }
 ]).controller("icswDeviceNetworkTotalCtrl", [
     "$scope", "icswNetworkListService"
 (
@@ -1256,9 +1277,6 @@ angular.module(
     $scope.struct = {
         icsw_network_list_service: icswNetworkListService
     }
-
-    console.log($scope.struct)
-
 ]).controller("icswDeviceNetworkClusterCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "icswAccessLevelService", "ICSW_URLS", "icswSimpleAjaxCall",

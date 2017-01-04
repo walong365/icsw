@@ -238,6 +238,18 @@
                 </description>
             </icswData>
         </route>
+        <route name="main.networkoverview">
+            <stateData url="/networkscans" templateUrl="icsw.network.simple.menu"/>
+            <icswData pageTitle="Network Scanning">
+                <dashboardEntry sizeX_int="3" sizeY_int="3" allowState_bool="yes"/>
+                <rights>
+                    <value>backbone.device.change_network</value>
+                </rights>
+                <description>
+                    <infoText language="en">Network Scanning Information</infoText>
+                </description>
+            </icswData>
+        </route>
         <!-- <route name="main.monitordisk">
             <stateData url="/monitordisk" templateUrl="icsw/device/partition/overview"/>
             <icswData pageTitle="Disk Information">
@@ -700,6 +712,7 @@
                 <menuEntry icon="fa-user" name="Users, Groups and Roles" routeName="main.usertree"/>
                 <menuEntry icon="fa-gears" name="Schedule" routeName="main.schedoverviewasset"/>
                 <menuEntry icon="fa-map-marker" name="Locations" routeName="main.devlocation"/>
+                <menuEntry icon="fa-heartbeat" name="Host Discovery" routeName="main.networkoverview"/>
             </routeSubGroup>
             <routeSubGroup name="Control">
                 <menuEntry icon="fa-plug" name="Power Controlling Connections" routeName="main.deviceconnection"/>
