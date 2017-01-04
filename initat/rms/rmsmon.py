@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -62,7 +62,7 @@ class QueueInfo(object):
         # count states
         for _short, _attr in [("E", "error"), ("d", "disabled"), ("u", "unknown"), ("a", "alarm")]:
             if _short in _state:
-                setattr(self, _attr, getattr(self, _attr) + self.total)
+                setattr(self, _attr, getattr(self, _attr) + _t)
 
     @property
     def free(self):

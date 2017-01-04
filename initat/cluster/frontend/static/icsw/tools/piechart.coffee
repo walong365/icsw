@@ -91,7 +91,7 @@ angular.module(
             diameter: React.PropTypes.number
             data: React.PropTypes.array
             tooltip: React.PropTypes.object
-            maxWidth: React.PropTypes.number
+            maxWidth: React.PropTypes.string
         }
 
         displayName: "icswToolsPiechart"
