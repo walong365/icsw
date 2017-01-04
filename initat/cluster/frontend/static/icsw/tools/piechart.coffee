@@ -36,6 +36,7 @@ angular.module(
                 idx: React.PropTypes.number
                 commands: React.PropTypes.string
             }
+            displayName: "icswToolsPieChartPart"
             render: () ->
                 entry = @props.data
                 i = @props.idx
@@ -91,13 +92,13 @@ angular.module(
             diameter: React.PropTypes.number
             data: React.PropTypes.array
             tooltip: React.PropTypes.object
-            maxWidth: React.PropTypes.string
+            maxWidth: React.PropTypes.number
         }
 
         displayName: "icswToolsPiechart"
 
         render: () ->
-            diameter =@props.diameter
+            diameter = @props.diameter
             center_x = diameter / 2
             center_y = diameter / 2
             radius = diameter / 2
@@ -234,6 +235,10 @@ angular.module(
             max_width: "@icswMaxWidth"
         link : (scope, element, attrs) ->
             struct = icswTooltipTools.create_struct(element)
+            if not scope.max_width?
+                # set default value for react
+                scope.max_width = "0"
+
             render = () ->
                 _el = ReactDOM.render(
                     React.createElement(
@@ -242,11 +247,12 @@ angular.module(
                             diameter: scope.diameter
                             data: scope.data
                             tooltip: struct
-                            maxWidth: scope.max_width
+                            maxWidth: parseInt(scope.max_width)
                         }
                     )
                     element[0]
                 )
+
             scope.$on(
                 "$destroy"
                 () ->

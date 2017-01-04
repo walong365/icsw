@@ -43,15 +43,6 @@ angular.module(
 
             obj.included?.apply(@)
             this
-        
-]).service("createSVGElement", [() ->
-    return (name, settings) ->
-        ns = "http://www.w3.org/2000/svg"
-        node = document.createElementNS(ns, name)
-        for key, value  of settings
-            if value?
-                node.setAttribute(key, value)
-        return $(node)
 ]).service("icswOverallStyle",
 [
     "$q", "ICSW_SIGNALS", "$rootScope",
