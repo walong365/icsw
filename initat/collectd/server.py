@@ -988,9 +988,11 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             _new_list, _remove_list, _same_list = t_obj.sync_jobs_with_id_list(_id_dict.keys())
             for new_id in _new_list:
                 _dev = _id_dict[new_id]
+                _dev_obj = device.objects.get(Q(uuid=_dev.get("uuid")))
                 if j_type == "ipmi":
                     BackgroundJob(
                         new_id,
+                        _dev_obj,
                         IPMIBuilder().get_comline(_dev),
                         IPMIBuilder(),
                         device_name=_dev.get("full_name"),
@@ -1000,6 +1002,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                     _schemes = snmp_scheme.objects.filter(Q(pk__in=in_com.xpath(".//ns:schemes/ns:scheme/@pk", start_el=_dev)))
                     SNMPJob(
                         new_id,
+                        _dev_obj,
                         _dev.get("ip"),
                         _schemes,
                         int(_dev.get("snmp_version")),

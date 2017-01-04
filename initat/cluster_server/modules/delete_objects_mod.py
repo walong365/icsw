@@ -109,9 +109,11 @@ class handle_delete_requests(cs_base_class.icswCSServerCom):
                         for db_obj in rel_obj.ref_list:
                             db_obj.delete()
                     else:
-                        raise ValueError("Invalid strategy for {}: {}; available strategies: {}".format(
-                            dict_key, strat, delete_strategies
-                        ))
+                        raise ValueError(
+                            "Invalid strategy for {}: {}; available strategies: {}".format(
+                                dict_key, strat, delete_strategies
+                            )
+                        )
 
                 cur_inst.log("all refs have been deleted")
                 can_delete_answer_after = can_delete_obj(obj_to_delete)

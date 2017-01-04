@@ -648,7 +648,7 @@ class ServiceState(object):
                             trans_id,
                         )
                     ]
-            return _transition
+        return _transition
 
     def transition_finished(self, trans):
         t_id = trans.id
