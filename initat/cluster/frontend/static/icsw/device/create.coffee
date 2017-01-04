@@ -67,6 +67,12 @@ angular.module(
         any_images_found: false
         # image url
         img_url: ""
+        # ip is fixed (was entered manually)
+        ip_fixed: false
+        # matching names
+        matching_names: []
+        # same search is pending
+        same_seach_pending: false
         # device selection
         dev_sel_list: [
             {key: "keep", value: "keep current Selection"}
@@ -158,9 +164,34 @@ angular.module(
         $scope.struct.img_url = entry.data_image
         $scope.device_data.icon_name = entry.name
 
+
+    $scope.fix_ip_address = ($event) ->
+        if $scope.device_data.ip
+            $scope.struct.ip_fixed = true
+        else
+            $scope.struct.ip_fixed = false
+
+    _same_search = () ->
+        if $scope.device_data.full_name
+            $scope.struct.same_seach_pending = true
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.MON_SEARCH_SIMILAR_NAMES
+                data: {
+                    fqdn: $scope.device_data.full_name
+                }
+                dataType: "json"
+            ).then(
+                (json) ->
+                    $scope.struct.matching_names.length = 0
+                    for entry in json
+                        $scope.struct.matching_names.push(entry)
+            )
+
     $scope.device_name_changed = () ->
-        if not $scope.struct.resolve_pending and $scope.device_data.full_name and not $scope.device_data.ip
+        if not $scope.struct.resolve_pending and $scope.device_data.full_name and not $scope.struct.ip_fixed
             $scope.resolve_name()
+        if not $scope.struct.same_search_pending and $scope.device_data.full_name
+            _same_search()
 
     $scope.resolve_name = () ->
         # clear ip

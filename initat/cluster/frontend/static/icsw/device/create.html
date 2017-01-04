@@ -14,10 +14,38 @@
                             Fully qualified device name
                         </label>
                         <div class="controls col-md-6" ng-class="form_data.full_name.$invalid && 'has-error'">
-                            <input name="full_name" class="form-control maxwidth500" ng-model="device_data.full_name" required ng-pattern="/^[a-zA-Z0-9\.\-_]+$/" placeholder="device name" ng-blur="device_name_changed()"/>
+                            <input
+                                name="full_name"
+                                class="form-control maxwidth500"
+                                ng-model="device_data.full_name"
+                                required ng-pattern="/^[a-zA-Z0-9\.\-_]+$/"
+                                placeholder="device name"
+                                ng-change="device_name_changed()"
+                                ng-model-options="{debounce: {default: 200, blur: 0}}"
+                            />
                             <span ng-show="form_data.full_name.$invalid" class="text-danger">
                                 Need name without any special characters or whitespace (for instance 'server.my.domain')
                             </span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label col-md-3 icsw-formlabel">Similar named Devices</label>
+                        <div class="controls col-md-6">
+                            <span ng-show="struct.matching_names.length == 0" class="text-danger">
+                                None found
+                            </span>
+                            <div ng-show="struct.matching_names.length > 0">
+                                <span>
+                                    {{ struct.matching_names.length }} matching Devices found
+                                </span>
+                                <ul class="list-group">
+                                    <li class="list-group-item" ng-repeat="entry in struct.matching_names">
+                                        {{ entry.name }} ({{ entry.ratio | number: 3 }})
+                                        <span class="label label-success" ng-show="entry.enabled">enabled</span>
+                                        <span class="label label-warning" ng-show="!entry.enabled">disabled</span>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group row">
@@ -41,7 +69,15 @@
                         <label class="control-label col-md-3 icsw-formlabel">IP Address</label>
                         <div class="controls col-md-6" ng-class="form_data.ip.$invalid && 'has-error'">
                             <div class="form-inline">
-                                <input name="ip" class="form-control" ng-model="device_data.ip" required ng-pattern="/^(\d+)\.(\d+)\.(\d)+\.(\d+)$/" placeholder="IP Address"/>
+                                <input
+                                    name="ip"
+                                    class="form-control"
+                                    ng-model="device_data.ip"
+                                    required ng-pattern="/^(\d+)\.(\d+)\.(\d)+\.(\d+)$/"
+                                    placeholder="IP Address"
+                                    ng-change="fix_ip_address($event)"
+                                />
+                                <button class="btn btn-success" ng-show="!struct.ip_fixed" ng-click="fix_ip_address($event)">Fix</button>
                                 <button class="btn btn-primary" ng-show="!resolve_pending && device_data.full_name" ng-click="resolve_name()">Resolve</button>
                                 <span ng-show="resolve_pending" class="glyphicon glyphicon-refresh"></span>
                             </div>

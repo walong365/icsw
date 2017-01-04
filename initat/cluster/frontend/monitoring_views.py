@@ -29,6 +29,7 @@ import datetime
 import json
 import logging
 import socket
+import difflib
 from collections import defaultdict
 
 from django.contrib.auth.decorators import login_required
@@ -394,6 +395,27 @@ class resolve_name(View):
             else:
                 logger.info(u"resolved {} to {}".format(fqdn, _ip))
                 request.xml_response["ip"] = _ip
+
+
+class search_similar_names(View):
+    def post(self, request):
+        TARGET_RATIO = 0.6
+        fqdn = request.POST["fqdn"]
+        _list = device.all_real_devices.all().values_list("name", "domain_tree_node__full_name", "enabled")
+        _matcher = difflib.SequenceMatcher()
+        _matcher.set_seq1(fqdn)
+        result = []
+        for _sname, _dom, enabled in _list:
+            full_name = "{}{}".format(_sname, ".{}".format(_dom) if _dom else "")
+            _matcher.set_seq2(full_name)
+            _ratio = _matcher.ratio()
+            if _ratio >= TARGET_RATIO:
+                result.append({"name": full_name, "ratio": _ratio, "enabled": enabled})
+        result.sort(key=lambda entry: entry["ratio"], reverse=True)
+        return HttpResponse(
+            json.dumps(result[:10]),
+            content_type="application/json"
+        )
 
 
 ########################################
