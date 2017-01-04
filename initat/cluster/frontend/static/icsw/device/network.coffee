@@ -28,6 +28,7 @@ angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.devicenetwork")
+    icswRouteExtensionProvider.add_route("main.networkoverview")
 ]).controller("icswDeviceNetworkCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
@@ -1248,6 +1249,26 @@ angular.module(
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_SVG_FULLSIZELAYOUT_SETUP"))
         controller: "icswDeviceNetworkTotalCtrl"
     }
+]).directive("icswNetworkSimpleOverview", [
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.network.simple.overview")
+        controller: "icswDeviceNetworkTotalCtrl"
+    }
+]).directive("icswNetworkListServiceTabs", [
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.network.list.service.tabs")
+        controller: "icswDeviceNetworkTotalCtrl"
+    }
 ]).controller("icswDeviceNetworkTotalCtrl", [
     "$scope", "icswNetworkListService"
 (
@@ -1256,9 +1277,6 @@ angular.module(
     $scope.struct = {
         icsw_network_list_service: icswNetworkListService
     }
-
-    console.log($scope.struct)
-
 ]).controller("icswDeviceNetworkClusterCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "icswAccessLevelService", "ICSW_URLS", "icswSimpleAjaxCall",
@@ -2057,87 +2075,195 @@ angular.module(
                 for device in data.devices
                     salt_nmap_device(device, ip_to_device_lut)
 
+                selected_button_class = "btn btn-success"
+                unselected_button_class = "btn btn-default"
+
                 sub_tab = {
                     index: index
-                    devices: (device for device in data.devices)
-                    display_devices: (device for device in data.devices)
+                    ignored_devices: (device for device in data.devices when device.ignored)
+                    devices: (device for device in data.devices when !device.ignored)
+                    display_devices: (device for device in data.devices when !device.ignored)
                     linked_devices_button_value: "All Devices"
                     linked_devices_button_class: "btn btn-default"
                     linked_devices_button_state: 0
                     type: 0
+                    selected_devices: 0
+                    all_devices_filter_class: selected_button_class
+                    linked_only_filter_class: unselected_button_class
+                    unlinked_only_filter_class: unselected_button_class
+                    new_devices_last_scan_class: unselected_button_class
+                    new_devices_alltime_class: unselected_button_class
+                    ignored_devices_class: unselected_button_class
+                    ignore_text: "Ignore Selection"
                 }
 
-                sub_tab.linked_devices_button_pressed = () ->
-                    if sub_tab.linked_devices_button_state == 0
-                        sub_tab.linked_devices_button_state = 1
-                        sub_tab.linked_devices_button_value = "Linked Only"
-                        sub_tab.display_devices.length = 0
+                reset_selection = () ->
+                    sub_tab.selected_devices = 0
+                    for device in sub_tab.ignored_devices
+                        device.$$selected = false
+                    for device in sub_tab.devices
+                        device.$$selected = false
 
-                        for device in sub_tab.devices
-                            if device.linked_devices.length > 0
-                                sub_tab.display_devices.push(device)
+                select_button = (class_name) ->
+                    sub_tab.all_devices_filter_class = unselected_button_class
+                    sub_tab.linked_only_filter_class = unselected_button_class
+                    sub_tab.unlinked_only_filter_class = unselected_button_class
+                    sub_tab.new_devices_last_scan_class = unselected_button_class
+                    sub_tab.new_devices_alltime_class = unselected_button_class
+                    sub_tab.ignored_devices_class = unselected_button_class
 
-                    else if sub_tab.linked_devices_button_state == 1
-                        sub_tab.linked_devices_button_state = 2
-                        sub_tab.linked_devices_button_value = "Unlinked Only"
-                        sub_tab.display_devices.length = 0
+                    if class_name == "ignored_devices_class"
+                        sub_tab.ignore_text = "Unignore Selection"
+                    else
+                        sub_tab.ignore_text = "Ignore Selection"
 
-                        for device in sub_tab.devices
-                            if device.linked_devices.length == 0
-                                sub_tab.display_devices.push(device)
+                    sub_tab[class_name] = selected_button_class
 
-                    else if sub_tab.linked_devices_button_state == 2
-                        sub_tab.linked_devices_button_state = 3
-                        sub_tab.linked_devices_button_value = "All Devices"
-                        sub_tab.display_devices.length = 0
+                sub_tab.select_nmap_scan_device = (obj) ->
+                    if obj.$$selected == undefined
+                        obj.$$selected = true
+                    else
+                        obj.$$selected = !obj.$$selected
 
-                        for device in sub_tab.devices
+                    if obj.$$selected == true
+                        sub_tab.selected_devices += 1
+                    else
+                        sub_tab.selected_devices -= 1
+
+
+                sub_tab.show_all_devices_filter = () ->
+                    select_button("all_devices_filter_class")
+                    reset_selection()
+
+                    sub_tab.display_devices.length = 0
+
+                    for device in sub_tab.devices
+                        sub_tab.display_devices.push(device)
+
+                sub_tab.show_linked_devices_only_filter = () ->
+                    select_button("linked_only_filter_class")
+                    reset_selection()
+
+                    sub_tab.display_devices.length = 0
+
+                    for device in sub_tab.devices
+                        if device.linked_devices.length > 0
                             sub_tab.display_devices.push(device)
 
-                    else if sub_tab.linked_devices_button_state == 3
-                        sub_tab.linked_devices_button_state = 4
-                        sub_tab.linked_devices_button_value = "New Devices (Last Scan)"
-                        sub_tab.display_devices.length = 0
-                        blockUI.start("Loading Data...")
+                sub_tab.show_unlinked_devices_only_filter = () ->
+                    select_button("unlinked_only_filter_class")
+                    reset_selection()
 
-                        icswSimpleAjaxCall(
-                            {
-                                url: ICSW_URLS.NETWORK_NMAP_SCAN_DIFF
-                                data:
-                                    scan_id: index
-                                    last_scan: true
-                                dataType: "json"
-                            }
-                        ).then((data) ->
-                            for nmap_device in data
-                                salt_nmap_device(nmap_device, ip_to_device_lut)
-                                sub_tab.display_devices.push(nmap_device)
+                    sub_tab.display_devices.length = 0
 
-                            blockUI.stop()
-                        )
+                    for device in sub_tab.devices
+                        if device.linked_devices.length == 0
+                            sub_tab.display_devices.push(device)
 
-                    else if sub_tab.linked_devices_button_state == 4
-                        sub_tab.linked_devices_button_state = 0
-                        sub_tab.linked_devices_button_value = "New Devices (Alltime/Never Seen)"
-                        sub_tab.display_devices.length = 0
-                        blockUI.start("Loading Data...")
+                sub_tab.show_new_devices_sine_last_scan = () ->
+                    select_button("new_devices_last_scan_class")
+                    reset_selection()
 
-                        icswSimpleAjaxCall(
-                            {
-                                url: ICSW_URLS.NETWORK_NMAP_SCAN_DIFF
-                                data:
-                                    scan_id: index
-                                    all_time: true
-                                dataType: "json"
-                            }
-                        ).then((data) ->
-                            for nmap_device in data
-                                salt_nmap_device(nmap_device, ip_to_device_lut)
-                                sub_tab.display_devices.push(nmap_device)
+                    sub_tab.display_devices.length = 0
+                    blockUI.start("Loading Data...")
 
-                            blockUI.stop()
-                        )
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.NETWORK_NMAP_SCAN_DIFF
+                            data:
+                                scan_id: index
+                                last_scan: true
+                            dataType: "json"
+                        }
+                    ).then((data) ->
+                        for nmap_device in data
+                            salt_nmap_device(nmap_device, ip_to_device_lut)
+                            sub_tab.display_devices.push(nmap_device)
 
+                        blockUI.stop()
+                    )
+
+                sub_tab.show_new_devices_alltime = () ->
+                    select_button("new_devices_alltime_class")
+                    reset_selection()
+
+                    sub_tab.linked_devices_button_state = 0
+                    sub_tab.linked_devices_button_value = "New Devices (Alltime/Never Seen)"
+                    sub_tab.display_devices.length = 0
+                    blockUI.start("Loading Data...")
+
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.NETWORK_NMAP_SCAN_DIFF
+                            data:
+                                scan_id: index
+                                all_time: true
+                            dataType: "json"
+                        }
+                    ).then((data) ->
+                        for nmap_device in data
+                            salt_nmap_device(nmap_device, ip_to_device_lut)
+                            sub_tab.display_devices.push(nmap_device)
+
+                        blockUI.stop()
+                    )
+
+                sub_tab.show_ignored_devices = () ->
+                    select_button("ignored_devices_class")
+                    reset_selection()
+
+                    sub_tab.display_devices.length = 0
+
+                    for device in sub_tab.ignored_devices
+                        sub_tab.display_devices.push(device)
+
+                sub_tab.handle_selection = () ->
+                    blockUI.start("Please wait...")
+                    mac_list = []
+                    handled_devices = []
+                    for device in sub_tab.devices
+                        if device.$$selected == true
+                            if device.mac != null
+                                mac_list.push(device.mac)
+                                handled_devices.push(device)
+                    for device in sub_tab.ignored_devices
+                        if device.$$selected == true
+                            if device.mac != null
+                                mac_list.push(device.mac)
+                                handled_devices.push(device)
+
+                    ignore_mode = 0
+                    if sub_tab.ignore_text == "Ignore Selection"
+                        ignore_mode = 1
+
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.NETWORK_HANDLE_NMAP_SCAN_DEVICE
+                            data:
+                                mac_list: mac_list
+                                ignore: ignore_mode
+                            dataType: "json"
+                        }
+                    ).then((data) ->
+                        sub_tab.display_devices = (device for device in sub_tab.display_devices when !(device in handled_devices))
+
+                        for device in handled_devices
+                            if ignore_mode == 0
+                                device.ignored = false
+                            else
+                                device.ignored = true
+
+                        all_devices = []
+                        for device in sub_tab.ignored_devices
+                            all_devices.push(device)
+                        for device in sub_tab.devices
+                            all_devices.push(device)
+
+                        sub_tab.ignored_devices = (device for device in all_devices when device.ignored)
+                        sub_tab.devices = (device for device in all_devices when !device.ignored)
+
+                        blockUI.stop()
+                    )
 
                 sub_tab.show_device = ($event, dev) ->
                     DeviceOverviewService($event, [dev])
