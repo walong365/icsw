@@ -154,6 +154,10 @@ angular.module(
         )
     $scope.reload()
 
+    $scope.select_image = ($event, entry) ->
+        $scope.struct.img_url = entry.data_image
+        $scope.device_data.icon_name = entry.name
+
     $scope.device_name_changed = () ->
         if not $scope.struct.resolve_pending and $scope.device_data.full_name and not $scope.device_data.ip
             $scope.resolve_name()
