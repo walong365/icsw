@@ -665,6 +665,8 @@ class create_device(permission_required_mixin, View):
                         cur_img = None
                     else:
                         pass
+                else:
+                    cur_img = None
                 try:
                     cur_dev = device.objects.create(
                         device_group=cur_dg,

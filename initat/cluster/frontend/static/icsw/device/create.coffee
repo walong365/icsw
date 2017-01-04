@@ -63,6 +63,8 @@ angular.module(
         resolve_pending: false
         # base is open
         base_open: true
+        # any images found
+        any_images_found: false
         # image url
         img_url: ""
         # device selection
@@ -117,17 +119,24 @@ angular.module(
                 $scope.struct.device_tree = data[0]
                 $scope.struct.peer_tree = data[1]
                 $scope.struct.mon_ext_host = data[2]
-                _match = (entry for entry in $scope.struct.mon_ext_host when entry.name == $scope.device_data.icon_name)
-                if _match.length
-                    _first = _match[0]
-                else if $scope.struct.mon_ext_host.length
-                    _first = $scope.struct.mon_ext_host[0]
+                if $scope.struct.mon_ext_host.length
+                    $scope.struct.any_images_found = true
+                    _match = (entry for entry in $scope.struct.mon_ext_host when entry.name == $scope.device_data.icon_name)
+                    if _match.length
+                        _first = _match[0]
+                    else if $scope.struct.mon_ext_host.length
+                        _first = $scope.struct.mon_ext_host[0]
+                    else
+                        _first = null
+                    if _first
+                        $scope.struct.img_url = _first.data_image
+                        $scope.device_data.icon_name = _first.name
+                    else
+                        # nothing found
+                        $scope.struct.img_url = ""
+                        $scope.device_data.icon_name = ""
                 else
-                    _first = null
-                if _first
-                    $scope.struct.img_url = _first.data_image
-                    $scope.device_data.icon_name = _first.name
-                else
+                    $scope.struct.any_images_found = false
                     # nothing found
                     $scope.struct.img_url = ""
                     $scope.device_data.icon_name = ""
