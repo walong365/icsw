@@ -70,6 +70,7 @@ angular.module(
         # ip is fixed (was entered manually)
         ip_fixed: false
         # matching names
+        matching_names_found: 0
         matching_names: []
         # same search is pending
         same_seach_pending: false
@@ -183,7 +184,15 @@ angular.module(
             ).then(
                 (json) ->
                     $scope.struct.matching_names.length = 0
-                    for entry in json
+                    $scope.struct.matching_names_found = json.found
+                    for entry in json.list
+                        if entry.name == $scope.device_data.full_name
+                            entry.$$tr_class = "bg-danger"
+                        else if entry.ratio > 0.8
+                            entry.$$tr_class = "bg-warning"
+                        else
+                            entry.$$tr_class = ""
+                        console.log entry.$$tr_class
                         $scope.struct.matching_names.push(entry)
             )
 

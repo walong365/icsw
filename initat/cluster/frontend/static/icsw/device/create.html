@@ -31,20 +31,39 @@
                     <div class="form-group row">
                         <label class="control-label col-md-3 icsw-formlabel">Similar named Devices</label>
                         <div class="controls col-md-6">
-                            <span ng-show="struct.matching_names.length == 0" class="text-danger">
+                            <h4 ng-show="struct.matching_names_found == 0" class="text-danger">
                                 None found
-                            </span>
-                            <div ng-show="struct.matching_names.length > 0">
-                                <span>
-                                    {{ struct.matching_names.length }} matching Devices found
-                                </span>
-                                <ul class="list-group">
-                                    <li class="list-group-item" ng-repeat="entry in struct.matching_names">
-                                        {{ entry.name }} ({{ entry.ratio | number: 3 }})
-                                        <span class="label label-success" ng-show="entry.enabled">enabled</span>
-                                        <span class="label label-warning" ng-show="!entry.enabled">disabled</span>
-                                    </li>
-                                </ul>
+                            </h4>
+                            <div ng-show="struct.matching_names_found > 0">
+                                <h4>
+                                    {{ struct.matching_names_found }} matching Devices found, showing the best {{ struct.matching_names.length }} matches:
+                                </h4>
+                                <table
+                                    class="table table-condensed table-hover"
+                                >
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Devicegroup</th>
+                                            <th>Ratio</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr
+                                            ng-repeat="entry in struct.matching_names"
+                                            ng-class="entry.$$tr_class"
+                                        >
+                                            <td>{{ entry.name }}</td>
+                                            <td>{{ entry.device_group_name }}</td>
+                                            <td>{{ entry.ratio | number: 3 }}</td>
+                                            <td>
+                                                <span class="label label-success" ng-show="entry.enabled">enabled</span>
+                                                <span class="label label-warning" ng-show="!entry.enabled">disabled</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
