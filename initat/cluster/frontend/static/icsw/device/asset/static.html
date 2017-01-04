@@ -1,11 +1,18 @@
-<script type="text/ng-template" id="icsw/device/inventory/static/overview">
-    <icsw-device-inventory-static-overview icsw-sel-man="0"></icsw-device-inventory-static-overview>
+<script type="text/ng-template" id="icsw/device/asset/static/overview">
+    <!-- overview with respect to device -->
+    <icsw-device-asset-static-overview icsw-sel-man="0"></icsw-device-asset-static-overview>
 </script>
 
+<script type="text/ng-template" id="icsw/static/asset/template/overview">
+    <!-- templates -->
+    <icsw-static-asset-template-overview></icsw-static-asset-template-overview>
+</script>
 
-<script type="text/ng-template" id="icsw.device.inventory.static.overview">
+<script type="text/ng-template" id="icsw.device.asset.static.overview">
     <div class="container-fluid">
-        <div uib-alert class="alert-warning" ng-show="!struct.data_loaded">Fetching Data from Server ...</div>
+        <div uib-alert class="alert-warning" ng-show="!struct.data_loaded">
+            Fetching Data from Server ...
+        </div>
         <div ng-if="struct.data_loaded">
             <h3>
                 Asset Categories

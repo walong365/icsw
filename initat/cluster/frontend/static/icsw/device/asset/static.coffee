@@ -21,13 +21,13 @@
 # variable related module
 
 static_inventory_overview = angular.module(
-    "icsw.device.inventory.static.overview",
+    "icsw.device.asset.static",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
-    icswRouteExtensionProvider.add_route("main.inventorystaticoverview")
-]).directive("icswDeviceInventoryStaticOverview",
+    icswRouteExtensionProvider.add_route("main.assetstaticoverview")
+]).directive("icswDeviceAssetStaticOverview",
 [
     "$templateCache",
 (
@@ -35,11 +35,11 @@ static_inventory_overview = angular.module(
 ) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("icsw.device.inventory.static.overview")
-        controller: "icswDeviceInventoryStaticOverviewCtrl"
+        template: $templateCache.get("icsw.device.asset.static.overview")
+        controller: "icswDeviceAssetStaticOverviewCtrl"
         scope: true
     }
-]).controller("icswDeviceInventoryStaticOverviewCtrl",
+]).controller("icswDeviceAssetStaticOverviewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",

@@ -372,7 +372,7 @@
             </icswData>
         </route>
         <route name="main.devasset">
-            <stateData url="/asset" templateUrl="icsw/device/asset/overview"/>
+            <stateData url="/asset" templateUrl="icsw/device/asset/dynamic/overview"/>
             <icswData pageTitle="Asset Runs">
                 <serviceTypes>
                     <value>discovery_server</value>
@@ -431,8 +431,8 @@
                 </description>
             </icswData>
         </route>
-        <route name="main.inventorystaticoverview">
-            <stateData url="/inventory/overview" templateUrl="icsw/device/inventory/static/overview"/>
+        <route name="main.assetstaticoverview">
+            <stateData url="/asset/static/overview" templateUrl="icsw/device/asset/static/overview"/>
             <icswData pageTitle="Static Asset Overview">
                 <rights>
                     <value>backbone.staticassettemplate.setup</value>
@@ -691,7 +691,7 @@
             </routeSubGroup>
             <routeSubGroup name="Assets">
                 <menuEntry icon="fa-diamond" routeName="main.devasset" name="Asset Runs"/>
-                <menuEntry icon="fa-reorder" name="Static Asset Overview" routeName="main.inventorystaticoverview"/>
+                <menuEntry icon="fa-reorder" name="Static Asset Overview" routeName="main.assetstaticoverview"/>
             </routeSubGroup>
         </menuHeader>
         <menuHeader name="Global" icon="fa-globe" side="left">
