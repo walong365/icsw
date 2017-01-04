@@ -32,6 +32,7 @@ from initat.collectd.collectd_struct import ext_com
 from initat.collectd.config import global_config
 from initat.snmp.sink import SNMPSink
 from initat.snmp.snmp_struct import value_cache
+from initat.cluster.backbone.models import DeviceLogEntry
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import logging_tools, server_command, process_tools
 
@@ -98,8 +99,9 @@ def parse_ipmi(in_lines):
 
 
 class SNMPJob(object):
-    def __init__(self, id_str, ip, snmp_schemes, snmp_version, snmp_read_community, **kwargs):
+    def __init__(self, id_str, device_obj, ip, snmp_schemes, snmp_version, snmp_read_community, **kwargs):
         self.id_str = id_str
+        self.device_obj = device_obj
         SNMPJob.add_job(self)
         self.ip = ip
         self.snmp_version = snmp_version
@@ -387,7 +389,8 @@ class IPMIBuilder(object):
 
 
 class BackgroundJob(object):
-    def __init__(self, id_str, comline, builder, **kwargs):
+    def __init__(self, id_str, device_obj, comline, builder, **kwargs):
+        self.device_obj = device_obj
         self.id_str = id_str
         BackgroundJob.add_job(self)
         self.device_name = kwargs.get("device_name", "")
@@ -458,6 +461,12 @@ class BackgroundJob(object):
             self.result = self.__ec.finished()
             if self.result is None:
                 if self.check_for_timeout():
+                    DeviceLogEntry.new(
+                        device=self.device_obj,
+                        source=global_config["LOG_SOURCE_IDX"],
+                        level=logging_tools.LOG_LEVEL_CRITICAL,
+                        text="timeout for background job",
+                    )
                     self.log("terminating")
                     self.terminate()
                     self.running = False
@@ -478,6 +487,14 @@ class BackgroundJob(object):
                 if stdout and self.result == 0:
                     if self.builder is not None:
                         _tree, _mon_info = self.builder.build(stdout, name=self.device_name, uuid=self.uuid, time="{:d}".format(int(self.last_start)))
+                        _num_mves = len(_tree.findall(".//mve"))
+                        if not _num_mves:
+                            DeviceLogEntry.new(
+                                device=self.device_obj,
+                                source=global_config["LOG_SOURCE_IDX"],
+                                level=logging_tools.LOG_LEVEL_WARN,
+                                text="reading from IPMI got no sensor results",
+                            )
                         # graphing
                         BackgroundJob.bg_proc.process_data_xml(_tree, len(etree.tostring(_tree)))  # @UndefinedVariable
                         # monitoring
@@ -488,6 +505,16 @@ class BackgroundJob(object):
                     else:
                         BackgroundJob.log("no builder set", logging_tools.LOG_LEVEL_ERROR)
                 if stderr:
+                    DeviceLogEntry.new(
+                        device=self.device_obj,
+                        source=global_config["LOG_SOURCE_IDX"],
+                        level=logging_tools.LOG_LEVEL_ERROR,
+                        text="error running background job ({})".format(
+                            logging_tools.get_plural(
+                                "line", len(stderr.strip().split("\n")),
+                            )
+                        )
+                    )
                     self.log("error output follows, cmdline was '{}'".format(self.comline))
                     for line_num, line in enumerate(stderr.strip().split("\n")):
                         self.log("  {:3d} {}".format(line_num + 1, line), logging_tools.LOG_LEVEL_ERROR)

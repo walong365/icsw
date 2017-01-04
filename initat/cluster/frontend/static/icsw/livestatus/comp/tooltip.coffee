@@ -86,9 +86,11 @@ angular.module(
         # bnode is a burstnode object with $$ct set
         struct.is_shown = true
         # display variables
-        struct.scope.node = node
         # console.log "node=", node
-        struct.scope.$apply()
+        struct.scope.$apply(
+            () ->
+                struct.scope.node = node
+        )
         return
 
     return {

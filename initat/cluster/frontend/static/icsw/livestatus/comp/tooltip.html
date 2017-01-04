@@ -186,3 +186,63 @@
         </div>
     </div>
 </script>
+
+<script type="text/ng-template" id="icsw.livestatus.tooltip.histline.device">
+    <div class="panel panel-default svg-tooltip">
+        <div class="panel-heading">
+            <b>Entry for device</b>
+        </div>
+        <div class="svg-tooltip-content">
+            <table class="table table-condensed">
+                <tbody>
+                    <tr>
+                        <td class="text-right">State</td>
+                        <td class="text-left">{{ node.data.$$data.StateString }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-right">Start</td>
+                        <td class="text-left">{{ node.data.$$start }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-right">End</td>
+                        <td class="text-left">{{ node.data.$$end }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-right">Info</td>
+                        <td class="text-left">{{ node.data.msg }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.livestatus.tooltip.histline.service">
+    <div class="panel panel-default svg-tooltip">
+        <div class="panel-heading">
+            <b>Entry for service</b>
+        </div>
+        <div class="svg-tooltip-content">
+            <table class="table table-condensed">
+                <tbody>
+                    <tr>
+                        <td class="text-right">State</td>
+                        <td class="text-left">{{ node.data.$$data.StateString }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-right">Start</td>
+                        <td class="text-left">{{ node.data.$$start }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-right">End</td>
+                        <td class="text-left">{{ node.data.$$end }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-right">Info</td>
+                        <td class="text-left">{{ node.data.msg }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</script>

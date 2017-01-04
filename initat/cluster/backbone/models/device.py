@@ -80,6 +80,11 @@ class DeviceSNMPInfo(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
 
+class AllRealDevicesManager(models.Manager):
+    def get_queryset(self):
+        return super(AllRealDevicesManager, self).get_queryset().filter(Q(is_meta_device=False))
+
+
 class DeviceEnabledManager(models.Manager):
     def get_queryset(self):
         return super(DeviceEnabledManager, self).get_queryset().filter(Q(enabled=True) & Q(device_group__enabled=True))
@@ -144,6 +149,7 @@ def device_pre_save(sender, **kwargs):
 
 class device(models.Model):
     objects = models.Manager()
+    all_real_devices = AllRealDevicesManager()
     all_enabled = DeviceEnabledManager()
     all_real_enabled = RealDeviceEnabledManager()
     all_meta_enabled = MetaDeviceEnabledManager()

@@ -9,18 +9,65 @@
             <uib-accordion ng-cloak close-others="false">
                 <div uib-accordion-group class="panel-default" heading="Base Data" is-open="struct.base_open">
                     <!-- {{ form_data || json }} {{form_data.$valid}} -->
-                    <div class="form-group">
+                    <div class="form-group row">
                         <label class="control-label col-md-3 icsw-formlabel">
                             Fully qualified device name
                         </label>
                         <div class="controls col-md-6" ng-class="form_data.full_name.$invalid && 'has-error'">
-                            <input name="full_name" class="form-control maxwidth500" ng-model="device_data.full_name" required ng-pattern="/^[a-zA-Z0-9\.\-_]+$/" placeholder="device name" ng-blur="device_name_changed()"/>
+                            <input
+                                name="full_name"
+                                class="form-control maxwidth500"
+                                ng-model="device_data.full_name"
+                                required ng-pattern="/^[a-zA-Z0-9\.\-_]+$/"
+                                placeholder="device name"
+                                ng-change="device_name_changed()"
+                                ng-model-options="{debounce: {default: 200, blur: 0}}"
+                            />
                             <span ng-show="form_data.full_name.$invalid" class="text-danger">
                                 Need name without any special characters or whitespace (for instance 'server.my.domain')
                             </span>
                         </div>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group row">
+                        <label class="control-label col-md-3 icsw-formlabel">Similar named Devices</label>
+                        <div class="controls col-md-6">
+                            <h4 ng-show="struct.matching_names_found == 0" class="text-danger">
+                                None found
+                            </h4>
+                            <div ng-show="struct.matching_names_found > 0">
+                                <h4>
+                                    {{ struct.matching_names_found }} matching Devices found, showing the best {{ struct.matching_names.length }} matches:
+                                </h4>
+                                <table
+                                    class="table table-condensed table-hover"
+                                >
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Devicegroup</th>
+                                            <th>Ratio</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr
+                                            ng-repeat="entry in struct.matching_names"
+                                            ng-class="entry.$$tr_class"
+                                        >
+                                            <td>{{ entry.name }}</td>
+                                            <td>{{ entry.device_group_name }}</td>
+                                            <td>{{ entry.ratio | number: 3 }}</td>
+                                            <td>
+                                                <span class="label label-success" ng-show="entry.enabled">enabled</span>
+                                                <span class="label label-warning" ng-show="!entry.enabled">disabled</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
                         <label class="control-label col-md-3 icsw-formlabel">Device Group</label>
                         <div class="controls col-md-6" ng-class="form_data.device_group.$invalid && 'has-error'">
                             <ui-select ng-model="device_data.device_group" ng-pattern="/^[a-zA-Z][a-zA-Z0-9\-_]*$/" required class="maxwidth500">
@@ -37,11 +84,19 @@
                         </div>
 
                     </div>
-                    <div class="form-group">
+                    <div class="form-group row">
                         <label class="control-label col-md-3 icsw-formlabel">IP Address</label>
                         <div class="controls col-md-6" ng-class="form_data.ip.$invalid && 'has-error'">
                             <div class="form-inline">
-                                <input name="ip" class="form-control" ng-model="device_data.ip" required ng-pattern="/^(\d+)\.(\d+)\.(\d)+\.(\d+)$/" placeholder="IP Address"/>
+                                <input
+                                    name="ip"
+                                    class="form-control"
+                                    ng-model="device_data.ip"
+                                    required ng-pattern="/^(\d+)\.(\d+)\.(\d)+\.(\d+)$/"
+                                    placeholder="IP Address"
+                                    ng-change="fix_ip_address($event)"
+                                />
+                                <button class="btn btn-success" ng-show="!struct.ip_fixed" ng-click="fix_ip_address($event)">Fix</button>
                                 <button class="btn btn-primary" ng-show="!resolve_pending && device_data.full_name" ng-click="resolve_name()">Resolve</button>
                                 <span ng-show="resolve_pending" class="glyphicon glyphicon-refresh"></span>
                             </div>
@@ -50,7 +105,7 @@
                             </span>
                         </div>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group row">
                         <label class="control-label col-md-3 icsw-formlabel">MAC Address</label>
                         <div class="controls col-md-6" ng-class="form_data.mac.$invalid && 'has-error'">
                             <div class="form-inline">
@@ -61,31 +116,31 @@
                             </span>
                         </div>
                     </div>
-                    <div class="form-group" ng-if="struct.any_images_found">
-                        <label class="control-label col-md-5 icsw-formlabel">Icon</label>
-                        <div class="controls col-md-6">
+                    <div class="form-group row" ng-if="struct.any_images_found">
+                        <label class="control-label col-md-3 icsw-formlabel">Icon</label>
+                        <div class="form-inline col-md-6">
+                            <!-- <a href="#" class="thumbnail"> -->
+                                <img ng-src="{{ struct.img_url }}" width="16"/>
+                            <!-- </a> -->
+                            <input
+                                type="text"
+                                name="icon"
+                                class="form-control"
+                                ng-model="device_data.icon_name"
+                                uib-typeahead="value as value.name for value in struct.mon_ext_host | filter:{name:$viewValue}"
+                                typeahead-template-url="icsw.device.create.icon.template"
+                                uib-typeahead-append-to-body="true"
+                                typeahead-on-select="on_icon_select($item, $model, $label)"
+                            />
+                        </div>
+                        <div class="col-md-3"></div>
+                        <div class="controls col-md-6 col-md-offset-3">
                             <div class="row">
                                 <div class="col-md-1 col-xs-1" ng-repeat="entry in struct.mon_ext_host">
-                                    <a href="" class="thumbnail">
+                                    <a href="" class="thumbnail" ng-click="select_image($event, entry)">
                                         <img ng-src="{{ entry.data_image }}" width="32"/>
                                     </a>
                                 </div>
-                            </div>
-
-                            <div class="form-inline">
-                                <!-- <a href="#" class="thumbnail"> -->
-                                    <img ng-src="{{ struct.img_url }}" width="16"/>
-                                <!-- </a> -->
-                                <input
-                                    type="text"
-                                    name="icon"
-                                    class="form-control"
-                                    ng-model="device_data.icon_name"
-                                    uib-typeahead="value as value.name for value in struct.mon_ext_host | filter:{name:$viewValue}"
-                                    typeahead-template-url="icsw.device.create.icon.template"
-                                    uib-typeahead-append-to-body="true"
-                                    typeahead-on-select="on_icon_select($item, $model, $label)"
-                                />
                             </div>
                         </div>
                     </div>

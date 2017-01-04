@@ -470,8 +470,8 @@ angular.module(
                     monitoring_data: new_data
                     draw_parameters: draw_params
                     return_data: $scope.struct.return_data
-                    maxWidth: $scope.max_width
-                    minWidth: $scope.min_width
+                    maxWidth: parseInt($scope.max_width)
+                    minWidth: parseInt($scope.min_width)
                 }
             )
             element
@@ -571,6 +571,10 @@ angular.module(
              max_width: "@icswMaxWidth"
              min_width: "@icswMinWidth"
         link : (scope, element, attrs) ->
+            if not scope.max_width?
+                scope.max_width = "0"
+            if not scope.min_width?
+                scope.min_width = "0"
             draw_params = new icswBurstDrawParameters(
                 {
                     inner_radius: 0

@@ -486,6 +486,10 @@ class mvect_entry(object):
         if self.base != 1:
             while val > self.base * 4:
                 _div = True
+                if not pf_list:
+                    # infinity
+                    act_pf = "I"
+                    break
                 act_pf = pf_list.pop(0)
                 val = float(val) / self.base
         if self.v_type == "f" or _div:

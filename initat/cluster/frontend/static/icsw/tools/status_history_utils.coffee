@@ -286,11 +286,242 @@ angular.module(
         preprocess_kpi_state_data: preprocess_service_state_data
 
     }
+]).service("icswToolsHistLineGraphReact",
+[
+    "$q", "icswStatusHistorySettings", "icswTooltipTools",
+(
+    $q, icswStatusHistorySettings, icswTooltipTools,
+) ->
+    MAX_DATA = 1000
+    {svg, g, div, path, span, rect, text} = React.DOM
+    marker_fact = React.createFactory(
+        React.createClass(
+            propTypes: {
+                data: React.PropTypes.array
+                width: React.PropTypes.number
+                height: React.PropTypes.number
+                sideMargin: React.PropTypes.number
+            }
+
+            displayName: "HistLineGraphMarker"
+
+            render: () ->
+                el_list = []
+                draw_width = @props.width - 2 * @props.sideMargin
+                time_marker = icswStatusHistorySettings.get_time_marker()
+                i = 0
+                for marker, index in time_marker.data
+                    if time_marker.time_points
+                        # time is exactly at certain points
+                        pos_x = @props.sideMargin + index * draw_width / (time_marker.data.length-1)
+                    else
+                        # pos should be in the middle of the durations, such as week days, month
+                        unit_size = draw_width / time_marker.data.length
+                        start_of_unit = @props.sideMargin + (index * unit_size)
+                        pos_x = start_of_unit + (unit_size / 2)
+
+                    # if steps is set, only draw every steps'th entry
+                    if !time_marker.steps or i % time_marker.steps == 0
+                        el_list.push(
+                            text(
+                                {
+                                    key: "marker#{i}"
+                                    x: pos_x
+                                    y: @props.height
+                                    className: "default-text"
+                                    textAnchor: "middle"
+                                    alignmentBaseline: "baseline"
+                                }
+                                marker
+                            )
+                        )
+                    i++
+                return g(
+                    {
+                        key: "top"
+                    }
+                    el_list
+                )
+
+        )
+    )
+    return React.createClass(
+        propTypes: {
+            width: React.PropTypes.number
+            height: React.PropTypes.number
+            baseHeight: React.PropTypes.number
+            data: React.PropTypes.array
+            fontSize: React.PropTypes.number
+            sideMargin: React.PropTypes.number
+            timeFrame: React.PropTypes.object
+            # tooltip
+            tooltip: React.PropTypes.object
+            # for host or service
+            forHost: React.PropTypes.bool
+        }
+
+        displayName: "HistLineGraph"
+
+        render: () ->
+            div_els = []
+            if @props.data.length > MAX_DATA
+                div_els.push(
+                    span(
+                        {
+                            key: "warn"
+                            className: "label label-danger"
+                        }
+                        "Too much data to display (#{@props.data.length} > #{MAX_DATA})"
+                    )
+                )
+            else
+                g_elements = [
+                    marker_fact(
+                        {
+                            key: "markers"
+                            data: @props.data
+                            sideMargin: @props.sideMargin
+                            width: @props.width
+                            height: @props.height
+                        }
+                    )
+                ]
+                # calculate data to show
+                # total duration of requested timeframe
+                tf_duration = {
+                    day: 24 * 3600
+                    week: 7 * 24 * 3600
+                    month: @props.timeFrame.start.daysInMonth() * 24 * 3600
+                    year: 365 * 24 * 3600
+                    decade: 10 * 365 * 24 * 3600
+                }[@props.timeFrame.duration_type] * 1000
+
+                pos_x = @props.sideMargin
+                last_date = @props.timeFrame.start
+
+                data_for_iteration = @props.data
+                if @props.data.length > 0
+                    has_last_event_after_time_frame_end = moment.utc(@props.data[@props.data.length-1].date).isAfter(@props.timeFrame.end)
+                    if ! has_last_event_after_time_frame_end
+                        # add dummy element for nice iteration below
+                        data_for_iteration = data_for_iteration.concat('last')
+
+                for entry, index in data_for_iteration
+                    if entry == 'last'
+                        cur_date = @props.timeFrame.end
+                        display_end = moment()
+                    else
+                        cur_date = moment.utc(entry.date)
+                        if cur_date.isBefore(@props.timeFrame.start)
+                            # first event is before current time, but we must not draw that
+                            cur_date = @props.timeFrame.start
+                        display_end = cur_date
+
+                    duration = cur_date.diff(last_date)
+                    draw_width = @props.width - 2 * @props.sideMargin
+                    entry_width = draw_width * duration / tf_duration
+
+                    if index != 0
+
+                        last_entry = data_for_iteration[index-1]
+
+                        label_height = 13
+
+                        entry_height = last_entry.$$data.height
+                        entry_height /= (@props.baseHeight)
+                        #pos_y = ((2/3)-entry_height ) * scope.height  # such that bar ends
+                        entry_height *= (@props.height - label_height)
+
+                        pos_y = @props.height - entry_height - label_height
+
+                        # entry_height and pos_x are correct values, but we sometimes want some 'emphasis'
+                        # these values are only used for display below
+                        display_entry_width = entry_width
+                        display_pos_x = pos_x
+                        if entry_width <= 2
+                            if entry_width <= 1
+                                display_pos_x -= 1
+                            display_entry_width += 1
+
+                        last_entry.display_end = display_end
+                        g_elements.push(
+                            rect(
+                                {
+                                    key: "el#{index}"
+                                    width: display_entry_width
+                                    height: entry_height
+                                    x: display_pos_x
+                                    y: pos_y
+                                    rx: 1
+                                    ry: 1
+                                    className: last_entry.$$data.svgClassName
+                                    data: index - 1
+                                    onMouseEnter: (event) =>
+                                        _idx = event.target.getAttribute("data")
+                                        entry = data_for_iteration[_idx]
+                                        node = {
+                                            node_type: if @props.forHost then "histline.device" else "histline.service"
+                                            data: entry
+                                        }
+                                        entry.$$start = moment.utc(entry.date).format("DD.MM.YYYY HH:mm")
+                                        entry.$$end = entry.display_end.format("DD.MM.YYYY HH:mm")
+                                        icswTooltipTools.show(@props.tooltip, node)
+                                    onMouseMove: (event) =>
+                                        icswTooltipTools.position(@props.tooltip, event)
+                                    onMouseLeave: (event) =>
+                                        icswTooltipTools.hide(@props.tooltip)
+                                }
+                            )
+                        )
+                    pos_x += entry_width
+                    last_date = cur_date
+                div_els.push(
+                    svg(
+                        {
+                            key: "top"
+                            width: @props.width
+                            height: @props.height
+                        }
+                        g(
+                            {
+                                key: "topg"
+                            }
+                            rect(
+                                {
+                                    key: "topr"
+                                    width: @props.width
+                                    height: @props.height
+                                    x: 0
+                                    y: 0
+                                    fill: "rgba(0, 0, 0, 0.0)"
+                                }
+                            )
+                            g_elements
+                        )
+                    )
+                )
+            tl_div = div(
+                {
+                    key: "top"
+                    className: "icsw-chart"
+                    style: {
+                        width: "#{@props.width}px"
+                        height: "#{@props.height}px"
+                        # ???
+                        marginBottom: "7px"
+                    }
+                }
+                div_els
+            )
+            return tl_div
+    )
 ]).directive("icswToolsHistLineGraph",
 [
-    "status_utils_functions", "$timeout", "icswStatusHistorySettings", "createSVGElement",
+    "status_utils_functions", "$timeout", "icswStatusHistorySettings", "icswTooltipTools",
+    "icswToolsHistLineGraphReact",
 (
-    status_utils_functions, $timeout, icswStatusHistorySettings, createSVGElement,
+    status_utils_functions, $timeout, icswStatusHistorySettings, icswTooltipTools,
+    icswToolsHistLineGraphReact,
 ) ->
     return {
         restrict: 'E'
@@ -311,179 +542,35 @@ angular.module(
                 # TODO possibly pass entry outside along the lines of  scope.clickAttr()({entry: entry)) and setting click just to handle_click (not handle_click())
 
             scope.width = scope.widthAttr() or 400
-            # console.log scope.width
             scope.height = scope.heightAttr() or base_height
-
-            scope.fontSize = 10
-
-            scope.side_margin = 15
-            scope.draw_width = scope.width - 2 * scope.side_margin
 
             scope.update = () ->
                 $timeout(scope.actual_update)
 
             scope.actual_update = () ->
 
+                struct = icswTooltipTools.create_struct(element)
                 time_frame = icswStatusHistorySettings.get_time_frame()
-
-                element.empty()
 
                 # calculate data to show
                 if time_frame? and scope.data?
-                    _div = angular.element("<div class='icsw-chart'></div>")
-                    _div.css("width", "#{scope.width}px").css("height", "#{scope.height}px").css("margin-bottom", "7px")
-                    if scope.data.length > 5000
-                        _div.text("Too much data to display (#{scope.data.length})")
-                    else
-                        _svg = createSVGElement("svg", {"width": scope.width, "height": scope.height})
-                        _g = createSVGElement("g")
-                        _rect = createSVGElement("rect", {"width": scope.width, "height": scope.height, "x": 0, "y": 0, "fill": "rgba(0, 0, 0, 0.0)"})
-                        _g.append(_rect)
-                        _div.append(_svg)
-                        _svg.append(_g)
-                        # set time marker
-                        time_marker = icswStatusHistorySettings.get_time_marker()
-                        i = 0
-                        for marker, index in time_marker.data
-                            if time_marker.time_points
-                                # time is exactly at certain points
-                                pos_x = scope.side_margin + index * scope.draw_width / (time_marker.data.length-1)
-                            else
-                                # pos should be in the middle of the durations, such as week days, month
-                                unit_size = scope.draw_width / time_marker.data.length
-                                start_of_unit = scope.side_margin + (index * unit_size)
-                                pos_x = start_of_unit + (unit_size / 2)
-
-                            # if steps is set, only draw every steps'th entry
-                            if !time_marker.steps or i % time_marker.steps == 0
-                                _marker = createSVGElement(
-                                    "text"
-                                    {
-                                        x: pos_x
-                                        y: scope.height
-                                        class: "default-text"
-                                        # style: "font-size": "#{scope.fontSize}px"
-                                        textAnchor: "middle"
-                                        alignmentBaseline: "baseline"
-                                    }
-                                )
-                                _marker.text(marker)
-                                _g.append(_marker)
-
-                            i += 1
-
-                        # tooltip
-                        _tooltip = angular.element("<div/>")
-
-                        _tooltip.addClass("icsw-tooltip").css("min-width", "400px").css("max-width", "350px")
-                        _tooltip.hide()
-                        _div.append(_tooltip)
-                        # calculate data to show
-                        # total duration of data in milliseconds
-                        total_duration = time_frame.end.diff(time_frame.start)
-                        # total duration of requested timeframe
-                        tf_duration = {
-                            day: 24 * 3600
-                            week: 7 * 24 * 3600
-                            month: time_frame.start.daysInMonth() * 24 * 3600
-                            year: 365 * 24 * 3600
-                            decade: 10 * 365 * 24 * 3600
-                        }[time_frame.duration_type] * 1000
-
-                        pos_x = scope.side_margin
-                        last_date = time_frame.start
-
-                        data_for_iteration = scope.data
-
-                        if scope.data.length > 0
-                            has_last_event_after_time_frame_end = moment.utc(scope.data[scope.data.length-1].date).isAfter(time_frame.end)
-                            if ! has_last_event_after_time_frame_end
-                                # add dummy element for nice iteration below
-                                data_for_iteration = data_for_iteration.concat('last')
-
-                        _mousemove = (event) ->
-                            entry = event.data
-
-                            _pos_x = event.clientX - _tooltip.width() / 2
-                            _pos_y = event.clientY - _tooltip.height() - 10
-
-                            if _pos_x < 0
-                                _pos_x = 0
-
-                            _tooltip.css("position", "fixed")
-                            _tooltip.css("left", "#{_pos_x}px")
-                            _tooltip.css("top", "#{_pos_y}px")
-
-                        for entry, index in data_for_iteration
-                            if entry == 'last'
-                                cur_date = time_frame.end
-                                display_end = moment()
-                            else
-                                cur_date = moment.utc(entry.date)
-                                if cur_date.isBefore(time_frame.start)
-                                    # first event is before current time, but we must not draw that
-                                    cur_date = time_frame.start
-                                display_end = cur_date
-
-                            duration = cur_date.diff(last_date)
-                            entry_width = scope.draw_width * duration / tf_duration
-
-                            if index != 0
-
-                                last_entry = data_for_iteration[index-1]
-                                entry_height = last_entry.$$data.height
-                                cssclass = last_entry.$$data.svgClassName
-                                label_height = 13
-
-                                entry_height /= (base_height)
-                                #pos_y = ((2/3)-entry_height ) * scope.height  # such that bar ends
-                                entry_height *= (scope.height - label_height)
-
-                                pos_y = scope.height - entry_height - label_height
-
-                                # entry_height and pos_x are correct values, but we sometimes want some 'emphasis'
-                                # these values are only used for display below
-                                display_entry_width = entry_width
-                                display_pos_x = pos_x
-                                if entry_width <= 2
-                                    if entry_width <= 1
-                                        display_pos_x -= 1
-                                    display_entry_width += 1
-
-                                last_entry.display_end = display_end
-                                _rect = createSVGElement(
-                                    "rect"
-                                    {
-                                        width: display_entry_width
-                                        height: entry_height
-                                        x: display_pos_x
-                                        y: pos_y
-                                        rx: 1
-                                        ry: 1
-                                        class: cssclass
-                                    }
-                                )
-                                _rect.bind("mouseenter", last_entry, (event) ->
-                                    last_entry = event.data
-                                    _tooltip.html(
-                                        "State: " + last_entry.state +
-                                        "<br/>Start: " + moment.utc(last_entry.date).format("DD.MM.YYYY HH:mm") +
-                                        "<br/>End: " + last_entry.display_end.format("DD.MM.YYYY HH:mm") +
-                                        "<br/>" + if last_entry.msg then last_entry.msg else ""
-                                    )
-                                    _mousemove(event)
-                                    _tooltip.show()
-                                ).bind("mouseleave", (event) ->
-                                    _tooltip.hide()
-                                ).bind("mousemove", last_entry, (event) ->
-                                    _mousemove(event)
-                                )
-                                _g.append(_rect)
-
-                            pos_x += entry_width
-                            last_date = cur_date
-                element.append(_div)
-
+                    _el = ReactDOM.render(
+                        React.createElement(
+                            icswToolsHistLineGraphReact
+                            {
+                                data: scope.data
+                                width: scope.width
+                                height: scope.height
+                                baseHeight: base_height
+                                fontSize: 10
+                                sideMargin: 10
+                                timeFrame: time_frame
+                                tooltip: struct
+                                forHost: scope.forHost()
+                            }
+                        )
+                        element[0]
+                    )
 
             scope.$watchGroup(
                 [
