@@ -45,6 +45,7 @@
                                     <thead>
                                         <tr>
                                             <th>Idx</th>
+                                            <th>Type</th></t>
                                             <th>Name</th>
                                             <th>Devicegroup</th>
                                             <th>Similarity</th>
@@ -57,7 +58,14 @@
                                             ng-class="entry.$$tr_class"
                                         >
                                             <td><code>{{ $index + 1 }}</code></td>
-                                            <td>{{ entry.name }}</td>
+                                            <td>
+                                                <span ng-show="entry.full" class="label label-primary">Full</span>
+                                                <span ng-show="!entry.full" class="label label-success">Short</span>
+                                            </td>
+                                            <td>
+                                                <span ng-show="entry.full">{{ entry.full_name }}</span>
+                                                <span ng-show="!entry.full">{{ entry.short_name }}</span>
+                                            </td>
                                             <td>{{ entry.device_group_name }}</td>
                                             <td>{{ entry.ratio | number: 1 }} %</td>
                                             <td>

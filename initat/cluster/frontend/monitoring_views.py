@@ -407,15 +407,44 @@ class search_similar_names(View):
             "device_group__name",
             "enabled"
         )
-        _matcher = difflib.SequenceMatcher()
-        _matcher.set_seq1(fqdn)
+        # match short names
+        _s_matcher = difflib.SequenceMatcher()
+        _s_matcher.set_seq1(fqdn.split(".")[0])
+        full_match = fqdn.count(".")
+        if full_match:
+            # match FQDNs
+            _f_matcher = difflib.SequenceMatcher()
+            _f_matcher.set_seq1(fqdn)
         result = []
         for _sname, _dom, dg_name, enabled in _list:
-            full_name = "{}{}".format(_sname, ".{}".format(_dom) if _dom else "")
-            _matcher.set_seq2(full_name)
-            _ratio = _matcher.ratio()
+            full_name = "{}{}".format(
+                _sname,
+                ".{}".format(_dom) if _dom else "",
+            )
+            _s_matcher.set_seq2(_sname)
+            _s_ratio = _s_matcher.ratio()
+            if full_match:
+                _f_matcher.set_seq2(full_name)
+                _f_ratio = _f_matcher.ratio()
+            else:
+                _f_ratio = 0.0
+            if _f_ratio > _s_ratio:
+                _m_type = True
+                _ratio = _f_ratio
+            else:
+                _m_type = False
+                _ratio = _s_ratio
             if _ratio >= TARGET_RATIO:
-                result.append({"name": full_name, "ratio": _ratio * 100, "enabled": enabled, "device_group_name": dg_name})
+                result.append(
+                    {
+                        "full_name": full_name,
+                        "short_name": _sname,
+                        "full": _m_type,
+                        "ratio": _ratio * 100,
+                        "enabled": enabled,
+                        "device_group_name": dg_name,
+                    }
+                )
         result.sort(key=lambda entry: entry["ratio"], reverse=True)
         return HttpResponse(
             json.dumps(
