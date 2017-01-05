@@ -731,7 +731,12 @@ class MSIBlock(object):
                 try:
                     _stat = act_dict[cur_pid].status().lower()
                     if _stat not in ["zombie", "dead"]:
-                        self.__pids_found[cur_pid] = 1
+                        # check for correct name
+                        if act_dict[cur_pid].name() == self.__pid_proc_names.get(cur_pid, ""):
+                            self.__pids_found[cur_pid] = 1
+                        else:
+                            # process found but wrong name
+                            pass
                 except psutil.NoSuchProcess:
                     pass
         self.pids_found = [cur_pid for cur_pid in self.__pids_found.iterkeys() if cur_pid in act_dict]

@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -43,8 +43,7 @@ class SpecialOvirtDomains(SpecialBase):
             "--username ${{ARG2:{}:notset}} --password ${{ARG3:{}:notset}}".format(
                 OVIRT_USER_NAME,
                 OVIRT_PASSWORD,
-            ) + \
-            " --passive-check-prefix $ARG4$ --reference $ARG5$"
+            ) + " --passive-check-prefix $ARG4$ --reference $ARG5$"
         description = "checks running virtual machines via API-calls to the engine"
 
     def dynamic_update_calls(self):
@@ -138,8 +137,7 @@ class SpecialOvirtStorageDomains(SpecialBase):
             "--username ${{ARG2:{}:notset}} --password ${{ARG3:{}:notset}}".format(
                 OVIRT_USER_NAME,
                 OVIRT_PASSWORD,
-            ) + \
-            " --passive-check-prefix $ARG4$ --reference $ARG5$"
+            ) + " --passive-check-prefix $ARG4$ --reference $ARG5$"
         description = "checks storage domains via API-calls to the engine"
 
     def dynamic_update_calls(self):
@@ -220,8 +218,7 @@ class SpecialOvirtHosts(SpecialBase):
             "--username ${{ARG2:{}:notset}} --password ${{ARG3:{}:notset}}".format(
                 OVIRT_USER_NAME,
                 OVIRT_PASSWORD,
-            ) + \
-            " --passive-check-prefix $ARG4$ --reference $ARG5$"
+            ) + " --passive-check-prefix $ARG4$ --reference $ARG5$"
         description = "checks hosts via API-calls to the engine"
 
     def dynamic_update_calls(self):
