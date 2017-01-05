@@ -401,7 +401,12 @@ class search_similar_names(View):
     def post(self, request):
         TARGET_RATIO = 0.6
         fqdn = request.POST["fqdn"]
-        _list = device.all_real_devices.all().values_list("name", "domain_tree_node__full_name", "device_group__name", "enabled")
+        _list = device.all_real_devices.all().values_list(
+            "name",
+            "domain_tree_node__full_name",
+            "device_group__name",
+            "enabled"
+        )
         _matcher = difflib.SequenceMatcher()
         _matcher.set_seq1(fqdn)
         result = []
@@ -410,7 +415,7 @@ class search_similar_names(View):
             _matcher.set_seq2(full_name)
             _ratio = _matcher.ratio()
             if _ratio >= TARGET_RATIO:
-                result.append({"name": full_name, "ratio": _ratio, "enabled": enabled, "device_group_name": dg_name})
+                result.append({"name": full_name, "ratio": _ratio * 100, "enabled": enabled, "device_group_name": dg_name})
         result.sort(key=lambda entry: entry["ratio"], reverse=True)
         return HttpResponse(
             json.dumps(

@@ -478,8 +478,10 @@ gulp.task("deploy-themes", () ->
         .pipe(gulp.dest(DEPLOY_DIR + "/static/"))
 )
 
-gulp.task("deploy-media", gulp.parallel("deploy-fonts", "deploy-images", "deploy-d3",
-    "deploy-svgcss-default", "deploy-svgcss-cora", "deploy-svgcss-sirocco"))
+gulp.task("deploy-media", gulp.parallel(
+    "deploy-fonts", "deploy-images", "deploy-d3",
+    "deploy-svgcss-default", "deploy-svgcss-cora", "deploy-svgcss-sirocco")
+)
 
 gulp.task("transform-main", (cb) ->
     return gulp.src(

@@ -44,9 +44,10 @@
                                 >
                                     <thead>
                                         <tr>
+                                            <th>Idx</th>
                                             <th>Name</th>
                                             <th>Devicegroup</th>
-                                            <th>Ratio</th>
+                                            <th>Similarity</th>
                                             <th>Status</th>
                                         </tr>
                                     </thead>
@@ -55,9 +56,10 @@
                                             ng-repeat="entry in struct.matching_names"
                                             ng-class="entry.$$tr_class"
                                         >
+                                            <td><code>{{ $index + 1 }}</code></td>
                                             <td>{{ entry.name }}</td>
                                             <td>{{ entry.device_group_name }}</td>
-                                            <td>{{ entry.ratio | number: 3 }}</td>
+                                            <td>{{ entry.ratio | number: 1 }} %</td>
                                             <td>
                                                 <span class="label label-success" ng-show="entry.enabled">enabled</span>
                                                 <span class="label label-warning" ng-show="!entry.enabled">disabled</span>
