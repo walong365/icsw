@@ -174,7 +174,7 @@ angular.module(
 
     _same_search = () ->
         if $scope.device_data.full_name
-            $scope.struct.same_seach_pending = true
+            $scope.struct.same_search_pending = true
             icswSimpleAjaxCall(
                 url: ICSW_URLS.MON_SEARCH_SIMILAR_NAMES
                 data: {
@@ -183,6 +183,7 @@ angular.module(
                 dataType: "json"
             ).then(
                 (json) ->
+                    $scope.struct.same_search_pending = false
                     $scope.struct.matching_names.length = 0
                     $scope.struct.matching_names_found = json.found
                     for entry in json.list

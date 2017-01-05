@@ -32,10 +32,11 @@
                         <label class="control-label col-md-3 icsw-formlabel">Similar named Devices</label>
                         <div class="controls col-md-6">
                             <h4 ng-show="struct.matching_names_found == 0" class="text-danger">
-                                None found
+                                None found<span ng-show="struct.same_search_pending">, checking...</span>
                             </h4>
                             <div ng-show="struct.matching_names_found > 0">
                                 <h4>
+                                    None found<span ng-show="struct.same_search_pending">, checking...</span>
                                     {{ struct.matching_names_found }} matching Devices found, showing the best {{ struct.matching_names.length }} matches:
                                 </h4>
                                 <table

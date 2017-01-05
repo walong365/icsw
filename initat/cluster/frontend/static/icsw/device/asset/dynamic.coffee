@@ -26,10 +26,9 @@ device_asset_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ngCsv"
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
-    icswRouteExtensionProvider.add_route("main.devasset")
+    icswRouteExtensionProvider.add_route("main.assetdynamicoverview")
     icswRouteExtensionProvider.add_route("main.schedasset")
     icswRouteExtensionProvider.add_route("main.schedoverviewasset")
-    icswRouteExtensionProvider.add_route("main.statictemplates")
 ]).directive("icswDeviceAssetDynamicOverview",
 [
     "$templateCache",
