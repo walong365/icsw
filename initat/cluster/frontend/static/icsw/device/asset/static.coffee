@@ -45,13 +45,13 @@ static_inventory_overview = angular.module(
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",
     "icswDeviceTreeService", "icswDeviceTreeHelperService", "$timeout",
     "icswDispatcherSettingTreeService", "Restangular", "icswCategoryTreeService",
-    "icswStaticAssetTemplateTreeService"
+    "icswStaticAssetTemplateTreeService", "DeviceOverviewService",
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, icswAssetHelperFunctions,
     icswDeviceTreeService, icswDeviceTreeHelperService, $timeout,
     icswDispatcherSettingTreeService, Restangular, icswCategoryTreeService,
-    icswStaticAssetTemplateTreeService
+    icswStaticAssetTemplateTreeService, DeviceOverviewService,
 ) ->
     $scope.struct = {
         device_tree: undefined
@@ -169,8 +169,12 @@ static_inventory_overview = angular.module(
 
         )
 
-    $scope.show_devices = (obj) ->
+    $scope.show_devices = ($event, obj) ->
         obj.$$show_devices_inventory_static_overview = !obj.$$show_devices_inventory_static_overview
+
+    $scope.show_device = ($event, device) ->
+        DeviceOverviewService($event, [device])
+
 ]).directive("icswStaticAssetTemplateOverview",
 [
     "ICSW_URLS", "Restangular",

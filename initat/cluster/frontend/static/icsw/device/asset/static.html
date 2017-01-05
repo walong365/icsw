@@ -60,14 +60,25 @@
             <uib-tabset>
                 <uib-tab ng-repeat="(static_type_name, static_asset_list) in struct.static_asset_tabs">
                     <uib-tab-heading>
-                        <span>{{ static_type_name }}</span>
+                        <span>
+                            {{ static_type_name }} ({{ static_asset_list.length }})
+                        </span>
                     </uib-tab-heading>
                     <br/>
                     <div class="panel panel-default">
                         <div class="panel-body" style="padding: 6px 15px">
                             <div ng-repeat="obj in static_asset_list">
                                 <h3>
-                                    {{ obj.name }} ({{ obj.description }}) <button ng-disabled="obj.$$expand_devices_button_disabled" type="button" class="btn btn-xs btn-success" ng-click="show_devices(obj)">{{ obj.$$show_devices_inventory_static_overview ? 'Hide' : 'Show' }} Device Information</button>
+                                    {{ obj.name }}
+                                    ({{ obj.description }})
+                                    <button
+                                        ng-disabled="obj.$$expand_devices_button_disabled"
+                                        type="button"
+                                        class="btn btn-xs btn-success"
+                                        ng-click="show_devices($event, obj)"
+                                    >
+                                        {{ obj.$$show_devices_inventory_static_overview ? 'Hide' : 'Show' }} Device Information
+                                    </button>
                                 </h3>
                                 <table
                                     class="table table-condensed table-striped simple-border"
@@ -99,7 +110,13 @@
                                         </tr>
                                         <tr ng-show="obj.$$show_devices_inventory_static_overview" ng-repeat="device in obj.$$devices">
                                             <td>
-                                                {{ device.name }}
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-xs btn-primary"
+                                                    ng-click="show_device($event, device)"
+                                                >
+                                                    {{ device.full_name }}
+                                                </button>
                                             </td>
                                             <td ng-repeat="field in device.$$static_field_values">
                                                 {{ field.value }}
@@ -328,7 +345,12 @@
                     Ordering
                 </label>
                 <div class="controls col-xs-7">
-                    <input class="form-control" class="disabled" value="{{ edit_obj.ordering + 1 }} of {{ template.staticassettemplatefield_set.length }}"/>
+                    <input
+                        class="form-control"
+                        class="disabled"
+                        value="{{ edit_obj.ordering + 1 }} of {{ template.staticassettemplatefield_set.length }}"
+                        disabled="disabled"
+                    />
                 </div>
             </div>
             <div class="form-group">
