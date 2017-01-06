@@ -247,7 +247,7 @@ angular.module(
                     defer.promise.then(
                         (creat_msg) ->
                             new_dev = $scope.struct.device_tree.all_lut[_dev_pk]
-                            console.log _dev_pk, new_dev
+                            # console.log _dev_pk, new_dev
 
                             scan_settings = {
                                 manual_address: d_dict.ip

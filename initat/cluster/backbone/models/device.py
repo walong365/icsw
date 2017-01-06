@@ -919,6 +919,8 @@ class DeviceLogEntry(models.Model):
     user = models.ForeignKey("user", null=True)
     level = models.ForeignKey("LogLevel")
     text = models.CharField(max_length=765, default="")
+    # marked as read by user
+    read_by = models.ForeignKey("backbone.user", null=True, related_name="read_device_logs")
     date = models.DateTimeField(auto_now_add=True)
 
     @staticmethod

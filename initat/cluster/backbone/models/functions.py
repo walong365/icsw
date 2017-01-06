@@ -148,11 +148,13 @@ def to_system_tz(in_dt):
     return in_dt.astimezone(system_timezone)
 
 
-def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_objs=[], related_objects=None):
+def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_objs=[], related_objects=None,
+                       simple_tuples=False):
     """
     :param related_objects: If not None, RelatedObjects with references are appended
+    :param simple_tuples: If True, return a set of tuples (object_name, object_pk)
     """
-    used_objs = [] if detail else 0
+    used_objs = [] if (detail or simple_tuples) else 0
     if hasattr(in_obj, "CSW_Meta"):
         # copy list because we remove entries as we iterate over foreign models
         fk_ignore_list = [entry for entry in getattr(in_obj.CSW_Meta, "fk_ignore_list", [])]
@@ -198,6 +200,8 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
                     )
                     if detail:
                         used_objs.extend(ref_list)
+                    elif simple_tuples:
+                        used_objs.extend([(_rel_name, _obj.pk) for _obj in ref_list])
                     else:
                         used_objs += len(ref_list)
         else:
@@ -210,6 +214,7 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
             _f for _f in in_obj._meta.get_fields(include_hidden=True) if _f.many_to_many and _f.auto_created
         ]
         for m2m_obj in all_m2ms:
+            _rel_name = m2m_obj.related_model._meta.object_name
             m2m_field_name = m2m_obj.field.name
             if detail:
                 used_objs.extend(
@@ -218,6 +223,14 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
                             Q(**{m2m_field_name: in_obj})
                         )
                     )
+                )
+            elif simple_tuples:
+                used_objs.extend(
+                    [
+                        (_rel_name, _obj.pk) for obj in m2m_obj.related_model.objects.filter(
+                            Q(**{m2m_field_name: in_obj})
+                        )
+                    ]
                 )
             else:
                 used_objs += m2m_obj.related_model.objects.filter(

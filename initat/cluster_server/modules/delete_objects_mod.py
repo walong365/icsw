@@ -1,6 +1,6 @@
-# Copyright (C) 2015-2016 Bernhard Mallinger
+# Copyright (C) 2015-2017 Bernhard Mallinger, Andreas Lang-Nevyjel
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <mallinger@init.at>, <lang-nevyjel@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 3 as
@@ -26,13 +26,16 @@ from __future__ import unicode_literals, print_function
 import json
 import time
 
+from django.apps import apps
 from django.db import transaction
 
-import initat
-from initat.cluster.backbone.models import DeleteRequest
+# import initat
+from ..config import global_config
+from initat.cluster.backbone.models import DeleteRequest, BackgroundJobState
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster_server.modules import cs_base_class
 from initat.tools import logging_tools
+from initat.tools.bgnotify import create_bg_job
 
 
 class handle_delete_requests(cs_base_class.icswCSServerCom):
@@ -64,6 +67,9 @@ class handle_delete_requests(cs_base_class.icswCSServerCom):
                         cur_inst.log("Stopping deletions due to run_flag set to False")
                         break
 
+                # print(req)
+                # print(req.obj_pk, req.model, req.delete_strategies, cur_inst)
+                # print(type(req.delete_strategies))
                 self.handle_deletion(req.obj_pk, req.model, req.delete_strategies, cur_inst)
                 deletions += 1
 
@@ -73,12 +79,22 @@ class handle_delete_requests(cs_base_class.icswCSServerCom):
 
     @staticmethod
     def handle_deletion(obj_pk, model, delete_strategies, cur_inst):
-        model = getattr(initat.cluster.backbone.models, model)
+        # delete strategies is a json-encoded list
+        model = apps.get_model("backbone", model)
         try:
             obj_to_delete = model.objects.get(pk=obj_pk)
         except model.DoesNotExist:
             cur_inst.log("Object with pk {} from model {} does not exist any more".format(obj_pk, model))
         else:
+            _bgj = create_bg_job(
+                global_config["SERVER_IDX"],
+                None,
+                "delete object '{}'".format(unicode(obj_to_delete)),
+                "delete",
+                None,
+                state=BackgroundJobState.pending,
+                timeout=60 * 60,
+            )
             cur_inst.log("Deleting {} ({}; pk:{})".format(obj_to_delete, model, obj_pk))
 
             start_time = time.time()
@@ -127,4 +143,5 @@ class handle_delete_requests(cs_base_class.icswCSServerCom):
                 # can delete obj right away
                 obj_to_delete.delete()
 
+            _bgj.set_state(BackgroundJobState.done)
             cur_inst.log("Deletion finished in {} seconds".format(time.time() - start_time))

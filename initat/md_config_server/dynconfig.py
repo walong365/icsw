@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -33,7 +33,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, monitoring_hint, mon_check_command_special, \
-    mon_check_command
+    mon_check_command, DeviceLogEntry
 from initat.host_monitoring import limits
 from initat.md_config_server.config import global_config
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
@@ -200,6 +200,12 @@ class DynConfigProcess(threading_tools.process_obj):
                             unicode(cur_dev),
                         ),
                         logging_tools.LOG_LEVEL_ERROR
+                    )
+                    DeviceLogEntry.new(
+                        device=cur_dev,
+                        source=global_config["LOG_SOURCE_IDX"],
+                        level=logging_tools.LOG_LEVEL_ERROR,
+                        text="unhandled IPMI result chunk",
                     )
                 else:
                     _mc.check_command_pk = _mc.pk

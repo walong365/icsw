@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007-2008,2012-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2008,2012-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -35,7 +35,6 @@ if __name__ == "__main__":
 
 import array
 import netifaces
-import sys
 import time
 import hashlib
 
@@ -570,7 +569,7 @@ class server_check(object):
                 else:
                     if self.host_name:
                         # search with full host name
-                        self.device = device.objects.prefetch_related(
+                        self.device = device.all_enabled.prefetch_related(
                             "netdevice_set__net_ip_set__network__network_type"
                         ).select_related(
                             "domain_tree_node"
@@ -579,7 +578,7 @@ class server_check(object):
                         )
                     else:
                         # search with short host name
-                        self.device = device.objects.prefetch_related(
+                        self.device = device.all_enabled.prefetch_related(
                             "netdevice_set__net_ip_set__network__network_type"
                         ).select_related(
                             "domain_tree_node"
@@ -1058,7 +1057,7 @@ class device_with_config(dict):
         # expand device groups
         group_dict, md_set, group_md_lut = ({}, set(), {})
         if exp_group:
-            for group_dev in device.objects.select_related(
+            for group_dev in device.all_enabled.select_related(
                 "domain_tree_node"
             ).filter(
                 Q(device_group__in=exp_group)

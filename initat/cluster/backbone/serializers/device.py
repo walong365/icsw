@@ -273,4 +273,4 @@ class DeviceLogEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DeviceLogEntry
-        fields = ("idx", "device", "source", "user", "level", "text", "date")
+        fields = ("idx", "device", "source", "user", "level", "text", "date", "read_by")

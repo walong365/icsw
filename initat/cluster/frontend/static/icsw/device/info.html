@@ -88,7 +88,12 @@
             </div>
         </div>
     </fieldset>
-    <icsw-tools-button type="modify" size="sm" ng-click="modify_tabs($event)" class="pull-right"></icsw-tools-button>
+    <icsw-tools-button
+        type="modify"
+        size="sm"
+        ng-click="modify_tabs($event)"
+        class="pull-right"
+    ></icsw-tools-button>
 </script>
 
 <script type="text/ng-template" id="icsw.deviceempty.info.form">
@@ -320,8 +325,12 @@
         </div>
     </fieldset>
     <fieldset>
-        <div class="pull-right" ng-show="acl_modify(edit_obj, 'backbone.device.change_basic')">
-            <icsw-tools-button type="modify" button-type="submit" ng-click="modify()"></icsw-tools-button>
+        <div
+            class="pull-right"
+            ng-show="acl_modify(edit_obj, 'backbone.device.change_basic')"
+        >
+            <icsw-tools-button type="delete" ng-if="!struct.is_devicegroup" ng-click="delete($event)"></icsw-tools-button>
+            <icsw-tools-button type="modify" button-type="submit" ng-click="modify($event)"></icsw-tools-button>
         </div>
     </fieldset>
     <fieldset>

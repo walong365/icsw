@@ -22,7 +22,7 @@ angular.module(
     "icsw.device.tree",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table",
-        "icsw.tools.table", "icsw.tools", "icsw.tools.button", "icsw.tools.dialog",
+        "icsw.tools.table", "icsw.tools", "icsw.tools.button", "icsw.tools.delete",
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.devtree")
@@ -41,13 +41,13 @@ angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "icswComplexModalService",
     "$uibModal", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
-    "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster", "icswDialogDeleteObjects", "icswDeviceBackup",
+    "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster", "icswDialogDeleteService", "icswDeviceBackup",
     "icswDeviceTreeService", "icswDomainTreeService", "ICSW_SIGNALS", "$rootScope", "icswActiveSelectionService", "icswDeviceGroupBackup",
     "icswConfigTreeService", "DeviceOverviewService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, icswComplexModalService,
     $uibModal, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
-    icswSimpleAjaxCall, icswToolsSimpleModalService, toaster, icswDialogDeleteObjects, icswDeviceBackup,
+    icswSimpleAjaxCall, icswToolsSimpleModalService, toaster, icswDialogDeleteService, icswDeviceBackup,
     icswDeviceTreeService, icswDomainTreeService, ICSW_SIGNALS, $rootScope, icswActiveSelectionService, icswDeviceGroupBackup,
     icswConfigTreeService, DeviceOverviewService,
 ) ->
@@ -204,13 +204,17 @@ angular.module(
         $scope.create_or_edit($event, false, obj, true, false)
 
     $scope.delete_device = ($event, obj) ->
-        icswDialogDeleteObjects(
-            [obj]
-            "device"
-            (arg) ->
-                console.log "after device delete", arg
-                if arg?
-                    $scope.handle_device_delete(arg.del_pks)
+        icswDialogDeleteService.delete(
+            icswDialogDeleteService.get_delete_instance(
+                [obj]
+                "device"
+                {
+                    after_delete: (arg) ->
+                        console.log "after device delete", arg
+                        if arg?
+                            $scope.handle_device_delete(arg.del_pks)
+                }
+            )
         )
 
     $scope.handle_device_delete = (pks) ->
@@ -233,13 +237,17 @@ angular.module(
         $scope.create_or_edit(event, false, obj, true, true)
 
     $scope.delete_device_group = ($event, obj) ->
-        icswDialogDeleteObjects(
-            [obj]
-            "device_group"
-            (arg) ->
-                console.log "after device_group delete", arg
-                if arg?
-                    $scope.handle_device_group_delete(arg.del_pks)
+        icswDialogDeleteService.delete(
+            icswDialogDeleteService.get_delete_instance(
+                [obj]
+                "device_group"
+                {
+                    after_delete: (arg) ->
+                        console.log "after device_group delete", arg
+                        if arg?
+                            $scope.handle_device_group_delete(arg.del_pks)
+                }
+            )
         )
 
     $scope.handle_device_group_delete = (pks) ->
@@ -264,13 +272,17 @@ angular.module(
     $scope.delete_many = ($event) ->
         sel_list = icswActiveSelectionService.current().get_devsel_list()[1]
         to_delete_list = (entry for entry in $scope.struct.device_tree.all_list when entry.is_meta_device == false and entry.idx in sel_list)
-        icswDialogDeleteObjects(
-            to_delete_list
-            "device"
-            (arg) ->
-                console.log "after many device delete", arg
-                if arg?
-                    $scope.handle_device_delete(arg.del_pks)
+        icswDialogDeleteService.delete(
+            icswDialogDeleteService.get_delete_instance(
+                to_delete_list
+                "device"
+                {
+                    after_delete: (arg) ->
+                        console.log "after many device delete"
+                        if arg?
+                            $scope.handle_device_delete(arg.del_pks)
+                }
+            )
         )
 
     $scope.create_or_edit = ($event, create_mode, obj, single_instance, is_group) ->
