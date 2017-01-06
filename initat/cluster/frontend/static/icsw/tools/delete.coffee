@@ -75,6 +75,7 @@ angular.module(
             @deletable_objects = (
                 {
                     pk: pk
+                    idx: parseInt(pk)
                     model_name: @model_name
                     delete: true
                     delete_strategies: []
@@ -93,6 +94,7 @@ angular.module(
                 # salt the object ref_obj with so that the structure is similar
                 # to the one of the @delete_objects list (for simple deletions)
                 ref_obj.pk = pk
+                ref_obj.idx = parseInt(pk)
                 ref_obj.model_name = @model_name
                 ref_obj.name = _get_name(parseInt(pk))
                 ref_list = ref_obj.list
@@ -250,7 +252,7 @@ angular.module(
 
         _struct.next_delete_request_id++
         _struct.check_lut[_struct.next_delete_request_id] = {
-            del_pks: (entry.pk for entry in to_delete)
+            del_pks: (entry.idx for entry in to_delete)
             model_name: del_struct.model_name
             async_delete: del_struct.async_delete
             after_delete: del_struct.after_delete

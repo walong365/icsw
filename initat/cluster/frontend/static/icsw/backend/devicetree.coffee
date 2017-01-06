@@ -911,6 +911,7 @@ angular.module(
             return defer.promise
 
         delete_device: (d_pk) =>
+            console.log "del", d_pk
             _.remove(@all_list, (entry) -> return entry.idx == d_pk)
             @reorder()
 
@@ -1257,7 +1258,6 @@ angular.module(
             _res.push(@cluster_device_group_device.idx)
             # console.log "trace: in #{devs.length}, out #{_res.length}"
             return (@all_lut[idx] for idx in _res)
-
         # category functions
         add_category_to_device_by_pk: (dev_pk, cat_pk) =>
             @add_category_to_device(@all_lut[dev_pk], cat_pk)

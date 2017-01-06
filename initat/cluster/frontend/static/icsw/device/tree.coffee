@@ -112,7 +112,7 @@ angular.module(
                 $scope.entries_filtered.push(entry)
         # force redraw
         $scope.struct.trigger_redraw++
-        console.log "length / filtered length: #{$scope.struct.device_tree.all_list.length} / #{$scope.entries_filtered.length}"
+        # console.log "length / filtered length: #{$scope.struct.device_tree.all_list.length} / #{$scope.entries_filtered.length}"
 
     # hm, not needed ?
     # icswActiveSelectionService.register_receiver()
@@ -136,7 +136,7 @@ angular.module(
         ]
         $q.all(wait_list).then(
             (data) ->
-                console.log "TreeData", data
+                # console.log "TreeData", data
                 $scope.struct.device_tree = data[0]
                 $scope.struct.config_tree = data[1]
                 $scope.struct.domain_tree = $scope.struct.device_tree.domain_tree
@@ -210,7 +210,7 @@ angular.module(
                 "device"
                 {
                     after_delete: (arg) ->
-                        console.log "after device delete", arg
+                        console.warn "after device delete", arg
                         if arg?
                             $scope.handle_device_delete(arg.del_pks)
                 }
@@ -243,7 +243,7 @@ angular.module(
                 "device_group"
                 {
                     after_delete: (arg) ->
-                        console.log "after device_group delete", arg
+                        console.warn "after device_group delete", arg
                         if arg?
                             $scope.handle_device_group_delete(arg.del_pks)
                 }
@@ -278,7 +278,7 @@ angular.module(
                 "device"
                 {
                     after_delete: (arg) ->
-                        console.log "after many device delete"
+                        console.warn "after many device delete"
                         if arg?
                             $scope.handle_device_delete(arg.del_pks)
                 }
@@ -418,7 +418,7 @@ angular.module(
                 st_attrs['passwd'] = ""
                 st_attrs['mon_master'] = ""
                 st_attrs['boot_master'] = ""
-                st_attrs['name'] = group.name
+                st_attrs['name'] = group.full_name
                 st_attrs['description'] = group.description
                 st_attrs["class"] = $scope.struct.device_tree.device_class_tree.lut[obj.device_class].name
                 if $scope.struct.device_tree.get_meta_device(obj).is_cluster_device_group
@@ -430,7 +430,7 @@ angular.module(
                     st_attrs['type'] = obj.num_devices
                 st_attrs['tln'] = $scope.struct.domain_tree.show_dtn(group)
             else
-                st_attrs['name'] = obj.name
+                st_attrs['name'] = obj.full_name
                 st_attrs['description'] = obj.comment
                 st_attrs['enabled'] = obj.enabled
                 st_attrs['tln'] = $scope.struct.domain_tree.show_dtn(obj)
