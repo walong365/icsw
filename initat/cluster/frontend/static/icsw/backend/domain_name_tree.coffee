@@ -33,10 +33,11 @@ angular.module(
     icswTools, Restangular, $q, ICSW_URLS,
 ) ->
     class icswDomainTree
-        constructor: () ->
+        constructor: (new_list) ->
             @data_set = false
             @list = []
             @lut = {}
+            @update(new_list)
 
         update: (new_list) =>
             @data_set = true
@@ -155,11 +156,9 @@ angular.module(
 
 ]).service('icswDomainTreeService',
 [
-    "Restangular", "$q", "icswTools", "icswCachingCall", "ICSW_URLS",
-    "icswDomainTree", "icswTreeBase",
+    "ICSW_URLS", "icswDomainTree", "icswTreeBase",
 (
-    Restangular, $q, icswTools, icswCachingCall, ICSW_URLS,
-    icswDomainTree, icswTreeBase,
+    ICSW_URLS, icswDomainTree, icswTreeBase,
 ) ->
     rest_map = [
         ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST
