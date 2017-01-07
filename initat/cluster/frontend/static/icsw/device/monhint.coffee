@@ -116,6 +116,11 @@ angular.module(
                 $(xml).find("config > *").each (idx, node) =>
                     new_table = new icswMonConfigTable($(node))
                     $scope.struct.mc_tables.push(new_table)
+                $(xml).find("devices > device").each (idx, device) =>
+                    device = $(device)
+                    pk = parseInt(device.attr("pk"))
+                    dyn_checks = if parseInt(device.attr("dynamic_checks")) then true else false
+                    $scope.struct.device_tree.set_device_flags(pk, {dynamic_checks: dyn_checks})
                 # now (re)-enrich the devices
                 # hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
                 $scope.struct.fetching_mon = false

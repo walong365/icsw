@@ -206,7 +206,7 @@ class get_node_config(View):
         result = contact_server(request, icswServiceEnum.monitor_server, srv_com, timeout=30)
         if result:
             if _post["mode"] != "fetch":
-                node_results = result.xpath(".//config", smart_strings=False)
+                node_results = result.xpath(".//result", smart_strings=False)
                 if len(node_results):
                     request.xml_response["result"] = node_results[0]
                 else:

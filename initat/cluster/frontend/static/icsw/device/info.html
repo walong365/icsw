@@ -271,12 +271,12 @@
     <fieldset>
         <legend>Device Flags</legend>
         <div class="row">
-            <div class="col-xs-4 col-sm-4" ng-show="struct.monitoring_tree.mon_device_templ_list.length">
+            <div class="col-xs-6 col-sm-4" ng-show="struct.monitoring_tree.mon_device_templ_list.length">
                 <label class="control-label icsw-formlabel">
                     Monitoring Device Template
                 </label>
             </div>
-            <div class="col-xs-8 col-sm-8" ng-show="struct.monitoring_tree.mon_device_templ_list.length">
+            <div class="col-xs-6 col-sm-8" ng-show="struct.monitoring_tree.mon_device_templ_list.length">
                 <span ng-show="edit_obj.mon_device_templ">
                     {{ struct.monitoring_tree.mon_device_templ_lut[edit_obj.mon_device_templ].name }}
                 </span>
@@ -284,12 +284,14 @@
             </div>
         </div>
         <div class="row">
-            <div class="col-xs-8 col-sm-4">
+            <div class="col-xs-6 col-sm-4">
                 <label class="control-label icsw-formlabel">Monitoring Hints</label>
             </div>
-            <div class="col-xs-4 col-sm-2">
+            <div class="col-xs-6 col-sm-8">
                 {{ edit_obj.$$monitoring_hint_info }}
             </div>
+        </div>
+        <div class="row">
             <div class="col-xs-8 col-sm-4">
                 <label class="control-label icsw-formlabel">
                     Monitoring Checks Enabled
@@ -297,6 +299,14 @@
             </div>
             <div class="col-xs-4 col-sm-2">
                 <span ng-bind-html="edit_obj.monitor_checks | yesno4"></span>
+            </div>
+            <div class="col-xs-8 col-sm-4">
+                <label class="control-label icsw-formlabel">
+                    Dynamic Checks found
+                </label>
+            </div>
+            <div class="col-xs-4 col-sm-2">
+                <span ng-bind-html="edit_obj.dynamic_checks | yesno4"></span>
             </div>
         </div>
         <div class="row">

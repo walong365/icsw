@@ -826,6 +826,12 @@ angular.module(
             console.error "DO NOT USE: get_num_devices()"
             return (entry for entry in @enabled_list when entry.device_group == group.idx).length - 1
 
+        # modification functions
+        set_device_flags: (pk, kwargs) =>
+            dev = @all_lut[pk]
+            for key, value of kwargs
+                dev[key] = value
+
         # create / delete functions
 
         # for group

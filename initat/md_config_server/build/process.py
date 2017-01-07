@@ -423,7 +423,7 @@ class BuildProcess(
                 # set global config and other global values
                 gbc.set_global_config(cur_gc, cur_dmap, hdep_from_topo)
                 self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
-                self.create_all_host_configs(gbc)
+                hbcs_created = self.create_all_host_configs(gbc)
                 self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
                 if self.build_mode in [BuildModesEnum.all_master, BuildModesEnum.all_slave, BuildModesEnum.some_master, BuildModesEnum.some_slave]:
                     # refresh implies _write_entries
@@ -439,12 +439,19 @@ class BuildProcess(
             self.send_pool_message("build_info", "end_build", self.version, self.build_mode.name, target="syncer")
         if self.build_mode in [BuildModesEnum.some_check, BuildModesEnum.some_master]:
             cur_gc = self.__gen_config
-            res_node = E.config(
-                *sum(
-                    [
-                        cur_gc[key].get_xml() for key in constants.SINGLE_BUILD_MAPS
-                    ],
-                    []
+            res_node = E.result(
+                E.devices(
+                    *[
+                        _hbc.get_result_xml() for _hbc in hbcs_created
+                    ]
+                ),
+                E.config(
+                    *sum(
+                        [
+                            cur_gc[key].get_xml() for key in constants.SINGLE_BUILD_MAPS
+                            ],
+                        []
+                    )
                 )
             )
             self.srv_com["result"] = res_node
@@ -602,8 +609,9 @@ class BuildProcess(
         # build lookup-table
         self.send_pool_message("build_info", "device_count", cur_gc.monitor_server.full_name, len(host_names), target="syncer")
         nagvis_maps = set()
+        hbcs_created = []
         for host_name, host in sorted(host_names):
-            self.create_single_host_config(
+            _hbc_result = self.create_single_host_config(
                 gbc,
                 host,
                 all_access,
@@ -611,6 +619,7 @@ class BuildProcess(
                 all_configs,
                 nagvis_maps,
             )
+            hbcs_created.append(_hbc_result)
         p_dict = self.parenting_run(gbc)
         if cur_gc.master and not gbc.single_build:
             if gbc.hdep_from_topo:
@@ -640,6 +649,7 @@ class BuildProcess(
                 logging_tools.get_diff_time_str(end_time - start_time),
             )
         )
+        return hbcs_created
 
     def get_all_configs(self, ac_filter):
         meta_devices = {
@@ -1175,6 +1185,7 @@ class BuildProcess(
         )
         self.flush_hbc_logs(hbc, glob_log_str)
         hbc.store_to_db()
+        return hbc
 
     def flush_hbc_logs(self, hbc, glob_log_str):
         info_str = hbc.info_str

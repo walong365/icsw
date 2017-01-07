@@ -118,8 +118,8 @@ class device_serializer(serializers.ModelSerializer):
             "new_state", "prod_link", "dhcp_mac", "dhcp_write",
             # for categories
             "categories",
-            # class
-            "device_class",
+            # class and monitoring stuff
+            "device_class", "dynamic_checks",
             # uuid
             "uuid",
         )
