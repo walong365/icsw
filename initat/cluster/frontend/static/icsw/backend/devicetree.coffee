@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2016 init.at
+# Copyright (C) 2012-2017 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -748,6 +748,9 @@ angular.module(
             @cluster_device_group = undefined
             _disabled_groups = []
             for _entry in full_list
+                if not _entry.$$delete_pending?
+                    _entry.$$delete_pending = false
+                # pseudo flag from backend
                 if _entry.is_cluster_device_group
                     # oh what a name ...
                     @cluster_device_group_device = _entry
@@ -763,6 +766,8 @@ angular.module(
                         _disabled_groups.push(_entry.device_group)
                     @disabled_list.push(_entry)
             for _group in @group_list
+                if not _group.$$delete_pending?
+                    _group.$$delete_pending = false
                 if _group.enabled and not _group.cluster_device_group
                     @enabled_ns_group_list.push(_group)
             @enabled_lut = icswTools.build_lut(@enabled_list)
@@ -866,10 +871,13 @@ angular.module(
             return defer.promise
 
         delete_device_group: (dg_pk) =>
-            group = @group_lut[dg_pk]
-            _.remove(@all_list, (entry) -> return entry.idx == group.device)
-            _.remove(@group_list, (entry) -> return entry.idx == dg_pk)
-            @reorder()
+            if dg_pk of @group_lut
+                group = @group_lut[dg_pk]
+                _.remove(@all_list, (entry) -> return entry.idx == group.device)
+                _.remove(@group_list, (entry) -> return entry.idx == dg_pk)
+                @reorder()
+            else
+                console.error "trying to delete no longer existing device_group with pk=#{dg_pk}"
 
         # for device
 

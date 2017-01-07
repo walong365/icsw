@@ -440,26 +440,34 @@ class AddDeleteRequest(View):
         for del_struct in data:  # obj_pk in obj_pks:
             model_name = del_struct["model_name"]
             model = apps.get_model("backbone", model_name)
-            obj = model.objects.get(pk=del_struct["pk"])
-
-            if hasattr(obj, "enabled"):
-                obj.enabled = False
-                obj.save(update_fields=["enabled"])
-
-            if DeleteRequest.objects.filter(
-                Q(obj_pk=del_struct["pk"]) &
-                Q(model=model_name)
-            ).exists():
-                request.xml_response.error("This object is already in the deletion queue.")
-            else:
-                del_req = DeleteRequest(
-                    obj_pk=del_struct["pk"],
-                    model=model_name,
-                    delete_strategies=json.dumps(del_struct["delete_strategies"]),
+            try:
+                obj = model.objects.get(pk=del_struct["pk"])
+            except model.DoesNotExist:
+                request.xml_response.error(
+                    "The {} with pk {} does not exist".format(
+                        model_name,
+                        del_struct["pk"]
+                    )
                 )
-                with transaction.atomic():
-                    # save right away, not after request finishes, since cluster server is notified now
-                    del_req.save()
+            else:
+                if hasattr(obj, "enabled"):
+                    obj.enabled = False
+                    obj.save(update_fields=["enabled"])
+
+                if DeleteRequest.objects.filter(
+                    Q(obj_pk=del_struct["pk"]) &
+                    Q(model=model_name)
+                ).exists():
+                    request.xml_response.error("This object is already in the deletion queue.")
+                else:
+                    del_req = DeleteRequest(
+                        obj_pk=del_struct["pk"],
+                        model=model_name,
+                        delete_strategies=json.dumps(del_struct["delete_strategies"]),
+                    )
+                    with transaction.atomic():
+                        # save right away, not after request finishes, since cluster server is notified now
+                        del_req.save()
 
         srv_com = server_command.srv_command(command="handle_delete_requests")
         contact_server(request, icswServiceEnum.cluster_server, srv_com, log_result=False)

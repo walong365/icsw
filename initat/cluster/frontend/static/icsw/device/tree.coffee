@@ -398,7 +398,15 @@ angular.module(
         DeviceOverviewService($event, [device])
 
     $scope.get_tr_class = (obj) ->
-        return if obj.is_meta_device then "success" else ""
+        if obj.$$delete_pending
+            return "danger"
+        else if obj.is_meta_device
+            if obj.$$group.$$delete_pending
+                return "danger"
+            else
+                return "success"
+        else
+            return ""
 
     $scope.ignore_md = (entry) ->
         return entry.identifier != "MD"

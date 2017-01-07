@@ -399,14 +399,7 @@ class resolve_name(View):
 
 class search_similar_names(View):
     def post(self, request):
-        TARGET_RATIO = 0.6
         fqdn = request.POST["fqdn"]
-        _list = device.all_real_devices.all().values_list(
-            "name",
-            "domain_tree_node__full_name",
-            "device_group__name",
-            "enabled"
-        )
         # match short names
         _s_matcher = difflib.SequenceMatcher()
         _s_matcher.set_seq1(fqdn.split(".")[0])
@@ -415,36 +408,49 @@ class search_similar_names(View):
             # match FQDNs
             _f_matcher = difflib.SequenceMatcher()
             _f_matcher.set_seq1(fqdn)
-        result = []
-        for _sname, _dom, dg_name, enabled in _list:
-            full_name = "{}{}".format(
-                _sname,
-                ".{}".format(_dom) if _dom else "",
-            )
-            _s_matcher.set_seq2(_sname)
-            _s_ratio = _s_matcher.ratio()
-            if full_match:
-                _f_matcher.set_seq2(full_name)
-                _f_ratio = _f_matcher.ratio()
-            else:
-                _f_ratio = 0.0
-            if _f_ratio > _s_ratio:
-                _m_type = True
-                _ratio = _f_ratio
-            else:
-                _m_type = False
-                _ratio = _s_ratio
-            if _ratio >= TARGET_RATIO:
-                result.append(
-                    {
-                        "full_name": full_name,
-                        "short_name": _sname,
-                        "full": _m_type,
-                        "ratio": _ratio * 100,
-                        "enabled": enabled,
-                        "device_group_name": dg_name,
-                    }
+        # total device count
+        total_count = device.all_real_enabled.count()
+        _list = device.all_real_devices.all().values_list(
+            "name",
+            "domain_tree_node__full_name",
+            "device_group__name",
+            "enabled"
+        )
+        for TARGET_RATIO in [0.6, 0.4, 0.0]:
+            result = []
+            for _sname, _dom, dg_name, enabled in _list:
+                full_name = "{}{}".format(
+                    _sname,
+                    ".{}".format(_dom) if _dom else "",
                 )
+                _s_matcher.set_seq2(_sname)
+                _s_ratio = _s_matcher.ratio()
+                if full_match:
+                    _f_matcher.set_seq2(full_name)
+                    _f_ratio = _f_matcher.ratio()
+                else:
+                    _f_ratio = 0.0
+                if _f_ratio > _s_ratio:
+                    _m_type = True
+                    _ratio = _f_ratio
+                else:
+                    _m_type = False
+                    _ratio = _s_ratio
+                if _ratio >= TARGET_RATIO:
+                    result.append(
+                        {
+                            "full_name": full_name,
+                            "short_name": _sname,
+                            "full": _m_type,
+                            "ratio": _ratio * 100,
+                            "full_ratio": _f_ratio * 100,
+                            "short_ratio": _s_ratio * 100,
+                            "enabled": enabled,
+                            "device_group_name": dg_name,
+                        }
+                    )
+            if len(result) > 10:
+                break
         result.sort(key=lambda entry: entry["ratio"], reverse=True)
         return HttpResponse(
             json.dumps(

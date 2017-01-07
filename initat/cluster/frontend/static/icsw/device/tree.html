@@ -82,7 +82,7 @@
 
 <script type="text/ng-template" id="icsw.device.tree.meta.row">
     <td>
-        <strong>{{ group.full_name }}</strong>
+        <strong>{{ group.name }}</strong>
     </td>
     <td class="text-center">
         <div class="btn-group btn-group-xs" ng-show="group.num_devices">
@@ -101,11 +101,27 @@
     <td ng-show="hide_lut['tln']">{{ struct.domain_tree.show_dtn(obj) }}</td>
     <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
     <td>
-        <icsw-tools-button type="modify" size="xs" ng-click="edit_device_group($event, group)"></icsw-tools-button>
+        <icsw-tools-button
+            type="modify"
+            size="xs"
+            ng-show="!group.$$delete_pending"
+            ng-click="edit_device_group($event, group)"
+        ></icsw-tools-button>
     </td>
     <td>
-        <icsw-tools-button ng-show="!group.num_devices" type="delete" size="xs" ng-click="delete_device_group($event, group)"></icsw-tools-button>
-        <icsw-tools-button type="create" value="create device" size="xs" ng-click="create_device($event, group)"></icsw-tools-button>
+        <icsw-tools-button
+            ng-show="!group.num_devices && !group.$$delete_pending"
+            type="delete"
+            size="xs"
+            ng-click="delete_device_group($event, group)"
+        ></icsw-tools-button>
+        <icsw-tools-button
+            type="create"
+            value="create device"
+            ng-show="!group.$$delete_pending"
+            size="xs"
+            ng-click="create_device($event, group)"
+        ></icsw-tools-button>
     </td>
 </script> 
 
@@ -137,10 +153,20 @@
     <td ng-show="hide_lut['mon_master']">{{ struct.monitor_server_lut[obj.monitor_server].$$full_name_with_type }}</td>
     <td ng-show="hide_lut['boot_master']">{{ struct.mother_server_lut[obj.bootserver].full_name }}</td>
     <td>
-        <icsw-tools-button type="modify" size="xs" ng-click="edit_device($event, obj)"></icsw-tools-button>
+        <icsw-tools-button
+            type="modify"
+            size="xs"
+            ng-show="!obj.$$delete_pending"
+            ng-click="edit_device($event, obj)"
+        ></icsw-tools-button>
     </td>
     <td>
-        <icsw-tools-button type="delete" size="xs" ng-click="delete_device($event, obj)"></icsw-tools-button>
+        <icsw-tools-button
+            type="delete"
+            size="xs"
+            ng-show="!obj.$$delete_pending"
+            ng-click="delete_device($event, obj)"
+        ></icsw-tools-button>
     </td>
 </script> 
 
@@ -207,7 +233,11 @@
                 </thead>
 
                 <tbody>
-                    <tr icsw-device-tree-row device="obj" ng-repeat="obj in entries_displayed" ng-class="get_tr_class(obj)"></tr>
+                    <tr icsw-device-tree-row
+                        device="obj"
+                        ng-repeat="obj in entries_displayed"
+                        ng-class="get_tr_class(obj)"
+                    ></tr>
                 </tbody>
 
             </table>

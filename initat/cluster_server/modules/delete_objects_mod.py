@@ -95,6 +95,8 @@ class handle_delete_requests(cs_base_class.icswCSServerCom):
                 state=BackgroundJobState.pending,
                 timeout=60 * 60,
             )
+            # just for testing
+            # time.sleep(30)
             cur_inst.log("Deleting {} ({}; pk:{})".format(obj_to_delete, model, obj_pk))
 
             start_time = time.time()

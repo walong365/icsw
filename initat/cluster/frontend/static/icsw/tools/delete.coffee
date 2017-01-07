@@ -155,7 +155,16 @@ angular.module(
             _.remove(@deletable_objects, (entry) -> return entry.delete)
             return del_list
 
+        set_delete_pending_flags: (in_list) =>
+            del_idx = (entry.idx for entry in in_list)
+            for entry in @objects
+                console.log entry.idx, del_idx
+                if entry.idx in del_idx
+                    entry.$$delete_pending = true
+
     actual_delete = (del_struct, to_delete) ->
+        # set $$delete_pending flag
+        del_struct.set_delete_pending_flags(to_delete)
         # add to check list and handle blockUI if required
         icswDialogDeleteCheckDeletionService.add_to_check_list(del_struct, to_delete)
 
@@ -246,9 +255,7 @@ angular.module(
         blocked_by_sync: 0
     }
 
-    add_to_check_list = (del_struct, to_delete) ->  # pks, model, async, after_delete) ->
-        # this can also be used for sync delete, but then no other entry must
-        # be added to the check list while this is running, else there are issues with blockUI
+    add_to_check_list = (del_struct, to_delete) ->
 
         _struct.next_delete_request_id++
         _struct.check_lut[_struct.next_delete_request_id] = {
@@ -258,20 +265,10 @@ angular.module(
             after_delete: del_struct.after_delete
             last_msg: undefined
         }
-        if del_struct.async_delete
-            if del_struct.after_delete
-                drid = _struct.next_delete_request_id
-                $timeout(
-                    () ->
-                        del_struct.after_delete(_struct.check_lut[drid])
-                    0
-                )
-        else
+        if not del_struct.async_delete
             if not _struct.blocked_by_sync
                 blockUI.start("Deleting objects ....")
             _struct.blocked_by_sync++
-        # also check right away
-        # interval_fn()
 
     start_check = () ->
         if not _struct.interval_promise?
@@ -307,6 +304,7 @@ angular.module(
                         # this is Nan on invalid entry, and NaN != 0, which we want here
                         if num_remaining == 0
                             if check_list_entry.after_delete
+                                # call after_delete function
                                 check_list_entry.after_delete(check_list_entry)
                             if not check_list_entry.async_delete
                                 _struct.blocked_by_sync--

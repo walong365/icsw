@@ -193,7 +193,6 @@ angular.module(
                             entry.$$tr_class = "bg-warning"
                         else
                             entry.$$tr_class = ""
-                        console.log entry.$$tr_class
                         $scope.struct.matching_names.push(entry)
             )
 
@@ -266,16 +265,19 @@ angular.module(
                                 icswActiveSelectionService.current().add_selection(new_dev)
                                 icswActiveSelectionService.current().signal_selection_changed()
 
-                            $timeout(
-                                () ->
-                                    defer = $q.defer()
-                                    $scope.struct.device_tree._fetch_device(
-                                        _dev_pk
-                                        defer
-                                        "New Device"
-                                    )
-                                5000
-                            )
+                            # why ? to get the results of the base scan ?
+                            # this is very dangerous because structures created
+                            # for the device will be overwritten by the fetch
+                            # $timeout(
+                            #    () ->
+                            #        defer = $q.defer()
+                            #        $scope.struct.device_tree._fetch_device(
+                            #            _dev_pk
+                            #            defer
+                            #            "New Device"
+                            #        )
+                            #    5000
+                            # )
 
                             if edit_after
                                 DeviceOverviewService($event, [$scope.struct.device_tree.all_lut[_dev_pk]]).then(
