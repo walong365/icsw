@@ -158,7 +158,6 @@ angular.module(
         set_delete_pending_flags: (in_list) =>
             del_idx = (entry.idx for entry in in_list)
             for entry in @objects
-                console.log entry.idx, del_idx
                 if entry.idx in del_idx
                     entry.$$delete_pending = true
 

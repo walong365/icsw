@@ -919,7 +919,7 @@ angular.module(
             return defer.promise
 
         delete_device: (d_pk) =>
-            console.log "del", d_pk
+            console.warn "delete device with pk=#{d_pk}"
             _.remove(@all_list, (entry) -> return entry.idx == d_pk)
             @reorder()
 

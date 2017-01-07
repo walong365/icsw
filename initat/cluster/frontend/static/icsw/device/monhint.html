@@ -4,7 +4,18 @@
             Monitoring Configuration and Hints for
             <icsw-device-list-info icsw-device-list="struct.devices"></icsw-device-list-info>
         </h3>
-        <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching Data from Server ...</div>
+        <div
+            uib-alert
+            class="alert-warning"
+            ng-show="struct.loading">
+            Fetching Data from Server ...
+        </div>
+        <div
+            uib-alert
+            class="alert-danger"
+            ng-show="!struct.loading && struct.devices.length == 0">
+            No devices selected
+        </div>
         <uib-accordion close-others="no" ng-if="struct.devices.length">
             <div uib-accordion-group class="panel-default" is-open="struct.monconfig_open" ng-show="!struct.fetching">
                 <uib-accordion-heading>
@@ -111,6 +122,7 @@
                         <tr>
                             <th></th>
                             <th>Device</th>
+                            <th>DynChecks</th>
                             <th>Group</th>
                             <th>Comment</th>
                             <th>#hints</th>
@@ -143,6 +155,9 @@
             class="btn btn-xs btn-primary"
             ng-click="show_device($event, device)"
         >{{ device.full_name }}</button>
+    </td>
+    <td class="text-center">
+        <span ng-bind-html="device.dynamic_checks | yesno4"></span>
     </td>
     <td>{{ device.device_group_name }}</td>
     <td>{{ device.comment }}</td>

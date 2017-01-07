@@ -390,7 +390,11 @@ class IcingaLogReader(threading_tools.process_obj):
         self.log(
             u"created from {}: {} ".format(
                 logfilepath if logfilepath else "cur icinga log file",
-                stats.items()
+                ", ".join(
+                    [
+                        "{} ({:d})".format(key, value) for key, value in stats.iteritems()
+                    ]
+                ) or "nothing",
             )
         )
 

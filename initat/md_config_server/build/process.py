@@ -199,10 +199,10 @@ class BuildProcess(
         cur_gc = self.__gen_config
         cur_gc.add_config(MonAllCommands(cur_gc))
         gbc.set_global_config(cur_gc, {}, False)
-        ac_filter = Q(dynamic_checks=True) & Q(enabled=True) & Q(device_group__enabled=True)
+        ac_filter = Q(dynamic_checks=True)
         if pk_list:
             ac_filter &= Q(pk__in=pk_list)
-        gbc.set_host_list(device.objects.exclude(Q(is_meta_device=True)).filter(
+        gbc.set_host_list(device.all_enabled.exclude(Q(is_meta_device=True)).filter(
             ac_filter
         ).values_list(
             "pk", flat=True)
