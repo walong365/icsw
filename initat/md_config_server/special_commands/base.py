@@ -155,7 +155,10 @@ class SpecialBase(object):
     def _load_cache(self):
         if not self.__hints_loaded:
             self.__hints_loaded = True
-            self.__cache = monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name))
+            self.__cache = monitoring_hint.objects.filter(
+                Q(device=self.host) &
+                Q(m_type=self.ds_name)
+            )
             # set datasource to cache
             for _entry in self.__cache:
                 if _entry.datasource not in ["c", "p"]:
@@ -174,12 +177,13 @@ class SpecialBase(object):
             self._load_cache()
         return self.__cache
 
-    def remove_hints(self):
-        self._load_cache()
-        # remove all cached entries, cached entries are always local (with m_type set as ds_name)
-        self.log("removing all {}".format(logging_tools.get_plural("cached entry", len(self.__cache))))
-        [_entry.delete() for _entry in self.__cache]
-        self.__cache = []
+    # no longer needed, was referenced in megaraid_special
+    # def remove_hints(self):
+    #    self._load_cache()
+    #    # remove all cached entries, cached entries are always local (with m_type set as ds_name)
+    #    self.log("removing all {}".format(logging_tools.get_plural("cached entry", len(self.__cache))))
+    #    [_entry.delete() for _entry in self.__cache]
+    #    self.__cache = []
 
     def add_persistent_entries(self, hint_list, call_idx):
         pers_dict = {

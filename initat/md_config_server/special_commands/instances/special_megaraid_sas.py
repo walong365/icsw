@@ -69,8 +69,6 @@ class SpecialMegaraidSas(SpecialBase):
         # import pprint
         # pprint.pprint(ctrl_dict)
         _res = self.RCClass()._interpret(ctrl_dict, cur_ns)
-        if len(_res):
-            self.remove_hints()
         self.store_hints([self._transform_to_hint(entry) for entry in _res])
         yield None
 
