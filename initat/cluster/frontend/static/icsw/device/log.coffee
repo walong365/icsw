@@ -184,6 +184,26 @@ device_logs = angular.module(
         device_names: ["All Devices"]
         selected_device_name: undefined
 
+        time_frames: [
+            {
+                string: "All times"
+                duration: null
+            }
+            {
+                string: "1 day ago"
+                duration: moment.duration(1, "days")
+            }
+            {
+                string: "1 hour ago"
+                duration: moment.duration(1, "hours")
+            }
+            {
+                string: "10 minutes ago"
+                duration: moment.duration(10, "minutes")
+            }
+        ]
+        selected_time_frame: undefined
+
         device_log_entries: []
         filtered_device_log_entries: []
         device_log_entries_lut: {}
@@ -212,6 +232,9 @@ device_logs = angular.module(
         _dname = $scope.struct.selected_device_name
         if _dname == "All Devices"
             _dname = undefined
+        _duration = $scope.struct.selected_time_frame.duration
+        if _duration
+            _duration = moment().subtract(_duration)
         for entry in $scope.struct.device_log_entries
             _add = true
             if _uname? and entry.user_resolved != _uname
@@ -222,6 +245,8 @@ device_logs = angular.module(
                 _add = false
             if _dname? and entry.$$full_name != _dname
                 _add = false
+            if _duration
+                _add = entry.$$mom_date.isAfter(_duration)
             if _add
                 $scope.struct.filtered_device_log_entries.push(entry)
 
@@ -236,7 +261,9 @@ device_logs = angular.module(
 
     handle_log_entry = (log_entry) ->
         if log_entry.device in $scope.struct.device_idxs and $scope.struct.device_log_entries_lut[log_entry.idx] == undefined
-            log_entry.pretty_date = moment(log_entry.date).format("YYYY-MM-DD HH:mm:ss")
+            log_entry.$$mom_date = moment(log_entry.date)
+            log_entry.$$pretty_date = log_entry.$$mom_date.format("YYYY-MM-DD HH:mm:ss")
+            log_entry.$$date_from_now = log_entry.$$mom_date.fromNow(true)
             if log_entry.user != null
                 log_entry.user_resolved = $scope.struct.user_tree.user_lut[log_entry.user].$$long_name
             else
@@ -269,8 +296,9 @@ device_logs = angular.module(
             }
         ).then(
             (result) ->
-                (handle_log_entry(log_entry) for log_entry in result)
-                $scope.update_filter()
+                if result.length
+                    (handle_log_entry(log_entry) for log_entry in result)
+                    $scope.update_filter()
                 start_timer()
         )
 
@@ -310,6 +338,7 @@ device_logs = angular.module(
             $scope.struct.selected_source = $scope.struct.sources[0]
             $scope.struct.selected_level = $scope.struct.levels[0]
             $scope.struct.selected_device_name = $scope.struct.device_names[0]
+            $scope.struct.selected_time_frame = $scope.struct.time_frames[0]
 
             $scope.update_filter()
 
@@ -323,6 +352,7 @@ device_logs = angular.module(
                 $timeout(
                     () ->
                         handle_log_entry(json_dict)
+                        $scope.update_filter()
                     0
                 )
     )

@@ -119,7 +119,8 @@ class MonAllServiceGroups(MonFileContainer):
 
 
 class MonAllCommands(MonFileContainer):
-    def __init__(self, gen_conf):
+    def __init__(self, gen_conf, logging):
+        self.__logging = logging
         MonFileContainer.__init__(self, "command")
         self.__log_counter = 0
         self.refresh(gen_conf)
@@ -328,7 +329,7 @@ class MonAllCommands(MonFileContainer):
                 db_entry=ngc,
                 is_active=ngc.is_active,
                 volatile=ngc.volatile,
-                show_log=self.__log_counter % 10 == 0 and global_config["DEBUG"],
+                show_log=self.__log_counter % 10 == 0 and global_config["DEBUG"] and self.__logging,
             )
             nag_conf = cc_s.get_mon_config()
             self.add_object(nag_conf)

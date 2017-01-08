@@ -934,7 +934,7 @@ class DeviceLogEntry(models.Model):
         source = kwargs.get("source")
         if source is None:
             source = log_source_lookup("webfrontend")
-        elif isinstance(source, basestring) or type(source) in [int, long]:
+        elif isinstance(source, basestring) or isinstance(source, int):
             source = log_source_lookup(source)
 
         level = kwargs.get("level")

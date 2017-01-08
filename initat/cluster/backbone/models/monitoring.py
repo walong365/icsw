@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-server
 #
@@ -30,6 +30,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
+from django.utils import timezone
 
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer
 from initat.tools import logging_tools
@@ -455,7 +456,6 @@ class mon_check_command(models.Model):
     tcp_coverage = models.CharField(default="", max_length=256, blank=True)
 
     def get_configured_device_pks(self):
-        from initat.cluster.backbone.models import device_config
         return [dev_conf.device_id for dev_conf in self.config.device_config_set.all()]
 
     def get_object_type(self):
@@ -1092,7 +1092,7 @@ class monitoring_hint(models.Model):
             ("i", "integer"),
             ("b", "boolean"),
             ("s", "string"),
-            ("B", "blob"),
+            ("j", "json"),
         ],
         max_length=6
     )
@@ -1100,7 +1100,7 @@ class monitoring_hint(models.Model):
     value_float = models.FloatField(default=0.0)
     value_int = models.IntegerField(default=0)
     value_string = models.CharField(default="", max_length=256, blank=True)
-    value_blob = models.TextField(default="", blank=True)
+    value_json = models.TextField(default="", blank=True)
     # limits
     lower_crit_float = models.FloatField(default=0.0)
     lower_warn_float = models.FloatField(default=0.0)
@@ -1131,6 +1131,7 @@ class monitoring_hint(models.Model):
     is_active = models.BooleanField(default=True)
     # datasource : (c)ache, (s)erver, (p)ersistent
     datasource = models.CharField(max_length=6, default="s", choices=[("c", "cache"), ("s", "server"), ("p", "persistent")])
+    updated = models.DateTimeField(auto_now=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def update_limits(self, m_value, limit_dict):

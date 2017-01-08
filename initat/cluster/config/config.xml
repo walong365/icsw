@@ -354,9 +354,9 @@
                 </description>
             </icswData>
         </route>
-        <route name="main.monitorhint">
-            <stateData url="/monitorhint" templateUrl="icsw/device/mon/config"/>
-            <icswData pageTitle="Monitoring Hints">
+        <route name="main.monitordynamic">
+            <stateData url="/monitordynamic" templateUrl="icsw/device/mon/config"/>
+            <icswData pageTitle="Dynamic Monitoring">
                 <rights>
                     <value>backbone.mon_check_command.setup_monitoring</value>
                 </rights>
@@ -364,7 +364,7 @@
                     <value>md_config_server</value>
                 </licenses>
                 <description>
-                    <infoText language="en">TODO</infoText>
+                    <infoText language="en">Check and setup of dynamic monitoring</infoText>
                 </description>
             </icswData>
         </route>
@@ -690,7 +690,7 @@
                 <menuEntry icon="fa-tree" name="Devices" routeName="main.devtree"/>
                 <menuEntry icon="fa-check-square-o" name="Configurations" routeName="main.configoverview"/>
                 <menuEntry icon="fa-list-alt" routeName="main.domaintree" name="Domain Names"/>
-                <menuEntry icon="fa-info" routeName="main.monitorhint" name="Monitoring Hints"/>
+                <menuEntry icon="fa-info" routeName="main.monitordynamic" name="Dynamic Monitoring"/>
                 <menuEntry icon="fa-check-square" name="Assign System Services" routeName="main.devicesrvconfig"/>
             </routeSubGroup>
             <routeSubGroup name="Reporting">
@@ -790,7 +790,7 @@
             <routeSubGroup name="Settings">
                 <menuEntry icon="fa-code-fork" name="KPI Setup" routeName="main.kpisettings"/>
                 <menuEntry icon="fa-wrench" name="Monitoring Setup" routeName="main.monitorbasics"/>
-                <menuEntry icon="fa-info" routeName="main.monitorhint" name="Monitoring Hints"/>
+                <menuEntry icon="fa-info" routeName="main.monitordynamic" name="Dynamic Monitoring"/>
                 <menuEntry icon="fa-laptop" name="Device Settings" routeName="main.monitordevice"/>
             </routeSubGroup>
             <routeSubGroup name="Asset System">

@@ -197,7 +197,7 @@ class BuildProcess(
     def fetch_dyn_configs(self, gbc, pk_list):
         start_time = time.time()
         cur_gc = self.__gen_config
-        cur_gc.add_config(MonAllCommands(cur_gc))
+        cur_gc.add_config(MonAllCommands(cur_gc, logging=False))
         gbc.set_global_config(cur_gc, {}, False)
         ac_filter = Q(dynamic_checks=True)
         if pk_list:
@@ -210,6 +210,9 @@ class BuildProcess(
         all_configs = self.get_all_configs(ac_filter)
         # import pprint
         # pprint.pprint(all_configs)
+        _count_dict = {
+            "special_found": 0,
+        }
         fetch_list = []
         for host_pk in gbc.host_pks:
             host = gbc.get_host(host_pk)
@@ -218,7 +221,12 @@ class BuildProcess(
             host.dev_variables = dev_variables
             hbc = None
             if MON_VAR_IP_NAME not in dev_variables:
-                self.log("No IP found for dyn reconfig of {}".format(unicode(host)), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "No IP found for dyn reconfig of {}".format(
+                        unicode(host)
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 # get config names
                 conf_names = set(all_configs.get(host.full_name, []))
@@ -234,10 +242,12 @@ class BuildProcess(
                         )
                     ]
                 )
-                _added = False
+                _dev_added = False
                 for conf_name in conf_names:
                     s_check = cur_gc["command"][conf_name]
+                    # check for special check
                     if s_check.mccs_id:
+                        _count_dict["special_found"] += 1
                         if hbc is None:
                             # init
                             hbc = HostBuildCache(host)
@@ -250,10 +260,11 @@ class BuildProcess(
                             s_check,
                             DynamicCheckMode.fetch,
                         )
+                        # print("*", _res.r_type)
                         if _res.r_type == "fetch":
-                            if not _added:
+                            if not _dev_added:
                                 fetch_list.append(hbc)
-                                _added = True
+                                _dev_added = True
                             hbc.add_pending_fetch(_res.special_instance)
                             # print(unicode(_res))
             if hbc and not hbc.pending_fetch_calls:
@@ -264,6 +275,15 @@ class BuildProcess(
                 )
                 self.flush_hbc_logs(hbc, glob_log_str)
             # print("*", host, dev_variables)
+        self.log(
+            "stats: {}".format(
+                ", ".join(
+                    [
+                        "{}={:d}".format(_key, _value) for _key, _value in _count_dict.iteritems()
+                    ]
+                )
+            )
+        )
         if fetch_list:
             self.log(
                 "{} in fetch_list for dynamic checks".format(
@@ -479,7 +499,7 @@ class BuildProcess(
     def _create_gen_config_files(self, mode):
         cur_gc = self.__gen_config
         # misc commands (sending of mails)
-        cur_gc.add_config(MonAllCommands(cur_gc))
+        cur_gc.add_config(MonAllCommands(cur_gc, logging=True))
         # servicegroups
         cur_gc.add_config(MonAllServiceGroups(cur_gc))
         # timeperiods
