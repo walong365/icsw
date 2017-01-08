@@ -188,7 +188,7 @@ class monitoring_hint_serializer(serializers.ModelSerializer):
         read_only_fields = [
             "idx", "device", "call_idx", "m_type", "key", "v_type",
             "value_float", "value_int", "value_string", "info", "value_json",
-            "check_created", "changed", "persistent", "datasource", "date",
+            "check_created", "persistent", "datasource", "date",
             "updated",
         ]
 

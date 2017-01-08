@@ -1081,9 +1081,10 @@ class monitoring_hint(models.Model):
     # call idx, for multi-server-call specials
     call_idx = models.IntegerField(default=0)
     # choices not needed, can be any value from special_*
-    m_type = models.CharField(max_length=32)  # , choices=[("ipmi", "IPMI"), ("snmp", "SNMP"), ])
+    m_type = models.CharField(max_length=32)
     # key of vector or OID
     key = models.CharField(default="", max_length=255)
+    # the tuple of m_type and and key is a unique key for monitoring-hints relative to a device
     # type of value
     v_type = models.CharField(
         default="f",
@@ -1124,7 +1125,6 @@ class monitoring_hint(models.Model):
     enabled = models.BooleanField(default=True)
     # used in monitoring
     check_created = models.BooleanField(default=False)
-    changed = models.DateTimeField(auto_now=True)  # , default=datetime.datetime.now())
     # persistent: do not remove even when missing from server (for instance openvpn)
     persistent = models.BooleanField(default=False)
     # is check active ?
@@ -1133,6 +1133,19 @@ class monitoring_hint(models.Model):
     datasource = models.CharField(max_length=6, default="s", choices=[("c", "cache"), ("s", "server"), ("p", "persistent")])
     updated = models.DateTimeField(auto_now=True)
     date = models.DateTimeField(auto_now_add=True)
+
+    def update(self, other_hint):
+        # update hint with data from other_hint
+        _l_names = [
+            _name for _name in dir(self.__dict__) if _name.count("lower") or _name.count("upper")
+        ]
+        for _attr in [
+            "info", "enabled", "check_created", "persistent", "is_active", "datasource",
+            "v_type", "value_float", "value_int", "value_string", "value_json",
+        ] + _l_names:
+            # print("*", _attr)
+            setattr(self, _attr, getattr(other_hint, _attr))
+        self.save()
 
     def update_limits(self, m_value, limit_dict):
         if type(m_value) in [int, long]:
