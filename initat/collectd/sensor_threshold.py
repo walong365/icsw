@@ -1,7 +1,7 @@
 #
 # this file is part of collectd
 #
-# Copyright (C) 2015-2016 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2015-2017 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #

@@ -245,7 +245,7 @@ device_logs = angular.module(
                 _add = false
             if _dname? and entry.$$full_name != _dname
                 _add = false
-            if _duration
+            if _duration and _add
                 _add = entry.$$mom_date.isAfter(_duration)
             if _add
                 $scope.struct.filtered_device_log_entries.push(entry)

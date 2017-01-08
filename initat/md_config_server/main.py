@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2013-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #

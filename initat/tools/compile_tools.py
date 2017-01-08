@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2007-2009,2012,2014-2016 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2007-2009,2012,2014-2017 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of cbc-tools
 #

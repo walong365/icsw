@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel
+# Copyright (C) 2015-2017 Bernhard Mallinger, Andreas Lang-Nevyjel
 #
 # Send feedback to: <mallinger@init.at>
 #

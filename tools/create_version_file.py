@@ -1,5 +1,5 @@
 #!/usr/bin/python-init -Otu
-# Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -38,8 +38,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", type=str, help="Version [%(default)s]", default="1.0")
     parser.add_argument("--release", type=str, help="Release [%(default)s]", default="1")
-    parser.add_argument("--target", type=str, help="version file target [%(default)s]", default="/tmp/version.py")
+    parser.add_argument("--target", type=str, help="version file target [%(default)s]", default="")
     opts = parser.parse_args()
+    if not opts.target:
+        print("No target given, exiting...")
+        sys.exit(1)
     _now = datetime.datetime.now()
     cs_name = os.path.basename(opts.target).split("_")[0]
     _new_s = config_store.ConfigStore(cs_name, quiet=True, read=False)

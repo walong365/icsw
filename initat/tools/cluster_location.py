@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cluster-backbone
 #

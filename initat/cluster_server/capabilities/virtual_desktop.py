@@ -1,4 +1,4 @@
-# Copyright (C) 2014,2016 Bernhard Mallinger, Andreas Lang-Nevyjel
+# Copyright (C) 2014,2016-2017 Bernhard Mallinger, Andreas Lang-Nevyjel
 #
 # Send feedback to: <mallinger@init.at>, <lang-nevyjel@init.at>
 #

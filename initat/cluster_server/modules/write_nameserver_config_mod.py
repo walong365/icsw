@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2009,2013-2016 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2009,2013-2017 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #

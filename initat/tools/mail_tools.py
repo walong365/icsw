@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 #
-# Copyright (C) 2001-2009,2013-2014,2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2013-2014,2016-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #

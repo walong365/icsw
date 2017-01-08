@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (c) 2015-2016 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2015-2017 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of md-config-server
 #
