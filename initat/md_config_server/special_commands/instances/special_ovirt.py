@@ -44,7 +44,7 @@ def _get_ref_value(in_str):
         return in_str
     else:
         # in_str is json dump, compress it
-        return process_tools.compress_struct(in_str)
+        return process_tools.compress_struct(_v)
 
 
 class SpecialOvirtDomains(SpecialBase):

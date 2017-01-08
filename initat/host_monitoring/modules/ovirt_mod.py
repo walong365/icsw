@@ -585,8 +585,6 @@ class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
         size_dict["size"] = size_dict["used"] + size_dict["available"]
         if ns.reference not in ["", "-"]:
             _ref = process_tools.decompress_struct(ns.reference)
-            import pprint
-            pprint.pprint(_ref)
             _passive_dict = {
                 "source": "ovirt_overview",
                 "prefix": ns.passive_check_prefix,
