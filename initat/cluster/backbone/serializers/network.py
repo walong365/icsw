@@ -137,7 +137,34 @@ class NmapScanSerializerDetailed(serializers.ModelSerializer):
     devices = serializers.SerializerMethodField()
 
     def get_devices(self, obj):
-        return [host.get_dict() for host in obj.get_nmap_devices()]
+        nmap_scans = NmapScan.objects.filter(network=obj.network).order_by("idx")
+
+        nmap_scan_cached_devices = {}
+
+        nmap_devices = obj.get_nmap_devices()
+
+        for device in nmap_devices:
+            if device.mac:
+                first_nmap_scan_found = False
+
+                for nmap_scan in nmap_scans:
+                    if nmap_scan.idx in nmap_scan_cached_devices:
+                        old_devices = nmap_scan_cached_devices[nmap_scan.idx]
+                    else:
+                        old_devices = nmap_scan.get_nmap_devices()
+                        nmap_scan_cached_devices[nmap_scan.idx] = old_devices
+
+                    for old_device in old_devices:
+                        if old_device.mac and old_device.mac == device.mac:
+                            device.first_seen_nmap_scan_idx = nmap_scan.idx
+                            device.first_seen_nmap_scan_date = str(nmap_scan.date)
+                            first_nmap_scan_found = True
+                            break
+
+                    if first_nmap_scan_found:
+                        break
+
+        return [host.get_dict() for host in nmap_devices]
 
     class Meta:
         model = NmapScan

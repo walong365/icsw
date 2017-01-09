@@ -1607,6 +1607,10 @@ angular.module(
         if ip_to_device_lut[device.ip] != undefined
             device.linked_devices = ip_to_device_lut[device.ip]
 
+        device.$$first_seen_nmap_scan_date = "N/A"
+        if device.first_seen_nmap_scan_date != null
+            device.$$first_seen_nmap_scan_date = moment(device.first_seen_nmap_scan_date).format("YYYY-MM-DD HH:mm:ss")
+
 
     # network currently displayed
     network_display = {}
@@ -2030,8 +2034,6 @@ angular.module(
                             }
                             tab.sub_tabs.push(new_tab)
 
-                            console.log(new_tab)
-
                             blockUI.stop()
                         )
 
@@ -2049,6 +2051,7 @@ angular.module(
                 if sub_tab.index == index
                     return
 
+            blockUI.start("Loading Data...")
             icswSimpleAjaxCall(
                 {
                     url: ICSW_URLS.NETWORK_NMAP_SCAN_DATA_LOADER
@@ -2070,8 +2073,12 @@ angular.module(
                                     if !(device in ip_to_device_lut[net_ip.ip])
                                       ip_to_device_lut[net_ip.ip].push(device)
 
+                mac_device_lut = {}
+
                 for device in data.devices
                     salt_nmap_device(device, ip_to_device_lut)
+                    if device.mac
+                        mac_device_lut[device.mac] = device
 
                 selected_button_class = "btn btn-success"
                 unselected_button_class = "btn btn-default"
@@ -2160,7 +2167,7 @@ angular.module(
                         if device.linked_devices.length == 0
                             sub_tab.display_devices.push(device)
 
-                sub_tab.show_new_devices_sine_last_scan = () ->
+                sub_tab.show_new_devices_since_last_scan = () ->
                     select_button("new_devices_last_scan_class")
                     reset_selection()
 
@@ -2177,8 +2184,12 @@ angular.module(
                         }
                     ).then((data) ->
                         for nmap_device in data
-                            salt_nmap_device(nmap_device, ip_to_device_lut)
-                            sub_tab.display_devices.push(nmap_device)
+                            if !nmap_device.ignored
+                                if nmap_device.mac
+                                    sub_tab.display_devices.push(mac_device_lut[nmap_device.mac])
+                                else
+                                    salt_nmap_device(nmap_device, ip_to_device_lut)
+                                    sub_tab.display_devices.push(nmap_device)
 
                         blockUI.stop()
                     )
@@ -2202,8 +2213,12 @@ angular.module(
                         }
                     ).then((data) ->
                         for nmap_device in data
-                            salt_nmap_device(nmap_device, ip_to_device_lut)
-                            sub_tab.display_devices.push(nmap_device)
+                            if !nmap_device.ignored
+                                if nmap_device.mac
+                                    sub_tab.display_devices.push(mac_device_lut[nmap_device.mac])
+                                else
+                                    salt_nmap_device(nmap_device, ip_to_device_lut)
+                                    sub_tab.display_devices.push(nmap_device)
 
                         blockUI.stop()
                     )
@@ -2261,6 +2276,7 @@ angular.module(
 
                         sub_tab.ignored_devices = (device for device in all_devices when device.ignored)
                         sub_tab.devices = (device for device in all_devices when !device.ignored)
+                        sub_tab.selected_devices = 0
 
                         blockUI.stop()
                     )
@@ -2269,6 +2285,7 @@ angular.module(
                     DeviceOverviewService($event, [dev])
 
                 tab.sub_tabs.push(sub_tab)
+                blockUI.stop()
             )
 
         create_new_sub_tab_type_1: (tab, device_info) ->

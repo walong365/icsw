@@ -1111,13 +1111,17 @@ class NmapDevice(object):
         self.mac = mac
         self.hostname = hostname
         self.ignored = ignored
+        self.first_seen_nmap_scan_idx = None
+        self.first_seen_nmap_scan_date = None
 
     def get_dict(self):
         return {
             'ip': self.ip,
             'mac': self.mac,
             'hostname': self.hostname,
-            'ignored': self.ignored
+            'ignored': self.ignored,
+            'first_seen_nmap_scan_idx': self.first_seen_nmap_scan_idx,
+            'first_seen_nmap_scan_date': self.first_seen_nmap_scan_date
         }
 
     def __eq__(self, other):
