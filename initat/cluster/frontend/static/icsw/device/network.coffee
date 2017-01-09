@@ -1670,8 +1670,6 @@ angular.module(
                         ["network_info", "com_info"]
                     )
 
-                    console.log(device_tree)
-
                     for network in nw_tree.nw_list
                         nmap_scans[network.idx] = []
 

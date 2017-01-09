@@ -1160,6 +1160,17 @@ class NmapScan(models.Model):
 
         return devices
 
+    @property
+    def runtime(self):
+        parser = etree.XMLParser(encoding='utf-8')
+
+        root = etree.fromstring(self.raw_result.encode('utf-8'), parser=parser)
+
+        runstats_element = root.find("runstats")
+        finished_element = runstats_element.find("finished")
+
+        return finished_element.attrib["elapsed"]
+
 
 class NmapScanIgnoredDevice(models.Model):
     idx = models.AutoField(primary_key=True)

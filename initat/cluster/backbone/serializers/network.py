@@ -139,7 +139,7 @@ class NmapScanSerializerSimple(serializers.ModelSerializer):
     class Meta:
         model = NmapScan
         fields = (
-            "idx", "network", "date", "devices_found", "devices_ignored"
+            "idx", "network", "date", "devices_found", "devices_ignored", "runtime"
         )
 
 class NmapScanSerializerDetailed(serializers.ModelSerializer):
