@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2016 init.at
+# Copyright (C) 2012-2017 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -848,39 +848,6 @@ angular.module(
         else
             return 0
 
-    $scope.get_nd_flags = (nd) ->
-        _f = []
-        if nd.routing
-            _f.push("extrouting")
-        if nd.inter_device_routing
-            _f.push("introuting")
-        if !nd.enabled
-            _f.push("disabled")
-        return _f.join(", ")
-
-    $scope.get_netdevice_name = (nd) ->
-        nd_name = nd.devname
-        if nd.description
-            nd_name = "#{nd_name} (#{nd.description})"
-        if nd.vlan_id
-            nd_name = "#{nd_name}, VLAN #{nd.vlan_id}"
-            if nd.master_device
-                nd_name = "#{nd_name} on " + String($scope.struct.local_helper_obj.netdevice_lut[nd.master_device].devname)
-        return nd_name
-
-    $scope.get_bond_info = (nd) ->
-        dev = $scope.struct.device_tree.all_lut[nd.device]
-        if nd.is_bond
-            slaves = (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bond_master == nd.idx)
-            if slaves.length
-                return "master (" + slaves.join(", ") + ")"
-            else
-                return "master"
-        else if nd.bond_master
-            return "slave (" + $scope.struct.local_helper_obj.netdevice_lut[nd.bond_master].devname + ")"
-        else
-            return "-"
-
     $scope.build_netdevice_tooltip = (ndev) ->
         device = $scope.struct.device_tree.all_lut[ndev.device]
         info_f = [
@@ -906,81 +873,9 @@ angular.module(
         info_f.push("Duplex: " +ethtool_options(ndev, "d") +  "<br>")
         info_f.push("Speed: " + ethtool_options(ndev, "s") + "<br>")
         info_f.push("<hr>")
-        info_f.push("Monitoring: " + $scope.get_netdevice_speed(ndev))
+        info_f.push("Monitoring: " + ndev.$$speed_info_string)
         info_f.push("</div>")
         return info_f.join("")
-
-    $scope.get_bridge_info = (nd) ->
-        dev = $scope.struct.device_tree.all_lut[nd.device]
-        if nd.is_bridge
-            slaves = (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bridge_device == nd.idx)
-            if slaves.length
-                return "bridge" + " (" + slaves.join(", ") + ")"
-            else
-                return "bridge"
-        else if nd.bridge_device
-            return "slave (" + $scope.struct.local_helper_obj.netdevice_lut[nd.bridge_device].devname + ")"
-        else
-            return "-"
-
-    $scope.get_network_type = (ndip_obj) ->
-        if ndip_obj.snmp_network_type
-            return $scope.struct.network_tree.nw_snmp_type_lut[ndip_obj.snmp_network_type].if_label
-        else
-            return $scope.struct.network_tree.nw_device_type_lut[ndip_obj.network_device_type].info_string
-
-    $scope.get_snmp_ao_status = (ndip_obj) ->
-        as = ndip_obj.snmp_admin_status
-        os = ndip_obj.snmp_oper_status
-        if as == 0 and os == 0
-            return ""
-        else if as == 1 and os == 1
-            return "up"
-        else
-            _r_f = []
-            _r_f.push(
-                {
-                    1: "up"
-                    2: "down"
-                    3: "testing"
-                }[as]
-            )
-            _r_f.push(
-                {
-                    1: "up"
-                    2: "down"
-                    3: "testing"
-                    4: "unknown"
-                    5: "dormant"
-                    6: "notpresent"
-                    7: "lowerLayerDown"
-                }[os]
-            )
-            return _r_f.join(", ")
-
-    $scope.get_snmp_ao_status_class = (ndip_obj) ->
-        as = ndip_obj.snmp_admin_status
-        os = ndip_obj.snmp_oper_status
-        if as == 0 and os == 0
-            return ""
-        else if as == 1 and os == 1
-            return "success text-center"
-        else
-            return "warning text-center"
-
-    $scope.get_desired_status = (ndip_obj) ->
-        return {
-            "i": "ignore"
-            "u": "up"
-            "d" : "down"
-        }[ndip_obj.desired_status]
-
-    $scope.get_netdevice_speed = (ndip_obj) ->
-        sp = ndip_obj.netdevice_speed
-        if sp of $scope.struct.network_tree.nw_speed_lut
-            return $scope.struct.network_tree.nw_speed_lut[sp].info_string
-        else
-            return "-"
 
 ]).directive("icswDeviceNetworkNetdeviceRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
@@ -1442,9 +1337,9 @@ angular.module(
             return (val for val in nw_types_dict when val.value == id)[0].name
     }
 ]).directive("icswNetworkList", [
-    "Restangular", "$templateCache",
+    "$templateCache",
 (
-    Restangular, $templateCache
+    $templateCache
 ) ->
     return {
         restrict: "EA"
@@ -1670,11 +1565,11 @@ angular.module(
         create_or_edit: (scope, event, create, obj_or_parent) ->
             if create
                 obj_or_parent = {
-                    "identifier"   : "new network",
-                    "network_type" : (entry.idx for entry in nw_tree.nw_type_list when entry.identifier == "o")[0]
-                    "enforce_unique_ips" : true
-                    "num_ip"       : 0
-                    "gw_pri"       : 1
+                    identifier: "new network",
+                    network_type: (entry.idx for entry in nw_tree.nw_type_list when entry.identifier == "o")[0]
+                    enforce_unique_ips: true
+                    num_ip: 0
+                    gw_pri: 1
                 }
             else
                 dbu = new icswNetworkBackup()

@@ -237,10 +237,10 @@
         <span ng-show="ndip_obj.snmp_idx">{{ ndip_obj.snmp_idx }}</span>
     <td ng-show="show_column.port">
         <span ng-show="ndip_obj.enabled">
-            {{ get_netdevice_name(ndip_obj) }}
+            {{ ndip_obj.$$info_string }}
         </span>
         <span ng-show="!ndip_obj.enabled">
-            <em><strike>{{ get_netdevice_name(ndip_obj) }}</strike></em>
+            <em><strike>{{ ndip_obj.$$info_string }}</strike></em>
         </span>
     </td>
     <td ng-show="show_column.ips" class="text-right">
@@ -249,21 +249,26 @@
     <td ng-show="show_column.peers" class="text-right">
         {{ get_num_peers_nd(ndip_obj) }}
     </td>
-    <td ng-show="show_column.bridge">{{ get_bridge_info(ndip_obj) }}</td>
-    <td ng-show="show_column.bond">{{ get_bond_info(ndip_obj) }}</td>
+    <td ng-show="show_column.bridge">{{ ndip_obj.$$bridge_info_string }}</td>
+    <td ng-show="show_column.bond">{{ ndip_obj.$$bond_info_string }}</td>
     <td ng-show="show_column.mac"><code>{{ ndip_obj.macaddr }}</code></td>
-    <td ng-show="show_column.devtype">{{ get_network_type(ndip_obj) }}</td>
+    <td ng-show="show_column.devtype">{{ ndip_obj.$$type_string }}</td>
     <td ng-show="show_column.mtu" class="text-right">{{ ndip_obj.mtu }}</td>
     <td ng-if="show_column.speed && ndip_obj.ignore_netdevice_speed" style="text-decoration: line-through;">
-        {{ get_netdevice_speed(ndip_obj) }}
+        {{ ndip_obj.$$speed_info_string }}
     </td>
     <td ng-if="show_column.speed && !ndip_obj.ignore_netdevice_speed">
-        {{ get_netdevice_speed(ndip_obj) }}
+        {{ ndip_obj.$$speed_info_string }}
     </td>
     <td ng-show="show_column.penalty" class="text-right">{{ ndip_obj.penalty }}</td>
-    <td ng-show="show_column.flags">{{ get_nd_flags(ndip_obj) }}</td>
-    <td ng-show="show_column.status" ng-class="get_snmp_ao_status_class(ndip_obj)">{{ get_snmp_ao_status(ndip_obj) }}</td>
-    <td ng-show="show_column.desired" class="text-center">{{ get_desired_status(ndip_obj) }}</td>
+    <td ng-show="show_column.flags">{{ ndip_obj.$$flags_info_string }}</td>
+    <td
+        ng-show="show_column.status"
+        ng-class="ndip_obj.$$snmp_ao_status_class"
+    >
+        {{ ndip_obj.$$snmp_ao_status }}
+    </td>
+    <td ng-show="show_column.desired" class="text-center">{{ ndip_obj.$$desired_status }}</td>
     <td>
         <button
             type="button"
@@ -846,7 +851,12 @@
                         <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"/>
                     </td>
                     <td>
-                        <icsw-tools-button type="delete" ng-show="obj.num_ip == 0" ng-click="delete($event, obj)" size="xs">
+                        <icsw-tools-button
+                            type="delete"
+                            ng-show="obj.num_ip == 0"
+                            ng-click="delete($event, obj)"
+                            size="xs"
+                        >
                         </icsw-tools-button>
                         <button type="button" ng-click="config_service.create_new_tab(obj)" class="btn btn-success btn-xs">Show Details</button>
                     </td>
@@ -895,23 +905,25 @@
             <legend>Flags</legend>
             <div class="form-group">
                 <div class="checkbox">
-                    <div class="col-sm-5 icsw-formlabel"></div>
-                    <div class="controls col-sm-7">
+                    <div class="col-sm-5 icsw-formlabel">
                         <label>
-                            <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.allow_virtual_interfaces" type="checkbox"/>
                             Allow Virtual Interfaces
                         </label>
+                    </div>
+                    <div class="controls col-sm-7">
+                        <icsw-tools-yes-no flag="edit_obj.allow_virtual_interfaces"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
             <div class="form-group">
                 <div class="checkbox">
-                    <div class="col-sm-5 icsw-formlabel"></div>
-                    <div class="controls col-sm-7">
+                    <div class="col-sm-5 icsw-formlabel">
                         <label>
-                            <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.for_matching" type="checkbox"/>
                             Used for matching
                         </label>
+                    </div>
+                    <div class="controls col-sm-7">
+                        <icsw-tools-yes-no flag="edit_obj.for_matching"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
@@ -924,7 +936,7 @@
         <uib-tabset>
             <uib-tab heading="Basic settings">
                 <fieldset style="margin-top:15px;">
-                    <div class="form-group  ng-class:form_error('devname')">
+                    <div class="form-group ng-class:form_error('devname')">
                         <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Devname<span class="asteriskField">*</span>
                         </label>
@@ -961,33 +973,31 @@
                             </ui-select>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="col-sm-3 icsw-formlabel"></div>
-                            <div class="controls col-lg-offset-0 col-sm-8">
-                                <label>
-                                    <input class="checkboxinput checkbox" ng-model="edit_obj.ignore_netdevice_speed" type="checkbox"/>
-                                    Ignore netdevice speed
-                                </label>
-                            </div>
+                    <div class="form-group row">
+                        <div class="control-label col-sm-3 icsw-formlabel">
+                            <label>
+                                Ignore netdevice speed
+                            </label>
+                        </div>
+                        <div class="controls col-sm-9">
+                            <icsw-tools-yes-no flag="edit_obj.ignore_netdevice_speed"></icsw-tools-yes-no>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="col-sm-3 icsw-formlabel"></div>
-                            <div class="controls col-lg-offset-0 col-sm-8">
-                                <label>
-                                    <input class="checkboxinput checkbox" ng-model="edit_obj.enabled" type="checkbox"/>
-                                    Enabled
-                                </label>
-                            </div>
+                    <div class="form-group row">
+                        <div class="control-label col-sm-3 icsw-formlabel">
+                            <label>
+                                Enabled
+                            </label>
+                        </div>
+                        <div class="controls col-sm-9">
+                            <icsw-tools-yes-no flag="edit_obj.enabled"></icsw-tools-yes-no>
                         </div>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group row">
                         <label class="control-label col-sm-3 icsw-formlabel">
                             Desired status
                         </label>
-                        <div class="controls col-sm-8">
+                        <div class="controls col-sm-9">
                             <ui-select ng-model="edit_obj.desired_status" class="maxwidth500" ng-disabled="false">
                                 <ui-select-match class="ui-select-match" placeholder="select the desired status">{{$select.selected.info_string}}</ui-select-match>
                                 <ui-select-choices class="ui-select-choices" repeat="value.short as value in desired_stati">
@@ -999,34 +1009,32 @@
                 </fieldset>
                 <fieldset>
                     <legend>Routing Settings</legend>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="col-sm-3 icsw-formlabel"></div>
-                            <div class="controls col-lg-offset-0 col-sm-8">
-                                <label>
-                                    <input class="checkboxinput checkbox" ng-model="edit_obj.routing" type="checkbox"/>
-                                    Network Topology Central Node
-                                </label>
-                            </div>
+                    <div class="form-group row">
+                        <div class="control-label col-sm-3 icsw-formlabel">
+                            <label>
+                                Network Topology Central Node
+                            </label>
+                        </div>
+                        <div class="controls col-sm-9">
+                            <icsw-tools-yes-no flag="edit_obj.routing"></icsw-tools-yes-no>
                         </div>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group row">
                         <label class="control-label col-sm-3 icsw-formlabel">
                             Penalty
                         </label>
-                        <div class="controls col-sm-8">
+                        <div class="controls col-sm-9">
                             <input class="numberinput form-control maxwidth500" max="128" min="1" name="penalty" ng-model="edit_obj.penalty" type="number" value="1"/>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="col-sm-3 icsw-formlabel"></div>
-                            <div class="controls col-lg-offset-0 col-sm-8">
-                                <label>
-                                    <input class="checkboxinput checkbox" ng-model="edit_obj.inter_device_routing" type="checkbox"/>
-                                    Inter Device Routing
-                                </label>
-                            </div>
+                    <div class="form-group row">
+                        <div class="control-label col-sm-3 icsw-formlabel">
+                            <label>
+                                Inter Device Routing
+                            </label>
+                        </div>
+                        <div class="controls col-sm-9">
+                            <icsw-tools-yes-no flag="edit_obj.inter_device_routing"></icsw-tools-yes-no>
                         </div>
                     </div>
                 </fieldset>
@@ -1088,7 +1096,7 @@
                                     </ui-select-choices>
                                 </ui-select>
                                 <span class="input-group-btn">
-                                    <button type="button" ng-click="edit_obj.bridge_device = undefined" class="btn btn-default">
+                                    <button type="button" ng-click="edit_obj.bridge_device = null" class="btn btn-default">
                                         <span class="glyphicon glyphicon-trash"></span>
                                     </button>
                                 </span>

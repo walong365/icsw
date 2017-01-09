@@ -569,6 +569,90 @@ angular.module(
                 if net_dev.master_device
                     info_string = "#{info_string} on #{@device.netdevice_lut[net_dev.master_device].devname}"
                 net_dev.$$info_string = info_string
+
+                # speed
+                if net_dev.netdevice_speed of _net.nw_speed_lut
+                    net_dev.$$speed_info_string = _net.nw_speed_lut[net_dev.netdevice_speed].info_string
+                else
+                    net_dev.$$speed_info_string = "-"
+
+                # flags infostring
+                _f = []
+                if net_dev.routing
+                    _f.push("extrouting")
+                if net_dev.inter_device_routing
+                    _f.push("introuting")
+                if !net_dev.enabled
+                    _f.push("disabled")
+                net_dev.$$flags_info_string = _f.join(", ")
+
+                # desired status
+                net_dev.$$desired_status = {
+                    "i": "ignore"
+                    "u": "up"
+                    "d": "down"
+                }[net_dev.desired_status]
+
+                # snmp status
+                as = net_dev.snmp_admin_status
+                os = net_dev.snmp_oper_status
+                if as == 0 and os == 0
+                    net_dev.$$snmp_ao_status = "-"
+                    net_dev.$$snmp_ao_status_class = ""
+                else if as == 1 and os == 1
+                    net_dev.$$snmp_ao_status = "up"
+                    net_dev.$$snmp_ao_status_class = "success text-center"
+                else
+                    _r_f = []
+                    _r_f.push(
+                        {
+                            1: "up"
+                            2: "down"
+                            3: "testing"
+                        }[as]
+                    )
+                    _r_f.push(
+                        {
+                            1: "up"
+                            2: "down"
+                            3: "testing"
+                            4: "unknown"
+                            5: "dormant"
+                            6: "notpresent"
+                            7: "lowerLayerDown"
+                        }[os]
+                    )
+                    net_dev.$$snmp_ao_status = _r_f.join(", ")
+                    net_dev.$$snmp_ao_status_class = "warning text-center"
+
+                # bond info
+                if net_dev.is_bond
+                    slaves = (sub_nd.devname for sub_nd in @device.netdevice_set when sub_nd.bond_master == net_dev.idx)
+                    if slaves.length
+                        net_dev.$$bond_info_string = "master (" + slaves.join(", ") + ")"
+                    else
+                        net_dev.$$bond_info_string = "master"
+                else
+                    net_dev.$$bond_info_string = "-"
+
+                # bridge info
+                if net_dev.is_bridge
+                    slaves = (sub_nd.devname for sub_nd in @device.netdevice_set when sub_nd.bridge_device == net_dev.idx)
+                    if slaves.length
+                        net_dev.$$bridge_info_string = "bridge" + " (" + slaves.join(", ") + ")"
+                    else
+                        net_dev.$$bridge_info_string = "bridge"
+                else if net_dev.bridge_device
+                    net_dev.$$bridge_info_string = "slave (" + @device.netdevice_lut[net_dev.bridge_device].devname + ")"
+                else
+                    net_dev.$$bridge_info_string = "-"
+
+                # network type
+                if net_dev.snmp_network_type
+                    net_dev.$$type_string = _net.nw_snmp_type_lut[net_dev.snmp_network_type].if_label
+                else
+                    net_dev.$$type_string = _net.nw_device_type_lut[net_dev.network_device_type].info_string
+
                 for net_ip in net_dev.net_ip_set
                     @device.$$num_netips++
                     net_dev.$$num_netips++
@@ -576,7 +660,9 @@ angular.module(
                         num_bootips++
                         net_dev.$$num_bootips++
             @device.$$num_boot_ips = num_bootips
+
             # bootdevice info class
+
             if @device.dhcp_error
                 @device.$$bootdevice_info_class = "btn-danger"
             else
