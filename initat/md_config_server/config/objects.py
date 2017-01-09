@@ -22,11 +22,14 @@
 
 from __future__ import unicode_literals, print_function
 
+import os
+
 from django.db.models import Q
 
 from initat.cluster.backbone.models import device, device_group, mon_check_command, mon_period, \
     mon_contact, mon_contactgroup, category_tree, TOP_MONITORING_CATEGORY, mon_notification, \
     host_check_command, mon_check_command_special
+from initat.constants import CLUSTER_DIR
 from initat.md_config_server.config.check_command import CheckCommand
 from initat.md_config_server.config.mon_base_config import StructuredMonBaseConfig, MonUniqueList, \
     build_safe_name
@@ -43,6 +46,10 @@ __all__ = [
     b"MonAllContactGroups",
     b"MonAllHostGroups",
 ]
+
+
+CLUSTER_BIN = os.path.join(CLUSTER_DIR, "bin")
+CLUSTER_SBIN = os.path.join(CLUSTER_DIR, "sbin")
 
 
 class MonAllHostDependencies(MonFileContainer):
@@ -153,8 +160,17 @@ class MonAllCommands(MonFileContainer):
             cluster_name = cluster_location.db_device_variable(cdg, "CLUSTER_NAME", description="name of the cluster").get_value()
         md_vers = global_config["MD_VERSION_STRING"]
         md_type = global_config["MD_TYPE"]
-        send_mail_prog = "/opt/cluster/sbin/icsw --nodb user --mode mail"
-        send_sms_prog = "/opt/cluster/icinga/bin/sendsms"
+        send_mail_prog = os.path.join(
+            CLUSTER_DIR,
+            "bin",
+            "icsw --nodb user --mode mail"
+        )
+        send_sms_prog = os.path.join(
+            CLUSTER_DIR,
+            "icinga",
+            "bin",
+            "sendsms",
+        )
         from_addr = "{}@{}".format(
             global_config["MD_TYPE"],
             global_config["FROM_ADDR"]
@@ -226,14 +242,16 @@ class MonAllCommands(MonFileContainer):
             check_coms += [
                 mon_check_command(
                     name="process-service-perfdata-file",
-                    command_line="/opt/cluster/sbin/send_collectd_zmq {}/service-perfdata".format(
-                        gen_conf.var_dir
+                    command_line="{} {}/service-perfdata".format(
+                        os.path.join(CLUSTER_SBIN, "send_collectd_zmq"),
+                        gen_conf.var_dir,
                     ),
                     description="Process service performance data",
                 ),
                 mon_check_command(
                     name="process-host-perfdata-file",
-                    command_line="/opt/cluster/sbin/send_collectd_zmq {}/host-perfdata".format(
+                    command_line="{} {}/host-perfdata".format(
+                        os.path.join(CLUSTER_SBIN, "send_collectd_zmq"),
                         gen_conf.var_dir
                     ),
                     description="Process host performance data",
@@ -254,26 +272,32 @@ class MonAllCommands(MonFileContainer):
             [
                 mon_check_command(
                     name="ochp-command",
-                    command_line="/opt/cluster/sbin/csendsyncerzmq ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"{}\"".format(
+                    command_line="{} ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"{}\"".format(
+                        os.path.join(CLUSTER_SBIN, "csendsyncerzmq"),
                         "$HOSTOUTPUT$|$HOSTPERFDATA$" if enable_perfd else "$HOSTOUTPUT$"
                     ),
                     description="OCHP Command"
                 ),
                 mon_check_command(
                     name="ocsp-command",
-                    command_line="/opt/cluster/sbin/csendsyncerzmq ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"{}\" ".format(
+                    command_line="{} ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"{}\" ".format(
+                        os.path.join(CLUSTER_SBIN, "csendsyncerzmq"),
                         "$SERVICEOUTPUT$|$SERVICEPERFDATA$" if enable_perfd else "$SERVICEOUTPUT$"
                     ),
                     description="OCSP Command"
                 ),
                 mon_check_command(
                     name="check_service_cluster",
-                    command_line="/opt/cluster/bin/check_icinga_cluster.py --service -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"",
+                    command_line="{} --service -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"".format(
+                        os.path.join(CLUSTER_BIN, "check_icinga_cluster.py"),
+                    ),
                     description="Check Service Cluster"
                 ),
                 mon_check_command(
                     name="check_host_cluster",
-                    command_line="/opt/cluster/bin/check_icinga_cluster.py --host -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"",
+                    command_line="{} --host -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"".format(
+                        os.path.join(CLUSTER_BIN, "check_icinga_cluster.py"),
+                    ),
                     description="Check Host Cluster"
                 ),
             ]

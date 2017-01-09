@@ -172,16 +172,16 @@ device_logs = angular.module(
         user_tree: undefined
         websocket: undefined
 
-        user_names: ['All Users']
+        user_names: []
         selected_username: undefined
 
-        sources: ['All Sources']
+        sources: []
         selected_source: undefined
 
-        levels: ['All Levels']
+        levels: []
         selected_level: undefined
 
-        device_names: ["All Devices"]
+        device_names: []
         selected_device_name: undefined
 
         time_frames: [
@@ -211,12 +211,40 @@ device_logs = angular.module(
         reload_timer: undefined
         device_idxs: []
         device_lut: {}
+        # fingerprint of dev idxs
+        def_fp: ""
     }
 
-    for entry in $scope.device_list
-        $scope.struct.device_idxs.push(entry.idx)
-        $scope.struct.device_lut[entry.idx] = entry
-        $scope.struct.device_names.push(entry.full_name)
+    _init_struct = () ->
+        for [attr, def_val, sel_name] in [
+            ["user_names", "All Users", "selected_username"]
+            ["device_names", "All Devices", "selected_username"]
+            ["sources", "All Sources", "selected_source"]
+            ["levels", "All Levels", "selected_level"]
+        ]
+            $scope.struct[attr].length = 0
+            $scope.struct[attr].push(def_val)
+            $scope.struct[sel_name] = undefined
+
+    $scope.$watch(
+        "device_list"
+        (new_val) ->
+            console.log "nv", new_val
+            new_fp = ("#{dev.idx}" for dev in new_val).join("::")
+            if new_fp != $scope.struct.def_fp
+                $scope.struct.def_fp = new_fp
+                _init_struct()
+                $scope.struct.device_lut = {}
+                $scope.struct.device_idxs.length = 0
+                for entry in $scope.device_list
+                    $scope.struct.device_idxs.push(entry.idx)
+                    $scope.struct.device_lut[entry.idx] = entry
+                    $scope.struct.device_names.push(entry.full_name)
+                # filter all device log entries where device_idx is not in device_idxs
+                $scope.struct.device_log_entries.length = 0
+                reload()
+        true
+    )
 
     $scope.update_filter = ($event) ->
         $scope.struct.filtered_device_log_entries.length = 0
@@ -316,46 +344,47 @@ device_logs = angular.module(
             $timeout.cancel($scope.struct.reload_timer)
             $scope.struct.reload_timer = undefined
 
-    $q.all(
-        [
-            icswUserGroupRoleTreeService.load($scope.$id)
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.DEVICE_DEVICE_LOG_ENTRY_LOADER
-                    data:
-                        device_pks: angular.toJson($scope.struct.device_idxs)
-                        excluded_device_log_entry_pks: []
-                    dataType: "json"
-                }
-            )
-        ]
-    ).then(
-        (data) ->
-            $scope.struct.user_tree = data[0]
-            (handle_log_entry(log_entry) for log_entry in data[1])
-            # initial load, set default levels
-            $scope.struct.selected_username = $scope.struct.user_names[0]
-            $scope.struct.selected_source = $scope.struct.sources[0]
-            $scope.struct.selected_level = $scope.struct.levels[0]
-            $scope.struct.selected_device_name = $scope.struct.device_names[0]
-            $scope.struct.selected_time_frame = $scope.struct.time_frames[0]
-
-            $scope.update_filter()
-
-            $scope.struct.data_loaded = true
-
-            start_timer()
-
-            $scope.struct.websocket = icswWebSocketService.register_ws("device_log_entries")
-            $scope.struct.websocket.onmessage = (data) ->
-                json_dict = angular.fromJson(data.data)
-                $timeout(
-                    () ->
-                        handle_log_entry(json_dict)
-                        $scope.update_filter()
-                    0
+    reload = () ->
+        $q.all(
+            [
+                icswUserGroupRoleTreeService.load($scope.$id)
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.DEVICE_DEVICE_LOG_ENTRY_LOADER
+                        data:
+                            device_pks: angular.toJson($scope.struct.device_idxs)
+                            excluded_device_log_entry_pks: []
+                        dataType: "json"
+                    }
                 )
-    )
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.user_tree = data[0]
+                (handle_log_entry(log_entry) for log_entry in data[1])
+                # initial load, set default levels
+                $scope.struct.selected_username = $scope.struct.user_names[0]
+                $scope.struct.selected_source = $scope.struct.sources[0]
+                $scope.struct.selected_level = $scope.struct.levels[0]
+                $scope.struct.selected_device_name = $scope.struct.device_names[0]
+                $scope.struct.selected_time_frame = $scope.struct.time_frames[0]
+
+                $scope.update_filter()
+
+                $scope.struct.data_loaded = true
+
+                start_timer()
+
+                $scope.struct.websocket = icswWebSocketService.register_ws("device_log_entries")
+                $scope.struct.websocket.onmessage = (data) ->
+                    json_dict = angular.fromJson(data.data)
+                    $timeout(
+                        () ->
+                            handle_log_entry(json_dict)
+                            $scope.update_filter()
+                        0
+                    )
+        )
 
     $scope.$on("$destroy", () ->
         if $scope.struct.websocket?

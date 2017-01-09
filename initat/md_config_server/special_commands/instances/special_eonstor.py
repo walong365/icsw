@@ -26,7 +26,7 @@ from initat.md_config_server.special_commands.base import SpecialBase
 from initat.tools import logging_tools
 
 
-class special_eonstor(SpecialBase):
+class SpecialEonStor(SpecialBase):
     class Meta:
         retries = 2
         server_contact = True

@@ -19,6 +19,8 @@
 #
 """ discovery-server, SNMP functions """
 
+from __future__ import print_function, unicode_literals
+
 import time
 
 from django.db.models import Q
@@ -101,7 +103,13 @@ class SNMPBatch(object):
         self.snmp_version = version
         self.snmp_address = address
         self.snmp_community = com
-        self.log("set snmp props to {}@{} (v{:d})".format(self.snmp_community, self.snmp_address, self.snmp_version))
+        self.log(
+            "set snmp props to {}@{} (v{:d})".format(
+                self.snmp_community,
+                self.snmp_address,
+                self.snmp_version,
+            )
+        )
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, result=False):
         SNMPBatch.process.log("[SNMP {:d}] {}".format(self.id, what), log_level)
@@ -208,7 +216,11 @@ class SNMPBatch(object):
         if _added_pks:
             _scan_schemes = [_all_schemes.get_scheme(_pk) for _pk in _added_pks if _all_schemes.get_scheme(_pk).initial]
             if _scan_schemes:
-                self.log("doing initial run with {}".format(logging_tools.get_plural("scheme", len(_scan_schemes))))
+                self.log(
+                    "doing initial run with {}".format(
+                        logging_tools.get_plural("scheme", len(_scan_schemes)),
+                    )
+                )
                 for _scan_scheme in _scan_schemes:
                     self.log("    {}".format(unicode(_scan_scheme)))
                 self.init_run("snmp_initial_scan")
@@ -217,11 +229,21 @@ class SNMPBatch(object):
                         True,
                         20,
                         *[
-                            ("T", [simple_snmp_oid(_tl_oid.oid)]) for _tl_oid in _scheme.snmp_scheme_tl_oid_set.all()
+                            (
+                                "T",
+                                [
+                                    simple_snmp_oid(_tl_oid.oid)
+                                ]
+                            ) for _tl_oid in _scheme.snmp_scheme_tl_oid_set.all()
                         ]
                     )
             else:
-                self.log("found {}".format(logging_tools.get_plural("scheme", len(_added_pks))), result=True)
+                self.log(
+                    "found {}".format(
+                        logging_tools.get_plural("scheme", len(_added_pks))
+                    ),
+                    result=True
+                )
                 self.finish()
         else:
             if errors:

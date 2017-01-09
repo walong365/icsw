@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -61,7 +61,12 @@ class ctrl_type_hpacu(ctrl_type):
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
-        return ["%s ctrl slot=%d show config detail" % (self._check_exec, self._dict[ctrl_id]["config"]["slot"]) for ctrl_id in ctrl_list]
+        return [
+            "{} ctrl slot={:d} show config detail".format(
+                self._check_exec,
+                self._dict[ctrl_id]["config"]["slot"]
+            ) for ctrl_id in ctrl_list
+        ]
 
     def scan_ctrl(self):
         slot_re = re.compile(".*in\s+slot\s+(?P<slot>\d+)\s+.*", re.IGNORECASE)
@@ -103,7 +108,8 @@ class ctrl_type_hpacu(ctrl_type):
     def process(self, ccs):
         c_dict = {}
         act_ctrl, act_array, act_log, act_phys, act_obj, act_pmgroup = (
-            None, None, None, None, None, None)
+            None, None, None, None, None, None
+        )
         for c_line in ccs.read().split("\n"):
             l_line = c_line.lower().strip()
             if l_line.count("in slot"):

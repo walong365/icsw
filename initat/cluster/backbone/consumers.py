@@ -54,6 +54,8 @@ def ws_add(message, model_name):
         message.channel_session[GROUP_KEY] = model_name
         # print("d", message.channel_session[GROUP_KEY])
         Group(message.channel_session[GROUP_KEY]).add(message.reply_channel)
+        # channels 1.0.0
+        message.reply_channel.send({"accept": True})
     else:
         if settings.DEBUG:
             print("no valid session for {}".format(model_name))
