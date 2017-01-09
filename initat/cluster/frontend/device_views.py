@@ -506,17 +506,18 @@ class DeviceConnectionEnrichment(object):
         return _data
 
 
-class ScanLockEnrichment(object):
-    def fetch(self, pk_list):
-        _res = DeviceScanLock.objects.filter(
-            Q(device__in=pk_list) & Q(active=True)
-        )
-        _data = [
-            DeviceScanLockSerializer(
-                _sl,
-            ).data for _sl in _res
-        ]
-        return _data
+# no longer needed, now handled by websocket
+#class ScanLockEnrichment(object):
+#    def fetch(self, pk_list):
+#        _res = DeviceScanLock.objects.filter(
+#            Q(device__in=pk_list) & Q(active=True)
+#        )
+#        _data = [
+#            DeviceScanLockSerializer(
+#                _sl,
+#            ).data for _sl in _res
+#        ]
+#        return _data
 
 
 class SensorThresholdEnrichment(object):
@@ -548,7 +549,7 @@ class EnrichmentHelper(object):
         self._all["snmp_info"] = EnrichmentObject(DeviceSNMPInfo, DeviceSNMPInfoSerializer)
         self._all["snmp_schemes_info"] = SNMPSchemeEnrichment()
         self._all["monitoring_hint_info"] = EnrichmentObject(monitoring_hint, monitoring_hint_serializer)
-        self._all["scan_lock_info"] = ScanLockEnrichment()
+        # self._all["scan_lock_info"] = ScanLockEnrichment()
         self._all["variable_info"] = EnrichmentObject(device_variable, device_variable_serializer)
         self._all["device_connection_info"] = DeviceConnectionEnrichment()
         self._all["sensor_threshold_info"] = SensorThresholdEnrichment()

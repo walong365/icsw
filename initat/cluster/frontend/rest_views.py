@@ -735,7 +735,8 @@ class device_tree_list(
             "domain_tree_node",
             "device_group",
         ).prefetch_related(
-            "categories"
+            "categories",
+            "devicescanlock_set",
         ).order_by(
             "-device_group__cluster_device_group",
             "device_group__name",

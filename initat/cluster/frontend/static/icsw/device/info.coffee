@@ -308,8 +308,8 @@ angular.module(
                             $scope.struct.device_tree.enrich_devices(
                                 dt_hs
                                 [
-                                    "network_info", "monitoring_hint_info", "disk_info", "com_info",
-                                    "snmp_info", "snmp_schemes_info", "scan_lock_info",
+                                    "network_info", "monitoring_hint_info", "disk_info",
+                                    "snmp_info", "snmp_schemes_info", "com_info",
                                 ]
                             )
                        ]

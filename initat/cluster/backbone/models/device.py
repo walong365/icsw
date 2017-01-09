@@ -634,11 +634,37 @@ class DeviceScanLock(models.Model):
         self.active = False
         self.run_time = _run_time
         self.save()
+        # delete all non-active locks older than one day
+        DeviceScanLock.objects.filter(
+            Q(active=False) &
+            Q(device=self.device) &
+            Q(date__lte=self.date - datetime.timedelta(days=1))
+        ).delete()
         # close current lock and return a list of (what, level) lines
         return [("closed {}".format(unicode(self)), logging_tools.LOG_LEVEL_OK)]
 
     def __unicode__(self):
         return u"DSL {}".format(self.uuid)
+
+
+@receiver(signals.post_save, sender=DeviceScanLock)
+def device_scan_lock_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        from ..serializers import DeviceScanLockSerializer
+        _inst = kwargs["instance"]
+        # print("create", _inst)
+        propagate_channel_object(
+            "device_scan_lock",
+            DeviceScanLockSerializer(_inst).data
+        )
+
+
+@receiver(signals.post_delete, sender=DeviceScanLock)
+def device_scan_lock_post_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        _inst = kwargs["instance"]
+        # we don't push deleted instances to the frontend, if a lock
+        # is closed it gets pushed with active=False
 
 
 class DeviceBootHistory(models.Model):

@@ -50,12 +50,12 @@ def ws_add(message, model_name):
     if settings.DEBUG:
         print("ws_add for group {}".format(model_name))
     if message.http_session:
+        message.reply_channel.send({"accept": True})
         # print("add", model_name)
         message.channel_session[GROUP_KEY] = model_name
         # print("d", message.channel_session[GROUP_KEY])
         Group(message.channel_session[GROUP_KEY]).add(message.reply_channel)
         # channels 1.0.0
-        message.reply_channel.send({"accept": True})
     else:
         if settings.DEBUG:
             print("no valid session for {}".format(model_name))
@@ -79,9 +79,8 @@ def ws_disconnect(message):
 
 @channel_session_user_from_http
 def ws_message(message):
-    # print("***", dir(message))
     message.reply_channel.send(
         {
             "text": message.content['text'],
-        }
+        },
     )

@@ -135,7 +135,7 @@ def propagate_channel_object(group, dict_obj):
         # send to backend, only text is allowed as key
         # print("g", group, dict_obj)
         try:
-            Group(group).send({"text": json.dumps(dict_obj)})
+            Group(group).send({"text": json.dumps(dict_obj)}, immediately=True)
         except redis.ConnectionError:
             print("Error connecting to redis, ignoring ...")
     else:

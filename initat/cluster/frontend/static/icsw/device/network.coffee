@@ -847,9 +847,6 @@ angular.module(
                 4: "10 GBit"
             }[eth_opt]
 
-    $scope.no_scan_running = (nd) ->
-        return $scope.device_tree.all_lut[nd.device].devicescanlock_set.length == 0
-
     $scope.get_num_peers_nd = (nd) ->
         if nd.idx of $scope.peer_list.nd_lut
             return $scope.peer_list.nd_lut[nd.idx].length
@@ -1028,7 +1025,8 @@ angular.module(
             _span_list = [
                 _text
             ]
-            if @props.device.devicescanlock_set.length
+            active_scans = @props.device.$$active_scan_locks
+            if active_scans
                 _span_list.push(" ")
                 _span_list.push(
                     i(
@@ -1036,11 +1034,10 @@ angular.module(
                             key: "ladda"
                             className: "fa fa-spinner fa-spin fa-3x fa-fw"
                         }
-
                     )
                 )
                 _span_list.push(
-                    @props.device.devicescanlock_set.length
+                    active_scans
                 )
             return span(
                 {
@@ -1064,7 +1061,6 @@ angular.module(
             device: "=icswDevice"
             detail: "=icswDetail"
         link: (scope, element, attrs) ->
-            _node = undefined
             _node = ReactDOM.render(
                 React.createElement(
                     icswDeviceComCapabilitiesReact
@@ -1076,14 +1072,15 @@ angular.module(
                 element[0]
             )
 
-            $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), (event, pk) ->
-                # console.log "***", pk, scan_mode
+            _unreg = $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), (event, pk) ->
+                # console.log "*** devscan", pk
                 if pk == scope.device.idx
+                    # console.log "* node=", _node
                     _node.forceUpdate()
             )
             scope.$on("$destroy", () ->
-                if _node?
-                    ReactDOM.unmountComponentAtNode(element[0])
+                _unreg()
+                ReactDOM.unmountComponentAtNode(element[0])
             )
     }
 ]).controller("icswDeviceNetworkIpRowCtrl", ["$scope", ($scope) ->
