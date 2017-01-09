@@ -1056,7 +1056,7 @@ class Dispatcher(object):
         _raw_result, _status = result.get_result()
 
         if _status == 0:
-            new_nmap_scan = NmapScan(network=_network, raw_result=_raw_result)
+            new_nmap_scan = NmapScan.create(network=_network, raw_result=_raw_result)
             new_nmap_scan.save()
 
     def handle_hm_result(self, run_index, srv_result):
