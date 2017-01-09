@@ -495,7 +495,6 @@ angular.module(
                 com_info: "com_capability_list"
                 snmp_info: "devicesnmpinfo"
                 snmp_schemes_info: "snmp_schemes"
-                # scan_lock_info: "devicescanlock_set"
                 variable_info: "device_variable_set"
                 device_connection_info: "device_connection_set"
                 sensor_threshold_info: "sensor_threshold_set"
