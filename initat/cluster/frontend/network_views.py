@@ -373,7 +373,7 @@ class NmapScanDiffer(View):
 
             for device in current_devices:
                 if device not in old_device_list:
-                    new_devices.append(device)
+                    new_devices.append(device.get_dict())
 
             return HttpResponse(json.dumps(new_devices))
         else:
