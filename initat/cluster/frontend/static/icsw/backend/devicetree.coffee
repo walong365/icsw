@@ -175,10 +175,14 @@ angular.module(
             for dev in @devices
                 for nd in dev.netdevice_set
                     nd.$$devicename = @tree.all_lut[nd.device].full_name
+                    nd.$$device = @tree.all_lut[nd.device]
                     netdevice_list_tmp.push(nd)
                     for ip in nd.net_ip_set
                         ip.$$devicename = nd.$$devicename
                         ip.$$devname = nd.devname
+                        # link
+                        ip.$$netdevice = nd
+                        ip.$$device = nd.$$device
                         net_ip_list_tmp.push(ip)
 
             @netdevice_lut = icswTools.build_lut(netdevice_list_tmp)
@@ -491,7 +495,7 @@ angular.module(
                 com_info: "com_capability_list"
                 snmp_info: "devicesnmpinfo"
                 snmp_schemes_info: "snmp_schemes"
-                scan_lock_info: "devicescanlock_set"
+                # scan_lock_info: "devicescanlock_set"
                 variable_info: "device_variable_set"
                 device_connection_info: "device_connection_set"
                 sensor_threshold_info: "sensor_threshold_set"
@@ -682,12 +686,12 @@ angular.module(
     "icswTools", "ICSW_URLS", "$q", "Restangular", "icswEnrichmentInfo",
     "icswSimpleAjaxCall", "$rootScope", "$timeout", "icswDeviceTreeGraph",
     "ICSW_SIGNALS", "icswDeviceTreeHelper", "icswNetworkTreeService",
-    "icswEnrichmentRequest", "icswDomainTreeService",
+    "icswEnrichmentRequest", "icswDomainTreeService", "icswWebSocketService",
 (
     icswTools, ICSW_URLS, $q, Restangular, icswEnrichmentInfo,
     icswSimpleAjaxCall, $rootScope, $timeout, icswDeviceTreeGraph,
     ICSW_SIGNALS, icswDeviceTreeHelper, icswNetworkTreeService,
-    icswEnrichmentRequest, icswDomainTreeService,
+    icswEnrichmentRequest, icswDomainTreeService, icswWebSocketService,
 ) ->
     class icswDeviceTree
         constructor: (full_list, group_list, domain_tree, cat_tree, device_variable_scope_tree, device_class_tree) ->
@@ -712,8 +716,10 @@ angular.module(
                 # domain name tree changed, build full_names and reorder
                 @reorder()
             )
-            # init scan infrastructure
-            @init_device_scans()
+            # init scan infrastructure via websockets
+            @dsl_websocket = icswWebSocketService.register_ws("device_scan_lock")
+            @dsl_websocket.onmessage = (data) =>
+                @add_scanlock_to_device(angular.fromJson(data.data))
 
         reorder: () =>
             # device/group names or device <-> group relationships might have changed, sort
@@ -789,21 +795,32 @@ angular.module(
                 group.devices = []
                 group.$$meta_device = @all_lut[group.device]
             for entry in @all_list
-                # add enrichment info
-                if not entry.$$_enrichment_info?
-                    entry.$$_enrichment_info = new icswEnrichmentInfo(entry)
-                # do not set group here to prevent circular dependencies in serializer
-                # entry.group_object = @group_lut[entry.device_group]
-                _group = @group_lut[entry.device_group]
-                _group.devices.push(entry.idx)
-                entry.$$group = _group
-                entry.$$meta_device = _group.$$meta_device
+                @salt_device(entry)
             for group in @group_list
                 # num of all devices (enabled and disabled, also with md)
                 group.num_devices_with_meta = group.devices.length
                 group.num_devices = group.num_devices_with_meta - 1
             # create helper structures
             # console.log "link"
+
+        salt_device: (device) =>
+            # add info to device after loading
+            # add enrichment info
+            if not device.$$_enrichment_info?
+                device.$$_enrichment_info = new icswEnrichmentInfo(device)
+            # do not set group here to prevent circular dependencies in serializer
+            # entry.group_object = @group_lut[entry.device_group]
+            _group = @group_lut[device.device_group]
+            if device.idx not in _group.devices
+                _group.devices.push(device.idx)
+            device.$$group = _group
+            device.$$meta_device = _group.$$meta_device
+            # lock info
+            @_update_scan_lock_info(device)
+
+        _update_scan_lock_info: (device) =>
+            device.$$active_scan_locks = (entry for entry in device.devicescanlock_set when entry.active).length
+            device.$$any_scan_locks = if device.$$active_scan_locks then true else false
 
         device_class_is_enabled: (dev) =>
             return dev.device_class in @device_class_tree.enabled_idx_list
@@ -949,6 +966,7 @@ angular.module(
                         )
                     dnt_defer.promise.then(
                         (dnt_ok) =>
+                            @salt_device(dev)
                             @all_list.push(dev)
                             if dev.device_group of @group_lut
                                 @reorder()
@@ -1191,21 +1209,8 @@ angular.module(
 
         # device scan functions
 
-        init_device_scans: () =>
-            # devices with scans running (pk list)
-            @scans_running = []
-            @scans_promise = {}
-            @scan_timeout = undefined
-
         register_device_scan: (dev, scan_settings) =>
             defer = $q.defer()
-
-            # register scan mode
-
-            @set_device_scan(dev, true)
-
-            # save defer function for later reference
-            @scans_promise[dev.idx] = defer
 
             # start scan on server
             icswSimpleAjaxCall(
@@ -1215,46 +1220,31 @@ angular.module(
             ).then(
                 (xml) =>
                     # scan startet (or already done for base-scan because base-scan is synchronous)
-                    @check_scans_running()
                     defer.resolve("scan started")
                 (error) =>
-                    @check_scans_running()
                     defer.reject("scan not ok")
             )
 
             return defer.promise
 
-        activate_device_scan: (dev) =>
-            if dev.idx not in @scans_running
-                @scans_running.push(dev.idx)
-                
-        set_device_scan: (dev, to_add) =>
-            if to_add and dev.idx not in @scans_running
-                @scans_running.push(dev.idx)
-            else if not to_add and dev.idx in @scans_running
-                _.remove(@scans_running, (entry) -> return entry == dev.idx)
-
-        check_scans_running: () =>
-            if @scans_running.length
-                if @scan_timeout
-                    $timeout.cancel(@scan_timeout)
-                @enrich_devices(
-                    new icswDeviceTreeHelper(@, (@all_lut[_pk] for _pk in @scans_running)),
-                    ["scan_lock_info"]
-                    true
-                ).then(
-                    (result) =>
-                        for _dev in result
-                            if _dev.devicescanlock_set.length == 0
-                                # no more locks, remove from list and trigger enrichment
-                                @set_device_scan(_dev, false)
-                                @enrich_devices(new icswDeviceTreeHelper(@, [_dev]), ["com_info", "network_info"], true).then(
-                                    (result) =>
-                                        $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), _dev.idx)
-                                )
+        add_scanlock_to_device: (lock_data) =>
+            pk = lock_data.device
+            if pk of @all_lut
+                # console.log "L", lock_data
+                _dev = @all_lut[pk]
+                _.remove(_dev.devicescanlock_set, (entry) -> return entry.idx == lock_data.idx)
+                _dev.devicescanlock_set.push(lock_data)
+                @_update_scan_lock_info(_dev)
+                if not _dev.$$any_scan_locks
+                    # refresh network and com_info
+                    @enrich_devices(new icswDeviceTreeHelper(@, [_dev]), ["com_info", "network_info"], true).then(
+                        (result) =>
+                            console.log "enriched"
                             $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), _dev.idx)
-                        @scan_timeout = $timeout(@check_scans_running, 1000)
-                )
+                    )
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), _dev.idx)
+            else
+                console.error "got devicescanlock data for unknown device", lock_data
 
         # device trace functions
         get_device_trace: (devs)  =>
@@ -1272,6 +1262,7 @@ angular.module(
             _res.push(@cluster_device_group_device.idx)
             # console.log "trace: in #{devs.length}, out #{_res.length}"
             return (@all_lut[idx] for idx in _res)
+
         # category functions
         add_category_to_device_by_pk: (dev_pk, cat_pk) =>
             @add_category_to_device(@all_lut[dev_pk], cat_pk)

@@ -96,6 +96,7 @@ class device_serializer(serializers.ModelSerializer):
     device_group_name = serializers.CharField(read_only=True)
     access_levels = serializers.SerializerMethodField()
     root_passwd_set = serializers.BooleanField(read_only=True)
+    devicescanlock_set = DeviceScanLockSerializer(read_only=True, many=True)
 
     def get_access_levels(self, obj):
         return self.context["request"].user.get_object_access_levels(obj)
@@ -122,6 +123,8 @@ class device_serializer(serializers.ModelSerializer):
             "device_class", "dynamic_checks",
             # uuid
             "uuid",
+            # device scan lock
+            "devicescanlock_set",
         )
         read_only_fields = ("uuid",)
 
