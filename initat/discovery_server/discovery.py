@@ -17,7 +17,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" discovery-server, discovery part """
+"""
+discovery-server, discovery part
+"""
 
 from __future__ import unicode_literals, print_function
 
@@ -89,6 +91,13 @@ class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, Host
         self._iterate(srv_com, "wmi_scan", ActiveDeviceScanEnum.BASE)
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
         self._check_for_pending_jobs()
+
+    def _snmp_basic_scan(self, *args, **kwargs):
+        SNMPBatch(server_command.srv_command(source=args[0]))
+
+    def _snmp_result(self, *args, **kwargs):
+        _batch_id, _error, _src, _results = args
+        SNMPBatch.glob_feed_snmp(_batch_id, _error, _src, _results)
 
     def _ext_con_result(self, *args, **kwargs):
         run_idx, srv_reply = args
@@ -184,10 +193,3 @@ class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, Host
         self.dispatcher = Dispatcher(self)
         self.register_timer(self.dispatcher.dispatch_call, 1)
         self.register_timer(self.dispatcher.schedule_call, 10)
-
-    def _snmp_basic_scan(self, *args, **kwargs):
-        SNMPBatch(server_command.srv_command(source=args[0]))
-
-    def _snmp_result(self, *args, **kwargs):
-        _batch_id, _error, _src, _results = args
-        SNMPBatch.glob_feed_snmp(_batch_id, _error, _src, _results)

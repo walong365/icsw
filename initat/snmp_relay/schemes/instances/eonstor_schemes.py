@@ -418,6 +418,7 @@ class eonstor_voltage(eonstor_object):
 class eonstor_info_scheme(SNMPRelayScheme):
     def __init__(self, **kwargs):
         SNMPRelayScheme.__init__(self, "eonstor_info", **kwargs)
+        # print("+*", kwargs)
         if "net_obj" in kwargs:
             net_obj = kwargs["net_obj"]
             if not hasattr(net_obj, "eonstor_version"):
@@ -493,6 +494,7 @@ class eonstor_info_scheme(SNMPRelayScheme):
 class eonstor_proto_scheme(SNMPRelayScheme):
     def __init__(self, name, **kwargs):
         SNMPRelayScheme.__init__(self, name, **kwargs)
+        # print("*", kwargs)
         if "net_obj" in kwargs:
             net_obj = kwargs["net_obj"]
             if not hasattr(net_obj, "eonstor_version"):
