@@ -313,11 +313,11 @@ angular.module(
                 ho.peer_list = []
                 peer_type = iter_obj.type
                 for dev in ho.devices
-                    dev.num_peers = 0
+                    dev.$$num_peers = 0
                     for nd in dev.netdevice_set
                         if nd.idx of @nd_lut
                             # netdevice part of a peer table
-                            dev.num_peers += @nd_lut[nd.idx].length
+                            dev.$$num_peers += @nd_lut[nd.idx].length
                             for peer in @nd_lut[nd.idx]
                                 ho.peer_list.push(peer)
                                 # set peer flags

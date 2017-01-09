@@ -132,7 +132,7 @@ angular.module(
 [
     "icswTools",
 (
-    icswTools
+    icswTools,
 ) ->
     ref_ctr = 0
     # helper service for global (== selection-wide) luts and lists
@@ -164,6 +164,9 @@ angular.module(
         # global post calls
 
         post_g_network_info: () =>
+            _net = @tree.network_tree
+            _dom = @tree.domain_tree
+
             # FIXME, todo: remove entries when a device gets deleted
             @netdevice_list.length = 0
             @net_ip_list.length = 0
@@ -180,6 +183,9 @@ angular.module(
                     for ip in nd.net_ip_set
                         ip.$$devicename = nd.$$devicename
                         ip.$$devname = nd.devname
+                        ip.$$network = _net.nw_lut[ip.network]
+                        ip.$$domain_tree_node = _dom.lut[ip.domain_tree_node]
+                        # console.log ip.ip, ip.$$network
                         # link
                         ip.$$netdevice = nd
                         ip.$$device = nd.$$device
@@ -459,10 +465,10 @@ angular.module(
         constructor: (@device) ->
             # device may be the device_tree for global instance
             @loaded = []
-            @device.num_boot_ips = 0
-            @device.num_netdevices = 0
-            @device.num_netips = 0
-            @device.num_peers = 0
+            @device.$$num_boot_ips = 0
+            @device.$$num_netdevices = 0
+            @device.$$num_netips = 0
+            @device.$$num_peers = 0
             # hm, not optimal, should be done
             if not @device.device_connection_set?
                 @device.device_connection_set = []
@@ -542,22 +548,59 @@ angular.module(
 
         post_network_info: () =>
             _net = icswNetworkTreeService.current()
+            # simple lut for master devices
             @device.netdevice_lut = icswTools.build_lut(@device.netdevice_set)
-            @device.num_netdevices = 0
-            @device.num_netips = 0
+            @device.$$num_netdevices = 0
+            @device.$$num_netips = 0
+            @device.$$create_peer_ok = if @device.netdevice_set.length > 0 then true else false
+            @device.$$create_netip_ok = if (_net.nw_list.length > 0 and @device.$$create_peer_ok) then true else false
             num_bootips = 0
             # set values
             for net_dev in @device.netdevice_set
-                @device.num_netdevices++
-                net_dev.num_netips = 0
-                net_dev.num_bootips = 0
+                @device.$$num_netdevices++
+                net_dev.$$num_netips = 0
+                net_dev.$$num_bootips = 0
+                # info string (with vlan ID and master device)
+                info_string = net_dev.devname
+                if net_dev.description
+                    info_string = "#{info_string} (#{net_dev.description})"
+                if net_dev.vlan_id
+                    info_string = "#{info_string}, VLAN #{net_dev.vlan_id}"
+                if net_dev.master_device
+                    info_string = "#{info_string} on #{@device.netdevice_lut[net_dev.master_device].devname}"
+                net_dev.$$info_string = info_string
                 for net_ip in net_dev.net_ip_set
-                    @device.num_netips++
-                    net_dev.num_netips++
+                    @device.$$num_netips++
+                    net_dev.$$num_netips++
                     if _net.nw_lut[net_ip.network].network_type_identifier == "b"
                         num_bootips++
-                        net_dev.num_bootips++
-            @device.num_boot_ips = num_bootips
+                        net_dev.$$num_bootips++
+            @device.$$num_boot_ips = num_bootips
+            # bootdevice info class
+            if @device.dhcp_error
+                @device.$$bootdevice_info_class = "btn-danger"
+            else
+                if num_bootips == 0
+                    @device.$$bootdevice_info_class = "btn-warning"
+                else if num_bootips == 1
+                    @device.$$bootdevice_info_class = "btn-success"
+                else
+                    @device.$$bootdevice_info_class = "btn-danger"
+            if @device.dhcp_write
+                w_state = "write"
+            else
+                w_state = "no write"
+            if @device.dhcp_mac
+                g_state = "greedy"
+            else
+                g_state = "not greedy"
+            r_val = "#{num_bootips} IPs (#{w_state}) / #{g_state})"
+            if @device.dhcp_error
+                r_val = "#{r_val}, #{@device.dhcp_error}"
+            if @device.dhcp_write != @device.dhcp_written
+                r_val = "#{r_val}, DHCP is " + (if @device.dhcp_written then "" else "not") + " written"
+            @device.$$boot_info_value = r_val
+
             # console.log "blni", @device.full_name, num_bootips
 
         build_request: (req_list, force) =>
@@ -582,10 +625,12 @@ angular.module(
             # insert the new netdevice nd to the local device
             dev = @device
             dev.netdevice_set.push(new_nd)
+            @post_network_info()
             # check if something is missing (new network_device_type or so)
             current = icswNetworkTreeService.current()
             if new_nd.network_device_type of current.nw_device_type_lut
                 # network device type present, no problem
+                defer.resolve("done")
             else
                 # reload network_device_type
                 current.reload_network_device_types().then(
@@ -693,7 +738,7 @@ angular.module(
     icswEnrichmentRequest, icswDomainTreeService, icswWebSocketService,
 ) ->
     class icswDeviceTree
-        constructor: (full_list, group_list, domain_tree, cat_tree, device_variable_scope_tree, device_class_tree) ->
+        constructor: (full_list, group_list, domain_tree, network_tree, cat_tree, device_variable_scope_tree, device_class_tree) ->
             @tree_id = icswTools.get_unique_id("DeviceTree")
             @group_list = group_list
             @all_list = []
@@ -704,6 +749,7 @@ angular.module(
             @enabled_nm_list = []
             @disabled_list = []
             @domain_tree = domain_tree
+            @network_tree = network_tree
             @cat_tree = cat_tree
             @device_variable_scope_tree = device_variable_scope_tree
             @device_class_tree = device_class_tree
@@ -1192,9 +1238,6 @@ angular.module(
             )
             return defer.promise
 
-        build_helper_luts: (en_list, dth) =>
-            @enricher.build_g_luts(en_list, dth)
-
         # localised update functions
         update_boot_settings: (dev) =>
             defer = $q.defer()
@@ -1393,11 +1436,11 @@ angular.module(
 ]).service("icswDeviceTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswDeviceClassTreeService",
-    "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS",
+    "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS", "icswNetworkTreeService";
     "icswDomainTreeService", "icswCategoryTreeService", "icswDeviceVariableScopeTreeService",
 (
     $q, Restangular, ICSW_URLS, icswCachingCall, icswDeviceClassTreeService,
-    icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS,
+    icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS, icswNetworkTreeService,
     icswDomainTreeService, icswCategoryTreeService, icswDeviceVariableScopeTreeService,
 ) ->
     rest_map = [
@@ -1425,6 +1468,7 @@ angular.module(
         load_called = true
         _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
         _wait_list.push(icswDomainTreeService.load(client))
+        _wait_list.push(icswNetworkTreeService.load(client))
         _wait_list.push(icswCategoryTreeService.load(client))
         _wait_list.push(icswDeviceVariableScopeTreeService.load(client))
         _wait_list.push(icswDeviceClassTreeService.load(client))
@@ -1432,7 +1476,7 @@ angular.module(
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** device tree loaded ***"
-                _result = new icswDeviceTree(data[0], data[1], data[2], data[3], data[4], data[5])
+                _result = new icswDeviceTree(data[0], data[1], data[2], data[3], data[4], data[5], data[6])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients
