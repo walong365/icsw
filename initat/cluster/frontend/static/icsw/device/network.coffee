@@ -2093,6 +2093,8 @@ angular.module(
                     new_devices_alltime_class: unselected_button_class
                     ignored_devices_class: unselected_button_class
                     ignore_text: "Ignore Selection"
+                    runtime: data.runtime
+                    devices_scanned: data.devices_scanned
                 }
 
                 reset_selection = () ->

@@ -346,8 +346,8 @@ class NmapScanDiffer(View):
                 except NmapScan.DoesNotExist:
                     pass
 
-            old_devices = old_nmap_scan.interpret()
-            current_devices = nmap_scan.interpret()
+            old_devices = old_nmap_scan.get_nmap_devices()
+            current_devices = nmap_scan.get_nmap_devices()
             new_devices = []
 
             for device in current_devices:
@@ -361,13 +361,13 @@ class NmapScanDiffer(View):
             nmap_scan = NmapScan.objects.get(idx=scan_id)
 
             old_nmap_scans = NmapScan.objects.filter(network=nmap_scan.network, idx__lt=scan_id)
-            current_devices = nmap_scan.interpret()
+            current_devices = nmap_scan.get_nmap_devices()
 
             old_device_list = []
             new_devices = []
 
             for old_nmap_scan in old_nmap_scans:
-                for old_device in old_nmap_scan.interpret():
+                for old_device in old_nmap_scan.get_nmap_devices():
                     if old_device not in old_device_list:
                         old_device_list.append(old_device)
 
@@ -387,8 +387,8 @@ class NmapScanDiffer(View):
                 nmap_scan_new = NmapScan.objects.get(idx=scan_id_2)
                 nmap_scan_old = NmapScan.objects.get(idx=scan_id_1)
 
-            old_devices = nmap_scan_old.interpret()
-            new_devices = nmap_scan_new.interpret()
+            old_devices = nmap_scan_old.get_nmap_devices()
+            new_devices = nmap_scan_new.get_nmap_devices()
 
             lost_devices = []
             added_devices = []
@@ -413,18 +413,14 @@ class HandleNmapScanDevice(View):
     @method_decorator(login_required)
     def post(self, request):
         mac_list = request.POST.getlist("mac_list[]")
-        print(mac_list)
 
         if bool(int(request.POST.get("ignore"))):
-            print("Ignoring devices")
             for mac in mac_list:
                 nsid = NmapScanIgnoredDevice(mac=mac)
                 nsid.save()
         else:
-            print("Unignoring devices")
             for mac in mac_list:
                 nsid = NmapScanIgnoredDevice.objects.get(mac=mac)
                 nsid.delete()
-                print("Deleting {}".format(mac))
 
         return HttpResponse(json.dumps([]))

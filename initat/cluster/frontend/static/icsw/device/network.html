@@ -518,7 +518,7 @@
                                     <th class="text-center">Selection</th>
                                     <th st-sort="idx" class="text-center">Scan ID</th>
                                     <th st-sort="devices_found" class="text-center">Devices Found</th>
-                                    <th st-sort="devices_ignored" class="text-center">Devices Ignored</th>
+                                    <th st-sort="devices_scanned" class="text-center">Devices Scanned</th>
                                     <th class="text-center">Runtime</th>
                                     <th class="text-center">Action</th>
                                 </tr>
@@ -534,7 +534,7 @@
                                     </td>
                                     <td class="text-center">{{ obj.idx }}</td>
                                     <td class="text-center">{{ obj.devices_found }}</td>
-                                    <td class="text-center">{{ obj.devices_ignored }}</td>
+                                    <td class="text-center">{{ obj.devices_scanned }}</td>
                                     <td class="text-center">{{ obj.runtime }}</td>
                                     <td class="text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab_type_0(tab, obj.idx)" class="btn btn-success btn-xs">Show Details</button></td>
                                 </tr>
@@ -546,6 +546,8 @@
                         <span>Scan: {{ sub_tab.index }}</span>
                         <icsw-tools-button size="xs" type="close" value="" ng-click="tab.close_sub_tab(sub_tab)"></icsw-tools-button>
                     </uib-tab-heading>
+                    <h3>{{ sub_tab.devices.length }} Devices found in {{ sub_tab.runtime }} seconds ({{ sub_tab.devices_scanned }} IPs scanned)
+                    </h3>
                     <table st-table="entries_displayed" st-safe-src="sub_tab.display_devices" class="table table-condensed table-hover" style="width:auto;">
                         <thead>
                             <tr>
