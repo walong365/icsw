@@ -354,9 +354,9 @@
                 </description>
             </icswData>
         </route>
-        <route name="main.monitorhint">
-            <stateData url="/monitorhint" templateUrl="icsw/device/mon/config"/>
-            <icswData pageTitle="Monitoring Hints">
+        <route name="main.monitordynamic">
+            <stateData url="/monitordynamic" templateUrl="icsw/device/mon/config"/>
+            <icswData pageTitle="Dynamic Monitoring">
                 <rights>
                     <value>backbone.mon_check_command.setup_monitoring</value>
                 </rights>
@@ -364,7 +364,7 @@
                     <value>md_config_server</value>
                 </licenses>
                 <description>
-                    <infoText language="en">TODO</infoText>
+                    <infoText language="en">Check and setup of dynamic monitoring</infoText>
                 </description>
             </icswData>
         </route>
@@ -383,9 +383,9 @@
                 </description>
             </icswData>
         </route>
-        <route name="main.devasset">
-            <stateData url="/asset" templateUrl="icsw/device/asset/overview"/>
-            <icswData pageTitle="Asset Runs">
+        <route name="main.assetdynamicoverview">
+            <stateData url="/asset" templateUrl="icsw/device/asset/dynamic/overview"/>
+            <icswData pageTitle="Dynamic Asset Runs">
                 <serviceTypes>
                     <value>discovery_server</value>
                 </serviceTypes>
@@ -432,7 +432,7 @@
                 </description>
             </icswData>
         </route>
-        <route name="main.statictemplates">
+        <!-- <route name="main.statictemplates">
             <stateData url="/sched/stattemp" templateUrl="icsw/static/asset/template/overview"/>
             <icswData pageTitle="Static Asset Templates">
                 <rights>
@@ -442,9 +442,9 @@
                     <infoText language="en">Define custom asset types</infoText>
                 </description>
             </icswData>
-        </route>
-        <route name="main.inventorystaticoverview">
-            <stateData url="/inventory/overview" templateUrl="icsw/device/inventory/static/overview"/>
+        </route> -->
+        <route name="main.assetstaticoverview">
+            <stateData url="/asset/static/overview" templateUrl="icsw/device/asset/static/overview"/>
             <icswData pageTitle="Static Asset Overview">
                 <rights>
                     <value>backbone.staticassettemplate.setup</value>
@@ -690,7 +690,7 @@
                 <menuEntry icon="fa-tree" name="Devices" routeName="main.devtree"/>
                 <menuEntry icon="fa-check-square-o" name="Configurations" routeName="main.configoverview"/>
                 <menuEntry icon="fa-list-alt" routeName="main.domaintree" name="Domain Names"/>
-                <menuEntry icon="fa-info" routeName="main.monitorhint" name="Monitoring Hints"/>
+                <menuEntry icon="fa-info" routeName="main.monitordynamic" name="Dynamic Monitoring"/>
                 <menuEntry icon="fa-check-square" name="Assign System Services" routeName="main.devicesrvconfig"/>
             </routeSubGroup>
             <routeSubGroup name="Reporting">
@@ -702,8 +702,8 @@
                 <menuEntry icon="fa-code-fork" name="Evaluate" routeName="main.kpievaluation"/>
             </routeSubGroup>
             <routeSubGroup name="Assets">
-                <menuEntry icon="fa-diamond" routeName="main.devasset" name="Asset Runs"/>
-                <menuEntry icon="fa-reorder" name="Static Asset Overview" routeName="main.inventorystaticoverview"/>
+                <menuEntry icon="fa-diamond" routeName="main.assetdynamicoverview" name="Dynamic Assets"/>
+                <menuEntry icon="fa-reorder" name="Static Assets" routeName="main.assetstaticoverview"/>
             </routeSubGroup>
         </menuHeader>
         <menuHeader name="Global" icon="fa-globe" side="left">
@@ -718,7 +718,7 @@
                 <menuEntry icon="fa-plug" name="Power Controlling Connections" routeName="main.deviceconnection"/>
                 <menuEntry icon="fa-clock-o" name="Schedule Asset Run" routeName="main.schedasset"/>
                 <menuEntry icon="fa-eye" name="Monitoring" routeName="main.monitorbuildinfo"/>
-                <menuEntry icon="fa-reorder" name="Static Asset Templates" routeName="main.statictemplates"/>
+                <!-- <menuEntry icon="fa-reorder" name="Static Asset Templates" routeName="main.statictemplates"/> -->
             </routeSubGroup>
             <routeSubGroup name="Reporting">
                 <menuEntry icon="fa-book" routeName="main.report" name="Reporting"/>
@@ -790,7 +790,7 @@
             <routeSubGroup name="Settings">
                 <menuEntry icon="fa-code-fork" name="KPI Setup" routeName="main.kpisettings"/>
                 <menuEntry icon="fa-wrench" name="Monitoring Setup" routeName="main.monitorbasics"/>
-                <menuEntry icon="fa-info" routeName="main.monitorhint" name="Monitoring Hints"/>
+                <menuEntry icon="fa-info" routeName="main.monitordynamic" name="Dynamic Monitoring"/>
                 <menuEntry icon="fa-laptop" name="Device Settings" routeName="main.monitordevice"/>
             </routeSubGroup>
             <routeSubGroup name="Asset System">

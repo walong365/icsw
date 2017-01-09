@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2016 init.at
+# Copyright (C) 2012-2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -27,9 +27,11 @@ from __future__ import print_function, unicode_literals
 import datetime
 import json
 import logging
+import time
 
 import PIL
 from PIL import Image
+from django.apps import apps
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -42,7 +44,6 @@ from lxml.builder import E
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 
-import initat.cluster.backbone.models
 from initat.cluster.backbone.models import category, category_tree, location_gfx, \
     DeleteRequest, device_mon_location
 from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
@@ -342,14 +343,20 @@ class CheckDeleteObject(View):
         # - related_objs: {obj_ok : [related_obj_info] } for objects which have related objects
         # - deletable_objects: [obj_pk]
         _post = request.POST
+        _start_time = time.time()
         obj_pks = json.loads(_post.get("obj_pks"))
-        model = getattr(initat.cluster.backbone.models, _post.get("model"))
+        model = apps.get_model("backbone", _post.get("model_name"))
 
         objs_to_delete = model.objects.filter(pk__in=obj_pks)
 
         if len(objs_to_delete) < len(obj_pks):
             request.xml_response.error("Could not find all objects to delete.")
-            logger.warn("To delete: {}; found only: {}".format(obj_pks, [o.pk for o in objs_to_delete]))
+            logger.warn(
+                "To delete: {}; found only: {}".format(
+                    obj_pks,
+                    [o.pk for o in objs_to_delete]
+                )
+            )
 
         related_objects_info = {}
         deletable_objects = []
@@ -359,7 +366,7 @@ class CheckDeleteObject(View):
 
             can_delete_answer = can_delete_obj(obj_to_delete, logger)
             # print 'can del took ', time.time() - a, bool(can_delete_answer), len(can_delete_answer.related_objects)
-            if can_delete_answer:
+            if can_delete_answer:  #  or True:
                 deletable_objects.append(obj_to_delete.pk)
             else:
                 info = []
@@ -369,15 +376,22 @@ class CheckDeleteObject(View):
                     referenced_objects_list = []
                     refs_of_refs = set()
                     for referenced_object in related_object.ref_list:
+                        # add simple representations of referenced objects
+                        # ignore all fields starting with underscore '_' (for example '_state')
                         referenced_objects_list.append(
-                            {k: v for (k, v) in referenced_object.__dict__.iteritems() if k != '_state'}
+                            {
+                                k: v for (k, v) in referenced_object.__dict__.iteritems() if not k.startswith("_")
+                            }
                         )
-                        refs_of_refs.update(get_related_models(referenced_object, detail=True))
+                        refs_of_refs.update(get_related_models(referenced_object, simple_tuples=True))
+                    # print("*", refs_of_refs)
 
                     info.append(
                         {
                             'model': related_object.model._meta.object_name,
                             'model_verbose_name': related_object.model._meta.verbose_name.capitalize(),
+                            'related_model': related_object.related_model._meta.object_name,
+                            'related_model_verbose_name': related_object.related_model._meta.verbose_name.capitalize(),
                             'field_name': related_object.field.name,
                             'field_verbose_name': related_object.field.verbose_name.capitalize(),
                             'null': related_object.field.null,
@@ -387,49 +401,73 @@ class CheckDeleteObject(View):
                             },
                         }
                     )
-                related_objects_info[obj_to_delete.pk] = info
+                related_objects_info[obj_to_delete.pk] = {
+                    "list": info,
+                }
                 # print 'build 2nd level rel list', time.time() - a
             # print 'obj', obj_pk, ' took ', time.time() - a
+        _end_time = time.time()
 
         # json can't deal with datetime, django formatter doesn't have nice dates
-        def formatter(x):
-            if isinstance(x, datetime.datetime):
-                return x.strftime("%Y-%m-%d %H:%M")
-            elif isinstance(x, datetime.date):
+        def formatter(val):
+            if isinstance(val, datetime.datetime):
+                return val.strftime("%Y-%m-%d %H:%M")
+            elif isinstance(val, datetime.date):
                 # NOTE: datetime is instance of date, so check datetime first
-                return x.isoformat()
+                return val.isoformat()
             else:
-                return x
-        request.xml_response['related_objects'] = json.dumps(related_objects_info, default=formatter)
-        request.xml_response['deletable_objects'] = json.dumps(deletable_objects)
+                return val
+        request.xml_response['related_objects'] = json.dumps(
+            related_objects_info, default=formatter
+        )
+        request.xml_response['deletable_objects'] = json.dumps(
+            deletable_objects
+        )
+        request.xml_response["delete_info"] = json.dumps(
+            {
+                "runtime": _end_time - _start_time,
+            }
+        )
 
 
 class AddDeleteRequest(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        obj_pks = json.loads(request.POST.get("obj_pks"))
-        model_name = request.POST.get("model")
-        model = getattr(initat.cluster.backbone.models, model_name)
-
-        for obj_pk in obj_pks:
-            obj = model.objects.get(pk=obj_pk)
-
-            if hasattr(obj, "enabled"):
-                obj.enabled = False
-                obj.save()
-
-            if DeleteRequest.objects.filter(obj_pk=obj_pk, model=model_name).exists():
-                request.xml_response.error("This object is already in the deletion queue.")
-            else:
-                del_req = DeleteRequest(
-                    obj_pk=obj_pk,
-                    model=model_name,
-                    delete_strategies=request.POST.get("delete_strategies", None)
+        data = json.loads(request.POST.get("data"))
+        # import pprint
+        # pprint.pprint(data)
+        for del_struct in data:  # obj_pk in obj_pks:
+            model_name = del_struct["model_name"]
+            model = apps.get_model("backbone", model_name)
+            try:
+                obj = model.objects.get(pk=del_struct["pk"])
+            except model.DoesNotExist:
+                request.xml_response.error(
+                    "The {} with pk {} does not exist".format(
+                        model_name,
+                        del_struct["pk"]
+                    )
                 )
-                with transaction.atomic():
-                    # save right away, not after request finishes, since cluster server is notified now
-                    del_req.save()
+            else:
+                if hasattr(obj, "enabled"):
+                    obj.enabled = False
+                    obj.save(update_fields=["enabled"])
+
+                if DeleteRequest.objects.filter(
+                    Q(obj_pk=del_struct["pk"]) &
+                    Q(model=model_name)
+                ).exists():
+                    request.xml_response.error("This object is already in the deletion queue.")
+                else:
+                    del_req = DeleteRequest(
+                        obj_pk=del_struct["pk"],
+                        model=model_name,
+                        delete_strategies=json.dumps(del_struct["delete_strategies"]),
+                    )
+                    with transaction.atomic():
+                        # save right away, not after request finishes, since cluster server is notified now
+                        del_req.save()
 
         srv_com = server_command.srv_command(command="handle_delete_requests")
         contact_server(request, icswServiceEnum.cluster_server, srv_com, log_result=False)
@@ -438,26 +476,33 @@ class AddDeleteRequest(View):
 class CheckDeletionStatus(View):
     # Returns how many of certain objects are already deleted
     @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
     def post(self, request):
         del_requests = json.loads(request.POST.get("del_requests"))
-
+        rs = {}
         for k, del_request in del_requests.iteritems():
-
             model_name, obj_pks = del_request
-            model = getattr(initat.cluster.backbone.models, model_name)
+            model = apps.get_model("backbone", model_name)
 
             num_remaining_objs = len(model.objects.filter(pk__in=obj_pks))
 
-            request.xml_response['num_remaining_{}'.format(k)] = num_remaining_objs
-
             if num_remaining_objs == 0:
-                msg = "Finished deleting {}".format(logging_tools.get_plural("object", len(obj_pks)))
+                msg = "Finished deleting {}".format(
+                    logging_tools.get_plural("object", len(obj_pks))
+                )
             else:
                 additional = " ({} remaining)".format(num_remaining_objs) if len(obj_pks) > 1 else ""
-                msg = "Deleting {}{}".format(logging_tools.get_plural("object", len(obj_pks)), additional)
-
-            request.xml_response['msg_{}'.format(k)] = msg
+                msg = "Deleting {}{}".format(
+                    logging_tools.get_plural("object", len(obj_pks)),
+                    additional,
+                )
+            rs[k] = {
+                "num_remaining": num_remaining_objs,
+                "msg": msg,
+            }
+        return HttpResponse(
+            json.dumps(rs),
+            content_type="application/json"
+        )
 
 
 class CategoryReferences(ListAPIView):

@@ -1,22 +1,15 @@
-<script type="text/ng-template" id="icsw/device/asset/overview">
-    <icsw-device-asset-overview icsw-sel-man="0"></icsw-device-asset-overview>
+<script type="text/ng-template" id="icsw/device/asset/dynamic/overview">
+    <!-- dynamic asset runs -->
+    <icsw-device-asset-dynamic-overview icsw-sel-man="0"></icsw-device-asset-dynamic-overview>
 </script>
 
-<script type="text/ng-template" id="icsw/static/asset/template/overview">
-    <icsw-static-asset-template-overview></icsw-static-asset-template-overview>
-</script>
-
-<script type="text/ng-template" id="icsw/device/inventory/static/overview">
-    <icsw-device-inventory-static-overview></icsw-device-inventory-static-overview>
-</script>
-
-<script type="text/ng-template" id="icsw.device.asset.overview">
+<script type="text/ng-template" id="icsw.device.asset.dynamic.overview">
     <div class="container-fluid">
         <div uib-alert class="alert-warning" ng-show="!struct.data_loaded">Fetching Data from Server ...</div>
 
         <div ng-if="struct.data_loaded">
             <h1>
-                Asset System Overview
+                Dynamic Asset System Overview (runs)
             </h1>
 
             <uib-tabset>
@@ -115,7 +108,7 @@
     ></icsw-asset-asset-batch-table>
 </script>
 
-<script type="text/ng-template" id="icsw.device.asset.overview.reduced">
+<script type="text/ng-template" id="icsw.device.asset.dynamic.overview.reduced">
     <uib-tabset ng-repeat="dev in struct.devices">
         </br>
         <uib-tab>

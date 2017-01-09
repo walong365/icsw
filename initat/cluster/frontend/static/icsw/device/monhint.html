@@ -4,7 +4,18 @@
             Monitoring Configuration and Hints for
             <icsw-device-list-info icsw-device-list="struct.devices"></icsw-device-list-info>
         </h3>
-        <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching Data from Server ...</div>
+        <div
+            uib-alert
+            class="alert-warning"
+            ng-show="struct.loading">
+            Fetching Data from Server ...
+        </div>
+        <div
+            uib-alert
+            class="alert-danger"
+            ng-show="!struct.loading && struct.devices.length == 0">
+            No devices selected
+        </div>
         <uib-accordion close-others="no" ng-if="struct.devices.length">
             <div uib-accordion-group class="panel-default" is-open="struct.monconfig_open" ng-show="!struct.fetching">
                 <uib-accordion-heading>
@@ -80,6 +91,13 @@
                     </uib-tab>
                 </uib-tabset>
             </div>
+            <div uib-accordion-group class="panel-default" is-open="struct.devlog_open">
+                <uib-accordion-heading>
+                    <icsw-tools-accordion-chevron icsw-flag="struct.devlog_open"></icsw-tools-accordion-chevron>
+                    Device logs ({{ struct.devices.length }} devices)
+                </uib-accordion-heading>
+                <icsw-device-log-table icsw-device-list="struct.devices"></icsw-device-log-table>
+            </div>
             <div uib-accordion-group class="panel-default" is-open="struct.monhint_open">
                 <uib-accordion-heading>
                     <icsw-tools-accordion-chevron icsw-flag="struct.monhint_open"></icsw-tools-accordion-chevron>
@@ -102,61 +120,45 @@
                         Fetching DynConfig...
                     </span>
                 </uib-accordion-heading>
-                <table
-                    ng-show="struct.devices.length && !struct.trigger_fetch"
-                    class="table table-condensed table-hover table-striped"
-                    style="width:auto;"
-                >
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th>Device</th>
-                            <th>Group</th>
-                            <th>Comment</th>
-                            <th>#hints</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr icsw-monitoring-hint-device-row ng-repeat-start="device in struct.devices" ng-class="get_tr_class(device)"></tr>
-                        <tr ng-repeat-end ng-if="device.$$hints_expanded && device.monitoring_hint_set.length && !struct.fetching">
-                            <td colspan="9">
-                                <icsw-monitoring-hint-table icsw-device="device"></icsw-monitoring-hint-table>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+
+                <uib-tabset ng-show="!struct.trigger_fetch">
+                    <uib-tab ng-repeat="device in struct.devices">
+                        <uib-tab-heading>
+                            {{ device.full_name }}
+                        </uib-tab-heading>
+                        <h3>
+                            Device
+                            <button
+                                type="button"
+                                class="btn btn-xs btn-primary"
+                                ng-click="show_device($event, device)"
+                            >{{ device.full_name }}</button>
+                            dynamic checks: <span ng-bind-html="device.dynamic_checks | yesno4"></span>,
+                            hints found: {{ device.monitoring_hint_set.length }}
+                            <icsw-tools-button
+                                type="delete"
+                                size="xs"
+                                value="delete selected hints"
+                                ng-click="delete_multiple_hints($event, device)"
+                            ></icsw-tools-button>
+                            (group {{ device.device_group_name }}, comment {{ device.comment }})
+                        </h3>
+                        <icsw-monitoring-hint-table
+                            icsw-device="device"
+                            ng-show="device.monitoring_hint_set.length && !struct.trigger_fetch"
+                        ></icsw-monitoring-hint-table>
+                    </uib-tab>
+                </uib-tabset>
             </div>
         </uib-accordion>
     </div>
-</script>
-
-<script type="text/ng-template" id="icsw.monitoring.hint.device.row">
-    <td>
-        <button class="btn btn-primary btn-xs" ng-click="expand_vt(device)" ng-show="device.monitoring_hint_set.length">
-            <span ng_class="get_expand_class(device)"/>
-        </button>
-    </td>
-    <td>
-        <button
-            type="button"
-            class="btn btn-xs btn-primary"
-            ng-click="show_device($event, device)"
-        >{{ device.full_name }}</button>
-    </td>
-    <td>{{ device.device_group_name }}</td>
-    <td>{{ device.comment }}</td>
-    <td class="text-center">{{ device.monitoring_hint_set.length }}</td>
-    <td>
-        <icsw-tools-button type="delete" size="xs" value="delete selected hints" ng-click="delete_multiple_hints($event, device)"></icsw-tools-button>
-    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.monitoring.hint.table">
     <table
         st-table="entries_display"
         st-safe-src="device.monitoring_hint_set"
-        class="table table-condensed table-striped table-hover table-bordered"
+        class="table table-condensed table-striped table-hover"
         style="width:auto;"
     >
         <thead>
@@ -176,14 +178,21 @@
                 <th>upper warn</th>
                 <th>upper crit</th>
                 <th st-sort="value">value</th>
-                <th title="check">active check</th>
+                <th title="check" st-sort="is_active">active check</th>
                 <th colspan="3">action</th>
                 <th st-sort="info">info</th>
-                <th>Created</th>
+                <th st-sort="updated">Updated</th>
+                <th st-sort="date">Created</th>
             </tr>
         </thead>
         <tbody>
-            <tr st-select-row="hint" st-select-mode="multiple" icsw-monitoring-hint-row ng-class="hint.isSelected && 'info'" ng-repeat="hint in entries_display"></tr>
+            <tr
+                st-select-row="hint"
+                st-select-mode="multiple"
+                icsw-monitoring-hint-row
+                ng-class="hint.isSelected && 'info'"
+                ng-repeat="hint in entries_display"
+            ></tr>
         </tbody>
     </table>
 </script>
@@ -213,7 +222,7 @@
     <td class="text-right" ng-class="{{ hint.$$upper_warn_class }}" ng-attr-title="{{ hint.$$upper_warn_title }}">{{ hint.$$upper_warn_limit }}</td>
     <td class="text-right" ng-class="{{ hint.$$upper_crit_class }}" ng-attr-title="{{ hint.$$upper_crit_title }}">{{ hint.$$upper_crit_limit }}</td>
     <td class="text-right success">{{ hint.$$value }}</td>>
-    <td class="text-center">{{ hint.is_active | yesno2 }}</td>
+    <td class="text-center"><span ng-bind-html="hint.is_active | yesno3"></span></td>
     <td class="text-center">
         <icsw-tools-button type="delete" ng-click="delete_hint($event, hint)" size="xs"></icsw-tools-button>
     </td>
@@ -224,7 +233,8 @@
         <icsw-tools-button type="modify" ng-show="hint.$$show_modify" ng-click="edit_hint($event, hint)" size="xs"></icsw-tools-button>
     </td>
     <td>{{ hint.info }}</td>
-    <td>{{ hint.$$from_now }}</td>
+    <td class="text-right" title="{{ hint.updated }}">{{ hint.$$from_now_updated }}</td>
+    <td class="text-right" title="{{ hint.date }}">{{ hint.$$from_now_created }}</td>
 </script>
 
 <script type="text/ng-template" id="icsw.monitoring.hint.form">

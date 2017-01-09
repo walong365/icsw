@@ -21,15 +21,15 @@
 # variable related module
 
 device_asset_module = angular.module(
-    "icsw.device.asset",
+    "icsw.device.asset.dynamic",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ngCsv"
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
-    icswRouteExtensionProvider.add_route("main.devasset")
+    icswRouteExtensionProvider.add_route("main.assetdynamicoverview")
     icswRouteExtensionProvider.add_route("main.schedasset")
     icswRouteExtensionProvider.add_route("main.schedoverviewasset")
-]).directive("icswDeviceAssetOverview",
+]).directive("icswDeviceAssetDynamicOverview",
 [
     "$templateCache",
 (
@@ -37,11 +37,11 @@ device_asset_module = angular.module(
 ) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("icsw.device.asset.overview")
+        template: $templateCache.get("icsw.device.asset.dynamic.overview")
         controller: "icswDeviceAssetCtrl"
         scope: true
     }
-]).directive("icswDeviceAssetOverviewReduced",
+]).directive("icswDeviceAssetDynamicOverviewReduced",
 [
     "$templateCache",
 (
@@ -49,7 +49,7 @@ device_asset_module = angular.module(
 ) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("icsw.device.asset.overview.reduced")
+        template: $templateCache.get("icsw.device.asset.dynamic.overview.reduced")
         controller: "icswDeviceAssetCtrl"
         scope: true
     }

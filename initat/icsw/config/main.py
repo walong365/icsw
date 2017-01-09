@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2006,2014-2016 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2006,2014-2017 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone
 #

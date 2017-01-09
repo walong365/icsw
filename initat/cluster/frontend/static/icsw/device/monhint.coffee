@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2016 init.at
+# Copyright (C) 2012-2017 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -24,7 +24,59 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
-    icswRouteExtensionProvider.add_route("main.monitorhint")
+    icswRouteExtensionProvider.add_route("main.monitordynamic")
+]).service("icswMonHintTools",
+[
+    "$q",
+(
+    $q,
+) ->
+    salt_monitoring_hints = (device) ->
+        for entry in device.monitoring_hint_set
+            entry.$$v_type = {
+                f: "float"
+                i: "int"
+                s: "string"
+                B: "blob"
+                j: "json"
+            }[entry.v_type]
+            entry.$$from_now_created = moment(entry.date).fromNow(true)
+            entry.$$from_now_updated = moment(entry.updated).fromNow(true)
+            if entry.v_type == "B"
+                # deprecated
+                entry.$$value = entry.value_json.length + " Bytes (blob)"
+            else if entry.v_type == "j"
+                # new json format
+                entry.$$value = entry.value_json.length + " Bytes (json)"
+            else
+                entry.$$value = entry["value_#{entry.$$v_type}"]
+            # entry.$$from_now = m
+            for _name in ["lower_crit", "lower_warn", "upper_warn", "upper_crit"]
+                s_key = "#{_name}_#{entry.$$v_type}"
+                d_key = "$$#{s_key}"
+                _source = entry["#{s_key}_source"]
+                if _source == "n"
+                    entry["$$#{_name}_title"] = "not set"
+                    entry["$$#{_name}_class"] = ""
+                    entry["$$#{_name}_limit"] = "---"
+                else if _source == "s"
+                    entry["$$#{_name}_title"] = "set by system"
+                    entry["$$#{_name}_class"] = "warning"
+                    entry["$$#{_name}_limit"] = entry[s_key]
+                else if _source == "u"
+                    entry["$$#{_name}_title"] = "not by user"
+                    entry["$$#{_name}_class"] = "success"
+                    entry["$$#{_name}_limit"] = entry[s_key]
+                else
+                    entry["$$#{_name}_title"] = "unknown source '#{_source}'"
+                    entry["$$#{_name}_class"] = ""
+                    entry["$$#{_name}_limit"] = "---"
+            entry.$$show_modify = entry.v_type in ["f", "i"]
+
+    return {
+        salt_monitoring_hints: (device) ->
+            return salt_monitoring_hints(device)
+    }
 ]).service("icswMonConfigTable",
 [
     "$q",
@@ -72,11 +124,13 @@ angular.module(
     "$timeout", "icswAccessLevelService", "ICSW_URLS", "blockUI",
     "icswSimpleAjaxCall", "toaster", "icswDeviceTreeService", "icswMonConfigTable",
     "icswDeviceTreeHelperService", "icswToolsSimpleModalService", "DeviceOverviewService",
+    "icswMonHintTools",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal,
     $timeout, icswAccessLevelService, ICSW_URLS, blockUI,
     icswSimpleAjaxCall, toaster, icswDeviceTreeService, icswMonConfigTable,
     icswDeviceTreeHelperService, icswToolsSimpleModalService, DeviceOverviewService,
+    icswMonHintTools,
 ) ->
 
     $scope.struct = {
@@ -96,6 +150,8 @@ angular.module(
         monconfig_open: true
         # hint accordion
         monhint_open: true
+        # device logs open
+        devlog_open: false
         # monconfig tables
         mc_tables: []
         # active table
@@ -116,6 +172,11 @@ angular.module(
                 $(xml).find("config > *").each (idx, node) =>
                     new_table = new icswMonConfigTable($(node))
                     $scope.struct.mc_tables.push(new_table)
+                $(xml).find("devices > device").each (idx, device) =>
+                    device = $(device)
+                    pk = parseInt(device.attr("pk"))
+                    dyn_checks = if parseInt(device.attr("dynamic_checks")) then true else false
+                    $scope.struct.device_tree.set_device_flags(pk, {dynamic_checks: dyn_checks})
                 # now (re)-enrich the devices
                 # hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
                 $scope.struct.fetching_mon = false
@@ -158,6 +219,8 @@ angular.module(
         hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
         $scope.struct.device_tree.enrich_devices(hs, ["monitoring_hint_info"], force=true).then(
             (done) ->
+                for dev in $scope.struct.devices
+                    icswMonHintTools.salt_monitoring_hints(dev)
                 $scope.struct.fetching_hint = false
         )
 
@@ -175,8 +238,6 @@ angular.module(
                 for _dev in _dev_sel
                     if not _dev.is_meta_device
                         $scope.struct.devices.push(_dev)
-                        if not _dev.$$hints_expanded?
-                            _dev.$$hints_expanded = false
                 $scope.struct.device_tree = data[0]
                 $scope.struct.loading = false
                 fetch_mon_config()
@@ -209,9 +270,6 @@ angular.module(
         $event.preventDefault()
         DeviceOverviewService($event, [device])
 
-    $scope.expand_vt = (device) ->
-        device.$$hints_expanded = not device.$$hints_expanded
-
     $scope.delete_multiple_hints = ($event, device) ->
         _to_del = (entry for entry in device.monitoring_hint_set when entry.isSelected)
         if _to_del.length
@@ -233,12 +291,6 @@ angular.module(
                     )
             )
 
-    $scope.get_expand_class = (device) ->
-        if device.$$hints_expanded
-            return "glyphicon glyphicon-chevron-down"
-        else
-            return "glyphicon glyphicon-chevron-right"
-
     $scope.$on("$destroy", () ->
         #if $scope.cur_timeout?
         #    $timeout.cancel($scope.cur_timeout)
@@ -253,16 +305,6 @@ angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.device.livestatus.monconfig")
         controller: "icswDeviceMonConfigCtrl"
-    }
-]).directive("icswMonitoringHintDeviceRow",
-[
-    "$templateCache",
-(
-    $templateCache
-) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.monitoring.hint.device.row")
     }
 ]).directive("icswMonitoringHintRow",
 [
@@ -298,45 +340,6 @@ angular.module(
     toaster, $compile, $templateCache, blockUI, icswComplexModalService,
     icswMonitoringHintBackup,
 ) ->
-    _salt_hints = () ->
-        for entry in $scope.device.monitoring_hint_set
-            entry.$$v_type = {
-                f: "float"
-                i: "int"
-                s: "string"
-                B: "blob"
-            }[entry.v_type]
-            entry.$$from_now = moment(entry.date).fromNow(true)
-            if entry.v_type == "B"
-                entry.$$value = entry.value_blob.length + " Bytes"
-            else
-                entry.$$value = entry["value_#{entry.$$v_type}"]
-            # entry.$$from_now = m
-            for _name in ["lower_crit", "lower_warn", "upper_warn", "upper_crit"]
-                s_key = "#{_name}_#{entry.$$v_type}"
-                d_key = "$$#{s_key}"
-                _source = entry["#{s_key}_source"]
-                if _source == "n"
-                    entry["$$#{_name}_title"] = "not set"
-                    entry["$$#{_name}_class"] = ""
-                    entry["$$#{_name}_limit"] = "---"
-                else if _source == "s"
-                    entry["$$#{_name}_title"] = "set by system"
-                    entry["$$#{_name}_class"] = "warning"
-                    entry["$$#{_name}_limit"] = entry[s_key]
-                else if _source == "u"
-                    entry["$$#{_name}_title"] = "not by user"
-                    entry["$$#{_name}_class"] = "success"
-                    entry["$$#{_name}_limit"] = entry[s_key]
-                else
-                    entry["$$#{_name}_title"] = "unknown source '#{_source}'"
-                    entry["$$#{_name}_class"] = ""
-                    entry["$$#{_name}_limit"] = "---"
-            entry.$$show_modify = entry.v_type in ["f", "i"]
-    _salt_hints()
-
-    # modify functions
-
     $scope.delete_hint = ($event, hint) ->
         icswToolsSimpleModalService("Really delete hint #{hint.key} ?").then(
             (ok) ->

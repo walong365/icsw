@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2008,2011-2016 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2008,2011-2017 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -27,8 +27,7 @@ from django.db.models import Q
 import cs_base_class
 from initat.cluster.backbone.models import netdevice, device, device_variable, domain_tree_node
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.tools import ipvx_tools, logging_tools, process_tools, cluster_location
-from initat.tools.config_tools import RouterObject
+from initat.tools import ipvx_tools, logging_tools, process_tools, cluster_location, config_tools
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME = "/etc/hosts"
@@ -44,10 +43,9 @@ class write_etc_hosts(cs_base_class.icswCSServerCom):
         server_idxs = [self.server_idx]
         # get additional idx if host is virtual server
 
-        print("*** IS_SERVER FIXME TODO")
-        is_server, serv_idx, _server_type, _server_str, _config_idx, _real_server_name = cluster_location.is_server("server", True, False)
-        if is_server and serv_idx != self.server_idx:
-            server_idxs.append(serv_idx)
+        sql_info = config_tools.server_check(service_type_enum=icswServiceEnum.cluster_server)
+        if sql_info.effective_device is not None and sql_info.effective_device.idx != self.server_idx:
+            server_idxs.append(sql_info.effective_device.idx)
         # recognize for which devices i am responsible
         dev_r = cluster_location.DeviceRecognition()
         server_idxs = list(set(server_idxs) | set(dev_r.device_dict.keys()))
@@ -60,7 +58,7 @@ class write_etc_hosts(cs_base_class.icswCSServerCom):
             Q(device__device_group__enabled=True)
         ).values_list("pk", flat=True)
         # ref_table
-        route_obj = RouterObject(cur_inst.log)
+        route_obj = config_tools.RouterObject(cur_inst.log)
         all_paths = []
         for s_ndev in my_idxs:
             all_paths.extend(networkx.shortest_path(route_obj.nx, s_ndev, weight="weight").values())

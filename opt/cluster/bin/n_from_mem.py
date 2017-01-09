@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2007-2009,2012,2014-2016 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2009,2012,2014-2017 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #

@@ -174,7 +174,7 @@ angular.module(
 
     _same_search = () ->
         if $scope.device_data.full_name
-            $scope.struct.same_seach_pending = true
+            $scope.struct.same_search_pending = true
             icswSimpleAjaxCall(
                 url: ICSW_URLS.MON_SEARCH_SIMILAR_NAMES
                 data: {
@@ -183,6 +183,7 @@ angular.module(
                 dataType: "json"
             ).then(
                 (json) ->
+                    $scope.struct.same_search_pending = false
                     $scope.struct.matching_names.length = 0
                     $scope.struct.matching_names_found = json.found
                     for entry in json.list
@@ -192,7 +193,6 @@ angular.module(
                             entry.$$tr_class = "bg-warning"
                         else
                             entry.$$tr_class = ""
-                        console.log entry.$$tr_class
                         $scope.struct.matching_names.push(entry)
             )
 
@@ -246,7 +246,7 @@ angular.module(
                     defer.promise.then(
                         (creat_msg) ->
                             new_dev = $scope.struct.device_tree.all_lut[_dev_pk]
-                            console.log _dev_pk, new_dev
+                            # console.log _dev_pk, new_dev
 
                             scan_settings = {
                                 manual_address: d_dict.ip
@@ -265,16 +265,19 @@ angular.module(
                                 icswActiveSelectionService.current().add_selection(new_dev)
                                 icswActiveSelectionService.current().signal_selection_changed()
 
-                            $timeout(
-                                () ->
-                                    defer = $q.defer()
-                                    $scope.struct.device_tree._fetch_device(
-                                        _dev_pk
-                                        defer
-                                        "New Device"
-                                    )
-                                5000
-                            )
+                            # why ? to get the results of the base scan ?
+                            # this is very dangerous because structures created
+                            # for the device will be overwritten by the fetch
+                            # $timeout(
+                            #    () ->
+                            #        defer = $q.defer()
+                            #        $scope.struct.device_tree._fetch_device(
+                            #            _dev_pk
+                            #            defer
+                            #            "New Device"
+                            #        )
+                            #    5000
+                            # )
 
                             if edit_after
                                 DeviceOverviewService($event, [$scope.struct.device_tree.all_lut[_dev_pk]]).then(

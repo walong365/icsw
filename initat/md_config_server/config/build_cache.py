@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -24,12 +24,13 @@ from __future__ import unicode_literals, print_function
 import time
 
 from django.db.models import Q
+from lxml.builder import E
 
 from initat.cluster.backbone import routing
-from initat.cluster.backbone.var_cache import VarCache
 from initat.cluster.backbone.models import device, device_group, mon_check_command, user, \
     mon_host_cluster, mon_service_cluster, MonHostTrace, mon_host_dependency, mon_service_dependency, \
     MonHostTraceGeneration, mon_check_command_special, netdevice
+from initat.cluster.backbone.var_cache import VarCache
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.sink import SNMPSink
 from initat.tools import logging_tools, process_tools
@@ -113,7 +114,7 @@ class HostBuildCache(object):
     def info_str(self):
         _counter = self.counter
         # info string for logging
-        info_str = "{:3d} / {:3d}, logs: {:3d} / {:3d} / {:3d} ({:3d} total) [{}] in {:>16s}".format(
+        info_str = "NC={:3d} / DC={:3d}, logs: {:3d} / {:3d} / {:3d} ({:3d} total) [{}] in {:>16s}".format(
             self.num_checks,
             len(self.dynamic_checks),
             _counter.num_ok,
@@ -124,6 +125,12 @@ class HostBuildCache(object):
             logging_tools.get_diff_time_str(self.end_time - self.start_time),
         )
         return info_str
+
+    def get_result_xml(self):
+        return E.device(
+            pk="{:d}".format(self.device.idx),
+            dynamic_checks="1" if self.device.dynamic_checks else "0",
+        )
 
     # set device (== host config) file
     def set_device_file(self, d_file):

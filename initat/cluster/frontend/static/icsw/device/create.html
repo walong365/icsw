@@ -32,10 +32,11 @@
                         <label class="control-label col-md-3 icsw-formlabel">Similar named Devices</label>
                         <div class="controls col-md-6">
                             <h4 ng-show="struct.matching_names_found == 0" class="text-danger">
-                                None found
+                                None found<span ng-show="struct.same_search_pending">, checking...</span>
                             </h4>
                             <div ng-show="struct.matching_names_found > 0">
                                 <h4>
+                                    <span ng-show="struct.same_search_pending">, checking...</span>
                                     {{ struct.matching_names_found }} matching Devices found, showing the best {{ struct.matching_names.length }} matches:
                                 </h4>
                                 <table
@@ -43,9 +44,12 @@
                                 >
                                     <thead>
                                         <tr>
-                                            <th>Name</th>
+                                            <th>Idx</th>
+                                            <th>Type</th></t>
+                                            <th>Full Name</th>
+                                            <th>Short Name</th>
                                             <th>Devicegroup</th>
-                                            <th>Ratio</th>
+                                            <th>Similarity</th>
                                             <th>Status</th>
                                         </tr>
                                     </thead>
@@ -54,9 +58,22 @@
                                             ng-repeat="entry in struct.matching_names"
                                             ng-class="entry.$$tr_class"
                                         >
-                                            <td>{{ entry.name }}</td>
+                                            <td><code>{{ $index + 1 }}</code></td>
+                                            <td>
+                                                <span ng-show="entry.full" class="label label-primary">Full</span>
+                                                <span ng-show="!entry.full" class="label label-success">Short</span>
+                                            </td>
+                                            <td>
+                                                {{ entry.full_name }}
+                                            </td>
+                                            <td>
+                                                {{ entry.short_name }}
+                                            </td>
                                             <td>{{ entry.device_group_name }}</td>
-                                            <td>{{ entry.ratio | number: 3 }}</td>
+                                            <td class="text-center">
+                                                {{ entry.full_ratio | number: 1 }} % /
+                                                {{ entry.short_ratio | number: 1 }} %
+                                            </td>
                                             <td>
                                                 <span class="label label-success" ng-show="entry.enabled">enabled</span>
                                                 <span class="label label-warning" ng-show="!entry.enabled">disabled</span>

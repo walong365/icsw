@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2016 init.at
+# Copyright (C) 2012-2017 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -682,15 +682,16 @@ angular.module(
     "icswTools", "ICSW_URLS", "$q", "Restangular", "icswEnrichmentInfo",
     "icswSimpleAjaxCall", "$rootScope", "$timeout", "icswDeviceTreeGraph",
     "ICSW_SIGNALS", "icswDeviceTreeHelper", "icswNetworkTreeService",
-    "icswEnrichmentRequest",
+    "icswEnrichmentRequest", "icswDomainTreeService",
 (
     icswTools, ICSW_URLS, $q, Restangular, icswEnrichmentInfo,
     icswSimpleAjaxCall, $rootScope, $timeout, icswDeviceTreeGraph,
     ICSW_SIGNALS, icswDeviceTreeHelper, icswNetworkTreeService,
-    icswEnrichmentRequest,
+    icswEnrichmentRequest, icswDomainTreeService,
 ) ->
     class icswDeviceTree
         constructor: (full_list, group_list, domain_tree, cat_tree, device_variable_scope_tree, device_class_tree) ->
+            @tree_id = icswTools.get_unique_id("DeviceTree")
             @group_list = group_list
             @all_list = []
             @enabled_list = []
@@ -747,6 +748,9 @@ angular.module(
             @cluster_device_group = undefined
             _disabled_groups = []
             for _entry in full_list
+                if not _entry.$$delete_pending?
+                    _entry.$$delete_pending = false
+                # pseudo flag from backend
                 if _entry.is_cluster_device_group
                     # oh what a name ...
                     @cluster_device_group_device = _entry
@@ -762,6 +766,8 @@ angular.module(
                         _disabled_groups.push(_entry.device_group)
                     @disabled_list.push(_entry)
             for _group in @group_list
+                if not _group.$$delete_pending?
+                    _group.$$delete_pending = false
                 if _group.enabled and not _group.cluster_device_group
                     @enabled_ns_group_list.push(_group)
             @enabled_lut = icswTools.build_lut(@enabled_list)
@@ -820,6 +826,12 @@ angular.module(
             console.error "DO NOT USE: get_num_devices()"
             return (entry for entry in @enabled_list when entry.device_group == group.idx).length - 1
 
+        # modification functions
+        set_device_flags: (pk, kwargs) =>
+            dev = @all_lut[pk]
+            for key, value of kwargs
+                dev[key] = value
+
         # create / delete functions
 
         # for group
@@ -865,10 +877,13 @@ angular.module(
             return defer.promise
 
         delete_device_group: (dg_pk) =>
-            group = @group_lut[dg_pk]
-            _.remove(@all_list, (entry) -> return entry.idx == group.device)
-            _.remove(@group_list, (entry) -> return entry.idx == dg_pk)
-            @reorder()
+            if dg_pk of @group_lut
+                group = @group_lut[dg_pk]
+                _.remove(@all_list, (entry) -> return entry.idx == group.device)
+                _.remove(@group_list, (entry) -> return entry.idx == dg_pk)
+                @reorder()
+            else
+                console.error "trying to delete no longer existing device_group with pk=#{dg_pk}"
 
         # for device
 
@@ -910,6 +925,7 @@ angular.module(
             return defer.promise
 
         delete_device: (d_pk) =>
+            console.warn "delete device with pk=#{d_pk}"
             _.remove(@all_list, (entry) -> return entry.idx == d_pk)
             @reorder()
 
@@ -922,22 +938,34 @@ angular.module(
                 (dev_list) =>
                     dev = dev_list[0]
                     _.remove(@all_list, (entry) -> return entry.idx == dev.idx)
-                    @all_list.push(dev)
-                    if dev.device_group of @group_lut
-                        @reorder()
-                        defer.resolve(msg)
+                    # check if domain name tree is consistent
+                    dnt_defer = $q.defer()
+                    if dev.domain_tree_node of @domain_tree.lut
+                        dnt_defer.resolve("done")
                     else
-                        # new device-group added (at least the group is missing), fetch group
-                        Restangular.one(ICSW_URLS.REST_DEVICE_GROUP_LIST.slice(1)).get({idx: dev.device_group}).then(
-                            (new_obj) =>
-                                new_group = new_obj[0]
-                                # add new device_group to group_list
-                                @group_list.push(new_group)
-                                # update group_lut
-                                @group_lut[new_group.idx] = new_group
-                                # and now the meta-device
-                                @_fetch_device(new_group.device, defer, "created device_group")
+                        icswDomainTreeService.reload(@tree_id).then(
+                            (reloaded) ->
+                                dnt_defer.resolve("ok")
                         )
+                    dnt_defer.promise.then(
+                        (dnt_ok) =>
+                            @all_list.push(dev)
+                            if dev.device_group of @group_lut
+                                @reorder()
+                                defer.resolve(msg)
+                            else
+                                # new device-group added (at least the group is missing), fetch group
+                                Restangular.one(ICSW_URLS.REST_DEVICE_GROUP_LIST.slice(1)).get({idx: dev.device_group}).then(
+                                    (new_obj) =>
+                                        new_group = new_obj[0]
+                                        # add new device_group to group_list
+                                        @group_list.push(new_group)
+                                        # update group_lut
+                                        @group_lut[new_group.idx] = new_group
+                                        # and now the meta-device
+                                        @_fetch_device(new_group.device, defer, "created device_group")
+                                )
+                    )
             )
 
         apply_json_changes: (json) =>
@@ -1244,7 +1272,6 @@ angular.module(
             _res.push(@cluster_device_group_device.idx)
             # console.log "trace: in #{devs.length}, out #{_res.length}"
             return (@all_lut[idx] for idx in _res)
-
         # category functions
         add_category_to_device_by_pk: (dev_pk, cat_pk) =>
             @add_category_to_device(@all_lut[dev_pk], cat_pk)

@@ -426,7 +426,7 @@ angular.module(
 [
     "$templateCache", "$compile",
 (
-    $templateCache, $compile
+    $templateCache, $compile,
 ) ->
     return {
         restrict: "EA"
@@ -441,6 +441,9 @@ angular.module(
                 else
                     _t_name = "icsw.device.info.form"
                 element.append($compile($templateCache.get(_t_name))(scope))
+            scope.close_after_delete = () ->
+                element.remove()
+                scope.$destroy()
     }
 ]).controller("icswSimpleDeviceInfoCtrl",
 [
@@ -448,13 +451,13 @@ angular.module(
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
     "icswAccessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
     "icswDeviceTreeHelperService", "icswComplexModalService", "toaster", "$compile", "$templateCache",
-    "icswCategoryTreeService",
+    "icswCategoryTreeService", "icswInfoModalService", "icswDialogDeleteService",
 (
     $scope, Restangular, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
     icswAccessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
     icswDeviceTreeHelperService, icswComplexModalService, toaster, $compile, $templateCache,
-    icswCategoryTreeService,
+    icswCategoryTreeService, icswInfoModalService, icswDialogDeleteService,
 ) ->
     $scope.struct = {
         # data is valid
@@ -470,6 +473,7 @@ angular.module(
         # device group
         is_devicegroup: false
     }
+
     create_info_fields = (obj) ->
         if $scope.struct.is_devicegroup
             # not really needed
@@ -575,7 +579,27 @@ angular.module(
 
         # return defer.promise
 
-    $scope.modify = () ->
+    $scope.delete = ($event) ->
+        icswInfoModalService("Really delete device '#{$scope.edit_obj.full_name}' ?").then(
+            (ok) ->
+                icswDialogDeleteService.delete(
+                    icswDialogDeleteService.get_delete_instance(
+                        [$scope.edit_obj]
+                        "device"
+                        {
+                            async_delete: false
+                            change_async_delete_flag: false
+                            after_delete: (arg) =>
+                                for pk in arg.del_pks
+                                    $scope.struct.device_tree.delete_device(pk)
+                                $scope.close_after_delete()
+                        }
+                    )
+                )
+            (not_ok) ->
+        )
+
+    $scope.modify = ($event) ->
         if $scope.struct.is_devicegroup
             dbu = new icswDeviceGroupBackup()
             template_name = "icsw.devicegroup.info.edit.form"

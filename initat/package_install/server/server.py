@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2016 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2017 Andreas Lang-Nevyjel
 #
 # this file is part of package-server
 #

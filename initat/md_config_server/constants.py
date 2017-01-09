@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2014,2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2014,2016-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-{sync,config}-server
 #

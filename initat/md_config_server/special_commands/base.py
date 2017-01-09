@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -21,16 +21,15 @@
 
 from __future__ import unicode_literals, print_function
 
-import inflection
-import datetime
 import time
 
+import inflection
 from django.db.models import Q
 
-from initat.cluster.backbone.models import monitoring_hint, cluster_timezone
-from initat.host_monitoring import ipc_comtools
+from ..config import global_config
+from initat.cluster.backbone.models import monitoring_hint, DeviceLogEntry
 from initat.icsw.service.instance import InstanceXML
-from initat.tools import logging_tools, process_tools
+from initat.tools import logging_tools
 
 __all__ = [
     b"SpecialBase",
@@ -101,14 +100,65 @@ class SpecialBase(object):
                 logging_tools.get_plural("entry", len(hint_list))
             )
         )
-        monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name)).delete()
-        for ch in self._salt_hints(hint_list, self.call_idx):
-            ch.save()
+        cur_hints = monitoring_hint.objects.filter(
+            Q(device=self.host) &
+            Q(m_type=self.ds_name) &
+            Q(call_idx=self.call_idx)
+        )
+        ch_dict = {
+            (_h.m_type, _h.key): _h for _h in cur_hints
+        }
+        new_hints = self._salt_hints(hint_list, self.call_idx)
+        nh_dict = {
+            (_h.m_type, _h.key): _h for _h in new_hints
+        }
+        _del_keys = set(ch_dict.keys()) - set(nh_dict.keys())
+        _new_keys = set(nh_dict.keys()) - set(ch_dict.keys())
+        _same_keys = set(nh_dict.keys()) & set(ch_dict.keys())
+        _log_level = logging_tools.LOG_LEVEL_OK
+        _info = []
+        if _new_keys:
+            _info.append(
+                "created {}".format(
+                    logging_tools.get_plural("hint", len(_new_keys)),
+                )
+            )
+            for _new_key in _new_keys:
+                nh_dict[_new_key].save()
+        if _same_keys:
+            _info.append(
+                "updated {}".format(
+                    logging_tools.get_plural("hint", len(_same_keys)),
+                )
+            )
+            for _same_key in _same_keys:
+                ch_dict[_same_key].update(nh_dict[_same_key])
+        if _del_keys:
+            _log_level = logging_tools.LOG_LEVEL_WARN
+            _info.append(
+                "deleted {}".format(
+                    logging_tools.get_plural("hint", len(_del_keys)),
+                )
+            )
+            for _del_key in _del_keys:
+                ch_dict[_del_key].delete()
+        DeviceLogEntry.new(
+            device=self.host,
+            source=global_config["LOG_SOURCE_IDX"],
+            level=_log_level,
+            text=", ".join(_info) or "nothing done (no hints created)",
+        )
+        # import pprint
+        # pprint.pprint(ch_dict)
+        # pprint.pprint(nh_dict)
 
     def _load_cache(self):
         if not self.__hints_loaded:
             self.__hints_loaded = True
-            self.__cache = monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name))
+            self.__cache = monitoring_hint.objects.filter(
+                Q(device=self.host) &
+                Q(m_type=self.ds_name)
+            )
             # set datasource to cache
             for _entry in self.__cache:
                 if _entry.datasource not in ["c", "p"]:
@@ -127,12 +177,13 @@ class SpecialBase(object):
             self._load_cache()
         return self.__cache
 
-    def remove_hints(self):
-        self._load_cache()
-        # remove all cached entries, cached entries are always local (with m_type set as ds_name)
-        self.log("removing all {}".format(logging_tools.get_plural("cached entry", len(self.__cache))))
-        [_entry.delete() for _entry in self.__cache]
-        self.__cache = []
+    # no longer needed, was referenced in megaraid_special
+    # def remove_hints(self):
+    #    self._load_cache()
+    #    # remove all cached entries, cached entries are always local (with m_type set as ds_name)
+    #    self.log("removing all {}".format(logging_tools.get_plural("cached entry", len(self.__cache))))
+    #    [_entry.delete() for _entry in self.__cache]
+    #    self.__cache = []
 
     def add_persistent_entries(self, hint_list, call_idx):
         pers_dict = {
@@ -173,24 +224,6 @@ class SpecialBase(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[sc] {}".format(what), log_level)
 
-    def collrelay(self, command, *args, **kwargs):
-        return self._call_server(
-            command,
-            "collrelay",
-            *args,
-            **kwargs
-        )
-
-    def snmprelay(self, command, *args, **kwargs):
-        return self._call_server(
-            command,
-            "snmp_relay",
-            *args,
-            snmp_community=self.host.dev_variables["SNMP_READ_COMMUNITY"],
-            snmp_version=self.host.dev_variables["SNMP_VERSION"],
-            **kwargs
-        )
-
     def to_hint(self, srv_reply):
         # transforms server reply to monitoring hints
         return []
@@ -207,105 +240,6 @@ class SpecialBase(object):
     def call_idx(self):
         # gives current server call number (for multi-call specials, for example: first call for network, second call for disks)
         return self.__call_idx
-
-    def _call_server(self, command, server_name, *args, **kwargs):
-        if not self.Meta.server_contact:
-            # not beautifull but working
-            self.log("not allowed to make an external call", logging_tools.LOG_LEVEL_CRITICAL)
-            return None
-        # self.log(
-        #     "calling server '{}' for {}, command is '{}', {}, {}".format(
-        #         server_name,
-        #         self.host.valid_ip.ip,
-        #         command,
-        #         "args is '{}'".format(", ".join([str(value) for value in args])) if args else "no arguments",
-        #         ", ".join(
-        #             [
-        #                 "{}='{}'".format(
-        #                     key,
-        #                     str(value)
-        #                 ) for key, value in kwargs.iteritems()
-        #             ]
-        #         ) if kwargs else "no kwargs",
-        #     )
-        # )
-        connect_to_localhost = kwargs.pop("connect_to_localhost", False)
-        conn_ip = "127.0.0.1" if connect_to_localhost else self.host.valid_ip.ip
-        if not self.__use_cache:
-            # contact the server / device
-            hint_list = []
-            for cur_iter in xrange(self.Meta.retries + 1):
-                _result_ok = False
-                log_str, log_level = (
-                    "iteration {:d} of {:d} (timeout={:d})".format(cur_iter, self.Meta.retries, self.Meta.timeout),
-                    logging_tools.LOG_LEVEL_ERROR,
-                )
-                s_time = time.time()
-                try:
-                    srv_reply = ipc_comtools.send_and_receive_zmq(
-                        conn_ip,
-                        command,
-                        *args,
-                        server=server_name,
-                        zmq_context=self.build_process.zmq_context,
-                        port=self.__hm_port,
-                        timeout=self.Meta.timeout,
-                        **kwargs
-                    )
-                except:
-                    log_str = "{}, error connecting to '{}' ({}, {}): {}".format(
-                        log_str,
-                        server_name,
-                        conn_ip,
-                        command,
-                        process_tools.get_except_info()
-                    )
-                    self.__server_contact_ok = False
-                else:
-                    srv_error = srv_reply.xpath(".//ns:result[@state != '0']", smart_strings=False)
-                    if srv_error:
-                        self.__server_contact_ok = False
-                        log_str = "{}, got an error ({:d}): {}".format(
-                            log_str,
-                            int(srv_error[0].attrib["state"]),
-                            srv_error[0].attrib["reply"],
-                        )
-                    else:
-                        e_time = time.time()
-                        log_str = "{}, got a valid result in {}".format(
-                            log_str,
-                            logging_tools.get_diff_time_str(e_time - s_time),
-                        )
-                        _result_ok = True
-                        log_level = logging_tools.LOG_LEVEL_OK
-                        # salt hints, add call_idx
-                        hint_list = self._salt_hints(
-                            self.to_hint(srv_reply),
-                            self.__call_idx
-                        )
-                        # as default all hints are used for monitor checks
-                        for _entry in hint_list:
-                            _entry.check_created = True
-                        self.__server_contacts += 1
-                        self.__hint_list.extend(hint_list)
-                self.log(log_str, log_level)
-                if _result_ok:
-                    break
-                if self.__server_contacts <= self.Meta.retries:
-                    # only wait if we are belov the retry threshold
-                    self.log("waiting for {:d} seconds".format(self.Meta.error_wait), logging_tools.LOG_LEVEL_WARN)
-                    time.sleep(self.Meta.error_wait)
-            if hint_list == [] and self.__call_idx == 0 and len(self.__cache):
-                # use cache only when first call went wrong and we have something in the cache
-                self.__use_cache = True
-        if self.__use_cache:
-            hint_list = [_entry for _entry in self.__cache if _entry.call_idx == self.__call_idx]
-            self.log("take {} from cache".format(logging_tools.get_plural("entry", len(hint_list))))
-        else:
-            # add persistent values
-            self.add_persistent_entries(hint_list, self.__call_idx)
-        self.__call_idx += 1
-        return hint_list
 
     def __call__(self, mode, **kwargs):
         s_name = self.Meta.name

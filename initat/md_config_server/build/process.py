@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -197,12 +197,12 @@ class BuildProcess(
     def fetch_dyn_configs(self, gbc, pk_list):
         start_time = time.time()
         cur_gc = self.__gen_config
-        cur_gc.add_config(MonAllCommands(cur_gc))
+        cur_gc.add_config(MonAllCommands(cur_gc, logging=False))
         gbc.set_global_config(cur_gc, {}, False)
-        ac_filter = Q(dynamic_checks=True) & Q(enabled=True) & Q(device_group__enabled=True)
+        ac_filter = Q(dynamic_checks=True)
         if pk_list:
             ac_filter &= Q(pk__in=pk_list)
-        gbc.set_host_list(device.objects.exclude(Q(is_meta_device=True)).filter(
+        gbc.set_host_list(device.all_enabled.exclude(Q(is_meta_device=True)).filter(
             ac_filter
         ).values_list(
             "pk", flat=True)
@@ -210,6 +210,9 @@ class BuildProcess(
         all_configs = self.get_all_configs(ac_filter)
         # import pprint
         # pprint.pprint(all_configs)
+        _count_dict = {
+            "special_found": 0,
+        }
         fetch_list = []
         for host_pk in gbc.host_pks:
             host = gbc.get_host(host_pk)
@@ -218,7 +221,12 @@ class BuildProcess(
             host.dev_variables = dev_variables
             hbc = None
             if MON_VAR_IP_NAME not in dev_variables:
-                self.log("No IP found for dyn reconfig of {}".format(unicode(host)), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "No IP found for dyn reconfig of {}".format(
+                        unicode(host)
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 # get config names
                 conf_names = set(all_configs.get(host.full_name, []))
@@ -234,10 +242,12 @@ class BuildProcess(
                         )
                     ]
                 )
-                _added = False
+                _dev_added = False
                 for conf_name in conf_names:
                     s_check = cur_gc["command"][conf_name]
+                    # check for special check
                     if s_check.mccs_id:
+                        _count_dict["special_found"] += 1
                         if hbc is None:
                             # init
                             hbc = HostBuildCache(host)
@@ -250,10 +260,11 @@ class BuildProcess(
                             s_check,
                             DynamicCheckMode.fetch,
                         )
+                        # print("*", _res.r_type)
                         if _res.r_type == "fetch":
-                            if not _added:
+                            if not _dev_added:
                                 fetch_list.append(hbc)
-                                _added = True
+                                _dev_added = True
                             hbc.add_pending_fetch(_res.special_instance)
                             # print(unicode(_res))
             if hbc and not hbc.pending_fetch_calls:
@@ -264,6 +275,15 @@ class BuildProcess(
                 )
                 self.flush_hbc_logs(hbc, glob_log_str)
             # print("*", host, dev_variables)
+        self.log(
+            "stats: {}".format(
+                ", ".join(
+                    [
+                        "{}={:d}".format(_key, _value) for _key, _value in _count_dict.iteritems()
+                    ]
+                )
+            )
+        )
         if fetch_list:
             self.log(
                 "{} in fetch_list for dynamic checks".format(
@@ -423,7 +443,7 @@ class BuildProcess(
                 # set global config and other global values
                 gbc.set_global_config(cur_gc, cur_dmap, hdep_from_topo)
                 self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
-                self.create_all_host_configs(gbc)
+                hbcs_created = self.create_all_host_configs(gbc)
                 self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
                 if self.build_mode in [BuildModesEnum.all_master, BuildModesEnum.all_slave, BuildModesEnum.some_master, BuildModesEnum.some_slave]:
                     # refresh implies _write_entries
@@ -439,12 +459,19 @@ class BuildProcess(
             self.send_pool_message("build_info", "end_build", self.version, self.build_mode.name, target="syncer")
         if self.build_mode in [BuildModesEnum.some_check, BuildModesEnum.some_master]:
             cur_gc = self.__gen_config
-            res_node = E.config(
-                *sum(
-                    [
-                        cur_gc[key].get_xml() for key in constants.SINGLE_BUILD_MAPS
-                    ],
-                    []
+            res_node = E.result(
+                E.devices(
+                    *[
+                        _hbc.get_result_xml() for _hbc in hbcs_created
+                    ]
+                ),
+                E.config(
+                    *sum(
+                        [
+                            cur_gc[key].get_xml() for key in constants.SINGLE_BUILD_MAPS
+                            ],
+                        []
+                    )
                 )
             )
             self.srv_com["result"] = res_node
@@ -472,7 +499,7 @@ class BuildProcess(
     def _create_gen_config_files(self, mode):
         cur_gc = self.__gen_config
         # misc commands (sending of mails)
-        cur_gc.add_config(MonAllCommands(cur_gc))
+        cur_gc.add_config(MonAllCommands(cur_gc, logging=True))
         # servicegroups
         cur_gc.add_config(MonAllServiceGroups(cur_gc))
         # timeperiods
@@ -602,8 +629,9 @@ class BuildProcess(
         # build lookup-table
         self.send_pool_message("build_info", "device_count", cur_gc.monitor_server.full_name, len(host_names), target="syncer")
         nagvis_maps = set()
+        hbcs_created = []
         for host_name, host in sorted(host_names):
-            self.create_single_host_config(
+            _hbc_result = self.create_single_host_config(
                 gbc,
                 host,
                 all_access,
@@ -611,6 +639,7 @@ class BuildProcess(
                 all_configs,
                 nagvis_maps,
             )
+            hbcs_created.append(_hbc_result)
         p_dict = self.parenting_run(gbc)
         if cur_gc.master and not gbc.single_build:
             if gbc.hdep_from_topo:
@@ -640,6 +669,7 @@ class BuildProcess(
                 logging_tools.get_diff_time_str(end_time - start_time),
             )
         )
+        return hbcs_created
 
     def get_all_configs(self, ac_filter):
         meta_devices = {
@@ -1175,6 +1205,7 @@ class BuildProcess(
         )
         self.flush_hbc_logs(hbc, glob_log_str)
         hbc.store_to_db()
+        return hbc
 
     def flush_hbc_logs(self, hbc, glob_log_str):
         info_str = hbc.info_str

@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -118,8 +118,8 @@ class device_serializer(serializers.ModelSerializer):
             "new_state", "prod_link", "dhcp_mac", "dhcp_write",
             # for categories
             "categories",
-            # class
-            "device_class",
+            # class and monitoring stuff
+            "device_class", "dynamic_checks",
             # uuid
             "uuid",
         )
@@ -273,4 +273,4 @@ class DeviceLogEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DeviceLogEntry
-        fields = ("idx", "device", "source", "user", "level", "text", "date")
+        fields = ("idx", "device", "source", "user", "level", "text", "date", "read_by")

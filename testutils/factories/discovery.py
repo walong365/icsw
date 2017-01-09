@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2015-2016 Bernhard Mallinger, init.at
+# Copyright (C) 2015-2017 Bernhard Mallinger, init.at
 #
 # this file is part of icsw-server
 #

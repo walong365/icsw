@@ -267,6 +267,13 @@ device_asset_module = angular.module(
                 field.$$monitor_ok = true
             else
                 field.$$monitor_ok = false
+            if field.has_bounds and not field.value_int_lower_bound?
+                field.value_int_lower_bound = 0
+                field.value_int_upper_bound = 1
+            if field.consumable and not field.consumable_start_value?
+                field.consumable_start_value = 10
+                field.consumable_warn_value = 4
+                field.consumable_critical_value = 4
             icswStaticAssetFunctions.get_default_value(field)
 
         add_references: () =>

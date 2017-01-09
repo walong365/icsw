@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -119,8 +119,10 @@ class MonAllServiceGroups(MonFileContainer):
 
 
 class MonAllCommands(MonFileContainer):
-    def __init__(self, gen_conf):
+    def __init__(self, gen_conf, logging):
+        self.__logging = logging
         MonFileContainer.__init__(self, "command")
+        self.__log_counter = 0
         self.refresh(gen_conf)
 
     def refresh(self, gen_conf):
@@ -128,10 +130,13 @@ class MonAllCommands(MonFileContainer):
         self.clear()
         self._add_notify_commands()
         self._add_commands_from_db(gen_conf)
+        self.__log_counter += 1
 
     def ignore_content(self, in_dict):
         # ignore commands with empty command line (== meta commands)
-        return ("".join(in_dict.get("command_line", [""]))).strip() == ""
+        return (
+            "".join(in_dict.get("command_line", [""]))
+        ).strip() == ""
 
     def _expand_str(self, in_str):
         for key, value in self._str_repl_dict.iteritems():
@@ -156,8 +161,8 @@ class MonAllCommands(MonFileContainer):
         )
 
         self._str_repl_dict = {
-            "$INIT_MONITOR_INFO$": "{} {}".format(md_type, md_vers),
-            "$INIT_CLUSTER_NAME$": "{}".format(cluster_name),
+            "$ICSW_MONITOR_INFO$": "{} {}".format(md_type, md_vers),
+            "$ICSW_CLUSTER_NAME$": "{}".format(cluster_name),
         }
 
         self.add_object(
@@ -324,6 +329,7 @@ class MonAllCommands(MonFileContainer):
                 db_entry=ngc,
                 is_active=ngc.is_active,
                 volatile=ngc.volatile,
+                show_log=self.__log_counter % 10 == 0 and global_config["DEBUG"] and self.__logging,
             )
             nag_conf = cc_s.get_mon_config()
             self.add_object(nag_conf)

@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (c) 2012-2016 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2012-2017 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of icsw-server
 #

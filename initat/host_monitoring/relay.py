@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2017 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -45,7 +45,7 @@ from .config import global_config
 from .discovery import ZMQDiscovery
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
-from .host_monitoring_struct import HostConnection, host_message
+from .host_monitoring_struct import HostConnection, HostMessage
 from .ipc_comtools import IPCCommandHandler
 
 
@@ -596,7 +596,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         if ZMQDiscovery.has_mapping(conn_str):
             id_str = ZMQDiscovery.get_mapping(conn_str)
             cur_hc = HostConnection.get_hc_0mq(conn_str, id_str)
-            cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
+            cur_mes = cur_hc.add_message(HostMessage(com_name, src_id, srv_com, xml_input))
             if com_name in self.modules.command_dict:
                 com_struct = self.modules.command_dict[srv_com["command"].text]
                 # handle commandline
@@ -609,7 +609,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         elif ZMQDiscovery.is_pending(conn_str):
             cur_hc = HostConnection.get_hc_0mq(conn_str)
             com_name = srv_com["command"].text
-            cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
+            cur_mes = cur_hc.add_message(HostMessage(com_name, src_id, srv_com, xml_input))
             cur_hc.return_error(cur_mes, "0mq discovery in progress")
         else:
             ZMQDiscovery(srv_com, src_id, xml_input)
@@ -775,7 +775,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         )
         cur_hc = HostConnection.get_hc_tcp(conn_str, dummy_connection=True)
         com_name = srv_com["command"].text
-        cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
+        cur_mes = cur_hc.add_message(HostMessage(com_name, src_id, srv_com, xml_input))
         if com_name in self.modules.command_dict:
             com_struct = self.modules.command_dict[com_name]
             cur_hc.send(cur_mes, com_struct)
@@ -790,7 +790,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         )
         cur_hc = HostConnection.get_hc_tcp(conn_str, dummy_connection=True)
         com_name = srv_com["command"].text
-        cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
+        cur_mes = cur_hc.add_message(HostMessage(com_name, src_id, srv_com, xml_input))
         cur_hc.send(cur_mes, None)
         self.__old_send_lut[cur_mes.src_id] = cur_hc
 

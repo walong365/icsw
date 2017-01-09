@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -20,6 +20,8 @@
 """ config part of md-config-server """
 
 from __future__ import unicode_literals, print_function
+
+import time
 
 from initat.cluster.backbone.models import TOP_MONITORING_CATEGORY, parse_commandline
 from initat.md_config_server.config.mon_base_config import StructuredMonBaseConfig
@@ -53,13 +55,17 @@ class CheckCommand(object):
         self.enable_perfdata = kwargs.get("enable_perfdata", False)
         self.volatile = kwargs.get("volatile", False)
         self.mon_check_command = None
+        self.__show_log = kwargs.get("show_log", False)
         if "db_entry" in kwargs:
             if kwargs["db_entry"].pk:
                 self.mon_check_command = kwargs["db_entry"]
         self._generate_md_com_line()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        CheckCommand.gen_conf.log("[cc %s] %s" % (self.__name, what), log_level)
+        CheckCommand.gen_conf.log(
+            "[cc {}] {}".format(self.__name, what),
+            log_level
+        )
 
     @property
     def command_line(self):
@@ -83,7 +89,7 @@ class CheckCommand(object):
         self.__num_args = arg_info["num_args"]
         self.__default_values = arg_info["default_values"]
         self.__md_com_line = arg_info["parsed_com_line"]
-        if global_config["DEBUG"]:
+        if self.__show_log:
             for _line in log_lines:
                 self.log(_line)
 

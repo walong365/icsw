@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -919,6 +919,8 @@ class DeviceLogEntry(models.Model):
     user = models.ForeignKey("user", null=True)
     level = models.ForeignKey("LogLevel")
     text = models.CharField(max_length=765, default="")
+    # marked as read by user
+    read_by = models.ForeignKey("backbone.user", null=True, related_name="read_device_logs")
     date = models.DateTimeField(auto_now_add=True)
 
     @staticmethod
@@ -932,7 +934,7 @@ class DeviceLogEntry(models.Model):
         source = kwargs.get("source")
         if source is None:
             source = log_source_lookup("webfrontend")
-        elif isinstance(source, basestring) or type(source) in [int, long]:
+        elif isinstance(source, basestring) or isinstance(source, int):
             source = log_source_lookup(source)
 
         level = kwargs.get("level")

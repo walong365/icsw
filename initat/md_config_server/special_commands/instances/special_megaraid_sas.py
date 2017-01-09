@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -69,8 +69,6 @@ class SpecialMegaraidSas(SpecialBase):
         # import pprint
         # pprint.pprint(ctrl_dict)
         _res = self.RCClass()._interpret(ctrl_dict, cur_ns)
-        if len(_res):
-            self.remove_hints()
         self.store_hints([self._transform_to_hint(entry) for entry in _res])
         yield None
 

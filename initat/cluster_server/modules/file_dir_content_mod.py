@@ -1,4 +1,4 @@
-# Copyright (C) 2007,2013-2016 Lang-Nevyjel
+# Copyright (C) 2007,2013-2017 Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #

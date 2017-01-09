@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2017 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -452,16 +452,16 @@ class HostConnection(object):
             self.log("unknown id '{}' in _handle_old_result".format(mes_id), logging_tools.LOG_LEVEL_ERROR)
 
 
-class host_message(object):
+class HostMessage(object):
     hm_idx = 0
     hm_open = set()
     __slots__ = ["src_id", "xml_input", "timeout", "s_time", "sent", "sr_probe", "ns", "com_name", "srv_com", "com_struct"]
 
     def __init__(self, com_name, src_id, srv_com, xml_input):
         self.com_name = com_name
-        # self.hm_idx = host_message.hm_idx
-        # host_message.hm_idx += 1
-        # host_message.hm_open.add(self.hm_idx)
+        # self.hm_idx = HostMessage.hm_idx
+        # HostMessage.hm_idx += 1
+        # HostMessage.hm_open.add(self.hm_idx)
         self.src_id = src_id
         self.xml_input = xml_input
         self.srv_com = srv_com
@@ -587,6 +587,6 @@ class host_message(object):
                 return ret_value
 
     def __del__(self):
-        # host_message.hm_open.remove(self.hm_idx)
+        # HostMessage.hm_open.remove(self.hm_idx)
         del self.srv_com
         pass

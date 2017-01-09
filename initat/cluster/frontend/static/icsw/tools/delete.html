@@ -1,57 +1,79 @@
 <script type="text/ng-template" id="icsw.dialog.delete_popup">
+    <div>
+        <fieldset>
+            <legend>
+                Delete settings
+            </legend>
+            <div class="checkbox">
+                <label>
+                    <input
+                        type="checkbox"
+                        ng-model="del_struct.async_delete"
+                        ng-disabled="!del_struct.change_async_delete_flag"
+                    />
+                    Delete asynchronously
+                </label>
+                <p>&nbsp;</p>
+            </div>
+            <div>
+                Time needed for structure build: {{ del_struct.delete_info.runtime }} seconds
+            </div>
 
-    <div style="font-size: 12px"> <!-- bootstrap dialog would otherwise increase font size to 14px -->
+        </fieldset>
 
-        <legend>Delete settings</legend>
-        <div class="checkbox">
-            <label>
-                <input type="checkbox" ng-model="async_delete"/>
-                Delete asynchronously
-            </label>
-
-            <p>&nbsp;</p>
-        </div>
-
-        <div ng-show="deletable_objects.length > 0">
+        <fieldset ng-show="del_struct.$$any_deletable">
             <legend>
                 Deletable without deleting hard references
             </legend>
 
             <div class="form">
-                <div class="checkbox" ng-repeat="del_obj_pk in deletable_objects">
+                <div class="checkbox" ng-repeat="struct in del_struct.deletable_objects">
                     <label>
-                        <input type="checkbox" ng-model="delete_deletable_dict[del_obj_pk]"/>
-                        {{ get_object_by_idx(del_obj_pk).name }}
+                        <input
+                            type="checkbox"
+                            ng-model="struct.delete"
+                            ng-click="del_struct.update_flags($event)"
+                        />
+                        {{ struct.name }}
                     </label>
                 </div>
             </div>
 
             <icsw-tools-button
-                type="delete" value="delete" ng-click="delete_deletable_action()"
-                icsw-disabled="!some_deletable_object_checked()"
+                type="delete"
+                value="delete"
+                ng-click="delete_deletable_action($event)"
+                icsw-disabled="!del_struct.$$some_deletable_objects_checked"
             ></icsw-tools-button>
 
 
             <p>&nbsp;</p>
-        </div>
+        </fieldset>
 
-        <div ng-show="!is_empty_object(related_objects)">
+        <fieldset ng-if="del_struct.$$any_related">
 
             <legend>
                 Deletable with deleting hard references
             </legend>
-            The following devices can only be deleted if references of them are also deleted, which can cause delete
-            cascades.
+            The following {{ del_struct.model_name }} can only be deleted if references of them are
+            also deleted, which can cause delete cascades.<br>
             Please select actions for each of these devices.
 
             <uib-tabset>
-                <uib-tab ng-repeat="(obj_pk, ref_list) in related_objects" heading="{{ get_object_by_idx(obj_pk).name }}">
-                    <!-- obj_pk is string! -->
+                <uib-tab
+                    ng-repeat="(obj_pk, ref_obj) in del_struct.related_objects"
+                >
+                    <uib-tab-heading>
+                        {{ del_struct.model_name }} '{{ ref_obj.name }}'
+                    </uib-tab-heading>
 
                     <div class="panel-body">
 
-                        <table st-table="entries_displayed" st-safe-src="ref_list"
-                               class="table icsw-striped-4 table-condensed">
+                        <table
+                            st-table="ref_obj.entries_displayed"
+                            st-safe-src="ref_obj.list"
+                            class="table icsw-striped-2 table-condensed table-hover"
+                        >
                             <tr>
                                 <th>Table</th>
                                 <th>Field</th>
@@ -60,12 +82,12 @@
                                 <th>Action</th>
                             </tr>
 
-                            <tr ng-repeat-start="entry in entries_displayed">
+                            <tr ng-repeat-start="entry in ref_obj.entries_displayed">
                                 <td>
-                                    {{entry.model_verbose_name}}
+                                    {{ entry.related_model_verbose_name }}
                                 </td>
                                 <td>
-                                    {{entry.field_verbose_name}}
+                                    {{ entry.field_verbose_name }}
                                 </td>
                                 <td class="text-center">
                                     <icsw-tools-button
@@ -73,18 +95,19 @@
                                         size="xs"
                                         is-show="!entry.show_details"
                                         ng-click="entry.show_details = !entry.show_details"
-                                        show-value="'show ({{ entry.objects.list.length }})'"
-                                        hide-value="'hide ({{ entry.objects.list.length }})'"
+                                        show-value="entry.$$show_value"
+                                        hide-value="entry.$$hide_value"
                                     ></icsw-tools-button>
                                 </td>
                                 <td ng-class="(entry.objects.num_refs_of_refs == 0) ? 'text-center' : 'text-center text-danger'">
-                                    {{entry.objects.num_refs_of_refs}}
+                                    {{ entry.objects.num_refs_of_refs }}
                                 </td>
                                 <td>
                                     <select
                                         class="select form-control"
-                                        ng-model="entry.selected_action" required="true"
+                                        ng-model="entry.selected_action"
                                         ng-options="value[0] as value[1] for value in entry.actions"
+                                        ng-change="del_struct.update_flags($event)"
                                     ></select>
                                 </td>
                             </tr>
@@ -115,14 +138,15 @@
                         </table>
 
                         <div>
-                            <div ng-show="!all_actions_defined(obj_pk)" class="text-danger">
+                            <div ng-show="!ref_obj.$$delete_ok" class="text-danger">
                                 Please select Actions for all References.
                             </div>
                             <div class="pull-right">
                                 <icsw-tools-button
-                                    type="delete" value="force delete"
-                                    icsw-disabled="!all_actions_defined(obj_pk)"
-                                    ng-click="force_delete(obj_pk)"
+                                    type="delete"
+                                    value="force delete"
+                                    icsw-disabled="!ref_obj.$$delete_ok"
+                                    ng-click="force_delete($event, ref_obj)"
                                 ></icsw-tools-button>
                             </div>
                         </div>
@@ -130,6 +154,6 @@
                     </div>
                 </uib-tab>
             </uib-tabset>
-        </div>
+        </fieldset>
     </div>
 </script>

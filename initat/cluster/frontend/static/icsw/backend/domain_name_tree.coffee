@@ -33,10 +33,11 @@ angular.module(
     icswTools, Restangular, $q, ICSW_URLS,
 ) ->
     class icswDomainTree
-        constructor: () ->
+        constructor: (new_list) ->
             @data_set = false
             @list = []
             @lut = {}
+            @update(new_list)
 
         update: (new_list) =>
             @data_set = true
@@ -155,53 +156,17 @@ angular.module(
 
 ]).service('icswDomainTreeService',
 [
-    "Restangular", "$q", "icswTools", "icswCachingCall", "ICSW_URLS", "icswDomainTree",
+    "ICSW_URLS", "icswDomainTree", "icswTreeBase",
 (
-    Restangular, $q, icswTools, icswCachingCall, ICSW_URLS, icswDomainTree
+    ICSW_URLS, icswDomainTree, icswTreeBase,
 ) ->
-    # domain_rest = Restangular.all(ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST.slice(1)).getList().$object
-    _fetch_dict = {}
-    _result = new icswDomainTree()
-    load_called = false
-    load_data = (client) ->
-        load_called = true
-        _wait_list = []
-        if client
-            _defer = $q.defer()
-        icswCachingCall.fetch(client, ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, [], []).then(
-            (data) ->
-                _result.update(data)
-                if client
-                    _defer.resolve(_result)
-                for client of _fetch_dict
-                    # resolve clients
-                    _fetch_dict[client].resolve(_result)
-                # reset fetch_dict
-                _fetch_dict = {}
-        )
-        if client
-            return _defer
-    trigger_reload = () ->
-        # this code works in principle but is not recommended because we will overwrite all local settings
-        load_data(null)
-    fetch_data = (client) ->
-        if client not of _fetch_dict
-            # register client
-            _defer = $q.defer()
-            _fetch_dict[client] = _defer
-        if _result.data_set
-            # resolve immediately
-            _fetch_dict[client].resolve(_result)
-        return _fetch_dict[client]
-    return {
-        "trigger_reload": () ->
-            trigger_reload()
-        "load": (client) ->
-            # load from server when first load or return result
-            if load_called
-                # fetch when data is present (after sidebar)
-                return fetch_data(client).promise
-            else
-                return load_data(client).promise
-    }
+    rest_map = [
+        ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST
+    ]
+    return new icswTreeBase(
+        "DomainNameTree",
+        icswDomainTree,
+        rest_map
+        ""
+    )
 ])

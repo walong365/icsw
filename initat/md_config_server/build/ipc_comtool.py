@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2016 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2008-2017 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -185,9 +185,25 @@ class IPCClientHandler(threading_tools.PollerBase):
     def feed_result(self, id_str, srv_reply):
         if id_str in self.__pending_messages:
             dc_action = self.__pending_messages[id_str]
+            dc_action.end_time = time.time()
+            run_str = logging_tools.get_diff_time_str(dc_action.end_time - dc_action.start_time)
             # print("----", id_str, id(dc_action), dc_action.special_instance.Meta.name)
             try:
+                _str, _state = srv_reply.get_log_tuple()
+                dc_action.log("feed_result() got {}".format(_str), _state)
+                DeviceLogEntry.new(
+                    device=dc_action.hbc.device,
+                    source=global_config["LOG_SOURCE_IDX"],
+                    level=_state,
+                    text="result was '{}' after {}".format(
+                        _str,
+                        run_str,
+                    ),
+                )
+                # print("*")
+                # print(srv_reply.get_result())
                 for _action in dc_action.special_instance.feed_result(dc_action, srv_reply):
+                    # print("g", _action)
                     if _action:
                         self.call(_action.salt(dc_action.hbc, dc_action.special_instance))
             except:
@@ -196,7 +212,10 @@ class IPCClientHandler(threading_tools.PollerBase):
                     device=dc_action.hbc.device,
                     source=global_config["LOG_SOURCE_IDX"],
                     level=logging_tools.LOG_LEVEL_CRITICAL,
-                    text="an error occured in feed_result: {}".format(_info),
+                    text="an error occured in feed_result: {} (after {})".format(
+                        _info,
+                        run_str,
+                    ),
                 )
                 exc_info = process_tools.exception_info()
                 self.log(
@@ -211,4 +230,3 @@ class IPCClientHandler(threading_tools.PollerBase):
             del self.__pending_messages[id_str]
         else:
             self.log("Got unknown id_str {}".format(id_str))
-

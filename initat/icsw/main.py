@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-client
 #

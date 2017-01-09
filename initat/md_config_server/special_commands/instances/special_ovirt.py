@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -21,6 +21,7 @@
 
 from __future__ import unicode_literals, print_function
 
+import json
 from lxml import etree
 
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
@@ -34,6 +35,18 @@ OVIRT_USER_NAME = "OVIRT_USER_NAME"
 OVIRT_PASSWORD = "OVIRT_PASSWORD"
 
 
+# get reference dict
+def _get_ref_value(in_str):
+    try:
+        _v = json.loads(in_str)
+    except:
+        # in_str has old structure, pass
+        return in_str
+    else:
+        # in_str is json dump, compress it
+        return process_tools.compress_struct(_v)
+
+
 class SpecialOvirtDomains(SpecialBase):
     class Meta:
         server_contact = True
@@ -43,8 +56,7 @@ class SpecialOvirtDomains(SpecialBase):
             "--username ${{ARG2:{}:notset}} --password ${{ARG3:{}:notset}}".format(
                 OVIRT_USER_NAME,
                 OVIRT_PASSWORD,
-            ) + \
-            " --passive-check-prefix $ARG4$ --reference $ARG5$"
+            ) + " --passive-check-prefix $ARG4$ --reference $ARG5$"
         description = "checks running virtual machines via API-calls to the engine"
 
     def dynamic_update_calls(self):
@@ -98,10 +110,10 @@ class SpecialOvirtDomains(SpecialBase):
             _hints.append(
                 monitoring_hint(
                     key="overview",
-                    v_type="B",
+                    v_type="j",
                     info="Domain overview",
                     persistent=True,
-                    value_blob=process_tools.compress_struct(info_dict),
+                    value_json=json.dumps(info_dict),
                     is_active=True,
                 )
             )
@@ -122,7 +134,7 @@ class SpecialOvirtDomains(SpecialBase):
                     arg2=_user_name,
                     arg3=_password,
                     arg4=_passive_check_prefix if _trigger_passive else "-",
-                    arg5=hint.value_blob if hint.is_active else "",
+                    arg5=_get_ref_value(hint.value_json) if hint.is_active else "",
                     check_active=hint.is_active,
                 )
             )
@@ -138,8 +150,7 @@ class SpecialOvirtStorageDomains(SpecialBase):
             "--username ${{ARG2:{}:notset}} --password ${{ARG3:{}:notset}}".format(
                 OVIRT_USER_NAME,
                 OVIRT_PASSWORD,
-            ) + \
-            " --passive-check-prefix $ARG4$ --reference $ARG5$"
+            ) + " --passive-check-prefix $ARG4$ --reference $ARG5$"
         description = "checks storage domains via API-calls to the engine"
 
     def dynamic_update_calls(self):
@@ -180,10 +191,10 @@ class SpecialOvirtStorageDomains(SpecialBase):
             _hints.append(
                 monitoring_hint(
                     key="overview",
-                    v_type="B",
+                    v_type="j",
                     info="StorageDomain overview",
                     persistent=True,
-                    value_blob=process_tools.compress_struct(info_dict),
+                    value_json=json.dumps(info_dict),
                     is_active=True,
                 )
             )
@@ -204,7 +215,7 @@ class SpecialOvirtStorageDomains(SpecialBase):
                     arg2=_user_name,
                     arg3=_password,
                     arg4=_passive_check_prefix if _trigger_passive else "-",
-                    arg5=hint.value_blob if hint.is_active else "",
+                    arg5=_get_ref_value(hint.value_json) if hint.is_active else "",
                     check_active=hint.is_active,
                 )
             )
@@ -220,8 +231,7 @@ class SpecialOvirtHosts(SpecialBase):
             "--username ${{ARG2:{}:notset}} --password ${{ARG3:{}:notset}}".format(
                 OVIRT_USER_NAME,
                 OVIRT_PASSWORD,
-            ) + \
-            " --passive-check-prefix $ARG4$ --reference $ARG5$"
+            ) + " --passive-check-prefix $ARG4$ --reference $ARG5$"
         description = "checks hosts via API-calls to the engine"
 
     def dynamic_update_calls(self):
@@ -262,10 +272,10 @@ class SpecialOvirtHosts(SpecialBase):
             _hints.append(
                 monitoring_hint(
                     key="overview",
-                    v_type="B",
+                    v_type="j",
                     info="Host overview",
                     persistent=True,
-                    value_blob=process_tools.compress_struct(info_dict),
+                    value_json=json.dumps(info_dict),
                     is_active=True,
                 )
             )
@@ -286,7 +296,7 @@ class SpecialOvirtHosts(SpecialBase):
                     arg2=_user_name,
                     arg3=_password,
                     arg4=_passive_check_prefix if _trigger_passive else "-",
-                    arg5=hint.value_blob if hint.is_active else "",
+                    arg5=_get_ref_value(hint.value_json) if hint.is_active else "",
                     check_active=hint.is_active,
                 )
             )

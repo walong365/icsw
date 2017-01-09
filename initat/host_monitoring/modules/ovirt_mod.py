@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2016 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2015-2017 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -15,7 +15,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" monitor ovirt instances, also used from md-config-server """
+"""
+monitor ovirt instances, also used from md-config-server
+"""
 
 from __future__ import print_function, unicode_literals
 
@@ -82,7 +84,7 @@ class APIClient(object):
     def _get_kwargs(self):
         _kwargs = {
             "auth": (self.username, self.password),
-            "headers": {'Connection':'close'},
+            "headers": {'Connection': 'close'},
         }
         if self.ignore_ssl_warnings:
             _kwargs["verify"] = False
@@ -99,7 +101,8 @@ class APIClient(object):
 
         if _result.status_code != 200:
             raise requests.HTTPError(
-                "status code is not OK: {} ({})".format(
+                "status code is not OK for url {}: {} ({})".format(
+                    full_url,
                     str(_result),
                     _result.reason,
                 )
@@ -257,8 +260,10 @@ class StorageDomain(APIObject):
     @staticmethod
     def deserialize(srv_com):
         _sds = E.storage_domains()
-        for _entry in srv_com.xpath(".//ns:storagedomains")[0]:
-            _sds.append(etree.fromstring(process_tools.decompress_struct(_entry.text)))
+        # print(srv_com.pretty_print())
+        for _node in srv_com.xpath(".//ns:storagedomains"):
+            for _entry in _node:
+                _sds.append(etree.fromstring(process_tools.decompress_struct(_entry.text)))
         return _sds
 
 
@@ -293,8 +298,9 @@ class Host(APIObject):
     @staticmethod
     def deserialize(srv_com):
         _sds = E.hosts()
-        for _entry in srv_com.xpath(".//ns:hosts")[0]:
-            _sds.append(etree.fromstring(process_tools.decompress_struct(_entry.text)))
+        for _node in srv_com.xpath(".//ns:hosts"):
+            for _entry in _node:
+                _sds.append(etree.fromstring(process_tools.decompress_struct(_entry.text)))
         return _sds
 
 
