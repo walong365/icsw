@@ -80,6 +80,9 @@ angular.module(
             {key: "add", value: "add to current Selection"}
             {key: "replace", value: "replace current Selection"}
         ]
+        bulk_create_mode: false
+        bulk_create_current_device: undefined
+        bulk_create_total_devices: undefined
     }
 
     $scope.device_data = {
@@ -94,13 +97,38 @@ angular.module(
         icon_name: "linux40"
         dev_selection: $scope.struct.dev_sel_list[0]
         mac: "00:00:00:00:00:00"
+        nmap_device: undefined
     }
 
     if $scope.device_info != undefined
-        if $scope.device_info.hostname != null
-            $scope.device_data.full_name = $scope.device_info.hostname
-        $scope.device_data.ip = $scope.device_info.ip
-        $scope.device_data.mac = $scope.device_info.$$mac
+        $scope.struct.bulk_create_mode = true
+        $scope.struct.bulk_create_current_device = 0
+        $scope.struct.bulk_create_total_devices = $scope.device_info.length
+
+    init_with_device_info = () ->
+        if $scope.device_info != undefined
+            if $scope.device_info.length > 0
+                next_device = $scope.device_info[0]
+                $scope.device_data.nmap_device = next_device
+                $scope.device_info = _.drop($scope.device_info)
+
+                $scope.struct.bulk_create_current_device += 1
+
+                if next_device.hostname != null
+                    $scope.device_data.full_name = next_device.hostname
+                $scope.device_data.ip = next_device.ip
+                $scope.device_data.mac = next_device.$$mac
+            else
+                $scope.device_info = undefined
+                init_with_device_info()
+        else
+            $scope.device_data.full_name = ""
+            $scope.device_data.ip = ""
+            $scope.device_data.mac = "00:00:00:00:00:00"
+            $scope.device_data.nmap_device = undefined
+            $scope.struct.bulk_create_mode = false
+
+    init_with_device_info()
 
     $scope.on_icon_select = (item, model, label) ->
         $scope.struct.img_url = item.data_image
@@ -236,7 +264,8 @@ angular.module(
             (xml) =>
                 if $(xml).find("value[name='device_pk']").length
                     _dev_pk = parseInt($(xml).find("value[name='device_pk']").text())
-                    $scope.device_data.full_name = ""
+                    if $scope.struct.bulk_create_mode == false
+                        $scope.device_data.full_name = ""
                     defer = $q.defer()
                     $scope.struct.device_tree._fetch_device(
                         _dev_pk
@@ -285,6 +314,12 @@ angular.module(
                                         blockUI.stop()
                                 )
                             else
+                                $timeout(
+                                    () ->
+                                        $scope.device_data.nmap_device.linked_devices.push(new_dev)
+                                        init_with_device_info()
+                                    0
+                                )
                                 blockUI.stop()
                         (not_ok) ->
                             blockUI.stop()

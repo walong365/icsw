@@ -1605,8 +1605,11 @@ angular.module(
             device.linked_devices = ip_to_device_lut[device.ip]
 
         device.$$first_seen_nmap_scan_date = "N/A"
+        device.$$first_seen_timestamp = 0
         if device.first_seen_nmap_scan_date != null
-            device.$$first_seen_nmap_scan_date = moment(device.first_seen_nmap_scan_date).format("YYYY-MM-DD HH:mm:ss")
+            moment_time = moment(device.first_seen_nmap_scan_date)
+            device.$$first_seen_nmap_scan_date = moment_time.format("YYYY-MM-DD HH:mm:ss")
+            device.$$first_seen_timestamp = moment_time.unix()
 
 
     # network currently displayed
@@ -2099,6 +2102,7 @@ angular.module(
                     ignore_text: "Ignore Selection"
                     runtime: data.runtime
                     devices_scanned: data.devices_scanned
+                    scan_date: moment(data.date).format("YYYY-MM-DD HH:mm:ss")
                 }
 
                 reset_selection = () ->
@@ -2278,6 +2282,24 @@ angular.module(
                         blockUI.stop()
                     )
 
+                sub_tab.bulk_create = () ->
+                    to_be_created_devices = []
+                    for device in sub_tab.devices
+                        if device.$$selected == true
+                            to_be_created_devices.push(device)
+
+                    for device in sub_tab.ignored_devices
+                        if device.$$selected == true
+                            to_be_created_devices.push(device)
+
+                    new_sub_tab = {
+                        device_info: to_be_created_devices
+                        type: 1
+                    }
+
+                    tab.sub_tabs.push(new_sub_tab)
+
+
                 sub_tab.show_device = ($event, dev) ->
                     DeviceOverviewService($event, [dev])
 
@@ -2287,7 +2309,7 @@ angular.module(
 
         create_new_sub_tab_type_1: (tab, device_info) ->
             sub_tab = {
-                device_info: device_info
+                device_info: [device_info]
                 type: 1
             }
 
