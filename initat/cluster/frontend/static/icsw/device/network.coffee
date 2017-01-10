@@ -1873,7 +1873,7 @@ angular.module(
                         tabs.push(tab)
             )
 
-        create_new_sub_tab_type_0: (tab, index) ->
+        create_new_host_discovery_detail_sub_tab: (tab, index) ->
             for sub_tab in tab.sub_tabs
                 if sub_tab.index == index
                     return
@@ -1930,6 +1930,7 @@ angular.module(
                     runtime: data.runtime
                     devices_scanned: data.devices_scanned
                     scan_date: moment(data.date).format("YYYY-MM-DD HH:mm:ss")
+                    matrix: data.matrix
                 }
 
                 reset_selection = () ->
@@ -2083,6 +2084,7 @@ angular.module(
                         {
                             url: ICSW_URLS.NETWORK_HANDLE_NMAP_SCAN_DEVICE
                             data:
+                                nmap_scan_idx: sub_tab.index
                                 mac_list: mac_list
                                 ignore: ignore_mode
                             dataType: "json"
@@ -2105,6 +2107,8 @@ angular.module(
                         sub_tab.ignored_devices = (device for device in all_devices when device.ignored)
                         sub_tab.devices = (device for device in all_devices when !device.ignored)
                         sub_tab.selected_devices = 0
+
+                        sub_tab.matrix = data
 
                         blockUI.stop()
                     )
@@ -2134,7 +2138,7 @@ angular.module(
                 blockUI.stop()
             )
 
-        create_new_sub_tab_type_1: (tab, device_info) ->
+        create_new_create_device_sub_tab: (tab, device_info) ->
             sub_tab = {
                 device_info: [device_info]
                 type: 1

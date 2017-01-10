@@ -1196,7 +1196,10 @@ class NmapScan(models.Model):
 
         return devices
 
-    def get_matrix(self):
+    @property
+    def matrix(self):
+        """ Returns a matrix like representation of the device/host availability for this nmap scan.
+        """
         parser = etree.XMLParser(encoding='utf-8')
 
         root = etree.fromstring(self.raw_result.encode('utf-8'), parser=parser)
@@ -1209,53 +1212,74 @@ class NmapScan(models.Model):
             for ip in _device.all_ips():
                 ip_to_device_lut[ip] = _device
 
-        matrix_element_counter = 0
-        matrix_rows = []
-        current_matrix_column = None
-        num_matrix_rows_columns = int(math.sqrt(float(self.devices_scanned)))
-
         found_hosts = {}
 
         # presort by ip
         for host in root.findall('host'):
             for address in host.findall('address'):
-                mac = None
-                ipv4 = None
-                if address.attrib['addrtype'] == 'mac':
-                    mac = address.attrib['addr']
-                elif address.attrib['addrtype'] == 'ipv4':
+                if address.attrib['addrtype'] == 'ipv4':
                     ipv4 = address.attrib['addr']
 
-        for host in root.findall('host'):
-            if (matrix_element_counter % num_matrix_rows_columns) == 0:
-                current_matrix_column = []
-                matrix_rows.append(current_matrix_column)
+                    a, b, c, d = ipv4.split(".")
+                    a, b, c, d = int(a), int(b), int(c), int(d)
 
-            matrix_element_counter += 1
+                    if a not in found_hosts:
+                        found_hosts[a] = {}
 
-            status_element = host.find("status")
+                    if b not in found_hosts[a]:
+                        found_hosts[a][b] = {}
 
-            matrix_element_state = 0
-            if status_element.attrib["state"] != "down":
-                mac = None
-                ipv4 = None
-                for address in host.findall('address'):
-                    if address.attrib['addrtype'] == 'mac':
-                        mac = address.attrib['addr']
-                    elif address.attrib['addrtype'] == 'ipv4':
-                        ipv4 = address.attrib['addr']
+                    if c not in found_hosts[a][b]:
+                        found_hosts[a][b][c] = {}
 
-                if ipv4 and ipv4 in ip_to_device_lut :
-                    matrix_element_state = 1
-                else:
-                    matrix_element_state = 2
+                    if d not in found_hosts[a][b][c]:
+                        found_hosts[a][b][c][d] = {}
 
-                if mac in ignored_macs:
-                    matrix_element_state = 3
+                    found_hosts[a][b][c][d] = host
 
-            current_matrix_column.append(matrix_element_state)
+        matrix_element_counter = 0
+        matrix_rows = []
+        current_matrix_column = None
+        num_matrix_rows_columns = int(math.sqrt(float(self.devices_scanned)))
 
-        print(matrix_rows)
+        for a in sorted(found_hosts.keys()):
+            for b in sorted(found_hosts[a].keys()):
+                for c in sorted(found_hosts[a][b].keys()):
+                    for d in sorted(found_hosts[a][b][c].keys()):
+                        ipv4 = "{}.{}.{}.{}".format(a,b,c,d)
+                        host = found_hosts[a][b][c][d]
+
+
+                        if (matrix_element_counter % num_matrix_rows_columns) == 0:
+                            current_matrix_column = []
+                            matrix_rows.append(current_matrix_column)
+
+                        matrix_element_counter += 1
+
+                        status_element = host.find("status")
+
+                        matrix_class = ""
+                        if status_element.attrib["state"] != "down":
+                            mac = None
+                            for address in host.findall('address'):
+                                if address.attrib['addrtype'] == 'mac':
+                                    mac = address.attrib['addr']
+                                    break
+
+                            if ipv4 and ipv4 in ip_to_device_lut :
+                                #matrix_element_state = 1
+                                matrix_class = "alert-success"
+                            else:
+                                matrix_class = "alert-danger"
+
+                            if mac in ignored_macs:
+                                matrix_class = "alert-warning"
+
+
+                        current_matrix_column.append((ipv4, matrix_class))
+
+        return matrix_rows
+
 
 class NmapScanIgnoredDevice(models.Model):
     idx = models.AutoField(primary_key=True)

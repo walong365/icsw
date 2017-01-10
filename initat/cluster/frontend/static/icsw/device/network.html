@@ -579,7 +579,7 @@
                                     <td class="text-center">{{ obj.devices_found }}</td>
                                     <td class="text-center">{{ obj.devices_scanned }}</td>
                                     <td class="text-center">{{ obj.runtime }}</td>
-                                    <td class="text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab_type_0(tab, obj.idx)" class="btn btn-success btn-xs">Show Details</button></td>
+                                    <td class="text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_host_discovery_detail_sub_tab(tab, obj.idx)" class="btn btn-success btn-xs">Show Details</button></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -651,7 +651,7 @@
                         </thead>
                         <tbody>
                             <tr ng-repeat="obj in entries_displayed">
-                                <td class="vertical-align text-center"><button type="button" ng-disabled="sub_tab.index == obj.first_seen_nmap_scan_idx || obj.first_seen_nmap_scan_idx == null" ng-click="struct.icsw_network_list_service.create_new_sub_tab_type_0(tab, obj.first_seen_nmap_scan_idx)" class="btn btn-success btn-xs">{{ obj.$$first_seen_nmap_scan_date }}</button></td>
+                                <td class="vertical-align text-center"><button type="button" ng-disabled="sub_tab.index == obj.first_seen_nmap_scan_idx || obj.first_seen_nmap_scan_idx == null" ng-click="struct.icsw_network_list_service.create_new_host_discovery_detail_sub_tab(tab, obj.first_seen_nmap_scan_idx)" class="btn btn-success btn-xs">{{ obj.$$first_seen_nmap_scan_date }}</button></td>
                                 <td class="vertical-align text-center">
                                     <button type="button" class="btn btn-xs" ng-class="obj.$$selected && 'btn-success' || 'btn-default'" ng-click="sub_tab.select_nmap_scan_device(obj)" value="sel">
                                         <span class="glyphicon" ng-class="obj.$$selected && 'glyphicon-ok' || 'glyphicon-minus'"></span>
@@ -661,18 +661,37 @@
                                 <td class="vertical-align text-center">{{ obj.ip }}</td>
                                 <td class="vertical-align text-center"><pre>{{ obj.$$mac }}</pre></td>
                                 <td class="vertical-align text-center"><div ng-if="obj.linked_devices.length == 0">N/A</div><button ng-repeat="device in obj.linked_devices" type="button" class="btn btn-xs btn-success" ng-click="sub_tab.show_device($event, device)">{{ device.full_name }}</button></td>
-                                <td class="vertical-align text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab_type_1(tab, obj)" class="btn btn-success btn-xs">Create new Device</button></td>
+                                <td class="vertical-align text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_create_device_sub_tab(tab, obj)" class="btn btn-success btn-xs">Create new Device</button></td>
                             </tr>
                         </tbody>
                     </table>
-                    <!--<h3>Matrix</h3>
+                    <h3>Matrix</h3>
+                    <table class="table" style="width:auto;">
+                        <tr>
+                            <td>White</td>
+                            <td>Down/Unknown</td>
+                        </tr>
+                        <tr>
+                            <td class="alert-success">Green</td>
+                            <td>UP and Linked</td>
+                        </tr>
+                        <tr>
+                            <td class="alert-danger">Red</td>
+                            <td>UP and Unlinked</td>
+                        </tr>
+                        <tr>
+                            <td class="alert-warning">Yellow</td>
+                            <td>Ignored</td>
+                        </tr>
+                    </table>
+
                     <table class="table" style="border: 1px solid black;border-collapse: collapse;">
                         <tbody>
-                            <tr ng-repeat="idx_a in [1,2,3,4,5]" style="border: 1px solid black;border-collapse: collapse;">
-                                <td ng-repeat="idx_b in [1,2,3,4,5]" class="alert-danger" style="border: 1px solid black;border-collapse: collapse;"></td>
+                            <tr ng-repeat="matrix_row in sub_tab.matrix" style="border: 1px solid black;border-collapse: collapse;">
+                                <td ng-repeat="row_info in matrix_row track by $index" ng-class="row_info[1]" style="border: 1px solid black;border-collapse: collapse;">{{ row_info[0] }}</td>
                             </tr>
                         </tbody>
-                    </table>-->
+                    </table>
                 </uib-tab>
                 <uib-tab ng-repeat="sub_tab in tab.sub_tabs" ng-if="sub_tab.type == 1">
                     <uib-tab-heading>
@@ -724,7 +743,7 @@
                                 <td class="vertical-align text-center">{{ obj.ip }}</td>
                                 <td class="vertical-align text-center">{{ obj.$$mac }}</td>
                                 <td class="vertical-align text-center"><div ng-if="obj.linked_devices.length == 0">N/A</div><button ng-repeat="device in obj.linked_devices" type="button" class="btn btn-xs btn-success" ng-click="sub_tab.show_device($event, device)">{{ device.full_name }}</button></td>
-                                <td class="vertical-align text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab_type_1(tab, obj)" class="btn btn-success btn-xs">Create new Device</button></td>
+                                <td class="vertical-align text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_create_device_sub_tab(tab, obj)" class="btn btn-success btn-xs">Create new Device</button></td>
                             </tr>
                         </tbody>
                     </table>
@@ -766,7 +785,7 @@
                                 <td class="vertical-align">{{ obj.ip }}</td>
                                 <td class="vertical-align">{{ obj.$$mac }}</td>
                                 <td class="vertical-align"><div ng-if="obj.linked_devices.length == 0">N/A</div><button ng-repeat="device in obj.linked_devices" type="button" class="btn btn-xs btn-success" ng-click="sub_tab.show_device($event, device)">{{ device.full_name }}</button></td>
-                                <td class="vertical-align"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab_type_1(tab, obj)" class="btn btn-success btn-xs">Create new Device(s)</button></td>
+                                <td class="vertical-align"><button type="button" ng-click="struct.icsw_network_list_service.create_new_create_device_sub_tab(tab, obj)" class="btn btn-success btn-xs">Create new Device(s)</button></td>
                             </tr>
                         </tbody>
                     </table>

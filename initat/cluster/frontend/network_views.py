@@ -326,8 +326,6 @@ class NmapScanDataLoader(View):
 
             nmap_scan = NmapScan.objects.get(idx=nmap_scan_id)
 
-            nmap_scan.get_matrix()
-
             serializer = NmapScanSerializerDetailed(nmap_scan)
             return HttpResponse(json.dumps(serializer.data))
 
@@ -416,6 +414,7 @@ class HandleNmapScanDevice(View):
     @method_decorator(login_required)
     def post(self, request):
         mac_list = request.POST.getlist("mac_list[]")
+        nmap_scan_idx = int(request.POST.get("nmap_scan_idx"))
 
         if bool(int(request.POST.get("ignore"))):
             for mac in mac_list:
@@ -426,4 +425,6 @@ class HandleNmapScanDevice(View):
                 nsid = NmapScanIgnoredDevice.objects.get(mac=mac)
                 nsid.delete()
 
-        return HttpResponse(json.dumps([]))
+        nmap_scan = NmapScan.objects.get(idx=nmap_scan_idx)
+
+        return HttpResponse(json.dumps(nmap_scan.matrix))
