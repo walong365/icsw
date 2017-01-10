@@ -1041,7 +1041,8 @@ class Dispatcher(object):
             "network_id": _network.idx
         }
 
-        hm_command = HostMonitoringCommand(self.network_scan_schedule_handler_callback, callback_dict)
+        #timeout for nmap scans needs to be very large, scanning can take a very long time
+        hm_command = HostMonitoringCommand(self.network_scan_schedule_handler_callback, callback_dict, timeout=60*60*24)
 
         self.discovery_process.send_pool_message(
             "send_host_monitor_command",

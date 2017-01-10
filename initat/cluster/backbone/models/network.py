@@ -1240,7 +1240,7 @@ class NmapScan(models.Model):
 
         matrix_element_counter = 0
         matrix_rows = []
-        current_matrix_column = None
+        current_matrix_row = None
         num_matrix_rows_columns = int(math.sqrt(float(self.devices_scanned)))
 
         for a in sorted(found_hosts.keys()):
@@ -1252,8 +1252,8 @@ class NmapScan(models.Model):
 
 
                         if (matrix_element_counter % num_matrix_rows_columns) == 0:
-                            current_matrix_column = []
-                            matrix_rows.append(current_matrix_column)
+                            current_matrix_row = []
+                            matrix_rows.append(current_matrix_row)
 
                         matrix_element_counter += 1
 
@@ -1277,7 +1277,10 @@ class NmapScan(models.Model):
                                 matrix_class = "alert-warning"
 
 
-                        current_matrix_column.append((ipv4, matrix_class))
+                        current_matrix_row.append((ipv4, matrix_class))
+
+        while len(current_matrix_row) < num_matrix_rows_columns:
+            current_matrix_row.append(("N/A", ""))
 
         return matrix_rows
 

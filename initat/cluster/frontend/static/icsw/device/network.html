@@ -579,17 +579,24 @@
                                     <td class="text-center">{{ obj.devices_found }}</td>
                                     <td class="text-center">{{ obj.devices_scanned }}</td>
                                     <td class="text-center">{{ obj.runtime }}</td>
-                                    <td class="text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_host_discovery_detail_sub_tab(tab, obj.idx)" class="btn btn-success btn-xs">Show Details</button></td>
+                                    <td class="text-center">
+                                        <icsw-tools-button
+                                            type="create"
+                                            size="xs"
+                                            ng-click="struct.icsw_network_list_service.create_new_host_discovery_detail_sub_tab(tab, obj.idx)"
+                                            value="Show Details"
+                                        ></icsw-tools-button>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
                 </uib-tab>
-                <uib-tab ng-repeat="sub_tab in tab.sub_tabs" ng-if="sub_tab.type == 0">
+                <uib-tab ng-repeat="sub_tab in tab.sub_tabs" ng-if="sub_tab.sub_tab_type == 0">
                     <uib-tab-heading>
-                        <span>Scan: {{ sub_tab.index }}</span>
+                        <span>Scan: {{ sub_tab.nmap_scan.index }}</span>
                         <icsw-tools-button size="xs" type="close" value="" ng-click="tab.close_sub_tab(sub_tab)"></icsw-tools-button>
                     </uib-tab-heading>
-                    <h3>{{ sub_tab.devices.length }} Devices found in {{ sub_tab.runtime }} seconds ({{ sub_tab.devices_scanned }} IPs scanned on {{ sub_tab.scan_date }})
+                    <h3>{{ sub_tab.devices.length }} Devices found in {{ sub_tab.nmap_scan.runtime }} seconds ({{ sub_tab.nmap_scan.devices_scanned }} IPs scanned on {{ sub_tab.nmap_scan.scan_date }})
                     </h3>
                     <table st-table="entries_displayed" st-safe-src="sub_tab.display_devices" class="table table-condensed table-hover" style="width:auto;">
                         <thead>
@@ -618,6 +625,17 @@
                                 <td colspan="99">
                                     <button type="button" ng-click="sub_tab.handle_selection()" ng-disabled="sub_tab.selected_devices == 0" class="btn btn-success btn-xs">{{ sub_tab.ignore_text }} ({{ sub_tab.selected_devices }} Devices Selected)</button>
                                     <button type="button" ng-click="sub_tab.bulk_create()" ng-disabled="sub_tab.selected_devices == 0" class="btn btn-success btn-xs">Bulk Create {{ sub_tab.selected_devices }} Devices (Interactive)</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    Selector Actions:
+                                </td>
+                                <td colspan="99">
+                                    <button type="button" ng-click="sub_tab.select_all_nmap_devices()" class="btn btn-success btn-xs">Select All</button>
+                                    <button type="button" ng-click="sub_tab.unselect_all_nmap_devices()" class="btn btn-success btn-xs">Unselect All</button>
+                                    <button type="button" ng-click="sub_tab.select_all_linked_nmap_devices()" class="btn btn-success btn-xs">Select All Linked</button>
+                                    <button type="button" ng-click="sub_tab.select_all_unlinked_nmap_devices()" class="btn btn-success btn-xs">Select All Unlinked</button>
                                 </td>
                             </tr>
                             <tr>
@@ -651,7 +669,7 @@
                         </thead>
                         <tbody>
                             <tr ng-repeat="obj in entries_displayed">
-                                <td class="vertical-align text-center"><button type="button" ng-disabled="sub_tab.index == obj.first_seen_nmap_scan_idx || obj.first_seen_nmap_scan_idx == null" ng-click="struct.icsw_network_list_service.create_new_host_discovery_detail_sub_tab(tab, obj.first_seen_nmap_scan_idx)" class="btn btn-success btn-xs">{{ obj.$$first_seen_nmap_scan_date }}</button></td>
+                                <td class="vertical-align text-center"><button type="button" ng-disabled="sub_tab.nmap_scan.index == obj.first_seen_nmap_scan_idx || obj.first_seen_nmap_scan_idx == null" ng-click="struct.icsw_network_list_service.create_new_host_discovery_detail_sub_tab(tab, obj.first_seen_nmap_scan_idx)" class="btn btn-success btn-xs">{{ obj.$$first_seen_nmap_scan_date }}</button></td>
                                 <td class="vertical-align text-center">
                                     <button type="button" class="btn btn-xs" ng-class="obj.$$selected && 'btn-success' || 'btn-default'" ng-click="sub_tab.select_nmap_scan_device(obj)" value="sel">
                                         <span class="glyphicon" ng-class="obj.$$selected && 'glyphicon-ok' || 'glyphicon-minus'"></span>
@@ -661,7 +679,14 @@
                                 <td class="vertical-align text-center">{{ obj.ip }}</td>
                                 <td class="vertical-align text-center"><pre>{{ obj.$$mac }}</pre></td>
                                 <td class="vertical-align text-center"><div ng-if="obj.linked_devices.length == 0">N/A</div><button ng-repeat="device in obj.linked_devices" type="button" class="btn btn-xs btn-success" ng-click="sub_tab.show_device($event, device)">{{ device.full_name }}</button></td>
-                                <td class="vertical-align text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_create_device_sub_tab(tab, obj)" class="btn btn-success btn-xs">Create new Device</button></td>
+                                <td class="vertical-align text-center">
+                                    <icsw-tools-button
+                                        type="create"
+                                        size="xs"
+                                        ng-click="struct.icsw_network_list_service.create_new_create_device_sub_tab(tab, obj)"
+                                        value="Create Device"
+                                    ></icsw-tools-button>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -687,20 +712,20 @@
 
                     <table class="table" style="border: 1px solid black;border-collapse: collapse;">
                         <tbody>
-                            <tr ng-repeat="matrix_row in sub_tab.matrix" style="border: 1px solid black;border-collapse: collapse;">
+                            <tr ng-repeat="matrix_row in sub_tab.nmap_scan.matrix" style="border: 1px solid black;border-collapse: collapse;">
                                 <td ng-repeat="row_info in matrix_row track by $index" ng-class="row_info[1]" style="border: 1px solid black;border-collapse: collapse;">{{ row_info[0] }}</td>
                             </tr>
                         </tbody>
                     </table>
                 </uib-tab>
-                <uib-tab ng-repeat="sub_tab in tab.sub_tabs" ng-if="sub_tab.type == 1">
+                <uib-tab ng-repeat="sub_tab in tab.sub_tabs" ng-if="sub_tab.sub_tab_type == 1">
                     <uib-tab-heading>
                         <span>Create new Device</span>
                         <icsw-tools-button size="xs" type="close" value="" ng-click="tab.close_sub_tab(sub_tab)"></icsw-tools-button>
                     </uib-tab-heading>
                     <icsw-device-create-mask deviceinfo="sub_tab.device_info"></icsw-device-create-mask>
                 </uib-tab>
-                <uib-tab ng-repeat="sub_tab in tab.sub_tabs" ng-if="sub_tab.type == 2">
+                <uib-tab ng-repeat="sub_tab in tab.sub_tabs" ng-if="sub_tab.sub_tab_type == 2">
                     <uib-tab-heading>
                         <span>Difference (Scan[{{sub_tab.scan_id_old }}] to Scan[{{sub_tab.scan_id_new}}])</span>
                         <icsw-tools-button size="xs" type="close" value="" ng-click="tab.close_sub_tab(sub_tab)"></icsw-tools-button>
@@ -889,7 +914,7 @@
                         <icsw-tools-button
                             type="create"
                             size="xs"
-                            ng-click="config_server.create_new_tab(obj)"
+                            ng-click="config_service.create_new_detail_view_tab(obj)"
                             value="Show Details"
                         ></icsw-tools-button>
                     </td>

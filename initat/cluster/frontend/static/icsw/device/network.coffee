@@ -1734,7 +1734,7 @@ angular.module(
                 0
             )
 
-        create_new_tab : (obj) ->
+        create_new_detail_view_tab : (obj) ->
             new_network_display = {}
 
             new_network_display.active_network = obj
@@ -1826,7 +1826,7 @@ angular.module(
                             scan_id_new = scan_id_2
 
                         for sub_tab in tab.sub_tabs
-                            if sub_tab.type == 2 && sub_tab.scan_id_old == scan_id_old && sub_tab.scan_id_new == scan_id_new
+                            if sub_tab.sub_tab_type == 2 && sub_tab.scan_id_old == scan_id_old && sub_tab.scan_id_new == scan_id_new
                                 return
 
                         blockUI.start("Loading Data...")
@@ -1858,7 +1858,7 @@ angular.module(
                                 salt_nmap_device(nmap_device, ip_to_device_lut)
 
                             new_tab = {
-                                type: 2
+                                sub_tab_type: 2
                                 scan_id_old: scan_id_old
                                 scan_id_new: scan_id_new
                                 lost_devices: data["lost_devices"]
@@ -1880,7 +1880,7 @@ angular.module(
 
         create_new_host_discovery_detail_sub_tab: (tab, index) ->
             for sub_tab in tab.sub_tabs
-                if sub_tab.index == index
+                if sub_tab.nmap_scan.index == index
                     return
 
             blockUI.start("Loading Data...")
@@ -1916,15 +1916,24 @@ angular.module(
                 unselected_button_class = "btn btn-default"
 
                 sub_tab = {
-                    index: index
+                    nmap_scan: {
+                        index: index
+                        runtime: data.runtime
+                        devices_scanned: data.devices_scanned
+                        scan_date: moment(data.date).format("YYYY-MM-DD HH:mm:ss")
+                        matrix: data.matrix
+                    }
                     ignored_devices: (device for device in data.devices when device.ignored)
                     devices: (device for device in data.devices when !device.ignored)
                     display_devices: (device for device in data.devices when !device.ignored)
+                    selected_devices: 0
+
                     linked_devices_button_value: "All Devices"
                     linked_devices_button_class: "btn btn-default"
                     linked_devices_button_state: 0
-                    type: 0
-                    selected_devices: 0
+
+                    sub_tab_type: 0
+
                     all_devices_filter_class: selected_button_class
                     linked_only_filter_class: unselected_button_class
                     unlinked_only_filter_class: unselected_button_class
@@ -1932,10 +1941,6 @@ angular.module(
                     new_devices_alltime_class: unselected_button_class
                     ignored_devices_class: unselected_button_class
                     ignore_text: "Ignore Selection"
-                    runtime: data.runtime
-                    devices_scanned: data.devices_scanned
-                    scan_date: moment(data.date).format("YYYY-MM-DD HH:mm:ss")
-                    matrix: data.matrix
                 }
 
                 reset_selection = () ->
@@ -1959,6 +1964,33 @@ angular.module(
                         sub_tab.ignore_text = "Ignore Selection"
 
                     sub_tab[class_name] = selected_button_class
+
+
+                sub_tab.select_all_nmap_devices = () ->
+                    sub_tab.selected_devices = sub_tab.display_devices.length
+                    for nmap_device in sub_tab.display_devices
+                        nmap_device.$$selected = true
+
+                sub_tab.unselect_all_nmap_devices = () ->
+                    sub_tab.selected_devices = 0
+                    for nmap_device in sub_tab.display_devices
+                        nmap_device.$$selected = false
+
+                sub_tab.select_all_unlinked_nmap_devices = () ->
+                    sub_tab.selected_devices = 0
+                    for nmap_device in sub_tab.display_devices
+                        nmap_device.$$selected = false
+                        if nmap_device.linked_devices.length == 0
+                            nmap_device.$$selected = true
+                            sub_tab.selected_devices += 1
+
+                sub_tab.select_all_linked_nmap_devices = () ->
+                    sub_tab.selected_devices = 0
+                    for nmap_device in sub_tab.display_devices
+                        nmap_device.$$selected = false
+                        if nmap_device.linked_devices.length > 0
+                            nmap_device.$$selected = true
+                            sub_tab.selected_devices += 1
 
                 sub_tab.select_nmap_scan_device = (obj) ->
                     if obj.$$selected == undefined
@@ -2089,7 +2121,7 @@ angular.module(
                         {
                             url: ICSW_URLS.NETWORK_HANDLE_NMAP_SCAN_DEVICE
                             data:
-                                nmap_scan_idx: sub_tab.index
+                                nmap_scan_idx: sub_tab.nmap_scan.index
                                 mac_list: mac_list
                                 ignore: ignore_mode
                             dataType: "json"
@@ -2113,7 +2145,7 @@ angular.module(
                         sub_tab.devices = (device for device in all_devices when !device.ignored)
                         sub_tab.selected_devices = 0
 
-                        sub_tab.matrix = data
+                        sub_tab.nmap_scan.matrix = data
 
                         blockUI.stop()
                     )
@@ -2130,7 +2162,7 @@ angular.module(
 
                     new_sub_tab = {
                         device_info: to_be_created_devices
-                        type: 1
+                        sub_tab_type: 1
                     }
 
                     tab.sub_tabs.push(new_sub_tab)
@@ -2146,7 +2178,7 @@ angular.module(
         create_new_create_device_sub_tab: (tab, device_info) ->
             sub_tab = {
                 device_info: [device_info]
-                type: 1
+                sub_tab_type: 1
             }
 
             tab.sub_tabs.push(sub_tab)
