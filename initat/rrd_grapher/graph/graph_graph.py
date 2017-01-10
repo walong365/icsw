@@ -62,9 +62,9 @@ class RRDGraph(object):
         g_key_dict = {}
         for key_dict in graph_keys:
             s_key, v_key = (key_dict["struct_key"], key_dict["value_key"])
-            # to be improved
-            if key_dict.get("build_info", "") not in ["", None, [""], ["", ""]]:
-                # is a compound (has build info)
+            # print("***", s_key, v_key)
+            # if any build_info is set create a new top_level key
+            if any(key_dict["build_info"]):
                 g_key_dict.setdefault(full_graph_key(key_dict), []).append((s_key, v_key))
             else:
                 _flk = s_key.split(".")[0]
@@ -557,8 +557,8 @@ class RRDGraph(object):
                                 _line_iteration += 1
                                 _iterate_line = True
                 if not _iterate_line:
-                    # graph list is no longer needed because we transfer the results via WebSocket
-                    # to the frontend
+                    # graph list is no longer needed because we transfer the results via WebSocket(s)
+                    # to the requiring frontend
                     graph_list.extend(
                         [
                             _graph_target.graph_xml(dev_dict) for _graph_target in _graph_line

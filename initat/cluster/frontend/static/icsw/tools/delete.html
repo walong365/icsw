@@ -2,15 +2,13 @@
     <div>
         <fieldset>
             <legend>
-                Delete settings
+                Delete settings and info
             </legend>
-            <div class="checkbox">
+            <div ng-show="del_struct.change_async_delete_flag">
                 <label>
-                    <input
-                        type="checkbox"
-                        ng-model="del_struct.async_delete"
-                        ng-disabled="!del_struct.change_async_delete_flag"
-                    />
+                    <icsw-tools-yes-no
+                        flag="del_struct.async_delete"
+                    ></icsw-tools-yes-no>
                     Delete asynchronously
                 </label>
                 <p>&nbsp;</p>
@@ -29,12 +27,11 @@
             <div class="form">
                 <div class="checkbox" ng-repeat="struct in del_struct.deletable_objects">
                     <label>
-                        <input
-                            type="checkbox"
-                            ng-model="struct.delete"
-                            ng-click="del_struct.update_flags($event)"
-                        />
-                        {{ struct.name }}
+                        <icsw-tools-yes-no
+                            flag="struct.delete"
+                            icsw-callback="del_struct.update_flags"
+                        ></icsw-tools-yes-no>
+                        {{ struct.model_name }} '{{ struct.name }}'
                     </label>
                 </div>
             </div>

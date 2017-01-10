@@ -755,10 +755,12 @@ class DataSource(object):
         # expand compounds
         _compound_dict = {}
         for _req in graph_keys:
-            if _req.get("build_info", ""):
+            if _req.get("build_info", None):
                 _key = (_req["struct_key"], _req["value_key"])
                 _full_key = full_graph_key(_key)
-                _build_infos = [process_tools.decompress_struct(_entry) for _entry in _req["build_info"] if _entry]
+                _build_infos = [
+                    process_tools.decompress_struct(_entry) for _entry in _req["build_info"] if _entry
+                ]
                 _compound_dict[_key] = []
                 for _build_info in _build_infos:
                     for _entry in _build_info:

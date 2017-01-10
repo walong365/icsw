@@ -291,7 +291,7 @@ class DataStore(object):
                         "unit": mvv.unit,
                         "info": mvv.info,
                         "key": mvv.key,
-                        "build_info": "",
+                        "build_info": None,
                         "num_sensors": mvv.sensorthreshold_set.all().count()
                     }
                 )

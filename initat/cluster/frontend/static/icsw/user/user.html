@@ -1135,9 +1135,9 @@
             <icsw-tools-button type="modify" ng-show="!struct.create_mode && changed()" ng-click="modify()"></icsw-tools-button>
             <icsw-tools-button type="create" ng-show="struct.create_mode" ng-click="modify()"></icsw-tools-button>
             &nbsp;
-            <icsw-tools-button type="close" ng-click="close()"></icsw-tools-button>
+            <icsw-tools-button type="close" ng-click="close($event)"></icsw-tools-button>
             &nbsp;
-            <icsw-tools-button type="delete" ng-click="delete()"></icsw-tools-button>
+            <icsw-tools-button type="delete" ng-click="delete($event)"></icsw-tools-button>
         </div>
     </form>
 </script>
