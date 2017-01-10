@@ -584,10 +584,15 @@ angular.module(
         sub_scope.edit_obj = edit_obj
         sub_scope.device = dev
         sub_scope.create_mode = create_mode
+        sub_scope.struct = {
+            device: dev
+            network_tree: $scope.struct.network_tree
+            domain_tree: $scope.struct.domain_tree
+        }
 
         # add functions
 
-        sub_scope.get_free_ip = (obj) ->
+        sub_scope.get_free_ip = ($event, obj) ->
             blockUI.start("requesting free IP...")
             icswSimpleAjaxCall(
                 url: ICSW_URLS.NETWORK_GET_FREE_IP

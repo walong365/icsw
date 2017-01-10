@@ -681,9 +681,11 @@ menu_module = angular.module(
 [
     "$q", "$timeout", "$rootScope", "ICSW_SIGNALS", "icswSimpleAjaxCall",
     "$state", "ICSW_URLS", "icswMenuSettings", "icswWebSocketService",
+    "icswUserService",
 (
     $q, $timeout, $rootScope, ICSW_SIGNALS, icswSimpleAjaxCall,
     $state, ICSW_URLS, icswMenuSettings, icswWebSocketService,
+    icswUserService,
 ) ->
     {ul, li, div, a, button, span, img} = React.DOM
     return React.createClass(
@@ -769,12 +771,13 @@ menu_module = angular.module(
 
         setup_web_socket: () ->
             @close_web_socket()
-            @ws = icswWebSocketService.register_ws("background_jobs")
-            if @ws
-                @ws.onmessage = (msg) =>
-                    data = angular.fromJson(msg.data)
-                    # console.log "d=", data
-                    @setState({num_jobs: data["background_jobs"]})
+            if icswUserService.user_present() and icswUserService.get().is_authenticated()
+                @ws = icswWebSocketService.register_ws("background_jobs")
+                if @ws
+                    @ws.onmessage = (msg) =>
+                        data = angular.fromJson(msg.data)
+                        # console.log "d=", data
+                        @setState({num_jobs: data["background_jobs"]})
 
     )
 ]).service("icswReactOpenIssuesFactory",

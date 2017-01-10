@@ -133,6 +133,7 @@ class NmapScanSerializerSimple(serializers.ModelSerializer):
             "idx", "network", "date", "devices_found", "devices_scanned", "runtime"
         )
 
+
 class NmapScanSerializerDetailed(serializers.ModelSerializer):
     devices = serializers.SerializerMethodField()
 

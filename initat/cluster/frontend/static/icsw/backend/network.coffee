@@ -70,7 +70,45 @@ angular.module(
             @build_luts()
 
         link: () =>
+            _get_mask = (nw) ->
+                _lut = {
+                    24: "C"
+                    16: "B"
+                    8: "A"
+                }
+                # count bits
+                _vals = (parseInt(_v) for _v in nw.netmask.split("."))
+                _val = 0
+                while _vals.length
+                    _val *= 256
+                    _val += _vals.shift(0)
+                if _val
+                    bits = 32
+                    while not (_val & 1) and _val
+                        bits--
+                        _val /= 2
+                else
+                    bits = 0
+                nw.$$bits = bits
+                if nw.$$bits of _lut
+                    return _lut[nw.$$bits]
+                else
+                    return "#{bits}"
+
             # create links between networks and types
+            # see network.py
+            IGNORE_RANGE = ["0.0.0.0", null, ""]
+            for nw in @nw_list
+                _info = [
+                    "#{nw.network}/#{_get_mask(nw)}"
+                    "#{@nw_type_lut[nw.network_type].description}"
+                ]
+                if nw.start_range not in IGNORE_RANGE and nw.end_range not in IGNORE_RANGE
+                    nw.$$range_ok = true
+                    _info.push("autorange")
+                else
+                    nw.$$range_ok = false
+                nw.$$info_string = "#{nw.identifier} (#{_info.join(', ')})"
 
         # reload functions
         reload_network_device_types: () =>

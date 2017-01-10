@@ -257,6 +257,7 @@ class network(models.Model):
         )
 
     def get_free_ip(self):
+        # see link() in backend/network.coffee
         _ignore_range = {None, "", "0.0.0.0"}
         free_ip = None
         if self.start_range not in _ignore_range and self.end_range not in _ignore_range:

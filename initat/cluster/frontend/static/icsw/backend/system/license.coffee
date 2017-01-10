@@ -25,9 +25,11 @@ angular.module(
     ]
 ).service("icswSystemOvaCounter",
 [
-    "Restangular", "ICSW_URLS", "$q", "icswWebSocketService", "$rootScope", "ICSW_SIGNALS"
+    "Restangular", "ICSW_URLS", "$q", "icswWebSocketService", "$rootScope", "ICSW_SIGNALS",
+    "icswUserService",
 (
-    Restangular, ICSW_URLS, $q, icswWebSocketService, $rootScope, ICSW_SIGNALS
+    Restangular, ICSW_URLS, $q, icswWebSocketService, $rootScope, ICSW_SIGNALS,
+    icswUserService,
 ) ->
     class icswSystemOvaCounter
         constructor: (c_list) ->
@@ -75,13 +77,14 @@ angular.module(
 
         setup_web_socket: () ->
             @close_web_socket()
-            @ws = icswWebSocketService.register_ws("ova_counter")
-            if @ws
-                @ws.onmessage = (msg) =>
-                    # console.log "n=", msg
-                    data = angular.fromJson(msg.data)
-                    @update_plain(data)
-                    @on_update.notify(@system_cradle)
+            if icswUserService.user_present() and icswUserService.get().is_authenticated()
+                @ws = icswWebSocketService.register_ws("ova_counter")
+                if @ws
+                    @ws.onmessage = (msg) =>
+                        # console.log "n=", msg
+                        data = angular.fromJson(msg.data)
+                        @update_plain(data)
+                        @on_update.notify(@system_cradle)
 
 ]).service("icswSystemOvaCounterService",
 [

@@ -312,7 +312,7 @@
     <td>{{ ndip_obj.$$device.full_name }}</td>
     <td>{{ ndip_obj.$$netdevice.$$info_string }}</td>
     <td><code>{{ ndip_obj.ip }}</code></td>
-    <td>{{ ndip_obj.$$network.info_string }}</td>
+    <td>{{ ndip_obj.$$network.$$info_string }}</td>
     <td>{{ ndip_obj.$$domain_tree_node.tree_info  }}</td>
     <td>
         <span ng-show="ndip_obj.alias">{{ ndip_obj.alias }} <span ng-show="ndip_obj.alias_excl">( exclusive )</span></span>
@@ -803,7 +803,7 @@
                     <th st-sort="master_network">Master</th>
                     <th ng-show="show_column.prefDTN">Preferred DTN</th>
                     <th st-sort="network_device_type">Devtype(s)</th>
-                    <th colspan="2" class="text-center">Actions</th>
+                    <th colspan="3" class="text-center">Actions</th>
                 </tr>
             </thead>
 
@@ -834,17 +834,17 @@
                     </td>
                     <td class="text-right">{{ obj.num_ip }}</td>
                     <td class="text-center">{{ obj.penalty }}</td>
-                    <td class="text-center">{{ obj.enforce_unique_ips | yesno1 }}</td>
+                    <td class="text-center"><span ng-bind-html="obj.enforce_unique_ips | yesno3"></span></td>
                     <td>
                         {{ config_service.nw_tree().nw_type_lut[obj.network_type].description }}
                     </td>
-                    <td>
+                    <td class="text-center">
                         {{ config_service.get_master_network_id(obj) }}
                     </td>
-                    <td ng-show="show_column.prefDTN">
+                    <td ng-show="show_column.prefDTN" class="text-center">
                         {{ config_service.preferred_dtn(obj) }}
                     </td>
-                    <td>
+                    <td class="text-center">
                         {{ config_service.get_network_device_types(obj) }}
                     </td>
                     <td>
@@ -856,9 +856,15 @@
                             ng-show="obj.num_ip == 0"
                             ng-click="delete($event, obj)"
                             size="xs"
-                        >
-                        </icsw-tools-button>
-                        <button type="button" ng-click="config_service.create_new_tab(obj)" class="btn btn-success btn-xs">Show Details</button>
+                        ></icsw-tools-button>
+                    </td>
+                    <td>
+                        <icsw-tools-button
+                            type="create"
+                            size="xs"
+                            ng-click="config_server.create_new_tab(obj)"
+                            value="Show Details"
+                        ></icsw-tools-button>
                     </td>
                 </tr>
             </tbody>
@@ -903,28 +909,24 @@
         </fieldset>
         <fieldset>
             <legend>Flags</legend>
-            <div class="form-group">
-                <div class="checkbox">
-                    <div class="col-sm-5 icsw-formlabel">
-                        <label>
-                            Allow Virtual Interfaces
-                        </label>
-                    </div>
-                    <div class="controls col-sm-7">
-                        <icsw-tools-yes-no flag="edit_obj.allow_virtual_interfaces"></icsw-tools-yes-no>
-                    </div>
+            <div class="form-group row">
+                <div class="col-sm-5 icsw-formlabel">
+                    <label>
+                        Allow Virtual Interfaces
+                    </label>
+                </div>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.allow_virtual_interfaces"></icsw-tools-yes-no>
                 </div>
             </div>
-            <div class="form-group">
-                <div class="checkbox">
-                    <div class="col-sm-5 icsw-formlabel">
-                        <label>
-                            Used for matching
-                        </label>
-                    </div>
-                    <div class="controls col-sm-7">
-                        <icsw-tools-yes-no flag="edit_obj.for_matching"></icsw-tools-yes-no>
-                    </div>
+            <div class="form-group row">
+                <div class="col-sm-5 icsw-formlabel">
+                    <label>
+                        Used for matching
+                    </label>
+                </div>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="edit_obj.for_matching"></icsw-tools-yes-no>
                 </div>
             </div>
         </fieldset>
@@ -1070,17 +1072,15 @@
                     </div>
                 </fieldset>
             </uib-tab>
-            <uib-tab heading="Bridge / Bond">
+            <uib-tab heading="Bridge / Bond" ng-show="!edit_obj.vlan_id">
                 <fieldset ng-show="!edit_obj.vlan_id && !edit_obj.bond_master && !edit_obj.is_bond">
                     <legend>Bridge Settings</legend>
-                    <div class="form-group">
-                        <div class="checkbox" ng_show="!edit_obj.bridge_device">
-                            <div class="controls col-lg-offset-0 col-sm-8">
-                                <label>
-                                    <input class="checkboxinput checkbox" ng-disabled="has_bridge_slaves(edit_obj)" ng-model="edit_obj.is_bridge" type="checkbox"/>
-                                    Is Bridge Device
-                                </label>
-                            </div>
+                    <div class="form-group row">
+                        <label class="control-label col-sm-3">
+                            Is Bridge Device
+                        </label>
+                        <div class="controls col-sm-9">
+                            <icsw-tools-yes-no flag="edit_obj.is_bridge" ng-disabled="has_bridge_slaves(edit_obj)"></icsw-tools-yes-no>
                         </div>
                     </div>
                     <div class="form-group" ng_show="!edit_obj.is_bridge && get_bridge_masters(edit_obj).length">
@@ -1106,14 +1106,12 @@
                 </fieldset>
                 <fieldset ng-show="!edit_obj.vlan_id && !edit_obj.bridge_device && !edit_obj.is_bridge">
                     <legend>Bond Settings</legend>
-                    <div class="form-group">
-                        <div class="checkbox" ng_show="!edit_obj.bond_master">
-                            <div class="controls col-lg-offset-0 col-sm-8">
-                                <label>
-                                    <input class="checkboxinput checkbox" ng-disabled="has_bond_slaves(edit_obj)" ng-model="_edit_obj.is_bond" type="checkbox"/>
-                                    Is bond master
-                                </label>
-                            </div>
+                    <div class="form-group row">
+                        <label class="control-label col-sm-3">
+                            Is Bond Master
+                        </label>
+                        <div class="controls col-sm-9">
+                            <icsw-tools-yes-no flag="edit_obj.is_bond" ng-disabled="has_bond_slaves(edit_obj)"></icsw-tools-yes-no>
                         </div>
                     </div>
                     <div class="form-group" ng_show="!edit_obj.is_bond && get_bond_masters(edit_obj).length">
@@ -1211,14 +1209,12 @@
                             </div>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-8">
-                                <label>
-                                    <input class="checkboxinput checkbox" ng-model="edit_obj.dhcp_device" type="checkbox"/>
-                                    force write DHCP address (greedy mode will not work)
-                                </label>
-                            </div>
+                    <div class="form-group row">
+                        <label class="control-label col-sm-9">
+                            force write DHCP address (greedy mode will not work)
+                        </label>
+                        <div class="controls col-sm-3">
+                            <icsw-tools-yes-no flag="edit_obj.dhcp_device"></icsw-tools-yes-no>
                         </div>
                     </div>
                 </fieldset>
@@ -1315,15 +1311,14 @@
             <uib-tab heading="Flags / Range">
                 <fieldset>
                     <legend>Flags and Priority</legend>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="col-sm-3 icsw-formlabel"></div>
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input class="checkboxinput checkbox" ng-model="edit_obj.enforce_unique_ips" type="checkbox"/>
-                                    Enforce Unique IP Addresses
-                                </label>
-                            </div>
+                    <div class="form-group row">
+                        <div class="col-sm-3 icsw-formlabel">
+                            <label>
+                                Enforce Unique IP Addresses
+                            </label>
+                        </div>
+                        <div class="controls col-sm-7">
+                            <icsw-tools-yes-no flag="edit_obj.enforce_unique_ips"></icsw-tools-yes-no>
                         </div>
                     </div>
                     <div class="form-group">
@@ -1494,22 +1489,29 @@
                 </label>
                 <div class="controls col-sm-8">
                     <ui-select ng-model="edit_obj.network" ng-change="network_changed(edit_obj)" class="maxwidth500" ng-disabled="false">
-                        <ui-select-match class="ui-select-match" placeholder="network">{{$select.selected.info_string}}</ui-select-match>
+                        <ui-select-match class="ui-select-match" placeholder="network">{{$select.selected.$$info_string}}</ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.network_tree.nw_list | props_filter:{info_string:$select.search}" position="down">
-                            <div ng-bind-html="value.info_string | highlight: $select.search"></div>
+                            <div ng-bind-html="value.$$info_string | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
             </div>
-            <div class="form-group  ng-class:form_error('devname')">
+            <div class="form-group row"  ng-class="form_error('devname')">
                 <label class="control-label col-sm-4 requiredField icsw-formlabel">
                     IP Address<span class="asteriskField">*</span>
                 </label>
-                <div class="controls col-sm-8">
-                    <div class="input-group" style="width:100%;">
-                        <input class="textinput textInput form-control maxwidth500" maxlength="16" name="ip" ng-model="edit_obj.ip" placeholder="IP Address" required="True" type="text" />
-                        <icsw-tools-button type="create" value="Get free IP" size="sm" ng-click="get_free_ip(edit_obj)"></icsw-tools-button>
-                    </div>
+                <div class="controls col-sm-2">
+                    <icsw-tools-button
+                        type="create"
+                        value="Get free IP"
+                        icsw-disabled="!struct.network_tree.nw_lut[edit_obj.network].$$range_ok"
+                        size="sm"
+                        ng-click="get_free_ip($event, edit_obj)"
+
+                    ></icsw-tools-button>
+                </div>
+                <div class="controls col-sm-5">
+                    <input class="textinput textInput form-control maxwidth500" maxlength="16" name="ip" ng-model="edit_obj.ip" placeholder="IP Address" required="True" type="text" />
                 </div>
             </div>
             <div class="form-group">
@@ -1528,7 +1530,7 @@
         </fieldset>
         <fieldset>
             <legend>Alias settings (will be written without node postfixes)</legend>
-            <div class="form-group">
+            <div class="form-group row">
                 <label class="control-label col-sm-4 icsw-formlabel">
                     Alias
                 </label>
@@ -1536,15 +1538,12 @@
                     <input class="textinput textInput form-control maxwidth500" maxlength="765" name="alias" ng-model="edit_obj.alias" type="text"/>
                 </div>
             </div>
-            <div class="form-group">
-                <div class="checkbox">
-                    <div class="controls col-sm-5 icsw-formlabel"></div>
-                    <div class="controls col-sm-7">
-                        <label>
-                            <input class="checkboxinput checkbox" name="alias_excl" ng-model="edit_obj.alias_excl" type="checkbox"/>
-                            Alias is exclusive
-                        </label>
-                    </div>
+            <div class="form-group row">
+                <label class="control-label col-sm-4">
+                    Alias is exclusive
+                </label>
+                <div class="controls col-sm-8">
+                    <icsw-tools-yes-no flag="edit_obj.alias_excl"></icsw-tools-yes-no>
                 </div>
             </div>
         </fieldset>
