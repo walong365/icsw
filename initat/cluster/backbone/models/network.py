@@ -22,6 +22,7 @@
 
 from __future__ import unicode_literals, print_function
 
+import math
 import logging
 import re
 from lxml import etree
@@ -33,6 +34,7 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from enum import Enum
 
+from initat.cluster.backbone.models import device
 from initat.cluster.backbone.exceptions import NoMatchingNetworkFoundError, \
     NoMatchingNetworkDeviceTypeFoundError
 from initat.cluster.backbone.models.functions import check_empty_string, \
@@ -1172,6 +1174,10 @@ class NmapScan(models.Model):
         ignored_macs = [nsid.mac for nsid in NmapScanIgnoredDevice.objects.all()]
 
         for host in root.findall('host'):
+            status_element = host.find("status")
+            if status_element.attrib["state"] == "down":
+                continue
+
             mac = None
             ipv4 = None
             hostname = None
@@ -1190,6 +1196,66 @@ class NmapScan(models.Model):
 
         return devices
 
+    def get_matrix(self):
+        parser = etree.XMLParser(encoding='utf-8')
+
+        root = etree.fromstring(self.raw_result.encode('utf-8'), parser=parser)
+
+        ignored_macs = [nsid.mac for nsid in NmapScanIgnoredDevice.objects.all()]
+
+        all_devices = device.objects.all()
+        ip_to_device_lut = {}
+        for _device in all_devices:
+            for ip in _device.all_ips():
+                ip_to_device_lut[ip] = _device
+
+        matrix_element_counter = 0
+        matrix_rows = []
+        current_matrix_column = None
+        num_matrix_rows_columns = int(math.sqrt(float(self.devices_scanned)))
+
+        found_hosts = {}
+
+        # presort by ip
+        for host in root.findall('host'):
+            for address in host.findall('address'):
+                mac = None
+                ipv4 = None
+                if address.attrib['addrtype'] == 'mac':
+                    mac = address.attrib['addr']
+                elif address.attrib['addrtype'] == 'ipv4':
+                    ipv4 = address.attrib['addr']
+
+        for host in root.findall('host'):
+            if (matrix_element_counter % num_matrix_rows_columns) == 0:
+                current_matrix_column = []
+                matrix_rows.append(current_matrix_column)
+
+            matrix_element_counter += 1
+
+            status_element = host.find("status")
+
+            matrix_element_state = 0
+            if status_element.attrib["state"] != "down":
+                mac = None
+                ipv4 = None
+                for address in host.findall('address'):
+                    if address.attrib['addrtype'] == 'mac':
+                        mac = address.attrib['addr']
+                    elif address.attrib['addrtype'] == 'ipv4':
+                        ipv4 = address.attrib['addr']
+
+                if ipv4 and ipv4 in ip_to_device_lut :
+                    matrix_element_state = 1
+                else:
+                    matrix_element_state = 2
+
+                if mac in ignored_macs:
+                    matrix_element_state = 3
+
+            current_matrix_column.append(matrix_element_state)
+
+        print(matrix_rows)
 
 class NmapScanIgnoredDevice(models.Model):
     idx = models.AutoField(primary_key=True)

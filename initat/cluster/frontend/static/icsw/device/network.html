@@ -546,7 +546,7 @@
                         <span>Scan: {{ sub_tab.index }}</span>
                         <icsw-tools-button size="xs" type="close" value="" ng-click="tab.close_sub_tab(sub_tab)"></icsw-tools-button>
                     </uib-tab-heading>
-                    <h3>{{ sub_tab.devices.length }} Devices found in {{ sub_tab.runtime }} seconds ({{ sub_tab.devices_scanned }} IPs scanned on  {{ sub_tab.scan_date }})
+                    <h3>{{ sub_tab.devices.length }} Devices found in {{ sub_tab.runtime }} seconds ({{ sub_tab.devices_scanned }} IPs scanned on {{ sub_tab.scan_date }})
                     </h3>
                     <table st-table="entries_displayed" st-safe-src="sub_tab.display_devices" class="table table-condensed table-hover" style="width:auto;">
                         <thead>
@@ -622,6 +622,14 @@
                             </tr>
                         </tbody>
                     </table>
+                    <!--<h3>Matrix</h3>
+                    <table class="table" style="border: 1px solid black;border-collapse: collapse;">
+                        <tbody>
+                            <tr ng-repeat="idx_a in [1,2,3,4,5]" style="border: 1px solid black;border-collapse: collapse;">
+                                <td ng-repeat="idx_b in [1,2,3,4,5]" class="alert-danger" style="border: 1px solid black;border-collapse: collapse;"></td>
+                            </tr>
+                        </tbody>
+                    </table>-->
                 </uib-tab>
                 <uib-tab ng-repeat="sub_tab in tab.sub_tabs" ng-if="sub_tab.type == 1">
                     <uib-tab-heading>

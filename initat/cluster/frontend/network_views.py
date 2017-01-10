@@ -325,6 +325,9 @@ class NmapScanDataLoader(View):
             nmap_scan_id = int(request.POST['nmap_scan_id'])
 
             nmap_scan = NmapScan.objects.get(idx=nmap_scan_id)
+
+            nmap_scan.get_matrix()
+
             serializer = NmapScanSerializerDetailed(nmap_scan)
             return HttpResponse(json.dumps(serializer.data))
 
