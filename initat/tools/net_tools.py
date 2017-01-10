@@ -215,7 +215,7 @@ class ZMQConnection(object):
             self.context = None
 
 
-def SendCommandDefaults():
+def SendCommandDefaults(**kwargs):
     from initat.icsw.service.instance import InstanceXML
     _def = argparse.Namespace(
         arguments=[],
@@ -237,6 +237,8 @@ def SendCommandDefaults():
         only_send=False,
         quiet=True,
     )
+    for key, value in kwargs.iteritems():
+        setattr(_def, key, value)
     return _def
 
 
