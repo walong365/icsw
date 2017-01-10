@@ -65,10 +65,10 @@ def install_icsw_base_system(host, username, password, package_manager, machine_
         # icsw_client_version_command = "apt-cache madison icsw-client"
         setup_command = "apt-get -y --force-yes install icsw-server icsw-client nginx-init"
     elif package_manager == "yum":
-        refresh_command = "yum check-update"
+        refresh_command = "yum clean all"
         # icsw_server_version_command = "yum info icsw-server"
         # icsw_client_version_command = "yum info icsw-client"
-        setup_command = "yum -y --nogpgcheck install icsw-server icsw-client nginx-init"
+        setup_command = "yum -t -y --nogpgcheck install icsw-server icsw-client nginx-init"
 
     commands = [
         ("Refreshing package manager ... ", refresh_command),
