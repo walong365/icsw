@@ -1886,7 +1886,7 @@ class NmapScanCheck(LongRunningCheck):
         self.nmap_scan_command_obj = nmap_scan_command_object
 
     def perform_check(self, queue):
-        command = "/opt/cluster/bin/nmap -sP -oX - {}".format(self.network_str)
+        command = "/opt/cluster/bin/nmap -vv -sn -oX - {}".format(self.network_str)
 
         status, output = commands.getstatusoutput(command)
 
