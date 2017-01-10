@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2016 init.at
+# Copyright (C) 2012-2017 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -41,22 +41,37 @@ angular.module(
     $q, icswAccessLevelService, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
     icswSimpleAjaxCall, icswToolsSimpleModalService, icswDeviceTreeService, icswNetworkTreeService,
     icswDomainTreeService, icswPeerInformationService, icswDeviceTreeHelperService, icswComplexModalService,
-    icswNetworkDeviceBackup, toaster, icswNetworkIPBackup, icswPeerInformationBackup, icswDeviceBootBackup
+    icswNetworkDeviceBackup, toaster, icswNetworkIPBackup, icswPeerInformationBackup, icswDeviceBootBackup,
 ) ->
     $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
     icswAccessLevelService.install($scope)
     # copy flags
     $scope.show_copy_button = false
-    # accordion flags
-    $scope.device_open = true
-    $scope.netdevice_open = true
-    $scope.netip_open = false
-    $scope.peer_open = false
+    $scope.struct = {
+        # data loaded
+        data_loaded: false
+        # device tree
+        device_tree: undefined
+        # network tree
+        network_tree: undefined
+        # domain tree
+        domain_tree: undefined
+        # device list
+        devices: []
+        # peer list
+        peer_list: undefined
+        # accordion flags
+        device_open: true
+        netdevice_open: true
+        netip_open: false
+        peer_open: false
+        # helper objects
+        local_helper_obj: undefined
+        remote_helper_obj: undefined
+    }
 
-    $scope.devices = []
-    $scope.local_helper_obj = undefined
-    $scope.remote_helper_obj = undefined
     $scope.new_devsel = (_dev_sel) ->
+        $scope.struct.data_loaded = false
         dev_sel = (dev for dev in _dev_sel when not dev.is_meta_device)
         wait_list = [
             icswDeviceTreeService.load($scope.$id)
@@ -66,22 +81,22 @@ angular.module(
         ]
         $q.all(wait_list).then(
             (data) ->
-                $scope.device_tree = data[0]
-                $scope.network_tree = data[1]
-                $scope.domain_tree = data[2]
-                $scope.peer_list = data[3]
-                hs = icswDeviceTreeHelperService.create($scope.device_tree, dev_sel)
-                $scope.device_tree.enrich_devices(hs, ["network_info", "com_info"]).then(
+                $scope.struct.device_tree = data[0]
+                $scope.struct.network_tree = data[1]
+                $scope.struct.domain_tree = data[2]
+                $scope.struct.peer_list = data[3]
+                hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, dev_sel)
+                $scope.struct.device_tree.enrich_devices(hs, ["network_info", "com_info"]).then(
                     (done) ->
                         # check if some devices have missing network_info
-                        missing_list = $scope.peer_list.find_missing_devices($scope.device_tree)
+                        missing_list = $scope.struct.peer_list.find_missing_devices($scope.struct.device_tree)
                         defer = $q.defer()
                         if missing_list.length
                             # enrich devices with missing peer info
-                            _en_devices = ($scope.device_tree.all_lut[pk] for pk in missing_list)
+                            _en_devices = ($scope.struct.device_tree.all_lut[pk] for pk in missing_list)
                             # temoprary hs
-                            $scope.device_tree.enrich_devices(
-                                icswDeviceTreeHelperService.create($scope.device_tree, _en_devices)
+                            $scope.struct.device_tree.enrich_devices(
+                                icswDeviceTreeHelperService.create($scope.struct.device_tree, _en_devices)
                                 ["network_info"]
                             ).then(
                                 (done) ->
@@ -92,26 +107,28 @@ angular.module(
                         defer.promise.then(
                             (done) ->
                                 # every device in the device tree is now fully populated
-                                remote = $scope.peer_list.find_remote_devices($scope.device_tree, dev_sel)
-                                temp_hs = icswDeviceTreeHelperService.create($scope.device_tree, ($scope.device_tree.all_lut[rem] for rem in remote))
+                                remote = $scope.struct.peer_list.find_remote_devices($scope.struct.device_tree, dev_sel)
+                                temp_hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, ($scope.struct.device_tree.all_lut[rem] for rem in remote))
                                 # dummy call to enrich_devices, only used to create the lists and luts
-                                $scope.device_tree.enrich_devices(
+                                $scope.struct.device_tree.enrich_devices(
                                     temp_hs
                                     ["network_info"]
                                 ).then(
                                     (done) ->
                                         # everything is now in place
-                                        $scope.devices = dev_sel
-                                        $scope.local_helper_obj = hs
-                                        $scope.remote_helper_obj = temp_hs
-                                        $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
-                                        console.log "network done, local_objs=", $scope.local_helper_obj.devices.length
+                                        $scope.struct.devices = dev_sel
+                                        $scope.struct.local_helper_obj = hs
+                                        $scope.struct.remote_helper_obj = temp_hs
+                                        # salt devices
+                                        $scope.struct.peer_list.enrich_device_tree($scope.struct.device_tree, $scope.struct.local_helper_obj, $scope.struct.remote_helper_obj)
+                                        # console.log "network done, local_objs=", $scope.struct.local_helper_obj.devices.length
+                                        $scope.struct.data_loaded = true
                                 )
                         )
                 )
         )
 
-    $scope.reload_everything = (ss_id, force_network_info) ->
+    reload_everything = (ss_id, force_network_info) ->
         # reloads everything possible, for scan and copy network calls
         d = $q.defer()
         $q.all(
@@ -119,21 +136,21 @@ angular.module(
                 # new network tree
                 icswNetworkTreeService.reload(ss_id)
                 # new peer infos
-                icswPeerInformationService.reload(ss_id, $scope.peer_list)
+                icswPeerInformationService.reload(ss_id, $scope.struct.peer_list)
                 # new network infos for all devices
-                $scope.device_tree.enrich_devices($scope.local_helper_obj, ["network_info"], force_network_info)
+                $scope.struct.device_tree.enrich_devices($scope.struct.local_helper_obj, ["network_info"], force_network_info)
             ]
         ).then(
             (done) ->
                 # maybe some new remote devices are to add
-                missing_list = $scope.peer_list.find_missing_devices($scope.device_tree)
+                missing_list = $scope.struct.peer_list.find_missing_devices($scope.struct.device_tree)
                 defer = $q.defer()
                 if missing_list.length
                     # enrich devices with missing peer info
-                    _en_devices = ($scope.device_tree.all_lut[pk] for pk in missing_list)
+                    _en_devices = ($scope.struct.device_tree.all_lut[pk] for pk in missing_list)
                     # temoprary hs
-                    $scope.device_tree.enrich_devices(
-                        icswDeviceTreeHelperService.create($scope.device_tree, _en_devices)
+                    $scope.struct.device_tree.enrich_devices(
+                        icswDeviceTreeHelperService.create($scope.struct.device_tree, _en_devices)
                         ["network_info"]
                         force_network_info
                     ).then(
@@ -145,17 +162,17 @@ angular.module(
                 defer.promise.then(
                     (done) ->
                         # every device in the device tree is now fully populated
-                        remote = $scope.peer_list.find_remote_devices($scope.device_tree, $scope.devices)
-                        temp_hs = icswDeviceTreeHelperService.create($scope.device_tree, ($scope.device_tree.all_lut[rem] for rem in remote))
+                        remote = $scope.struct.peer_list.find_remote_devices($scope.struct.device_tree, $scope.struct.devices)
+                        temp_hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, ($scope.struct.device_tree.all_lut[rem] for rem in remote))
                         # dummy call to enrich_devices, only used to create the lists and luts
-                        $scope.device_tree.enrich_devices(
+                        $scope.struct.device_tree.enrich_devices(
                             temp_hs
                             ["network_info"]
                         ).then(
                             (done) ->
                                 # everything is now in place
-                                $scope.remote_helper_obj = temp_hs
-                                $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
+                                $scope.struct.remote_helper_obj = temp_hs
+                                $scope.struct.peer_list.enrich_device_tree($scope.struct.device_tree, $scope.struct.local_helper_obj, $scope.struct.remote_helper_obj)
                                 console.log "done reloading"
                                 d.resolve("scan ok")
                         )
@@ -165,15 +182,15 @@ angular.module(
 
     $scope.scan_device_network = (dev, event) ->
 
-        sub_scope = $scope.$new(false)
+        sub_scope = $scope.$new(true)
         sub_scope.edit_obj = dev
 
         network_type_names = []
         ip_dict = {}
         for ndev in dev.netdevice_set
             for ip in ndev.net_ip_set
-                nw = $scope.network_tree.nw_lut[ip.network]
-                nw_type = $scope.network_tree.nw_type_lut[nw.network_type]
+                nw = $scope.struct.network_tree.nw_lut[ip.network]
+                nw_type = $scope.struct.network_tree.nw_type_lut[nw.network_type]
                 if nw_type.identifier != "l" and not (nw.netmask == "255.0.0.0" and nw.network == "127.0.0.0")
                     nwt_d = nw_type.description
                     if nwt_d not of ip_dict
@@ -212,8 +229,8 @@ angular.module(
             # preferred ip addresses
             _ip_to_use = ""
             for _pref in ["p", "o", "s", "b"]
-                if _pref of $scope.network_tree.nw_type_lut
-                    _nwt = $scope.network_tree.nw_type_lut[_pref]
+                if _pref of $scope.struct.network_tree.nw_type_lut
+                    _nwt = $scope.struct.network_tree.nw_type_lut[_pref]
                     if _nwt.description of ip_dict
                         _ip_to_use = ip_dict[_nwt.description][0]
                         break
@@ -258,9 +275,9 @@ angular.module(
                     else
                         blockUI.start("Starting scan")
                         scan_performed = true
-                        $scope.device_tree.register_device_scan(dev, sub_scope.scan_settings).then(
+                        $scope.struct.device_tree.register_device_scan(dev, sub_scope.scan_settings).then(
                             (ok) ->
-                                $scope.reload_everything(sub_scope.$id, false).then(
+                                reload_everything(sub_scope.$id, false).then(
                                     (res) ->
                                         blockUI.stop()
                                         d.resolve("reloaded")
@@ -279,43 +296,42 @@ angular.module(
             (fin) ->
                 console.log "Scan window closed"
                 sub_scope.$destroy()
-                $scope.peer_list.build_luts()
-                $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
-                $scope.device_tree.build_helper_luts(
-                    ["network_info"]
-                    $scope.local_helper_obj
-                )
-                $scope.reload_everything(sub_scope.$id, false)
+                $scope.struct.peer_list.build_luts()
+                $scope.struct.peer_list.enrich_device_tree($scope.struct.device_tree, $scope.struct.local_helper_obj, $scope.struct.remote_helper_obj)
+                _salt_local_devices()
+                reload_everything(sub_scope.$id, false)
 
                 if scan_performed
                     blockUI.start("Starting scan")
                     $timeout(
                         () ->
-                            $scope.device_tree.register_device_scan(dev, sub_scope.scan_settings).then(
-                                $scope.peer_list.build_luts()
-                                $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
-                                $scope.device_tree.build_helper_luts(
-                                    ["network_info"]
-                                    $scope.local_helper_obj
-                                )
-                                $scope.reload_everything(sub_scope.$id, true).then(
-                                  (res) ->
-                                      blockUI.stop()
+                            $scope.struct.device_tree.register_device_scan(dev, sub_scope.scan_settings).then(
+                                $scope.struct.peer_list.build_luts()
+                                $scope.struct.peer_list.enrich_device_tree($scope.struct.device_tree, $scope.struct.local_helper_obj, $scope.struct.remote_helper_obj)
+                                _salt_local_devices()
+                                reload_everything(sub_scope.$id, true).then(
+                                    (res) ->
+                                        blockUI.stop()
                                 )
                             )
-                        ,
                         5000
                     )
         )
         return
 
+    _salt_local_devices = () ->
+        $scope.struct.device_tree.enricher.build_g_luts(
+            ["network_info"]
+            $scope.struct.local_helper_obj
+        )
+
     $scope.copy_network = (src_obj, event) ->
 
-        sub_scope = $scope.$new(false)
+        sub_scope = $scope.$new(true)
         sub_scope.copy_coms = false
         sub_scope.settings = {
             "copy_coms": false
-            "src_device": $scope.devices[0]
+            "src_device": $scope.struct.devices[0]
         }
         sub_scope.copy_com_class = () ->
             if sub_scope.settings.copy_coms
@@ -349,11 +365,11 @@ angular.module(
                             data: {
                                 source_dev: sub_scope.settings.src_device.idx
                                 copy_coms: sub_scope.settings.copy_coms
-                                all_devs: angular.toJson((dev.idx for dev in $scope.devices))
+                                all_devs: angular.toJson((dev.idx for dev in $scope.struct.devices))
                             }
                         ).then(
                             (xml) ->
-                                $scope.reload_everything(sub_scope.$id, true).then(
+                                reload_everything(sub_scope.$id, true).then(
                                     (res) ->
                                         blockUI.stop()
                                         d.resolve("reloaded")
@@ -375,12 +391,12 @@ angular.module(
                 sub_scope.$destroy()
         )
 
-    $scope.edit_boot_settings = (obj, event) ->
+    $scope.edit_boot_settings = ($event, obj) ->
 
         dbu = new icswDeviceBootBackup()
         dbu.create_backup(obj)
 
-        sub_scope = $scope.$new(false)
+        sub_scope = $scope.$new(true)
         sub_scope.edit_obj = obj
 
         icswComplexModalService(
@@ -394,7 +410,7 @@ angular.module(
                         toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
-                        $scope.device_tree.update_boot_settings(obj).then(
+                        $scope.struct.device_tree.update_boot_settings(obj).then(
                             (data) ->
                                 # console.log "data", data
                                 d.resolve("updated")
@@ -412,13 +428,10 @@ angular.module(
             (fin) ->
                 console.log "Boot modifier closed"
                 sub_scope.$destroy()
-                $scope.device_tree.build_helper_luts(
-                    ["network_info"]
-                    $scope.local_helper_obj
-                )
+                _salt_local_devices()
         )
 
-    $scope.edit_peer = (cur_obj, obj_type, $event, create_mode) ->
+    $scope.edit_peer = ($event, cur_obj, obj_type, create_mode) ->
         # cur_obj is device, netdevice of ip, obj_type is 'dev', 'nd' or 'ip'
         # create or edit
         if create_mode
@@ -455,8 +468,8 @@ angular.module(
         template_name = "icsw.peer.form"
         sub_scope = $scope.$new(true)
         sub_scope.edit_obj = edit_obj
-        sub_scope.source_helper = $scope.peer_list.build_peer_helper($scope.device_tree, edit_obj, $scope.local_helper_obj, $scope.remote_helper_obj, "s", helper_mode)
-        sub_scope.dest_helper = $scope.peer_list.build_peer_helper($scope.device_tree, edit_obj, $scope.local_helper_obj, $scope.remote_helper_obj, "d", helper_mode)
+        sub_scope.source_helper = $scope.struct.peer_list.build_peer_helper($scope.struct.device_tree, edit_obj, $scope.struct.local_helper_obj, $scope.struct.remote_helper_obj, "s", helper_mode)
+        sub_scope.dest_helper = $scope.struct.peer_list.build_peer_helper($scope.struct.device_tree, edit_obj, $scope.struct.local_helper_obj, $scope.struct.remote_helper_obj, "d", helper_mode)
         # create link
         sub_scope.create_mode = create_mode
 
@@ -475,18 +488,18 @@ angular.module(
                         d.reject("form not valid")
                     else
                         if create_mode
-                            $scope.peer_list.create_peer(sub_scope.edit_obj, $scope.device_tree).then(
+                            $scope.struct.peer_list.create_peer(sub_scope.edit_obj, $scope.struct.device_tree).then(
                                 (new_peer) ->
                                     # check if we have to enrich the remote helper obj
-                                    if new_peer.s_device of $scope.local_helper_obj.device_lut
+                                    if new_peer.s_device of $scope.struct.local_helper_obj.device_lut
                                         # source is local, check dest
                                         _cd = new_peer.d_device
                                     else
                                         _cd = new_peer.s_device
-                                    if _cd not of $scope.remote_helper_obj.device_lut
-                                        # we have to add a device to the remote_helper_obj
-                                        $scope.remote_helper_obj.add_device($scope.device_tree.all_lut[_cd])
-                                        $scope.device_tree.enrich_devices($scope.remote_helper_obj, ["network_info"], true).then(
+                                    if _cd not of $scope.struct.remote_helper_obj.device_lut
+                                        # we have to add a device to the struct.remote_helper_obj
+                                        $scope.struct.remote_helper_obj.add_device($scope.struct.device_tree.all_lut[_cd])
+                                        $scope.struct.device_tree.enrich_devices($scope.struct.remote_helper_obj, ["network_info"], true).then(
                                             (done) ->
                                                 d.resolve("peer created")
                                         )
@@ -523,38 +536,32 @@ angular.module(
                 sub_scope.$destroy()
                 # trigger rebuild of lists
                 # recreate helper luts
-                $scope.peer_list.build_luts()
-                $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
-                $scope.device_tree.build_helper_luts(
-                    ["network_info"]
-                    $scope.local_helper_obj
-                )
+                $scope.struct.peer_list.build_luts()
+                $scope.struct.peer_list.enrich_device_tree($scope.struct.device_tree, $scope.struct.local_helper_obj, $scope.struct.remote_helper_obj)
+                _salt_local_devices()
         )
 
-    $scope.delete_peer = (peer, event) ->
+    $scope.delete_peer = ($event, peer) ->
         icswToolsSimpleModalService("Really delete Peer ?").then(
             () =>
-                $scope.peer_list.delete_peer(peer).then(
+                $scope.struct.peer_list.delete_peer(peer).then(
                     () ->
-                        $scope.peer_list.build_luts()
-                        $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
-                        $scope.device_tree.build_helper_luts(
-                            ["network_info"]
-                            $scope.local_helper_obj
-                        )
+                        $scope.struct.peer_list.build_luts()
+                        $scope.struct.peer_list.enrich_device_tree($scope.struct.device_tree, $scope.struct.local_helper_obj, $scope.struct.remote_helper_obj)
+                        _salt_local_devices()
                 )
         )
 
-    $scope.edit_netip = (cur_obj, obj_type, $event, create_mode) ->
+    $scope.edit_netip = ($event, cur_obj, obj_type, create_mode) ->
         # cur_obj is device, netdevice of ip, obj_type is 'dev', 'nd' or 'ip'
         # create or edit
         if create_mode
             edit_obj = {
                 "ip" : "0.0.0.0"
                 "_changed_by_user_": false
-                "network" : $scope.network_tree.nw_list[0].idx
+                "network" : $scope.struct.network_tree.nw_list[0].idx
                 # take first domain tree node
-                "domain_tree_node" : $scope.domain_tree.list[0].idx
+                "domain_tree_node" : $scope.struct.domain_tree.list[0].idx
             }
             if obj_type == "dev"
                 title = "Create new IP on Device '#{cur_obj.full_name}'"
@@ -563,17 +570,17 @@ angular.module(
             else if obj_type == "nd"
                 title = "Create new IP on Netdevice '#{cur_obj.devname}'"
                 edit_obj.netdevice = cur_obj.idx
-                dev = $scope.device_tree.all_lut[cur_obj.device]
+                dev = $scope.struct.device_tree.all_lut[cur_obj.device]
         else
             edit_obj = cur_obj
             dbu = new icswNetworkIPBackup()
             dbu.create_backup(edit_obj)
             title = "Edit IP #{edit_obj.ip}"
-            dev = $scope.device_tree.all_lut[$scope.local_helper_obj.netdevice_lut[edit_obj.netdevice].device]
+            dev = $scope.struct.device_tree.all_lut[$scope.struct.local_helper_obj.netdevice_lut[edit_obj.netdevice].device]
 
         # which template to use
         template_name = "icsw.net.ip.form"
-        sub_scope = $scope.$new(false)
+        sub_scope = $scope.$new(true)
         sub_scope.edit_obj = edit_obj
         sub_scope.device = dev
         sub_scope.create_mode = create_mode
@@ -599,7 +606,7 @@ angular.module(
             if obj.ip == "0.0.0.0" or not obj._changed_by_user_
                 sub_scope.get_free_ip(obj)
             if not obj._changed_by_user_
-                _nw = $scope.network_tree.nw_lut[obj.network]
+                _nw = $scope.struct.network_tree.nw_lut[obj.network]
                 if _nw.preferred_domain_tree_node
                     obj.domain_tree_node = _nw.preferred_domain_tree_node
 
@@ -615,9 +622,9 @@ angular.module(
                         toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
-                        nd = $scope.local_helper_obj.netdevice_lut[sub_scope.edit_obj.netdevice]
+                        nd = $scope.struct.local_helper_obj.netdevice_lut[sub_scope.edit_obj.netdevice]
                         if create_mode
-                            $scope.device_tree.create_netip(sub_scope.edit_obj, nd).then(
+                            $scope.struct.device_tree.create_netip(sub_scope.edit_obj, nd).then(
                                 (ok) ->
                                     d.resolve("netip created")
                                 (notok) ->
@@ -651,37 +658,31 @@ angular.module(
                 # trigger rebuild of lists
                 # $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
                 # recreate helper luts
-                $scope.device_tree.build_helper_luts(
-                    ["network_info"]
-                    $scope.local_helper_obj
-                )
+                _salt_local_devices()
         )
 
-    $scope.delete_netip = (ip, event) ->
+    $scope.delete_netip = ($event, ip) ->
         icswToolsSimpleModalService("Really delete IP #{ip.ip} ?").then(
             () =>
-                nd = $scope.local_helper_obj.netdevice_lut[ip.netdevice]
-                $scope.device_tree.delete_netip(ip, nd).then(
+                nd = $scope.struct.local_helper_obj.netdevice_lut[ip.netdevice]
+                $scope.struct.device_tree.delete_netip(ip, nd).then(
                     () ->
-                        $scope.device_tree.build_helper_luts(
-                            ["network_info"]
-                            $scope.local_helper_obj
-                        )
+                        _salt_local_devices()
                 )
         )
 
-    $scope.edit_netdevice = (nd_obj, $event, create_mode) ->
+    $scope.edit_netdevice = ($event, nd_obj, create_mode) ->
         # create or edit
         if create_mode
             # nd_obj is the parent device
-            new_type = $scope.network_tree.nw_device_type_list[0]
+            new_type = $scope.struct.network_tree.nw_device_type_list[0]
             mac_bytes = new_type.mac_bytes
             default_ms = ("00" for idx in [0..mac_bytes]).join(":")
             edit_obj = {
                 "device": nd_obj.idx
                 "devname": "eth0"
                 "enabled": true
-                "netdevice_speed": (entry.idx for entry in $scope.network_tree.nw_speed_list when entry.speed_bps == 1000000000 and entry.full_duplex)[0]
+                "netdevice_speed": (entry.idx for entry in $scope.struct.network_tree.nw_speed_list when entry.speed_bps == 1000000000 and entry.full_duplex)[0]
                 "ignore_netdevice_speed": false
                 "desired_status": "i"
                 "penalty": 1
@@ -704,7 +705,7 @@ angular.module(
             title = "Edit netdevice #{edit_obj.devname}"
         # which template to use
         template_name = "icsw.netdevice.form"
-        sub_scope = $scope.$new(false)
+        sub_scope = $scope.$new(true)
         sub_scope.edit_obj = edit_obj
 
         # set helper functions and arrays
@@ -717,26 +718,26 @@ angular.module(
             ndip_obj.ethtool_options = (parseInt(ndip_obj.ethtool_speed) << 4) | (parseInt(ndip_obj.ethtool_duplex) << 2) < (parseInt(ndip_obj.ethtool_autoneg))
 
         sub_scope.get_vlan_masters = (cur_nd) ->
-            _cd = $scope.device_tree.all_lut[cur_nd.device]
+            _cd = $scope.struct.device_tree.all_lut[cur_nd.device]
             return (entry for entry in _cd.netdevice_set when entry.idx != cur_nd.idx and not entry.is_bridge and not entry.is_bond)
 
         sub_scope.get_bridge_masters = (cur_nd) ->
-            _cd = $scope.device_tree.all_lut[cur_nd.device]
+            _cd = $scope.struct.device_tree.all_lut[cur_nd.device]
             return (entry for entry in _cd.netdevice_set when entry.idx != cur_nd.idx and entry.is_bridge)
 
         sub_scope.get_bond_masters = (cur_nd) ->
-            _cd = $scope.device_tree.all_lut[cur_nd.device]
+            _cd = $scope.struct.device_tree.all_lut[cur_nd.device]
             return (entry for entry in _cd.netdevice_set when entry.idx != cur_nd.idx and entry.is_bond)
 
         sub_scope.has_bridge_slaves = (nd) ->
-            dev = $scope.device_tree.all_lut[nd.device]
+            dev = $scope.struct.device_tree.all_lut[nd.device]
             if nd.is_bridge
                 return if (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bridge_device == nd.idx).length then true else false
             else
                 return false
 
         sub_scope.has_bond_slaves = (nd) ->
-            dev = $scope.device_tree.all_lut[nd.device]
+            dev = $scope.struct.device_tree.all_lut[nd.device]
             if nd.is_bond
                 return if (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bond_master == nd.idx).length then true else false
             else
@@ -775,14 +776,14 @@ angular.module(
                         d.reject("form not valid")
                     else
                         if create_mode
-                            $scope.device_tree.create_netdevice(sub_scope.edit_obj).then(
+                            $scope.struct.device_tree.create_netdevice(sub_scope.edit_obj).then(
                                 (ok) ->
                                     d.resolve("netdevice created")
                                 (notok) ->
                                     d.reject("netdevice not created")
                             )
                         else
-                            $scope.device_tree.modify_netdevice(sub_scope.edit_obj).then(
+                            $scope.struct.device_tree.modify_netdevice(sub_scope.edit_obj).then(
                                 (new_nd) ->
                                     d.resolve("saved")
                                 (reject) ->
@@ -799,25 +800,19 @@ angular.module(
         ).then(
             (fin) ->
                 console.log "NetDevice requester closed, trigger redraw"
+                _salt_local_devices()
                 sub_scope.$destroy()
                 # trigger rebuild of lists
                 # $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
                 # recreate helper luts
-                $scope.device_tree.build_helper_luts(
-                    ["network_info"]
-                    $scope.local_helper_obj
-                )
         )
 
-    $scope.delete_netdevice = (nd, event) ->
+    $scope.delete_netdevice = ($event, nd) ->
         icswToolsSimpleModalService("Really delete netdevice #{nd.devname} ?").then(
             () ->
-                $scope.device_tree.delete_netdevice(nd).then(
+                $scope.struct.device_tree.delete_netdevice(nd).then(
                     () ->
-                        $scope.device_tree.build_helper_luts(
-                            ["network_info"]
-                            $scope.local_helper_obj
-                        )
+                        _salt_local_devices()
                 )
         )
 
@@ -848,46 +843,13 @@ angular.module(
             }[eth_opt]
 
     $scope.get_num_peers_nd = (nd) ->
-        if nd.idx of $scope.peer_list.nd_lut
-            return $scope.peer_list.nd_lut[nd.idx].length
+        if nd.idx of $scope.struct.peer_list.nd_lut
+            return $scope.struct.peer_list.nd_lut[nd.idx].length
         else
             return 0
 
-    $scope.get_nd_flags = (nd) ->
-        _f = []
-        if nd.routing
-            _f.push("extrouting")
-        if nd.inter_device_routing
-            _f.push("introuting")
-        if !nd.enabled
-            _f.push("disabled")
-        return _f.join(", ")
-
-    $scope.get_netdevice_name = (nd) ->
-        nd_name = nd.devname
-        if nd.description
-            nd_name = "#{nd_name} (#{nd.description})"
-        if nd.vlan_id
-            nd_name = "#{nd_name}, VLAN #{nd.vlan_id}"
-            if nd.master_device
-                nd_name = "#{nd_name} on " + String($scope.local_helper_obj.netdevice_lut[nd.master_device].devname)
-        return nd_name
-
-    $scope.get_bond_info = (nd) ->
-        dev = $scope.device_tree.all_lut[nd.device]
-        if nd.is_bond
-            slaves = (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bond_master == nd.idx)
-            if slaves.length
-                return "master (" + slaves.join(", ") + ")"
-            else
-                return "master"
-        else if nd.bond_master
-            return "slave (" + $scope.local_helper_obj.netdevice_lut[nd.bond_master].devname + ")"
-        else
-            return "-"
-
     $scope.build_netdevice_tooltip = (ndev) ->
-        device = $scope.device_tree.all_lut[ndev.device]
+        device = $scope.struct.device_tree.all_lut[ndev.device]
         info_f = [
             "<div class='text-left'>",
             "device: #{device.full_name}<br>"
@@ -911,87 +873,14 @@ angular.module(
         info_f.push("Duplex: " +ethtool_options(ndev, "d") +  "<br>")
         info_f.push("Speed: " + ethtool_options(ndev, "s") + "<br>")
         info_f.push("<hr>")
-        info_f.push("Monitoring: " + $scope.get_netdevice_speed(ndev))
+        info_f.push("Monitoring: " + ndev.$$speed_info_string)
         info_f.push("</div>")
         return info_f.join("")
-
-    $scope.get_bridge_info = (nd) ->
-        dev = $scope.device_tree.all_lut[nd.device]
-        if nd.is_bridge
-            slaves = (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bridge_device == nd.idx)
-            if slaves.length
-                return "bridge" + " (" + slaves.join(", ") + ")"
-            else
-                return "bridge"
-        else if nd.bridge_device
-            return "slave (" + $scope.local_helper_obj.netdevice_lut[nd.bridge_device].devname + ")"
-        else
-            return "-"
-
-    $scope.get_network_type = (ndip_obj) ->
-        if ndip_obj.snmp_network_type
-            return $scope.network_tree.nw_snmp_type_lut[ndip_obj.snmp_network_type].if_label
-        else
-            return $scope.network_tree.nw_device_type_lut[ndip_obj.network_device_type].info_string
-
-    $scope.get_snmp_ao_status = (ndip_obj) ->
-        as = ndip_obj.snmp_admin_status
-        os = ndip_obj.snmp_oper_status
-        if as == 0 and os == 0
-            return ""
-        else if as == 1 and os == 1
-            return "up"
-        else
-            _r_f = []
-            _r_f.push(
-                {
-                    1: "up"
-                    2: "down"
-                    3: "testing"
-                }[as]
-            )
-            _r_f.push(
-                {
-                    1: "up"
-                    2: "down"
-                    3: "testing"
-                    4: "unknown"
-                    5: "dormant"
-                    6: "notpresent"
-                    7: "lowerLayerDown"
-                }[os]
-            )
-            return _r_f.join(", ")
-
-    $scope.get_snmp_ao_status_class = (ndip_obj) ->
-        as = ndip_obj.snmp_admin_status
-        os = ndip_obj.snmp_oper_status
-        if as == 0 and os == 0
-            return ""
-        else if as == 1 and os == 1
-            return "success text-center"
-        else
-            return "warning text-center"
-
-    $scope.get_desired_status = (ndip_obj) ->
-        return {
-            "i": "ignore"
-            "u": "up"
-            "d" : "down"
-        }[ndip_obj.desired_status]
-
-    $scope.get_netdevice_speed = (ndip_obj) ->
-        sp = ndip_obj.netdevice_speed
-        if sp of $scope.network_tree.nw_speed_lut
-            return $scope.network_tree.nw_speed_lut[sp].info_string
-        else
-            return "-"
 
 ]).directive("icswDeviceNetworkNetdeviceRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
         template: $templateCache.get("icsw.device.network.netdevice.row")
-        scope: false
         controller: "icswDeviceNetworkNetdeviceRowCtrl"
     }
 ]).factory("icswDeviceComCapabilitiesReact",
@@ -1083,98 +972,29 @@ angular.module(
                 ReactDOM.unmountComponentAtNode(element[0])
             )
     }
-]).controller("icswDeviceNetworkIpRowCtrl", ["$scope", ($scope) ->
-    $scope.get_netdevice_name_from_ip = (nd) ->
-        nd = $scope.local_helper_obj.netdevice_lut[nd.netdevice]
-        nd_name = nd.devname
-        if nd.description
-            nd_name = "#{nd_name} (#{nd.description})"
-        if nd.vlan_id
-            nd_name = "#{nd_name}, VLAN #{nd.vlan_id}"
-            if nd.master_device
-                nd_name = "#{nd_name} on " + String($scope.local_helper_obj.netdevice_lut[nd.master_device].devname)
-        return nd_name
-
-    $scope.no_scan_running = (ip_obj) ->
-        return $scope.device_tree.all_lut[$scope.local_helper_obj.netdevice_lut[ip_obj.netdevice].device].devicescanlock_set.length == 0
-
-    $scope.get_devname_from_ip = (ip_obj) ->
-        return $scope.device_tree.all_lut[$scope.local_helper_obj.netdevice_lut[ip_obj.netdevice].device].full_name
-
-    $scope.get_network_name_from_ip = (ip_obj) ->
-        return $scope.network_tree.nw_lut[ip_obj.network].info_string
-
-    $scope.get_domain_tree_name_from_ip = (ip_obj) ->
-        return $scope.domain_tree.lut[ip_obj.domain_tree_node].tree_info
-]).directive("icswDeviceNetworkIpRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
+]).directive("icswDeviceNetworkIpRow",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
     return {
         restrict : "EA"
         template: $templateCache.get("icsw.device.network.ip.row")
-        scope: false
-        controller: "icswDeviceNetworkIpRowCtrl"
     }
-]).controller("icswDeviceNetworkDeviceRowCtrl", ["$scope", ($scope) ->
-
-    $scope.create_netip_ok = (obj) ->
-        if $scope.network_tree.nw_list.length and obj.netdevice_set.length
-            return true
-        else
-            return false
-
-    $scope.create_peer_ok = (obj) ->
-        if obj.netdevice_set.length
-            return true
-        else
-            return false
-
-    $scope.get_bootdevice_info_class = (obj) ->
-        num_bootips = obj.num_boot_ips
-        if obj.dhcp_error
-            return "btn-danger"
-        else
-            if num_bootips == 0
-                return "btn-warning"
-            else if num_bootips == 1
-                return "btn-success"
-            else
-                return "btn-danger"
-
-    $scope.get_boot_value = (obj) ->
-        num_bootips = obj.num_boot_ips
-        if obj.dhcp_write
-            w_state = "write"
-        else
-            w_state = "no write"
-        if obj.dhc_mac
-            g_state = "greedy"
-        else
-            g_state = "not greedy"
-        r_val = "#{num_bootips} IPs (#{w_state}) / #{g_state})"
-        if obj.dhcp_error
-            r_val = "#{r_val}, #{obj.dhcp_error}"
-        if obj.dhcp_write != obj.dhcp_written
-            r_val = "#{r_val}, DHCP is " + (if obj.dhcp_written then "" else "not") + " written"
-        return r_val
-
-    $scope.build_device_tooltip = (dev) ->
-        group = $scope.device_tree.group_lut[dev.device_group]
-        return "<div class='text-left'>Group: #{group.name}<br>Comment: #{dev.comment}<br></div>"
-
 ]).directive("icswDeviceNetworkDeviceRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
         template: $templateCache.get("icsw.device.network.device.row")
-        scope: false
-        controller: "icswDeviceNetworkDeviceRowCtrl"
     }
 ]).controller("icswDeviceNetworkPeerRowCtrl", ["$scope", ($scope) ->
     get_netdevice_from_peer = (peer_obj, ptype) ->
         if peer_obj["$$#{ptype}_type"] == "l"
-            ho = $scope.local_helper_obj
-            o_ho = $scope.remote_helper_obj
+            ho = $scope.struct.local_helper_obj
+            o_ho = $scope.struct.remote_helper_obj
         else
-            ho = $scope.remote_helper_obj
-            o_ho = $scope.local_helper_obj
+            ho = $scope.struct.remote_helper_obj
+            o_ho = $scope.struct.local_helper_obj
         _pk = peer_obj["#{ptype}_netdevice"]
         if _pk of ho.netdevice_lut
             return ho.netdevice_lut[_pk]
@@ -1184,7 +1004,7 @@ angular.module(
             return o_ho.netdevice_lut[_pk]
 
     $scope.get_peer_type = (peer) ->
-        _local_devs = (dev.idx for dev in $scope.devices)
+        _local_devs = (dev.idx for dev in $scope.struct.devices)
         r_list = []
         for c_id in [peer.s_device, peer.d_device]
             r_list.push(if (c_id in _local_devs) then "sel" else "N/S")
@@ -1199,7 +1019,7 @@ angular.module(
 
     $scope.get_devname_from_peer = (peer_obj, ptype) ->
         nd = get_netdevice_from_peer(peer_obj, ptype)
-        dev = $scope.device_tree.all_lut[nd.device]
+        dev = $scope.struct.device_tree.all_lut[nd.device]
         return dev.full_name
 
     $scope.get_netdevice_name_from_peer = (peer_obj, ptype) ->
@@ -1223,7 +1043,6 @@ angular.module(
     return {
         restrict : "EA"
         template: $templateCache.get("icsw.device.network.peer.row")
-        scope: false
         controller: "icswDeviceNetworkPeerRowCtrl"
     }
 ]).directive("icswDeviceNetworkOverview", ["$templateCache", ($templateCache) ->
@@ -1285,11 +1104,17 @@ angular.module(
     icswDeviceTreeService,
 ) ->
     icswAccessLevelService.install($scope)
-    $scope.clusters = []
-    $scope.devices = []
+    $scope.struct = {
+        # clusters
+        clusters: []
+        # devices
+        devices: []
+    }
 
-    $scope.new_devsel = (_dev_sel, _devg_sel) ->
-        $scope.devices = _dev_sel
+    $scope.new_devsel = (dev_sel) ->
+        $scope.struct.devices.length = 0
+        for entry in dev_sel
+            $scope.struct.devices.push(entry)
 
     $scope.reload = () ->
         blockUI.start("loading NetworkClusters")
@@ -1299,23 +1124,25 @@ angular.module(
         ).then(
             (json) ->
                 blockUI.stop()
-                $scope.clusters = json
+                $scope.struct.clusters = json
         )
 
     $scope.is_selected = (cluster) ->
-        _sel = _.intersection(cluster.device_pks, $scope.devices)
+        _sel = _.intersection(cluster.device_pks, $scope.struct.devices)
         return if _sel.length then "yes (#{_sel.length})" else "no"
 
     $scope.show_cluster = (cluster) ->
         icswDeviceTreeService.load($scope.$id).then(
             (device_tree) ->
-                child_scope = $scope.$new(false)
-                child_scope.cluster = cluster
-                child_scope.devices = (device_tree.all_lut[pk] for pk in cluster.device_pks)
+                child_scope = $scope.$new(true)
+                child_scope.struct = {
+                    cluster: cluster
+                    devices: (device_tree.all_lut[pk] for pk in cluster.device_pks)
+                }
                 icswComplexModalService(
                     {
                         message: $compile($templateCache.get("icsw.device.network.cluster.info"))(child_scope)
-                        title: "Devices in cluster (#{child_scope.cluster.device_pks.length})"
+                        title: "Devices in cluster (#{child_scope.struct.cluster.device_pks.length})"
                         # css_class: "modal-wide"
                         ok_label: "Close"
                         closable: true
@@ -1510,9 +1337,9 @@ angular.module(
             return (val for val in nw_types_dict when val.value == id)[0].name
     }
 ]).directive("icswNetworkList", [
-    "Restangular", "$templateCache",
+    "$templateCache",
 (
-    Restangular, $templateCache
+    $templateCache
 ) ->
     return {
         restrict: "EA"
@@ -1738,11 +1565,11 @@ angular.module(
         create_or_edit: (scope, event, create, obj_or_parent) ->
             if create
                 obj_or_parent = {
-                    "identifier"   : "new network",
-                    "network_type" : (entry.idx for entry in nw_tree.nw_type_list when entry.identifier == "o")[0]
-                    "enforce_unique_ips" : true
-                    "num_ip"       : 0
-                    "gw_pri"       : 1
+                    identifier: "new network",
+                    network_type: (entry.idx for entry in nw_tree.nw_type_list when entry.identifier == "o")[0]
+                    enforce_unique_ips: true
+                    num_ip: 0
+                    gw_pri: 1
                 }
             else
                 dbu = new icswNetworkBackup()

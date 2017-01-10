@@ -1,40 +1,60 @@
 <script type="text/ng-template" id="icsw.device.network.overview">
-    <h3>
-        Network Configuration for {{ devices.length }} Devices ({{ local_helper_obj.netdevice_list.length }} Netdevices, {{ local_helper_obj.net_ip_list.length }} IPs, {{ local_helper_obj.peer_list.length }} Peers)
+    <div uib-alert class="alert-warning" ng-show="!struct.data_loaded">
+        Fetching data from server...
+    </div>
+    <h3 ng-if="struct.data_loaded">
+        Network Configuration for {{ struct.devices.length }} Devices
+        ({{ struct.local_helper_obj.netdevice_list.length }} Netdevices,
+        {{ struct.local_helper_obj.net_ip_list.length }} IPs, {{ struct.local_helper_obj.peer_list.length }} Peers)
         <icsw-tools-button ng-if="show_copy_button" type="modify" size="xs" value="Copy Networks" ng-click="copy_network()"></icsw-tools-button>
     </h3>
-    <uib-accordion close-others="no">
-        <div uib-accordion-group class="panel-default" is-open="device_open">
+    <uib-accordion close-others="no" ng-if="struct.data_loaded">
+        <div uib-accordion-group class="panel-default" is-open="struct.device_open">
             <uib-accordion-heading>
-                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': device_open, 'glyphicon-chevron-right': !device_open}"></i>
-                {{ devices.length }} Devices
+                <icsw-tools-accordion-chevron icsw-left="1" icsw-flag="struct.device_open"></icsw-tools-accordion-chevron>
+                {{ struct.devices.length }} Devices
             </uib-accordion-heading>
-            <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+            <table
+                ng-show="struct.devices.length"
+                class="table table-condensed table-hover table-striped"
+                style="width:auto;"
+            >
                 <thead>
                     <tr>
                         <th>Device</th>
+                        <th>Group</th>
+                        <th>Comment</th>
                         <th>Coms</th>
                         <th>Boot Info</th>
                         <th class="text-right">#Ports</th>
                         <th class="text-right">#IPs</th>
                         <th class="text-right">#Peers</th>
                         <th>SNMP Schemes</th>
-                        <th colspan="2">Actions</th>
+                        <th colspan="1">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr icsw-device-network-device-row ng-repeat="ndip_obj in devices"></tr>
+                    <tr icsw-device-network-device-row ng-repeat="ndip_obj in struct.devices"></tr>
                 </tbody>
             </table>
         </div>
-        <div uib-accordion-group class="panel-default" is-open="netdevice_open">
+        <div uib-accordion-group class="panel-default" is-open="struct.netdevice_open">
             <uib-accordion-heading>
-                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netdevice_open, 'glyphicon-chevron-right': !netdevice_open}"></i>
-                {{ local_helper_obj.netdevice_list.length }} Netdevices
+                <icsw-tools-accordion-chevron icsw-left="1" icsw-flag="struct.netdevice_open"></icsw-tools-accordion-chevron>
+                {{ struct.local_helper_obj.netdevice_list.length }} Netdevices
             </uib-accordion-heading>
-            <icsw-tools-show-hide-columns ng-show="devices.length" columns="idx port ips peers bridge bond mac devtype mtu speed penalty flags status desired" create-show-column="true">
+            <icsw-tools-show-hide-columns
+                ng-show="struct.devices.length"
+                columns="idx port ips peers bridge bond mac devtype mtu speed penalty flags status desired"
+                create-show-column="true"
+            >
             </icsw-tools-show-hide-columns>
-            <table st-table="display_entries" st-safe-src="local_helper_obj.netdevice_list" ng-show="devices.length" class="table table-condensed table-hover table-striped">
+            <table
+                st-table="display_entries"
+                st-safe-src="struct.local_helper_obj.netdevice_list"
+                ng-show="struct.devices.length"
+                class="table table-condensed table-hover table-striped"
+            >
                 <thead>
                     <tr>
                         <td colspan="99">
@@ -74,12 +94,16 @@
                 </tbody>
             </table>
         </div>
-        <div uib-accordion-group class="panel-default" is-open="netip_open">
+        <div uib-accordion-group class="panel-default" is-open="struct.netip_open">
             <uib-accordion-heading>
-                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netip_open, 'glyphicon-chevron-right': !netip_open}"></i>
-                {{ local_helper_obj.net_ip_list.length }} IP Addresses
+                <icsw-tools-accordion-chevron icsw-left="1" icsw-flag="struct.netip_open"></icsw-tools-accordion-chevron>
+                {{ struct.local_helper_obj.net_ip_list.length }} IP Addresses
             </uib-accordion-heading>
-            <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+            <table
+                ng-show="struct.devices.length"
+                class="table table-condensed table-hover table-striped"
+                style="width:auto;"
+            >
                 <thead>
                     <tr>
                         <th>Device</th>
@@ -92,16 +116,20 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr icsw-device-network-ip-row ng-repeat="ndip_obj in local_helper_obj.net_ip_list"></tr>
+                    <tr icsw-device-network-ip-row ng-repeat="ndip_obj in struct.local_helper_obj.net_ip_list"></tr>
                 </tbody>
             </table>
         </div>
-        <div uib-accordion-group class="panel-default" is-open="peer_open">
+        <div uib-accordion-group class="panel-default" is-open="struct.peer_open">
             <uib-accordion-heading>
-                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': peer_open, 'glyphicon-chevron-right': !peer_open}"></i>
-                {{ local_helper_obj.peer_list.length }} Peer Connections
+                <icsw-tools-accordion-chevron icsw-left="1" icsw-flag="struct.peer_open"></icsw-tools-accordion-chevron>
+                {{ struct.local_helper_obj.peer_list.length }} Peer Connections
             </uib-accordion-heading>
-            <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+            <table
+                ng-show="struct.devices.length"
+                class="table table-condensed table-hover table-striped"
+                style="width:auto;"
+            >
                 <thead>
                     <tr>
                         <th>Device</th>
@@ -118,7 +146,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr icsw-device-network-peer-row ng-repeat="ndip_obj in local_helper_obj.peer_list track by $index"></tr>
+                    <tr icsw-device-network-peer-row ng-repeat="ndip_obj in struct.local_helper_obj.peer_list track by $index"></tr>
                 </tbody>
             </table>
         </div>
@@ -130,12 +158,12 @@
         Copy Network From
         <ui-select ng-model="settings.src_device" style="max-width:400px; min-width:240px;">
             <ui-select-match class="ui-select-match" placeholder="select a target netdevice speed">{{$select.selected.full_name}}</ui-select-match>
-            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in devices">
+            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.devices">
                 <div ng-bind-html="value.full_name | highlight: $select.search"></div>
             </ui-select-choices>
         </ui-select>
         <ul class="dropdown-menu">
-            <li ng-click="copy_network(obj, $event)" ng-repeat="obj in devices"><a>{{ obj.full_name }}</a></li>
+            <li ng-click="copy_network(obj, $event)" ng-repeat="obj in struct.devices"><a>{{ obj.full_name }}</a></li>
         </ul>
         <input type="button" ng-class="copy_com_class()" ng-value="copy_com_value()" ng-click="toggle_copy_com()"></input>
     </form>
@@ -146,39 +174,39 @@
         {{ ndip_obj.full_name }}
     </td>
     <td>
+        {{ ndip_obj.$$group.name }}
+    </td>
+    <td>
+        {{ ndip_obj.comment }}
+    </td>
+    <td>
         <icsw-device-com-capabilities icsw-device="ndip_obj"></icsw-device-com-capabilities>
     </td>
     <td>
         <input
             type="button"
             class="btn btn-xs btn-default"
-            ng-class="get_bootdevice_info_class(ndip_obj)"
-            ng-show="ndip_obj.num_boot_ips"
-            ng-value="get_boot_value(ndip_obj)"
-            ng-click="edit_boot_settings(ndip_obj, $event)">
+            ng-class="ndip_obj.$$bootdevice_info_class"
+            ng-show="ndip_obj.$$num_boot_ips"
+            ng-value="ndip_obj.$$boot_info_value"
+            ng-click="edit_boot_settings($event, ndip_obj)">
         </input>
-        <span ng-show="!ndip_obj.num_boot_ips">N/A</span>
+        <span ng-show="!ndip_obj.$$num_boot_ips">N/A</span>
     </td>
     <td class="text-right">
-        {{ ndip_obj.num_netdevices }}
+        {{ ndip_obj.$$num_netdevices }}
     </td>
     <td class="text-right">
-        {{ ndip_obj.num_netips }}
+        {{ ndip_obj.$$num_netips }}
     </td>
     <td class="text-right">
-        {{ ndip_obj.num_peers }}
+        {{ ndip_obj.$$num_peers }}
     </td>
     <td>
         <span ng-repeat="obj in ndip_obj.snmp_schemes">
             <span class="label label-info">{{ obj.full_name }}</span>
         </span>
-    </td>
-    <td>
-        <button type="button" class="btn btn-xs btn-success pull-right"
-            uib-tooltip-placement="bottom"
-            uib-tooltip-html="build_device_tooltip(ndip_obj)">
-            <span class="glyphicon glyphicon-info-sign"></span>
-        </button>
+        <span ng-show="!ndip_obj.snmp_schemes.length" class="text-warning">None</span>
     </td>
     <td>
         <div ng-show="acl_create(ndip_obj, 'backbone.device.change_network') && !ndip_obj.active_scan">
@@ -188,9 +216,9 @@
                     create <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
-                    <li ng-click="edit_netdevice(ndip_obj, $event, true)"><a>Netdevice</a></li>
-                    <li ng-show="create_netip_ok(ndip_obj)" ng-click="edit_netip(ndip_obj, 'dev', $event, true)"><a>IP Address</a></li>
-                    <li ng-show="create_peer_ok(ndip_obj)" ng-click="edit_peer(ndip_obj, 'dev', $event, true)"><a>Network Topology Connection</a></li>
+                    <li ng-click="edit_netdevice($event, ndip_obj, true)"><a>Netdevice</a></li>
+                    <li ng-show="ndip_obj.$$create_netip_ok" ng-click="edit_netip($event, ndip_obj, 'dev', true)"><a>IP Address</a></li>
+                    <li ng-show="ndip_obj.$$create_peer_ok" ng-click="edit_peer($event, ndip_obj, 'dev', true)"><a>Network Topology Connection</a></li>
                 </ul>
             </div>
             <icsw-tools-button type="reload" value="update network" size="xs"
@@ -203,39 +231,44 @@
 
 <script type="text/ng-template" id="icsw.device.network.netdevice.row">
     <td>
-        {{ device_tree.all_lut[ndip_obj.device].full_name }}
+        {{ struct.device_tree.all_lut[ndip_obj.device].full_name }}
     </td>
     <td ng-show="show_column.idx" class="text-right">
         <span ng-show="ndip_obj.snmp_idx">{{ ndip_obj.snmp_idx }}</span>
     <td ng-show="show_column.port">
         <span ng-show="ndip_obj.enabled">
-            {{ get_netdevice_name(ndip_obj) }}
+            {{ ndip_obj.$$info_string }}
         </span>
         <span ng-show="!ndip_obj.enabled">
-            <em><strike>{{ get_netdevice_name(ndip_obj) }}</strike></em>
+            <em><strike>{{ ndip_obj.$$info_string }}</strike></em>
         </span>
     </td>
     <td ng-show="show_column.ips" class="text-right">
-        {{ ndip_obj.num_netips }}
+        {{ ndip_obj.$$num_netips }}
     </td>
     <td ng-show="show_column.peers" class="text-right">
         {{ get_num_peers_nd(ndip_obj) }}
     </td>
-    <td ng-show="show_column.bridge">{{ get_bridge_info(ndip_obj) }}</td>
-    <td ng-show="show_column.bond">{{ get_bond_info(ndip_obj) }}</td>
-    <td ng-show="show_column.mac">{{ ndip_obj.macaddr }}</td>
-    <td ng-show="show_column.devtype">{{ get_network_type(ndip_obj) }}</td>
+    <td ng-show="show_column.bridge">{{ ndip_obj.$$bridge_info_string }}</td>
+    <td ng-show="show_column.bond">{{ ndip_obj.$$bond_info_string }}</td>
+    <td ng-show="show_column.mac"><code>{{ ndip_obj.macaddr }}</code></td>
+    <td ng-show="show_column.devtype">{{ ndip_obj.$$type_string }}</td>
     <td ng-show="show_column.mtu" class="text-right">{{ ndip_obj.mtu }}</td>
     <td ng-if="show_column.speed && ndip_obj.ignore_netdevice_speed" style="text-decoration: line-through;">
-        {{ get_netdevice_speed(ndip_obj) }}
+        {{ ndip_obj.$$speed_info_string }}
     </td>
     <td ng-if="show_column.speed && !ndip_obj.ignore_netdevice_speed">
-        {{ get_netdevice_speed(ndip_obj) }}
+        {{ ndip_obj.$$speed_info_string }}
     </td>
     <td ng-show="show_column.penalty" class="text-right">{{ ndip_obj.penalty }}</td>
-    <td ng-show="show_column.flags">{{ get_nd_flags(ndip_obj) }}</td>
-    <td ng-show="show_column.status" ng-class="get_snmp_ao_status_class(ndip_obj)">{{ get_snmp_ao_status(ndip_obj) }}</td>
-    <td ng-show="show_column.desired" class="text-center">{{ get_desired_status(ndip_obj) }}</td>
+    <td ng-show="show_column.flags">{{ ndip_obj.$$flags_info_string }}</td>
+    <td
+        ng-show="show_column.status"
+        ng-class="ndip_obj.$$snmp_ao_status_class"
+    >
+        {{ ndip_obj.$$snmp_ao_status }}
+    </td>
+    <td ng-show="show_column.desired" class="text-center">{{ ndip_obj.$$desired_status }}</td>
     <td>
         <button
             type="button"
@@ -250,7 +283,7 @@
         <div ng-show="!ndip_obj.$$device.$$any_scan_locks">
             <icsw-tools-button
                 type="modify"
-                ng-click="edit_netdevice(ndip_obj, $event, false)"
+                ng-click="edit_netdevice($event, ndip_obj, false)"
                 size="xs"
                 ng-show="acl_modify(obj, 'backbone.device.change_network')"
             ></icsw-tools-button>
@@ -258,7 +291,7 @@
     </td>
     <td>
         <div ng-show="!ndip_obj.$$device.$$any_scan_locks">
-            <icsw-tools-button type="delete" size="xs" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"/>
+            <icsw-tools-button type="delete" size="xs" ng-click="delete_netdevice($event, ndip_obj)" ng-show="acl_delete(obj, 'backbone.device.change_network')"/>
         </div>
     </td>
     <td>
@@ -267,31 +300,31 @@
                 create <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li ng-show="network_tree.nw_list.length" ng-click="edit_netip(ndip_obj, 'nd', $event, true)">
+                <li ng-show="struct.network_tree.nw_list.length" ng-click="edit_netip($event, ndip_obj, 'nd', true)">
                     <a>IP Address</a></li>
-                <li ng-click="edit_peer(ndip_obj, 'nd', $event, true)"><a>Network Topology Connection</a></li>
+                <li ng-click="edit_peer($event, ndip_obj, 'nd', true)"><a>Network Topology Connection</a></li>
             </ul>
         </div>
     </td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.ip.row">
-    <td>{{ get_devname_from_ip(ndip_obj) }}</td>
-    <td>{{ get_netdevice_name_from_ip(ndip_obj) }}</td>
-    <td>{{ ndip_obj.ip }}</td>
-    <td>{{ get_network_name_from_ip(ndip_obj) }}</td>
-    <td>{{ get_domain_tree_name_from_ip(ndip_obj) }}</td>
+    <td>{{ ndip_obj.$$device.full_name }}</td>
+    <td>{{ ndip_obj.$$netdevice.$$info_string }}</td>
+    <td><code>{{ ndip_obj.ip }}</code></td>
+    <td>{{ ndip_obj.$$network.info_string }}</td>
+    <td>{{ ndip_obj.$$domain_tree_node.tree_info  }}</td>
     <td>
         <span ng-show="ndip_obj.alias">{{ ndip_obj.alias }} <span ng-show="ndip_obj.alias_excl">( exclusive )</span></span>
     </td>
     <td>
         <div ng-show="!ndip_obj.$$device.$$any_scan_locks">
-            <icsw-tools-button type="modify" size="xs" ng-click="edit_netip(ndip_obj, 'ip', $event, false)" ng-show="acl_modify(obj, 'backbone.device.change_network')"/>
+            <icsw-tools-button type="modify" size="xs" ng-click="edit_netip($event, ndip_obj, 'ip', false)" ng-show="acl_modify(obj, 'backbone.device.change_network')"/>
         </div>
     </td>
     <td>
         <div ng-show="!ndip_obj.$$device.$$any_scan_locks">
-            <icsw-tools-button type="delete" size="xs" ng-click="delete_netip(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"/>
+            <icsw-tools-button type="delete" size="xs" ng-click="delete_netip($event, ndip_obj)" ng-show="acl_delete(obj, 'backbone.device.change_network')"/>
         </div>
     </td>
 </script>
@@ -317,16 +350,16 @@
         {{ ndip_obj.peer.info }}
     </td>
     <td>
-        <icsw-tools-button type="modify" size="xs" ng-click="edit_peer(ndip_obj, 'peer', $event, false)" ng-show="acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
+        <icsw-tools-button type="modify" size="xs" ng-click="edit_peer($event, ndip_obj, 'peer', false)" ng-show="acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
     </td>
     <td>
-        <icsw-tools-button type="delete" size="xs" ng-click="delete_peer(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"></icsw-tools-button>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete_peer($event, ndip_obj)" ng-show="acl_delete(obj, 'backbone.device.change_network')"></icsw-tools-button>
     </td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.cluster.info">
     <ul>
-        <li ng-repeat="device in devices">
+        <li ng-repeat="device in struct.devices">
             {{ device.full_name }} ({{ device.device_group_name }})
         </li>
     </ul>
@@ -345,11 +378,20 @@
                     <icsw-device-livestatus icsw-var-name="'$$network_topology_pipe'"></icsw-device-livestatus>
                 </div>
             </uib-tab>
-            <uib-tab heading="Clusters" ng-if="acl_read(null, 'backbone.network.show_clusters')" select="select_tab('cluster')">
+            <uib-tab
+                heading="Clusters"
+                ng-if="acl_read(null, 'backbone.network.show_clusters')"
+                select="select_tab('cluster')"
+            >
                 <div ng-controller="icswDeviceNetworkClusterCtrl">
-                    <h3>Network Clusters ({{ clusters.length }} Entries)
-                    <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"></icsw-tools-button></h3>
-                    <table class="table table-condensed table-hover table-striped" style="width:auto;">
+                    <h3>
+                        Network Clusters ({{ struct.clusters.length }} Entries)
+                        <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"></icsw-tools-button>
+                    </h3>
+                    <table
+                        class="table table-condensed table-hover table-striped"
+                        style="width:auto;"
+                    >
                         <thead>
                             <tr>
                                 <th>Index</th>
@@ -361,7 +403,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr ng-repeat="cluster in clusters">
+                            <tr ng-repeat="cluster in struct.clusters">
                                 <td>{{ $index + 1 }}</td>
                                 <td>{{ cluster.with_netdevices | yesno2 }}</td>
                                 <td class="text-right">{{ cluster.devices }}</td>
@@ -444,7 +486,7 @@
                         </tbody>
                     </table>
                 </icsw-tools-rest-table-new>
-            </uib-ta
+            </uib-tab>
         </uib-tabset>
     </div>
 </script>
@@ -457,7 +499,6 @@
     <icsw-network-list></icsw-network-list>
     <icsw-network-list-service-tabs></icsw-network-list-service-tabs>
 </script>
-
 
 <script type="text/ng-template" id="icsw.network.list.service.tabs">
     <style>
@@ -477,28 +518,30 @@
                     <uib-tab-heading>
                         <span>Device/IP List</span>
                     </uib-tab-heading>
-                        <h3>Network {{ tab.network_display.active_network.identifier }}, {{ tab.network_display.active_network.num_ip }} IP addresses</h3>
-                        <table st-table="network_entries_displayed" st-safe-src="tab.network_display.iplist" class="table table-condensed table-hover" style="width:auto;">
-                            <thead>
-                                <tr>
-                                    <td colspan="99">
-                                        <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th st-sort="ip">IP</th>
-                                    <th st-sort="netdevice_name">Netdevice</th>
-                                    <th st-sort="device_full_name">Device</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr ng-repeat="obj in network_entries_displayed">
-                                   <td>{{ obj.ip }}</td>
-                                   <td>{{ obj.netdevice_name }}</td>
-                                   <td>{{ obj.device_full_name }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <h3>
+                        Network {{ tab.network_display.active_network.identifier }}, {{ tab.network_display.active_network.num_ip }} IP addresses
+                    </h3>
+                    <table st-table="network_entries_displayed" st-safe-src="tab.network_display.iplist" class="table table-condensed table-hover" style="width:auto;">
+                        <thead>
+                            <tr>
+                                <td colspan="99">
+                                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th st-sort="ip">IP</th>
+                                <th st-sort="netdevice_name">Netdevice</th>
+                                <th st-sort="device_full_name">Device</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="obj in network_entries_displayed">
+                               <td>{{ obj.ip }}</td>
+                               <td>{{ obj.netdevice_name }}</td>
+                               <td>{{ obj.device_full_name }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </uib-tab>
                 <uib-tab>
                     <uib-tab-heading>
@@ -816,7 +859,12 @@
                         <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"/>
                     </td>
                     <td>
-                        <icsw-tools-button type="delete" ng-show="obj.num_ip == 0" ng-click="delete($event, obj)" size="xs">
+                        <icsw-tools-button
+                            type="delete"
+                            ng-show="obj.num_ip == 0"
+                            ng-click="delete($event, obj)"
+                            size="xs"
+                        >
                         </icsw-tools-button>
                         <button type="button" ng-click="config_service.create_new_tab(obj)" class="btn btn-success btn-xs">Show Details</button>
                     </td>
@@ -865,23 +913,25 @@
             <legend>Flags</legend>
             <div class="form-group">
                 <div class="checkbox">
-                    <div class="col-sm-5 icsw-formlabel"></div>
-                    <div class="controls col-sm-7">
+                    <div class="col-sm-5 icsw-formlabel">
                         <label>
-                            <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.allow_virtual_interfaces" type="checkbox"/>
                             Allow Virtual Interfaces
                         </label>
+                    </div>
+                    <div class="controls col-sm-7">
+                        <icsw-tools-yes-no flag="edit_obj.allow_virtual_interfaces"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
             <div class="form-group">
                 <div class="checkbox">
-                    <div class="col-sm-5 icsw-formlabel"></div>
-                    <div class="controls col-sm-7">
+                    <div class="col-sm-5 icsw-formlabel">
                         <label>
-                            <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.for_matching" type="checkbox"/>
                             Used for matching
                         </label>
+                    </div>
+                    <div class="controls col-sm-7">
+                        <icsw-tools-yes-no flag="edit_obj.for_matching"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
@@ -894,7 +944,7 @@
         <uib-tabset>
             <uib-tab heading="Basic settings">
                 <fieldset style="margin-top:15px;">
-                    <div class="form-group  ng-class:form_error('devname')">
+                    <div class="form-group ng-class:form_error('devname')">
                         <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Devname<span class="asteriskField">*</span>
                         </label>
@@ -925,39 +975,37 @@
                         <div class="controls col-sm-8">
                             <ui-select ng-model="edit_obj.netdevice_speed" class="maxwidth500" ng-disabled="false">
                                 <ui-select-match class="ui-select-match" placeholder="select a target netdevice speed">{{$select.selected.info_string}}</ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in network_tree.nw_speed_list">
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.network_tree.nw_speed_list">
                                     <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="col-sm-3 icsw-formlabel"></div>
-                            <div class="controls col-lg-offset-0 col-sm-8">
-                                <label>
-                                    <input class="checkboxinput checkbox" ng-model="edit_obj.ignore_netdevice_speed" type="checkbox"/>
-                                    Ignore netdevice speed
-                                </label>
-                            </div>
+                    <div class="form-group row">
+                        <div class="control-label col-sm-3 icsw-formlabel">
+                            <label>
+                                Ignore netdevice speed
+                            </label>
+                        </div>
+                        <div class="controls col-sm-9">
+                            <icsw-tools-yes-no flag="edit_obj.ignore_netdevice_speed"></icsw-tools-yes-no>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="col-sm-3 icsw-formlabel"></div>
-                            <div class="controls col-lg-offset-0 col-sm-8">
-                                <label>
-                                    <input class="checkboxinput checkbox" ng-model="edit_obj.enabled" type="checkbox"/>
-                                    Enabled
-                                </label>
-                            </div>
+                    <div class="form-group row">
+                        <div class="control-label col-sm-3 icsw-formlabel">
+                            <label>
+                                Enabled
+                            </label>
+                        </div>
+                        <div class="controls col-sm-9">
+                            <icsw-tools-yes-no flag="edit_obj.enabled"></icsw-tools-yes-no>
                         </div>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group row">
                         <label class="control-label col-sm-3 icsw-formlabel">
                             Desired status
                         </label>
-                        <div class="controls col-sm-8">
+                        <div class="controls col-sm-9">
                             <ui-select ng-model="edit_obj.desired_status" class="maxwidth500" ng-disabled="false">
                                 <ui-select-match class="ui-select-match" placeholder="select the desired status">{{$select.selected.info_string}}</ui-select-match>
                                 <ui-select-choices class="ui-select-choices" repeat="value.short as value in desired_stati">
@@ -969,34 +1017,32 @@
                 </fieldset>
                 <fieldset>
                     <legend>Routing Settings</legend>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="col-sm-3 icsw-formlabel"></div>
-                            <div class="controls col-lg-offset-0 col-sm-8">
-                                <label>
-                                    <input class="checkboxinput checkbox" ng-model="edit_obj.routing" type="checkbox"/>
-                                    Network Topology Central Node
-                                </label>
-                            </div>
+                    <div class="form-group row">
+                        <div class="control-label col-sm-3 icsw-formlabel">
+                            <label>
+                                Network Topology Central Node
+                            </label>
+                        </div>
+                        <div class="controls col-sm-9">
+                            <icsw-tools-yes-no flag="edit_obj.routing"></icsw-tools-yes-no>
                         </div>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group row">
                         <label class="control-label col-sm-3 icsw-formlabel">
                             Penalty
                         </label>
-                        <div class="controls col-sm-8">
+                        <div class="controls col-sm-9">
                             <input class="numberinput form-control maxwidth500" max="128" min="1" name="penalty" ng-model="edit_obj.penalty" type="number" value="1"/>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="col-sm-3 icsw-formlabel"></div>
-                            <div class="controls col-lg-offset-0 col-sm-8">
-                                <label>
-                                    <input class="checkboxinput checkbox" ng-model="edit_obj.inter_device_routing" type="checkbox"/>
-                                    Inter Device Routing
-                                </label>
-                            </div>
+                    <div class="form-group row">
+                        <div class="control-label col-sm-3 icsw-formlabel">
+                            <label>
+                                Inter Device Routing
+                            </label>
+                        </div>
+                        <div class="controls col-sm-9">
+                            <icsw-tools-yes-no flag="edit_obj.inter_device_routing"></icsw-tools-yes-no>
                         </div>
                     </div>
                 </fieldset>
@@ -1058,7 +1104,7 @@
                                     </ui-select-choices>
                                 </ui-select>
                                 <span class="input-group-btn">
-                                    <button type="button" ng-click="edit_obj.bridge_device = undefined" class="btn btn-default">
+                                    <button type="button" ng-click="edit_obj.bridge_device = null" class="btn btn-default">
                                         <span class="glyphicon glyphicon-trash"></span>
                                     </button>
                                 </span>
@@ -1457,7 +1503,7 @@
                 <div class="controls col-sm-8">
                     <ui-select ng-model="edit_obj.network" ng-change="network_changed(edit_obj)" class="maxwidth500" ng-disabled="false">
                         <ui-select-match class="ui-select-match" placeholder="network">{{$select.selected.info_string}}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in network_tree.nw_list | props_filter:{info_string:$select.search}" position="down">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.network_tree.nw_list | props_filter:{info_string:$select.search}" position="down">
                             <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
@@ -1481,7 +1527,7 @@
                 <div class="controls col-sm-8">
                     <ui-select ng-model="edit_obj.domain_tree_node" class="maxwidth500" ng-disabled="false">
                         <ui-select-match class="ui-select-match" placeholder="Domain tree node">{{$select.selected.tree_info}}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in domain_tree.list | props_filter:{tree_info:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.domain_tree.list | props_filter:{tree_info:$select.search}">
                             <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
