@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001-2007,2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2007,2015,2017 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone
 #
@@ -20,40 +20,25 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import commands
-import getopt
-import os
-import sys
+from __future__ import print_function, unicode_literals
 
-from initat.tools import logging_tools, process_tools
+import argparse
+
+from initat.tools import logging_tools, process_tools, net_tools, server_command
 
 
 def parse_list(in_list):
+    print(in_list)
     second_d = in_list.index(":", in_list.index(":") + 1) + 5
     return process_tools.net_to_sys(in_list[second_d:])
 
 
 def main():
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "hd", ["version", "help"])
-    except getopt.GetoptError, bla:
-        print "Error parsing commandline %s: %s" % (" ".join(sys.argv[1:]),
-                                                    process_tools.get_except_info())
-        sys.exit(1)
-    opt_dict = {"detailed_list": False}
-    for opt, arg in opts:
-        if opt in ["-h", "--help"]:
-            print "Usage : %s [OPTIONS] host1[:dir1] host2[:dir2]" % (os.path.basename(sys.argv[0]))
-            print "  where OPTIONS is one or more of"
-            print " -h, --help      this help"
-            print " -d              detailed list"
-            sys.exit(0)
-        if opt == "-d":
-            opt_dict["detailed_list"] = True
-    if len(args) != 2:
-        print "Need host1[:dir1] and host2[:dir2] as argument"
-        sys.exit(0)
-    host_1, host_2 = args
+    my_parser = argparse.ArgumentParser()
+    my_parser.add_argument("-d", dest="detail", default=False, action="store_true", help="detailed mode [%(default)s]")
+    my_parser.add_argument("hosts", nargs=2, help="Devices to check [%(default)s]")
+    opts = my_parser.parse_args()
+    host_1, host_2 = opts.hosts
     if host_1.count(":"):
         host_1, dir_1 = host_1.split(":", 1)
     else:
@@ -62,16 +47,21 @@ def main():
         host_2, dir_2 = host_2.split(":", 1)
     else:
         dir_2 = "/"
-    print "Comparing rpm_lists of %s (dir %s) and %s (dir %s)" % (host_1, dir_1, host_2, dir_2)
-    stat_1, list_1 = commands.getstatusoutput("collclient.py --host %s rpmlist -r %s" % (host_1, dir_1))
-    stat_2, list_2 = commands.getstatusoutput("collclient.py --host %s rpmlist -r %s" % (host_2, dir_2))
-    if stat_1 or stat_2:
-        print "error getting lists (%d / %d)" % (stat_1, stat_2)
-        sys.exit(1)
-    dict_1 = parse_list(list_1)
-    dict_2 = parse_list(list_2)
-    rpm_dict_1 = dict_1["rpm_dict"]
-    rpm_dict_2 = dict_2["rpm_dict"]
+    print("Comparing rpm_lists of %s (dir %s) and %s (dir %s)" % (host_1, dir_1, host_2, dir_2))
+    _ns1 = net_tools.SendCommandDefaults(host=host_1, arguments=["rpmlist", dir_1])
+    my_com = net_tools.SendCommand(_ns1)
+    my_com.init_connection()
+    if my_com.connect():
+        result_1 = my_com.send_and_receive()
+    my_com.close()
+    _ns2 = net_tools.SendCommandDefaults(host=host_2, arguments=["rpmlist", dir_2])
+    my_com = net_tools.SendCommand(_ns2)
+    my_com.init_connection()
+    if my_com.connect():
+        result_2 = my_com.send_and_receive()
+    my_com.close()
+    rpm_dict_1 = server_command.decompress(result_1["*pkg_list"], pickle=True)
+    rpm_dict_2 = server_command.decompress(result_2["*pkg_list"], pickle=True)
     keys_1 = rpm_dict_1.keys()
     keys_2 = rpm_dict_2.keys()
     keys_1.sort()
@@ -81,13 +71,17 @@ def main():
     for missing_in, host, _dir in [(missing_in_1, host_1, dir_1),
                                    (missing_in_2, host_2, dir_2)]:
         if missing_in:
-            print "%s missing on %s (dir %s):" % (logging_tools.get_plural("package", len(missing_in)),
-                                                  host,
-                                                  _dir)
-            if opt_dict["detailed_list"]:
-                print "\n".join(missing_in)
+            print(
+                "{} missing on {} (dir {}):".format(
+                    logging_tools.get_plural("package", len(missing_in)),
+                    host,
+                    _dir
+                )
+            )
+            if opts.detail:
+                print("\n".join(missing_in))
             else:
-                print " ".join(missing_in)
+                print(" ".join(missing_in))
 
 
 if __name__ == "__main__":

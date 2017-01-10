@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (c) 2006-2011,2015 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2006-2011,2015,2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of logging-server
 #
@@ -18,6 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ client for logging-server """
+
+from __future__ import print_function, unicode_literals
 
 import argparse
 

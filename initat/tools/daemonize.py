@@ -29,7 +29,6 @@ import importlib
 import os
 import pwd
 import setproctitle
-import subprocess
 import sys
 
 import daemon
@@ -118,6 +117,8 @@ def main():
             os.setgid(gid)
             os.setuid(uid)
     if _mode == "python":
+        os.environ["LC_LANG"] = "en_us.UTF_8"
+        os.environ["PYTHONIOENCODING"] = "utf_8"
         # python path
         if opts.debug:
             # set debug flag

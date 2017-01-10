@@ -16,6 +16,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from __future__ import unicode_literals, print_function
+
 import commands
 import os
 import re
@@ -169,18 +171,18 @@ class rpmlist_command(hm_classes.hm_command):
                     re_strs.append(arg)
         if is_debian:
             self.log(
-                "Starting dpkg -l command for root_dir '{}' ({:d} regexp_strs: {})".format(
+                "Starting dpkg -l command for root_dir '{}' ({:d} regexp_strs{})".format(
                     rpm_root_dir,
                     len(re_strs),
-                    ", ".join(re_strs)
+                    ": {}".format(", ".join(re_strs)) if re_strs else "",
                 )
             )
         else:
             self.log(
-                "Starting rpm-list command for root_dir '{}' ({:d} regexp_strs: {})".format(
+                "Starting rpm-list command for root_dir '{}' ({:d} regexp_strs{})".format(
                     rpm_root_dir,
                     len(re_strs),
-                    ", ".join(re_strs)
+                    ": {}".format(", ".join(re_strs)) if re_strs else "",
                 )
             )
         s_time = time.time()
@@ -258,7 +260,7 @@ class rpmlist_command(hm_classes.hm_command):
                             ]
                         )
                         out_f.add_line((key, d_flag, s_flag, e_flag, ver, rel, summary))
-            return limits.mon_STATE_OK, "{}\n{}".format(header_line, str(out_f))
+            return limits.mon_STATE_OK, "{}\n{}".format(header_line, unicode(out_f))
         else:
             return limits.mon_STATE_CRITICAL, "{}, nothing found".format(header_line)
 
@@ -289,7 +291,9 @@ class updatelist_command(hm_classes.hm_command):
 
 def rpmlist_int(rpm_root_dir, re_strs, is_debian):
     if is_debian:
-        log_list = ["doing dpkg -l command in dir {}".format(rpm_root_dir)]
+        log_list = [
+            "doing dpkg -l command in dir {}".format(rpm_root_dir)
+        ]
         if rpm_root_dir:
             rpm_coms = [
                 'chroot {} dpkg -l'.format(rpm_root_dir),
@@ -298,8 +302,11 @@ def rpmlist_int(rpm_root_dir, re_strs, is_debian):
         else:
             rpm_coms = ['dpkg -l']
         for rpm_com in rpm_coms:
-            log_list.append("  dpkg-command is {}".format(rpm_com.strip()))
+            log_list.append(
+                "  dpkg-command is {}".format(rpm_com.strip())
+            )
             stat, ipl = commands.getstatusoutput(rpm_com)
+            ipl = ipl.decode("utf-8")
             if not stat:
                 ret_dict = {}
                 lines = ipl.split("\n")
@@ -337,20 +344,21 @@ def rpmlist_int(rpm_root_dir, re_strs, is_debian):
         ]
         if rpm_root_dir:
             rpm_coms = [
-                'chroot %s rpm -qa --queryformat="%%{NAME} %%{VERSION} %%{RELEASE} %%{SIZE} %%{ARCH} %%{INSTALLTIME} %%{SUMMARY}\n" ' % (rpm_root_dir),
-                'rpm --root=%s -qa --queryformat="%%{NAME} %%{VERSION} %%{RELEASE} %%{SIZE} %%{ARCH} %%{INSTALLTIME} %%{SUMMARY}\n" ' % (rpm_root_dir)
+                'chroot {} rpm -qa --queryformat="%{{NAME}} %{{VERSION}} %{{RELEASE}} %{{SIZE}} %{{ARCH}} %{{INSTALLTIME}} %{{SUMMARY}}\n" '.format(rpm_root_dir),
+                'rpm --root={} -qa --queryformat="%{{NAME}} %{{VERSION}} %{{RELEASE}} %{{SIZE}} %{{ARCH}} %{{INSTALLTIME}} %{{SUMMARY}}\n" '.format(rpm_root_dir),
             ]
         else:
             rpm_coms = [
                 'rpm -qa --queryformat="%{NAME} %{VERSION} %{RELEASE} %{SIZE} %{ARCH} %{INSTALLTIME} %{SUMMARY}\n" '
             ]
         for rpm_com in rpm_coms:
-            log_list.append("  rpm-command is %s" % (rpm_com.strip()))
+            log_list.append("  rpm-command is {}".format(rpm_com.strip()))
             stat, ipl = commands.getstatusoutput(rpm_com)
+            ipl = ipl.decode("utf-8")
             num_tot, num_match = (0, 0)
             if not stat:
                 ret_dict = {}
-                log_list.append(" - first line is %s" % (ipl.split("\n")[0].strip()))
+                log_list.append(" - first line is {}".format(ipl.split("\n")[0].strip()))
                 for rfp in [x for x in [namere.match(actl.strip()) for actl in ipl.split("\n")] if x]:
                     num_tot += 1
                     name = rfp.group("name")
