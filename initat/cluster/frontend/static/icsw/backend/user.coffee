@@ -661,11 +661,21 @@ angular.module(
                 icswUserGroupRoleTools.salt_user(user)
 
         # remove / delete calls
-        delete_user: (user) =>
+        delete_user: (user, already_deleted) =>
             defer = $q.defer()
-            _del_url = ICSW_URLS.REST_USER_DETAIL.slice(1).slice(0, -2)
-            Restangular.restangularizeElement(null, user, _del_url)
-            user.remove().then(
+            del_defer = $q.defer()
+            if already_deleted
+                del_defer.resolve("ok")
+            else
+                _del_url = ICSW_URLS.REST_USER_DETAIL.slice(1).slice(0, -2)
+                Restangular.restangularizeElement(null, user, _del_url)
+                user.remove().then(
+                    (del) ->
+                        del_defer.resolve("ok")
+                    (not_del) ->
+                        del_defer.reject("not ok")
+                )
+            del_defer.promise.then(
                 (del) =>
                     _.remove(@user_list, (entry) -> return entry.idx == user.idx)
                     _.remove(@vdus_list, (entry) -> return entry.user == user.idx)
@@ -680,11 +690,21 @@ angular.module(
             )
             return defer.promise
 
-        delete_group: (group) =>
+        delete_group: (group, already_deleted) =>
             defer = $q.defer()
-            _del_url = ICSW_URLS.REST_GROUP_DETAIL.slice(1).slice(0, -2)
-            Restangular.restangularizeElement(null, group, _del_url)
-            group.remove().then(
+            del_defer = $q.defer()
+            if already_deleted
+                del_defer.resolve("ok")
+            else
+                _del_url = ICSW_URLS.REST_GROUP_DETAIL.slice(1).slice(0, -2)
+                Restangular.restangularizeElement(null, group, _del_url)
+                group.remove().then(
+                    (del) ->
+                        del_defer.resolve("ok")
+                    (not_del) ->
+                        del_defer.reject("not ok")
+                )
+            del_defer.promise.then(
                 (del) =>
                     _del_users = _.remove(@group_list, (entry) -> return entry.idx == group.idx)
                     _del_user_ids = (user.idx for user in _del_users)

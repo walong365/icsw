@@ -55,7 +55,7 @@ class json_network(View):
         graph_mode = _post["graph_sel"]
         # devices currently selected (or in monitoring data, dependening on the call)
         dev_list = json.loads(_post["devices"])
-        print(dev_list)
+        # print(dev_list)
         logger.info(
             "drawing network, mode is {}, {}".format(
                 graph_mode,

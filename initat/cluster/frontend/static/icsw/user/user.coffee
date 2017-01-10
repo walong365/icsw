@@ -632,10 +632,10 @@ user_module = angular.module(
 ]).controller("icswUserGroupEditCtrl",
 [
     "$scope", "$q", "icswUserGroupRoleTools", "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswUserGetPassword",
-    "blockUI", "icswBackupTools", "$rootScope", "$timeout",
+    "blockUI", "icswBackupTools", "$rootScope", "$timeout", "icswDialogDeleteService",
 (
     $scope, $q, icswUserGroupRoleTools, ICSW_SIGNALS, icswToolsSimpleModalService, icswUserGetPassword,
-    blockUI, icswBackupTools, $rootScope, $timeout,
+    blockUI, icswBackupTools, $rootScope, $timeout, icswDialogDeleteService,
 ) ->
 
     _set_permissions_from_src = () ->
@@ -667,25 +667,41 @@ user_module = angular.module(
     $scope.close = () ->
         $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
 
-    $scope.delete = () ->
+    $scope.delete = ($event) ->
+        if $scope.type == "user"
+            $scope.object.$$name = $scope.object.login
+        else
+            $scope.object.$$name = $scope.object.groupname
         # check for deletion of own user / group, TODO, FIXME
-        icswToolsSimpleModalService("Really delete #{$scope.type}?").then(
+        icswToolsSimpleModalService("Really delete #{$scope.type} '#{$scope.object.$$name}' ?").then(
             (doit) ->
-                blockUI.start("deleting #{$scope.type}")
-                defer = $q.defer()
-                $scope.tree["delete_#{$scope.type}"]($scope.object).then(
-                    (deleted) ->
-                        defer.resolve("ok")
-                    (not_del) ->
-                        defer.reject("not del")
-                )
-                defer.promise.then(
-                    (removed) ->
-                        blockUI.stop()
-                        $scope.src_object.$$ignore_changes = true
-                        $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
-                    (not_rem) ->
-                        blockUI.stop()
+                icswDialogDeleteService.delete(
+                    icswDialogDeleteService.get_delete_instance(
+                        [$scope.object]
+                        $scope.type
+                        {
+                            async_delete: false
+                            change_async_delete_flag: false
+                            after_delete: (arg) =>
+                                if arg?
+                                    defer = $q.defer()
+                                    blockUI.start("deleting #{$scope.type}")
+                                    $scope.tree["delete_#{$scope.type}"]($scope.object, true).then(
+                                        (deleted) ->
+                                            defer.resolve("ok")
+                                        (not_del) ->
+                                            defer.reject("not del")
+                                    )
+                                    defer.promise.then(
+                                        (removed) ->
+                                            blockUI.stop()
+                                            $scope.src_object.$$ignore_changes = true
+                                            $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
+                                        (not_rem) ->
+                                            blockUI.stop()
+                                    )
+                        }
+                    )
                 )
         )
 
@@ -962,7 +978,7 @@ user_module = angular.module(
     $scope.close = () ->
         $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.struct.src_object, "role")
 
-    $scope.delete = () ->
+    $scope.delete = ($event) ->
         # check for deletion of own user / group, TODO, FIXME
         icswToolsSimpleModalService("Really delete role ?").then(
             (doit) ->

@@ -64,8 +64,12 @@ angular.module(
                 _elem = @pk_lut[pk]
                 if _elem.full_name?
                     return _elem.full_name
-                else
+                else if _elem.name?
                     return _elem.name
+                else if _elem.$$name?
+                    return _elem.$$name
+                else
+                    return "(pk=#{pk})"
 
             related_objects = angular.fromJson($(xml).find("value[name='related_objects']").text())
             deletable_objects = angular.fromJson($(xml).find("value[name='deletable_objects']").text())
