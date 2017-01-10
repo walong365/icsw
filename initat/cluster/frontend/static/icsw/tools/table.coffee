@@ -287,65 +287,75 @@ angular.module(
                     $event.stopPropagation()
                 scope.config_service.delete(scope, $event, obj)
     }
-]).directive('icswToolsShowHideColumns', () ->
+]).directive('icswToolsShowHideColumns',
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
     return {
         restrict: 'EA'
-        template: """
-Show/Hide Columns: <div class="btn-group btn-group-xs">
-    <input type="button" ng-repeat="entry in columns" ng-attr-title="show/hide columns {{entry}}" ng-value="entry"
-        ng-class="show_column[entry] && 'btn btn-success' || 'btn btn-default'" ng-click="toggle_column(entry)"></input>
-</div>
-"""
-        scope: false
+        template: $templateCache.get("icsw.tools.table.show_hide")
+        scope: {
+            callback: "=icswCallback"
+            columns: "@columns"
+            columns_list: "=columnsList"
+            columns_from_settings: "=columnsFromSettings"
+            columns_target: "=columnsTarget"
+        }
         link: (scope, element, attrs) ->
-            scope.a = attrs
-            if scope.a.icswCallback?
-                _callback = scope.$eval(scope.a.icswCallback)
-            else
-                _callback = undefined
+            scope.struct = {
+                # current columns
+                cur_columns: []
+                # show columns lut
+                show_column: {}
+            }
 
-            if attrs.createShowColumn
-                # NOTE: this object can easily end up in the wrong scope
-                #       set this attribute if you know what you are doing, or else create the object yourself in your scope
-                scope.show_column = {}
-
+            _copy_columns = () ->
+                if scope.columns_target?
+                    for key, value of scope.struct.show_column
+                        scope.columns_target[key] = value
 
             set_new_columns = (new_columns) ->
-                for k in _.keys(scope.show_column)
+                for k in _.keys(scope.struct.show_column)
                     if k not in new_columns
-                        delete scope.show_column[k]
+                        delete scope.struct.show_column[k]
 
-                scope.columns = new_columns
-                for col in scope.columns
-                    scope.show_column[col] = true
-                if _callback
-                    if scope.columns_from_settings?
-                        for key, value of scope.columns_from_settings
-                            if key of scope.show_column
-                                scope.show_column[key] = value
-                    _callback(scope.show_column)
+                scope.struct.cur_columns.length = 0
+                for entry in new_columns
+                    scope.struct.cur_columns.push(entry)
+                    scope.struct.show_column[entry] = true
+                if attrs.columnsFromSettings?
+                    scope.$watch(
+                        "columns_from_settings"
+                        (new_val) ->
+                            for key, val of new_val
+                                scope.struct.show_column[key] = val
+                            if scope.callback?
+                                scope.callback(scope.struct.show_column)
+                            _copy_columns()
+                    )
+                if scope.callback?
+                    scope.callback(scope.struct.show_column)
+                _copy_columns()
 
-            scope.toggle_column = (key) ->
-                scope.show_column[key] = !scope.show_column[key]
-                if _callback
-                    _callback(scope.show_column)
+            scope.toggle_column = ($event, key) ->
+                scope.struct.show_column[key] = !scope.struct.show_column[key]
+                if scope.callback
+                    scope.callback(scope.struct.show_column)
+                _copy_columns()
 
-            scope.$watch(
-                () -> attrs.columnsList
-                (new_val) ->
-                    if new_val? && new_val
-                        set_new_columns(JSON.parse(new_val))
-            )
+            if scope.columns?
+                set_new_columns(scope.columns.split(" "))
 
-            scope.$watch(
-                () -> attrs.columns  # watch on attribute doesn't work
-                (new_val) ->
-                    if new_val?
-                        set_new_columns(new_val.split(' '))
-
-            )
+            if attrs.columnsList?
+                scope:$watch(
+                    "columns_list"
+                    (new_val) ->
+                        console.log "ncls", new_val
+                )
      }
-).directive("icswToolsFloatingTableHeader",
+]).directive("icswToolsFloatingTableHeader",
 [
     "$window",
 (

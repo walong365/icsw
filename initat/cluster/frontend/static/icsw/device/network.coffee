@@ -45,6 +45,7 @@ angular.module(
 ) ->
     $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
     icswAccessLevelService.install($scope)
+    $scope.show_column = {}
     # copy flags
     $scope.show_copy_button = false
     $scope.struct = {
@@ -1354,8 +1355,9 @@ angular.module(
 ]).controller("icswNetworkListCtrl", [
     "$scope",
 (
-    $scope
+    $scope,
 ) ->
+    $scope.show_column = {}
 ]).service('icswNetworkListService',
 [
     "Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI",
