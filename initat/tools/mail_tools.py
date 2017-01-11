@@ -20,7 +20,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import unicode_literals, print_function
+
 
 import email  # @UnusedImport
 import email.mime  # @UnusedImport
@@ -48,7 +48,7 @@ except ImportError:
     pass
 
 if sys.version_info[0] == 3:
-    unicode = str
+    str = str
     long = int
 
 
@@ -62,7 +62,7 @@ class mail(object):
         self.add_to_address(to_addr)
         self.is_html_body = args.get("html_body", False)
         if txt:
-            if isinstance(txt, basestring):
+            if isinstance(txt, str):
                 self.text = [txt]
             else:
                 self.text = txt
@@ -83,7 +83,7 @@ class mail(object):
         self.from_addr = frm or "root"
 
     def add_to_address(self, trg):
-        if isinstance(trg, basestring):
+        if isinstance(trg, str):
             self.to_addrs.append(trg)
         elif isinstance(trg, list):
             self.to_addrs.extend(trg)
@@ -100,7 +100,7 @@ class mail(object):
         self.bcc_list.append(addr)
 
     def append_text(self, what=None):
-        if isinstance(what, basestring):
+        if isinstance(what, str):
             self.text.append(what)
         elif type(what) == list:
             self.text.extend(what)
@@ -186,7 +186,7 @@ class mail(object):
             else:
                 err_str = "Sending mail successfull"
             server.quit()
-        if isinstance(err_str, basestring):
+        if isinstance(err_str, str):
             ret_f.append(err_str)
         elif type(err_str) == list:
             ret_f.extend(err_str)
@@ -206,8 +206,8 @@ class mail(object):
                     while not lines[0]:
                         lines.pop(0)
                 new_text.append("\n".join(lines))
-            if not isinstance(new_text[0], unicode):
-                new_text = [unicode(new_text[0], "utf-8")]
+            if not isinstance(new_text[0], str):
+                new_text = [str(new_text[0], "utf-8")]
             self.msg = email.MIMEText.MIMEText(new_text[0].encode("utf-8"), "html", "utf-8")
             self.msg.set_charset("utf-8")
         else:

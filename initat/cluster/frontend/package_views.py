@@ -22,7 +22,7 @@
 
 """ package views """
 
-from __future__ import print_function, unicode_literals
+
 
 import logging
 import json
@@ -114,10 +114,10 @@ class use_package(View):
         else:
             try:
                 _new_p = cur_sr.create_package(exact=exact, target_repo=t_repo)
-            except IntegrityError, what:
-                request.xml_response.error("error modifying: {}".format(unicode(what)), logger)
-            except ValidationError, what:
-                request.xml_response.error("error creating: {}".format(unicode(what)), logger)
+            except IntegrityError as what:
+                request.xml_response.error("error modifying: {}".format(str(what)), logger)
+            except ValidationError as what:
+                request.xml_response.error("error creating: {}".format(str(what)), logger)
             except:
                 request.xml_response.info("unknown error: {}".format(process_tools.get_except_info()), logger)
             else:
@@ -289,7 +289,7 @@ class change_package_flag(View):
             "setting {} flag to {} for {}".format(
                 sflag_name,
                 "True" if value else "False",
-                unicode(cur_pdc.package),
+                str(cur_pdc.package),
             ),
             logger
         )

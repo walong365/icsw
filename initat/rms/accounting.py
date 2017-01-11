@@ -28,7 +28,7 @@ in the PE-config (so we get one line per PE-Slave), hence we use the
 
 """
 
-from __future__ import print_function, unicode_literals
+
 
 import datetime
 import os
@@ -137,7 +137,7 @@ class AccountingProcess(threading_tools.process_obj, server_mixins.EggConsumeMix
                 "device": {},
             }
         )
-        self.__cache.update({key: {} for key in _OBJ_DICT.iterkeys()})
+        self.__cache.update({key: {} for key in _OBJ_DICT.keys()})
 
     def _get_missing_dict(self):
         # clean old jobs without a valid accounting log
@@ -169,7 +169,7 @@ class AccountingProcess(threading_tools.process_obj, server_mixins.EggConsumeMix
         if _mis_dict:
             self.log(
                 "entries missing in accounting database: {:d} ({})".format(
-                    sum(len(_val) for _val in _mis_dict.itervalues()),
+                    sum(len(_val) for _val in _mis_dict.values()),
                     logging_tools.get_plural("job", len(_mis_dict)),
                 ),
                 logging_tools.LOG_LEVEL_WARN
@@ -235,7 +235,7 @@ class AccountingProcess(threading_tools.process_obj, server_mixins.EggConsumeMix
                 self._disable_cache(log=True)
             else:
                 self._log_missing(_mis_dict)
-                for _id in sorted(_mis_dict.iterkeys()):
+                for _id in sorted(_mis_dict.keys()):
                     self._call_qacct("-j", "{}".format(_id), mult=len(_mis_dict[_id]))
                 self._log_stats()
         if self.__jobs_added:
@@ -420,7 +420,7 @@ class AccountingProcess(threading_tools.process_obj, server_mixins.EggConsumeMix
         # set slots to the default value
         _cur_job_run.slots = in_dict["slots"]
         _cur_job_run.save()
-        self.log("added new {}".format(unicode(_cur_job_run)))
+        self.log("added new {}".format(str(_cur_job_run)))
         return _cur_job_run
 
     def _get_object(self, obj_name, name):
@@ -519,7 +519,7 @@ class AccountingProcess(threading_tools.process_obj, server_mixins.EggConsumeMix
         self.log(
             "source device {} resolves to {}".format(
                 _source_host,
-                unicode(_source_dev) if _source_dev else "---",
+                str(_source_dev) if _source_dev else "---",
             )
         )
         if _com in ["job_start", "job_end"]:
@@ -537,13 +537,13 @@ class AccountingProcess(threading_tools.process_obj, server_mixins.EggConsumeMix
                 # set slots to the default value
                 _new_run.slots = 1
                 _new_run.save()
-                self.log("added new {} (ext)".format(unicode(_new_run)))
+                self.log("added new {} (ext)".format(str(_new_run)))
             else:
                 # after 1 minute check the accounting log
                 self.register_timer(self._check_accounting, 60, oneshot=True, data={"job_id": _job.jobid, "task_id": _job.taskid})
                 _latest_run = _job.close_job_run()
                 if _latest_run:
-                    self.log("closed job_run {} (ext)".format(unicode(_latest_run)))
+                    self.log("closed job_run {} (ext)".format(str(_latest_run)))
                 self.send_pool_message("job_ended", _job.jobid, _job.taskid)
 
         else:
@@ -569,8 +569,8 @@ class AccountingProcess(threading_tools.process_obj, server_mixins.EggConsumeMix
                         _slots = int(_parts[1])
                         self.log(
                             "pe info parsed for {}: device '{}' (from {}), {}".format(
-                                unicode(_latest_run),
-                                unicode(_pe_dev) if _pe_dev else "---",
+                                str(_latest_run),
+                                str(_pe_dev) if _pe_dev else "---",
                                 _parts[0],
                                 logging_tools.get_plural("slot", _slots),
                             )
@@ -603,8 +603,8 @@ class AccountingProcess(threading_tools.process_obj, server_mixins.EggConsumeMix
             )
             self.log(
                 "creating {} for job {}".format(
-                    unicode(cur_var),
-                    unicode(job)
+                    str(cur_var),
+                    str(job)
                 )
             )
         return cur_var
@@ -648,4 +648,4 @@ class AccountingProcess(threading_tools.process_obj, server_mixins.EggConsumeMix
                         ),
                         server_command.SRV_REPLY_STATE_OK
                     )
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", str(srv_com))

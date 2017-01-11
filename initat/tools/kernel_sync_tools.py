@@ -21,9 +21,9 @@
 #
 """ kernel sync tools """
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import datetime
 import gzip
 import hashlib
@@ -179,7 +179,7 @@ class KernelHelper(object):
                         logging_tools.LOG_LEVEL_ERROR
                     )
         if md5s_to_check:
-            for src_file, md5_file in md5s_to_check.iteritems():
+            for src_file, md5_file in md5s_to_check.items():
                 md5_name = os.path.basename(md5_file)[1:]
                 new_bz5 = True
                 if os.path.exists(md5_file):
@@ -199,7 +199,7 @@ class KernelHelper(object):
 
     def move_old_initrd(self):
         if os.path.isfile(self.__initrd_paths["old"]):
-            c_stat, c_out = commands.getstatusoutput("file -z {}".format(self.__initrd_paths["old"]))
+            c_stat, c_out = subprocess.getstatusoutput("file -z {}".format(self.__initrd_paths["old"]))
             if c_stat:
                 self.log(
                     "error getting type of old-flavour initrd.gz {} ({:d}): {}".format(
@@ -264,7 +264,7 @@ class KernelHelper(object):
     def _update_kernel(self, **kwargs):
         if self.__db_kernel:
             if self.__db_kernel.master_server == self.__local_master_server.pk:
-                for key, value in kwargs.iteritems():
+                for key, value in kwargs.items():
                     if not hasattr(self.__db_kernel, key):
                         self.log(
                             "unknown attribute name {}".format(key),
@@ -341,7 +341,7 @@ class KernelHelper(object):
                         else:
                             m_com = "mount -o loop {} {}".format(tfile_name, tdir_name)
                             um_com = "umount {}".format(tdir_name)
-                            cstat, out = commands.getstatusoutput(m_com)
+                            cstat, out = subprocess.getstatusoutput(m_com)
                             if cstat:
                                 self.log(
                                     "error mounting tempfile {} to {}: {}".format(
@@ -365,7 +365,7 @@ class KernelHelper(object):
                                     mod_list.add(mod_name[:-2] if mod_name.endswith(".o") else mod_name[:-3])
                             checked = True
                         else:
-                            c_stat, c_out = commands.getstatusoutput("gunzip -c {} | cpio -t".format(check_path))
+                            c_stat, c_out = subprocess.getstatusoutput("gunzip -c {} | cpio -t".format(check_path))
                             if c_stat:
                                 self.log(
                                     "error getting info crom cpio-archive {} ({:d}, {}): {}".format(
@@ -406,7 +406,7 @@ class KernelHelper(object):
                             self.__values["module_list"] = mod_list
                             self.__values["target_module_list"] = mod_list
                     if do_umount:
-                        c_stat, c_out = commands.getstatusoutput(um_com)
+                        c_stat, c_out = subprocess.getstatusoutput(um_com)
                         if c_stat:
                             self.log(
                                 "error unmounting tempfile {} from {} ({:d}): {}".format(
@@ -459,7 +459,7 @@ class KernelHelper(object):
                     ] if os.path.isdir(_key)
                 }
                 _weak_dirs = [
-                    _key for _key, _value in _sub_dirs.iteritems() if not set(_value) - {"extra"}
+                    _key for _key, _value in _sub_dirs.items() if not set(_value) - {"extra"}
                 ]
                 self.log("weak dirs: {}".format(", ".join(_weak_dirs)))
                 _left = list(set(_sub_dirs.keys()) - set(_weak_dirs))
@@ -527,7 +527,7 @@ class KernelHelper(object):
                 )
             else:
                 version_dict = {
-                    _key: _value for _key, _value in version_dict.iteritems()
+                    _key: _value for _key, _value in version_dict.items()
                 }
                 if version_dict.get("kernelversion", kernel_version) != kernel_version:
                     self.log(
@@ -564,7 +564,7 @@ class KernelHelper(object):
         self.__checks.append("bzImage")
         major, minor, patchlevel = ("", "", "")
         build_mach = ""
-        cstat, out = commands.getstatusoutput("file {}".format(self.__bz_path))
+        cstat, out = subprocess.getstatusoutput("file {}".format(self.__bz_path))
         if cstat:
             self.log(
                 "error, cannot file '{}' ({:d}): {}".format(
@@ -658,7 +658,7 @@ class KernelHelper(object):
         self.__checks.append("SQL insert")
         if not self.__db_kernel:
             new_k = kernel()
-            for key, value in self.__values.iteritems():
+            for key, value in self.__values.items():
                 setattr(new_k, key, value)
             new_k.enabled = True
             new_k.save()

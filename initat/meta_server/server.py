@@ -21,7 +21,7 @@
 #
 """ meta-server, server process """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import stat
@@ -242,7 +242,7 @@ class MainProcess(ICSWBasePoolClient):
                 )
             try:
                 zmq_sock.send_unicode(src_id, zmq.SNDMORE | zmq.NOBLOCK)
-                zmq_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)
+                zmq_sock.send_unicode(str(srv_com), zmq.NOBLOCK)
             except:
                 self.log(
                     "error sending reply to {}: {}".format(
@@ -478,7 +478,7 @@ class MainProcess(ICSWBasePoolClient):
                 my_vector.append(self.mis_dict[key].build_xml(drop_com.builder))
             drop_com["vector"] = my_vector
             drop_com["vector"].attrib["type"] = "vector"
-            self.vector_socket.send_unicode(unicode(drop_com))
+            self.vector_socket.send_unicode(str(drop_com))
             del_keys = old_keys - new_keys
             if del_keys:
                 self.log("removing {} from mis_dict".format(logging_tools.get_plural("key", len(del_keys))))

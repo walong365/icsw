@@ -20,7 +20,7 @@
 
 """ rms-server, monitoring process """
 
-from __future__ import print_function, unicode_literals
+
 
 import os
 import re
@@ -69,7 +69,7 @@ class QueueInfo(object):
         return self.total - self.used
 
     def __repr__(self):
-        return unicode(self)
+        return str(self)
 
     def __unicode__(self):
         return "{:d} used, {:d} total, {:d} reserved".format(
@@ -276,7 +276,7 @@ class RMSMonProcess(threading_tools.process_obj):
             ("unknown", "instances in error state"),
             ("count", "instances"),
         ]
-        for q_name, q_value in _queues.iteritems():
+        for q_name, q_value in _queues.items():
             # sanitize queue name
             q_name = q_name.replace(".", "_")
             for _key, _info in report_list:
@@ -324,7 +324,7 @@ class RMSMonProcess(threading_tools.process_obj):
             _owner_dict[_owner_text]["slots"].append(_slots)
         _total = 0
         _records = []
-        for _name, _struct in _owner_dict.iteritems():
+        for _name, _struct in _owner_dict.items():
             _slots = sum(_struct["slots"])
             _records.append(
                 rms_accounting_record(
@@ -363,14 +363,14 @@ class RMSMonProcess(threading_tools.process_obj):
         drop_com["vector_rms"].attrib["type"] = "vector"
         # for cap_name in self.__cap_list:
         #    self.__server_cap_dict[cap_name](cur_time, drop_com)
-        self.vector_socket.send_unicode(unicode(drop_com))
+        self.vector_socket.send_unicode(str(drop_com))
         # collectd commands
         valid_hosts = {
             _host: _dev for _host, _dev in [
                 (_host, self._get_device(_host)) for _host in _host_names
             ] if _dev is not None and _host in _host_stats
         }
-        for _host_name, _dev in valid_hosts.iteritems():
+        for _host_name, _dev in valid_hosts.items():
             mach_vect = E.machine_vector(
                 time="{:d}".format(act_time),
                 simple="0",
@@ -422,7 +422,7 @@ class RMSMonProcess(threading_tools.process_obj):
             file_dict=self.__job_content_dict,
             pinning_dict=self.__job_pinning_dict,
         )
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", str(srv_com))
         del srv_com
 
     def _get_sge_bin(self, name):
@@ -465,7 +465,7 @@ class RMSMonProcess(threading_tools.process_obj):
                 "unknown job_action {}".format(job_action),
                 server_command.SRV_REPLY_STATE_ERROR,
             )
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", str(srv_com))
 
     def _queue_control(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
@@ -494,7 +494,7 @@ class RMSMonProcess(threading_tools.process_obj):
                 "unknown job_action {}".format(queue_action),
                 server_command.SRV_REPLY_STATE_ERROR,
             )
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", str(srv_com))
 
     def _affinity_info(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
@@ -517,7 +517,7 @@ class RMSMonProcess(threading_tools.process_obj):
                     process_id,
                     full_job_id,
                     target_cpu,
-                    unicode(_source_dev),
+                    str(_source_dev),
                 )
             )
         else:
@@ -525,7 +525,7 @@ class RMSMonProcess(threading_tools.process_obj):
                 "removing process {:d} of job {} (host: {})".format(
                     process_id,
                     full_job_id,
-                    unicode(_source_dev),
+                    str(_source_dev),
                 )
             )
         if _source_dev is not None:
@@ -564,7 +564,7 @@ class RMSMonProcess(threading_tools.process_obj):
         content = srv_com["content"].text or ""
         last_update = int(float(srv_com["*update"]))
         self.log(
-            u"got content for '{}' (job {}), len {:d} bytes, update_ts {:d}".format(
+            "got content for '{}' (job {}), len {:d} bytes, update_ts {:d}".format(
                 file_name,
                 job_id,
                 len(content),
@@ -594,11 +594,11 @@ class RMSMonProcess(threading_tools.process_obj):
                     logging_tools.LOG_LEVEL_ERROR
                 )
             else:
-                tot_files = sum([len(value) for value in self.__job_content_dict.itervalues()], 0)
+                tot_files = sum([len(value) for value in self.__job_content_dict.values()], 0)
                 tot_length = sum(
                     [
-                        sum([int(cur_el.attrib["size"]) for _name, cur_el in _dict.iteritems()], 0)
-                        for job_id, _dict in self.__job_content_dict.iteritems()
+                        sum([int(cur_el.attrib["size"]) for _name, cur_el in _dict.items()], 0)
+                        for job_id, _dict in self.__job_content_dict.items()
                     ]
                 )
                 self.log("cached: {:d} files, {} ({:d} bytes)".format(tot_files, logging_tools.get_size_str(tot_length), tot_length))
@@ -716,4 +716,4 @@ class RMSMonProcess(threading_tools.process_obj):
 
         drop_com["vector_rms"] = _rms_vector
         drop_com["vector_rms"].attrib["type"] = "vector"
-        self.vector_socket.send_unicode(unicode(drop_com))
+        self.vector_socket.send_unicode(str(drop_com))

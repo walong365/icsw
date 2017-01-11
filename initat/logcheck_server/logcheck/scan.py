@@ -177,7 +177,7 @@ class LogcheckScanner(object):
                         ),
                         logging_tools.LOG_LEVEL_ERROR
                     )
-        post_checks = self.checks.keys()
+        post_checks = list(self.checks.keys())
         self.log(
             "{} before rescan: {}".format(
                 logging_tools.get_plural("check", len(pre_checks)),

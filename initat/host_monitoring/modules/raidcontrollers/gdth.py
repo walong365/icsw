@@ -17,7 +17,7 @@
 #
 """ checks for GDTH / ICP RAID controller """
 
-from __future__ import print_function,  unicode_literals
+
 
 import datetime
 import os
@@ -26,6 +26,7 @@ import time
 from initat.host_monitoring import limits, hm_classes
 from initat.host_monitoring.modules.raidcontrollers.base import ctrl_type, ctrl_check_struct
 from initat.tools import logging_tools, server_command
+from functools import reduce
 
 
 class ctrl_type_gdth(ctrl_type):
@@ -36,7 +37,7 @@ class ctrl_type_gdth(ctrl_type):
 
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
-            ctrl_list = self._dict.keys()
+            ctrl_list = list(self._dict.keys())
         return ["/bin/true {}".format(ctrl_id) for ctrl_id in ctrl_list]
 
     def scan_ctrl(self):
@@ -138,8 +139,8 @@ class ctrl_type_gdth(ctrl_type):
         ccs.srv_com["result:ctrl_%s" % (ctrl_id)] = ret_dict
 
     def _interpret(self, ctrl_dict, cur_ns):
-        if ctrl_dict.keys()[0].startswith("ctrl_"):
-            ctrl_dict = ctrl_dict.values()[0]
+        if list(ctrl_dict.keys())[0].startswith("ctrl_"):
+            ctrl_dict = list(ctrl_dict.values())[0]
         pd_list, ld_list, ad_list, hd_list = (ctrl_dict["pd"], ctrl_dict["ld"], ctrl_dict["ad"], ctrl_dict["hd"])
         if type(pd_list) == dict:
             # rewrite dict to list

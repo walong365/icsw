@@ -20,7 +20,7 @@
 """ cluster-config-server, config generators """
 
 import base64
-import commands
+import subprocess
 import os
 import re
 import tempfile
@@ -78,12 +78,12 @@ def do_nets(conf):
             ) or (
                 check_for_bootdevice and not cur_ip.netdevice_id == conf_dict["device"].bootnetdevice_id
             ):
-                if int(cur_ip.netdevice.macaddr.replace(":", ""), 16) != 0 and cur_ip.netdevice.macaddr.lower() in macs_used.keys():
-                    print "*** error, macaddress %s on netdevice %s already used for netdevice %s" % (
+                if int(cur_ip.netdevice.macaddr.replace(":", ""), 16) != 0 and cur_ip.netdevice.macaddr.lower() in list(macs_used.keys()):
+                    print("*** error, macaddress %s on netdevice %s already used for netdevice %s" % (
                         cur_ip.netdevice.macaddr,
                         cur_ip.netdevice.devname,
                         macs_used[cur_ip.netdevice.macaddr.lower()]
-                    )
+                    ))
                 else:
                     macs_used[cur_ip.netdevice.macaddr.lower()] = cur_ip.netdevice.devname
                     write_order_list.append(cur_ip.netdevice_id)
@@ -173,7 +173,7 @@ def do_nets(conf):
                             act_file["ETHERDEVICE"] = cur_nd.master_device.devname
                             act_file["VLAN_ID"] = "{:d}".format(cur_nd.vlan_id)
                         else:
-                            print "VLAN ID set but no master_device, skipping {}".format(cur_nd.devname)
+                            print("VLAN ID set but no master_device, skipping {}".format(cur_nd.devname))
                             act_filename = None
                     if not cur_nd.fake_macaddr:
                         pass
@@ -241,8 +241,8 @@ def do_nets(conf):
                     new_co += {"HWADDR": cur_nd.macaddr.lower()}
         # print log_str
     # handle virtual interfaces for Systems above SUSE 9.0
-    for orig, virtuals in append_dict.iteritems():
-        for virt, stuff in virtuals.iteritems():
+    for orig, virtuals in append_dict.items():
+        for virt, stuff in virtuals.items():
             co = conf.add_file_object("/etc/sysconfig/network/ifcfg-eth-id-{}".format(dev_dict[orig]))
             co += {
                 "BROADCAST_{}".format(virt): stuff["BROADCAST"],
@@ -269,15 +269,15 @@ def get_default_gw(conf):
     def_ip, boot_dev, gw_source, boot_mac = ("", "", "<not set>", "")
     # any wg_pri above GATEWAY_THRESHOLD ?
     if gw_list:
-        print "Possible gateways:"
+        print("Possible gateways:")
         for netdev_idx, net_devname, gw_pri, gw_ip, net_mac in gw_list:
-            print " idx %3d, dev %6s, gw_pri %6d, gw_ip %15s, mac %s%s" % (
+            print(" idx %3d, dev %6s, gw_pri %6d, gw_ip %15s, mac %s%s" % (
                 netdev_idx,
                 net_devname,
                 gw_pri,
                 gw_ip,
                 net_mac,
-                gw_pri > GATEWAY_THRESHOLD and "(*)" or "")
+                gw_pri > GATEWAY_THRESHOLD and "(*)" or ""))
     max_gw_pri = max([gw_pri for netdev_idx, net_devname, gw_pri, gw_ip, net_mac in gw_list])
     if max_gw_pri > GATEWAY_THRESHOLD:
         gw_source = "network setting (gw_pri %d > %d)" % (max_gw_pri, GATEWAY_THRESHOLD)
@@ -364,12 +364,12 @@ def do_ssh(conf):
             pass
         else:
             found_keys_dict[cur_var.name] = cur_val
-    print(
+    print((
         "found {} in database: {}".format(
-            logging_tools.get_plural("key", len(found_keys_dict.keys())),
+            logging_tools.get_plural("key", len(list(found_keys_dict.keys()))),
             ", ".join(sorted(found_keys_dict.keys()))
         )
-    )
+    ))
     new_keys = []
     for ssh_type, key_size in ssh_types:
         privfn = "ssh_host_{}_key".format(ssh_type)
@@ -377,16 +377,16 @@ def do_ssh(conf):
         if not found_keys_dict[privfn] or not found_keys_dict[pubfn]:
             # delete previous versions
             device_variable.objects.filter(Q(device=conf_dict["device"]) & Q(name__in=[privfn, pubfn])).delete()
-            print "Generating {} keys...".format(privfn)
+            print("Generating {} keys...".format(privfn))
             sshkn = tempfile.mktemp("sshgen")
             sshpn = "{}.pub".format(sshkn)
             if ssh_type:
                 _cmd = "ssh-keygen -t {} -q -b {:d} -f {} -N ''".format(ssh_type, key_size, sshkn)
             else:
                 _cmd = "ssh-keygen -q -b 1024 -f {} -N ''".format(sshkn)
-            c_stat, c_out = commands.getstatusoutput(_cmd)
+            c_stat, c_out = subprocess.getstatusoutput(_cmd)
             if c_stat:
-                print "error generating: {}".format(c_out)
+                print("error generating: {}".format(c_out))
             else:
                 found_keys_dict[privfn] = file(sshkn, "rb").read()
                 found_keys_dict[pubfn] = file(sshpn, "rb").read()
@@ -398,10 +398,10 @@ def do_ssh(conf):
             new_keys.extend([privfn, pubfn])
     if new_keys:
         new_keys.sort()
-        print "{} to create: {}".format(
+        print("{} to create: {}".format(
             logging_tools.get_plural("key", len(new_keys)),
             ", ".join(new_keys)
-        )
+        ))
         for new_key in new_keys:
             if found_keys_dict[new_key] is not None:
                 new_dv = device_variable(
@@ -442,7 +442,7 @@ def do_etc_hosts(conf):
     route_obj = conf.router_obj
     all_paths = []
     for cur_ip in conf_dict["node_if"]:
-        all_paths.extend(networkx.shortest_path(route_obj.nx, cur_ip.netdevice_id, weight="weight").values())
+        all_paths.extend(list(networkx.shortest_path(route_obj.nx, cur_ip.netdevice_id, weight="weight").values()))
     all_paths = sorted([route_obj.add_penalty(cur_path) for cur_path in all_paths])
     all_nds = set([cur_path[-1] for penalty, cur_path in all_paths])
     nd_lut = {
@@ -484,7 +484,7 @@ def do_etc_hosts(conf):
             out_names = ["%s.%s" % (entry, cur_dtn.full_name) for entry in out_names]
         loc_dict.setdefault(cur_ip.value, []).append([cur_ip.ip] + out_names)
         max_len = max(max_len, len(out_names) + 1)
-    for pen, stuff in loc_dict.iteritems():
+    for pen, stuff in loc_dict.items():
         for l_e in stuff:
             l_e.extend([""] * (max_len - len(l_e)) + ["# %d" % (pen)])
     for p_value in sorted(loc_dict.keys()):

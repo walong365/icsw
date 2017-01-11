@@ -17,13 +17,13 @@
 #
 """ returns status of the cluster and updates the cluster_name if necessary """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 
 from django.conf import settings
 
-import cs_base_class
+from . import cs_base_class
 from initat.cluster.backbone import routing
 from initat.cluster_server.config import global_config
 from initat.icsw.service import instance, container, service_parser

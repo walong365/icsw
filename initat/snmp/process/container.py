@@ -17,7 +17,7 @@
 #
 """ SNMP process container """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import time
@@ -97,7 +97,7 @@ class SNMPProcessContainer(object):
 
     def create_ipc_socket(self, zmq_context, socket_addr, socket_name=DEFAULT_RETURN_NAME):
         self._socket = zmq_context.socket(zmq.ROUTER)
-        if type(socket_name) is unicode:
+        if type(socket_name) is str:
             self._socket.setsockopt_string(zmq.IDENTITY, socket_name)
         else:
             self._socket.setsockopt(zmq.IDENTITY, socket_name)
@@ -110,11 +110,11 @@ class SNMPProcessContainer(object):
         self._socket.close()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.log_com(u"[spc] {}".format(what), log_level)
+        self.log_com("[spc] {}".format(what), log_level)
 
     def salt_proc_info_dict(self, pi_dict):
         # update pi_dict with information from the running SNMP processes
-        for _idx, _struct in self.__snmp_dict.iteritems():
+        for _idx, _struct in self.__snmp_dict.items():
             _struct.salt_proc_info_dict(pi_dict)
             # pi_dict[_struct["name"]] = {
             #    "pid": _struct["proc"].pid,
@@ -123,7 +123,7 @@ class SNMPProcessContainer(object):
             # }
 
     def check(self):
-        cur_running = self.__snmp_dict.keys()
+        cur_running = list(self.__snmp_dict.keys())
         to_start = self.max_procs - len(cur_running)
         if to_start:
             min_idx = 1 if not self.__snmp_dict else max(self.__snmp_dict.keys()) + 1
@@ -134,7 +134,7 @@ class SNMPProcessContainer(object):
                 )
             )
             _npid = 1
-            for new_idx in xrange(min_idx, min_idx + to_start):
+            for new_idx in range(min_idx, min_idx + to_start):
                 while _npid in self.__used_proc_ids:
                     _npid += 1
                 self.__used_proc_ids.add(_npid)
@@ -150,12 +150,12 @@ class SNMPProcessContainer(object):
         # free_processes = sorted([(value["calls_init"], key) for key, value in self.__process_dict.iteritems() if value["state"] == "running"])
         idle_procs = sorted(
             [
-                (value.jobs, key) for key, value in self.__snmp_dict.iteritems() if not value.stopped and not value.pending and not value.stopping
+                (value.jobs, key) for key, value in self.__snmp_dict.items() if not value.stopped and not value.pending and not value.stopping
             ]
         )
         running_procs = sorted(
             [
-                (value.jobs, key) for key, value in self.__snmp_dict.iteritems() if not value.stopped and value.pending and not value.stopping
+                (value.jobs, key) for key, value in self.__snmp_dict.items() if not value.stopped and value.pending and not value.stopping
             ]
         )
         if idle_procs:
@@ -170,7 +170,7 @@ class SNMPProcessContainer(object):
         # stop all snmp process and stop spawning new ones
         self.__run_flag = False
         _starting, _running, _stopped = (0, 0, 0)
-        for _key, value in self.__snmp_dict.iteritems():
+        for _key, value in self.__snmp_dict.items():
             if value.running and value.stopped:
                 _stopped += 1
             elif value.running and not value.stopped:
@@ -196,14 +196,14 @@ class SNMPProcessContainer(object):
                     "{:d}/{:d}".format(
                         self.__snmp_dict[key].jobs,
                         self.__snmp_dict[key].done,
-                    ) for key in sorted(self.__snmp_dict.iterkeys())
+                    ) for key in sorted(self.__snmp_dict.keys())
                 ]
             )
         )
 
     def trigger_timeout(self, batch_id):
         self.log("triggering timeout for batch_id '{}'".format(batch_id), logging_tools.LOG_LEVEL_WARN)
-        _snmp_info = [_struct for _struct in self.__snmp_dict.itervalues() if batch_id in _struct.batch_ids]
+        _snmp_info = [_struct for _struct in self.__snmp_dict.values() if batch_id in _struct.batch_ids]
         if len(_snmp_info):
             _snmp_info = _snmp_info[0]
             self.send(

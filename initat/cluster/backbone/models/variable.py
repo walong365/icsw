@@ -21,7 +21,7 @@
 #
 """ models for NOCTUA and CORVUS, device variable definition file """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 import json
@@ -107,7 +107,7 @@ class device_variable_scope(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"device_variable_scope '{}'".format(
+        return "device_variable_scope '{}'".format(
             self.name,
         )
 
@@ -143,7 +143,7 @@ class dvs_allowed_name(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"Allowed for scope {}: '{}', forced_type='{}', group='{}'".format(
+        return "Allowed for scope {}: '{}', forced_type='{}', group='{}'".format(
             self.device_variable_scope.name,
             self.name,
             self.forced_type,
@@ -161,7 +161,7 @@ def dvs_allowed_name__pre_save(sender, **kwargs):
         if not cur_inst.device_variable_scope.fixed:
             raise ValidationError(
                 "Scope {} is not fixed".format(
-                    unicode(cur_inst.device_variable_scope)
+                    str(cur_inst.device_variable_scope)
                 )
             )
 
@@ -221,7 +221,7 @@ class device_variable(models.Model):
         if type(value) == datetime.datetime:
             self.var_type = "d"
             self.val_date = cluster_timezone.localize(value)
-        elif type(value) in [int, long] or (isinstance(value, basestring) and value.isdigit()):
+        elif type(value) in [int, int] or (isinstance(value, str) and value.isdigit()):
             self.var_type = "i"
             self.val_int = int(value)
         elif isinstance(value, bool):
@@ -264,7 +264,7 @@ class device_variable(models.Model):
         )
 
     class Meta:
-        db_table = u'device_variable'
+        db_table = 'device_variable'
         unique_together = ("name", "device", "device_variable_scope",)
         ordering = ("name",)
         verbose_name = "Device variable"
@@ -280,7 +280,7 @@ def device_variable_pre_save(sender, **kwargs):
             _dvs = cur_inst.device_variable_scope
             if _dvs.forced_flags:
                 # set flags
-                for _f_name, _f_value in json.loads(_dvs.forced_flags).iteritems():
+                for _f_name, _f_value in json.loads(_dvs.forced_flags).items():
                     setattr(cur_inst, _f_name, _f_value)
             # check values
             if cur_inst.var_type == "?":
@@ -325,7 +325,7 @@ def device_variable_pre_save(sender, **kwargs):
                 raise ValidationError(
                     "name '{}' already used for device '{}'".format(
                         cur_inst.name,
-                        unicode(cur_inst.device)
+                        str(cur_inst.device)
                     )
                 )
             cur_inst._clear()

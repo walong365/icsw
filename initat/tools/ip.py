@@ -8,7 +8,7 @@ IP packets.
 # written by Jeremy Hylton, jeremy@cnri.reston.va.us
 
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import socket
@@ -71,7 +71,7 @@ rx_addr = re.compile('\([0-9]+\)\.\([0-9]+\)\.\([0-9]+\)\.\([0-9]+\)')
 def dotted_to_int(s, rx=rx_addr):
     if rx.match(s) == -1:
         raise ValueError("not a valid IP address")
-    parts = map(lambda x: chr(x), map(string.atoi, rx.group(1, 2, 3, 4)))
+    parts = [chr(x) for x in list(map(string.atoi, rx.group(1, 2, 3, 4)))]
     return string.join(parts, '')
 
 
@@ -164,9 +164,9 @@ class Packet:
 
     def __unparse_addrs(self):
         src = struct.unpack(b'cccc', self.src)
-        self.src = string.joinfields(map(lambda x: str(ord(x)), src), '.')
+        self.src = string.joinfields([str(ord(x)) for x in src], '.')
         dst = struct.unpack(b'cccc', self.dst)
-        self.dst = string.joinfields(map(lambda x: str(ord(x)), dst), '.')
+        self.dst = string.joinfields([str(ord(x)) for x in dst], '.')
 
     def __disassemble(self, raw_packet, cksum=0):
         # The kernel computes the checksum, even on a raw packet.

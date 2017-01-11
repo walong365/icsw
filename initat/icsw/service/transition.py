@@ -21,7 +21,7 @@
 
 """ transition for service containers """
 
-from __future__ import print_function, unicode_literals
+
 
 import time
 
@@ -60,13 +60,13 @@ class ServiceTransition(object):
         return self.__init_time
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com(u"[SrvT] {}".format(what), log_level)
+        self.__log_com("[SrvT] {}".format(what), log_level)
 
     def step(self, cur_c):
         def action_info(list_entry):
             return "{}@{}".format(
                 list_entry[0],
-                unicode(list_entry[1].name),
+                str(list_entry[1].name),
             )
         self.__step_num += 1
         s_time = time.time()
@@ -140,7 +140,7 @@ class ServiceTransition(object):
             logging_tools.get_plural("pending element", len(self._action_list)),
             action_info(self._action_list[0]) if len(self._action_list) == 1 else "",
             "(inner loops: {:d})".format(_loopcount) if _loopcount > 1 else "",
-        ] + _wait_infos.values()
+        ] + list(_wait_infos.values())
         self.log(
             "step {:d} after {} took {}, {}".format(
                 self.__step_num,
@@ -166,7 +166,7 @@ class ServiceTransition(object):
         # see of some of the monitored processes have vanished
         _vanished = 0
         # services to check
-        _check_keys = self.__wait_dict.keys()
+        _check_keys = list(self.__wait_dict.keys())
         for _name in _check_keys:
             _srvc = [entry for entry in self.list if entry.name == _name][0]
             cur_c.check_service(_srvc, use_cache=True, refresh=True)

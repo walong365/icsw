@@ -17,7 +17,7 @@
 #
 """ writes the dhcpd.conf in /etc """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import time
@@ -60,7 +60,7 @@ class DHCPNetwork(object):
         self._feed(
             [
                 "",
-                "    # network {} (identifier {})".format(unicode(act_net), act_net.network_type.identifier),
+                "    # network {} (identifier {})".format(str(act_net), act_net.network_type.identifier),
                 "",
                 "    subnet {} netmask {} {{".format(
                     act_net.network,
@@ -198,7 +198,7 @@ class DHCPConfigMixin(object):
                 if act_net.netmask == "0.0.0.0":
                     self.log(
                         "refuse network {} with netmask '{}'".format(
-                            unicode(act_net),
+                            str(act_net),
                             act_net.netmask,
                         ),
                         logging_tools.LOG_LEVEL_ERROR

@@ -21,7 +21,7 @@
 #
 """ logging tools, network related """
 
-from __future__ import unicode_literals, print_function
+
 
 import inspect
 import logging
@@ -117,7 +117,7 @@ class icswLogAdapter(logging.LoggerAdapter):
 
     def log(self, level=LOG_LEVEL_OK, what=LOG_LEVEL_OK, *args, **kwargs):
         self.__lock.acquire()
-        if isinstance(level, basestring):
+        if isinstance(level, str):
             # exchange level and what
             _lev = what
             what = level
@@ -276,11 +276,11 @@ class icswInitFormatter(object):
             for file_name, line_no, name, line in traceback.extract_tb(tb_object):
                 frame_info.append("File '{}', line {:d}, in {}".format(file_name, line_no, name))
                 if line:
-                    frame_info.append(u" - {:d} : {}".format(line_no, line))
+                    frame_info.append(" - {:d} : {}".format(line_no, line))
             frame_info.append(
-                u"{} ({})".format(
-                    unicode(record.exc_info[0]),
-                    unicode(record.exc_info[1])
+                "{} ({})".format(
+                    str(record.exc_info[0]),
+                    str(record.exc_info[1])
                 )
             )
             record.error_str = record.message + "\n" + "\n".join(frame_info)

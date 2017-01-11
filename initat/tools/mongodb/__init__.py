@@ -21,4 +21,4 @@
 #
 """ top level importer for mongodb tools """
 
-from connector import MongoDbConnector
+from .connector import MongoDbConnector

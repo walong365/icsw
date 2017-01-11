@@ -22,7 +22,7 @@
 
 """ license views """
 
-from __future__ import unicode_literals, print_function
+
 
 import logging
 
@@ -129,7 +129,7 @@ class upload_license_file(View):
         try:
             reader = LicenseFileReader(lic_file_content)
         except LicenseFileReader.InvalidLicenseFile as e:
-            request.xml_response.error(unicode(e), logger=logger)
+            request.xml_response.error(str(e), logger=logger)
         else:
             if License.objects.license_exists(lic_file_content):
                 request.xml_response.warn("This license file has already been uploaded")
@@ -139,10 +139,10 @@ class upload_license_file(View):
                 if local_cluster_id not in file_cluster_ids:
                     msg = "\n".join(
                         [
-                            u"This license file contains licenses for the following clusters: {}".format(
+                            "This license file contains licenses for the following clusters: {}".format(
                                 ", ".join(file_cluster_ids)
                             ),
-                            u"This cluster has the id {}.".format(
+                            "This cluster has the id {}.".format(
                                 local_cluster_id
                             ),
                         ]
@@ -154,7 +154,7 @@ class upload_license_file(View):
                         license_file=lic_file_content
                     )
                     new_lic.save()
-                    request.xml_response.info("Successfully uploaded license file: {}".format(unicode(new_lic)))
+                    request.xml_response.info("Successfully uploaded license file: {}".format(str(new_lic)))
 
                     # srv_com = server_command.srv_command(command="check_license_violations")
                     # contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=60, log_error=True, log_result=False)

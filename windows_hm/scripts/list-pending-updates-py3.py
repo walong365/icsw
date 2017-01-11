@@ -18,4 +18,4 @@ if(__name__ == "__main__"):
         update_list.append((title, optional))
 
     output = json.dumps(update_list)
-    print(nrpe_encode(output))
+    print((nrpe_encode(output)))

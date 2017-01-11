@@ -20,7 +20,7 @@
 #
 """ collectd, server part """
 
-from __future__ import print_function, unicode_literals
+
 
 import datetime
 import os
@@ -160,10 +160,10 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             )
             for _num, _line in enumerate(IMPORT_ERRORS):
                 self.log("    {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
-        self.log("valid perfdata structures: {:d}".format(len(ALL_PERFDATA.keys())))
+        self.log("valid perfdata structures: {:d}".format(len(list(ALL_PERFDATA.keys()))))
         for _key in sorted(ALL_PERFDATA.keys()):
             self.log(" - {}: '{}'".format(_key, ALL_PERFDATA[_key][1].PD_RE.pattern))
-        self.__pd_re_list = ALL_PERFDATA.values()
+        self.__pd_re_list = list(ALL_PERFDATA.values())
 
     def _init_vars(self):
         self.__start_time = time.time()
@@ -388,12 +388,12 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             self.log(
                 "{}: {}".format(
                     logging_tools.get_plural("unreachable {} device".format(_type), len(_unreachable)),
-                    logging_tools.compress_list([unicode(_dev) for _dev in _unreachable])
+                    logging_tools.compress_list([str(_dev) for _dev in _unreachable])
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
         if _reachable:
-            _reach = sorted(list(set([unicode(_dev) for _dev, _ip, _vars in _reachable])))
+            _reach = sorted(list(set([str(_dev) for _dev, _ip, _vars in _reachable])))
             self.log(
                 "{}: {}".format(
                     logging_tools.get_plural("reachable {} device".format(_type), len(_reach)),
@@ -404,7 +404,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
 
     def _get_snmp_hosts(self, _router):
         def _cast_snmp_version(_vers):
-            if type(_vers) in [int, long]:
+            if type(_vers) in [int, int]:
                 return _vers
             elif _vers.isdigit():
                 return int(_vers)
@@ -525,7 +525,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                     if _send_result:
                         try:
                             zmq_sock.send_unicode(in_uuid, zmq.SNDMORE)  # @UndefinedVariable
-                            zmq_sock.send_unicode(unicode(in_com))
+                            zmq_sock.send_unicode(str(in_com))
                         except:
                             self.log(
                                 "error sending to {}: {}".format(
@@ -863,7 +863,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                             _skip_lines -= 1
                             _idx = int(_line.split()[0])
                             self.log(
-                                u"error: {} for {}".format(
+                                "error: {} for {}".format(
                                     _line,
                                     cache_lines[_idx - 1]
                                 ),
@@ -919,7 +919,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                                 time="{:d}".format(int(time.time())),
                             )
                             diff_time = max(1, abs(cur_time - self.__cached_time))
-                            for _key in sorted(_dict.iterkeys()):
+                            for _key in sorted(_dict.keys()):
                                 if _key not in self.__cached_stats:
                                     self.log("key {} missing in previous run, ignoring ...".format(_key), logging_tools.LOG_LEVEL_WARN)
                                 else:
@@ -949,7 +949,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             )
         )
         uuids_to_disable = set([_dev.uuid for _dev in disabled_hosts])
-        cur_disabled = set([key for key, value in self.__hosts.iteritems() if not value.store_to_disk])
+        cur_disabled = set([key for key, value in self.__hosts.items() if not value.store_to_disk])
         # to be used to disable hosts on first contact, FIXME
         self.__disabled_uuids = uuids_to_disable
         to_disable = uuids_to_disable - cur_disabled
@@ -966,12 +966,12 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                 if _to_dis in self.__hosts:
                     _host = self.__hosts[_to_dis]
                     _host.store_to_disk = False
-                    self.log("disabled {}".format(unicode(_host)), logging_tools.LOG_LEVEL_WARN)
+                    self.log("disabled {}".format(str(_host)), logging_tools.LOG_LEVEL_WARN)
             for _to_en in to_enable:
                 if _to_en in self.__hosts:
                     _host = self.__hosts[_to_en]
                     _host.store_to_disk = True
-                    self.log("enabled {}".format(unicode(_host)), logging_tools.LOG_LEVEL_WARN)
+                    self.log("enabled {}".format(str(_host)), logging_tools.LOG_LEVEL_WARN)
 
     def _handle_xml(self, in_com):
         com_text = in_com["*command"]
@@ -985,7 +985,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             _id_dict = {
                 "{}:{}".format(_dev.attrib["uuid"], j_type): _dev for _dev in in_com.xpath(".//ns:device_list/ns:device")
             }
-            _new_list, _remove_list, _same_list = t_obj.sync_jobs_with_id_list(_id_dict.keys())
+            _new_list, _remove_list, _same_list = t_obj.sync_jobs_with_id_list(list(_id_dict.keys()))
             for new_id in _new_list:
                 _dev = _id_dict[new_id]
                 _dev_obj = device.objects.get(Q(uuid=_dev.get("uuid")))
@@ -1080,7 +1080,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         match_uuids = [
             _value[1] for _value in sorted(
                 [
-                    (self.__hosts[cur_uuid].name, cur_uuid) for cur_uuid in self.__hosts.keys() if host_filter.match(self.__hosts[cur_uuid].name)
+                    (self.__hosts[cur_uuid].name, cur_uuid) for cur_uuid in list(self.__hosts.keys()) if host_filter.match(self.__hosts[cur_uuid].name)
                 ]
             )
         ]

@@ -56,7 +56,7 @@ def main():
     if output.startswith("b'"):
         output = output[2:-2]
 
-    print bz2.decompress(base64.b64decode(output))
+    print(bz2.decompress(base64.b64decode(output)))
 
 if __name__ == "__main__":
    main()

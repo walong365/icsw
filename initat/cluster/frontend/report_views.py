@@ -19,7 +19,7 @@
 #
 """ report views """
 
-from __future__ import print_function, unicode_literals
+
 
 import base64
 import json
@@ -157,7 +157,7 @@ class GenerateReportPdf(View):
 class UploadReportGfx(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
-        _file = request.FILES[request.FILES.keys()[0]]
+        _file = request.FILES[list(request.FILES.keys())[0]]
         if _file.content_type in ["image/png", "image/jpeg"]:
             system_device = None
             for _device in device.objects.all():
@@ -369,7 +369,7 @@ def _init_report_settings(request):
                 pk_settings[pk][key] = settings_dict[setting_index][key]
 
     _devices = []
-    for _device in device.objects.filter(idx__in=[int(pk) for pk in pk_settings.keys()]):
+    for _device in device.objects.filter(idx__in=[int(pk) for pk in list(pk_settings.keys())]):
         if not _device.is_meta_device:
             _devices.append(_device)
 

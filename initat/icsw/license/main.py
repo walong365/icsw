@@ -19,13 +19,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-from __future__ import print_function, unicode_literals
+
 
 import os
 import sys
 import traceback
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
 
 from lxml import etree
 
@@ -51,19 +51,19 @@ def ova_show(opts):
     print("Recalc ova info")
     _sys_c = icswEggCradle.objects.get_system_cradle()
     _sys_c.calc()
-    print("System cradle info: {}".format(unicode(_sys_c)))
+    print("System cradle info: {}".format(str(_sys_c)))
     print("")
     print("Baskets defined: {:d}".format(icswEggBasket.objects.all().count()))
     _out_list = logging_tools.NewFormList()
     for _basket in icswEggBasket.objects.all():
         _out_list.append(_basket.get_info_line())
-    print(unicode(_out_list))
+    print(str(_out_list))
     print("")
     print("Consumers defined: {:d}".format(_sys_c.icsweggconsumer_set.all().count()))
     _out_list = logging_tools.NewFormList()
     for _cons in _sys_c.icsweggconsumer_set.all():
         _out_list.append(_cons.get_info_line())
-    print(unicode(_out_list))
+    print(str(_out_list))
 
 
 def ova_init(opts):
@@ -73,11 +73,11 @@ def ova_init(opts):
         _sys_c = None
     if _sys_c is None:
         _sys_c = icswEggCradle.objects.create_system_cradle()
-        print("created System cradle '{}'".format(unicode(_sys_c)))
+        print("created System cradle '{}'".format(str(_sys_c)))
     # icswEggBasket.objects.all().delete()
     if not icswEggBasket.objects.num_valid_baskets():
         _sys_b = icswEggBasket.objects.create_dummy_basket(eggs=500)
-        print("Added dummy basket '{}'".format(unicode(_sys_b)))
+        print("Added dummy basket '{}'".format(str(_sys_b)))
     License.objects.check_ova_baskets()
     if not icswEggEvaluationDef.objects.get_active_def():
         _dummy_d = icswEggEvaluationDef.objects.create_dummy_def()
@@ -184,7 +184,7 @@ def _install_license(content):
                     license_file=lic_file_content
                 )
                 new_lic.save()
-                print("Successfully added license file: {}".format(unicode(new_lic)))
+                print("Successfully added license file: {}".format(str(new_lic)))
     else:
         print ("Exiting due to errors.")
         sys.exit(1)
@@ -211,11 +211,11 @@ def register_cluster(opts):
     for _df in ["database", "software", "models"]:
         _dict["{}_version".format(_df)] = _vers[_df]
 
-    data = urllib.urlencode(_dict)
+    data = urllib.parse.urlencode(_dict)
 
     try:
-        res = urllib2.urlopen(REGISTRATION_URL, data)
-    except urllib2.URLError as e:
+        res = urllib.request.urlopen(REGISTRATION_URL, data)
+    except urllib.error.URLError as e:
         print("Error while accessing registration: {}".format(e))
         traceback.print_exc(e)
         sys.exit(1)

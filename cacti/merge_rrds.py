@@ -2,7 +2,7 @@
 
 import sys
 import datetime
-import commands
+import subprocess
 import os
 import os.path
 import time
@@ -19,9 +19,9 @@ class sum_data_obj(object):
         self.__times_set = set()
         self.__data = {}
     def feed_data(self, in_data):
-        print "feed start ... ",
+        print("feed start ... ", end=' ')
         a_t, a_d = (self.__times_set, self.__data)
-        for act_time, value in in_data.iteritems():
+        for act_time, value in in_data.items():
             if value[0] and value[1]:
                 if act_time in a_t:
                     act_v0, act_v1 = a_d[act_time]
@@ -31,7 +31,7 @@ class sum_data_obj(object):
                 else:
                     a_t.add(act_time)
                     a_d[act_time] = value
-        print "feed ok"
+        print("feed ok")
         self.__times = [x for x in self.__times_set]
         self.__times.sort()
         self.__min_time, self.__max_time = (min(self.__times), max(self.__times))
@@ -60,7 +60,7 @@ class sum_data_obj(object):
 class rrd_file(object):
     def __init__(self, name):
         self.name = name
-        self.lines = commands.getoutput("/opt/rrdtool/bin/rrdtool dump %s" % (self.name)).split("\n")
+        self.lines = subprocess.getoutput("/opt/rrdtool/bin/rrdtool dump %s" % (self.name)).split("\n")
         if len(self.lines) > 10:
             self.ok = True
         else:
@@ -104,9 +104,9 @@ class rrd_file(object):
                             pass
                         else:
                             self.__data[in_time] = (v0, v1)
-        self.__times = self.__data.keys()
+        self.__times = list(self.__data.keys())
         self.__times.sort()
-        print "Found %d data in %s, last_update is %s" % (len(self.__times), self.name, time.ctime(self.last_update))
+        print("Found %d data in %s, last_update is %s" % (len(self.__times), self.name, time.ctime(self.last_update)))
         if sum_data:
             sum_data.feed_data(self.__data)
     def _repair(self, sum_data, file_h):
@@ -136,7 +136,7 @@ class rrd_file(object):
                         vals[8], vals[10] = (str(v0_n), str(v1_n))
                         new_line = " ".join(vals)
                     if act_date != last_date:
-                        print act_date
+                        print(act_date)
                         last_date = act_date
             file_h.write("%s\n" % (new_line))
         
@@ -160,8 +160,8 @@ def main():
     dst_file._repair(sum_dat, new_fh)
     new_fh.close()
     t_com = "/opt/rrdtool/bin/rrdtool restore %s %s" % (dst_file_name, dst_file_rrd_name)
-    print "Doing %s" % (t_com)
-    print commands.getstatusoutput(t_com)
+    print("Doing %s" % (t_com))
+    print(subprocess.getstatusoutput(t_com))
     
 
 if __name__ == "__main__":

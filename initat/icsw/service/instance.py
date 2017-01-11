@@ -21,7 +21,7 @@
 
 """ instance definition for services """
 
-from __future__ import unicode_literals, print_function
+
 
 import hashlib
 import os
@@ -82,7 +82,7 @@ def ResolveInstance(func):
     def wrapper(*args, **kwargs):
         _inst = args[0]
         _id = args[1]
-        if isinstance(_id, basestring):
+        if isinstance(_id, str):
             _id = _inst[_id]
         elif _id.__class__.__name__ in ["icswClientEnum", "icswServerEnum"]:
             _id = _inst.resolve_enum(_id)
@@ -149,10 +149,10 @@ class InstanceXML(object):
                     )
         _inst_keys, _overlay_keys = (
             [
-                _key for _key, _value in _tree_dict.iteritems() if not int(_value.get("overlay", "0"))
+                _key for _key, _value in _tree_dict.items() if not int(_value.get("overlay", "0"))
             ],
             [
-                _key for _key, _value in _tree_dict.iteritems() if int(_value.get("overlay", "0"))
+                _key for _key, _value in _tree_dict.items() if int(_value.get("overlay", "0"))
             ],
         )
         _to_remove = []
@@ -295,7 +295,7 @@ class InstanceXML(object):
         if command:
             # return command port
             if len(_pd) == 1:
-                return _pd.values()[0]
+                return list(_pd.values())[0]
             else:
                 if "command" in _pd:
                     return _pd["command"]

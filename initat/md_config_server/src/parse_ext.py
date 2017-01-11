@@ -21,7 +21,7 @@
 #
 """ parse docupage for external icinga commands """
 
-from __future__ import print_function, unicode_literals
+
 
 from bs4 import BeautifulSoup
 

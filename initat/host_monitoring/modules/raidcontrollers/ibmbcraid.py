@@ -17,7 +17,7 @@
 #
 """ checks for IBM Bladecenter RAID controllers """
 
-from __future__ import print_function,  unicode_literals
+
 
 import base64
 import marshal
@@ -39,7 +39,7 @@ class ctrl_type_ibmbcraid(ctrl_type):
 
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
-            ctrl_list = self._dict.keys()
+            ctrl_list = list(self._dict.keys())
 
         _list = [
             (
@@ -101,7 +101,7 @@ class ctrl_type_ibmbcraid(ctrl_type):
         pass
 
     def _interpret(self, ctrl_dict, cur_ns):
-        ctrl_dict = {key.split("_")[1]: marshal.loads(base64.b64decode(value)) for key, value in ctrl_dict.iteritems()}
+        ctrl_dict = {key.split("_")[1]: marshal.loads(base64.b64decode(value)) for key, value in ctrl_dict.items()}
         ctrl_keys = set(ctrl_dict.keys())
         if cur_ns.arguments:
             match_keys = set(cur_ns.arguments) & ctrl_keys
@@ -121,7 +121,7 @@ class ctrl_type_ibmbcraid(ctrl_type):
                     )
                     if ctrl_info["status"].lower() not in ["primary", "secondary"]:
                         ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
-                for ctrl_key in [key for key in ctrl_dict.keys() if key.split("_")[1].isdigit()]:
+                for ctrl_key in [key for key in list(ctrl_dict.keys()) if key.split("_")[1].isdigit()]:
                     cur_dict = ctrl_dict[ctrl_key]
                     # pprint.pprint(cur_dict)
                     ctrl_f = [

@@ -13,19 +13,19 @@ import os
 
 def main():
     name = "initat.mother.main"
-    print
+    print()
     sys.argv = ["mother.py", "-d"]
     # print "++", _d.main()
     # _d.main()
     # print "***"
     # return 0
-    for idx in xrange(5):
+    for idx in range(5):
         if not os.fork():
             with daemon.DaemonContext():  # detach_process=True):
                 setproctitle.setproctitle("icsw.mother")
                 importlib.import_module(name).main()
-                print "done"
-        print "wait.."
+                print("done")
+        print("wait..")
         time.sleep(5)
 
 

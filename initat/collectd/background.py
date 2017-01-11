@@ -21,7 +21,7 @@
 
 """ background job definitions for collectd-init """
 
-from __future__ import print_function, unicode_literals
+
 
 import time
 
@@ -209,7 +209,7 @@ class SNMPJob(object):
                 except:
                     self.log(
                         "error feeding for handler {} (IP {}): {}".format(
-                            unicode(_handler),
+                            str(_handler),
                             self.ip,
                             process_tools.get_except_info(),
                         ),
@@ -249,14 +249,14 @@ class SNMPJob(object):
         return self.running
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.bg_proc.log(u"[snmp {:d}] {}".format(self.idx, what), log_level)
+        self.bg_proc.log("[snmp {:d}] {}".format(self.idx, what), log_level)
 
     @staticmethod
     def feed_result(recv_data):
         job_id = recv_data[0]
         _found = False
         _w_ignore = set()
-        for _job in SNMPJob.ref_dict.itervalues():
+        for _job in SNMPJob.ref_dict.values():
             if _job.waiting_for == job_id:
                 _job.feed(*recv_data[1:])
                 _found = True
@@ -287,7 +287,7 @@ class SNMPJob(object):
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        SNMPJob.bg_proc.log(u"[SNMP] {}".format(what), log_level)
+        SNMPJob.bg_proc.log("[SNMP] {}".format(what), log_level)
 
     @staticmethod
     def get_job(job_id):
@@ -316,7 +316,7 @@ class SNMPJob(object):
     def check_jobs(start=True):
         _to_delete = []
         # print "-"
-        for id_str, job in SNMPJob.ref_dict.iteritems():
+        for id_str, job in SNMPJob.ref_dict.items():
             # print "*", id_str, job.ip, job.running
             job.check(start=start)
             if job.to_remove and not job.running:
@@ -352,7 +352,7 @@ class IPMIBuilder(object):
         _mon_info = E.monitor_info(
             **kwargs
         )
-        for key, value in ipmi_dict.iteritems():
+        for key, value in ipmi_dict.items():
             _val = E.mve(
                 info=value[1],
                 unit=value[2],
@@ -370,7 +370,7 @@ class IPMIBuilder(object):
                 v_type="f",
                 value="{:.6f}".format(value[0]),
                 name="ipmi.{}".format(key),
-                **{_wn: _wv for _wn, _wv in value[4].iteritems() if _wv.strip()}
+                **{_wn: _wv for _wn, _wv in value[4].items() if _wv.strip()}
             )
             _mon_info.append(_mon)
         return _tree, _mon_info
@@ -408,7 +408,7 @@ class BackgroundJob(object):
         self.check()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        BackgroundJob.bg_proc.log(u"[bgj {:d}] {}".format(self.idx, what), log_level)
+        BackgroundJob.bg_proc.log("[bgj {:d}] {}".format(self.idx, what), log_level)
 
     def update_attribute(self, attr_name, attr_value):
         if getattr(self, attr_name) != attr_value:
@@ -500,7 +500,7 @@ class BackgroundJob(object):
                         # monitoring
                         BackgroundJob.bg_proc.send_to_remote_server(
                             icswServiceEnum.monitor_server,
-                            unicode(server_command.srv_command(command="monitoring_info", mon_info=_mon_info))
+                            str(server_command.srv_command(command="monitoring_info", mon_info=_mon_info))
                         )
                     else:
                         BackgroundJob.log("no builder set", logging_tools.LOG_LEVEL_ERROR)
@@ -534,7 +534,7 @@ class BackgroundJob(object):
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        BackgroundJob.bg_proc.log(u"[bgj] {}".format(what), log_level)
+        BackgroundJob.bg_proc.log("[bgj] {}".format(what), log_level)
 
     @staticmethod
     def add_job(new_job):
@@ -568,7 +568,7 @@ class BackgroundJob(object):
     @staticmethod
     def check_jobs(start=True):
         _to_delete = []
-        for id_str, job in BackgroundJob.ref_dict.iteritems():
+        for id_str, job in BackgroundJob.ref_dict.items():
             job.check(start=start)
             if job.to_remove and not job.running:
                 _to_delete.append(id_str)

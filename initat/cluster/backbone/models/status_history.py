@@ -19,7 +19,7 @@
 #
 """ database definitions for recording icinga events and aggregating them """
 
-from __future__ import unicode_literals, print_function
+
 
 import collections
 import itertools
@@ -34,13 +34,14 @@ from django.db.models import Max, Min, Prefetch, Q
 from initat.cluster.backbone.models import mon_check_command
 from initat.cluster.backbone.models.functions import db_limit_1
 from initat.tools import server_mixins, logging_tools
+from functools import reduce
 
 logger = logging.getLogger("cluster.history")
 
 
 class DummyLogger(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        logger.log(log_level, u"[DL] {}".format(what))
+        logger.log(log_level, "[DL] {}".format(what))
 
 
 ########################################
@@ -105,7 +106,7 @@ class raw_host_alert_manager(models.Manager):
             for key in host_alerts:
                 host_alerts[key].append(entry)
 
-        for l in host_alerts.itervalues():
+        for l in host_alerts.values():
             # not in order due to dev independents and downtimes
             l.sort(key=operator.attrgetter('date'))
         return host_alerts
@@ -166,7 +167,7 @@ class raw_service_alert_manager(models.Manager):
             for key in service_alerts:
                 service_alerts[key].append(entry)
 
-        for l in service_alerts.itervalues():
+        for l in service_alerts.values():
             # not in order due to dev independents and downtimes
             l.sort(key=operator.attrgetter('date'))
         return service_alerts
@@ -192,8 +193,8 @@ class raw_service_alert_manager(models.Manager):
 
     @staticmethod
     def _do_calculate_service_name_for_client(service, service_info):
-        service_name = service.name if service else u""
-        return u"{},{}".format(service_name, service_info if service_info else u"")
+        service_name = service.name if service else ""
+        return "{},{}".format(service_name, service_info if service_info else "")
 
 
 class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
@@ -424,7 +425,7 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
 
             if isinstance(devices, dict):
                 _queries = []
-                for dev_id, service_list in devices.iteritems():
+                for dev_id, service_list in devices.items():
                     # query: device_pk matches as well as one service_pk/service_info combination
                     service_qs = (
                         (
@@ -434,7 +435,7 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
                     _queries.append(Q(device_id=dev_id) & reduce(lambda x, y: x | y, service_qs))
                 # or around all queries
                 query_filter = reduce(lambda x, y: x | y, _queries)
-                device_ids = devices.keys()
+                device_ids = list(devices.keys())
             else:
                 query_filter = Q(device_id__in=devices)
                 device_ids = devices
@@ -483,8 +484,8 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
             if len(timespans) > 1:
                 # now for each service, we should have len(timespans) entries.
                 # if not, we don't have data for that, so fill it up
-                for device_id, service_name_timespans in device_service_timespans.iteritems():
-                    for service_key, timespans_present in service_name_timespans.iteritems():
+                for device_id, service_name_timespans in device_service_timespans.items():
+                    for service_key, timespans_present in service_name_timespans.items():
                         num_missing = len(timespans) - len(timespans_present)
                         if num_missing > 0:
                             data_per_device[device_id][service_key].append(
@@ -499,11 +500,11 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
 
         def merge_all_services_of_devices(data_per_device):
             return_data = {}
-            for device_id, device_data in data_per_device.iteritems():
+            for device_id, device_data in data_per_device.items():
                 # it's not obvious how to aggregate service states
                 # we now just add the values,but we could e.g. also use the most common state of a service as it's state
                 # then we could say "4 services were ok, 3 were critical".
-                data_concat = list(itertools.chain.from_iterable(s_data for s_data in device_data.itervalues()))
+                data_concat = list(itertools.chain.from_iterable(s_data for s_data in device_data.values()))
                 return_data[device_id] = self.merge_state_types(
                     data_concat,
                     mon_icinga_log_raw_base.STATE_UNDETERMINED,
@@ -514,13 +515,13 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
         def merge_service_state_types_per_device(data_per_device):
             return_data = {}
             # merge state types for each service in each device
-            for device_id, device_service_data in data_per_device.iteritems():
+            for device_id, device_service_data in data_per_device.items():
                 return_data[device_id] = {
                     service_key: self.merge_state_types(
                         service_data,
                         mon_icinga_log_raw_base.STATE_UNDETERMINED,
                         normalize=len(timespans) > 1  # don't need to normalize if only 1
-                    ) for service_key, service_data in device_service_data.iteritems()
+                    ) for service_key, service_data in device_service_data.items()
                 }
 
             return return_data
@@ -603,7 +604,7 @@ class StatusHistoryUtils(object):
                 if entry.date >= start_time:  # discard elements which have already finished when we haven't started yet
                     cache[key].append(StartStopDuration(start_entry.date, entry.date, start_entry, entry))
         # handles events which haven't stopped yet
-        for key, start_entry in aux_start_times.iteritems():
+        for key, start_entry in aux_start_times.items():
             cache[key].append(StartStopDuration(start_entry.date, django.utils.timezone.now(), start_entry, None))
         return dict(cache)  # make into regular dict
 
@@ -685,7 +686,7 @@ class StatusHistoryUtils(object):
         #       the annotated elements therefore we retrieve the extra parameters manually
         # new code, reduces database queries to only one per call
         _queries = []
-        for k, v in last_service_alert_cache.iteritems():
+        for k, v in last_service_alert_cache.items():
             if any(key not in v[0] for key in additional_fields):
                 if is_host:
                     _queries.append(
@@ -703,7 +704,7 @@ class StatusHistoryUtils(object):
                 _found = obj_man.filter(_queries).values("device_id", *additional_fields)
             else:
                 _found = obj_man.filter(_queries).values("device_id", "service_id", "service_info", *additional_fields)
-            for k, v in last_service_alert_cache.iteritems():
+            for k, v in last_service_alert_cache.items():
                 if any(key not in v[0] for key in additional_fields):
                     if is_host:
                         # filter
@@ -721,7 +722,7 @@ class StatusHistoryUtils(object):
                     v[0].update({key: _first_value[key] for key in additional_fields})
         # old code
         if False:
-            for k, v in last_service_alert_cache.iteritems():
+            for k, v in last_service_alert_cache.items():
                 if any(key not in v[0] for key in additional_fields):
                     if is_host:
                         additional_fields_query = obj_man.filter(
@@ -740,7 +741,7 @@ class StatusHistoryUtils(object):
                         additional_fields_query = obj_man.filter(device_independent=True, date=v[1])
                     v[0].update(additional_fields_query.values(*additional_fields)[0])
         # drop extreme date
-        return {k: v[0] for (k, v) in last_service_alert_cache.iteritems()}
+        return {k: v[0] for (k, v) in last_service_alert_cache.items()}
 
 
 class AlertList(object):
@@ -787,7 +788,7 @@ class AlertList(object):
             end_time
         )
 
-        for k, downtime_list in downtimes.iteritems():
+        for k, downtime_list in downtimes.items():
             self.alerts[k] = self.add_downtimes_to_alerts(self.alerts[k], self.last_before.get(k, None), downtime_list)
             downtime_at_start_alert = self.get_downtime_entry(downtime_list, start_time)
             if downtime_at_start_alert:

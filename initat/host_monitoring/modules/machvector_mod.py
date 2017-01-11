@@ -19,7 +19,7 @@
 #
 """ machine vector base classes and support functions """
 
-from __future__ import unicode_literals, print_function
+
 
 import copy
 import json
@@ -110,7 +110,7 @@ class get_mvector_command(hm_classes.hm_command):
                     max_num_keys = max(max_num_keys, _mv.num_keys)
             for mv_num, entry in _list:
                 out_list.append(entry.get_form_entry(mv_num, max_num_keys))
-            ret_array.extend(unicode(out_list).split("\n"))
+            ret_array.extend(str(out_list).split("\n"))
             return limits.mon_STATE_OK, "\n".join(ret_array)
 
 
@@ -172,7 +172,7 @@ class MachineVector(object):
                 except:
                     self.log("error: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
                     raise
-        mv_flags = [key for key in self.cs.keys() if not isinstance(self.cs[key], dict)]
+        mv_flags = [key for key in list(self.cs.keys()) if not isinstance(self.cs[key], dict)]
         # show and set vector flags
         self.log("{} defined".format(logging_tools.get_plural("vector flag", mv_flags)))
         for key in sorted(mv_flags):
@@ -199,7 +199,7 @@ class MachineVector(object):
 
     def read_config(self):
         # close sockets
-        for _send_id, sock in self.__socket_dict.iteritems():
+        for _send_id, sock in self.__socket_dict.items():
             self.log("closing socket with id {}".format(_send_id))
             sock.close()
         self.__socket_dict = {}
@@ -261,7 +261,7 @@ class MachineVector(object):
                         "port": int(_attr.get("port", "8002")),
                         "format": _attr.get("format", "xml"),
                     }
-                    for _key, _value in _def_config.iteritems():
+                    for _key, _value in _def_config.items():
                         if _key not in _dict:
                             _dict[_key] = _value
                     _cs["{:d}".format(mv_idx)] = _dict
@@ -277,7 +277,7 @@ class MachineVector(object):
 
         p_pool = self.module.main_proc
         p_pool.unregister_timer(self._send_vector)
-        for send_id in self.cs.keys():
+        for send_id in list(self.cs.keys()):
             _struct = self.cs[send_id]
             if isinstance(_struct, dict):
                 # check validity of struct
@@ -336,7 +336,7 @@ class MachineVector(object):
             )
         )
         next_free_id = 0
-        for send_id in self.cs.keys():
+        for send_id in list(self.cs.keys()):
             _struct = self.cs[send_id]
             if isinstance(_struct, dict):
                 if (_struct["send_name"], _struct["target"]) == (send_name, target_ip):
@@ -424,7 +424,7 @@ class MachineVector(object):
         try:
             # self.log("Sending machvector to {}:{}".format(t_host, t_port))
             if send_format == "xml":
-                self.__socket_dict[send_id].send_unicode(unicode(etree.tostring(send_vector)))  # @UndefinedVariable
+                self.__socket_dict[send_id].send_unicode(str(etree.tostring(send_vector)))  # @UndefinedVariable
             else:
                 # print json.dumps(send_vector)
                 self.__socket_dict[send_id].send_unicode(json.dumps(send_vector))
@@ -456,7 +456,7 @@ class MachineVector(object):
         self.cs[send_id] = _struct
 
     def close(self):
-        for _s_id, t_sock in self.__socket_dict.iteritems():
+        for _s_id, t_sock in self.__socket_dict.items():
             t_sock.close()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -509,14 +509,14 @@ class MachineVector(object):
         return key in self.__act_dict
 
     def keys(self):
-        return self.__act_dict.keys()
+        return list(self.__act_dict.keys())
 
     def __contains__(self, key):
         return key in self.__act_dict
 
     def unregister_tree(self, key_prefix):
         self.__changed = True
-        del_keys = [key for key in self.keys() if key.startswith(key_prefix)]
+        del_keys = [key for key in list(self.keys()) if key.startswith(key_prefix)]
         for del_key in del_keys:
             del self.__act_dict[del_key]
 
@@ -605,7 +605,7 @@ class MachineVector(object):
 
     def check_timeout(self):
         cur_time = time.time()
-        rem_keys = [key for key, value in self.__act_dict.iteritems() if value.check_timeout(cur_time)]
+        rem_keys = [key for key, value in self.__act_dict.items() if value.check_timeout(cur_time)]
         if rem_keys:
             self.log(
                 "removing {} because of timeout: {}".format(
@@ -630,9 +630,9 @@ class MachineVector(object):
             }
         ]
         if simple:
-            mach_vect.extend([cur_mve.build_simple_json() for cur_mve in self.__act_dict.itervalues()])
+            mach_vect.extend([cur_mve.build_simple_json() for cur_mve in self.__act_dict.values()])
         else:
-            mach_vect.extend([cur_mve.build_json() for cur_mve in self.__act_dict.itervalues()])
+            mach_vect.extend([cur_mve.build_json() for cur_mve in self.__act_dict.values()])
         return mach_vect
 
     def build_xml(self, builder, simple=False):
@@ -643,9 +643,9 @@ class MachineVector(object):
             simple="1" if simple else "0",
         )
         if simple:
-            mach_vect.extend([cur_mve.build_simple_xml(builder) for cur_mve in self.__act_dict.itervalues()])
+            mach_vect.extend([cur_mve.build_simple_xml(builder) for cur_mve in self.__act_dict.values()])
         else:
-            mach_vect.extend([cur_mve.build_xml(builder) for cur_mve in self.__act_dict.itervalues()])
+            mach_vect.extend([cur_mve.build_xml(builder) for cur_mve in self.__act_dict.values()])
         return mach_vect
 
     def get_send_mvector(self):
@@ -662,7 +662,7 @@ class MachineVector(object):
     def update(self):  # , esd=""):
         self.check_changed()
         # copy ref_dict to act_dict
-        [value.update_default() for value in self.__act_dict.itervalues()]
+        [value.update_default() for value in self.__act_dict.values()]
         self.check_timeout()
         # if esd:
         #    self.check_external_sources(log_t, esd)
@@ -690,7 +690,7 @@ def pretty_print2(value):
     else:
         act_v, p_str = (value["v"], "")
         unit = "???"
-    if type(act_v) in [type(0), type(0L)]:
+    if type(act_v) in [type(0), type(0)]:
         val = "{:<10d}   ".format(int(act_v))
     else:
         val = "{:13.2f}".format(float(act_v))

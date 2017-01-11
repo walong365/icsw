@@ -19,14 +19,14 @@
 #
 """ wrapper for openssl_tools """
 
-from __future__ import unicode_literals, print_function
+
 
 from initat.cluster_server.config import global_config
 from initat.cluster.backbone.models import device
 from django.db.models import Q
 from initat.tools import logging_tools, openssl_tools, server_command
 
-import cs_base_class
+from . import cs_base_class
 
 """
 create CA for OpenLDAP TLS:
@@ -48,7 +48,7 @@ def _build_obj(cur_inst, **kwargs):
         "emailAddress": "cluster@init.at",
         "days": str(kwargs.get("days", 3650)),
     }
-    for key, _value in obj_dict.iteritems():
+    for key, _value in obj_dict.items():
         _key = "server_key:{}".format(key)
         if _key in cur_inst.srv_com:
             obj_dict[key] = cur_inst.srv_com[_key].text

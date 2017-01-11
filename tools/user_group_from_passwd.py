@@ -48,7 +48,7 @@ class SysGroup(object):
         return "group {} ({:d})".format(self.name, self.gid)
 
     def __repr__(self):
-        return unicode(self)
+        return str(self)
 
 
 class SysUser(object):
@@ -64,7 +64,7 @@ class SysUser(object):
         return "user {} ({:d})".format(self.name, self.uid)
 
     def __repr__(self):
-        return unicode(self)
+        return str(self)
 
 
 def main():
@@ -78,7 +78,7 @@ def main():
         sys.exit(1)
     ap.add_argument("--minuid", type=int, default=100, help="minimum uid to use [%(default)d]")
     ap.add_argument("--maxuid", type=int, default=32768, help="minimum uid to use [%(default)d]")
-    ap.add_argument("--export", type=int, default=_hel.exp_dict.keys()[0], choices=_hel.exp_dict.keys(), help="export entry to use [%(default)d]")
+    ap.add_argument("--export", type=int, default=list(_hel.exp_dict.keys())[0], choices=list(_hel.exp_dict.keys()), help="export entry to use [%(default)d]")
     ap.add_argument("--homestart", type=str, default="/home", help="homestart for newly creatd groups [%(default)s]")
     opts = ap.parse_args()
     print("Home export entry:")
@@ -91,7 +91,7 @@ def main():
         try:
             cur_group = group.objects.get(Q(groupname=_user.group.name))
         except group.DoesNotExist:
-            print("creating new group for {}".format(unicode(_user.group)))
+            print(("creating new group for {}".format(str(_user.group))))
             cur_group = group.objects.create(
                 groupname=_user.group.name,
                 homestart=opts.homestart,
@@ -100,7 +100,7 @@ def main():
         try:
             cur_user = user.objects.get(Q(login=_user.name))
         except user.DoesNotExist:
-            print("creating new user for {}".format(unicode(_user)))
+            print(("creating new user for {}".format(str(_user))))
             cur_user = user.objects.create(
                 group=cur_group,
                 login=_user.name,
@@ -111,7 +111,7 @@ def main():
                 password="{}123".format(_user.name),
             )
         else:
-            print("user {} already present".format(unicode(cur_user)))
+            print(("user {} already present".format(str(cur_user))))
 
 if __name__ == "__main__":
     main()

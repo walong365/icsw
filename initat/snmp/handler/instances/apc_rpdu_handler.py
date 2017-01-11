@@ -46,7 +46,7 @@ class handler(SNMPHandler):
         result_dict = self.filter_results(result_dict)
         if result_dict:
             mv_tree = kwargs["mv_tree"]
-            _val = result_dict.values()[0]
+            _val = list(result_dict.values())[0]
             mv_tree.append(
                 E.mve(
                     info="Ampere",

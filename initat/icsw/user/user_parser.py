@@ -29,7 +29,7 @@ Attention: the 'icsw user --mode mail' command is also used by the md-config-ser
 
 """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import pwd
@@ -84,11 +84,11 @@ class Parser(object):
                     "--new-export",
                     default=0,
                     type=int,
-                    choices=[0] + hel.exp_dict.keys(),
+                    choices=[0] + list(hel.exp_dict.keys()),
                     help="set export entry for modify [%(default)d=keep], info:\n{}".format(
                         "\n".join(
                             [
-                                "{:d}={}@{}".format(_key, hel.exp_dict[_key]["createdir"], hel.exp_dict[_key]["name"]) for _key in hel.exp_dict.keys()
+                                "{:d}={}@{}".format(_key, hel.exp_dict[_key]["createdir"], hel.exp_dict[_key]["name"]) for _key in list(hel.exp_dict.keys())
                             ]
                         )
                     ),

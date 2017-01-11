@@ -21,7 +21,7 @@
 
 """ container for service checks """
 
-from __future__ import unicode_literals, print_function
+
 
 import netifaces
 import os
@@ -62,7 +62,7 @@ class Service(object):
         self.config_check_ok = True
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com(u"[srv {}] {}".format(self.name, what), log_level)
+        self.__log_com("[srv {}] {}".format(self.name, what), log_level)
 
     @property
     def attrib(self):
@@ -286,8 +286,8 @@ class Service(object):
             )
         else:
             num_under, num_over = (
-                len([_v for _v in diff_dict.itervalues() if _v < 0]),
-                len([_v for _v in diff_dict.itervalues() if _v > 0]),
+                len([_v for _v in diff_dict.values() if _v < 0]),
+                len([_v for _v in diff_dict.values() if _v > 0]),
             )
             if num_under:
                 ret_f.append(
@@ -317,7 +317,7 @@ class Service(object):
                                 "{:d}: {:d}".format(
                                     _key,
                                     _value
-                                ) for _key, _value in diff_dict.iteritems()
+                                ) for _key, _value in diff_dict.items()
                             ]
                         )
                     )
@@ -397,7 +397,7 @@ class Service(object):
                 _mem_info.append(
                     E.details(
                         *[
-                            E.mem("{:d}".format(_value), name=msi_block.get_process_name(_key)) for _key, _value in mem_dict.iteritems()
+                            E.mem("{:d}".format(_value), name=msi_block.get_process_name(_key)) for _key, _value in mem_dict.items()
                         ]
                     )
                 )
@@ -501,7 +501,7 @@ class Service(object):
         _old_bins = self.old_binary.strip().split(",")
         # print _new_title, "old_bins", _old_bins
         _pid_list = set()
-        for _key, _value in act_proc_dict.iteritems():
+        for _key, _value in act_proc_dict.items():
             try:
                 _cmdline = _value.cmdline()
             except:
@@ -622,7 +622,7 @@ class PIDService(Service):
                         E.diff_info(
                             pid="{:d}".format(key),
                             diff="{:d}".format(value)
-                        ) for key, value in diff_dict.iteritems()
+                        ) for key, value in diff_dict.items()
                     ],
                     check_source="pid",
                     num_started="{:d}".format(num_started),
@@ -652,8 +652,8 @@ class MetaService(Service):
             ms_block = process_tools.MSIBlock(ms_name)
             start_time = ms_block.start_time
             _check = ms_block.check_block(act_proc_dict)
-            diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}
-            diff_procs = sum([abs(_v) for _v in diff_dict.values()]) if diff_dict else 0
+            diff_dict = {key: value for key, value in ms_block.bound_dict.items() if value}
+            diff_procs = sum([abs(_v) for _v in list(diff_dict.values())]) if diff_dict else 0
             act_pids = ms_block.pids_found
             # print "*", act_pids
             unique_pids = set(act_pids)
@@ -671,7 +671,7 @@ class MetaService(Service):
                         E.diff_info(
                             pid="{:d}".format(key),
                             diff="{:d}".format(value)
-                        ) for key, value in diff_dict.iteritems()
+                        ) for key, value in diff_dict.items()
                     ],
                     check_source="meta",
                     num_started="{:d}".format(num_started),

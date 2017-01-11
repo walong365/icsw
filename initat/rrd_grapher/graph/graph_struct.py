@@ -19,7 +19,7 @@
 #
 """ structures and functions for the grapher part of rrd-grapher service """
 
-from __future__ import print_function, unicode_literals
+
 
 import math
 import os
@@ -101,11 +101,11 @@ class GraphVar(object):
     def info(self, timeshift, forecast):
         info = self.mvv_entry.info
         parts = full_graph_key(self.mvs_entry.key, self.mvv_entry.key).split(".")
-        for idx in xrange(len(parts)):
+        for idx in range(len(parts)):
             info = info.replace("${:d}".format(idx + 1), parts[idx])
         info_parts = []
         if self.dev_name:
-            info_parts.append(unicode(self.dev_name))
+            info_parts.append(str(self.dev_name))
         if timeshift:
             info_parts.append("ts {}".format(logging_tools.get_diff_time_str(timeshift)))
         if forecast:
@@ -373,7 +373,7 @@ class GraphVar(object):
                     _loc = cluster_timezone.normalize(_sta.date)
                     if self.rrd_graph.para_dict["end_time"] > _loc > self.rrd_graph.para_dict["start_time"]:
                         _events.setdefault(_sta.action_type, []).append(_sta)
-                for _event_type in sorted(_events.iterkeys()):
+                for _event_type in sorted(_events.keys()):
                     for _event_num, _sta in enumerate(_events[_event_type]):
                         if not _event_num:
                             _legend = "<tt>  {}</tt>\\l".format(
@@ -514,7 +514,7 @@ class GraphTarget(object):
     @property
     def rrd_post_args(self):
         return [
-            "{} {}".format(_key, _value) for _key, _value in self.__post_args.iteritems()
+            "{} {}".format(_key, _value) for _key, _value in self.__post_args.items()
         ]
 
     def set_post_arg(self, key, value):
@@ -556,15 +556,15 @@ class GraphTarget(object):
     def get_draw_result(self, only_valid=True):
         if only_valid:
             return {
-                key: draw_res.draw_result for key, draw_res in self.vars.iteritems() if draw_res.draw_result is not None
+                key: draw_res.draw_result for key, draw_res in self.vars.items() if draw_res.draw_result is not None
             }
         else:
             return {
-                key: draw_res.draw_result for key, draw_res in self.vars.iteritems()
+                key: draw_res.draw_result for key, draw_res in self.vars.items()
             }
 
     def adjust_max_y(self, max_val):
-        [_val.adjust_max_y(max_val) for _val in self.vars.itervalues()]
+        [_val.adjust_max_y(max_val) for _val in self.vars.values()]
         # list of keys with the same factor
         _eval_list = []
         for _key in self.draw_keys:
@@ -625,8 +625,8 @@ class GraphTarget(object):
         if self.__result_dict is None:
             self.__result_dict = {
                 key: "{:d}".format(value) if type(value) in [
-                    int, long
-                ] else FLOAT_FMT.format(value) for key, value in self.draw_result.iteritems() if not key.startswith("print[")
+                    int, int
+                ] else FLOAT_FMT.format(value) for key, value in self.draw_result.items() if not key.startswith("print[")
             }
         return self.__result_dict
 
@@ -647,7 +647,7 @@ class GraphTarget(object):
         if self.valid:
             _json["href"] = self.rel_file_loc
             _json["abssrc"] = self.abs_file_loc
-            for _key, _value in self.result_dict.iteritems():
+            for _key, _value in self.result_dict.items():
                 if _key.count("value"):
                     _json[_key] = float(_value)
                 else:
@@ -661,13 +661,13 @@ class GraphTarget(object):
                         {
                             "cf": _cf_key,
                             "value": _cf_value,
-                        } for _cf_key, _cf_value in _value.iteritems()
+                        } for _cf_key, _cf_value in _value.items()
                     ],
                     "device": _key[2],
                     "nan": True if _key[3] else False,
                     "db_key": _key[0],
                     "mv_key": _key[1],
-                } for _key, _value in _var_dict.iteritems()
+                } for _key, _value in _var_dict.items()
             ]
         return _json
 
@@ -676,7 +676,7 @@ class GraphTarget(object):
             E.devices(
                 *[
                     E.device(
-                        unicode(dev_dict[_dev_key[1]]),
+                        str(dev_dict[_dev_key[1]]),
                         pk="{:d}".format(_dev_key[1])
                     ) for _dev_key in self.dev_list
                 ]
@@ -690,7 +690,7 @@ class GraphTarget(object):
         if self.valid:
             _xml.attrib["href"] = self.rel_file_loc
             _xml.attrib["abssrc"] = self.abs_file_loc
-            for _key, _value in self.result_dict.iteritems():
+            for _key, _value in self.result_dict.items():
                 _xml.attrib[_key] = _value
                 _var_dict = self._get_var_dict()
             if _var_dict:
@@ -703,14 +703,14 @@ class GraphTarget(object):
                                         E.cf(
                                             _cf_value,
                                             cf=_cf_key,
-                                        ) for _cf_key, _cf_value in _value.iteritems()
+                                        ) for _cf_key, _cf_value in _value.items()
                                     ]
                                 ),
                                 db_key=_key[0],
                                 mv_key=_key[1],
                                 device="{:d}".format(_key[2]),
                                 nan="1" if _key[3] else "0",
-                            ) for _key, _value in _var_dict.iteritems()
+                            ) for _key, _value in _var_dict.items()
                         ]
                     )
                 )
@@ -719,9 +719,9 @@ class GraphTarget(object):
 
     def _get_var_dict(self):
         _var_dict = {}
-        for _var in self.vars.itervalues():
+        for _var in self.vars.values():
             if _var.draw_result:
-                for _val, _v_xml in _var.draw_result.itervalues():
+                for _val, _v_xml in _var.draw_result.values():
                     _mvs_id, _mvv_id = (_v_xml.get("mvs_id"), _v_xml.get("mvv_id"))
                     # unset keys will be transformed to the empty string
                     _mvs_id = "" if _mvs_id == "None" else _mvs_id
@@ -801,7 +801,7 @@ class DataSource(object):
         # color tables
         _color_tables = {}
         # second step: resolve compounds (its important to keep the order)
-        for _c_key, _cs in _compound_dict.iteritems():
+        for _c_key, _cs in _compound_dict.items():
             # reset colorizer
             self.__colorizer.reset()
             for _entry in _cs:

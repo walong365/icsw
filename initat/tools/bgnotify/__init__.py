@@ -18,6 +18,6 @@
 """ cluster-server, background inotify import script """
 
 
-from __future__ import print_function, unicode_literals
+
 
 from .create import create_bg_job

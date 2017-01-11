@@ -10,7 +10,7 @@ Simple operations like performing checksums and swapping byte orders.
 # written by Jeremy Hylton, jeremy@cnri.reston.va.us
 # from _ip import *
 
-from __future__ import unicode_literals, print_function
+
 
 import array
 import struct

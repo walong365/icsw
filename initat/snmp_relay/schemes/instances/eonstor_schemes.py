@@ -17,7 +17,7 @@
 #
 """ eonstor schemes for SNMP relayer """
 
-from __future__ import print_function, unicode_literals
+
 
 from initat.host_monitoring import limits
 from initat.snmp.snmp_struct import snmp_oid
@@ -456,7 +456,7 @@ class eonstor_info_scheme(SNMPRelayScheme):
     def process_return(self):
         # device dict (also for discs)
         dev_dict = {}
-        for dev_idx, dev_stuff in self._reorder_dict(self.snmp_dict[tuple(self.__th_system)]).iteritems():
+        for dev_idx, dev_stuff in self._reorder_dict(self.snmp_dict[tuple(self.__th_system)]).items():
             if dev_stuff[6] == 17:
                 # slot
                 dev_dict[dev_idx] = eonstor_slot(dev_stuff)
@@ -478,7 +478,7 @@ class eonstor_info_scheme(SNMPRelayScheme):
             elif dev_stuff[6] == 5:
                 # voltage
                 dev_dict[dev_idx] = eonstor_voltage(dev_stuff)
-        for disc_idx, disc_stuff in self._reorder_dict(self.snmp_dict[tuple(self.__th_disc)]).iteritems():
+        for disc_idx, disc_stuff in self._reorder_dict(self.snmp_dict[tuple(self.__th_disc)]).items():
             dev_dict["d{:d}".format(disc_idx)] = eonstor_disc(disc_stuff)
         ret_state, ret_field = (limits.mon_STATE_OK, [])
         for key in sorted(dev_dict.keys()):
@@ -569,7 +569,7 @@ class eonstor_ld_info_scheme(eonstor_proto_scheme):
         self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
 
     def handle_dict(self, pre_dict):
-        return {dev_idx: eonstor_ld(dev_stuff) for dev_idx, dev_stuff in pre_dict.iteritems()}
+        return {dev_idx: eonstor_ld(dev_stuff) for dev_idx, dev_stuff in pre_dict.items()}
 
 
 class eonstor_fan_info_scheme(eonstor_proto_scheme):
@@ -578,7 +578,7 @@ class eonstor_fan_info_scheme(eonstor_proto_scheme):
         self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
 
     def handle_dict(self, pre_dict):
-        return {dev_idx: eonstor_fan(dev_stuff) for dev_idx, dev_stuff in pre_dict.iteritems() if dev_stuff[6] == 2}
+        return {dev_idx: eonstor_fan(dev_stuff) for dev_idx, dev_stuff in pre_dict.items() if dev_stuff[6] == 2}
 
 
 class eonstor_temperature_info_scheme(eonstor_proto_scheme):
@@ -587,7 +587,7 @@ class eonstor_temperature_info_scheme(eonstor_proto_scheme):
         self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
 
     def handle_dict(self, pre_dict):
-        return {dev_idx: eonstor_temperature(dev_stuff, self.net_obj) for dev_idx, dev_stuff in pre_dict.iteritems() if dev_stuff[6] == 3}
+        return {dev_idx: eonstor_temperature(dev_stuff, self.net_obj) for dev_idx, dev_stuff in pre_dict.items() if dev_stuff[6] == 3}
 
 
 class eonstor_ups_info_scheme(eonstor_proto_scheme):
@@ -596,7 +596,7 @@ class eonstor_ups_info_scheme(eonstor_proto_scheme):
         self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
 
     def handle_dict(self, pre_dict):
-        return {dev_idx: eonstor_ups(dev_stuff) for dev_idx, dev_stuff in pre_dict.iteritems() if dev_stuff[6] == 4}
+        return {dev_idx: eonstor_ups(dev_stuff) for dev_idx, dev_stuff in pre_dict.items() if dev_stuff[6] == 4}
 
 
 class eonstor_bbu_info_scheme(eonstor_proto_scheme):
@@ -605,7 +605,7 @@ class eonstor_bbu_info_scheme(eonstor_proto_scheme):
         self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
 
     def handle_dict(self, pre_dict):
-        return {dev_idx: eonstor_bbu(dev_stuff) for dev_idx, dev_stuff in pre_dict.iteritems() if dev_stuff[6] == 11}
+        return {dev_idx: eonstor_bbu(dev_stuff) for dev_idx, dev_stuff in pre_dict.items() if dev_stuff[6] == 11}
 
 
 class eonstor_voltage_info_scheme(eonstor_proto_scheme):
@@ -614,7 +614,7 @@ class eonstor_voltage_info_scheme(eonstor_proto_scheme):
         self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
 
     def handle_dict(self, pre_dict):
-        return {dev_idx: eonstor_voltage(dev_stuff) for dev_idx, dev_stuff in pre_dict.iteritems() if dev_stuff[6] == 5}
+        return {dev_idx: eonstor_voltage(dev_stuff) for dev_idx, dev_stuff in pre_dict.items() if dev_stuff[6] == 5}
 
 
 class eonstor_slot_info_scheme(eonstor_proto_scheme):
@@ -623,7 +623,7 @@ class eonstor_slot_info_scheme(eonstor_proto_scheme):
         self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
 
     def handle_dict(self, pre_dict):
-        return {dev_idx: eonstor_slot(dev_stuff) for dev_idx, dev_stuff in pre_dict.iteritems() if dev_stuff[6] == 17}
+        return {dev_idx: eonstor_slot(dev_stuff) for dev_idx, dev_stuff in pre_dict.items() if dev_stuff[6] == 17}
 
 
 class eonstor_disc_info_scheme(eonstor_proto_scheme):
@@ -632,7 +632,7 @@ class eonstor_disc_info_scheme(eonstor_proto_scheme):
         self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
 
     def handle_dict(self, pre_dict):
-        return {dev_idx: eonstor_disc(dev_stuff) for dev_idx, dev_stuff in pre_dict.iteritems()}
+        return {dev_idx: eonstor_disc(dev_stuff) for dev_idx, dev_stuff in pre_dict.items()}
 
 
 class eonstor_psu_info_scheme(eonstor_proto_scheme):
@@ -641,7 +641,7 @@ class eonstor_psu_info_scheme(eonstor_proto_scheme):
         self.parse_options(kwargs["options"], one_integer_arg_allowed=True)
 
     def handle_dict(self, pre_dict):
-        return {dev_idx: eonstor_psu(dev_stuff) for dev_idx, dev_stuff in pre_dict.iteritems() if dev_stuff[6] == 1}
+        return {dev_idx: eonstor_psu(dev_stuff) for dev_idx, dev_stuff in pre_dict.items() if dev_stuff[6] == 1}
 
 
 class eonstor_get_counter_scheme(eonstor_proto_scheme):
@@ -655,8 +655,8 @@ class eonstor_get_counter_scheme(eonstor_proto_scheme):
             self._reorder_dict(self.snmp_dict[self.disc_oid])
         )
         # number of discs
-        info_dict = {"disc_ids": disc_dict.keys()}
-        for idx, value in sys_dict.iteritems():
+        info_dict = {"disc_ids": list(disc_dict.keys())}
+        for idx, value in sys_dict.items():
             ent_name = {
                 1: "psu",
                 2: "fan",
@@ -668,7 +668,7 @@ class eonstor_get_counter_scheme(eonstor_proto_scheme):
             }.get(value[6], None)
             if ent_name:
                 info_dict.setdefault("ent_dict", {}).setdefault(ent_name, {})[idx] = value[8]
-        info_dict["ld_ids"] = self._reorder_dict(self.snmp_dict[self.ld_oid]).keys()
+        info_dict["ld_ids"] = list(self._reorder_dict(self.snmp_dict[self.ld_oid]).keys())
         if self.xml_input:
             self.srv_com["eonstor_info"] = info_dict
             return limits.mon_STATE_OK, "ok got info"

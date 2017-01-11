@@ -17,9 +17,9 @@
 #
 """ handles process affinity """
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import os
 
 import psutil
@@ -30,7 +30,7 @@ else:
     MAX_CORES = psutil.cpu_count(logical=True)
 
 MAX_MASK = (1 << MAX_CORES) - 1
-CPU_MASKS = {1 << cpu_num: cpu_num for cpu_num in xrange(MAX_CORES)}
+CPU_MASKS = {1 << cpu_num: cpu_num for cpu_num in range(MAX_CORES)}
 
 
 def find_file(file_name, s_path=None):
@@ -65,7 +65,7 @@ class CPUContainer(dict):
         self.__cds = 0
         self.taskset_bin = find_file("taskset")
         self.hwloc_distrib_bin = find_file("hwloc-distrib")
-        for idx in xrange(MAX_CORES):
+        for idx in range(MAX_CORES):
             self[idx] = CPUStruct(idx)
         self._distribution_cache = {}
 
@@ -87,7 +87,7 @@ class CPUContainer(dict):
         return ProcStruct(self, ps)
 
     def clear_cpu_usage(self):
-        [_value.clear_usage() for _value in self.itervalues()]
+        [_value.clear_usage() for _value in self.values()]
 
     def add_proc(self, cur_s):
         self[cur_s.single_cpu_num].add_proc(cur_s)
@@ -98,7 +98,7 @@ class CPUContainer(dict):
             _entry[1] for _entry in list(
                 sorted(
                     [
-                        (value.usage["t"], key) for key, value in self.iteritems() if key not in excl_list
+                        (value.usage["t"], key) for key, value in self.items() if key not in excl_list
                     ]
                 )
             )
@@ -106,10 +106,10 @@ class CPUContainer(dict):
         return free_list
 
     def ts_call(self, com_line):
-        return commands.getstatusoutput("{} {}".format(self.taskset_bin, com_line))
+        return subprocess.getstatusoutput("{} {}".format(self.taskset_bin, com_line))
 
     def dist_call(self, com_line):
-        return commands.getstatusoutput("{} {}".format(self.hwloc_distrib_bin, com_line))
+        return subprocess.getstatusoutput("{} {}".format(self.hwloc_distrib_bin, com_line))
 
     def get_usage_str(self):
         return "|".join(
@@ -170,7 +170,7 @@ class ProcStruct(object):
             usage_dict = {
                 key: 100. * float(
                     stat_dict[key] - self.stat[key]
-                ) / diff_time for key in stat_dict.iterkeys()
+                ) / diff_time for key in stat_dict.keys()
             }
             usage_dict["t"] = usage_dict["u"] + usage_dict["s"]
             self.stat = stat_dict
@@ -209,7 +209,7 @@ class ProcStruct(object):
         """
         return sorted(
             [
-                value for key, value in CPU_MASKS.iteritems() if self.act_mask & key
+                value for key, value in CPU_MASKS.items() if self.act_mask & key
             ]
         )
 

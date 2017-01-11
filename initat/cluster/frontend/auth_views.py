@@ -22,7 +22,7 @@
 
 """ auth views for nginx """
 
-from __future__ import unicode_literals, print_function
+
 
 import base64
 import bz2

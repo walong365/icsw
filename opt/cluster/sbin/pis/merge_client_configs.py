@@ -30,12 +30,12 @@ from initat.tools import config_store, logging_tools, process_tools
 
 
 def log(what, log_level=logging_tools.LOG_LEVEL_OK):
-    print(
+    print((
         "[{}] {}".format(
             logging_tools.get_log_level_str(log_level),
             what,
         )
-    )
+    ))
 
 
 def parse_file(file_name):
@@ -80,19 +80,19 @@ def parse_file(file_name):
                         try:
                             _dict[key] = eval("{}".format(value))
                         except KeyError:
-                            print(
+                            print((
                                 "Error: key {} not defined in dictionary".format(
                                     key
                                 ),
                                 logging_tools.LOG_LEVEL_ERROR
-                            )
+                            ))
                     else:
-                        print(
+                        print((
                             "Error parsing line '{}'".format(
                                 str(line)
                             ),
                             logging_tools.LOG_LEVEL_ERROR
-                        )
+                        ))
     return _dict
 
 
@@ -124,7 +124,7 @@ def main():
         _dict = {}
         for _file in src_files:
             _short = "".join([_val[0].upper() for _val in _file.split("-")])
-            for _key, _value in parse_file(_file).iteritems():
+            for _key, _value in parse_file(_file).items():
                 # simple cast
                 if _value.isdigit():
                     _value = int(_value)

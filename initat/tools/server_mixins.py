@@ -19,7 +19,7 @@
 #
 """ usefull server mixins """
 
-from __future__ import unicode_literals, print_function
+
 
 import re
 import sys
@@ -85,11 +85,11 @@ class EggConsumeObject(object):
                 ),
                 logging_tools.LOG_LEVEL_ERROR,
             )
-        self._cache.add_consumers(self.consumers.keys())
+        self._cache.add_consumers(list(self.consumers.keys()))
         self.__latest_error = time.time() - 1000
 
     def _get_pk_from_object(self, obj_def):
-        if type(obj_def) in [int, long]:
+        if type(obj_def) in [int, int]:
             return obj_def
         else:
             return obj_def.idx
@@ -161,7 +161,7 @@ class EggConsumeObject(object):
                 self.log(
                     "unknown consume action '{}' for {} (known actions: {})".format(
                         action,
-                        unicode(obj_def),
+                        str(obj_def),
                         ", ".join(sorted(self.consumers.keys())) or "none",
                     ),
                     logging_tools.LOG_LEVEL_CRITICAL
@@ -284,7 +284,7 @@ class ConfigCheckObject(object):
                 configfile.str_c_var(self._inst_xml.get_pid_file_name(self._instance), source="instance", database=False)
             ),
         ]
-        for _name, _value in self._inst_xml.get_port_dict(self._instance).iteritems():
+        for _name, _value in self._inst_xml.get_port_dict(self._instance).items():
             _opts.append(
                 (
                     "{}_PORT".format(_name.upper()),
@@ -565,7 +565,7 @@ class NetworkBindMixin(object):
             _bind_ips = set(
                 list(dev_r.local_ips) + sum(
                     [
-                        _list for _dev, _list in dev_r.ip_r_lut.iteritems()
+                        _list for _dev, _list in dev_r.ip_r_lut.items()
                     ],
                     []
                 )
@@ -582,7 +582,7 @@ class NetworkBindMixin(object):
                 )
             ]
             _virt_list = []
-            for _dev, _ip_list in dev_r.ip_r_lut.iteritems():
+            for _dev, _ip_list in dev_r.ip_r_lut.items():
                 if _dev.pk != dev_r.device.pk:
                     _virt_list.append(
                         (
@@ -703,7 +703,7 @@ class RemoteAsyncHelper(object):
     def register(self, rcs, src_id, srv_com, zmq_sock, msg_type):
         self.__async_id += 1
         srv_com["async_helper_id"] = self.__async_id
-        self.__lut[self.__async_id] = (rcs.func_name, src_id, zmq_sock, msg_type, time.time())
+        self.__lut[self.__async_id] = (rcs.__name__, src_id, zmq_sock, msg_type, time.time())
 
     def result(self, srv_com):
         if "async_helper_id" not in srv_com:
@@ -790,9 +790,9 @@ class RemoteCallMixin(object):
             # set com_name to None
             com_name = None
             if self.remote_call_id_filter_dict and src_id is not None:
-                _match = [_value for _key, _value in self.remote_call_id_filter_dict.iteritems() if _key.match(src_id)]
+                _match = [_value for _key, _value in self.remote_call_id_filter_dict.items() if _key.match(src_id)]
                 if _match:
-                    com_name = _match[0].func_name
+                    com_name = _match[0].__name__
             if com_name is None:
                 # com name still none, parse data
                 if msg_type == RemoteCallMessageType.flat:
@@ -882,7 +882,7 @@ class RemoteCallMixin(object):
             # set source
             reply.update_source()
         # send return
-        _send_str = unicode(reply)
+        _send_str = str(reply)
         try:
             zmq_sock.send_unicode(src_id, zmq.SNDMORE)
             zmq_sock.send_unicode(_send_str)
@@ -963,7 +963,7 @@ class RemoteCallSignature(object):
         ).setdefault(
             self.msg_type,
             {}
-        )[self.func_name] = self
+        )[self.__name__] = self
         if self.id_filter:
             id_filter_dict[re.compile(self.id_filter)] = self
 
@@ -975,9 +975,9 @@ class RemoteCallSignature(object):
             return _result
         else:
             if self.target_process:
-                effective_target_func_name = self.target_process_func or self.func_name
+                effective_target_func_name = self.target_process_func or self.__name__
                 # print 'effective target name', effective_target_func_name
-                instance.send_to_process(self.target_process, effective_target_func_name, unicode(_result), src_id=src_id)
+                instance.send_to_process(self.target_process, effective_target_func_name, str(_result), src_id=src_id)
             else:
                 # local async call
                 pass
@@ -1046,7 +1046,7 @@ class RemoteServerAddressBase(object):
                 # time.sleep(1)
                 try:
                     self.mixin.strs_com_socket.send_unicode(self._uuid, zmq.DONTWAIT | zmq.SNDMORE)
-                    self.mixin.strs_com_socket.send_unicode(unicode(send_obj), zmq.DONTWAIT)
+                    self.mixin.strs_com_socket.send_unicode(str(send_obj), zmq.DONTWAIT)
                 except zmq.error.ZMQError as e:
                     self.log(
                         "cannot send to '{}': {}".format(
@@ -1108,7 +1108,7 @@ class RemoteServerAddress(RemoteServerAddressBase):
                     self.log(
                         "set address to {} (device {}, port {:d}, COM-UUID {})".format(
                             self._address,
-                            unicode(_dev),
+                            str(_dev),
                             self._port,
                             self._uuid,
                         )
@@ -1254,10 +1254,10 @@ class GetRouteToDevicesMixin(object):
         src_dev = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         src_nds = src_dev.netdevice_set.all().values_list("pk", flat=True)
         self.log(
-            u"device list: {}".format(
+            "device list: {}".format(
                 ", ".join(
                     [
-                        unicode(cur_dev) for cur_dev in dev_list
+                        str(cur_dev) for cur_dev in dev_list
                     ]
                 )
             )
@@ -1280,13 +1280,13 @@ class GetRouteToDevicesMixin(object):
             if cur_dev.target_ip:
                 self.log(
                     "contact device {} via {}".format(
-                        unicode(cur_dev),
+                        str(cur_dev),
                         cur_dev.target_ip
                     )
                 )
             else:
                 self.log(
-                    u"no route to device {} found".format(unicode(cur_dev)),
+                    "no route to device {} found".format(str(cur_dev)),
                     logging_tools.LOG_LEVEL_ERROR
                 )
         del router_obj

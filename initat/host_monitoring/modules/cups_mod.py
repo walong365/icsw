@@ -18,7 +18,7 @@
 #
 
 import sys
-import commands
+import subprocess
 from initat.host_monitoring import limits, hm_classes
 from initat.tools import server_command
 
@@ -29,7 +29,7 @@ class _general(hm_classes.hm_module):
 
 class cups_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        lp_stat, lp_out = commands.getstatusoutput("lpstat -p")
+        lp_stat, lp_out = subprocess.getstatusoutput("lpstat -p")
         if lp_stat:
             srv_com.set_result(
                 "error getting lpstat info ({:d}): {}".format(lp_stat, lp_out),
@@ -55,7 +55,7 @@ class cups_status_command(hm_classes.hm_command):
             print_dict = {print_dict[0]: print_dict[1]}
         print_res_dict = {}
         ret_state = limits.mon_STATE_OK
-        for p_name, p_stuff in print_dict.iteritems():
+        for p_name, p_stuff in print_dict.items():
             since_idx = p_stuff.index("since")
             pre_time, post_time = (p_stuff[0: since_idx], p_stuff[since_idx + 6:])
             if pre_time.startswith("is "):

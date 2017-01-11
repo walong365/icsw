@@ -27,7 +27,7 @@ import tarfile
 import time
 import shutil
 import subprocess
-import commands
+import subprocess
 
 from initat.tools import cpu_database, logging_tools, rpm_build_tools, compile_tools
 
@@ -87,8 +87,8 @@ class my_opt_parser(optparse.OptionParser):
         self.add_option("--arch", type="str", dest="arch", help="Set package architecture [%default]", default="")
         self.add_option(
             "-g", type="choice", dest="goto_version",
-            help="Choose LibGoto Version, possible values are %s [%%default]" % (", ".join(self.version_dict.keys())), action="store",
-            choices=self.version_dict.keys(),
+            help="Choose LibGoto Version, possible values are %s [%%default]" % (", ".join(list(self.version_dict.keys()))), action="store",
+            choices=list(self.version_dict.keys()),
             default=self.highest_version)
         self.add_option("-d", type="string", dest="target_dir", help="Sets target directory [%default]", action="store", default=target_dir)
         self.add_option("--log", dest="include_log", help="Include log of make-command in README [%default]", action="store_true", default=False)
@@ -102,7 +102,7 @@ class my_opt_parser(optparse.OptionParser):
     def parse(self):
         options, args = self.parse_args()
         if args:
-            print "Additional arguments found, exiting"
+            print("Additional arguments found, exiting")
             sys.exit(0)
         self.options = options
         self._check_compiler_settings()
@@ -117,7 +117,7 @@ class my_opt_parser(optparse.OptionParser):
         if os.path.isfile(LIBGOTO_VERSION_FILE):
             version_lines = [line.strip().split() for line in file(LIBGOTO_VERSION_FILE, "r").read().split("\n") if line.strip()]
             self.version_dict = dict([(key, value) for key, value in version_lines])
-            vers_dict = dict([(tuple([part.isdigit() and int(part) or part for part in key.split(".")]), key) for key in self.version_dict.keys()])
+            vers_dict = dict([(tuple([part.isdigit() and int(part) or part for part in key.split(".")]), key) for key in list(self.version_dict.keys())])
             vers_keys = sorted(vers_dict.keys())
             self.highest_version = vers_dict[vers_keys[-1]]
         else:
@@ -147,11 +147,11 @@ class my_opt_parser(optparse.OptionParser):
                     self.options.max_threads
                 ),
                 "version info:",
-                "compiler settings: %s" % ", ".join(["%s=%s" % (key, value) for key, value in self.compiler_dict.iteritems()]),
-                "add_path_dict    : %s" % ", ".join(["%s=%s:$%s" % (key, ":".join(value), key) for key, value in self.add_path_dict.iteritems()])
+                "compiler settings: %s" % ", ".join(["%s=%s" % (key, value) for key, value in self.compiler_dict.items()]),
+                "add_path_dict    : %s" % ", ".join(["%s=%s:$%s" % (key, ":".join(value), key) for key, value in self.add_path_dict.items()])
             ] + [
                 "%s:\n%s" % (key, "\n".join(["    %s" % (line.strip()) for line in value.split("\n")])) for key, value in
-                self.compiler_version_dict.iteritems()
+                self.compiler_version_dict.items()
             ]
         )
 
@@ -162,7 +162,7 @@ class my_opt_parser(optparse.OptionParser):
                                   "CXX": "g++",
                                   "F77": "gfortran",
                                   "FC": "gfortran"}
-            stat, out = commands.getstatusoutput("gcc --version")
+            stat, out = subprocess.getstatusoutput("gcc --version")
             if stat:
                 raise ValueError("Cannot get Version from gcc (%d): %s" % (stat, out))
             self.short_version = out.split("\n")[0].split()[2]
@@ -197,12 +197,12 @@ class my_opt_parser(optparse.OptionParser):
                 self.compiler_dict = {"CC": "pathcc",
                                       "CXX": "pathCC",
                                       "F77": "pathf95"}
-                stat, pathf95_out = commands.getstatusoutput("%s/bin/pathf95 -dumpversion" % (self.options.fcompiler_path))
+                stat, pathf95_out = subprocess.getstatusoutput("%s/bin/pathf95 -dumpversion" % (self.options.fcompiler_path))
                 if stat:
                     raise ValueError("Cannot get Version from pathf95 (%d): %s" % (stat, pathf95_out))
                 self.short_version = pathf95_out.split("\n")[0]
                 self.compiler_version_dict = {"pathf95": pathf95_out}
-                stat, pathcc_out = commands.getstatusoutput("%s/bin/pathcc -dumpversion" % (self.options.fcompiler_path))
+                stat, pathcc_out = subprocess.getstatusoutput("%s/bin/pathcc -dumpversion" % (self.options.fcompiler_path))
                 if stat:
                     raise ValueError("Cannot get Version from pathcc (%d): %s" % (stat, pathcc_out))
                 self.compiler_version_dict = {"pathf95": pathf95_out,
@@ -230,19 +230,19 @@ class build_task(object):
         act_dir = os.getcwd()
         self.start_time = time.time()
         os.chdir(self.work_dir)
-        print "Calling command %s (directory: %s)" % (self.command, self.work_dir)
+        print("Calling command %s (directory: %s)" % (self.command, self.work_dir))
         sp_obj = subprocess.Popen(self.command.split(), 0, None, None, subprocess.PIPE, subprocess.STDOUT)
         out_lines = []
         while True:
             stat = sp_obj.poll()
             while True:
                 try:
-                    new_lines = sp_obj.stdout.next()
+                    new_lines = next(sp_obj.stdout)
                 except StopIteration:
                     break
                 else:
                     if self.verbose:
-                        print new_lines,
+                        print(new_lines, end=' ')
                     if type(new_lines) is list:
                         self.out_lines.extend(new_lines)
                     else:
@@ -269,13 +269,13 @@ class goto_builder(object):
                         self.compile_ok = True
                         self._remove_tempdir()
         if not self.compile_ok:
-            print "Not removing temporary directory %s" % (self.tempdir)
+            print("Not removing temporary directory %s" % (self.tempdir))
 
     def _init_tempdir(self):
         self.tempdir = tempfile.mkdtemp("_goto")
 
     def _remove_tempdir(self):
-        print "Removing temporary directories"
+        print("Removing temporary directories")
         shutil.rmtree(self.tempdir)
         try:
             os.rmdir(self.tempdir)
@@ -285,24 +285,24 @@ class goto_builder(object):
     def _untar_source(self):
         tar_source = self.parser.version_dict[self.parser.options.goto_version]
         if not os.path.isfile(tar_source):
-            print "Cannot find libgoto source %s" % (tar_source)
+            print("Cannot find libgoto source %s" % (tar_source))
             success = False
         else:
-            print "Extracting tarfile %s ..." % (tar_source),
+            print("Extracting tarfile %s ..." % (tar_source), end=' ')
             tar_file = tarfile.open(tar_source, "r")
             tar_file.extractall(self.tempdir)
             tar_file.close()
-            print "done"
+            print("done")
             success = True
         return success
 
     def _build_makefile_rule(self):
         self.orig_rulefile_name = "%s/GotoBLAS/Makefile.rule" % (self.tempdir)
         if not os.path.isfile(self.orig_rulefile_name):
-            print "Cannot find %s" % (self.orig_rulefile_name)
+            print("Cannot find %s" % (self.orig_rulefile_name))
             success = False
         else:
-            print "Modifying Makefile.rule"
+            print("Modifying Makefile.rule")
             rule_lines = [line for line in file(self.orig_rulefile_name, "r").read().split("\n") if line.rstrip() and not line.lstrip().startswith("#")]
             parser_options = self.parser.options
             pre_new_rules = [("C_COMPILER", parser_options.ccompiler),
@@ -331,7 +331,7 @@ class goto_builder(object):
         self.time_dict, self.log_dict = ({}, {})
         success = True
         act_dir = os.getcwd()
-        for path_name, path_add_value in self.parser.add_path_dict.iteritems():
+        for path_name, path_add_value in self.parser.add_path_dict.items():
             os.environ[path_name] = "%s:%s" % (":".join(path_add_value), os.environ.get(path_name, ""))
         for command, act_dir, time_name in [("make -j %d" % (num_cores), "%s/GotoBLAS" % (self.tempdir), "make"),
                                             ("make so", "%s/GotoBLAS/exports" % (self.tempdir), "make so"),
@@ -346,12 +346,12 @@ class goto_builder(object):
             self.time_dict[time_name] = b_task.run_time
             self.log_dict[time_name] = "".join(b_task.out_lines)
             if b_task.state:
-                print "Something went wrong (%d):" % (b_task.state)
+                print("Something went wrong (%d):" % (b_task.state))
                 if not self.parser.options.verbose:
-                    print "".join(b_task.out_lines)
+                    print("".join(b_task.out_lines))
                 success = False
             else:
-                print "done, took %s" % (logging_tools.get_diff_time_str(self.time_dict[time_name]))
+                print("done, took %s" % (logging_tools.get_diff_time_str(self.time_dict[time_name])))
         os.chdir(act_dir)
         if success:
             libgoto_static_file_name, libgoto_dynamic_file_name = ("%s/GotoBLAS/libgoto.a" % (self.tempdir),
@@ -362,12 +362,12 @@ class goto_builder(object):
             if os.path.isfile(libgoto_static_file_name) and os.path.isfile(libgoto_dynamic_file_name):
                 success = True
             else:
-                print "Cannot find library %s" % (libgoto_static_file_name)
+                print("Cannot find library %s" % (libgoto_static_file_name))
                 success = False
         return success
 
     def package_it(self):
-        print "Packaging ..."
+        print("Packaging ...")
         width = self.parser.options.use_64_bit and "64" or "32"
         libgoto_info_str = "%s-%s-%s-%s%s" % (self.parser.cpu_id,
                                               self.parser.options.fcompiler,
@@ -386,7 +386,7 @@ class goto_builder(object):
             sep_str
         ] + self.parser.get_compile_options().split("\n") + [
             "Compile times: %s" % (
-                ", ".join(["%s: %s" % (key, logging_tools.get_diff_time_str(self.time_dict[key])) for key in self.time_dict.keys()])
+                ", ".join(["%s: %s" % (key, logging_tools.get_diff_time_str(self.time_dict[key])) for key in list(self.time_dict.keys())])
             ),
             sep_str,
             ""
@@ -395,7 +395,7 @@ class goto_builder(object):
             readme_lines.extend(
                 [
                     "Compile logs:"
-                ] + sum([["%s:" % (key)] + self.log_dict[key].split("\n") + [sep_str] for key in self.log_dict.keys()], []))
+                ] + sum([["%s:" % (key)] + self.log_dict[key].split("\n") + [sep_str] for key in list(self.log_dict.keys())], []))
         libgoto_static_file_name, libgoto_dynamic_file_name = ("%s/GotoBLAS/libgoto.a" % (self.tempdir),
                                                                "/dynamic_not_found")
         file("%s/info" % (self.tempdir), "w").write("\n".join(readme_lines))
@@ -431,12 +431,12 @@ class goto_builder(object):
         new_p.write_specfile(content)
         new_p.build_package()
         if new_p.build_ok:
-            print "Build successfull, package locations:"
-            print new_p.long_package_name
-            print new_p.src_package_name
+            print("Build successfull, package locations:")
+            print(new_p.long_package_name)
+            print(new_p.src_package_name)
             success = True
         else:
-            print "Something went wrong, please check tempdir %s" % (self.tempdir)
+            print("Something went wrong, please check tempdir %s" % (self.tempdir))
             success = False
         return success
 
@@ -444,7 +444,7 @@ class goto_builder(object):
 def main():
     my_parser = my_opt_parser()
     my_parser.parse()
-    print my_parser.get_compile_options()
+    print(my_parser.get_compile_options())
     my_builder = goto_builder(my_parser)
     my_builder.do_it()
 

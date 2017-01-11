@@ -51,10 +51,10 @@ class handler(SNMPHandler):
             my_nd_dict = {_nd.snmp_idx: _nd for _nd in my_nds if _nd.snmp_idx}
             self.log("found {}".format(logging_tools.get_plural("netdevice", len(my_nds))))
             # reorder dict, interim dict
-            _mac_dict_ir = reorder_dict(result_dict.values()[0])
+            _mac_dict_ir = reorder_dict(list(result_dict.values())[0])
             # rewrite dict, only use entries where status == 3 (== learned)
             _mac_dict = {}
-            for _key, _value in _mac_dict_ir.iteritems():
+            for _key, _value in _mac_dict_ir.items():
                 if set(_value.keys()) & {2, 3} == {2, 3}:
                     if _value.get(3, None) == 3:
                         _mac_dict[
@@ -67,10 +67,10 @@ class handler(SNMPHandler):
                 else:
                     self.log("some keys missing in {}".format(str(_value)), logging_tools.LOG_LEVEL_ERROR)
             # dict now has the form MAC Adress -> snmp idx
-            self.log("MAC forward dict has {}".format(logging_tools.get_plural("entry", len(_mac_dict.keys()))))
+            self.log("MAC forward dict has {}".format(logging_tools.get_plural("entry", len(list(_mac_dict.keys())))))
             _nd_dict = {
                 _nd.macaddr: _nd for _nd in netdevice.objects.filter(
-                    Q(macaddr__in=_mac_dict.keys())
+                    Q(macaddr__in=list(_mac_dict.keys()))
                 ).select_related(
                     "device"
                 ).prefetch_related(
@@ -88,8 +88,8 @@ class handler(SNMPHandler):
                             "MAC {} (snmp_idx {:d}) -> netdevice '{}' on device '{}', current: {}".format(
                                 _mac,
                                 _snmp_idx,
-                                unicode(_nd),
-                                unicode(_nd.device),
+                                str(_nd),
+                                str(_nd.device),
                                 logging_tools.get_plural("peer", len(s_peers) + len(d_peers)),
                             )
                         )
@@ -98,8 +98,8 @@ class handler(SNMPHandler):
                             if _snmp_idx in my_nd_dict:
                                 self.log(
                                     "creating new peer from '{}' to '{}'".format(
-                                        unicode(my_nd_dict[_snmp_idx]),
-                                        unicode(_nd),
+                                        str(my_nd_dict[_snmp_idx]),
+                                        str(_nd),
                                     )
                                 )
                                 _added += 1

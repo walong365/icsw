@@ -22,7 +22,7 @@
 
 """ transform local_settings, uuid and db.cf to config_store(s) """
 
-from __future__ import print_function, unicode_literals
+
 
 import os
 import stat
@@ -144,7 +144,7 @@ def main():
     if not config_store.ConfigStore.exists(GEN_CS_NAME):
         # migrate
         new_store = config_store.ConfigStore(GEN_CS_NAME, access_mode=config_store.AccessModeEnum.GLOBAL)
-        for _key, _value in get_old_local_settings().iteritems():
+        for _key, _value in get_old_local_settings().items():
             new_store[_key] = _value
         new_store.write()
     new_store = config_store.ConfigStore(GEN_CS_NAME)

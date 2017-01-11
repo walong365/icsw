@@ -21,7 +21,7 @@
 #
 
 import sys
-import commands
+import subprocess
 from initat.tools import logging_tools
 import xml
 import xml.dom.minidom
@@ -95,7 +95,7 @@ class job(object):
         self.__queue = q
     def set_group(self, u_dict):
         group_found = False
-        for ul_name, ul_stuff in u_dict.iteritems():
+        for ul_name, ul_stuff in u_dict.items():
             if self.__owner in ul_stuff["users"]:
                 self.__group = ul_name
                 group_found = True
@@ -111,9 +111,9 @@ class job(object):
         return self.__owner
 
 def get_user_dict():
-    user_dict = dict([(x.strip(), {"users" : []}) for x in commands.getstatusoutput("qconf -sul")[1].split("\n") + ["unknown"]])
-    for ul_name in user_dict.keys():
-        stat, out = commands.getstatusoutput("qconf -su %s" % (ul_name))
+    user_dict = dict([(x.strip(), {"users" : []}) for x in subprocess.getstatusoutput("qconf -sul")[1].split("\n") + ["unknown"]])
+    for ul_name in list(user_dict.keys()):
+        stat, out = subprocess.getstatusoutput("qconf -su %s" % (ul_name))
         if not stat:
             act_lines = out.split("\n")
             new_lines = []
@@ -141,12 +141,12 @@ def main():
     while True:
         inner_loop_counter += 1
         if inner_loop_counter > check_user_dict_every:
-            print "Checking user_dict"
+            print("Checking user_dict")
             user_dict = get_user_dict()
         # add hold_list (queue -> groups to hold)
         hold_dict = {"pom"  : ["biostat", "seds", "unknown"],
                      "bssd" : ["pom", "unknown"]}
-        stat, out = commands.getstatusoutput("qstat -xml -f -r")
+        stat, out = subprocess.getstatusoutput("qstat -xml -f -r")
         xml_doc = xml.dom.minidom.parseString(out)
         # find job_info entity
         sge_node = xml_doc.getElementsByTagName("job_info")[0]
@@ -176,12 +176,12 @@ def main():
         for wait_job in job_wait_list:
             if not wait_job.get_queue_request():
                 wait_job.set_action("h", "no default-queue set")
-        for q_name, u_lists in hold_dict.iteritems():
-            if hold_dict.has_key(q_name):
+        for q_name, u_lists in hold_dict.items():
+            if q_name in hold_dict:
                 hold_user_list = hold_dict[q_name]
                 for wait_job in job_wait_list:
                     j_q_req, j_group = (wait_job.get_queue_request(), wait_job.get_group())
-                    if q_name == j_q_req and q_dict.has_key(j_q_req):
+                    if q_name == j_q_req and j_q_req in q_dict:
                         q_stuff = q_dict[j_q_req]
                         #print "*", q_name, wait_job.get_job_id(), wait_job.get_owner_group_info(), j_group in hold_user_list
                         if j_group in hold_user_list:
@@ -194,7 +194,7 @@ def main():
     ##                     else:
     ##                         wait_job.set_action("h", "requested queue %s is full" % (q_name))
         # hold or unhold jobs
-        for q_name, q_stuff in q_dict.iteritems():
+        for q_name, q_stuff in q_dict.items():
             if q_stuff["free_slots"] and not q_stuff["jobs_waiting_allowed"]:
                 # unhold all not_allowed jobs
                 for wait_job in q_stuff["jobs_waiting_not_allowed"]:
@@ -216,17 +216,17 @@ def main():
             elif action == "u" and "h" in wait_job.get_state():
                 unhold_dict[wait_job.get_full_job_id()] = (wait_job, why)
         if hold_dict:
-            hold_list = hold_dict.keys()
+            hold_list = list(hold_dict.keys())
             hold_list.sort()
-            print "%s to hold: %s" % (logging_tools.get_plural("Job", len(hold_list)),
-                                      ", ".join(["%s (%s): %s" % (x, hold_dict[x][0].get_owner_group_info(), hold_dict[x][1]) for x in hold_list]))
-            commands.getstatusoutput("qhold -h s %s" % (" ".join(hold_list)))
+            print("%s to hold: %s" % (logging_tools.get_plural("Job", len(hold_list)),
+                                      ", ".join(["%s (%s): %s" % (x, hold_dict[x][0].get_owner_group_info(), hold_dict[x][1]) for x in hold_list])))
+            subprocess.getstatusoutput("qhold -h s %s" % (" ".join(hold_list)))
         if unhold_dict:
-            unhold_list = unhold_dict.keys()
+            unhold_list = list(unhold_dict.keys())
             unhold_list.sort()
-            print "%s to unhold: %s" % (logging_tools.get_plural("Job", len(unhold_list)),
-                                        ", ".join(["%s (%s): %s" % (x, unhold_dict[x][0].get_owner_group_info(), unhold_dict[x][1]) for x in unhold_list]))
-            commands.getstatusoutput("qrls -h s %s" % (" ".join(unhold_list)))
+            print("%s to unhold: %s" % (logging_tools.get_plural("Job", len(unhold_list)),
+                                        ", ".join(["%s (%s): %s" % (x, unhold_dict[x][0].get_owner_group_info(), unhold_dict[x][1]) for x in unhold_list])))
+            subprocess.getstatusoutput("qrls -h s %s" % (" ".join(unhold_list)))
         time.sleep(inner_loop_time)
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@
 #
 """ pinger support code """
 
-from __future__ import unicode_literals, print_function
+
 
 import time
 
@@ -40,7 +40,7 @@ class ResultStream(object):
     def __repr__(self):
         return "{}, {}".format(
             logging_tools.get_plural("element", len(self.results)),
-            ", ".join([unicode(_val) for _val in self.results]),
+            ", ".join([str(_val) for _val in self.results]),
         )
 
     def __getitem__(self, idx):
@@ -67,7 +67,7 @@ class HostStatusInfo(object):
         )
 
     def __repr__(self):
-        return unicode(self)
+        return str(self)
 
 
 class PingInfo(object):
@@ -95,7 +95,7 @@ class DSDevice(object):
         self.pk = dev.pk
         self.uuid = dev.uuid
         self.boot_uuid = dev.get_boot_uuid()
-        self.full_name = unicode(dev)
+        self.full_name = str(dev)
         self.uuids = [self.pk, self.uuid, self.boot_uuid]
         # dict of IPs
         self.ip_dict = None
@@ -120,7 +120,7 @@ class DSDevice(object):
             key: (
                 value.network.network_type.identifier,
                 value.network.identifier
-            ) for key, value in ip_dict.iteritems() if value.network.network_type.identifier not in ["s", "l"]
+            ) for key, value in ip_dict.items() if value.network.network_type.identifier not in ["s", "l"]
         }
         if prev_dict is None:
             _prev_id_str = ""
@@ -145,7 +145,7 @@ class DSDevice(object):
             # when no valid routes are found between mother and device
             return []
         else:
-            return self.ip_dict.keys()
+            return list(self.ip_dict.keys())
 
     def get_hoststatus_uuid(self, ip):
         if ip in self.ip_dict:
@@ -310,7 +310,7 @@ class DeviceState(object):
                 self.__devices[_new_id] = _new_dsd
             self.log(
                 "added new device {} ({})".format(
-                    unicode(dev),
+                    str(dev),
                     ", ".join([str(_val) for _val in _new_dsd.uuids]),
                 )
             )

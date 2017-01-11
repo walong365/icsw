@@ -75,6 +75,6 @@ if __name__ == "__main__":
                               no_base64=args.no_base64)
 
     if isinstance(result, etree._Element):
-        print etree.tostring(result, pretty_print=True)
+        print(etree.tostring(result, pretty_print=True))
     else:
-        print result
+        print(result)

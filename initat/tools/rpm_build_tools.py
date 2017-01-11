@@ -18,10 +18,10 @@
 #
 """ classes for building rpm-packages """
 
-from __future__ import unicode_literals, print_function
+
 
 import argparse
-import commands
+import subprocess
 import os
 import pwd
 import stat
@@ -172,7 +172,7 @@ class build_package(object):
         self["doc_dirs"] = ["man", "doc", "example", "examples"]
         self["inst_options"] = " -p -o root -g root "
         self["inst_binary"] = "install"
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self[key] = value
         self._set_package_file_names()
 
@@ -336,7 +336,7 @@ class build_package(object):
             script_key = "%s_script" % (script_type)
             if script_key in self:
                 script_content = self[script_key]
-                if isinstance(script_content, basestring):
+                if isinstance(script_content, str):
                     script_content = script_content.split("\n")
                 spec_contents.extend(
                     [
@@ -387,7 +387,7 @@ class build_package(object):
                 self.tgz_file_name,
                 (" ".join(tgz_files[:num_sim])).replace("$", "\$"),
             )
-            c_stat, c_out = commands.getstatusoutput(tar_com)
+            c_stat, c_out = subprocess.getstatusoutput(tar_com)
             if c_stat:
                 print(
                     " *** Error for creating tar-file (%d): %s" % (
@@ -398,11 +398,11 @@ class build_package(object):
             else:
                 print(".")
             tgz_files = tgz_files[num_sim:]
-        print
+        print()
 
     def build_package(self):
         print("Building package...")
-        stat, out = commands.getstatusoutput(
+        stat, out = subprocess.getstatusoutput(
             "%s --target %s-init.at\\\\\ Informationstechnologie\\\\\ GmbH-Linux -ba %s" % (
                 self.rpm_build_com,
                 self["arch"],
@@ -551,7 +551,7 @@ class file_content_list(object):
                         logging_tools.get_size_str(sum(files_found), long_format=True)
                     )
                 )
-            if sum([len(e_list) for e_list in excl_dict.values()]):
+            if sum([len(e_list) for e_list in list(excl_dict.values())]):
                 print(
                     "\nexclude info for {}: {}\n".format(
                         start_point,
@@ -560,7 +560,7 @@ class file_content_list(object):
                                 "{}: {:d}".format(
                                     key,
                                     len(value)
-                                ) for key, value in excl_dict.iteritems()
+                                ) for key, value in excl_dict.items()
                             ]
                         )
                     )

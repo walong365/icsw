@@ -20,9 +20,9 @@
 
 """ IPMI sensor readings """
 
-from __future__ import print_function, unicode_literals
 
-import commands
+
+import subprocess
 import subprocess
 import time
 
@@ -128,7 +128,7 @@ class _general(hm_classes.hm_module):
             self.log("trying to load ipmi kernel modules")
             for kern_mod in ["ipmi_si", "ipmi_devintf"]:
                 cmd = "{} {}".format(mp_command, kern_mod)
-                c_stat, c_out = commands.getstatusoutput(cmd)
+                c_stat, c_out = subprocess.getstatusoutput(cmd)
                 self.log(
                     "calling '{}' gave ({:d}): {}".format(
                         cmd,
@@ -282,7 +282,7 @@ class ipmi_sensor_command(hm_classes.hm_command):
                     out_list.append(v_list)
                 return limits.mon_STATE_OK, "found {}:\n{}".format(
                     logging_tools.get_plural("IPMI sensor", len(keys)),
-                    unicode(out_list)
+                    str(out_list)
                 )
         else:
             return limits.mon_STATE_WARNING, "no IPMI sensors found"

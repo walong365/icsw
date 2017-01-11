@@ -17,7 +17,7 @@
 #
 """ cluster-server, capability process """
 
-from __future__ import unicode_literals, print_function
+
 
 import importlib
 import inspect
@@ -128,7 +128,7 @@ class CapabilityProcess(threading_tools.process_obj):
                         self.log(
                             "capability {} is enabled on {}".format(
                                 cap_name,
-                                unicode(_sql_info.effective_device),
+                                str(_sql_info.effective_device),
                             )
                         )
                     else:
@@ -202,7 +202,7 @@ class CapabilityProcess(threading_tools.process_obj):
         for cap_name in self.__cap_list:
             self.__server_cap_dict[cap_name](cur_time, drop_com, mach_vectors)
         self.add_ova_statistics(cur_time, drop_com)
-        self.vector_socket.send_unicode(unicode(drop_com))
+        self.vector_socket.send_unicode(str(drop_com))
         # print drop_com.pretty_print()
         for _mv in mach_vectors:
             try:

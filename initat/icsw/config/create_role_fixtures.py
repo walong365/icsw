@@ -19,7 +19,7 @@
 #
 """ creates fixtures for noctua """
 
-from __future__ import unicode_literals, print_function
+
 
 import netifaces
 import os

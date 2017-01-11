@@ -19,7 +19,7 @@
 #
 """ config part of md-config-server """
 
-from __future__ import unicode_literals, print_function
+
 
 from initat.cluster.backbone.models import mon_device_templ, mon_service_templ
 from initat.tools import logging_tools
@@ -41,8 +41,8 @@ class MonDeviceTemplates(dict):
                 self.__default = dev_templ
         self.log(
             "Found {} ({})".format(
-                logging_tools.get_plural("device_template", len(self.keys())),
-                ", ".join([cur_dt.name for cur_dt in self.itervalues()])
+                logging_tools.get_plural("device_template", len(list(self.keys()))),
+                ", ".join([cur_dt.name for cur_dt in self.values()])
             )
         )
         if self.__default:
@@ -50,8 +50,8 @@ class MonDeviceTemplates(dict):
                 "Found default device_template named '{}'".format(self.__default.name)
             )
         else:
-            if self.keys():
-                self.__default = self.values()[0]
+            if list(self.keys()):
+                self.__default = list(self.values())[0]
                 self.log(
                     "No default device_template found, using '{}'".format(self.__default.name),
                     logging_tools.LOG_LEVEL_WARN
@@ -67,7 +67,7 @@ class MonDeviceTemplates(dict):
         return self.__default and True or False
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__build_proc.log(u"[DevT] {}".format(what), level)
+        self.__build_proc.log("[DevT] {}".format(what), level)
 
     def __getitem__(self, key):
         act_key = key or self.__default.pk
@@ -75,7 +75,7 @@ class MonDeviceTemplates(dict):
             self.log(
                 "key {} not known, using default {} ({:d})".format(
                     str(act_key),
-                    unicode(self.__default),
+                    str(self.__default),
                     self.__default.pk,
                 ),
                 logging_tools.LOG_LEVEL_ERROR
@@ -112,12 +112,12 @@ class MonServiceTemplates(dict):
             self[srv_templ.pk] = srv_templ
             self[srv_templ.name] = srv_templ
             srv_templ.contact_groups = list(set(srv_templ.mon_contactgroup_set.all().values_list("name", flat=True)))
-        if self.keys():
-            self.__default = self.keys()[0]
+        if list(self.keys()):
+            self.__default = list(self.keys())[0]
         self.log(
             "Found {} ({})".format(
-                logging_tools.get_plural("device_template", len(self.keys())),
-                ", ".join([cur_v.name for cur_v in self.values()])
+                logging_tools.get_plural("device_template", len(list(self.keys()))),
+                ", ".join([cur_v.name for cur_v in list(self.values())])
             )
         )
 
@@ -126,7 +126,7 @@ class MonServiceTemplates(dict):
         return True
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__build_proc.log(u"[SrvT] {}".format(what), level)
+        self.__build_proc.log("[SrvT] {}".format(what), level)
 
     def __getitem__(self, key):
         act_key = key or self.__default.pk
@@ -134,7 +134,7 @@ class MonServiceTemplates(dict):
             self.log(
                 "key {} not known, using default {} ({:d})".format(
                     str(act_key),
-                    unicode(self.__default),
+                    str(self.__default),
                     self.__default.pk,
                 ),
                 logging_tools.LOG_LEVEL_ERROR

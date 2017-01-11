@@ -23,7 +23,7 @@
 
 """ XML constants for database definitions for license management """
 
-from __future__ import print_function, unicode_literals
+
 
 import logging
 

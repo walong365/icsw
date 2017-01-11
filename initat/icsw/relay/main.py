@@ -21,7 +21,7 @@
 functions for relay cstore handling
 """
 
-from __future__ import print_function, unicode_literals
+
 
 import re
 import sys
@@ -64,18 +64,18 @@ class HRSink(dict):
         _del = []
         if addr_list:
             # filter for address
-            for _uuid, _struct in self.iteritems():
+            for _uuid, _struct in self.items():
                 _keep = False
-                for _port, _list in _struct.iteritems():
+                for _port, _list in _struct.items():
                     for _tuple in _list:
                         if _tuple[2] in addr_list:
                             _keep = True
                 if not _keep:
                     _del.append(_uuid)
         elif self.opts.remove_unique:
-            for _uuid, _struct in self.iteritems():
-                if len(_struct.keys()) == 1:
-                    if len(_struct.values()[0]) == 1:
+            for _uuid, _struct in self.items():
+                if len(list(_struct.keys())) == 1:
+                    if len(list(_struct.values())[0]) == 1:
                         _del.append(_uuid)
         for _dk in _del:
             del self[_dk]
@@ -158,7 +158,7 @@ def reload_relay():
 def main(opts):
     store = ConfigStore(CS_NAME)
     sink = HRSink(opts)
-    for _key, _value in store.get_dict().iteritems():
+    for _key, _value in store.get_dict().items():
         sink.feed(_key, _value)
     _addr_list = [_entry.strip().lower() for _entry in opts.address.split(",") if _entry.strip()]
     sink.filter([])
@@ -177,7 +177,7 @@ def main(opts):
             )
         )
         _del_keys = []
-        for _key in store.keys():
+        for _key in list(store.keys()):
             _proto, _addr, _port = parse_key(_key)
             if opts.port and _port != opts.port:
                 continue

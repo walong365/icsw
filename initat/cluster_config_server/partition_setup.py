@@ -127,7 +127,7 @@ class partition_setup(object):
                         cur_part.fs_freq,
                         cur_part.fs_passno))
                 old_pnum = act_pnum
-            print "  creating partition info for partition_table '%s' (root_device %s, partition postfix is '%s')" % (pt_name, root_dev, part_pf)
+            print("  creating partition info for partition_table '%s' (root_device %s, partition postfix is '%s')" % (pt_name, root_dev, part_pf))
             if part_valid:
                 for sys_part in sys_partition.objects.filter(Q(partition_table=conf.conf_dict["device"].partition_table)):
                     fstab.append("%-20s %-10s %-10s %-10s %d %d" % (
@@ -150,9 +150,9 @@ class partition_setup(object):
                     (sfdisk, "sfdisk"),
                     (parted, "parted")
                 ]:
-                    print "Content of %s (%s):" % (name, logging_tools.get_plural("line", len(what)))
-                    for line_num, line in zip(xrange(len(what)), what):
-                        print " - %3d %s" % (line_num + 1, line)
+                    print("Content of %s (%s):" % (name, logging_tools.get_plural("line", len(what))))
+                    for line_num, line in zip(range(len(what)), what):
+                        print(" - %3d %s" % (line_num + 1, line))
             else:
                 raise ValueError("Partition-table %s is not valid" % (pt_name))
         else:
@@ -160,7 +160,7 @@ class partition_setup(object):
 
     def create_part_files(self, pinfo_dir):
         if self.fspart_dict:
-            for pn, pp in self.fspart_dict.iteritems():
+            for pn, pp in self.fspart_dict.items():
                 file("%s/%sparts" % (pinfo_dir, pn), "w").write("\n".join(pp + [""]))
             for file_name, content in [
                 ("rootpart", self.root_part),

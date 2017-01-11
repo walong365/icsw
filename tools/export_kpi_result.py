@@ -34,8 +34,8 @@ def main():
                 kpi_obj = kpi_objs[0]
                 if 'aggregated_tl' in kpi_obj:
                     tl = kpi_obj['aggregated_tl']
-                    print 'kpi', kpi
-                    print tl
+                    print('kpi', kpi)
+                    print(tl)
                     data = tl
                     ok_val = data.pop('Ok', 0)
                     warn_val = data.pop('Warning', 0)
@@ -46,7 +46,7 @@ def main():
 
                     format = lambda f: "{:.5f}".format(f)
 
-                    print 'writ'
+                    print('writ')
                     writer.writerow([kpi.name])
                     writer.writerow(["Month", "Ok", 'Warn', 'Critical', 'Undetermined'])
                     writer.writerow([

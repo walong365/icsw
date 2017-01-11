@@ -22,7 +22,7 @@
 
 """ A raw ICMP baseclass (icmp protocol), based on seafelt lib/icmp.py """
 
-from __future__ import unicode_literals, print_function
+
 
 import array
 import os
@@ -270,7 +270,7 @@ class icmp_destination_unreachable(icmp_datagram):
 class icmp_protocol(object):  # protocol.AbstractDatagramProtocol):
     def __init__(self, **kwargs):
         # start at seqno 32
-        self.echo_seqno = 32L
+        self.echo_seqno = 32
         self._log_errors = hasattr(self, "log")
         self.socket = None
         self.__last_key_error = None

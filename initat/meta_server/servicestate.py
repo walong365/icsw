@@ -22,9 +22,9 @@
 
 """ meta-server, ServiceState code """
 
-from __future__ import print_function, unicode_literals
 
-import commands
+
+import subprocess
 import os
 import sqlite3
 import time
@@ -152,7 +152,7 @@ class ServiceState(object):
         self._path = global_config["STATE_DIR"]
         if not os.path.isdir(self._path):
             os.mkdir(self._path)
-        os.chmod(self._path, 0700)
+        os.chmod(self._path, 0o700)
         self._db_path = os.path.join(self._path, "servicestate.sqlite")
         self.init_sas()
         self._init_states()
@@ -229,7 +229,7 @@ class ServiceState(object):
     def enable_shutdown_mode(self):
         self.log("enable shutdown mode")
         self.__shutdown = True
-        for _key in self.__target_dict.iterkeys():
+        for _key in self.__target_dict.keys():
             self.__target_dict[_key] = constants.TARGET_STATE_STOPPED
 
     def check_schema(self, conn):
@@ -281,7 +281,7 @@ class ServiceState(object):
             _entry[0]: _entry[1] for _entry in conn.execute("SELECT name, sql FROM sqlite_master WHERE type='table';").fetchall()
         }
         # step one: create missing tables
-        for _t_name, _t_struct in _table_dict.iteritems():
+        for _t_name, _t_struct in _table_dict.items():
             _sql_str = "CREATE TABLE {}({})".format(
                 _t_name,
                 ", ".join(_t_struct),
@@ -311,7 +311,7 @@ class ServiceState(object):
             self.log("SQL schema version found ({:d}) matches current version".format(SQL_SCHEMA_VERSION))
         if False:
             # old code, replaced with schmema_version upgrade path
-            for _t_name, _t_struct in _table_dict.iteritems():
+            for _t_name, _t_struct in _table_dict.items():
                 _sql_str = "CREATE TABLE {}({})".format(
                     _t_name,
                     ", ".join(_t_struct),
@@ -431,7 +431,7 @@ class ServiceState(object):
                     _srv,
                     "on" if enable else "off",
                 )
-            _stat, _out = commands.getstatusoutput(_cmdline)
+            _stat, _out = subprocess.getstatusoutput(_cmdline)
             _lines = _out.split("\n")
             self.log(
                 "{} gave [{:d}] {}".format(
@@ -763,7 +763,7 @@ class ServiceState(object):
     def dependency_problem(self):
         # return two flags, Dependency issues when starting and Dependency issues when stopping
         _start, _stop = (False, False)
-        for _key, _struct in self.__dependency_problems.iteritems():
+        for _key, _struct in self.__dependency_problems.items():
             if _struct["start"]:
                 _start = True
             if _struct["stop"]:

@@ -19,7 +19,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-from __future__ import print_function, unicode_literals
+
 
 import collections
 import json
@@ -254,7 +254,7 @@ class GetEventLog(View):
                 entry_sections_merged = {}
                 for section_num, section in enumerate(entry['sections']):
                     # filter internal fields
-                    for k, v in section.iteritems():
+                    for k, v in section.items():
                         if k != '__icsw_ipmi_section_type':
                             entry_sections_merged[k] = v
                             # support grouping for section 1 (0 is local timestamp, so 1 is first ipmi)
@@ -266,7 +266,7 @@ class GetEventLog(View):
 
                 result_merged.append(entry_sections_merged)
 
-            keys_ordered = entry_keys.keys()
+            keys_ordered = list(entry_keys.keys())
             if include_device_info:
                 keys_ordered = ['Device'] + keys_ordered
 
@@ -274,7 +274,7 @@ class GetEventLog(View):
                 total_num=total_num,
                 keys_ordered=keys_ordered,
                 entries=result_merged,
-                grouping_keys=grouping_keys.keys()
+                grouping_keys=list(grouping_keys.keys())
             )
 
     class GetSystemLogEventLog(object):
@@ -337,7 +337,7 @@ class GetEventLog(View):
             keys = set()
             for entry in entries:  # exhaust cursor
                 # entry = db_row['entry']
-                keys.update(entry.iterkeys())
+                keys.update(iter(entry.keys()))
 
                 entry["line_datetime"] = entry["line_datetime"].strftime("%Y-%m-%d %H:%M:%S")
                 if include_device_info:
@@ -421,7 +421,7 @@ class GetEventLog(View):
             keys = set()
             for db_row in entries:  # exhaust cursor
                 entry = db_row['entry']
-                keys.update(entry.iterkeys())
+                keys.update(iter(entry.keys()))
 
                 if include_device_info:
                     entry['Device'] = device_name_lut.get(db_row['device_pk'])

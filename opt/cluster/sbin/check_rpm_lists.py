@@ -20,7 +20,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import print_function, unicode_literals
+
 
 import argparse
 
@@ -56,8 +56,8 @@ def main():
     my_com.close()
     rpm_dict_1 = server_command.decompress(result_1["*pkg_list"], pickle=True)
     rpm_dict_2 = server_command.decompress(result_2["*pkg_list"], pickle=True)
-    keys_1 = rpm_dict_1.keys()
-    keys_2 = rpm_dict_2.keys()
+    keys_1 = list(rpm_dict_1.keys())
+    keys_2 = list(rpm_dict_2.keys())
     keys_1.sort()
     keys_2.sort()
     missing_in_1 = [x for x in keys_2 if x not in keys_1]

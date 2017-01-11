@@ -21,7 +21,7 @@
 #
 """ logging tools, base code """
 
-from __future__ import unicode_literals, print_function
+
 
 import bz2
 import datetime
@@ -128,12 +128,12 @@ def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
     else:
         p_str = ""
     if fstr_len > 0:
-        f_str = u"{{:{:d}d}} ".format(fstr_len)
+        f_str = "{{:{:d}d}} ".format(fstr_len)
     elif fstr_len < 0:
-        f_str = u"{{:0{:d}d}} ".format(abs(fstr_len))
+        f_str = "{{:0{:d}d}} ".format(abs(fstr_len))
     else:
-        f_str = u"{:d} "
-    return u"{}{}{}".format(
+        f_str = "{:d} "
+    return "{}{}{}".format(
         (show_int and f_str.format(int(r_num))) or "",
         in_str[0:end_idx],
         p_str
@@ -141,7 +141,7 @@ def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
 
 
 def get_size_str(in_s, long_format=False, divider=1024, strip_spaces=False, long_version=True, per_second=False):
-    if isinstance(in_s, basestring):
+    if isinstance(in_s, str):
         _len_in_s = len(in_s)
     else:
         _len_in_s = in_s
@@ -187,7 +187,7 @@ def get_diff_time_str(diff_secs, **kwargs):
     if type(diff_secs) == datetime.timedelta:
         diff_secs = diff_secs.total_seconds()
     abs_diffs = abs(diff_secs)
-    is_int = type(abs_diffs) in [int, long]
+    is_int = type(abs_diffs) in [int, int]
     _long = kwargs.get("long", True)
     _secs = {
         True: "seconds",
@@ -366,9 +366,9 @@ class form_list(object):
         self.raw_mode = raw_mode
 
     def add_line(self, l_p):
-        if type(l_p) in [int, long]:
+        if type(l_p) in [int, int]:
             l_p = str(l_p)
-        if isinstance(l_p, basestring):
+        if isinstance(l_p, str):
             l_p = [l_p]
         self.lines.append(tuple(l_p))
 
@@ -378,8 +378,8 @@ class form_list(object):
     def set_format_string(self, row_idx, r_t="s", left="-", pre_string="", post_string="", min_size=0):
         if left == "-":
             left = "<"
-        if isinstance(row_idx, basestring):
-            row_idx = {v: k for k, v in self.header_dict.iteritems()}[row_idx]
+        if isinstance(row_idx, str):
+            row_idx = {v: k for k, v in self.header_dict.items()}[row_idx]
         if row_idx == -1:
             act_row_idx = self.act_row_idx + 1
         else:
@@ -396,7 +396,7 @@ class form_list(object):
 
     def __str__(self):
         if self.raw_mode:
-            out_lines = [";".join([self.header_dict.get(idx, "").strip() for idx in range(len(self.header_dict.keys()))])]
+            out_lines = [";".join([self.header_dict.get(idx, "").strip() for idx in range(len(list(self.header_dict.keys())))])]
             for l_p in self.lines:
                 out_lines.append(";".join([str(x).strip() for x in l_p]))
         else:
@@ -412,27 +412,27 @@ class form_list(object):
                 l_p_l = len(l_p)
                 if l_p_l < num_rows:
                     if l_p_l > 1:
-                        row_lens = [max(x, y) for x, y in zip(row_lens[:l_p_l - 1], [len(unicode(y)) for y in list(l_p[:-1])])] + row_lens[l_p_l - 1:]
+                        row_lens = [max(x, y) for x, y in zip(row_lens[:l_p_l - 1], [len(str(y)) for y in list(l_p[:-1])])] + row_lens[l_p_l - 1:]
                 else:
-                    row_lens = [max(x, y) for x, y in zip(row_lens, [len(unicode(y)) for y in list(l_p)])]
+                    row_lens = [max(x, y) for x, y in zip(row_lens, [len(str(y)) for y in list(l_p)])]
             # body format parts, header format parts
             b_f_parts, h_f_parts = ([], [])
             for idx in range(num_rows):
                 tp_str, lf_str, pre_str, post_str, min_len = self.form_dict.get(idx, ("s", "<", "", "", 0))
                 act_len = max(row_lens[idx], min_len, len(self.header_dict.get(idx, "")))
                 if tp_str.endswith("f") and tp_str.startswith("."):
-                    b_f_parts.append((u"{}{{:{}{:d}{}}}{}".format(pre_str, lf_str, act_len, tp_str, post_str)))
+                    b_f_parts.append(("{}{{:{}{:d}{}}}{}".format(pre_str, lf_str, act_len, tp_str, post_str)))
                 else:
-                    b_f_parts.append((u"{}{{:{}{:d}{}}}{}".format(pre_str, lf_str, act_len, tp_str, post_str)))
-                h_f_parts.append((u"{}{{:{}{:d}}}{}".format(pre_str, lf_str, act_len, post_str)))
+                    b_f_parts.append(("{}{{:{}{:d}{}}}{}".format(pre_str, lf_str, act_len, tp_str, post_str)))
+                h_f_parts.append(("{}{{:{}{:d}}}{}".format(pre_str, lf_str, act_len, post_str)))
             b_form_str_dict = {num_rows: self.col_separator.join(b_f_parts)}
             h_form_str_dict = {num_rows: self.col_separator.join(h_f_parts)}
             for idx in range(1, len(b_f_parts)):
-                b_form_str_dict[idx] = self.col_separator.join(b_f_parts[0:idx - 1] + [u"{}"])
-                h_form_str_dict[idx] = self.col_separator.join(h_f_parts[0:idx - 1] + [u"{}"])
+                b_form_str_dict[idx] = self.col_separator.join(b_f_parts[0:idx - 1] + ["{}"])
+                h_form_str_dict[idx] = self.col_separator.join(h_f_parts[0:idx - 1] + ["{}"])
             out_lines = []
             if self.header_dict:
-                headers = [self.header_dict.get(idx, "") for idx in range(len(self.header_dict.keys()))]
+                headers = [self.header_dict.get(idx, "") for idx in range(len(list(self.header_dict.keys())))]
                 out_lines.append((h_form_str_dict[len(headers)].format(*headers)).rstrip())
                 out_lines.append("-" * len(out_lines[-1]))
             for l_p in self.lines:
@@ -456,16 +456,16 @@ class form_entry(object):
         self.min_width = 0
         self.pre_str = ""
         self.post_str = ""
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             setattr(self, key, value)
         setattr(
             self,
             "content_type", {
                 str: "s",
-                unicode: "s",
+                str: "s",
                 type(None): "s",
                 int: "d",
-                long: "d",
+                int: "d",
                 float: "f",
                 datetime.date: "s",
                 datetime.datetime: "s",
@@ -483,7 +483,7 @@ class form_entry(object):
         return getattr(self, key)
 
     def min_len(self):
-        return max(len(unicode(self)), self.min_width)
+        return max(len(str(self)), self.min_width)
 
     def __str__(self):
         return self.form_str().format(self.content)
@@ -498,7 +498,7 @@ class form_entry(object):
         else:
             form_str = "s"
         if max_len is None:
-            form_str = u"{{:{}}}".format(form_str)
+            form_str = "{{:{}}}".format(form_str)
         else:
             if self.left:
                 _f = "<"
@@ -506,12 +506,12 @@ class form_entry(object):
                 _f = "^"
             else:
                 _f = ">"
-            form_str = u"{{:{}{:d}{}}}".format(
+            form_str = "{{:{}{:d}{}}}".format(
                 _f,
                 max_len,
                 form_str,
             )
-        return u"{}{}{}".format(self.pre_str, form_str, self.post_str)
+        return "{}{}{}".format(self.pre_str, form_str, self.post_str)
 
     def format(self, max_len):
         return self.form_str(max_len).format(self.content)
@@ -550,7 +550,7 @@ class NewFormList(object):
         [self.append(_line) for _line in add_list]
 
     def __str__(self):
-        return unicode(self)
+        return str(self)
 
     def get_da_map(self):
         return self.__da_map
@@ -608,7 +608,7 @@ class NewFormList(object):
         ]
         out_lines = []
         if self.__header_dict:
-            header_list = [self.__header_dict.get(idx, (True, "")) for idx in xrange(max_rows)]
+            header_list = [self.__header_dict.get(idx, (True, "")) for idx in range(max_rows)]
             form_str = self.__col_sep.join(
                 [
                     "{{:{}{:d}s}}".format(
@@ -649,7 +649,7 @@ class NewFormList(object):
                         ]
                     )
                 )
-            return "\n".join(map(lambda line: line.rstrip(), out_lines))
+            return "\n".join([line.rstrip() for line in out_lines])
 
     def _apply_da_map(self, entry, max_len):
         _str = entry.format(max_len)
@@ -697,8 +697,8 @@ def compress_list(ql, **kwargs):
             # no match found
             unmatch_list.append(q_e)
     nc_a = []
-    for pef in nc_dict.keys():
-        for pof in nc_dict[pef].keys():
+    for pef in list(nc_dict.keys()):
+        for pof in list(nc_dict[pef].keys()):
             act_l = nc_dict[pef][pof]
             s_idx = None
             for e_idx in sorted(act_l.keys()):
@@ -762,10 +762,10 @@ def my_syslog(out_str, log_lev=LOG_LEVEL_OK, out=False):
     except:
         exc_info = sys.exc_info()
         error_str = "({}, {})".format(
-            unicode(exc_info[0]),
-            unicode(exc_info[1]),
+            str(exc_info[0]),
+            str(exc_info[1]),
         )
-        if type(out_str) == unicode:
+        if type(out_str) == str:
             syslog.syslog(
                 syslog.LOG_ERR | syslog.LOG_USER,
                 "error logging unicode ({}, len {:d}, log_type {:d})".format(
@@ -800,7 +800,7 @@ class my_formatter(logging.Formatter):
         if self.__max_line_length and len(message.msg) > self.__max_line_length + 20:
             left = len(message.msg) - self.__max_line_length
             if left > 4:
-                message.msg = u"{} ({:d} left)".format(message.msg[:self.__max_line_length], len(message.msg))
+                message.msg = "{} ({:d} left)".format(message.msg[:self.__max_line_length], len(message.msg))
         return logging.Formatter.format(self, message)
 
 
@@ -822,7 +822,7 @@ class logfile(logging.handlers.BaseRotatingHandler):
         do_rollover = False
         if self.__max_size > 0:
             try:
-                msg = u"{}\n".format(self.format(record))
+                msg = "{}\n".format(self.format(record))
             except:
                 msg = self.format(record) + "\n"
             try:
@@ -949,9 +949,9 @@ def list_to_struct(in_list, **kwargs):
                 _pfs.add((int(_pf), _pf))
                 _dict.setdefault(_pf, []).append(_value[len(_pf):])
             _pfs = sorted(list(_pfs))
-            if len(_pfs) > 1 and len(set(["".join(_val) for _val in _dict.itervalues()])) == 1:
+            if len(_pfs) > 1 and len(set(["".join(_val) for _val in _dict.values()])) == 1:
                 # all values are the same, return compressed list
-                return [("[{}]".format(compress_num_list([_int for _int, _val in _pfs])), list_to_struct(_dict.values()[0], **kwargs))]
+                return [("[{}]".format(compress_num_list([_int for _int, _val in _pfs])), list_to_struct(list(_dict.values())[0], **kwargs))]
             else:
                 _pfs = [_val for _int, _val in _pfs]
                 return [(_pf, list_to_struct(_dict[_pf], **kwargs)) for _pf in _pfs]
@@ -966,7 +966,7 @@ def struct_to_string(in_struct):
     _pf, _list = in_struct
     _r = []
     for _entry in _list:
-        if isinstance(_entry, basestring):
+        if isinstance(_entry, str):
             _r.append(_entry)
         else:
             _r.append(struct_to_string(_entry))

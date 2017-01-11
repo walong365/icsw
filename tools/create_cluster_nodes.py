@@ -20,7 +20,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import division
+
 
 import collections
 import os
@@ -86,7 +86,7 @@ NetDeviceInfo = collections.namedtuple("NetDeviceInfo", ("name", "mac", "iplist"
 
 
 def create_device(args, name, group, domain_tree_node, netdevices, bootserver):
-    print "Creating device {} with {} netdevices".format(name, len(netdevices))
+    print("Creating device {} with {} netdevices".format(name, len(netdevices)))
     dev = device(
         name=name,
         device_group=group,
@@ -167,7 +167,7 @@ def handle_csv(csv_reader, config, args):
     num_devices = len(lines)
 
     if not args.write_to_db:
-        print 'Not actually writing to db'
+        print('Not actually writing to db')
 
     for nth_device, line in enumerate(lines):
         name = line[CSV_NAME_COLUMN]
@@ -287,7 +287,7 @@ def handle_csv(csv_reader, config, args):
                 ).save()
 
             for ipmi_nd in ipmi_nds:
-                print 'adding ipmi peer info to {}'.format(ipmi_nd)
+                print('adding ipmi peer info to {}'.format(ipmi_nd))
                 for ipmi_switch_nd in ipmi_switches_nds:
                     pi = peer_information(
                         s_netdevice=ipmi_switch_nd,
@@ -300,7 +300,7 @@ def handle_csv(csv_reader, config, args):
                 if actual_nd.network_device_type == ib_netdevice_type:
                     devices_per_switch = int(math.ceil(num_devices / len(ib_switches_nds)))
                     id_of_switch = nth_device // devices_per_switch
-                    print 'adding ib peer info to {}, using ib switch no {}'.format(actual_nd, id_of_switch)
+                    print('adding ib peer info to {}, using ib switch no {}'.format(actual_nd, id_of_switch))
                     ib_switch_nd = ib_switches_nds[id_of_switch]
                     pi = peer_information(
                         s_netdevice=ib_switch_nd,
@@ -310,7 +310,7 @@ def handle_csv(csv_reader, config, args):
                         pi.save()
 
                 elif actual_nd.network_device_type == eth_netdevice_type:
-                    print 'adding eth peer info to {}'.format(actual_nd)
+                    print('adding eth peer info to {}'.format(actual_nd))
                     for dev_switch_nd in dev_switches_nds:
                         pi = peer_information(
                             s_netdevice=dev_switch_nd,
@@ -320,7 +320,7 @@ def handle_csv(csv_reader, config, args):
                             pi.save()
 
                 elif actual_nd.network_device_type == lo_netdevice_type:
-                    print 'adding lo peer info to {}'.format(actual_nd)
+                    print('adding lo peer info to {}'.format(actual_nd))
                     pi = peer_information(
                         s_netdevice=actual_nd,
                         d_netdevice=actual_nd,

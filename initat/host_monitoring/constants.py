@@ -22,7 +22,7 @@
 
 """ host-monitoring, with 0MQ and twisted support, constants """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 

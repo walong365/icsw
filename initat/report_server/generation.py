@@ -19,7 +19,7 @@
 #
 """ report-server, report part """
 
-from __future__ import print_function, unicode_literals
+
 
 import traceback
 import ast

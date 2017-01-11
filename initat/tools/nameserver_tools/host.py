@@ -19,7 +19,7 @@
 #
 """ generates zonefiles for nsX.init.at """
 
-from __future__ import unicode_literals, print_function
+
 
 from initat.tools import ipvx_tools
 from .functions import make_unqualified
@@ -152,6 +152,6 @@ class Host(object):
         self.short_name = self.name
         self.long_name = self.name
         if not self.long_name.endswith(zone.origin):
-            self.long_name = u"{}.{}".format(self.name, zone.origin)
+            self.long_name = "{}.{}".format(self.name, zone.origin)
         if self.short_name.endswith(zone.origin):
             self.short_name = make_unqualified(self.short_name[:-len(zone.origin)])

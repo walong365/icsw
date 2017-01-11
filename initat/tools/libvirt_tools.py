@@ -16,7 +16,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import time
@@ -286,7 +286,7 @@ class libvirt_connection(object):
         return self.__conn
 
     def keys(self):
-        return self.__inst_dict.keys()
+        return list(self.__inst_dict.keys())
 
     def __getitem__(self, key):
         return self.__inst_dict[key]

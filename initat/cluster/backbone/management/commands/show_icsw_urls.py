@@ -21,7 +21,7 @@
 #
 """ shows all URLS """
 
-from __future__ import unicode_literals, print_function
+
 
 import re
 
@@ -100,7 +100,7 @@ def get_urls():
             if hasattr(func, '__globals__'):
                 func_globals = func.__globals__
             elif hasattr(func, 'func_globals'):
-                func_globals = func.func_globals
+                func_globals = func.__globals__
             else:
                 func_globals = {}
 

@@ -19,7 +19,7 @@
 #
 """ generates zonefiles for nsX.init.at """
 
-from __future__ import unicode_literals, print_function
+
 
 from .functions import make_qualified, to_idna
 
@@ -55,7 +55,7 @@ class Network(object):
                 "found {:d} matching networks for {}: {}".format(
                     len(_res),
                     str(ip),
-                    ", ".join([unicode(_nw) for _new in _res])
+                    ", ".join([str(_nw) for _new in _res])
                 )
             )
         return _res[0] if _res else None

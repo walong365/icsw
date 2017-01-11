@@ -21,7 +21,7 @@
 #
 """ database setup for NOCTUA / CORVUS / NESTOR """
 
-from __future__ import unicode_literals, print_function
+
 
 import fnmatch
 import grp
@@ -70,7 +70,7 @@ class SetupLogger(object):
                 logging_tools.get_plural("arg", len(args)),
                 " [{}]".format(", ".join([str(_val) for _val in args])) if args else "",
                 logging_tools.get_plural("kwarg", len(kwargs)),
-                " [{}]".format(", ".join(kwargs.keys())) if kwargs else "",
+                " [{}]".format(", ".join(list(kwargs.keys()))) if kwargs else "",
             )
         )
         s_time = time.time()
@@ -163,7 +163,7 @@ def call_ext_programm(args, **kwargs):
 @SetupLogger
 def _input(in_str, default, **kwargs):
     _choices = kwargs.get("choices", [])
-    is_int = type(default) in [int, long]
+    is_int = type(default) in [int, int]
     if is_int:
         _choice_str = ", ".join(["{:d}".format(_val) for _val in sorted(_choices)])
         _def_str = "{:d}".format(default)
@@ -178,7 +178,7 @@ def _input(in_str, default, **kwargs):
 
     while sys.stdin.isatty():
         try:
-            _cur_inp = raw_input(
+            _cur_inp = input(
                 "{:<30s} : ".format(
                     "{} ({})".format(
                         in_str,
@@ -296,7 +296,7 @@ def create_db_cf(opts):
     if c_dict['_engine'] is None:
         c_dict['_engine'] = DEFAULT_ENGINE
 
-    all_parameters_forced = all(entry is not None for entry in c_dict.itervalues())
+    all_parameters_forced = all(entry is not None for entry in c_dict.values())
 
     connection_successful = False
     while not connection_successful:
@@ -486,7 +486,7 @@ def check_for_pre17(opts):
         for _dir in _move_dirs:
             os.rename(os.path.join(BACKBONE_DIR, ".{}".format(_dir)), os.path.join(BACKBONE_DIR, _dir))
         # restore migation files
-        for _key, _value in _mig_save_dict.iteritems():
+        for _key, _value in _mig_save_dict.items():
             file(_key, "w").write(_value)
 
 
@@ -835,7 +835,7 @@ def main(args):
     }
     if not all(DB_PRESENT.values()):
         print("missing databases layers:")
-        for _key in DB_PRESENT.keys():
+        for _key in list(DB_PRESENT.keys()):
             if not DB_PRESENT[_key]:
                 print(" {:6s} : {}".format(_key, DB_MAPPINGS[_key]))
     if not any(DB_PRESENT.values()):
@@ -875,7 +875,7 @@ def main(args):
                 setup_db_cf = False
             else:
                 _db_cf_f = config_store.ConfigStore(DB_ACCESS_CS_NAME, quiet=True, fix_prefix_on_read=False)
-                if not len(_db_cf_f.keys()):
+                if not len(list(_db_cf_f.keys())):
                     print("DB access file {} already exists but is empty, ignoring ...".format(DB_ACCESS_CS_NAME))
                     setup_db_cf = True
                 elif args.ignore_existing:

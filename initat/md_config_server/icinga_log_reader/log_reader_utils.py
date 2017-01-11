@@ -20,7 +20,7 @@
 
 # separated to enable flawless import from webfrontend
 
-from __future__ import unicode_literals
+
 
 __all__ = [
     "host_service_id_util",
@@ -109,5 +109,5 @@ class host_service_id_util(object):
                 pass
             else:
                 if log:
-                    log(u"invalid service description: {}".format(service_spec))
+                    log("invalid service description: {}".format(service_spec))
         return retval

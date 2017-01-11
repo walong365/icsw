@@ -17,7 +17,7 @@
 #
 """ modifies password for a given user """
 
-from __future__ import unicode_literals, print_function
+
 
 import base64
 import bz2
@@ -25,7 +25,7 @@ import bz2
 from django.contrib.auth import authenticate
 from django.db.models import Q
 
-import cs_base_class
+from . import cs_base_class
 from initat.cluster.backbone.models import user
 from initat.tools import server_command
 

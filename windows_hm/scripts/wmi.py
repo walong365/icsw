@@ -233,7 +233,7 @@ def handle_com_error (err=None):
     scode = signed_to_unsigned (scode)
     exception_string.append ("  Error in: %s" % source_of_error)
     exception_string.append ("  %s - %s" % (hex (scode), (error_description or "").strip ()))
-  for error_code, klass in WMI_EXCEPTIONS.items ():
+  for error_code, klass in list(WMI_EXCEPTIONS.items ()):
     if error_code in (hresult_code, scode):
       break
   else:
@@ -401,7 +401,7 @@ class _wmi_method:
         # If any keyword param supersedes a positional one,
         # it'll simply overwrite it.
         #
-        for k, v in kwargs.items ():
+        for k, v in list(kwargs.items ()):
           is_array = parameter_names.get (k)
           if is_array is None:
             raise AttributeError ("%s is not a valid parameter for %s" % (k, self.__doc__))
@@ -494,8 +494,8 @@ class _wmi_object:
       for m in ole_object.Methods_:
         self.methods[m.Name] = None
 
-      _set (self, "_properties", self.properties.keys ())
-      _set (self, "_methods", self.methods.keys ())
+      _set (self, "_properties", list(self.properties.keys ()))
+      _set (self, "_methods", list(self.methods.keys ()))
       _set (self, "qualifiers", dict ((q.Name, q.Value) for q in self.ole_object.Qualifiers_))
 
     except pywintypes.com_error:
@@ -585,8 +585,8 @@ class _wmi_object:
 
   def _getAttributeNames (self):
      """Return list of methods/properties for IPython completion"""
-     attribs = [str (x) for x in self.methods.keys ()]
-     attribs.extend ([str (x) for x in self.properties.keys ()])
+     attribs = [str (x) for x in list(self.methods.keys ())]
+     attribs.extend ([str (x) for x in list(self.properties.keys ())])
      return attribs
 
   def _get_keys (self):
@@ -630,7 +630,7 @@ class _wmi_object:
     """
     if kwargs:
       try:
-        for attribute, value in kwargs.items ():
+        for attribute, value in list(kwargs.items ()):
           if attribute in self.properties:
             self._cached_properties (attribute).set (value)
           else:
@@ -813,7 +813,7 @@ class _wmi_class (_wmi_object):
       field_list = ", ".join (fields) or "*"
       wql = "SELECT " + field_list + " FROM " + self._class_name
       if where_clause:
-        wql += " WHERE " + " AND ". join (["%s = %r" % (k, str (v)) for k, v in where_clause.items ()])
+        wql += " WHERE " + " AND ". join (["%s = %r" % (k, str (v)) for k, v in list(where_clause.items ())])
       return self._namespace.query (wql, self, fields)
     except pywintypes.com_error:
       handle_com_error ()
@@ -1018,7 +1018,7 @@ class _wmi_namespace:
     """
     wql = "SELECT %s FROM %s" % (fields and ", ".join (fields) or "*", wmi_classname)
     if where_clause:
-      wql += " WHERE " + " AND ".join (["%s = '%s'" % (k, v) for k, v in where_clause.items()])
+      wql += " WHERE " + " AND ".join (["%s = '%s'" % (k, v) for k, v in list(where_clause.items())])
     return [_wmi_result (obj, fields) for obj in self._raw_query(wql)]
 
   def fetch_as_lists (self, wmi_classname, fields, **where_clause):
@@ -1028,7 +1028,7 @@ class _wmi_namespace:
     """
     wql = "SELECT %s FROM %s" % (", ".join (fields), wmi_classname)
     if where_clause:
-      wql += " WHERE " + " AND ".join (["%s = '%s'" % (k, v) for k, v in where_clause.items()])
+      wql += " WHERE " + " AND ".join (["%s = '%s'" % (k, v) for k, v in list(where_clause.items())])
     results = []
     for obj in self._raw_query(wql):
         results.append ([obj.Properties_ (field).Value for field in fields])
@@ -1109,13 +1109,13 @@ class _wmi_namespace:
       field_list = ", ".join (fields)
       if is_extrinsic:
         if where_clause:
-          where = " WHERE " + " AND ".join (["%s = '%s'" % (k, v) for k, v in where_clause.items ()])
+          where = " WHERE " + " AND ".join (["%s = '%s'" % (k, v) for k, v in list(where_clause.items ())])
         else:
           where = ""
         wql = "SELECT " + field_list + " FROM " + class_name + where
       else:
         if where_clause:
-          where = " AND " + " AND ".join (["TargetInstance.%s = '%s'" % (k, v) for k, v in where_clause.items ()])
+          where = " AND " + " AND ".join (["TargetInstance.%s = '%s'" % (k, v) for k, v in list(where_clause.items ())])
         else:
           where = ""
         wql = \
@@ -1435,7 +1435,7 @@ def Registry (
 if __name__ == '__main__':
   system = WMI ()
   for my_computer in system.Win32_ComputerSystem ():
-    print ("Disks on", my_computer.Name)
+    print(("Disks on", my_computer.Name))
     for disk in system.Win32_LogicalDisk ():
-      print (disk.Caption, disk.Description, disk.ProviderName or "")
+      print((disk.Caption, disk.Description, disk.ProviderName or ""))
 

@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 
-from __future__ import print_function
+
 
 import select
 import subprocess

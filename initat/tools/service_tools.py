@@ -18,7 +18,7 @@
 #
 """ handle service reload / restarts """
 
-from __future__ import unicode_literals, print_function
+
 
 import re
 
@@ -118,7 +118,7 @@ class ServiceHelper(object):
     def find_services(self, name_re_str, **kwargs):
         active = kwargs.get("active", None)
         name_re = re.compile(name_re_str)
-        _result = [_key for _key in self.__services.iterkeys() if name_re.match(_key)]
+        _result = [_key for _key in self.__services.keys() if name_re.match(_key)]
         _act_str = {
             None: "ignore",
             True: "active",

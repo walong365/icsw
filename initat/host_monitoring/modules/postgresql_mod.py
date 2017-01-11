@@ -62,7 +62,7 @@ class PGOverview(object):
         mv.register_entry(self._key("connections.used"), 0, "number of used connections")
 
     def feed(self, pg_settings, activity, mv):
-        mv[self._key("connections.used")] = sum([len(_val) for _val in activity.itervalues()])
+        mv[self._key("connections.used")] = sum([len(_val) for _val in activity.values()])
         mv[self._key("connections.total")] = int(pg_settings["max_connections"]["setting"])
         # pprint.pprint({_key: _value["setting"] for _key, _value in pg_settings.iteritems()})
 
@@ -139,7 +139,7 @@ class _general(hm_classes.hm_module):
         ):
             self.log("Creating sample config store")
             sample_cs = config_store.ConfigStore(sample_name, log_com=self.log, read=False, access_mode=config_store.AccessModeEnum.LOCAL, fix_access_mode=True)
-            for _key, _value in DEFAULTS.iteritems():
+            for _key, _value in DEFAULTS.items():
                 sample_cs[_key] = _value
             sample_cs.write()
         if config_store.ConfigStore.exists(CS_NAME):
@@ -246,7 +246,7 @@ class postgresql_connection_info_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         if self.module.pg_settings:
             srv_com["max_connections"] = int(self.module.pg_settings["max_connections"]["setting"])
-            srv_com["used_connections"] = sum([len(_val) for _val in self.module.activity.itervalues()])
+            srv_com["used_connections"] = sum([len(_val) for _val in self.module.activity.values()])
 
     def interpret(self, srv_com, cur_ns):
         if "max_connections" in srv_com:

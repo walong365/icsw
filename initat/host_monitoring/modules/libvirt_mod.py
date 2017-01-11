@@ -17,7 +17,7 @@
 #
 
 from lxml import etree
-import commands
+import subprocess
 
 from initat.host_monitoring import limits, hm_classes
 from initat.tools import logging_tools, process_tools, server_command
@@ -48,7 +48,7 @@ class _general(hm_classes.hm_module):
             self.mv_regs, self.doms_reg = (set(), set())
 
     def _exec_command(self, com, logger):
-        stat, out = commands.getstatusoutput(com)
+        stat, out = subprocess.getstatusoutput(com)
         if stat:
             logger.warning("cannot execute {} ({:d}): {}".format(com, stat, out))
             out = ""
@@ -75,7 +75,7 @@ class _general(hm_classes.hm_module):
     def _parse_domains(self, mv):
         _c = self.connection
         doms_found = set()
-        for cur_dom in _c.keys():
+        for cur_dom in list(_c.keys()):
             _d = _c[cur_dom]
             sane_name = _d.name.replace(".", "_")
             doms_found.add(sane_name)
@@ -241,7 +241,7 @@ class domain_overview_command(hm_classes.hm_command):
         r_dict = dom_dict["running"]
         d_dict = dom_dict["defined"]
         # generate name lookup
-        name_lut = {value["name"]: key for key, value in r_dict.iteritems()}
+        name_lut = {value["name"]: key for key, value in r_dict.items()}
         all_names = sorted(name_lut.keys())
         for act_name in all_names:
             n_dict = r_dict[name_lut[act_name]]

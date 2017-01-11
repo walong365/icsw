@@ -19,7 +19,7 @@
 #
 """ module for handling config files, now implemented using MemCache """
 
-from __future__ import unicode_literals, print_function
+
 
 import argparse
 import base64
@@ -240,7 +240,7 @@ class int_c_var(_conf_var):
         return int(val)
 
     def check_type(self, val):
-        return type(val) in [int, long]
+        return type(val) in [int, int]
 
 
 class float_c_var(_conf_var):
@@ -272,7 +272,7 @@ class str_c_var(_conf_var):
         return str(val)
 
     def check_type(self, val):
-        return isinstance(val, basestring)
+        return isinstance(val, str)
 
 
 class blob_c_var(_conf_var):
@@ -302,7 +302,7 @@ class bool_c_var(_conf_var):
         _conf_var.__init__(self, def_val, **kwargs)
 
     def str_to_val(self, val):
-        if isinstance(val, basestring):
+        if isinstance(val, str):
             if val.lower().startswith("t"):
                 return True
             else:
@@ -634,7 +634,7 @@ class Configuration(object):
 
     def add_config_entries(self, entries, **kwargs):
         if type(entries) == dict:
-            entries = sorted([(key, value) for key, value in entries.iteritems()])
+            entries = sorted([(key, value) for key, value in entries.items()])
         self.__c_dict.update_mode = True
         for key, value in entries:
             # check for override of database flag
@@ -713,13 +713,13 @@ class Configuration(object):
                             logging_tools.form_entry(self.get_source(key), post_str=")", header="source"),
                         ]
                     )
-            ret_str = unicode(f_obj).split("\n")
+            ret_str = str(f_obj).split("\n")
         else:
             ret_str = []
         return ret_str
 
     def keys(self):
-        return self.__c_dict.keys()
+        return list(self.__c_dict.keys())
 
     def has_key(self, key):
         return key in self.__c_dict
@@ -884,7 +884,7 @@ class Configuration(object):
             my_parser.exit = self._argparse_exit
             my_parser.error = self._argparse_error
         argparse_entries = []
-        for key in self.keys():
+        for key in list(self.keys()):
             c_var = self.get_cvar(key)
             if c_var.is_commandline_option():
                 argparse_entries.append(key)

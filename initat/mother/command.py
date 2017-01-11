@@ -21,7 +21,7 @@
 #
 """ external commands (dhcp, ipmi, SNMP) parts of mother """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.db.models import Q
 
@@ -63,8 +63,8 @@ class HardControlCommand(object):
         self.log(
             "got command {} for {} (target: {}), mode is {}".format(
                 command,
-                unicode(cur_cd.parent),
-                unicode(cur_cd.child),
+                str(cur_cd.parent),
+                str(cur_cd.child),
                 _mode,
             )
         )
@@ -91,7 +91,7 @@ class HardControlCommand(object):
         com_ip = self.get_ip_to_host(self.cd_obj.parent, router_obj)
         if not com_ip:
             self.log(
-                "cannot reach device {}".format(unicode(self.cd_obj.parent)),
+                "cannot reach device {}".format(str(self.cd_obj.parent)),
                 logging_tools.LOG_LEVEL_ERROR,
                 dev=cur_cd.child,
             )
@@ -101,7 +101,7 @@ class HardControlCommand(object):
                 self.log(
                     "sending com_str '{}' to '{}'".format(
                         com_str,
-                        unicode(self.cd_obj.parent)
+                        str(self.cd_obj.parent)
                     ),
                     dev=self.cd_obj.child
                 )
@@ -117,8 +117,8 @@ class HardControlCommand(object):
                 self.log(
                     "sending command '{}' (scheme {}) to {}".format(
                         command,
-                        unicode(_pc_handler),
-                        unicode(self.cd_obj.parent)
+                        str(_pc_handler),
+                        str(self.cd_obj.parent)
                     ),
                     dev=self.cd_obj.child
                 )
@@ -150,7 +150,7 @@ class HardControlCommand(object):
                 self.log(
                     "cannot handle mode '{}' for {}, no scheme or IPMI flag set ?".format(
                         _mode,
-                        unicode(self.cd_obj.parent),
+                        str(self.cd_obj.parent),
                     ),
                     logging_tools.LOG_LEVEL_CRITICAL,
                     dev=self.cd_obj.child
@@ -325,7 +325,7 @@ class ExternalCommandProcess(threading_tools.process_obj):
         else:
             self.log("no devices in command found (hard_control)", logging_tools.LOG_LEVEL_ERROR)
         in_com.set_result("ok handled hc command")
-        self.send_pool_message("remote_call_async_result", unicode(in_com))
+        self.send_pool_message("remote_call_async_result", str(in_com))
 
     def sc_finished(self, sc_com):
         # output

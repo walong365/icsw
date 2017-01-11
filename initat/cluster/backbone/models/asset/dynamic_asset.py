@@ -19,7 +19,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """ asset database, models for dynamic assets """
 
-from __future__ import unicode_literals, print_function
+
 
 import ast
 import base64
@@ -84,7 +84,7 @@ class AssetHWMemoryEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"BankLabel:{}|FormFactor:{}|MemoryType:{}|Manufacturer:{}|Capacity:{}".format(
+        return "BankLabel:{}|FormFactor:{}|MemoryType:{}|Manufacturer:{}|Capacity:{}".format(
             self.banklabel,
             self.formfactor,
             self.memorytype,
@@ -106,7 +106,7 @@ class AssetHWCPUEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"Name:{}|Cores:{}".format(self.name, self.numberofcores)
+        return "Name:{}|Cores:{}".format(self.name, self.numberofcores)
 
 
 class AssetHWGPUEntry(models.Model):
@@ -115,7 +115,7 @@ class AssetHWGPUEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"Name:{}".format(self.name)
+        return "Name:{}".format(self.name)
 
 
 class AssetHWDisplayEntry(models.Model):
@@ -126,7 +126,7 @@ class AssetHWDisplayEntry(models.Model):
     manufacturer = models.TextField(null=True)
 
     def __unicode__(self):
-        return u"Name:{}|xpixels:{}|ypixels:{}|manufacturer:{}".format(
+        return "Name:{}|xpixels:{}|ypixels:{}|manufacturer:{}".format(
             self.name,
             self.xpixels,
             self.ypixels,
@@ -143,7 +143,7 @@ class AssetHWNetworkDevice(models.Model):
     mac_address = models.TextField(null=True)
 
     def __unicode__(self):
-        return u"Name:{}|Manufacturer:{}|Product Name:{}|Speed:{}|MAC:{}".format(
+        return "Name:{}|Manufacturer:{}|Product Name:{}|Speed:{}|MAC:{}".format(
                 self.device_name,
                 self.manufacturer,
                 self.product_name,
@@ -230,7 +230,7 @@ class AssetHardwareEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"AssetHardwareEntry {}".format(self.type)
+        return "AssetHardwareEntry {}".format(self.type)
 
     class Meta:
         ordering = ("idx",)
@@ -247,7 +247,7 @@ class AssetLicenseEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"{} [license_key:{}]".format(self.name, self.license_key)
+        return "{} [license_key:{}]".format(self.name, self.license_key)
 
     class Meta:
         ordering = ("name",)
@@ -276,7 +276,7 @@ class AssetUpdateEntry(models.Model):
     new_version = models.CharField(default="", max_length=64)
 
     def __unicode__(self):
-        return u"AssetUpdate name={}".format(self.name)
+        return "AssetUpdate name={}".format(self.name)
 
     class Meta:
         ordering = ("name",)
@@ -293,7 +293,7 @@ class AssetProcessEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"AssetProcess pid={:d}".format(self.pid)
+        return "AssetProcess pid={:d}".format(self.pid)
 
     class Meta:
         ordering = ("pid",)
@@ -322,7 +322,7 @@ class AssetPCIEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"AssetPCIEntry {:04x}:{:02x}:{:02x}.{:x} {}".format(
+        return "AssetPCIEntry {:04x}:{:02x}:{:02x}.{:x} {}".format(
             self.domain,
             self.bus,
             self.slot,
@@ -343,7 +343,7 @@ class AssetDMIHead(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"AssetDMIHead"
+        return "AssetDMIHead"
 
 
 class AssetDMIHandle(models.Model):
@@ -361,7 +361,7 @@ class AssetDMIHandle(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"AssetDMIHandle {:d}: {}".format(
+        return "AssetDMIHandle {:d}: {}".format(
             self.handle,
             self.header,
         )
@@ -382,7 +382,7 @@ class AssetDMIValue(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"AssetDMIValue {}".format(
+        return "AssetDMIValue {}".format(
             self.key,
         )
 
@@ -681,7 +681,7 @@ class AssetRun(models.Model):
                 # structural entry
                 struct_el = AssetHardwareEntry(
                     type=element.tag,
-                    attributes=json.dumps({key: value for key, value in element.attrib.iteritems()}),
+                    attributes=json.dumps({key: value for key, value in element.attrib.items()}),
                     asset_run=self,
                 )
                 # get local path
@@ -699,10 +699,10 @@ class AssetRun(models.Model):
                 _struct_el = _struct_lut[_root_tree.getpath(element.getparent())]
                 _struct_el._info_dict.setdefault(element.tag, []).append(
                     json.dumps(
-                        {key: value for key, value in element.attrib.iteritems()}
+                        {key: value for key, value in element.attrib.items()}
                     )
                 )
-        for _path, _el in _struct_lut.iteritems():
+        for _path, _el in _struct_lut.items():
             _el.info_list = json.dumps(_el._info_dict)
             _el.save()
 
@@ -821,7 +821,7 @@ class AssetRun(models.Model):
         self._generate_assets_process(process_dict)
 
     def _generate_assets_process(self, process_dict):
-        for pid, stuff in process_dict.iteritems():
+        for pid, stuff in process_dict.items():
             new_proc = AssetProcessEntry(
                 pid=pid,
                 name=stuff["name"],
@@ -1059,11 +1059,11 @@ class AssetBatch(models.Model):
                 self.save()
 
     def __repr__(self):
-        return unicode(self)
+        return str(self)
 
     def __unicode__(self):
-        return u"AssetBatch for device '{}'".format(
-            unicode(self.device)
+        return "AssetBatch for device '{}'".format(
+            str(self.device)
         )
 
     def generate_assets(self):

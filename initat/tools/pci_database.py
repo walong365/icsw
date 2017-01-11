@@ -18,7 +18,7 @@
 
 """ interpret PCI layout """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import re
@@ -155,17 +155,17 @@ def pci_struct_to_xml(pci_dict):
         return _new_el
 
     _main = E.pci_tree()
-    for _dom_id in sorted(pci_dict.iterkeys()):
+    for _dom_id in sorted(pci_dict.keys()):
         _dom = sub_struct(_main, "dom", _dom_id)
-        for _bus_id in sorted(pci_dict[_dom_id].iterkeys()):
+        for _bus_id in sorted(pci_dict[_dom_id].keys()):
             _bus = sub_struct(_dom, "bus", _bus_id)
-            for _slot_id in sorted(pci_dict[_dom_id][_bus_id].iterkeys()):
+            for _slot_id in sorted(pci_dict[_dom_id][_bus_id].keys()):
                 _slot = sub_struct(_bus, "slot", _slot_id)
-                for _func_id in sorted(pci_dict[_dom_id][_bus_id][_slot_id].iterkeys()):
+                for _func_id in sorted(pci_dict[_dom_id][_bus_id][_slot_id].keys()):
                     _func = sub_struct(_slot, "func", _func_id)
                     _func_s = pci_dict[_dom_id][_bus_id][_slot_id][_func_id]
-                    for _key, _value in _func_s.iteritems():
-                        if type(_value) in [int, long]:
+                    for _key, _value in _func_s.items():
+                        if type(_value) in [int, int]:
                             _value = "{:d}".format(_value)
                         _func.attrib[_key] = _value
     return _main

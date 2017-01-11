@@ -18,7 +18,7 @@
 #
 """ HardwareFingerPrintTools """
 
-from __future__ import unicode_literals, print_function
+
 
 import netifaces
 
@@ -56,7 +56,7 @@ def get_server_fp(serialize=False):
         ).all()
     }
     _s_dict = {}
-    for _dev in _devs_with_server.itervalues():
+    for _dev in _devs_with_server.values():
         _s_dict[_dev.pk] = {
             "name": _dev.full_name,
             "fingerprints": [_fp.fingerprint for _fp in _dev.hardwarefingerprint_set.all()],
@@ -76,13 +76,13 @@ def server_dict_is_valid(s_dict):
         _logs.append("No servers found")
     else:
         _valid = True
-        for _srv in s_dict.itervalues():
+        for _srv in s_dict.values():
             _num_fp = len(_srv["fingerprints"])
             if not _num_fp:
-                _logs.append(u"server '{}' has no valid fingerprint".format(_srv["name"]))
+                _logs.append("server '{}' has no valid fingerprint".format(_srv["name"]))
                 _valid = False
             elif _num_fp > 1:
-                _logs.append(u"server '{}' has {:d} fingerprints".format(_srv["name"], _num_fp))
+                _logs.append("server '{}' has {:d} fingerprints".format(_srv["name"], _num_fp))
                 _valid = False
     if _valid:
         _logs.append("Server Fingerprint is valid")

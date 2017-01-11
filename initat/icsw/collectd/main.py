@@ -18,7 +18,7 @@
 #
 """ connect to a given collectd-server and fetch some data """
 
-from __future__ import print_function, unicode_literals
+
 
 import json
 import re
@@ -53,7 +53,7 @@ class BaseCom(object):
         return self.srv_com[key]
 
     def __unicode__(self):
-        return unicode(self.srv_com)
+        return str(self.srv_com)
 
     def get_mc(self):
         return memcache.Client(
@@ -83,7 +83,7 @@ class BaseCom(object):
         client.connect(conn_str)
         s_time = time.time()
 
-        client.send_unicode(unicode(self.srv_com))
+        client.send_unicode(str(self.srv_com))
         if self.options.verbose:
             print(self.srv_com.pretty_print())
         r_client = client
@@ -126,11 +126,11 @@ class BaseCom(object):
             self.ret_state = 1
         else:
             if self.options.verbose:
-                print
+                print()
                 print("XML response (id: '{}'):".format(recv_id))
-                print
+                print()
                 print(srv_reply.pretty_print())
-                print
+                print()
             if "result" in srv_reply:
                 if hasattr(self, "_interpret"):
                     # default value: everything OK
@@ -152,8 +152,8 @@ class HostListCom(BaseCom):
         _mc = self.get_mc()
         hlist = json.loads(_mc.get("cc_hc_list"))
         h_re = self.compile_re(self.options.host_filter)
-        v_dict = {key: value for key, value in hlist.iteritems() if h_re.match(value[1])}
-        _h_uuid_dict = {_value[1]: _key for _key, _value in v_dict.iteritems()}
+        v_dict = {key: value for key, value in hlist.items() if h_re.match(value[1])}
+        _h_uuid_dict = {_value[1]: _key for _key, _value in v_dict.items()}
         _h_names = sorted(_h_uuid_dict.keys())
         print(
             "{} found : {}".format(
@@ -215,16 +215,16 @@ class KeyListCom(BaseCom):
         h_re = self.compile_re(self.options.host_filter)
         v_re = self.compile_re(self.options.key_filter)
         v_dict = {
-            key: value for key, value in hlist.iteritems() if h_re.match(value[1])
+            key: value for key, value in hlist.items() if h_re.match(value[1])
         }
         print(
             "{} found : {}".format(
                 logging_tools.get_plural("host", len(v_dict)),
-                ", ".join(sorted([value[1] for value in v_dict.itervalues()]))
+                ", ".join(sorted([value[1] for value in v_dict.values()]))
             )
         )
         k_dict = {
-            key: json.loads(_mc.get("cc_hc_{}".format(key))) for key in v_dict.iterkeys()
+            key: json.loads(_mc.get("cc_hc_{}".format(key))) for key in v_dict.keys()
         }
         _sorted_uuids = sorted(v_dict, cmp=lambda x, y: cmp(v_dict[x][1], v_dict[y][1]))
         for key in _sorted_uuids:
@@ -262,7 +262,7 @@ class KeyListCom(BaseCom):
                     logging_tools.form_entry(v_dict[h_uuid][1], header="device")
                 ] + entry.get_form_entry(num_key, max_num_keys)
             )
-        print(unicode(out_f))
+        print(str(out_f))
         # print v_list
 
     def _interpret(self, srv_com):
@@ -292,7 +292,7 @@ class KeyListCom(BaseCom):
                         logging_tools.form_entry(h_name, header="device")
                     ] + entry.get_form_entry(k_num, max_num_keys)
                 )
-            print(unicode(out_f))
+            print(str(out_f))
         else:
             print("No host_list found in result")
             self.ret_state = 1

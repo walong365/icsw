@@ -24,7 +24,7 @@
 
 # from backend.models import site_call_log, session_call_log
 
-from __future__ import unicode_literals, print_function
+
 
 import fcntl
 import time
@@ -116,7 +116,7 @@ def show_database_calls(*args, **kwargs):
                     out_str = out_str[0:cur_width - 21]
                     _len_post = len(out_str)
                     output(
-                        u"{:6.2f} [{:4d}/{:5d}] {}".format(
+                        "{:6.2f} [{:4d}/{:5d}] {}".format(
                             float(act_sql["time"]),
                             _len_post,
                             _len_pre,

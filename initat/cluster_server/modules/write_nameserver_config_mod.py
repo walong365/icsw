@@ -16,10 +16,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import unicode_literals, print_function
+
 
 import codecs
-import commands
+import subprocess
 import grp
 import os
 import pwd
@@ -27,7 +27,7 @@ import time
 
 from django.db.models import Q
 
-import cs_base_class
+from . import cs_base_class
 from initat.cluster.backbone.models import net_ip, device, \
     domain_tree_node, config, network
 from initat.cluster.backbone.server_enums import icswServiceEnum
@@ -102,7 +102,7 @@ class write_nameserver_config(cs_base_class.icswCSServerCom):
             # "  files unlimited;",
             "  auth-nxdomain no;",
         ]
-        forwarders = [act_conf_dict[key].value for key in act_conf_dict.iterkeys() if key.startswith("FORWARDER")]
+        forwarders = [act_conf_dict[key].value for key in act_conf_dict.keys() if key.startswith("FORWARDER")]
         if len(forwarders):
             ncf_lines.append("  forwarders {\n%s\n  };" % ("\n".join(["    %s;" % (x) for x in forwarders if x])))
         ncf_lines.append("  listen-on {")
@@ -301,15 +301,15 @@ class write_nameserver_config(cs_base_class.icswCSServerCom):
                                     _form.add_line([s_name, "IN A", ret.ip, ret.netdevice.device.comment])
                                 else:
                                     _form.add_line([s_name, "CNAME", f_name, ret.netdevice.device.comment])
-                _lines.extend(unicode(_form).split(u"\n"))
+                _lines.extend(str(_form).split("\n"))
                 _dir_name = os.path.join(named_dir, sub_dir)
                 if not os.path.isdir(_dir_name):
                     os.mkdir(_dir_name)
-                os.chmod(_dir_name, 0770)
+                os.chmod(_dir_name, 0o770)
                 os.chown(_dir_name, named_uid, named_gid)
                 _file_name = os.path.join(_dir_name, "{}.zone".format(nwname))
                 codecs.open(_file_name, "w", "utf-8").write("\n".join(_lines + [""]))
-                os.chmod(_file_name, 0660)
+                os.chmod(_file_name, 0o660)
                 os.chown(_file_name, named_uid, named_gid)
 
         # loop 2: reverse maps
@@ -442,19 +442,19 @@ class write_nameserver_config(cs_base_class.icswCSServerCom):
                             out_names.extend(ret.alias.strip().split())
                             for s_name in out_names:
                                 _form.add_line([fiand, "IN PTR", "%s.%s." % (s_name, cur_dtn.full_name), ret.netdevice.device.comment])
-                _lines.extend(unicode(_form).split("\n"))
+                _lines.extend(str(_form).split("\n"))
                 file_name = os.path.join(named_dir, sub_dir, "{}.zone".format(nw_ip))
                 codecs.open(file_name, "w", "utf-8").write("\n".join(_lines + [""]))
-                os.chmod(file_name, 0660)
+                os.chmod(file_name, 0o660)
                 os.chown(file_name, named_uid, named_gid)
         cfile = "/etc/rndc.conf"
         ncname = "/etc/named.conf"
         file(ncname, "w").write("\n".join(ncf_lines + [""]))
         file(cfile, "w").write("\n".join(cf_lines + [""]))
-        os.chmod(cfile, 0600)
-        os.chmod(ncname, 0600)
+        os.chmod(cfile, 0o600)
+        os.chmod(ncname, 0o600)
         os.chown(ncname, named_uid, named_gid)
-        cstat, cout = commands.getstatusoutput("/usr/sbin/rndc reload")
+        cstat, cout = subprocess.getstatusoutput("/usr/sbin/rndc reload")
         if cstat:
             cur_inst.srv_com.set_result(
                 "wrote nameserver-config ({}), reloading gave: '{}".format(

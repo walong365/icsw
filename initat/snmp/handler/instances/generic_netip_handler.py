@@ -52,7 +52,7 @@ class handler(SNMPHandler):
         # pprint.pprint(result_dict)
         # pprint.pprint(simplify_dict(result_dict["1.3.6.1.2.1.4.22"], (1,)))
         if IP_NET_TO_MEDIA_TABLE in result_dict:
-            for key, struct in simplify_dict(result_dict[IP_NET_TO_MEDIA_TABLE], (1,)).iteritems():
+            for key, struct in simplify_dict(result_dict[IP_NET_TO_MEDIA_TABLE], (1,)).items():
                 # check for static entries
                 if 4 in struct and struct[4] == 4:
                     # build snmp_ip struct
@@ -62,8 +62,8 @@ class handler(SNMPHandler):
                         self.log(
                             "found {} for {}: {}".format(
                                 logging_tools.get_plural("matching network", len(_networks)),
-                                unicode(_ip),
-                                ", ".join([unicode(_net) for _net in _networks]),
+                                str(_ip),
+                                ", ".join([str(_net) for _net in _networks]),
                             )
                         )
                         _nw = _networks[0]
@@ -85,7 +85,7 @@ class handler(SNMPHandler):
                         else:
                             _ip_dict[key[0]] = _ip
                     else:
-                        self.log("found no matching network for IP {}".format(unicode(_ip)), logging_tools.LOG_LEVEL_ERROR)
+                        self.log("found no matching network for IP {}".format(str(_ip)), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log(
                 "table {} not found in result".format(
@@ -94,7 +94,7 @@ class handler(SNMPHandler):
                 logging_tools.LOG_LEVEL_ERROR
             )
         if IP_ADDR_TABLE in result_dict:
-            for key, value in simplify_dict(result_dict[IP_ADDR_TABLE], (1,)).iteritems():
+            for key, value in simplify_dict(result_dict[IP_ADDR_TABLE], (1,)).items():
                 try:
                     _ip = ifSNMPIP(value)
                 except:
@@ -114,9 +114,9 @@ class handler(SNMPHandler):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-        if any([unicode(_value.address_ipv4) == "0.0.0.0" for _value in _ip_dict.itervalues()]):
+        if any([str(_value.address_ipv4) == "0.0.0.0" for _value in _ip_dict.values()]):
             self.log("ignoring zero IP address", logging_tools.LOG_LEVEL_WARN)
-            _ip_dict = {key: value for key, value in _ip_dict.iteritems() if unicode(value.address_ipv4) != "0.0.0.0"}
+            _ip_dict = {key: value for key, value in _ip_dict.items() if str(value.address_ipv4) != "0.0.0.0"}
         if dev.domain_tree_node_id:
             _tln = dev.domain_tree_node
         else:
@@ -125,7 +125,7 @@ class handler(SNMPHandler):
         # handle IPs
         _found_ip_ids = set()
         _added = 0
-        for ip_struct in _ip_dict.itervalues():
+        for ip_struct in _ip_dict.values():
             if ip_struct.if_idx in if_lut:
                 _dev_nd = if_lut[ip_struct.if_idx]
                 # check for network

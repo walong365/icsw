@@ -25,7 +25,7 @@ MonFileContainer: holds one or more BaseConfigs (for a device for example)
 MonDirContainer: holds a directory of MonFileContainers
 """
 
-from __future__ import unicode_literals, print_function
+
 
 import codecs
 import hashlib
@@ -56,7 +56,7 @@ class MonFileContainer(dict, LogBufferMixin):
         self._generation = 0
 
     def __repr__(self):
-        return u"MonFileContainer {}".format(self.name)
+        return "MonFileContainer {}".format(self.name)
 
     def clear(self):
         self._obj_list = []
@@ -143,8 +143,8 @@ class MonFileContainer(dict, LogBufferMixin):
         if self.create_content(log_com):
             try:
                 codecs.open(act_cfg_name, "w", "utf-8").write(
-                    u"\n".join(
-                        self.header + self._content + [u""]
+                    "\n".join(
+                        self.header + self._content + [""]
                     )
                 )
             except IOError:
@@ -158,7 +158,7 @@ class MonFileContainer(dict, LogBufferMixin):
                 )
                 self._content = []
             else:
-                os.chmod(act_cfg_name, 0644)
+                os.chmod(act_cfg_name, 0o644)
                 cfg_stats.add(act_cfg_name)
         elif not self._content:
             # crate empty config file
@@ -183,7 +183,7 @@ class MonDirContainer(dict, LogBufferMixin):
         self.clear()
 
     def __repr__(self):
-        return u"MonDirContainer {}".format(self.name)
+        return "MonDirContainer {}".format(self.name)
 
     def clear(self):
         self.host_pks = set()
@@ -247,7 +247,7 @@ class MonDirContainer(dict, LogBufferMixin):
 
     def get_xml(self):
         res_dict = {}
-        for key, value in self.iteritems():
+        for key, value in self.items():
             prev_tag = None
             for entry in value.object_list:
                 if entry.obj_type != prev_tag:
@@ -258,4 +258,4 @@ class MonDirContainer(dict, LogBufferMixin):
                         res_xml = res_dict[entry.obj_type]
                     prev_tag = entry.obj_type
                 res_xml.append(entry.emit_xml())
-        return list(res_dict.itervalues())
+        return list(res_dict.values())

@@ -22,7 +22,7 @@
 
 """ helper functions for cluster routing """
 
-from __future__ import unicode_literals, print_function
+
 
 import json
 import logging
@@ -165,7 +165,7 @@ class SrvTypeRouting(object):
 
     @property
     def service_types(self):
-        return [key for key in self._resolv_dict.keys() if not key.startswith("_")]
+        return [key for key in list(self._resolv_dict.keys()) if not key.startswith("_")]
 
     def get_server_address(self, srv_type_enum, server_id=None):
         if srv_type_enum.name in self:
@@ -207,13 +207,13 @@ class SrvTypeRouting(object):
     @property
     def resolv_dict(self):
         return {
-            key: value for key, value in self._resolv_dict.iteritems() if not key.startswith("_")
+            key: value for key, value in self._resolv_dict.items() if not key.startswith("_")
         }
 
     @property
     def internal_dict(self):
         return {
-            key: value for key, value in self._resolv_dict.iteritems() if key.startswith("_")
+            key: value for key, value in self._resolv_dict.items() if key.startswith("_")
         }
 
     @property
@@ -350,7 +350,7 @@ class SrvTypeRouting(object):
                     logging_tools.LOG_LEVEL_WARN
                 )
         # sort entry
-        for key, value in _resolv_dict.iteritems():
+        for key, value in _resolv_dict.items():
             # format: device name, device IP, device_pk, penalty
             _resolv_dict[key] = [_v2[1] for _v2 in sorted([(_v[3], _v) for _v in value])]
         # set local device
@@ -382,8 +382,8 @@ class SrvTypeRouting(object):
             _bs_hints[_pk] = int(_dev.get("bootserver_hint", "0"))
             _dev_dict[_pk] = etree.tostring(_dev)  # @UndefinedVariable
         # eliminate zero hints
-        _bs_hints = {key: value for key, value in _bs_hints.iteritems() if value}
-        _pk_list = _dev_dict.keys()
+        _bs_hints = {key: value for key, value in _bs_hints.items() if value}
+        _pk_list = list(_dev_dict.keys())
         _cl_dict = {}
         for _value in device.objects.filter(Q(pk__in=_pk_list)).values_list("pk", "bootserver", "name"):
             if _value[1]:
@@ -410,20 +410,20 @@ class SrvTypeRouting(object):
                 )
         # do we need more than one server connection ?
         if len(_cl_dict) > 1:
-            _srv_keys = _cl_dict.keys()
+            _srv_keys = list(_cl_dict.keys())
             _srv_dict = {key: server_command.srv_command(source=etree.tostring(in_com.tree)) for key in _srv_keys}  # @UndefinedVariable
             # clear devices
-            [_value.delete_subtree("devices") for _value in _srv_dict.itervalues()]
+            [_value.delete_subtree("devices") for _value in _srv_dict.values()]
             # add devices where needed
-            for _key, _pk_list in _cl_dict.iteritems():
+            for _key, _pk_list in _cl_dict.items():
                 _tree = _srv_dict[_key]
                 _devlist = _tree.builder("devices")
                 _tree["devices"] = _devlist
                 _devlist.extend([etree.fromstring(_dev_dict[_pk]) for _pk in _pk_list])  # @UndefinedVariable
                 # print "T", _key, _tree.pretty_print()
-            return [(key, value) for key, value in _srv_dict.iteritems()]
+            return [(key, value) for key, value in _srv_dict.items()]
         elif len(_cl_dict) == 1:
-            return [(_cl_dict.keys()[0], in_com)]
+            return [(list(_cl_dict.keys())[0], in_com)]
         else:
             return []
 

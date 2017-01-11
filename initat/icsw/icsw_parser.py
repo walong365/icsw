@@ -21,7 +21,7 @@
 
 """ parser for icsw command """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 
@@ -113,7 +113,7 @@ class ICSWParser(object):
     def _populate_all(self, server_mode, inst_xml):
         if not self.fully_populated:
             self.fully_populated = True
-            for _sc in sorted(SC_MAPPING.iterkeys()):
+            for _sc in sorted(SC_MAPPING.keys()):
                 self._add_parser(_sc, server_mode, inst_xml)
 
     def _error(self, *args, **kwargs):

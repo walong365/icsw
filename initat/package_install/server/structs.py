@@ -19,14 +19,14 @@
 #
 """ package server, base structures """
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import datetime
 import os
 import subprocess
 import time
-import urlparse
+import urllib.parse
 
 from django.db.models import Q
 from lxml import etree
@@ -164,7 +164,7 @@ class RepoTypeRpmYum(RepoType):
             )
             self.master_process.send_pool_message(
                 "remote_call_async_result",
-                unicode(s_struct.srv_com),
+                str(s_struct.srv_com),
             )
         self.master_process._reload_searches()
 
@@ -240,7 +240,7 @@ class RepoTypeDebDebian(RepoType):
         return "aptitude search -F '%p %V' --disable-columns {}".format(s_string)
 
     def _parse_url(self, url):
-        _res = urlparse.urlparse(url)
+        _res = urllib.parse.urlparse(url)
         _netloc = _res.netloc
         if _netloc.count("@"):
             _upwd, _netloc = _netloc.split("@", 1)
@@ -356,7 +356,7 @@ class RepoTypeDebDebian(RepoType):
             )
             self.master_process.send_pool_message(
                 "remote_call_async_result",
-                unicode(srv_com),
+                str(srv_com),
             )
         # self.master_process._reload_searches()
         return None
@@ -428,7 +428,7 @@ class RepoTypeRpmZypper(RepoType):
         if not priority_found:
             self.log("no priorities defined in XML-output, rescanning using normal output", logging_tools.LOG_LEVEL_ERROR)
             _zypper_com = "/usr/bin/zypper lr -p"
-            _stat, _out = commands.getstatusoutput(_zypper_com)
+            _stat, _out = subprocess.getstatusoutput(_zypper_com)
             if _stat:
                 self.log("error scanning via '{}' ({:d}): {}".format(_zypper_com, _stat, _out))
             else:
@@ -470,7 +470,7 @@ class RepoTypeRpmZypper(RepoType):
             )
             self.master_process.send_pool_message(
                 "remote_call_async_result",
-                unicode(s_struct.srv_com),
+                str(s_struct.srv_com),
             )
         self.master_process._reload_searches()
 
@@ -658,7 +658,7 @@ class Client(object):
         if _create:
             Client.CS.write()
             _cs.write()
-        for client_num in Client.CS.keys():
+        for client_num in list(Client.CS.keys()):
             _stuff = Client.CS[client_num]
             Client.register(_stuff["uuid"], _stuff["name"])
 
@@ -704,7 +704,7 @@ class Client(object):
                 Client.lut[name.split(".")[0]] = new_client
                 Client.srv_process.log("added client {} ({})".format(name, uid))
                 found = False
-                _keys = Client.CS.keys()
+                _keys = list(Client.CS.keys())
                 for _key in _keys:
                     _client = Client.CS[_key]
                     if _client["name"] == name:
@@ -737,7 +737,7 @@ class Client(object):
         self.srv_process.send_reply(self.uid, srv_com)
 
     def __unicode__(self):
-        return u"{} ({})".format(
+        return "{} ({})".format(
             self.name,
             self.uid
         )
@@ -813,9 +813,9 @@ class Client(object):
                 if cur_image not in cur_pdc.image_list.all():
                     self.log(
                         "appending package '{}' to pre-delete list because image '{}' not in image_list '{}'".format(
-                            unicode(cur_pdc.package),
-                            unicode(cur_image),
-                            ", ".join([unicode(_v) for _v in cur_pdc.image_list.all()]),
+                            str(cur_pdc.package),
+                            str(cur_image),
+                            ", ".join([str(_v) for _v in cur_pdc.image_list.all()]),
                         )
                     )
                     pre_delete = True
@@ -824,9 +824,9 @@ class Client(object):
                 if cur_kernel not in cur_pdc.kernel_list.all():
                     self.log(
                         "appending package '{}' to pre-delete list because kernel '{}' not in kernel_list '{}'".format(
-                            unicode(cur_pdc.package),
-                            unicode(cur_kernel),
-                            ", ".join([unicode(_v) for _v in cur_pdc.kernel_list.all()]),
+                            str(cur_pdc.package),
+                            str(cur_kernel),
+                            ", ".join([str(_v) for _v in cur_pdc.kernel_list.all()]),
                         )
                     )
                     pre_delete = True
@@ -891,7 +891,7 @@ class Client(object):
                 self.log("pdc with pk={} does not exist".format(_pk), logging_tools.LOG_LEVEL_ERROR)
             else:
                 cur_pdc.response_type = pdc_xml.attrib["response_type"]
-                self.log("got package_info for {} (type is {})".format(unicode(cur_pdc.package), cur_pdc.response_type))
+                self.log("got package_info for {} (type is {})".format(str(cur_pdc.package), cur_pdc.response_type))
                 cur_pdc.response_str = etree.tostring(info_xml)  # @UndefinedVariable
                 # print cur_pdc.response_str
                 cur_pdc.interpret_response()

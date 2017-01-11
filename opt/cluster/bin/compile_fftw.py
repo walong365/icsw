@@ -19,7 +19,7 @@
 #
 """ compiles fftw """
 
-import commands
+import subprocess
 import optparse
 import os
 import os.path
@@ -54,7 +54,7 @@ class my_opt_parser(optparse.OptionParser):
         self.cpu_id = cpu_database.get_cpuid()
         self.add_option("-c", type="choice", dest="fcompiler", help="Set Compiler type, options are %s [%%default]" % (", ".join(fc_choices)), action="store", choices=fc_choices, default="GNU")
         self.add_option("--fpath", type="string", dest="fcompiler_path", help="Compiler Base Path, for instance /opt/intel/compiler-9.1 [%default]", default="NOT_SET")
-        self.add_option("-o", type="choice", dest="fftw_version", help="Choose FFTW Version, possible values are %s [%%default]" % (", ".join(self.version_dict.keys())), action="store", choices=self.version_dict.keys(), default=self.highest_version)
+        self.add_option("-o", type="choice", dest="fftw_version", help="Choose FFTW Version, possible values are %s [%%default]" % (", ".join(list(self.version_dict.keys()))), action="store", choices=list(self.version_dict.keys()), default=self.highest_version)
         self.add_option("-d", type="string", dest="target_dir", help="Sets target directory [%default]", default=target_dir, action="store")
         self.add_option("--extra", type="string", dest="extra_settings", help="Sets extra options for configure, i.e. installation directory and package name [%default]", action="store", default="")
         self.add_option("--extra-filename", type="string", dest="extra_filename", help="Sets extra filename string [%default]", action="store", default="")
@@ -70,7 +70,7 @@ class my_opt_parser(optparse.OptionParser):
     def parse(self):
         options, args = self.parse_args()
         if args:
-            print "Additional arguments found, exiting"
+            print("Additional arguments found, exiting")
             sys.exit(0)
         self.options = options
         self._check_compiler_settings()
@@ -88,9 +88,9 @@ class my_opt_parser(optparse.OptionParser):
                                   "CXX" : "g++",
                                   "F77" : "gfortran",
                                   "FC"  : "gfortran"}
-            stat, out = commands.getstatusoutput("gcc --version")
+            stat, out = subprocess.getstatusoutput("gcc --version")
             if stat:
-                raise ValueError, "Cannot get Version from gcc (%d): %s" % (stat, out)
+                raise ValueError("Cannot get Version from gcc (%d): %s" % (stat, out))
             self.small_version = out.split(")")[1].split()[0]
             self.compiler_version_dict = {"GCC" : out}
         elif self.options.fcompiler == "INTEL":
@@ -107,14 +107,14 @@ class my_opt_parser(optparse.OptionParser):
                 self.small_version = small_version
                 ifort_out = "\n".join(ifort_out_lines)
                 self.compiler_version_dict = {"ifort" : ifort_out}
-                stat, icc_out = commands.getstatusoutput("%s/bin/icc -V" % (self.options.fcompiler_path))
+                stat, icc_out = subprocess.getstatusoutput("%s/bin/icc -V" % (self.options.fcompiler_path))
                 if stat:
-                    raise ValueError, "Cannot get Version from icc (%d): %s" % (stat, icc_out)
+                    raise ValueError("Cannot get Version from icc (%d): %s" % (stat, icc_out))
                 self.compiler_version_dict = {"ifort" : ifort_out,
                                               "icc"   : icc_out}
             else:
-                raise IOError, "Compiler base path '%s' for compiler setting %s is not a directory" % (self.options.fcompiler_path,
-                                                                                                       self.options.fcompiler)
+                raise IOError("Compiler base path '%s' for compiler setting %s is not a directory" % (self.options.fcompiler_path,
+                                                                                                       self.options.fcompiler))
         elif self.options.fcompiler == "PATHSCALE":
             if os.path.isdir(self.options.fcompiler_path):
                 self.add_path_dict = {"LD_LIBRARY_PATH": ["%s/lib" % (self.options.fcompiler_path)],
@@ -123,30 +123,30 @@ class my_opt_parser(optparse.OptionParser):
                                       "CXX" : "pathCC",
                                       "F77" : "pathf95",
                                       "FC"  : "pathf95"}
-                stat, pathf95_out = commands.getstatusoutput("%s/bin/pathf95 -dumpversion" % (self.options.fcompiler_path))
+                stat, pathf95_out = subprocess.getstatusoutput("%s/bin/pathf95 -dumpversion" % (self.options.fcompiler_path))
                 if stat:
-                    raise ValueError, "Cannot get Version from pathf95 (%d): %s" % (stat, pathf95_out)
+                    raise ValueError("Cannot get Version from pathf95 (%d): %s" % (stat, pathf95_out))
                 self.small_version = pathf95_out.split("\n")[0]
                 self.compiler_version_dict = {"pathf95" : pathf95_out}
-                stat, pathcc_out = commands.getstatusoutput("%s/bin/pathcc -dumpversion" % (self.options.fcompiler_path))
+                stat, pathcc_out = subprocess.getstatusoutput("%s/bin/pathcc -dumpversion" % (self.options.fcompiler_path))
                 if stat:
-                    raise ValueError, "Cannot get Version from pathcc (%d): %s" % (stat, pathcc_out)
+                    raise ValueError("Cannot get Version from pathcc (%d): %s" % (stat, pathcc_out))
                 self.compiler_version_dict = {"pathf95" : pathf95_out,
                                               "pathcc"   : pathcc_out}
             else:
-                raise IOError, "Compiler base path '%s' for compiler setting %s is not a directory" % (self.options.fcompiler_path,
-                                                                                                       self.options.fcompiler)
+                raise IOError("Compiler base path '%s' for compiler setting %s is not a directory" % (self.options.fcompiler_path,
+                                                                                                       self.options.fcompiler))
         else:
-            raise ValueError, "Compiler settings %s unknown" % (self.options.fcompiler)
+            raise ValueError("Compiler settings %s unknown" % (self.options.fcompiler))
     def _read_fftw_versions(self):
         if os.path.isfile(FFTW_VERSION_FILE):
             version_lines = [line.strip().split() for line in file(FFTW_VERSION_FILE, "r").read().split("\n") if line.strip()]
             self.version_dict = dict([(key, value) for key, value in version_lines])
-            vers_dict = dict([(tuple([part.isdigit() and int(part) or part for part in key.split(".")]), key) for key in self.version_dict.keys()])
+            vers_dict = dict([(tuple([part.isdigit() and int(part) or part for part in key.split(".")]), key) for key in list(self.version_dict.keys())])
             vers_keys = sorted(vers_dict.keys())
             self.highest_version = vers_dict[vers_keys[-1]]
         else:
-            raise IOError, "No %s found" % (FFTW_VERSION_FILE)
+            raise IOError("No %s found" % (FFTW_VERSION_FILE))
     def get_compile_options(self):
         return "\n".join([" - build_date is %s" % (time.ctime()),
                           " - fftw Version is %s, cpuid is %s" % (self.options.fftw_version,
@@ -157,10 +157,10 @@ class my_opt_parser(optparse.OptionParser):
                           " - source package is %s, target directory is %s" % (self.version_dict[self.options.fftw_version],
                                                                                self.fftw_dir),
                           " - extra_settings for configure: %s" % (self.options.extra_settings),
-                          "compiler settings: %s" % ", ".join(["%s=%s" % (key, value) for key, value in self.compiler_dict.iteritems()]),
-                          "add_path_dict    : %s" % ", ".join(["%s=%s:$%s" % (key, ":".join(value), key) for key, value in self.add_path_dict.iteritems()]),
+                          "compiler settings: %s" % ", ".join(["%s=%s" % (key, value) for key, value in self.compiler_dict.items()]),
+                          "add_path_dict    : %s" % ", ".join(["%s=%s:$%s" % (key, ":".join(value), key) for key, value in self.add_path_dict.items()]),
                           "version info:"] + \
-                         ["%s:\n%s" % (key, "\n".join(["    %s" % (line.strip()) for line in value.split("\n")])) for key, value in self.compiler_version_dict.iteritems()])
+                         ["%s:\n%s" % (key, "\n".join(["    %s" % (line.strip()) for line in value.split("\n")])) for key, value in self.compiler_version_dict.items()])
 
 class fftw_builder(object):
     def __init__(self, parser):
@@ -174,11 +174,11 @@ class fftw_builder(object):
                     self.compile_ok = True
                     self._remove_tempdir()
         if not self.compile_ok:
-            print "Not removing temporary directory %s" % (self.tempdir)
+            print("Not removing temporary directory %s" % (self.tempdir))
     def _init_tempdir(self):
         self.tempdir = tempfile.mkdtemp("_fftw")
     def _remove_tempdir(self):
-        print "Removing temporary directory"
+        print("Removing temporary directory")
         shutil.rmtree(self.tempdir)
         try:
             os.rmdir(self.tempdir)
@@ -187,24 +187,24 @@ class fftw_builder(object):
     def _untar_source(self):
         tar_source = self.parser.version_dict[self.parser.options.fftw_version]
         if not os.path.isfile(tar_source):
-            print "Cannot find FFTW source %s" % (tar_source)
+            print("Cannot find FFTW source %s" % (tar_source))
             success = False
         else:
-            print "Extracting tarfile %s ..." % (tar_source),
+            print("Extracting tarfile %s ..." % (tar_source), end=' ')
             tar_file = tarfile.open(tar_source, "r")
             tar_file.extractall(self.tempdir)
             tar_file.close()
-            print "done"
+            print("done")
             success = True
         return success
     def _compile_it(self):
         num_cores = cpu_database.global_cpu_info(parse=True).num_cores() * 2
         act_dir = os.getcwd()
         os.chdir("%s/fftw-%s" % (self.tempdir, self.parser.options.fftw_version))
-        print "Modifying environment"
-        for env_name, env_value in self.parser.compiler_dict.iteritems():
+        print("Modifying environment")
+        for env_name, env_value in self.parser.compiler_dict.items():
             os.environ[env_name] = env_value
-        for path_name, path_add_value in self.parser.add_path_dict.iteritems():
+        for path_name, path_add_value in self.parser.add_path_dict.items():
             os.environ[path_name] = "%s:%s" % (":".join(path_add_value), os.environ.get(path_name, ""))
         self.time_dict, self.log_dict = ({}, {})
         success = True
@@ -213,19 +213,19 @@ class fftw_builder(object):
                                    ("make -j %d" % (num_cores), "make"),
                                    ("make install", "install")]:
             self.time_dict[time_name] = {"start" : time.time()}
-            print "Doing command %s" % (command)
+            print("Doing command %s" % (command))
             sp_obj = subprocess.Popen(command.split(), 0, None, None, subprocess.PIPE, subprocess.STDOUT)
             out_lines = []
             while True:
                 stat = sp_obj.poll()
                 while True:
                     try:
-                        new_lines = sp_obj.stdout.next()
+                        new_lines = next(sp_obj.stdout)
                     except StopIteration:
                         break
                     else:
                         if self.parser.options.verbose:
-                            print new_lines,
+                            print(new_lines, end=' ')
                         if type(new_lines) == type([]):
                             out_lines.extend(new_lines)
                         else:
@@ -236,25 +236,25 @@ class fftw_builder(object):
             self.time_dict[time_name]["diff"] = self.time_dict[time_name]["end"] - self.time_dict[time_name]["start"]
             self.log_dict[time_name] = "".join(out_lines)
             if stat:
-                print "Something went wrong (%d):" % (stat)
+                print("Something went wrong (%d):" % (stat))
                 if not self.parser.options.verbose:
-                    print "".join(out_lines)
+                    print("".join(out_lines))
                 success = False
                 break
             else:
-                print "done, took %s" % (logging_tools.get_diff_time_str(self.time_dict[time_name]["diff"]))
+                print("done, took %s" % (logging_tools.get_diff_time_str(self.time_dict[time_name]["diff"])))
         os.chdir(act_dir)
         return success
     def package_it(self):
-        print "Packaging ..."
+        print("Packaging ...")
         info_name = "README.%s" % (self.parser.package_name)
         sep_str = "-" * 50
         readme_lines = [sep_str] + \
             self.parser.get_compile_options().split("\n") + \
-            ["Compile times: %s" % (", ".join(["%s: %s" % (key, logging_tools.get_diff_time_str(self.time_dict[key]["diff"])) for key in self.time_dict.keys()])), sep_str, ""]
+            ["Compile times: %s" % (", ".join(["%s: %s" % (key, logging_tools.get_diff_time_str(self.time_dict[key]["diff"])) for key in list(self.time_dict.keys())])), sep_str, ""]
         if self.parser.options.include_log:
             readme_lines.extend(["Compile logs:"] + \
-                                sum([self.log_dict[key].split("\n") + [sep_str] for key in self.log_dict.keys()], []))
+                                sum([self.log_dict[key].split("\n") + [sep_str] for key in list(self.log_dict.keys())], []))
         file("%s/%s" % (self.tempdir, info_name), "w").write("\n".join(readme_lines))
         package_name, package_version, package_release = (self.parser.package_name,
                                                           self.parser.options.fftw_version,
@@ -291,19 +291,19 @@ class fftw_builder(object):
         new_p.write_specfile(content)
         new_p.build_package()
         if new_p.build_ok:
-            print "Build successfull, package locations:"
-            print new_p.long_package_name
-            print new_p.src_package_name
+            print("Build successfull, package locations:")
+            print(new_p.long_package_name)
+            print(new_p.src_package_name)
             success = True
         else:
-            print "Something went wrong, please check tempdir %s" % (self.tempdir)
+            print("Something went wrong, please check tempdir %s" % (self.tempdir))
             success = False
         return success
 
 def main():
     my_parser = my_opt_parser()
     my_parser.parse()
-    print my_parser.get_compile_options()
+    print(my_parser.get_compile_options())
     my_builder = fftw_builder(my_parser)
     my_builder.build_it()
 

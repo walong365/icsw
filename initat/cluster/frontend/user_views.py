@@ -22,7 +22,7 @@
 
 """ user views """
 
-from __future__ import print_function, unicode_literals
+
 
 import json
 import logging
@@ -75,7 +75,7 @@ class sync_users(View):
         for create_user in create_user_list:
             logger.info(
                 "trying to create user_home for '{}' on server {}".format(
-                    unicode(create_user),
+                    str(create_user),
                     create_user.export.device.full_name,
                 )
             )
@@ -122,7 +122,7 @@ class change_object_permission(View):
                         object_pk=perm_model.pk,
                     )
                     request.xml_response.info(
-                        "created new csw_object_permission {}".format(unicode(csw_objp)),
+                        "created new csw_object_permission {}".format(str(csw_objp)),
                         logger=logger
                     )
                 if auth_obj._meta.model_name == "user":
@@ -141,16 +141,16 @@ class change_object_permission(View):
                     request.xml_response["new_obj"] = json.dumps(group_object_permission_serializer(new_obj).data)
                 request.xml_response.info(
                     "added csw_object_permission {} to {}".format(
-                        unicode(csw_objp),
-                        unicode(auth_obj),
+                        str(csw_objp),
+                        str(auth_obj),
                     ),
                     logger=logger
                 )
             else:
                 request.xml_response.warn(
                     "permission '{}' for '{}' already set".format(
-                        unicode(set_perm),
-                        unicode(perm_model)
+                        str(set_perm),
+                        str(perm_model)
                     ),
                     logger=logger
                 )
@@ -166,9 +166,9 @@ class change_object_permission(View):
                 except csw_object_permission.MultipleObjectsReturned:
                     request.xml_response.critical(
                         "multiple objects returned for csw_object_permission (perm=%s, pk=%d, auth_obj=%s)" % (
-                            unicode(set_perm),
+                            str(set_perm),
                             perm_model.pk,
-                            unicode(auth_obj),
+                            str(auth_obj),
                         ),
                         logger=logger
                     )
@@ -181,9 +181,9 @@ class change_object_permission(View):
                 except csw_object_permission.DoesNotExist:
                     request.xml_response.error(
                         "csw_object_permission doest not exist (perm={}, pk={:d}, auth_obj={})".format(
-                            unicode(set_perm),
+                            str(set_perm),
                             perm_model.pk,
-                            unicode(auth_obj),
+                            str(auth_obj),
                         ),
                         logger=logger
                     )
@@ -194,8 +194,8 @@ class change_object_permission(View):
                         group_object_permission.objects.filter(Q(csw_object_permission=csw_objp) & Q(group=auth_obj)).delete()
                     request.xml_response.info(
                         "removed csw_object_permission {} from {}".format(
-                            unicode(csw_objp),
-                            unicode(auth_obj),
+                            str(csw_objp),
+                            str(auth_obj),
                         ),
                         logger=logger
                     )
@@ -257,7 +257,7 @@ class GetGlobalPermissions(RetrieveAPIView):
     @staticmethod
     def _unfold(in_dict):
         # provide perms as "backbone.user.modify_tree: 0" as well as as "backbone { user { modify_tree: 0 } }"
-        _keys = in_dict.keys()
+        _keys = list(in_dict.keys())
         # unfold dictionary
         for _key in _keys:
             _parts = _key.split(".")

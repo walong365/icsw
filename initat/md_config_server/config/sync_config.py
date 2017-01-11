@@ -19,7 +19,7 @@
 #
 """ syncer definition for md-config-server """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 import json
@@ -76,7 +76,7 @@ class SyncConfig(object):
                 self.slave_ip = None
                 self.master_ip = None
                 self.log(
-                    "no route to slave {} found".format(unicode(monitor_server)),
+                    "no route to slave {} found".format(str(monitor_server)),
                     logging_tools.LOG_LEVEL_ERROR
                 )
             else:
@@ -84,7 +84,7 @@ class SyncConfig(object):
                 self.master_ip = route[0][2][1][0]
                 self.log(
                     "IP-address of slave {} is {} (master ip: {})".format(
-                        unicode(monitor_server),
+                        str(monitor_server),
                         self.slave_ip,
                         self.master_ip
                     )
@@ -357,7 +357,7 @@ class SyncConfig(object):
             in_list = [os.path.normpath(_entry) for _entry in in_list]
             _parts = in_list[0].split("/")
             while _parts:
-                _top = u"/".join(_parts)
+                _top = "/".join(_parts)
                 if all([_entry.startswith(_top) for _entry in in_list]):
                     break
                 _parts.pop(-1)

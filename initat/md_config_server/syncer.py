@@ -26,7 +26,7 @@ software and performance
 
 """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.db.models import Q
 
@@ -152,22 +152,22 @@ class SyncerProcess(threading_tools.process_obj):
         self.send_sync_command(srv_com)
 
     def send_sync_command(self, srv_com):
-        self.send_pool_message("send_command", self.__primary_slave_uuid, unicode(srv_com))
+        self.send_pool_message("send_command", self.__primary_slave_uuid, str(srv_com))
 
     def send_command(self, src_id, srv_com):
-        self.send_pool_message("send_command", "urn:uuid:{}:relayer".format(src_id), unicode(srv_com))
+        self.send_pool_message("send_command", "urn:uuid:{}:relayer".format(src_id), str(srv_com))
 
     def _get_sys_info(self, *args, **kwargs):
         # to get the info to the frontend
         srv_com = server_command.srv_command(source=args[0])
-        _inst_list = self.__slave_configs.values()
+        _inst_list = list(self.__slave_configs.values())
         _info_list = [_slave.info for _slave in _inst_list]
         srv_com.set_result("ok set info for {}".format(logging_tools.get_plural("system", len(_inst_list))))
         srv_com["sys_info"] = server_command.compress(_info_list, json=True)
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", str(srv_com))
 
     def _check_for_redistribute(self, *args, **kwargs):
-        for slave_config in self.__slave_configs.itervalues():
+        for slave_config in self.__slave_configs.values():
             slave_config.check_for_resend()
 
     def _slave_info(self, *args, **kwargs):
@@ -216,7 +216,7 @@ class SyncerProcess(threading_tools.process_obj):
                 )
             )
             self._master_md = self.__master_config.start_build(self.__build_version, build_mode.value.full_build)
-            for _conf in self.__slave_configs.values():
+            for _conf in list(self.__slave_configs.values()):
                 if not _conf.master:
                     _conf.start_build(self.__build_version, build_mode.value.full_build, master=self._master_md)
         elif _bi_type == "end_build":
@@ -230,7 +230,7 @@ class SyncerProcess(threading_tools.process_obj):
             if build_mode.value.reload:
                 self.log("sending reload after sync")
                 # trigger reload when sync is done
-                for _slave in self.__slave_configs.itervalues():
+                for _slave in self.__slave_configs.values():
                     _slave.reload_after_sync()
                 self.__master_config.reload_after_sync()
         elif _bi_type == "unreachable_devices":

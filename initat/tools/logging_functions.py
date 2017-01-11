@@ -22,7 +22,7 @@
 
 """ high-level helper functions for logging """
 
-from __future__ import unicode_literals, print_function
+
 
 import logging
 import os

@@ -19,14 +19,14 @@
 """ create rsync config """
 # Deprecated, please rewrite or remove
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import re
 
 from django.db.models import Q
 
-import cs_base_class
+from . import cs_base_class
 from initat.cluster.backbone.models import image
 from initat.cluster_server.config import global_config
 from initat.tools import logging_tools, process_tools, server_command
@@ -110,7 +110,7 @@ class write_rsyncd_config(cs_base_class.icswCSServerCom):
         needed_keys = ["export_rsync", "rsync_name"]
         rsync_del_keys = []
         for rs_key in rsync_keys:
-            if len([True for x in rsync_dict[rs_key].keys() if x in needed_keys]) != len(needed_keys):
+            if len([True for x in list(rsync_dict[rs_key].keys()) if x in needed_keys]) != len(needed_keys):
                 rsync_del_keys.append(rs_key)
                 del rsync_dict[rs_key]
         if rsync_del_keys:

@@ -17,7 +17,7 @@
 #
 """ base class of background tasks """
 
-from __future__ import unicode_literals, print_function
+
 
 from initat.tools import logging_tools
 

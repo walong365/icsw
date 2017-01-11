@@ -19,7 +19,7 @@
 #
 """ build process for md-config-server """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import time
@@ -191,7 +191,7 @@ class BuildProcess(
                     logging_tools.get_plural("host", len(args)),
                 )
             )
-            self.send_pool_message("remote_call_async_result", unicode(self.srv_com))
+            self.send_pool_message("remote_call_async_result", str(self.srv_com))
         self._exit_process()
 
     def fetch_dyn_configs(self, gbc, pk_list):
@@ -223,7 +223,7 @@ class BuildProcess(
             if MON_VAR_IP_NAME not in dev_variables:
                 self.log(
                     "No IP found for dyn reconfig of {}".format(
-                        unicode(host)
+                        str(host)
                     ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
@@ -235,7 +235,7 @@ class BuildProcess(
                 # build lut
                 conf_names = sorted(
                     [
-                        cur_c["command_name"] for cur_c in cur_gc["command"].values() if not cur_c.is_event_handler and (
+                        cur_c["command_name"] for cur_c in list(cur_gc["command"].values()) if not cur_c.is_event_handler and (
                             (
                                 (cur_c.get_config() in conf_names) and (host.pk not in cur_c.exclude_devices)
                             ) or cur_c["command_name"] in cconf_names
@@ -279,7 +279,7 @@ class BuildProcess(
             "stats: {}".format(
                 ", ".join(
                     [
-                        "{}={:d}".format(_key, _value) for _key, _value in _count_dict.iteritems()
+                        "{}={:d}".format(_key, _value) for _key, _value in _count_dict.items()
                     ]
                 )
             )
@@ -410,15 +410,15 @@ class BuildProcess(
                 )
                 if unreachable_pks and not self.single_build:
                     self.log(
-                        u"{}: {}".format(
+                        "{}: {}".format(
                             logging_tools.get_plural("unroutable node", len(unreachable_names)),
-                            u", ".join(sorted(unreachable_names)),
+                            ", ".join(sorted(unreachable_names)),
                         )
                     )
                 self.send_pool_message("build_info", "unreachable_devices", len(unreachable_pks), target="syncer")
                 if unreachable_pks:
                     for _urd in device.objects.filter(Q(pk__in=unreachable_pks)).select_related("domain_tree_node"):
-                        self.send_pool_message("build_info", "unreachable_device", _urd.pk, unicode(_urd), unicode(_urd.device_group), target="syncer")
+                        self.send_pool_message("build_info", "unreachable_device", _urd.pk, str(_urd), str(_urd.device_group), target="syncer")
                     build_cache.feed_unreachable_pks(unreachable_pks)
             else:
                 cur_dmap = {}
@@ -475,7 +475,7 @@ class BuildProcess(
                 )
             )
             self.srv_com["result"] = res_node
-            self.send_pool_message("remote_call_async_result", unicode(self.srv_com))
+            self.send_pool_message("remote_call_async_result", str(self.srv_com))
         self._exit_process()
 
     def _create_general_config(self, mode, write_entries=None):
@@ -569,13 +569,13 @@ class BuildProcess(
         )
         all_configs = self.get_all_configs(ac_filter)
         # get config variables
-        if not cur_gc["contactgroup"].keys():
+        if not list(cur_gc["contactgroup"].keys()):
             self.log(
                 "no contact group defined",
                 logging_tools.LOG_LEVEL_ERROR
             )
             return
-        first_contactgroup_name = cur_gc["contactgroup"][cur_gc["contactgroup"].keys()[0]].name
+        first_contactgroup_name = cur_gc["contactgroup"][list(cur_gc["contactgroup"].keys())[0]].name
         contact_group_dict = {}
         # get contact groups
         if gbc.host_list:
@@ -590,7 +590,7 @@ class BuildProcess(
             else:
                 self.log(
                     "contagroup_idx {} for device {} not found, using first from contactgroups ({})".format(
-                        unicode(ct_group),
+                        str(ct_group),
                         ct_group.name,
                         first_contactgroup_name,
                     ),
@@ -645,7 +645,7 @@ class BuildProcess(
             if gbc.hdep_from_topo:
                 # import pprint
                 # pprint.pprint(p_dict)
-                for parent, clients in p_dict.iteritems():
+                for parent, clients in p_dict.items():
                     new_hd = StructuredMonBaseConfig("hostdependency", "")
                     new_hd["dependent_host_name"] = clients
                     new_hd["host_name"] = parent
@@ -704,7 +704,7 @@ class BuildProcess(
         # host_uuids = set([host_val.uuid for host_val in all_hosts_dict.itervalues() if host_val.full_name in host_names])
         _p_ok, _p_failed = (0, 0)
         d_map = gbc.cur_dmap
-        host_names = host_nc.keys()
+        host_names = list(host_nc.keys())
         for host_name in sorted(host_names):
             host = host_nc[host_name].object_list[0]
             if "possible_parents" in host and not gbc.single_build:
@@ -767,7 +767,7 @@ class BuildProcess(
                                 parent = gbc.get_host(parent_idx).full_name
                                 self.log(
                                     "    {:>30s} (distance is {:3d}, in config: {})".format(
-                                        unicode(parent),
+                                        str(parent),
                                         d_map[parent_idx],
                                         parent in host_names,
                                     )
@@ -847,7 +847,7 @@ class BuildProcess(
                     hbc.log(
                         "reachable flag {} for host {} differs from valid_ips {}".format(
                             str(host.reachable),
-                            unicode(host),
+                            str(host),
                             str(valid_ips),
                         ),
                         logging_tools.LOG_LEVEL_CRITICAL,
@@ -865,7 +865,7 @@ class BuildProcess(
                         host.full_name,
                         ", ".join(["{}{}".format(cur_ip, " (.{})".format(dom_name) if dom_name else "") for cur_ip, dom_name in valid_ips]),
                         str(host.mon_resolve_name),
-                        unicode(host.valid_ip)
+                        str(host.valid_ip)
                     )
                 )
                 if act_def_dev.mon_service_templ_id not in gbc.serv_templates:
@@ -886,7 +886,7 @@ class BuildProcess(
                     host.dev_variables = dev_variables
                     hbc.log(
                         "device has {} ({})".format(
-                            logging_tools.get_plural("device_variable", len(host.dev_variables.keys())),
+                            logging_tools.get_plural("device_variable", len(list(host.dev_variables.keys()))),
                             ", ".join(
                                 [
                                     "{}: {:d}".format(key, var_info[key]) for key in ["d", "g", "c"]
@@ -917,7 +917,7 @@ class BuildProcess(
                                         entry for entry in [
                                             host.alias, host.name, host.full_name
                                         ] + [
-                                            u"{}.{}".format(
+                                            "{}.{}".format(
                                                 host.name, dom_name
                                             ) for dom_name in host.domain_names
                                         ] if entry.strip()
@@ -979,7 +979,7 @@ class BuildProcess(
                     if host.monitor_checks or gbc.single_build:
                         if host.valid_ip.ip == "0.0.0.0":
                             hbc.log(
-                                "IP address is '{}', host is assumed to be always up".format(unicode(host.valid_ip))
+                                "IP address is '{}', host is assumed to be always up".format(str(host.valid_ip))
                             )
                             act_host["check_command"] = "check-host-ok"
                         else:
@@ -1021,7 +1021,7 @@ class BuildProcess(
                         # build lut
                         conf_names = sorted(
                             [
-                                cur_c["command_name"] for cur_c in cur_gc["command"].values() if not cur_c.is_event_handler and (
+                                cur_c["command_name"] for cur_c in list(cur_gc["command"].values()) if not cur_c.is_event_handler and (
                                     (
                                         (cur_c.get_config() in conf_names) and (host.pk not in cur_c.exclude_devices)
                                     ) or cur_c["command_name"] in cconf_names
@@ -1061,7 +1061,7 @@ class BuildProcess(
                                     hbc.log(
                                         "cannot create host dependency, {} unreachable: {}".format(
                                             logging_tools.get_plural("device", len(_unreachable)),
-                                            ", ".join(sorted([unicode(_dev) for _dev in _unreachable])),
+                                            ", ".join(sorted([str(_dev) for _dev in _unreachable])),
                                         ),
                                         logging_tools.LOG_LEVEL_ERROR,
                                     )
@@ -1098,7 +1098,7 @@ class BuildProcess(
                                         hbc.log(
                                             "cannot create host dependency, {} unreachable: {}".format(
                                                 logging_tools.get_plural("device", len(_unreachable)),
-                                                ", ".join(sorted([unicode(_dev) for _dev in _unreachable])),
+                                                ", ".join(sorted([str(_dev) for _dev in _unreachable])),
                                             ),
                                             logging_tools.LOG_LEVEL_ERROR,
                                         )
@@ -1141,7 +1141,7 @@ class BuildProcess(
                                         hbc.log(
                                             "cannot create host dependency, {} unrechable: {}".format(
                                                 logging_tools.get_plural("device", len(_unreachable)),
-                                                ", ".join(sorted([unicode(_dev) for _dev in _unreachable])),
+                                                ", ".join(sorted([str(_dev) for _dev in _unreachable])),
                                             ),
                                             logging_tools.LOG_LEVEL_ERROR,
                                         )
@@ -1404,7 +1404,7 @@ class BuildProcess(
                     nccom[2],
                     ", ".join(sorted(ccoms)) or "none defined",
                     c_type,
-                    unicode(device),
+                    str(device),
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
@@ -1509,7 +1509,7 @@ class BuildProcess(
             else:
                 act_serv["check_command"] = "!".join(_com_parts)
             # add addon vars
-            for key, value in arg_temp.addon_dict.iteritems():
+            for key, value in arg_temp.addon_dict.items():
                 act_serv[key] = value
             ret_field.append(act_serv)
         return ret_field
@@ -1519,7 +1519,7 @@ class BuildProcess(
         host = hbc.device
         traces = gbc.get_mon_host_trace(host, net_devices, srv_net_idxs)
         if not traces:
-            pathes = self.router_obj.get_ndl_ndl_pathes(srv_net_idxs, net_devices.keys(), add_penalty=True)
+            pathes = self.router_obj.get_ndl_ndl_pathes(srv_net_idxs, list(net_devices.keys()), add_penalty=True)
             traces = []
             for penalty, cur_path in sorted(pathes):
                 if cur_path[-1] in net_devices:

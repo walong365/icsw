@@ -22,7 +22,7 @@
 
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
-from __future__ import unicode_literals, print_function
+
 
 import argparse
 import time
@@ -87,7 +87,7 @@ class ExtReturn(object):
         else:
             return ExtReturn(in_val[0], in_val[1])
 
-    def unicode(self):
+    def str(self):
         return "{} ({:d})".format(self.ret_str, self.ret_state)
 
 
@@ -268,7 +268,7 @@ class HostConnection(object):
         cur_time = time.time()
         id_discovery.check_timeout(cur_time)
         # check timeouts for all host connections
-        [cur_hc.check_timeout(cur_time) for cur_hc in HostConnection.hc_dict.itervalues()]
+        [cur_hc.check_timeout(cur_time) for cur_hc in HostConnection.hc_dict.values()]
 
     @staticmethod
     def global_close():
@@ -283,7 +283,7 @@ class HostConnection(object):
 
     def check_timeout(self, cur_time):
         # check all messages for current HostConnection
-        to_messages = [cur_mes for cur_mes in self.messages.itervalues() if cur_mes.check_timeout(cur_time, HostConnection.timeout)]
+        to_messages = [cur_mes for cur_mes in self.messages.values() if cur_mes.check_timeout(cur_time, HostConnection.timeout)]
         if to_messages:
             for to_mes in to_messages:
                 self.return_error(
@@ -340,7 +340,7 @@ class HostConnection(object):
                         )
                     )
                 else:
-                    send_str = unicode(host_mes.srv_com)
+                    send_str = str(host_mes.srv_com)
                     try:
                         HostConnection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT | zmq.SNDMORE)  # @UndefinedVariable
                         HostConnection.zmq_socket.send_unicode(send_str, zmq.DONTWAIT)  # @UndefinedVariable
@@ -359,7 +359,7 @@ class HostConnection(object):
                     "socket",
                     "connection",
                     host_mes.src_id,
-                    unicode(host_mes.srv_com)
+                    str(host_mes.srv_com)
                 )
 
     def send_result(self, host_mes, result=None):
@@ -495,7 +495,7 @@ class HostMessage(object):
                 )
             )
             self.srv_com.delete_subtree("namespace")
-            for key, value in vars(cur_ns).iteritems():
+            for key, value in vars(cur_ns).items():
                 self.srv_com["namespace:{}".format(key)] = value
             self.ns = cur_ns
         else:
@@ -521,24 +521,24 @@ class HostMessage(object):
         if type(result) == tuple:
             # tuple result from interpret
             if not self.xml_input:
-                ret_str = u"%d\0%s" % (
+                ret_str = "%d\0%s" % (
                     result[0],
                     result[1]
                 )
             else:
                 # shortcut
                 self.set_result(result[0], result[1])
-                ret_str = unicode(self.srv_com)
+                ret_str = str(self.srv_com)
         elif isinstance(result, ExtReturn):
             # extended return from interpret
             if not self.xml_input:
-                ret_str = u"%d\0%s" % (
+                ret_str = "%d\0%s" % (
                     result.ret_state,
                     result.ret_str,
                 )
             else:
                 self.set_result(result)
-                ret_str = unicode(self.srv_com)
+                ret_str = str(self.srv_com)
             if relayer_process:
                 if result.passive_results:
                     relayer_process.send_passive_results_to_master(result.passive_results)
@@ -546,12 +546,12 @@ class HostMessage(object):
                     relayer_process.send_passive_results_as_chunk_to_master(result.ascii_chunk)
         else:
             if not self.xml_input:
-                ret_str = u"%s\0%s" % (
+                ret_str = "%s\0%s" % (
                     result["result"].attrib["state"],
                     result["result"].attrib["reply"],
                 )
             else:
-                ret_str = unicode(result)
+                ret_str = str(result)
         return ret_str, _src_socket
 
     def interpret(self, result):
@@ -568,7 +568,7 @@ class HostMessage(object):
             return self.com_struct.interpret(result, self.ns)
 
     def interpret_old(self, result):
-        if not isinstance(result, basestring):
+        if not isinstance(result, str):
             server_error = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
         else:
             server_error = None

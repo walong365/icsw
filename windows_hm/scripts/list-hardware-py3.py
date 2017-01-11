@@ -32,11 +32,11 @@ if __name__=="__main__":
         results = c.query('SELECT * FROM {}'.format(class_name))
         for result in results:
             info_result = {'_path': path(result)}
-            for prop in result.properties.keys():
+            for prop in list(result.properties.keys()):
                 value = getattr(result, prop)
                 info_result[prop] = value
             info[class_name].append(info_result)
 
     info.update(mapping_info)
     output = json.dumps(info)
-    print(nrpe_encode(output))
+    print((nrpe_encode(output)))

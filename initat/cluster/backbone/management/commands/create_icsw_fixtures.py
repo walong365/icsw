@@ -19,7 +19,7 @@
 #
 """ creates the cluster fixtures """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
@@ -344,7 +344,7 @@ def _add_snmp_fixtures():
                 print(
                     "Removing {:d} OIDs for {}".format(
                         len(_del_oids),
-                        unicode(cur_scheme)
+                        str(cur_scheme)
                     )
                 )
                 [_del_oid.delete() for _del_oid in _del_oids]
@@ -358,7 +358,7 @@ def _add_snmp_fixtures():
             "{} found, {}: {}".format(
                 logging_tools.get_plural("handler", len(handlers)),
                 logging_tools.get_plural("initial", len(initials)),
-                ", ".join([unicode(_handler) for _handler in initials])
+                ", ".join([str(_handler) for _handler in initials])
             )
         )
 

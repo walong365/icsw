@@ -30,7 +30,7 @@ class ctrl_type_megaraid(ctrl_type):
 
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
-            ctrl_list = self._dict.keys()
+            ctrl_list = list(self._dict.keys())
         return ["%s info %s" % (self._check_exec, ctrl_id) for ctrl_id in ctrl_list]
 
     def scan_ctrl(self):
@@ -54,11 +54,11 @@ class ctrl_type_megaraid(ctrl_type):
         ccs.srv_com["result"] = "OK"
 
     def _interpret(self, ctrl_dict, cur_ns):
-        num_c, num_d, num_e = (len(ctrl_dict.keys()), 0, 0)
+        num_c, num_d, num_e = (len(list(ctrl_dict.keys())), 0, 0)
         ret_state, ret_str = (limits.mon_STATE_OK, "OK")
         drive_stats = []
-        for ctrl_num, ctrl_stuff in ctrl_dict.iteritems():
-            for log_num, log_stuff in ctrl_stuff.get("logical_lines", {}).iteritems():
+        for ctrl_num, ctrl_stuff in ctrl_dict.items():
+            for log_num, log_stuff in ctrl_stuff.get("logical_lines", {}).items():
                 num_d += 1
                 for line in log_stuff:
                     if line.lower().startswith("logical drive") and line.lower().count("status"):

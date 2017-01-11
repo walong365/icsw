@@ -19,7 +19,7 @@
 #
 """ config part of md-config-server """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.db.models import Q
 
@@ -58,7 +58,7 @@ class VarCache(dict):
                 if _var.device.device_group_id == self.__cdg.pk:
                     _key = self._global_key()
                     if _key not in self:
-                        self[_key] = {g_key: (g_value, True) for g_key, g_value in self.__def_dict.iteritems()}
+                        self[_key] = {g_key: (g_value, True) for g_key, g_value in self.__def_dict.items()}
                 else:
                     _key = self._device_group_key(_var.device)
             else:
@@ -107,7 +107,7 @@ class VarCache(dict):
             # read global configs
             self._fetch_vars(global_key, self.__cdg)
             # update with def_dict
-            for key, value in self.__def_dict.iteritems():
+            for key, value in self.__def_dict.items():
                 if key not in self[global_key]:
                     self[global_key][key] = (value, True)
         if not self.__prefill:
@@ -126,7 +126,7 @@ class VarCache(dict):
             (global_key, "c", False),
         ]:
             info_dict[key_n] = 0
-            for s_key, (s_value, inherit) in self.get(key, {}).iteritems():
+            for s_key, (s_value, inherit) in self.get(key, {}).items():
                 if (inherit or ignore_inh) and (s_key not in ret_dict):
                     ret_dict[s_key] = s_value
                     info_dict[key_n] += 1

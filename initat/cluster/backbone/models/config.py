@@ -21,7 +21,7 @@
 #
 """ model definitions, configuration """
 
-from __future__ import unicode_literals, print_function
+
 
 import logging
 
@@ -123,7 +123,7 @@ class ConfigServiceEnum(models.Model):
             self.save()
 
     def __unicode__(self):
-        return u"ConfigServerEnum {}".format(self.name)
+        return "ConfigServerEnum {}".format(self.name)
 
 
 class config(models.Model):
@@ -153,13 +153,13 @@ class config(models.Model):
         if detail:
             for var_type in ["str", "int", "bool"]:
                 for cur_var in getattr(self, "config_{}_set".format(var_type)).all():
-                    log_com("    {:<20s} : {}".format(cur_var.name, unicode(cur_var)))
+                    log_com("    {:<20s} : {}".format(cur_var.name, str(cur_var)))
 
     def natural_key(self):
         return self.name
 
     class Meta:
-        db_table = u'new_config'
+        db_table = 'new_config'
         ordering = ["name", "config_catalog__name"]
         unique_together = (("name", "config_catalog"),)
         verbose_name = "Configuration"
@@ -263,7 +263,7 @@ class device_config(models.Model):
         return self.info_str
 
     class Meta:
-        db_table = u'device_config'
+        db_table = 'device_config'
         verbose_name = "Device configuration"
 
 
@@ -293,10 +293,10 @@ class config_str(models.Model):
         return "str"
 
     def __unicode__(self):
-        return self.value or u""
+        return self.value or ""
 
     class Meta:
-        db_table = u'config_str'
+        db_table = 'config_str'
         ordering = ("name",)
         verbose_name = "Configuration variable (string)"
 
@@ -330,7 +330,7 @@ class config_blob(models.Model):
         return "blob"
 
     class Meta:
-        db_table = u'config_blob'
+        db_table = 'config_blob'
         verbose_name = "Configuration variable (blob)"
 
 
@@ -365,7 +365,7 @@ class config_bool(models.Model):
         return "True" if self.value else "False"
 
     class Meta:
-        db_table = u'config_bool'
+        db_table = 'config_bool'
         verbose_name = "Configuration variable (boolean)"
 
 
@@ -384,7 +384,7 @@ def config_bool_pre_save(sender, **kwargs):
             if type(cur_inst.value) == bool:
                 pass
             else:
-                if type(cur_inst.value) in [int, long]:
+                if type(cur_inst.value) in [int, int]:
                     cur_inst.value = True if cur_inst.value else False
                 else:
                     cur_inst.value = True if (cur_inst.value or "").lower() in ["1", "true", "yes"] else False
@@ -407,12 +407,12 @@ class config_int(models.Model):
         return "int"
 
     def __unicode__(self):
-        if isinstance(self.value, basestring):
+        if isinstance(self.value, str):
             self.value = int(self.value)
         return "{:d}".format(self.value or 0)
 
     class Meta:
-        db_table = u'config_int'
+        db_table = 'config_int'
         verbose_name = "Configuration variable (integer)"
 
 
@@ -447,7 +447,7 @@ class config_script(models.Model):
         return "script"
 
     class Meta:
-        db_table = u'config_script'
+        db_table = 'config_script'
         ordering = ("priority", "name",)
         verbose_name = "Configuration script"
 

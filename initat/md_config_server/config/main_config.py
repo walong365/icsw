@@ -19,7 +19,7 @@
 #
 """ config part of md-config-server """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import shutil
@@ -54,7 +54,7 @@ class MainConfigContainer(object):
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
-            u"[mcc{}] {}".format(
+            "[mcc{}] {}".format(
                 " {}".format(self.__slave_name) if self.__slave_name else "",
                 what
             ),
@@ -107,7 +107,7 @@ class MainConfig(dict, NagVisMixin):
 
     @property
     def is_valid(self):
-        ht_conf_names = [key for key, value in self.iteritems() if isinstance(value, MonFileContainer)]
+        ht_conf_names = [key for key, value in self.items() if isinstance(value, MonFileContainer)]
         invalid = sorted(
             [
                 key for key in ht_conf_names if not self[key].is_valid
@@ -132,7 +132,7 @@ class MainConfig(dict, NagVisMixin):
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
-            u"[mc{}] {}".format(
+            "[mc{}] {}".format(
                 " {}".format(self.__slave_name) if self.__slave_name else "",
                 what
             ),
@@ -167,7 +167,7 @@ class MainConfig(dict, NagVisMixin):
         self.__r_dir_dict = {
             dir_name: os.path.normpath(os.path.join(_main_dir, dir_name)) for dir_name in dir_names
         }
-        for dir_name, full_path in self.__w_dir_dict.iteritems():
+        for dir_name, full_path in self.__w_dir_dict.items():
             if not os.path.exists(full_path):
                 self.log("Creating directory {}".format(full_path))
                 os.makedirs(full_path)
@@ -216,7 +216,7 @@ class MainConfig(dict, NagVisMixin):
         self.log(
             "deletion stats: {}".format(
                 ", ".join(
-                    ["{}={:d}".format(_key, _value) for _key, _value in del_dict.iteritems()]
+                    ["{}={:d}".format(_key, _value) for _key, _value in del_dict.items()]
                 )
             )
         )
@@ -559,7 +559,7 @@ class MainConfig(dict, NagVisMixin):
             self.log("writing entries not allowed", logging_tools.LOG_LEVEL_WARN)
             return 0
         w_stats = CfgEmitStats()
-        for key, stuff in self.iteritems():
+        for key, stuff in self.items():
             stuff.write_content(w_stats, self.__w_dir_dict["etc"], self.log)
         if w_stats.count:
             self.log(
@@ -579,7 +579,7 @@ class MainConfig(dict, NagVisMixin):
 
     def dump_logs(self):
         self.log("starting dump of buffered logs")
-        for key, value in self.iteritems():
+        for key, value in self.items():
             for _line, _what in value.buffered_logs:
                 self.log(_line, _what)
         self.log("done")
@@ -589,7 +589,7 @@ class MainConfig(dict, NagVisMixin):
         super(MainConfig, self).__setitem__(key, value)
         _main_cfg_name = global_config["MAIN_CONFIG_NAME"]
         new_file_keys, new_dir_keys, new_resource_keys = ([], [], [])
-        for key, value in self.iteritems():
+        for key, value in self.items():
             _path = value.get_file_name(
                 self.__r_dir_dict["etc"]
             )

@@ -21,7 +21,7 @@
 #
 """ serviceEnum Base for 'global' configenum object, for clients """
 
-from __future__ import unicode_literals, print_function
+
 
 __all__ = [
     b"icswServiceEnumBaseClient"

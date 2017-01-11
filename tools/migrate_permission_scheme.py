@@ -33,7 +33,7 @@ def main():
     new_perms_count = group_permission.objects.all().count() + user_permission.objects.all().count() + \
         group_object_permission.objects.all().count() + user_object_permission.objects.all().count()
     if new_perms_count:
-        print "New permission scheme already in use, skipping migration ..."
+        print("New permission scheme already in use, skipping migration ...")
         sys.exit(0)
     # groups
     g_created, o_created = (0, 0)
@@ -47,7 +47,7 @@ def main():
             for obj_perm in cur_obj.object_permissions.all():
                 o_perm.objects.create(**{obj_name : cur_obj, "csw_object_permission" : obj_perm})
                 o_created += 1
-    print "created: global %d, object level %d" % (g_created, o_created)
+    print("created: global %d, object level %d" % (g_created, o_created))
 
 if __name__ == "__main__":
     main()

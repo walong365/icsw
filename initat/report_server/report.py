@@ -19,7 +19,7 @@
 #
 """ report-server, report generation functions """
 
-from __future__ import unicode_literals
+
 
 import base64
 import datetime
@@ -31,14 +31,14 @@ from io import BytesIO
 import PollyReports
 
 
-PollyReports.Element.text_conversion = unicode
+PollyReports.Element.text_conversion = str
 
 
 def pollyreports_gettext(self, row):
     value = self.getvalue(row)
     if value is None:
         return ""
-    return unicode(value)
+    return str(value)
 
 PollyReports.Element.gettext = pollyreports_gettext
 
@@ -132,12 +132,12 @@ class RowCollector(object):
 
     def collect(self, _row):
         if self.current_asset_type == AssetType.UPDATE:
-            update_name = unicode(_row[0])
+            update_name = str(_row[0])
             # update_version = unicode(_row[1])
             # update_release = unicode(_row[2])
             # update_kb_idx = unicode(_row[3])
             install_date = _row[4]
-            update_status = unicode(_row[5])
+            update_status = str(_row[5])
             # update_optional = unicode(_row[6])
             # update_installed = unicode(_row[7])
 
@@ -155,8 +155,8 @@ class RowCollector(object):
             self.rows_dict.append(o)
 
         elif self.current_asset_type == AssetType.LICENSE:
-            license_name = unicode(_row[0])
-            license_key = unicode(_row[1])
+            license_name = str(_row[0])
+            license_key = str(_row[1])
 
             o = {
                 'license_name': license_name,
@@ -166,15 +166,15 @@ class RowCollector(object):
             self.rows_dict.append(o)
 
         elif self.current_asset_type == AssetType.PENDING_UPDATE:
-            update_name = unicode(_row[0])
+            update_name = str(_row[0])
             # update_version = unicode(_row[1])
             # update_release = unicode(_row[2])
             # update_kb_idx = unicode(_row[3])
             # update_install_date = unicode(_row[4])
             # update_status = unicode(_row[5])
-            update_optional = unicode(_row[6])
+            update_optional = str(_row[6])
             # update_installed = unicode(_row[7])
-            update_new_version = unicode(_row[8])
+            update_new_version = str(_row[8])
 
             o = {
                 'update_name': update_name,
@@ -185,8 +185,8 @@ class RowCollector(object):
             self.rows_dict.append(o)
 
         elif self.current_asset_type == AssetType.PROCESS:
-            process_name = unicode(_row[0])
-            process_id = unicode(_row[1])
+            process_name = str(_row[0])
+            process_id = str(_row[1])
 
             o = {
                 'process_name': process_name,
@@ -196,9 +196,9 @@ class RowCollector(object):
             self.rows_dict.append(o)
 
         elif self.current_asset_type == AssetType.HARDWARE:
-            hardware_node_type = unicode(_row[0])
-            hardware_depth = unicode(_row[1])
-            hardware_attributes = unicode(_row[2])
+            hardware_node_type = str(_row[0])
+            hardware_depth = str(_row[1])
+            hardware_attributes = str(_row[2])
 
             o = {
                 'hardware_node_type': hardware_node_type,
@@ -235,7 +235,7 @@ class RowCollector(object):
                 'package_version': package_version if package_version else "N/A",
                 'package_release': package_release if package_release else "N/A",
                 'package_size': package_size_str,
-                'package_install_date': unicode(package_install_date),
+                'package_install_date': str(package_install_date),
                 'package_type': package_type
             }
 
@@ -245,11 +245,11 @@ class RowCollector(object):
             pass
 
         elif self.current_asset_type == AssetType.DMI:
-            handle = unicode(_row[0])
-            dmi_type = unicode(_row[1])
-            header = unicode(_row[2])
-            key = unicode(_row[3])
-            value = unicode(_row[4])
+            handle = str(_row[0])
+            dmi_type = str(_row[1])
+            header = str(_row[2])
+            key = str(_row[3])
+            value = str(_row[4])
 
             o = {
                 'handle': handle,
@@ -481,7 +481,7 @@ class ReportGenerator(object):
                 content_type = role_object_permission.csw_object_permission.csw_permission.content_type
                 _object = content_type.get_object_for_this_type(pk=object_pk)
 
-                new_permission_str = "{}: {} for {} [{}]".format(index, permission_name, unicode(_object),
+                new_permission_str = "{}: {} for {} [{}]".format(index, permission_name, str(_object),
                                                                  ac_to_str_dict[role_object_permission.level])
 
                 if permission_str == "N/A":
@@ -743,7 +743,7 @@ class PDFReportGenerator(ReportGenerator):
             position += available_width * (avail_width_percentage / 100.0)
 
             for _dict in data:
-                s = unicode(_dict[key])
+                s = str(_dict[key])
 
                 s_new_comps = ""
 
@@ -799,7 +799,7 @@ class PDFReportGenerator(ReportGenerator):
             position -= available_width * (avail_width_percentage / 100.0)
 
             for _dict in data:
-                s = unicode(_dict[key])
+                s = str(_dict[key])
 
                 s_new_comps = ""
 
@@ -1052,12 +1052,12 @@ class PDFReportGenerator(ReportGenerator):
         # Ip info
         str_to_use = "N/A"
         for _ip in _device.all_ips():
-            if unicode(_ip) == "None":
+            if str(_ip) == "None":
                 continue
             if str_to_use == "N/A":
-                str_to_use = unicode(_ip)
+                str_to_use = str(_ip)
             else:
-                str_to_use += ", {}".format(unicode(_ip))
+                str_to_use += ", {}".format(str(_ip))
         data = [[Paragraph(str_to_use, style_sheet["BodyText"])]]
 
         text_block = Paragraph('<b>IP Info:</b>', style_sheet["BodyText"])
@@ -1086,9 +1086,9 @@ class PDFReportGenerator(ReportGenerator):
         str_to_use = "N/A"
         for _snmp_scheme in _device.snmp_schemes.all():
             if str_to_use == "N/A":
-                str_to_use = unicode(_snmp_scheme)
+                str_to_use = str(_snmp_scheme)
             else:
-                str_to_use += ", {}".format(unicode(_snmp_scheme))
+                str_to_use += ", {}".format(str(_snmp_scheme))
         data = [[Paragraph(str_to_use, style_sheet["BodyText"])]]
 
         text_block = Paragraph('<b>SNMP Scheme:</b>', style_sheet["BodyText"])
@@ -1268,7 +1268,7 @@ class PDFReportGenerator(ReportGenerator):
                 try:
                     packages = asset.get_packages_for_ar(ar)
                 except Exception as e:
-                    logger.info("PDF generation for packages failed, error was: {}".format(unicode(e)))
+                    logger.info("PDF generation for packages failed, error was: {}".format(str(e)))
                     packages = []
 
                 heading = "Installed Software"
@@ -1577,8 +1577,8 @@ class PDFReportGenerator(ReportGenerator):
 
         data = [["Name", "Cores"]]
         for cpu in hardware_report_ar.asset_batch.cpus.all():
-            data.append([Paragraph(unicode(cpu.name), style_sheet["BodyText"]),
-                         Paragraph(unicode(cpu.numberofcores), style_sheet["BodyText"])])
+            data.append([Paragraph(str(cpu.name), style_sheet["BodyText"]),
+                         Paragraph(str(cpu.numberofcores), style_sheet["BodyText"])])
 
         p0_1 = Paragraph('<b>CPUs:</b>', style_sheet["BodyText"])
 
@@ -1590,7 +1590,7 @@ class PDFReportGenerator(ReportGenerator):
 
         data = [["Name"]]
         for gpu in hardware_report_ar.asset_batch.gpus.all():
-            data.append([Paragraph(unicode(gpu.name), style_sheet["BodyText"])])
+            data.append([Paragraph(str(gpu.name), style_sheet["BodyText"])])
 
         p0_2 = Paragraph('<b>GPUs:</b>', style_sheet["BodyText"])
         t_2 = Table(data,
@@ -1700,10 +1700,10 @@ class PDFReportGenerator(ReportGenerator):
         data = [["Banklabel", "Formfactor", "Memorytype", "Manufacturer", "Capacity"]]
         for memory_module in hardware_report_ar.asset_batch.memory_modules.all():
 
-            data.append([Paragraph(unicode(memory_module.banklabel), style_sheet["BodyText"]),
-                         Paragraph(unicode(memory_module.get_name_of_form_factor()), style_sheet["BodyText"]),
-                         Paragraph(unicode(memory_module.get_name_of_memory_type()), style_sheet["BodyText"]),
-                         Paragraph(unicode(memory_module.manufacturer), style_sheet["BodyText"]),
+            data.append([Paragraph(str(memory_module.banklabel), style_sheet["BodyText"]),
+                         Paragraph(str(memory_module.get_name_of_form_factor()), style_sheet["BodyText"]),
+                         Paragraph(str(memory_module.get_name_of_memory_type()), style_sheet["BodyText"]),
+                         Paragraph(str(memory_module.manufacturer), style_sheet["BodyText"]),
                          Paragraph(sizeof_fmt(memory_module.capacity), style_sheet["BodyText"])])
 
         p0_5 = Paragraph('<b>Memory Modules:</b>', style_sheet["BodyText"])
@@ -1735,7 +1735,7 @@ class PDFReportGenerator(ReportGenerator):
                 manufacturer = network_device.manufacturer
 
             if network_device.speed:
-                speed = unicode(network_device.speed)
+                speed = str(network_device.speed)
 
             if network_device.mac_address:
                 mac_address = network_device.mac_address
@@ -1771,10 +1771,10 @@ class PDFReportGenerator(ReportGenerator):
                 manufacturer = display.manufacturer
 
             if display.xpixels:
-                xpixels = unicode(display.xpixels)
+                xpixels = str(display.xpixels)
 
             if display.ypixels:
-                ypixels = unicode(display.ypixels)
+                ypixels = str(display.ypixels)
 
             data.append([Paragraph(name, style_sheet["BodyText"]),
                          Paragraph(manufacturer, style_sheet["BodyText"]),
@@ -2047,7 +2047,7 @@ class PDFReportGenerator(ReportGenerator):
 
                 creationdate_str = self.creation_date.strftime(ASSET_DATETIMEFORMAT)
                 _user = user.objects.get(idx=self.general_settings["user_idx"])
-                _user_str = unicode(_user)
+                _user_str = str(_user)
 
                 str_to_draw_1 = "ServerID\t{}".format(self.cluster_id)
                 str_to_draw_2 = "Created\t{} by {}".format(creationdate_str, _user_str)
@@ -2269,7 +2269,7 @@ class PDFReportGenerator(ReportGenerator):
         toc_pdf = PdfFileReader(toc_buffer)
         toc_pdf_page_num = toc_pdf.getNumPages()
 
-        for i in reversed(range(toc_pdf_page_num)):
+        for i in reversed(list(range(toc_pdf_page_num))):
             output_pdf.insertPage(toc_pdf.getPage(i))
 
         # generate front page, prepend to pdf
@@ -2277,7 +2277,7 @@ class PDFReportGenerator(ReportGenerator):
         frontpage_pdf = PdfFileReader(frontpage_buffer)
         frontpage_page_num = frontpage_pdf.getNumPages()
 
-        for i in reversed(range(frontpage_page_num)):
+        for i in reversed(list(range(frontpage_page_num))):
             output_pdf.insertPage(frontpage_pdf.getPage(i))
 
         number_of_pre_content_sites = frontpage_page_num + toc_pdf_page_num
@@ -2628,21 +2628,21 @@ class XlsxReportGenerator(ReportGenerator):
         for _ip in _device.all_ips():
             if idx not in data_rows:
                 data_rows[idx] = ['' for _ in range(len(header_row))]
-            data_rows[idx][4] = unicode(_ip)
+            data_rows[idx][4] = str(_ip)
             idx += 1
 
         idx = 0
         for _snmp_scheme in _device.snmp_schemes.all():
             if idx not in data_rows:
                 data_rows[idx] = ['' for _ in range(len(header_row))]
-            data_rows[idx][5] = unicode(_snmp_scheme)
+            data_rows[idx][5] = str(_snmp_scheme)
             idx += 1
 
         idx = 0
         for _snmp_scheme in _device.snmp_schemes.all():
             if idx not in data_rows:
                 data_rows[idx] = ['' for _ in range(len(header_row))]
-            data_rows[idx][7] = unicode(_snmp_scheme)
+            data_rows[idx][7] = str(_snmp_scheme)
             idx += 1
 
         for i in range(len(data_rows)):
@@ -2763,33 +2763,33 @@ def _generate_hardware_info_data_dict(_devices):
             if AssetType(assetrun.run_type) == AssetType.PRETTYWINHW or AssetType(assetrun.run_type) == AssetType.LSHW:
                 for cpu in assetrun.asset_batch.cpus.all():
                     if cpu_str != "N/A":
-                        cpu_str += "\n{}".format(unicode(cpu))
+                        cpu_str += "\n{}".format(str(cpu))
                     else:
-                        cpu_str = unicode(cpu)
+                        cpu_str = str(cpu)
 
                 for gpu in assetrun.asset_batch.gpus.all():
                     if gpu_str != "N/A":
-                        gpu_str += "\n{}".format(unicode(gpu))
+                        gpu_str += "\n{}".format(str(gpu))
                     else:
-                        gpu_str = unicode(gpu)
+                        gpu_str = str(gpu)
 
                 for memory_module in assetrun.asset_batch.memory_modules.all():
                     if memory_str != "N/A":
-                        memory_str += "\n{}".format(unicode(memory_module))
+                        memory_str += "\n{}".format(str(memory_module))
                     else:
-                        memory_str = unicode(memory_module)
+                        memory_str = str(memory_module)
 
                 for network_device in assetrun.asset_batch.network_devices.all():
                     if network_str != "N/A":
-                        network_str += "\n{}".format(unicode(network_device))
+                        network_str += "\n{}".format(str(network_device))
                     else:
-                        network_str = unicode(network_device)
+                        network_str = str(network_device)
 
                 for display in assetrun.asset_batch.displays.all():
                     if display_str != "N/A":
-                        display_str += "\n{}".format(unicode(display))
+                        display_str += "\n{}".format(str(display))
                     else:
-                        display_str = unicode(display)
+                        display_str = str(display)
 
                 if assetrun.asset_batch.partition_table:
                     for hdd in assetrun.asset_batch.partition_table.partition_disc_set.all():
@@ -2993,8 +2993,8 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
         for process in ar.assetprocessentry_set.all():
             row = []
 
-            row.append(unicode(process.name))
-            row.append(unicode(process.pid))
+            row.append(str(process.name))
+            row.append(str(process.pid))
 
             row_writer_func(row)
 
@@ -3046,16 +3046,16 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
         for pci_entry in ar.assetpcientry_set.all():
             row = []
 
-            row.append(unicode(pci_entry.domain))
-            row.append(unicode(pci_entry.bus))
-            row.append(unicode(pci_entry.slot))
-            row.append(unicode(pci_entry.func))
+            row.append(str(pci_entry.domain))
+            row.append(str(pci_entry.bus))
+            row.append(str(pci_entry.slot))
+            row.append(str(pci_entry.func))
             row.append("{:04x}:{:02x}:{:02x}.{:x}".format(pci_entry.domain, pci_entry.bus,
                                                           pci_entry.slot, pci_entry.func))
-            row.append(unicode(pci_entry.subclassname))
-            row.append(unicode(pci_entry.vendorname))
-            row.append(unicode(pci_entry.devicename))
-            row.append(unicode(pci_entry.revision))
+            row.append(str(pci_entry.subclassname))
+            row.append(str(pci_entry.vendorname))
+            row.append(str(pci_entry.devicename))
+            row.append(str(pci_entry.revision))
 
             row_writer_func(row)
 
@@ -3107,7 +3107,7 @@ def postprocess_workbook(workbook):
 
                 current_max = max_str_lengths_per_column[col_idx]
                 next_max = current_max
-                if type(cell.value) == unicode:
+                if type(cell.value) == str:
                     components = cell.value.split("\n")
                     next_max = max([len(line) for line in components])
                     height_needed = max(len(components), height_needed)

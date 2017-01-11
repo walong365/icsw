@@ -19,7 +19,7 @@
 #
 """ creates fixtures for device classes """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.conf import settings
 from django.db.models import Q
@@ -44,7 +44,7 @@ def add_fixtures(**kwargs):
     if settings.ICSW_DEBUG:
         # debug output
         for _c in DeviceClass.objects.all():
-            print(unicode(_c))
+            print(str(_c))
 
     _no_class = device.objects.filter(Q(device_class=None))
     if _no_class.count():
@@ -52,7 +52,7 @@ def add_fixtures(**kwargs):
         print(
             "Settings DeviceClass for {} to {}".format(
                 logging_tools.get_plural("device", _no_class.count()),
-                unicode(_def_class),
+                str(_def_class),
             )
         )
         for _dev in _no_class:

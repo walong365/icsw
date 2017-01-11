@@ -19,7 +19,7 @@
 #
 """ special libvirt call """
 
-from __future__ import unicode_literals, print_function
+
 
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
@@ -46,7 +46,7 @@ class SpecialLibvirt(SpecialBase):
                 # print("***", domain_info)
                 if "running" in domain_info and "defined" in domain_info:
                     domain_info = domain_info["running"]
-                for _d_idx, d_dict in domain_info.iteritems():
+                for _d_idx, d_dict in domain_info.items():
                     new_hint = monitoring_hint(
                         key=d_dict["name"],
                         v_type="s",

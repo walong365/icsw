@@ -17,7 +17,7 @@
 #
 """ cluster-server, change bootsetting tasks """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 
@@ -47,7 +47,7 @@ class ChangeBootsettingTask(BGInotifyTask):
             for _dev in devs:
                 if _dev.bootserver_id:
                     _boot_dict.setdefault(_dev.bootserver_id, []).append(_dev)
-            for srv_id, dev_list in _boot_dict.iteritems():
+            for srv_id, dev_list in _boot_dict.items():
                 # target command
                 srv_com = server_command.srv_command(command=_mother_com[0])
                 # only valid for one device
@@ -65,7 +65,7 @@ class ChangeBootsettingTask(BGInotifyTask):
                         background_job_run(
                             background_job=cur_bg,
                             server=dev_list[0].bootserver,
-                            command_xml=unicode(srv_com),
+                            command_xml=str(srv_com),
                             start=cluster_timezone.localize(datetime.datetime.now()),
                         ),
                         srv_com,

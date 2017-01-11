@@ -64,12 +64,12 @@ def pretty_print(name, obj, offset):
         for value in obj:
             lines.extend(pretty_print("{:d}".format(idx), value, len(head_str)))
             idx += 1
-    elif isinstance(obj, basestring):
+    elif isinstance(obj, str):
         if obj:
             lines.append("{}{}(S): {}".format(off_str, name, obj))
         else:
             lines.append("{}{}(S): (empty string)".format(off_str, name))
-    elif type(obj) in [type(2), type(2L)]:
+    elif type(obj) in [type(2), type(2)]:
         lines.append("{}{}(I): {:d}".format(off_str, name, obj))
     else:
         lines.append("{}{}(?): {}".format(off_str, name, str(obj)))
@@ -84,8 +84,8 @@ class network_tree(dict):
             self.setdefault(cur_net.network_type.identifier, {})[cur_net.pk] = cur_net
             # idx_list, self and slaves
             cur_net.idx_list = [cur_net.pk]
-        for net_pk, cur_net in self.iteritems():
-            if type(net_pk) in [int, long]:
+        for net_pk, cur_net in self.items():
+            if type(net_pk) in [int, int]:
                 if cur_net.network_type.identifier == "s":
                     if cur_net.master_network_id in self and self[cur_net.master_network_id].network_type.identifier == "p":
                         self[cur_net.master_network_id].idx_list.append(net_pk)
@@ -168,11 +168,11 @@ class build_process(threading_tools.process_obj):
                 cur_c.log(
                     "found {}: {}".format(
                         logging_tools.get_plural("production network", len(cur_net_tree["p"])),
-                        ", ".join([unicode(cur_net) for cur_net in cur_net_tree["p"].itervalues()]),
+                        ", ".join([str(cur_net) for cur_net in cur_net_tree["p"].values()]),
                     )
                 )
                 act_prod_net = None
-                for prod_net in cur_net_tree["p"].itervalues():
+                for prod_net in cur_net_tree["p"].values():
                     cur_c.clean_directory(prod_net.identifier)
                     cur_c.log(
                         "{} {}".format(
@@ -244,18 +244,18 @@ class build_process(threading_tools.process_obj):
         return vtl
 
     def _to_unicode(self, value):
-        if isinstance(value, basestring):
-            value = u"'{}'".format(unicode(value))
-        elif type(value) in [long, int]:
+        if isinstance(value, str):
+            value = "'{}'".format(str(value))
+        elif type(value) in [int, int]:
             value = "{:d}".format(value)
         elif type(value) in [list]:
-            value = u"{{LIST}} [{}]".format(", ".join([self._to_unicode(s_value) for s_value in value]))
+            value = "{{LIST}} [{}]".format(", ".join([self._to_unicode(s_value) for s_value in value]))
         elif type(value) in [dict]:
-            value = u"{{DICT}} {}".format(unicode(value))
+            value = "{{DICT}} {}".format(str(value))
         else:
-            value = u"{{CLASS {}}} '{}'".format(
+            value = "{{CLASS {}}} '{}'".format(
                 value.__class__.__name__,
-                unicode(value),
+                str(value),
             )
         return value
 
@@ -428,14 +428,14 @@ class build_process(threading_tools.process_obj):
                 cur_c.log("  - %-6s (IP %-15s, network %-20s) : %s" % (
                     entry.netdevice.devname,
                     entry.ip,
-                    unicode(entry.network),
+                    str(entry.network),
                     cause))
             cur_c.log("%s in not_taken_list" % (logging_tools.get_plural("Netdevice", len(not_taken_list))))
             for entry, cause in not_taken_list:
                 cur_c.log("  - %-6s (IP %-15s, network %-20s) : %s" % (
                     entry.netdevice.devname,
                     entry.ip,
-                    unicode(entry.network),
+                    str(entry.network),
                     cause))
             if cur_c.command == "get_config_vars":
                 cur_c.var_tuple_list = self._generate_vtl(conf_dict)
@@ -456,13 +456,13 @@ class build_process(threading_tools.process_obj):
                     cur_c.log(
                         "error in scripts for {}: {}".format(
                             logging_tools.get_plural("config", len(conf_dict["called"][False])),
-                            ", ".join(sorted([unicode(config_dict[pk]) for pk, err_lines in conf_dict["called"][False]]))
+                            ", ".join(sorted([str(config_dict[pk]) for pk, err_lines in conf_dict["called"][False]]))
                         ),
                         logging_tools.LOG_LEVEL_ERROR,
                         state="done"
                     )
                     cur_c.add_set_keys("error_dict")
-                    cur_c.error_dict = dict([(unicode(config_dict[pk]), err_lines) for pk, err_lines in conf_dict["called"][False]])
+                    cur_c.error_dict = dict([(str(config_dict[pk]), err_lines) for pk, err_lines in conf_dict["called"][False]])
                 else:
                     cur_c.log("config built", state="done")
                 cur_bc.close()

@@ -22,7 +22,7 @@
 
 """ DB definitions for background jobs """
 
-from __future__ import unicode_literals, print_function
+
 
 import logging
 
@@ -120,7 +120,7 @@ class background_job(models.Model):
         return self.initiator.full_name
 
     def user_name(self):
-        return unicode(self.user) if self.user_id else "---"
+        return str(self.user) if self.user_id else "---"
 
     def set_state(self, state, result=None):
         self.state = state.value

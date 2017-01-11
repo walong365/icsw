@@ -24,6 +24,6 @@
 
 import sys
 
-print(
+print((
     "deprecated, use 'icsw config show {}'".format(" ".join(sys.argv[1:]))
-)
+))

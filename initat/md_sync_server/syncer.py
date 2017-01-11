@@ -26,7 +26,7 @@ software and performance
 
 """
 
-from __future__ import print_function, unicode_literals
+
 
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools
@@ -89,7 +89,7 @@ class SyncerHandler(object):
         self.__process.send_command(src_id, srv_com)
 
     def check_for_redistribute(self):
-        for slave_config in self.__slave_configs.itervalues():
+        for slave_config in self.__slave_configs.values():
             slave_config.check_for_resend()
 
     @property
@@ -132,7 +132,7 @@ class SyncerHandler(object):
             self.__local_master.send_satellite_info()
 
     def livestatus_info(self, arg_dict):
-        self.log("got livestatus dict with {:d} keys".format(len(arg_dict.keys())))
+        self.log("got livestatus dict with {:d} keys".format(len(list(arg_dict.keys()))))
         if self.__local_master:
             self.__local_master.set_livestatus_version(arg_dict["livestatus_version"])
 

@@ -19,13 +19,13 @@
 #
 """ mixins providing various functions for build process / md-config-server """
 
-from __future__ import unicode_literals, print_function
 
-import ConfigParser
+
+import configparser
 import base64
 import binascii
 import codecs
-import commands
+import subprocess
 import operator
 import os
 import sqlite3
@@ -38,6 +38,7 @@ from initat.cluster.backbone.models import device, mon_ext_host, \
     netdevice, device_group, user
 from initat.tools import logging_tools, process_tools
 from ..config.global_config import global_config
+from functools import reduce
 
 __all__ = [
     b"ImageMapMixin",
@@ -55,7 +56,7 @@ class ImageMapMixin(object):
     def IM_check_image_maps(self):
         min_width, max_width, min_height, max_height = (16, 64, 16, 64)
         all_image_stuff = self.IM_get_mon_ext_hosts()
-        self.log("Found {}".format(logging_tools.get_plural("ext_host entry", len(all_image_stuff.keys()))))
+        self.log("Found {}".format(logging_tools.get_plural("ext_host entry", len(list(all_image_stuff.keys())))))
         logos_dir = "{}/share/images/logos".format(self.gc["MD_BASEDIR"])
         base_names = set()
         if os.path.isdir(logos_dir):
@@ -66,7 +67,7 @@ class ImageMapMixin(object):
                         base_names.add(log_line)
         name_case_lut = {}
         if base_names:
-            stat, out = commands.getstatusoutput("file {}".format(" ".join([os.path.join(logos_dir, "{}.png".format(entry)) for entry in base_names])))
+            stat, out = subprocess.getstatusoutput("file {}".format(" ".join([os.path.join(logos_dir, "{}.png".format(entry)) for entry in base_names])))
             if stat:
                 self.log(
                     "error getting filetype of {}".format(
@@ -96,8 +97,8 @@ class ImageMapMixin(object):
                                     max_height,
                                 )
                             )
-        name_lut = {eh.name.lower(): pk for pk, eh in all_image_stuff.iteritems()}
-        all_images_present = set([eh.name for eh in all_image_stuff.values()])
+        name_lut = {eh.name.lower(): pk for pk, eh in all_image_stuff.items()}
+        all_images_present = set([eh.name for eh in list(all_image_stuff.values())])
         all_images_present_lower = set([name.lower() for name in all_images_present])
         base_names_lower = set([name.lower() for name in base_names])
         new_images = base_names_lower - all_images_present_lower
@@ -143,19 +144,19 @@ class DistanceMapMixin(object):
         nd_lut = {
             value[0]: value[1] for value in netdevice.objects.filter(
                 Q(enabled=True)
-            ).values_list("pk", "device") if value[1] in dm_dict.keys()
+            ).values_list("pk", "device") if value[1] in list(dm_dict.keys())
         }
-        for cur_dev in dm_dict.itervalues():
+        for cur_dev in dm_dict.values():
             # set 0 for root_node, -1 for all other devices
             cur_dev.md_dist_level = 0 if cur_dev.pk == root_node.pk else -1
         all_pks = set(dm_dict.keys())
         all_nd_pks = set(nd_lut.keys())
         max_level = 0
         # limit for loop
-        for cur_iter in xrange(128):
+        for cur_iter in range(128):
             run_again = False
             # iterate until all nodes have a valid dist_level set
-            src_nodes = set([key for key, value in dm_dict.iteritems() if value.md_dist_level >= 0])
+            src_nodes = set([key for key, value in dm_dict.items() if value.md_dist_level >= 0])
             dst_nodes = all_pks - src_nodes
             self.log(
                 "dm_run {:3d}, {}, {}".format(
@@ -188,7 +189,7 @@ class DistanceMapMixin(object):
                     if dst_dev.md_dist_level >= 0 and new_level > dst_dev.md_dist_level:
                         self.log(
                             "pushing node {} farther away from root ({:d} => {:d})".format(
-                                unicode(dst_dev),
+                                str(dst_dev),
                                 dst_dev.md_dist_level,
                                 new_level,
                             )
@@ -213,17 +214,17 @@ class DistanceMapMixin(object):
                 max_level,
             )
         )
-        nodes_ur = [unicode(value) for value in dm_dict.itervalues() if value.md_dist_level < 0]
-        ur_pks = [_entry.pk for _entry in dm_dict.itervalues() if _entry.md_dist_level < 0]
-        for level in xrange(max_level + 1):
+        nodes_ur = [str(value) for value in dm_dict.values() if value.md_dist_level < 0]
+        ur_pks = [_entry.pk for _entry in dm_dict.values() if _entry.md_dist_level < 0]
+        for level in range(max_level + 1):
             self.log(
                 "nodes in level {:d}: {}".format(
                     level,
-                    len([True for value in dm_dict.itervalues() if value.md_dist_level == level]),
+                    len([True for value in dm_dict.values() if value.md_dist_level == level]),
                 )
             )
         return {
-            key: value.md_dist_level for key, value in dm_dict.iteritems()
+            key: value.md_dist_level for key, value in dm_dict.items()
         }, ur_pks, nodes_ur
 
 
@@ -263,7 +264,7 @@ class NagVisMixin(object):
             map_h = codecs.open(map_file, "w", "utf-8")
         except:
             self.mach_log(
-                u"cannot open {}: {}".format(
+                "cannot open {}: {}".format(
                     map_file,
                     process_tools.get_except_info()
                 ),
@@ -272,13 +273,13 @@ class NagVisMixin(object):
         else:
             nagvis_maps.add(map_file)
             map_h.write("define global {\n")
-            for key in sorted(map_dict.iterkeys()):
+            for key in sorted(map_dict.keys()):
                 value = map_dict[key]
                 if type(value) == bool:
                     value = "1" if value else "0"
-                elif type(value) in [int, long]:
+                elif type(value) in [int, int]:
                     value = "%d" % (value)
-                map_h.write(u"    {}={}\n".format(key, value))
+                map_h.write("    {}={}\n".format(key, value))
             map_h.write("}\n")
             map_h.close()
 
@@ -359,7 +360,7 @@ class NagVisMixin(object):
                 )
             )
             #
-            nagvis_main_cfg = ConfigParser.RawConfigParser(allow_no_value=True)
+            nagvis_main_cfg = configparser.RawConfigParser(allow_no_value=True)
             for sect_name, var_list in [
                 (
                         "global",
@@ -580,7 +581,7 @@ class NagVisMixin(object):
             ]:
                 nagvis_main_cfg.add_section(sect_name)
                 for key, value in var_list:
-                    nagvis_main_cfg.set(sect_name, key, unicode(value))
+                    nagvis_main_cfg.set(sect_name, key, str(value))
             try:
                 nv_target = os.path.join(global_config["NAGVIS_DIR"], "etc", "nagvis.ini.php")
                 with open(nv_target, "wb") as nvm_file:
@@ -664,7 +665,7 @@ class NagVisMixin(object):
                 "role dict: {}".format(
                     ", ".join(
                         [
-                            "{}={:d}".format(key, value) for key, value in role_dict.iteritems()
+                            "{}={:d}".format(key, value) for key, value in role_dict.items()
                             ]
                     )
                 )
@@ -674,7 +675,7 @@ class NagVisMixin(object):
             self.log(
                 "{}: {}".format(
                     logging_tools.get_plural("NagVIS root device", len(nagvis_rds)),
-                    ", ".join([unicode(cur_dev) for cur_dev in nagvis_rds])
+                    ", ".join([str(cur_dev) for cur_dev in nagvis_rds])
                 )
             )
             devg_lut = {}
@@ -731,7 +732,7 @@ class NagVisMixin(object):
                         )
                     )
                 self.log("creating user '{}' with role {}".format(
-                    unicode(cur_u),
+                    str(cur_u),
                     target_role,
                 ))
                 new_userid = cur_c.execute(

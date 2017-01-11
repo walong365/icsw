@@ -19,7 +19,7 @@
 #
 
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import re
@@ -238,7 +238,7 @@ def _parse_lsblk(dump):
         lines = result.strip().split('\n')
         _seps = [0]
         longest_line = max([len(line) for line in lines])
-        for idx in xrange(longest_line):
+        for idx in range(longest_line):
             if all([line[idx] == " " for line in lines if len(line) > idx]):
                 _seps.append(idx)
         _seps.append(longest_line)
@@ -247,7 +247,7 @@ def _parse_lsblk(dump):
         line = lines[0]
         line = "{}{}".format(line, " " * longest_line)[0:longest_line]
         header = [
-            line[_seps[_idx - 1]:_seps[_idx] + 1].strip() for _idx in xrange(1, len(_seps))
+            line[_seps[_idx - 1]:_seps[_idx] + 1].strip() for _idx in range(1, len(_seps))
         ]
         # print(raw_data)
         _seps = _seps[:-1]
@@ -261,7 +261,7 @@ def _parse_lsblk(dump):
         for line in lines:
             line = "{}{}".format(line, " " * longest_line)[0:longest_line]
             _parts = [
-                line[new_seps[_idx - 1]:new_seps[_idx] + 1].strip() for _idx in xrange(1, len(_seps))
+                line[new_seps[_idx - 1]:new_seps[_idx] + 1].strip() for _idx in range(1, len(_seps))
             ]
             raw_data.append(_parts)
         header = raw_data.pop(0)
@@ -273,7 +273,7 @@ def _parse_lsblk(dump):
             continue
         data = OrderedDict([(k, v) for (k, v) in zip(header, data)])
         # if available, apply the mapping function
-        for (key, value) in data.iteritems():
+        for (key, value) in data.items():
             if key in mappers:
                 # print("*", key, value, mappers[key], data)
                 data[key] = mappers[key](value)
@@ -571,13 +571,13 @@ class Hardware(object):
             def infos(self):
                 # do a little bit of post-processing
                 res = OrderedDict()
-                for (key, lines) in self._infos.iteritems():
+                for (key, lines) in self._infos.items():
                     if len(lines) == 1:
                         res[key] = lines[0]
                     else:
                         res[key] = [l for l in lines if l]
                 if 'EDID' in res:
-                    res['EDID'] = unicode.decode(''.join(res['EDID']), 'hex')
+                    res['EDID'] = str.decode(''.join(res['EDID']), 'hex')
                 return res
 
         virt_screen_re = re.compile(
@@ -624,7 +624,7 @@ class Hardware(object):
                         if '+preferred' in resolution.flags:
                             break
                     (display.x_resolution, display.y_resolution) = \
-                        map(int, resolution.resolution.split('x'))
+                        list(map(int, resolution.resolution.split('x')))
                     self.displays.append(display)
 
         self.virt_screen = virt_screens
@@ -664,19 +664,19 @@ class HardwareBase(object):
 
     def __repr__(self):
         infos = []
-        for (name, value) in self.__dict__.items():
+        for (name, value) in list(self.__dict__.items()):
             if not name.startswith('_') and value is not None:
                 infos.append('{}={}'.format(name, repr(value)))
         return '{}({})'.format(self.__class__.__name__, ', '.join(infos))
 
     def update(self, hw_instance):
-        for (name, value) in hw_instance.__dict__.items():
+        for (name, value) in list(hw_instance.__dict__.items()):
             cur_value = getattr(self, name)
             if cur_value is None:
                 setattr(self, name, value)
 
     def _populate_lshw(self):
-        for (prop_name, (xpath_expr, func)) in self.LSHW_ELEMENTS.items():
+        for (prop_name, (xpath_expr, func)) in list(self.LSHW_ELEMENTS.items()):
             try:
                 element = self._tree.xpath(xpath_expr)[0]
             except IndexError:
@@ -690,7 +690,7 @@ class HardwareBase(object):
             setattr(self, prop_name, value)
 
     def _populate_win32(self):
-        for (prop_name, (dict_key, func)) in self.WIN32_ELEMENTS.items():
+        for (prop_name, (dict_key, func)) in list(self.WIN32_ELEMENTS.items()):
             value = self._tree[dict_key] if dict_key else None
             if value is not None and func:
                 value = func(value)
@@ -699,7 +699,7 @@ class HardwareBase(object):
         self._path_w32 = self._tree['_path']
 
     def _populate_dmi(self):
-        for (prop_name, (handle_key, func)) in self.DMI_ELEMENTS.items():
+        for (prop_name, (handle_key, func)) in list(self.DMI_ELEMENTS.items()):
             value = self._tree[handle_key]['value']
             if value is not None and func:
                 value = func(value)
@@ -710,18 +710,18 @@ class HardwareCPU(HardwareBase):
     """Represents the physical CPU."""
 
     LSHW_ELEMENTS = {
-        'product': ('product', unicode),
-        'manufacturer': ('vendor', unicode),
-        'version': ('version', unicode),
-        'serial': ('serial', unicode),
+        'product': ('product', str),
+        'manufacturer': ('vendor', str),
+        'version': ('version', str),
+        'serial': ('serial', str),
         'number_of_cores': ("configuration/setting[@id='cores']/@value", int),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394373%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
-        'product': ('Name', unicode),
-        'manufacturer': ('Manufacturer', unicode),
-        'version': ('Version', unicode),
-        'serial': ('ProcessorId', unicode),
+        'product': ('Name', str),
+        'manufacturer': ('Manufacturer', str),
+        'version': ('Version', str),
+        'serial': ('ProcessorId', str),
         'number_of_cores': ('NumberOfCores', int),
     }
 
@@ -756,20 +756,20 @@ class MemoryModule(HardwareBase):
 #     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394347(v=vs.85).aspx
     WIN32_ELEMENTS = {
-        'manufacturer': ('Manufacturer', unicode),
+        'manufacturer': ('Manufacturer', str),
         'capacity': ('Capacity', int),
-        'serial': ('SerialNumber', unicode),
-        'bank_label': ('DeviceLocator', unicode),
+        'serial': ('SerialNumber', str),
+        'bank_label': ('DeviceLocator', str),
         'form_factor': ('FormFactor', int),
         'type': ('MemoryType', int),
     }
     DMI_ELEMENTS = {
-        'manufacturer': ('Manufacturer', unicode),
+        'manufacturer': ('Manufacturer', str),
         'capacity': ('Size', parse_size),
-        'serial': ('Serial Number', unicode),
-        'bank_label': ('Bank Locator', unicode),
-        'form_factor': ('Form Factor', unicode),
-        'type': ('Type', unicode),
+        'serial': ('Serial Number', str),
+        'bank_label': ('Bank Locator', str),
+        'form_factor': ('Form Factor', str),
+        'type': ('Type', str),
     }
 
     def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None):
@@ -791,13 +791,13 @@ class HardwareGPU(HardwareBase):
     """Represents a graphics adapter."""
 
     LSHW_ELEMENTS = {
-        'description': ('description', unicode),
-        'product': ('product', unicode),
+        'description': ('description', str),
+        'product': ('product', str),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394512%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
-        'description': ('Description', unicode),
-        'product': ('Name', unicode),
+        'description': ('Description', str),
+        'product': ('Name', str),
     }
 
     def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None):
@@ -810,20 +810,20 @@ class HardwareHdd(HardwareBase):
     """Represents a hard disc device."""
 
     LSHW_ELEMENTS = {
-        'description': ('description', unicode),
-        'product': ('product', unicode),
-        'device_name': ('logicalname', unicode),
-        'serial': ('serial', unicode),
+        'description': ('description', str),
+        'product': ('product', str),
+        'device_name': ('logicalname', str),
+        'serial': ('serial', str),
         # "size" is the size of the physical disk whereas "capacity" is the
         # size of the corresponding file system (cf. the output of "lsblk")
         'size': ('size', int),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394132%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
-        'description': ('Description', unicode),
-        'product': ('Caption', unicode),
-        'device_name': ('DeviceID', unicode),
-        'serial': ('SerialNumber', unicode),
+        'description': ('Description', str),
+        'product': ('Caption', str),
+        'device_name': ('DeviceID', str),
+        'serial': ('SerialNumber', str),
         'size': ('Size', int),
     }
 
@@ -865,11 +865,11 @@ class Partition(HardwareBase):
     }
 
     LSHW_ELEMENTS = {
-        'size': (None, unicode),
+        'size': (None, str),
         'index': (None, int),
-        'bootable': (None, unicode),
-        'device_name': ('logicalname', unicode),
-        'type': (None, unicode),
+        'bootable': (None, str),
+        'device_name': ('logicalname', str),
+        'type': (None, str),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394135(v=vs.85).aspx
     # Note: WMI doesn't provide any information about the partition type hex.
@@ -877,8 +877,8 @@ class Partition(HardwareBase):
         'size': ('Size', int),
         'index': ('Index', int),
         'bootable': ('Bootable', bool),
-        'device_name': ('DeviceID', unicode),
-        'type': ('Type', unicode),
+        'device_name': ('DeviceID', str),
+        'type': ('Type', str),
     }
 
     def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None,
@@ -926,9 +926,9 @@ class LogicalDisc(HardwareBase):
 
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394173(v=vs.85).aspx
     WIN32_ELEMENTS = {
-        'device_name': ('DeviceID', unicode),
-        'mount_point': ('DeviceID', unicode),
-        'file_system': ('FileSystem', unicode.lower),
+        'device_name': ('DeviceID', str),
+        'mount_point': ('DeviceID', str),
+        'file_system': ('FileSystem', str.lower),
         'size': ('Size', int),
         'free_space': ('FreeSpace', int),
     }
@@ -965,18 +965,18 @@ class HardwareNetwork(HardwareBase):
     """Represents a network device."""
 
     LSHW_ELEMENTS = {
-        'product': ('product', unicode),
-        'manufacturer': ('vendor', unicode),
-        'device_name': ('logicalname', unicode),
+        'product': ('product', str),
+        'manufacturer': ('vendor', str),
+        'device_name': ('logicalname', str),
         'mac_address': ('serial', format_mac_address),
         'speed': ('size', int),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394216(v=vs.85).aspx
     WIN32_ELEMENTS = {
-        'product': ('ProductName', unicode),
-        'manufacturer': ('Manufacturer', unicode),
-        'device_name': ('NetConnectionID', unicode),
-        'mac_address': ('MACAddress', unicode),
+        'product': ('ProductName', str),
+        'manufacturer': ('Manufacturer', str),
+        'device_name': ('NetConnectionID', str),
+        'mac_address': ('MACAddress', str),
         'speed': ('Speed', int),
     }
 
@@ -996,9 +996,9 @@ class HardwareNetwork(HardwareBase):
 class Display(HardwareBase):
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394122(v=vs.85).aspx
     WIN32_ELEMENTS = {
-        'manufacturer': ('MonitorManufacturer', unicode),
-        'product': ('Caption', unicode),
-        'serial': (None, unicode),
+        'manufacturer': ('MonitorManufacturer', str),
+        'product': ('Caption', str),
+        'serial': (None, str),
         'x_resolution': ('ScreenWidth', int),
         'y_resolution': ('ScreenHeight', int),
     }
@@ -1057,7 +1057,7 @@ loop7                                    loop7   7:7                            
     lines = result.strip().split('\n')
     _seps = [0]
     longest_line = max([len(line) for line in lines])
-    for idx in xrange(longest_line):
+    for idx in range(longest_line):
         if all([line[idx] == " " for line in lines if len(line) > idx]):
             _seps.append(idx)
     _seps.append(longest_line)
@@ -1066,7 +1066,7 @@ loop7                                    loop7   7:7                            
     line = lines[0]
     _line = "{}{}".format(line, " " * longest_line)[0:longest_line]
     header = [
-        line[_seps[_idx - 1]:_seps[_idx] + 1].strip() for _idx in xrange(1, len(_seps))
+        line[_seps[_idx - 1]:_seps[_idx] + 1].strip() for _idx in range(1, len(_seps))
     ]
     # print(raw_data)
     _seps = _seps[:-1]
@@ -1080,7 +1080,7 @@ loop7                                    loop7   7:7                            
     for line in lines:
         _line = "{}{}".format(line, " " * longest_line)[0:longest_line]
         _parts = [
-            line[new_seps[_idx - 1]:new_seps[_idx] + 1].strip() for _idx in xrange(1, len(_seps))
+            line[new_seps[_idx - 1]:new_seps[_idx] + 1].strip() for _idx in range(1, len(_seps))
         ]
         raw_data.append(_parts)
     import pprint

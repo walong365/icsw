@@ -21,7 +21,7 @@
 #
 """ database definitions for RMS """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 import time
@@ -284,7 +284,7 @@ class RMSAggregationLevel(object):
                         }
                     _user_dict[rec.rms_user_id]["slots"] += _fact * rec.slots_used
             db_recs = []
-            for _key, _struct in _user_dict.iteritems():
+            for _key, _struct in _user_dict.items():
                 _struct["slots"] /= float(_div)
                 db_recs.append(
                     rms_accounting_record(
@@ -465,12 +465,12 @@ class rms_job_run(models.Model):
 
     def __unicode__(self):
         return "run for {} in {}".format(
-            unicode(self.rms_job),
-            unicode(self.rms_queue),
+            str(self.rms_job),
+            str(self.rms_queue),
         )
 
     def _set_is_value(self, attr_name, value):
-        if type(value) in [int, long]:
+        if type(value) in [int, int]:
             setattr(self, attr_name, value)
             setattr(self, "{}_str".format(attr_name), "")
         else:

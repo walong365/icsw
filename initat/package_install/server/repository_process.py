@@ -20,7 +20,7 @@
 #
 """ package server, repository process """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import time
@@ -142,7 +142,7 @@ class RepoProcess(threading_tools.process_obj):
         if len(args):
             srv_com = server_command.srv_command(source=args[0])
             srv_com.set_result("ok reloading searches")
-            self.send_pool_message("remote_call_async_result", unicode(srv_com))
+            self.send_pool_message("remote_call_async_result", str(srv_com))
         search_list = []
         for cur_search in package_search.objects.filter(Q(deleted=False) & Q(current_state__in=["ini", "wait"])):
             search_list.append((self.repo_type.search_package(cur_search.search_string), cur_search))

@@ -19,7 +19,7 @@
 #
 """ db-syncer for the NESTOR / CORVUS / NOCTUA graphing solution """
 
-from __future__ import print_function, unicode_literals
+
 
 from django.db.models import Q
 from initat.tools import logging_tools, server_mixins, threading_tools, process_tools
@@ -130,7 +130,7 @@ class MachineVectorCache(GenCache):
                 dir_name=in_value.uuid,
             )
             _mv.save()
-            self.log("created MachineVector for {}".format(unicode(in_value)))
+            self.log("created MachineVector for {}".format(str(in_value)))
         # install caching instance
         _mv.mvs_cache = MVStructEntryCache(self.log_com, parent=_mv)
         self[in_value] = _mv
@@ -331,13 +331,13 @@ class SyncProcess(threading_tools.process_obj, server_mixins.OperationalErrorMix
                 self.log(
                     "changed {} for {}".format(
                         logging_tools.get_plural("MVStructEntry", self.mvs_changed),
-                        unicode(mv),
+                        str(mv),
                     )
                 )
             if self.mvv_changed:
                 self.log(
                     "changed {} for {}".format(
                         logging_tools.get_plural("MVValueEntry", self.mvv_changed),
-                        unicode(mv),
+                        str(mv),
                     )
                 )

@@ -19,7 +19,7 @@
 #
 """ generates zonefiles for nsX.init.at """
 
-from __future__ import unicode_literals, print_function
+
 
 import argparse
 import os

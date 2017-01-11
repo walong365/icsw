@@ -17,9 +17,9 @@
 #
 """ raid controller base structures and helper functions """
 
-from __future__ import print_function,  unicode_literals
 
-import commands
+
+import subprocess
 import os
 import time
 
@@ -60,7 +60,7 @@ class ctrl_type(object):
                 mp_command = process_tools.find_file("modprobe")
                 for kern_mod in self.kernel_modules:
                     cmd = "{} {}".format(mp_command, kern_mod)
-                    c_stat, c_out = commands.getstatusoutput(cmd)
+                    c_stat, c_out = subprocess.getstatusoutput(cmd)
                     self.log(
                         "calling '{}' gave ({:d}): {}".format(
                             cmd,
@@ -93,7 +93,7 @@ class ctrl_type(object):
     def exec_command(self, com_line, **kwargs):
         if com_line.startswith(" "):
             com_line = "{}{}".format(self._check_exec, com_line)
-        cur_stat, cur_out = commands.getstatusoutput(com_line)
+        cur_stat, cur_out = subprocess.getstatusoutput(com_line)
         lines = cur_out.split("\n")
         if cur_stat:
             self.log("{} gave {:d}:".format(com_line, cur_stat), logging_tools.LOG_LEVEL_ERROR)
@@ -160,7 +160,7 @@ class ctrl_type(object):
             )
 
     def controller_list(self):
-        return self._dict.keys()
+        return list(self._dict.keys())
 
     def scan_ctrl(self):
         # override to scan for controllers

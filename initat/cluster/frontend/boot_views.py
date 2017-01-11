@@ -23,7 +23,7 @@
 
 """ boot views """
 
-from __future__ import print_function, unicode_literals
+
 
 import json
 import logging
@@ -161,8 +161,8 @@ class update_device(View):
         pk_list = dev_data["pk_list"]
         # many = True
         # update enabled list
-        _en = {key: False for key in _change_lut.iterkeys()}
-        for short_key in _en.iterkeys():
+        _en = {key: False for key in _change_lut.keys()}
+        for short_key in _en.keys():
             _en[short_key] = dev_data["bo_enabled"].get(short_key, False) and dev_data["change"].get(short_key, False)
         # print _en
         # print pk_list
@@ -263,12 +263,12 @@ class update_device(View):
                     logging_tools.get_plural("device", len(all_devs)),
                     ", ".join(
                         [
-                            unicode(cur_dev) for cur_dev in all_devs
+                            str(cur_dev) for cur_dev in all_devs
                         ]
                     )
                 )
             else:
-                dev_info_str = unicode(all_devs[0])
+                dev_info_str = str(all_devs[0])
             request.xml_response.info(
                 "updated {} for '{}'".format(
                     ", ".join(_all_update_list),
@@ -284,8 +284,8 @@ class get_devlog_info(View):
         _post = request.POST
         _pk_log_list = json.loads(_post["sel_list"])
         lp_dict = {key: latest for key, latest in _pk_log_list}
-        devs = device.objects.filter(Q(pk__in=lp_dict.keys()))
-        oldest_pk = min(lp_dict.values() + [0])
+        devs = device.objects.filter(Q(pk__in=list(lp_dict.keys())))
+        oldest_pk = min(list(lp_dict.values()) + [0])
         logger.info(
             "request devlogs for {}, oldest devlog_pk is {:d}".format(
                 logging_tools.get_plural("device", len(lp_dict)),
@@ -309,7 +309,7 @@ class get_devlog_info(View):
                 "total": num_logs[key],
                 "transfered": 0,
                 "latest": value,
-            } for key, value in lp_dict.iteritems()
+            } for key, value in lp_dict.items()
         }
         for db_log in db_logs:
             _ds = dev_logs[db_log.device_id]
@@ -344,14 +344,14 @@ class soft_control(View):
             "sending soft_control '{}' to {}: {}".format(
                 soft_state,
                 logging_tools.get_plural("device", len(dev_pk_list)),
-                logging_tools.reduce_list(sorted([unicode(cur_dev) for cur_dev in cur_devs.itervalues()])),
+                logging_tools.reduce_list(sorted([str(cur_dev) for cur_dev in cur_devs.values()])),
             )
         )
         srv_com = server_command.srv_command(command="soft_control")
         srv_com["devices"] = srv_com.builder(
             "devices",
             *[
-                srv_com.builder("device", soft_command=soft_state, pk="{:d}".format(cur_dev.pk)) for cur_dev in cur_devs.itervalues()
+                srv_com.builder("device", soft_command=soft_state, pk="{:d}".format(cur_dev.pk)) for cur_dev in cur_devs.values()
             ]
         )
         result = contact_server(request, icswServiceEnum.mother_server, srv_com, timeout=10, log_result=False)
@@ -397,8 +397,8 @@ class hard_control(View):
         for cur_cd_con in cur_cd_cons:
             logger.info(
                 "  device {} (controlling device: {})".format(
-                    unicode(cur_cd_con.child),
-                    unicode(cur_cd_con.parent)
+                    str(cur_cd_con.child),
+                    str(cur_cd_con.parent)
                 )
             )
         srv_com = server_command.srv_command(command="hard_control")

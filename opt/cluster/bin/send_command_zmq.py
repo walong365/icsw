@@ -20,7 +20,7 @@
 
 """ sends a command to one of the python-servers, 0MQ version"""
 
-from __future__ import print_function, unicode_literals
+
 
 import argparse
 import sys
@@ -64,7 +64,7 @@ class LocalParser(argparse.ArgumentParser):
 
     def parse(self):
         opts = self.parse_args()
-        if isinstance(opts.port, basestring) and opts.port.isdigit():
+        if isinstance(opts.port, str) and opts.port.isdigit():
             opts.port = int(opts.port)
         else:
             if opts.port in self.inst_xml:

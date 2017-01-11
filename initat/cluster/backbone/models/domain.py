@@ -21,9 +21,9 @@
 #
 """ Model definitions for domain related objects """
 
-from __future__ import unicode_literals, print_function
 
-import StringIO
+
+import io
 import os
 import re
 import uuid
@@ -96,7 +96,7 @@ class domain_name_tree(object):
         device = apps.get_model("backbone", "device")
         net_ip = apps.get_model("backbone", "net_ip")
         used_pks = set(device.objects.all().values_list("domain_tree_node", flat=True)) | set(net_ip.objects.all().values_list("domain_tree_node", flat=True))
-        for cur_tn in self.__node_dict.itervalues():
+        for cur_tn in self.__node_dict.values():
             is_im = cur_tn.pk not in used_pks
             if cur_tn.intermediate != is_im:
                 cur_tn.intermediate = is_im
@@ -106,13 +106,13 @@ class domain_name_tree(object):
         device = apps.get_model("backbone", "device")
         used_dtn_pks = list(device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True)).values_list("domain_tree_node_id", flat=True))
         used_dict = {key: used_dtn_pks.count(key) for key in set(used_dtn_pks)}
-        for value in self.__node_dict.itervalues():
+        for value in self.__node_dict.values():
             value.local_refcount = used_dict.get(value.pk, 0)
-        for value in self.__node_dict.itervalues():
+        for value in self.__node_dict.values():
             value.total_refcount = self._get_sub_refcounts(value)
 
     def _get_sub_refcounts(self, s_node):
-        return self.__node_dict[s_node.pk].local_refcount + sum([self._get_sub_refcounts(sub_node) for sub_node in sum(s_node._sub_tree.itervalues(), [])])
+        return self.__node_dict[s_node.pk].local_refcount + sum([self._get_sub_refcounts(sub_node) for sub_node in sum(iter(s_node._sub_tree.values()), [])])
 
     def add_domain(self, new_domain_name):
         dom_parts = list(reversed(new_domain_name.split(".")))
@@ -143,11 +143,11 @@ class domain_name_tree(object):
         return self._root_node.get_sorted_pks()
 
     def __getitem__(self, key):
-        if type(key) in [int, long]:
+        if type(key) in [int, int]:
             return self.__node_dict[key]
 
     def keys(self):
-        return self.__node_dict.keys()
+        return list(self.__node_dict.keys())
 
     def __iter__(self):
         return self.all()
@@ -197,7 +197,7 @@ class domain_tree_node(models.Model):
                                 ],
                                 []
                             )
-                        ) for key, value in self._sub_tree.iteritems()
+                        ) for key, value in self._sub_tree.items()
                     ]
                 )
             ],
@@ -212,7 +212,7 @@ class domain_tree_node(models.Model):
             # else:
             #    return u"%s%s (%s)" % (r"+-" * (self.depth), self.name, self.full_name)
         else:
-            return u"[TLN]"
+            return "[TLN]"
 
 
 @receiver(signals.pre_save, sender=domain_tree_node)
@@ -313,7 +313,7 @@ def _migrate_location_type(cat_tree):
                 ) for pk, cur_name in device_location.objects.all().values_list("pk", "location")
             }
             mig_dict = {
-                key: cat_tree.add_category(value) for key, value in all_loc_ct.iteritems()
+                key: cat_tree.add_category(value) for key, value in all_loc_ct.items()
             }
             for cur_dev in device.objects.all():
                 if cur_dev.device_location_id:
@@ -377,7 +377,7 @@ class category_tree(object):
             _tree_name = "/{}".format(check_name)
             if _tree_name not in self.__category_lut:
                 self.add_category(_tree_name)
-        for cur_node in self.__node_dict.itervalues():
+        for cur_node in self.__node_dict.values():
             is_immutable = cur_node.full_name in [
                 "",
             ] + ["/{}".format(_entry) for _entry in TREE_SUBTYPES]
@@ -418,21 +418,21 @@ class category_tree(object):
         return self._root_node.get_sorted_pks()
 
     def __contains__(self, key):
-        if type(key) in [int, long]:
+        if type(key) in [int, int]:
             return key in self.__node_dict
         else:
             return key in self.__category_lut
 
     def __getitem__(self, key):
-        if type(key) in [int, long]:
+        if type(key) in [int, int]:
             return self.__node_dict[key]
 
     def keys(self):
-        return self.__node_dict.keys()
+        return list(self.__node_dict.keys())
 
     def prune(self, mode=None, doit=False):
         # removes all unreferenced nodes
-        assert mode in [None, u'mon', u'device', u'location', u'config']
+        assert mode in [None, 'mon', 'device', 'location', 'config']
 
         removed = True
         # set of already deleted leafs
@@ -440,7 +440,7 @@ class category_tree(object):
         while removed:
             removed = False
             del_nodes = []
-            for cur_leaf in self.__node_dict.itervalues():
+            for cur_leaf in self.__node_dict.values():
                 if cur_leaf not in _deleted:
                     if mode is None or cur_leaf.full_name.startswith("/{}".format(mode)):
                         if not cur_leaf.immutable:
@@ -522,7 +522,7 @@ class category(models.Model):
                                 ],
                                 []
                             )
-                        ) for key, value in self._sub_tree.iteritems()
+                        ) for key, value in self._sub_tree.items()
                     ]
                 )
             ],
@@ -530,7 +530,7 @@ class category(models.Model):
         )
 
     def __unicode__(self):
-        return u"{}".format(self.full_name if self.depth else "[TLN]")
+        return "{}".format(self.full_name if self.depth else "[TLN]")
 
     @property
     def single_select(self):
@@ -724,7 +724,7 @@ class location_gfx(models.Model):
             if os.path.isfile(_entry):
                 _img = Image.open(file(_entry, "rb"))
                 _img.thumbnail((24, 24))
-                _content = StringIO.StringIO()
+                _content = io.StringIO()
                 _img.save(_content, format="JPEG")
                 _content = _content.getvalue()
                 cache.set(self.icon_cache_key, _content)
@@ -743,13 +743,13 @@ class location_gfx(models.Model):
 
     @staticmethod
     def default_icon():
-        _content = StringIO.StringIO()
+        _content = io.StringIO()
         Image.new("RGB", (24, 24), color="red").save(_content, format="JPEG")
         return _content.getvalue()
 
     @staticmethod
     def default_image():
-        _content = StringIO.StringIO()
+        _content = io.StringIO()
         Image.new("RGB", (640, 400), color="red").save(_content, format="JPEG")
         return _content.getvalue()
 
@@ -891,7 +891,7 @@ def device_mon_location_pre_save(sender, **kwargs):
             except device_mon_location.DoesNotExist:
                 pass
             else:
-                raise(ValidationError("combination already used"))
+                raise ValidationError
 
 
 class DomainTypeEnum(models.Model):

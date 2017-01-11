@@ -19,13 +19,13 @@
 #
 """ helper functions """
 
-from __future__ import unicode_literals, print_function
+
 
 import encodings.idna
 
 
 def make_qualified(in_str):
-    return in_str.endswith(".") and in_str or u"{}.".format(in_str)
+    return in_str.endswith(".") and in_str or "{}.".format(in_str)
 
 
 def make_unqualified(in_str):

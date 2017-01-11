@@ -126,10 +126,10 @@ class LogRotateResult(object):
         return self.info_dict[key]
 
     def keys(self):
-        return self.info_dict.keys()
+        return list(self.info_dict.keys())
 
     def feed(self, other):
-        for _key in self.info_dict.keys():
+        for _key in list(self.info_dict.keys()):
             self[_key] += other[_key]
         self.compress_list.extend(other.compress_list)
 
@@ -163,7 +163,7 @@ class FileBatch(object):
         self.tot_lines = tot
 
     def __repr__(self):
-        return unicode(self)
+        return str(self)
 
     def __unicode__(self):
         return "Filebatch at {:d} ({:d} [{:d}] lines @{:d})".format(
@@ -207,8 +207,8 @@ class FileWriteRater(object):
             [
                 "{:.2f} lines/s [{}]".format(
                     in_dict[_key],
-                    logging_tools.get_diff_time_str(_key, long=False),
-                ) for _key in sorted(in_dict.iterkeys())
+                    logging_tools.get_diff_time_str(_key, int=False),
+                ) for _key in sorted(in_dict.keys())
             ]
         )
 
@@ -288,10 +288,10 @@ class InotifyFile(object):
         self._update(first=True)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.in_root.log(u"[IF] {}".format(what), log_level)
+        self.in_root.log("[IF] {}".format(what), log_level)
 
     def __repr__(self):
-        return u"InotifyFile for {}".format(self.f_name)
+        return "InotifyFile for {}".format(self.f_name)
 
     def line_to_mongo(self, line, line_idx):
         _dev_pk = self.in_root.fw_obj.machine.device.pk
@@ -426,7 +426,7 @@ class InotifyRoot(object):
                 reg_mask,
                 self.process_event,
             )
-            self.log("added dir {} (watching: {:d})".format(in_dir, len(self._dir_dict.keys())))
+            self.log("added dir {} (watching: {:d})".format(in_dir, len(list(self._dir_dict.keys()))))
             if recursive:
                 try:
                     for sub_dir, _dirs, _files in scandir.walk(str(in_dir)):
@@ -438,7 +438,7 @@ class InotifyRoot(object):
                                 self.register_file(os.path.join(sub_dir, _file)) for _file in _found_files
                             ]
                 except UnicodeDecodeError:
-                    self.log(u"got a UnicodeDecodeError for dir {}".format(in_dir), logging_tools.LOG_LEVEL_CRITICAL)
+                    self.log("got a UnicodeDecodeError for dir {}".format(in_dir), logging_tools.LOG_LEVEL_CRITICAL)
                     raise
         else:
             self.log("dir {} already in watch_dict".format(in_dir), logging_tools.LOG_LEVEL_ERROR)
@@ -450,7 +450,7 @@ class InotifyRoot(object):
                 self.watch_name,
                 in_path,
             )
-            self.log("removed dir {} (watching: {:d})".format(in_path, len(self._dir_dict.keys())))
+            self.log("removed dir {} (watching: {:d})".format(in_path, len(list(self._dir_dict.keys()))))
         else:
             self.log(
                 "trying to remove non-watched dir '{}' from watcher_dict".format(
@@ -494,7 +494,7 @@ class InotifyRoot(object):
         if self._file_dict:
             _latest = sorted(
                 [
-                    (_f_obj.stat[stat.ST_MTIME], _f_obj) for _f_obj in self._file_dict.itervalues()
+                    (_f_obj.stat[stat.ST_MTIME], _f_obj) for _f_obj in self._file_dict.values()
                 ],
                 reverse=True
             )[0][1]
@@ -507,7 +507,7 @@ class InotifyRoot(object):
         if _latest is not None:
             self.log(
                 "tracking {}{}".format(
-                    logging_tools.get_plural("file", len(self._file_dict.keys())),
+                    logging_tools.get_plural("file", len(list(self._file_dict.keys()))),
                     ", latest: {}".format(_latest.f_name) if _latest else "",
                 )
             )
@@ -516,7 +516,7 @@ class InotifyRoot(object):
         self.log("checking for stale files")
         cur_time = time.time()
         _cur_num = len(self._file_dict)
-        _stale = [f_name for f_name, f_obj in self._file_dict.iteritems() if f_obj.is_stale(cur_time)]
+        _stale = [f_name for f_name, f_obj in self._file_dict.items() if f_obj.is_stale(cur_time)]
         if _stale:
             self.log(
                 "{} stale: {}".format(logging_tools.get_plural("file")),
@@ -550,7 +550,7 @@ class InotifyRoot(object):
         return [
             _v[1] for _v in sorted(
                 [
-                    (_f_obj.stat[stat.ST_MTIME], _f_obj) for _f_obj in self._file_dict.itervalues()
+                    (_f_obj.stat[stat.ST_MTIME], _f_obj) for _f_obj in self._file_dict.values()
                 ],
                 reverse=True
             )

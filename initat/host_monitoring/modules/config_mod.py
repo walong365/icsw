@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import commands
+import subprocess
 import os
 import stat
 import time
@@ -174,12 +174,12 @@ class call_script_command(hm_classes.hm_command):
                         cur_ns.time)
                     ipl = "\n".join(log_lines)
                 else:
-                    c_stat, ipl = commands.getstatusoutput(
+                    c_stat, ipl = subprocess.getstatusoutput(
                         " ".join([script_name] + args))
                     log_lines = ipl.split("\n")
                 self.log(" - gave stat %d (%s):" % (c_stat,
                                                     logging_tools.get_plural("log line", len(log_lines))))
-                for line in map(lambda s_line: s_line.strip(), log_lines):
+                for line in [s_line.strip() for s_line in log_lines]:
                     self.log("   - %s" % (line))
                 if c_stat:
                     srv_com.set_result(

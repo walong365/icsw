@@ -24,7 +24,7 @@ from initat.host_monitoring.modules.raidcontrollers.all import AllRAIDCtrl
 
 
 # add commands to be included automatically
-for _key, _value in COMMAND_DICT.iteritems():
+for _key, _value in COMMAND_DICT.items():
     locals()[_key] = _value
 
 

@@ -21,7 +21,7 @@
 #
 """ create image """
 
-from __future__ import print_function, unicode_literals
+
 
 import os
 import shutil
@@ -195,8 +195,8 @@ class BuildProcess(threading_tools.process_obj):
         cmd_string = "{} 2>&1".format(cmd)
         try:
             result = subprocess.check_output(cmd_string, shell=True)
-        except subprocess.CalledProcessError, what:
-            self.log("result ({:d}): {}".format(what.returncode, unicode(what)), logging_tools.LOG_LEVEL_ERROR)
+        except subprocess.CalledProcessError as what:
+            self.log("result ({:d}): {}".format(what.returncode, str(what)), logging_tools.LOG_LEVEL_ERROR)
             result = what.output
         for line_num, line in enumerate(result.strip().split("\n"), 1):
             if line.rstrip():
@@ -241,11 +241,11 @@ class ServerProcess(threading_tools.process_pool):
                 _info_str = "lock set"
                 cur_img.build_lock = True
             cur_img.save()
-            self._int_error("{} on image {}".format(_info_str, unicode(cur_img)))
+            self._int_error("{} on image {}".format(_info_str, str(cur_img)))
         else:
-            self.log("image server is '{}'".format(unicode(self.device) if self.device else "---"))
+            self.log("image server is '{}'".format(str(self.device) if self.device else "---"))
             self.__builder_names = []
-            for cur_num in xrange(global_config["BUILDERS"]):
+            for cur_num in range(global_config["BUILDERS"]):
                 builder_name = "builder_{:d}".format(cur_num)
                 self.__builder_names.append(builder_name)
                 self.add_process(BuildProcess(builder_name), start=True)
@@ -378,7 +378,7 @@ class ServerProcess(threading_tools.process_pool):
         self.__pending = {
             builder_name: False for builder_name in self.__builder_names
         }
-        for _idx in xrange(global_config["BUILDERS"]):
+        for _idx in range(global_config["BUILDERS"]):
             self._next_compress()
 
     def _next_compress(self):
@@ -392,7 +392,7 @@ class ServerProcess(threading_tools.process_pool):
                 s_links = [entry for entry in self.__pending_links]
                 self.__pending_files = []
                 self.__pending_links = []
-            free_builder = [key for key, value in self.__pending.iteritems() if not value][0]
+            free_builder = [key for key, value in self.__pending.items() if not value][0]
             self.__pending[free_builder] = True
             self.send_to_process(
                 free_builder,
@@ -406,7 +406,7 @@ class ServerProcess(threading_tools.process_pool):
         else:
             self.log(
                 "no dirs or files pending, waiting for {}".format(
-                    logging_tools.get_plural("compression job", len([True for value in self.__pending.itervalues() if value]))
+                    logging_tools.get_plural("compression job", len([True for value in self.__pending.values() if value]))
                 )
             )
 
@@ -615,8 +615,8 @@ class ServerProcess(threading_tools.process_pool):
             cmd_string = "chroot {} {}".format(cur_img.source, cmd_string)
         try:
             result = subprocess.check_output(cmd_string, shell=True)
-        except subprocess.CalledProcessError, what:
-            self.log("result ({:d}): {}".format(what.returncode, unicode(what)), logging_tools.LOG_LEVEL_ERROR)
+        except subprocess.CalledProcessError as what:
+            self.log("result ({:d}): {}".format(what.returncode, str(what)), logging_tools.LOG_LEVEL_ERROR)
             result = what.output
         for line_num, line in enumerate(result.strip().split("\n"), 1):
             if line.rstrip():

@@ -123,7 +123,7 @@ class package(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'package'
+        db_table = 'package'
         unique_together = (("name", "version", "arch", "kind", "target_repo",),)
         app_label = "backbone"
 

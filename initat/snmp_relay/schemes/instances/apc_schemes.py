@@ -17,7 +17,7 @@
 #
 """ SNMP schemes for SNMP relayer """
 
-from __future__ import print_function, unicode_literals
+
 
 from initat.host_monitoring import limits
 from initat.snmp.snmp_struct import snmp_oid
@@ -33,7 +33,7 @@ class apc_rpdu_load_scheme(SNMPRelayScheme):
         self.requests = snmp_oid("1.3.6.1.4.1.318.1.1.12.2.3.1.1")
 
     def process_return(self):
-        simple_dict = self._simplify_keys(self.snmp_dict.values()[0])
+        simple_dict = self._simplify_keys(list(self.snmp_dict.values())[0])
         p_idx = 1
         act_load = simple_dict[(2, p_idx)]
         act_state = simple_dict[(3, p_idx)]
@@ -53,7 +53,7 @@ class usv_apc_load_scheme(SNMPRelayScheme):
 
     def process_return(self):
         WARN_LOAD, CRIT_LOAD = (70, 85)
-        use_dict = self._simplify_keys(self.snmp_dict.values()[0])
+        use_dict = self._simplify_keys(list(self.snmp_dict.values())[0])
         try:
             act_load = use_dict[(3, 0)]
         except KeyError:
@@ -79,18 +79,18 @@ class usv_apc_output_scheme(SNMPRelayScheme):
     def process_return(self):
         MIN_HZ, MAX_HZ = (49, 52)
         MIN_VOLT, MAX_VOLT = (219, 235)
-        out_dict = self._simplify_keys(self.snmp_dict.values()[0])
+        out_dict = self._simplify_keys(list(self.snmp_dict.values())[0])
         out_freq, out_voltage = (
             out_dict[(2, 0)],
             out_dict[(1, 0)]
         )
         ret_state, prob_f = (limits.mon_STATE_OK, [])
-        if out_freq not in xrange(MIN_HZ, MAX_HZ):
+        if out_freq not in range(MIN_HZ, MAX_HZ):
             ret_state = max(ret_state, limits.mon_STATE_WARNING)
             prob_f.append("output frequency not ok [%d, %d]" % (
                 MIN_HZ,
                 MAX_HZ))
-        if out_voltage not in xrange(MIN_VOLT, MAX_VOLT):
+        if out_voltage not in range(MIN_VOLT, MAX_VOLT):
             ret_state = max(ret_state, limits.mon_STATE_WARNING)
             prob_f.append("output voltage is not in range [%d, %d]" % (
                 MIN_VOLT,
@@ -110,16 +110,16 @@ class usv_apc_input_scheme(SNMPRelayScheme):
     def process_return(self):
         MIN_HZ, MAX_HZ = (49, 52)
         MIN_VOLT, MAX_VOLT = (216, 235)
-        in_dict = self._simplify_keys(self.snmp_dict.values()[0])
+        in_dict = self._simplify_keys(list(self.snmp_dict.values())[0])
         in_freq, in_voltage = (int(in_dict[(4, 0)]),
                                int(in_dict[(1, 0)]))
         ret_state, prob_f = (limits.mon_STATE_OK, [])
-        if in_freq not in xrange(MIN_HZ, MAX_HZ):
+        if in_freq not in range(MIN_HZ, MAX_HZ):
             ret_state = max(ret_state, limits.mon_STATE_WARNING)
             prob_f.append("input frequency not ok [%d, %d]" % (
                 MIN_HZ,
                 MAX_HZ))
-        if in_voltage not in xrange(MIN_VOLT, MAX_VOLT):
+        if in_voltage not in range(MIN_VOLT, MAX_VOLT):
             ret_state = max(ret_state, limits.mon_STATE_WARNING)
             prob_f.append("input voltage is not in range [%d, %d]" % (
                 MIN_VOLT,
@@ -143,7 +143,7 @@ class usv_apc_battery_scheme(SNMPRelayScheme):
         warn_temp = int(self.opts.warn)
         crit_temp = int(self.opts.crit)
         warn_bat_load, crit_bat_load = (90, 50)
-        bat_dict = self._simplify_keys(self.snmp_dict.values()[0])
+        bat_dict = self._simplify_keys(list(self.snmp_dict.values())[0])
         need_replacement, run_time, act_temp, act_bat_load = (
             int(bat_dict[(4, 0)]),
             int(bat_dict[(3, 0)]),

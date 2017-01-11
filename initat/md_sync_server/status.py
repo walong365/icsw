@@ -19,7 +19,7 @@
 #
 """ status process, queries data from icinga via mk_livestatus """
 
-from __future__ import print_function, unicode_literals
+
 
 import json
 import time
@@ -43,7 +43,7 @@ class LivstatusFetch(dict):
         self.__start_time = time.time()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com(u"[LF] {}".format(what), log_level)
+        self.__log_com("[LF] {}".format(what), log_level)
 
     def fetch(self):
         _src_keys = list(self.keys())
@@ -57,7 +57,7 @@ class LivstatusFetch(dict):
     @property
     def info_str(self):
         self.__end_time = time.time()
-        _query_keys = [key for key in self.iterkeys() if not key.endswith("_result")]
+        _query_keys = [key for key in self.keys() if not key.endswith("_result")]
         log_str = "{} gave {} in {}".format(
             logging_tools.get_plural("query", len(_query_keys)),
             logging_tools.get_plural("result", self._num_results),
@@ -97,7 +97,7 @@ class StatusProcess(threading_tools.process_obj):
             try:
                 self.__socket = LiveSocket.get_mon_live_socket(self.log)
             except Exception as e:
-                self.log(unicode(e), logging_tools.LOG_LEVEL_ERROR)
+                self.log(str(e), logging_tools.LOG_LEVEL_ERROR)
         return self.__socket
 
     def _get_node_status(self, srv_com_str, **kwargs):
@@ -224,10 +224,10 @@ class StatusProcess(threading_tools.process_obj):
             else:
                 srv_com.set_result("cannot connect to socket", server_command.SRV_REPLY_STATE_CRITICAL)
         except:
-            self.log(u"fetch exception: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.log("fetch exception: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             exc_info = process_tools.exception_info()
             for line in exc_info.log_lines:
-                self.log(u" - {}".format(line), logging_tools.LOG_LEVEL_ERROR)
+                self.log(" - {}".format(line), logging_tools.LOG_LEVEL_ERROR)
             self._close()
             srv_com.set_result(
                 "exception during fetch: {}".format(
@@ -235,4 +235,4 @@ class StatusProcess(threading_tools.process_obj):
                 ),
                 server_command.SRV_REPLY_STATE_CRITICAL
             )
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", str(srv_com))

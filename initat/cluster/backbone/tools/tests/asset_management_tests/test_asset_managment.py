@@ -79,7 +79,7 @@ class TestAssetManagement(TestCase):
             self.assertTrue(asset_run.run_type == AssetType.PRETTYWINHW, "Failed for {}".format(identifier))
 
     def test_12_asset_batch(self):
-        for result_obj, asset_batch in self.assetbatch_dict.items():
+        for result_obj, asset_batch in list(self.assetbatch_dict.items()):
             identifier = result_obj.identifier
 
             # print("")

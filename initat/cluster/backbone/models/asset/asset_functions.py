@@ -19,7 +19,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """ asset database, functions and constants """
 
-from __future__ import print_function, unicode_literals
+
 
 import base64
 import bz2

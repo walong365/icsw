@@ -18,9 +18,9 @@
 
 """ parse dmidecode output """
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import re
 import tempfile
 
@@ -176,9 +176,9 @@ def dmi_struct_to_xml(dmi_dict):
         if "error" in dmi_dict:
             _xml.attrib["error"] = dmi_dict["error"]
         if "values" in _hs:
-            _values = E.values()
+            _values = list(E.values())
             _xml.append(_values)
-            for _key, _value in _hs["values"].iteritems():
+            for _key, _value in _hs["values"].items():
                 if type(_value) == list:
                     _values.append(
                         E.value(
@@ -200,7 +200,7 @@ def decompress_dmi_info(in_str):
     _dmi_bin = process_tools.find_file("dmidecode")
     with tempfile.NamedTemporaryFile() as tmp_file:
         file(tmp_file.name, "w").write(server_command.decompress(in_str))
-        _dmi_stat, dmi_result = commands.getstatusoutput(
+        _dmi_stat, dmi_result = subprocess.getstatusoutput(
             "{} --from-dump {}".format(
                 _dmi_bin,
                 tmp_file.name

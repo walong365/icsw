@@ -21,7 +21,7 @@
 functions for config store
 """
 
-from __future__ import print_function, unicode_literals
+
 
 import sys
 
@@ -41,7 +41,7 @@ def _show_store(opts, store):
     else:
         _dict_keys = []
     # all keys
-    _all_keys = store.keys()
+    _all_keys = list(store.keys())
     # flat (== non-dict) keys
     _flat_keys = set(_all_keys) - set(_dict_keys)
     _dict = store.get_dict()
@@ -73,7 +73,7 @@ def _show_store(opts, store):
             print(
                 "    dict index {} ({})".format(
                     _key,
-                    logging_tools.get_plural("value", len(_value.keys())),
+                    logging_tools.get_plural("value", len(list(_value.keys()))),
                 )
             )
             for _dkey in sorted(_value.keys()):

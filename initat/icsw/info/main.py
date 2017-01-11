@@ -22,7 +22,7 @@
 #
 """ shows command help """
 
-from __future__ import print_function, unicode_literals
+
 
 from initat.tools import logging_tools
 
@@ -87,7 +87,7 @@ def show_hm_help(options):
                     logging_tools.form_entry(", ".join(local_valid_names), header="commands"),
                 ]
             )
-        print("\nModule overview:\n{}".format(unicode(out_list)))
+        print("\nModule overview:\n{}".format(str(out_list)))
 
 
 def show_cs_help(options):
@@ -128,7 +128,7 @@ def show_cs_help(options):
                     ),
                 ]
             )
-        print("\n{}".format(unicode(out_list)))
+        print("\n{}".format(str(out_list)))
 
 
 def main(options):

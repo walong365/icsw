@@ -22,7 +22,7 @@
 
 """ basic session views """
 
-from __future__ import print_function, unicode_literals
+
 
 import base64
 import datetime
@@ -241,8 +241,8 @@ class login_addons(View):
         request.xml_response["icsw_databases"] = json.dumps(
             [
                 {
-                    _key.replace(".", "_"): _value for _key, _value in _entry.iteritems()
-                } for _entry in settings.ICSW_DATABASE_DICT.values()
+                    _key.replace(".", "_"): _value for _key, _value in _entry.items()
+                } for _entry in list(settings.ICSW_DATABASE_DICT.values())
             ]
         )
         request.xml_response["active_database_idx"] = settings.ICSW_ACTIVE_DATABASE_IDX
@@ -300,7 +300,7 @@ class session_expel(View):
 
 class DummyLogger(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        logger.log(log_level, u"[DL] {}".format(what))
+        logger.log(log_level, "[DL] {}".format(what))
 
 
 class session_login(View):
@@ -316,7 +316,7 @@ class session_login(View):
             db_user = self.__class__._check_login_data(request, real_user_name, login_password)
         except ValidationError as e:
             for err_msg in e:
-                request.xml_response.error(unicode(err_msg))
+                request.xml_response.error(str(err_msg))
             _failed_login(request, real_user_name)
         else:
             # check eggs for allegro

@@ -44,7 +44,7 @@ class var_cache(dict):
             # read global configs
             self[global_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=self.__cdg))])
             # update with def_dict
-            for key, value in def_dict.iteritems():
+            for key, value in def_dict.items():
                 if key not in self[global_key]:
                     self[global_key][key] = value
         if dg_key not in self:
@@ -57,7 +57,7 @@ class var_cache(dict):
         # for s_key in ret_dict.iterkeys():
         for key, key_n in [(dev_key, "d"), (dg_key, "g"), (global_key, "c")]:
             info_dict[key_n] = 0
-            for s_key, s_value in self.get(key, {}).iteritems():
+            for s_key, s_value in self.get(key, {}).items():
                 if s_key not in ret_dict:
                     ret_dict[s_key] = s_value
                     info_dict[key_n] += 1
@@ -192,7 +192,7 @@ class simple_request(object):
                 self.server_ip = srv_routing[0][2][1][0]
                 self.log("found valid_server_struct {} (device {}) with ip {}".format(
                     valid_server_struct.server_info_str,
-                    unicode(valid_server_struct.device),
+                    str(valid_server_struct.device),
                     self.server_ip))
         else:
             self.log("no valid server_struct found (search list: {})".format(", ".join(s_list)),
@@ -223,7 +223,7 @@ class simple_request(object):
         xml_result = server_command.srv_command(source=result)
         res_node = xml_result.xpath(".//ns:device[@pk='{:d}']".format(self.cc.device.pk), smart_strings=False)[0]
         self.log("result node has {}:".format(logging_tools.get_plural("attribute", len(res_node.attrib))))
-        for key, value in res_node.attrib.iteritems():
+        for key, value in res_node.attrib.items():
             self.log("   {:<10s}: {}".format(key, value))
         del self.cc.pending_config_requests[self.cc.device.name]
         self.cc.done_config_requests[

@@ -189,7 +189,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
         logfiles_list_deprecation = django.utils.timezone.now() - datetime.timedelta(seconds=60 * 60 * 12)
 
         # we sometimes run jobs to find new logfiles, regular scans only retrieve entries for known logfiles
-        for wmi_dev, ip in self._get_ip_to_multiple_hosts(wmi_devices).iteritems():
+        for wmi_dev, ip in self._get_ip_to_multiple_hosts(wmi_devices).items():
             if wmi_dev.pk not in logfiles_by_device or \
                     logfiles_by_device[wmi_dev.pk]['date'] < logfiles_list_deprecation:
                 # need to find the logfiles first
@@ -241,7 +241,7 @@ class EventLogPollerProcess(threading_tools.process_obj):
             entry['_id']: entry['latest_record_id'] for entry in _last_entries_qs
         }
 
-        for ipmi_dev, ip in self._get_ip_to_multiple_hosts(ipmi_devices).iteritems():
+        for ipmi_dev, ip in self._get_ip_to_multiple_hosts(ipmi_devices).items():
             try:
                 job = IpmiLogJob(log=self.log,
                                  db=self._mongodb_database,

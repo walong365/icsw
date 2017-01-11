@@ -19,7 +19,7 @@
 #
 """ monitors the mail subsystem """
 
-import commands
+import subprocess
 import os
 import re
 import stat
@@ -74,7 +74,7 @@ class file_object(object):
             while True:
                 try:
                     lines = self.__fd.readlines()
-                except IOError, _what:
+                except IOError as _what:
                     self.log(
                         "error reading maillines: {}".format(
                             process_tools.get_except_info()
@@ -121,7 +121,7 @@ class MailLogObject(file_object):
         self.__num_dict = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__mod.log(u"[mlo] {}".format(what), log_level)
+        self.__mod.log("[mlo] {}".format(what), log_level)
 
     def get_info_str(self, key):
         return "number of mails {} per minute".format(key.replace(".", " "))
@@ -312,7 +312,7 @@ class _general(hm_classes.hm_module):
         full_com = (" ".join(mail_coms)).strip()
         if full_com:
             ret_dict["command"] = full_com
-            stat, out = commands.getstatusoutput(full_com)
+            stat, out = subprocess.getstatusoutput(full_com)
             if stat:
                 self.log(
                     "cannot execute '%s' (%d): %s" % (
@@ -399,10 +399,10 @@ class _general(hm_classes.hm_module):
                 if act_ts != self.__last_kerio_check:
                     self.__last_kerio_dict = self.__act_kerio_dict
                     self.__last_kerio_check = act_ts
-                    self.__act_kerio_dict = dict([(key, value) for key, (value, info) in counter_dict.iteritems()])
+                    self.__act_kerio_dict = dict([(key, value) for key, (value, info) in counter_dict.items()])
                 if self.__act_kerio_dict:
                     diff_time = abs(act_ts - self.__last_kerio_check) or 60.
-                    for key, (value, info) in counter_dict.iteritems():
+                    for key, (value, info) in counter_dict.items():
                         if key not in mv:
                             mv.reg_entry(key, 0., info, "1/min")
                         diff_value = value - self.__last_kerio_dict.get(key, value)
@@ -411,7 +411,7 @@ class _general(hm_classes.hm_module):
     def _do_postfix_stuff(self, mv):
         act_snapshot, act_time = (self.__maillog_object.parse_lines(), time.time())
         diff_time = max(1, abs(act_time - self.__check_time))
-        for key, value in act_snapshot.iteritems():
+        for key, value in act_snapshot.items():
             if key not in self.__act_snapshot:
                 mv.register_entry("mail.{}".format(key), 0., self.__maillog_object.get_info_str(key), "1/min")
                 diff_value = value
@@ -433,7 +433,7 @@ class _general(hm_classes.hm_module):
             "active": 0
         }
         if self.__mailq_command:
-            stat, out = commands.getstatusoutput(self.__mailq_command)
+            stat, out = subprocess.getstatusoutput(self.__mailq_command)
             if stat:
                 self.log(
                     "cannot execute mailq ({:d}): {}".format(stat, out),
@@ -507,12 +507,12 @@ class mailq_command(hm_classes.hm_command):
             mc_dict = self.module.get_mailcount()
             builder = srv_com.builder()
             srv_com["mail_dict"] = builder.values(
-                *[builder.count("{:d}".format(value), info=key) for key, value in mc_dict.iteritems()])
+                *[builder.count("{:d}".format(value), info=key) for key, value in mc_dict.items()])
         else:
             srv_com.set_result("no mailq command defined", server_command.SRV_REPLY_STATE_ERROR)
 
     def interpret(self, srv_com, cur_ns):
-        if type(srv_com) in [int, long]:
+        if type(srv_com) in [int, int]:
             mail_dict = {"total": srv_com, "queued": srv_com}
         elif "mail_dict" in srv_com:
             mail_dict = srv_com["mail_dict"][0]

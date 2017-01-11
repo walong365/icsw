@@ -19,7 +19,7 @@
 #
 """ various tools to handle processes and stuff """
 
-from __future__ import unicode_literals, print_function
+
 
 import atexit
 import base64
@@ -96,8 +96,8 @@ def getstatusoutput(cmd):
     if sys.version_info[0] == 3:
         return subprocess.getstatusoutput(cmd)  # @UndefinedVariable
     else:
-        import commands
-        return commands.getstatusoutput(cmd)
+        import subprocess
+        return subprocess.getstatusoutput(cmd)
 
 
 # net to sys and reverse functions
@@ -148,7 +148,7 @@ def get_except_info(exc_info=None, **kwargs):
         _result = []
         if type(_exc_list) is dict:
             _result = [
-                "{}: {}".format(_key, ", ".join(_values)) for _key, _values in _exc_list.iteritems()
+                "{}: {}".format(_key, ", ".join(_values)) for _key, _values in _exc_list.items()
             ]
         else:
             if hasattr(_exc_list, "messages"):
@@ -156,10 +156,10 @@ def get_except_info(exc_info=None, **kwargs):
         _exc_list = ", ".join(_result)
     elif hasattr(_exc_list, "message"):
         _exc_list = _exc_list.message
-    return u"{} ({}{})".format(
+    return "{} ({}{})".format(
         safe_unicode(exc_info[0]),
         safe_unicode(_exc_list),
-        u", {}".format(u", ".join(frame_info)) if frame_info else ""
+        ", {}".format(", ".join(frame_info)) if frame_info else ""
     )
 
 
@@ -170,16 +170,16 @@ class exception_info(object):
         tb_object = self.except_info[2]
         exc_type = str(self.except_info[0]).split(".")[-1].split("'")[0]
         self.log_lines = [
-            u"caught exception {} ({}), traceback follows:".format(
+            "caught exception {} ({}), traceback follows:".format(
                 exc_type,
                 get_except_info(self.except_info)
             ),
-            u"exception in process/thread '{}'".format(self.thread_name)
+            "exception in process/thread '{}'".format(self.thread_name)
         ]
         for file_name, line_no, name, line in traceback.extract_tb(tb_object):
-            self.log_lines.append(u"File '{}', line {:d}, in {}".format(file_name, line_no, name))
+            self.log_lines.append("File '{}', line {:d}, in {}".format(file_name, line_no, name))
             if line:
-                self.log_lines.append(u" - {:d} : {}".format(line_no, line))
+                self.log_lines.append(" - {:d} : {}".format(line_no, line))
         self.log_lines.append(get_except_info(self.except_info))
 
 
@@ -222,7 +222,7 @@ def get_socket(context, r_type, **kwargs):
     _sock = context.socket(getattr(zmq, r_type))
     # DEALER from grapher/server.py
     if r_type in ["ROUTER", "DEALER"]:
-        if type(kwargs["identity"]) is unicode:
+        if type(kwargs["identity"]) is str:
             _sock.setsockopt_string(zmq.IDENTITY, kwargs["identity"])
         else:
             _sock.setsockopt(zmq.IDENTITY, kwargs["identity"])
@@ -405,7 +405,7 @@ if psutil is not None:
         psutil.STATUS_DEAD: "processes dead",
     }
 
-    PROC_STATUSES_REV = {value: key for key, value in PROC_STATUSES.iteritems()}
+    PROC_STATUSES_REV = {value: key for key, value in PROC_STATUSES.items()}
 
 
 def get_mem_info(pid=0, **kwargs):
@@ -677,7 +677,7 @@ class MSIBlock(object):
             E.start_time("{:d}".format(int(self.__start_time))),
             pid_list,
         )
-        file_content = etree.tostring(xml_struct, pretty_print=True, encoding=unicode)
+        file_content = etree.tostring(xml_struct, pretty_print=True, encoding=str)
         path_name = self.path_name(self.__name)
         try:
             open(path_name, "w").write(file_content)
@@ -714,7 +714,7 @@ class MSIBlock(object):
             )
 
     def get_main_pid(self):
-        main_pids = [_key for _key, _value in self.__pid_names.iteritems() if _value == "main"]
+        main_pids = [_key for _key, _value in self.__pid_names.items() if _value == "main"]
         if main_pids:
             return main_pids[0]
         else:
@@ -739,7 +739,7 @@ class MSIBlock(object):
                             pass
                 except psutil.NoSuchProcess:
                     pass
-        self.pids_found = [cur_pid for cur_pid in self.__pids_found.iterkeys() if cur_pid in act_dict]
+        self.pids_found = [cur_pid for cur_pid in self.__pids_found.keys() if cur_pid in act_dict]
         bound_dict = {}
         missing_list = []
         for unique_pid in set(self.__pids_found.keys()) | set(self.__pids):
@@ -752,12 +752,12 @@ class MSIBlock(object):
                 bound_dict[unique_pid] = 0
         self.missing_list = missing_list
         self.bound_dict = bound_dict
-        if any([value != 0 for value in bound_dict.itervalues()]):
+        if any([value != 0 for value in bound_dict.values()]):
             _ok = False
         else:
             if not self.__pids_found:
                 _ok = False
-            elif any([value > 0 for value in bound_dict.itervalues()]):
+            elif any([value > 0 for value in bound_dict.values()]):
                 _ok = False
             else:
                 _ok = True
@@ -780,13 +780,13 @@ class MSIBlock(object):
             return _pid_dict.get(cur_pid, {}).get("name", "unknown")
         # proc_dict is from threading_tools.get_info_dict
         # map
-        _pid_dict = {_value["pid"]: _value for _key, _value in proc_dict.iteritems()}
+        _pid_dict = {_value["pid"]: _value for _key, _value in proc_dict.items()}
         _p_list = [
             "{}@{:d}: {}".format(
                 _get_name(cur_pid),
                 cur_pid,
                 _get_mis_info(cur_pid),
-            ) for cur_pid in sorted(self.bound_dict.iterkeys())
+            ) for cur_pid in sorted(self.bound_dict.keys())
         ]
         if _p_list:
             return "{}: {}".format(
@@ -869,7 +869,7 @@ class cached_file(object):
                         content = open(self.__name, "r").read()
                     except:
                         self.log(
-                            u"error reading from {}: {}".format(
+                            "error reading from {}: {}".format(
                                 self.__name,
                                 get_except_info()
                             ),
@@ -895,9 +895,9 @@ def append_pids(name, pid=None, mode="a"):
     if pid is None:
         actp = [os.getpid()]
     else:
-        if type(pid) in [int, long]:
+        if type(pid) in [int, int]:
             actp = [pid]
-        elif isinstance(pid, basestring):
+        elif isinstance(pid, str):
             actp = [int(pid)]
         else:
             actp = pid
@@ -952,9 +952,9 @@ def remove_pids(name, pid=None):
     if pid is None:
         actp = [os.getpid()]
     else:
-        if type(pid) in [int, long]:
+        if type(pid) in [int, int]:
             actp = [pid]
-        elif isinstance(pid, basestring):
+        elif isinstance(pid, str):
             actp = [int(pid)]
         else:
             actp = pid
@@ -1008,7 +1008,7 @@ def delete_pid(name):
 
 def get_uid_from_name(user):
     try:
-        if type(user) in [int, long]:
+        if type(user) in [int, int]:
             uid_stuff = pwd.getpwuid(user)
         else:
             uid_stuff = pwd.getpwnam(user)
@@ -1021,7 +1021,7 @@ def get_uid_from_name(user):
 
 def get_gid_from_name(group):
     try:
-        if type(group) in [int, long]:
+        if type(group) in [int, int]:
             gid_stuff = grp.getgrgid(group)
         else:
             gid_stuff = grp.getgrnam(group)
@@ -1038,7 +1038,7 @@ def change_user_group_path(path, user, group, **kwargs):
     else:
         log_com = logging_tools.my_syslog
     try:
-        if type(user) in [int, long]:
+        if type(user) in [int, int]:
             uid_stuff = pwd.getpwuid(user)
         else:
             uid_stuff = pwd.getpwnam(user)
@@ -1047,7 +1047,7 @@ def change_user_group_path(path, user, group, **kwargs):
         new_uid, new_uid_name = (0, "root")
         log_com("Cannot find user '{}', using {} ({:d})".format(user, new_uid_name, new_uid))
     try:
-        if type(group) in [int, long]:
+        if type(group) in [int, int]:
             gid_stuff = grp.getgrgid(group)
         else:
             gid_stuff = grp.getgrnam(group)
@@ -1118,7 +1118,7 @@ def get_proc_list(**kwargs):
 def bpt_show_childs(in_dict, idx, start):
     print(" " * idx, start, in_dict[start]["name"])
     if in_dict[start]["childs"]:
-        p_list = in_dict[start]["childs"].keys()
+        p_list = list(in_dict[start]["childs"].keys())
         for pid in p_list:
             bpt_show_childs(in_dict[start]["childs"], idx + 2, pid)
 
@@ -1142,7 +1142,7 @@ def build_kill_dict(name, exclude_list=[]):
     # list of parent pids (up to init)
     ppl = build_ppid_list(pdict, os.getpid())
     kill_dict = {}
-    for pid, p_struct in pdict.items():
+    for pid, p_struct in list(pdict.items()):
         try:
             if get_python_cmd(p_struct.cmdline()) == name and pid not in ppl and pid not in exclude_list:
                 kill_dict[pid] = " ".join(p_struct.cmdline())
@@ -1196,7 +1196,7 @@ def kill_running_processes(p_name=None, **kwargs):
         kill_dict = build_kill_dict(p_name, exclude_pids)
         any_killed = False
         if kill_dict:
-            for pid, name in kill_dict.items():
+            for pid, name in list(kill_dict.items()):
                 if name not in kwargs.get("ignore_names", []):
                     log_str = "{} ({:d}): Trying to kill pid {:d} ({}) with signal {:d} ...".format(
                         p_name,
@@ -1239,7 +1239,7 @@ def fd_change(uid_gid_tuple, d_name, files):
 
 def fix_directories(user, group, f_list):
     try:
-        if not isinstance(user, basestring):
+        if not isinstance(user, str):
             named_uid = user
         else:
             named_uid = pwd.getpwnam(user)[2]
@@ -1247,14 +1247,14 @@ def fix_directories(user, group, f_list):
         named_uid = 0
         logging_tools.my_syslog("Cannot find user '{}', using root (0)".format(user))
     try:
-        if not isinstance(group, basestring):
+        if not isinstance(group, str):
             named_gid = group
         else:
             named_gid = grp.getgrnam(group)[2]
     except KeyError:
         named_gid = 0
         logging_tools.my_syslog("Cannot find group '{}', using root (0)".format(group))
-    if isinstance(f_list, basestring):
+    if isinstance(f_list, str):
         f_list = [f_list]
     for act_dir in f_list:
         if isinstance(act_dir, dict):
@@ -1579,7 +1579,7 @@ def create_password(**kwargs):
             def_chars.upper(),
             "".join(
                 [
-                    "{:d}".format(idx) for idx in xrange(0, 10)
+                    "{:d}".format(idx) for idx in range(0, 10)
                 ]
             )
         )
@@ -1591,7 +1591,7 @@ def create_password(**kwargs):
         [
             chars[
                 random.randrange(len(chars))
-            ] for _idx in xrange(length)
+            ] for _idx in range(length)
         ]
     )
 

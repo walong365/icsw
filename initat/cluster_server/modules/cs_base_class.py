@@ -18,7 +18,7 @@
 
 """ base classes for cluster-server modules """
 
-from __future__ import unicode_literals, print_function
+
 
 import time
 
@@ -99,12 +99,12 @@ class icswCSComInstance(object):
         self.executing_process = executing_process
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.sc_obj.log(u"[ci] {}".format(what), log_level)
+        self.sc_obj.log("[ci] {}".format(what), log_level)
 
     def write_start_log(self):
         if self.Meta.write_log:
             self.log(
-                u"Got command {}, {}: {}".format(
+                "Got command {}, {}: {}".format(
                     self.srv_com["command"].text,
                     logging_tools.get_plural("config", len(self.Meta.actual_configs)),
                     ", ".join(
@@ -136,7 +136,7 @@ class icswCSComInstance(object):
                 self.sc_obj.main_proc.send_to_process(
                     new_bg_name,
                     "set_srv_com",
-                    unicode(self.srv_com),
+                    str(self.srv_com),
                 )
                 self.sc_obj.main_proc.send_to_process(
                     new_bg_name,
@@ -182,7 +182,7 @@ class icswCSComInstance(object):
             self.end_time = time.time()
             if int(self.srv_com["result"].attrib["state"]):
                 self.log(
-                    u"result is ({:d}) {}".format(
+                    "result is ({:d}) {}".format(
                         int(self.srv_com["result"].attrib["state"]),
                         self.srv_com["result"].attrib["reply"]
                     ),
@@ -190,7 +190,7 @@ class icswCSComInstance(object):
                 )
             if self.Meta.show_execution_time:
                 self.log("run took {}".format(logging_tools.get_diff_time_str(self.end_time - self.start_time)))
-                self.srv_com["result"].attrib["reply"] = u"{} in {}".format(
+                self.srv_com["result"].attrib["reply"] = "{} in {}".format(
                     self.srv_com["result"].attrib["reply"],
                     logging_tools.get_diff_time_str(self.end_time - self.start_time)
                 )
@@ -235,7 +235,7 @@ class icswCSServerCom(object):
         self.main_proc = main_proc
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.main_proc.log(u"[com] {}".format(what), log_level)
+        self.main_proc.log("[com] {}".format(what), log_level)
 
     def check_config(self, loc_config):
         self.server_idx, self.act_config_name = (0, "")

@@ -58,7 +58,7 @@ class handler(SNMPHandler):
                 (WATT_OID, "Watt", "W", 1.),
             ]:
                 _total = 0.
-                for _num, _val in result_dict.get(_tk, {}).iteritems():
+                for _num, _val in result_dict.get(_tk, {}).items():
                     _total += float(_val)
                     mv_tree.append(
                         E.mve(

@@ -51,4 +51,4 @@ if(__name__ == "__main__"):
         updates.append(update)
 
     output = json.dumps([(update.title, update.date.isoformat(), update.status) for update in updates])
-    print(nrpe_encode(output))
+    print((nrpe_encode(output)))

@@ -22,7 +22,7 @@
 
 """ RMS views """
 
-from __future__ import print_function, unicode_literals
+
 
 import datetime
 import json
@@ -61,7 +61,7 @@ except ImportError:
     sge_tools = None
 
 RMS_ADDON_KEYS = [
-    key for key in sys.modules.keys() if key.startswith("initat.cluster.frontend.rms_addons.") and sys.modules[key]
+    key for key in list(sys.modules.keys()) if key.startswith("initat.cluster.frontend.rms_addons.") and sys.modules[key]
 ]
 
 RMS_ADDONS = [
@@ -140,7 +140,7 @@ class get_header_dict(View):
             _sub_list = header_dict.setdefault(_entry.tag, [])
             if len(_entry):
                 for _header in _entry[0]:
-                    _sub_list.append((_header.tag, {key: value for key, value in _header.attrib.iteritems()}))
+                    _sub_list.append((_header.tag, {key: value for key, value in _header.attrib.items()}))
 
         return HttpResponse(json.dumps(header_dict), content_type="application/json")
 
@@ -178,7 +178,7 @@ class get_header_xml(View):
 
 
 def _node_to_value(in_node):
-    _attrs = {key: value for key, value in in_node.attrib.iteritems()}
+    _attrs = {key: value for key, value in in_node.attrib.items()}
     if "raw" in _attrs:
         _attrs["raw"] = json.loads(_attrs["raw"])
     if in_node.get("type", "string") == "float":
@@ -305,8 +305,8 @@ class get_rms_current_json(View):
             ).values_list("name", "uuid", "idx")
         }
         # reverse lut (idx -> name)
-        _rev_lut = {_value["idx"]: _key for _key, _value in _dev_dict.iteritems()}
-        for _name, _struct in _dev_dict.iteritems():
+        _rev_lut = {_value["idx"]: _key for _key, _value in _dev_dict.items()}
+        for _name, _struct in _dev_dict.items():
             if _struct["uuid"] in h_dict:
                 try:
                     _value_list = json.loads(_mcc.get("cc_hc_{}".format(_struct["uuid"])))
@@ -351,10 +351,10 @@ class get_rms_current_json(View):
             if pinning_el is not None and pinning_el.text:
                 # device_id -> process_id -> core_id
                 _pd = json.loads(pinning_el.text)
-                for _node_idx, _pin_dict in _pd.iteritems():
+                for _node_idx, _pin_dict in _pd.items():
                     if int(_node_idx) in _rev_lut:
                         _dn = _rev_lut[int(_node_idx)]
-                        for _proc_id, _core_id in _pin_dict.iteritems():
+                        for _proc_id, _core_id in _pin_dict.items():
                             _dev_dict[_dn]["pinning"].setdefault(_core_id, []).append(job_id)
         # pprint.pprint(pinning_dict)
         # todo: add jobvars to running (waiting for rescheduled ?) list
@@ -494,7 +494,7 @@ class get_file_content(View):
             srv_com["file_list"] = srv_com.builder(
                 "file_list",
                 *[
-                    srv_com.builder("file", name=_file_name, encoding="utf-8") for _file_name in fetch_lut.iterkeys()
+                    srv_com.builder("file", name=_file_name, encoding="utf-8") for _file_name in fetch_lut.keys()
                 ]
             )
             result = contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=60, connection_id="file_fetch_{}".format(str(job_id)))
@@ -528,15 +528,15 @@ class get_file_content(View):
 
                                 lines = text.split("\n")
                                 first_lines, last_lines = (lines[:200], lines[201:])
-                                new_text = u""
+                                new_text = ""
                                 while len(new_text) < magic_limit and last_lines:
-                                    new_text = last_lines.pop() + u"\n" + new_text
+                                    new_text = last_lines.pop() + "\n" + new_text
 
-                                cut_marker = u"\n\n[cut off output since file is too large ({} > {})]\n\n".format(
+                                cut_marker = "\n\n[cut off output since file is too large ({} > {})]\n\n".format(
                                     logging_tools.get_size_str(len(text)),
                                     logging_tools.get_size_str(magic_limit),
                                 )
-                                text = u"\n".join(first_lines) + cut_marker + new_text
+                                text = "\n".join(first_lines) + cut_marker + new_text
 
                             _resp_list.append(
                                 E.file_info(

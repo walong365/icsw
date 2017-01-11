@@ -72,4 +72,4 @@ if __name__ == "__main__":
     if get_hints:
         pprint.pprint(_res)
     else:
-        print _res.ret_str
+        print(_res.ret_str)

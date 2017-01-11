@@ -22,9 +22,9 @@
 
 """ config views """
 
-from __future__ import print_function, unicode_literals
 
-import StringIO
+
+import io
 import copy
 import datetime
 import json
@@ -65,7 +65,7 @@ def delete_object(request, del_obj, **kwargs):
         request.xml_response.error(
             "cannot delete {} '{}': {}".format(
                 del_obj._meta.object_name,
-                unicode(del_obj),
+                str(del_obj),
                 logging_tools.get_plural("reference", num_ref)
             ),
             logger
@@ -92,16 +92,16 @@ def toggle_exclude_mon_device(request, mc_obj, device_obj, **kwargs):
         mc_obj.exclude_devices.remove(device_obj)
         request.xml_response.info(
             "removed device '{}' from exclude_list of {}".format(
-                unicode(device_obj),
-                unicode(mc_obj),
+                str(device_obj),
+                str(mc_obj),
             )
         )
     else:
         mc_obj.exclude_devices.add(device_obj)
         request.xml_response.info(
             "added device '{}' to exclude_list of {}".format(
-                unicode(device_obj),
-                unicode(mc_obj),
+                str(device_obj),
+                str(mc_obj),
             )
         )
 
@@ -169,14 +169,14 @@ class alter_config(View):
                 else:
                     meta_checked = True
             logger.info(
-                u"device {}{} / config {}: {} / {}, {} in device_group{}".format(
-                    unicode(device_obj),
+                "device {}{} / config {}: {} / {}, {} in device_group{}".format(
+                    str(device_obj),
                     " [MD]" if is_meta else "",
-                    unicode(config_obj),
+                    str(config_obj),
                     "local set" if local_checked else "local unset",
                     "meta set" if local_checked else "meta unset",
                     logging_tools.get_plural("device", devs_in_group),
-                    "mc is {}".format(unicode(mc_obj)) if mc_obj else "",
+                    "mc is {}".format(str(mc_obj)) if mc_obj else "",
                 )
             )
             if is_meta:
@@ -184,7 +184,7 @@ class alter_config(View):
                 if local_checked:
                     # check if we can safely remove the config
                     delete_object(request, meta_dc, xml_log=False)
-                    request.xml_response.info("removed meta config {}".format(unicode(config_obj)), logger)
+                    request.xml_response.info("removed meta config {}".format(str(config_obj)), logger)
                 else:
                     to_remove = device_config.objects.filter(Q(config=config_obj) & Q(device__device_group=meta_obj.device_group))
                     # check if we can safely set the meta device_config
@@ -198,7 +198,7 @@ class alter_config(View):
                             to_remove.delete()
                             request.xml_response.info(
                                 "removed config {} from {}".format(
-                                    unicode(config_obj),
+                                    str(config_obj),
                                     logging_tools.get_plural("device", _to_del),
                                 ),
                                 logger
@@ -208,7 +208,7 @@ class alter_config(View):
                             device=device_obj,
                             config=config_obj
                         ).save()
-                        request.xml_response.info("added meta config {}".format(unicode(config_obj)), logger)
+                        request.xml_response.info("added meta config {}".format(str(config_obj)), logger)
             else:
                 # handling of actions for non-meta devices
                 if not local_checked and not meta_checked:
@@ -216,7 +216,7 @@ class alter_config(View):
                         device=device_obj,
                         config=config_obj
                     ).save()
-                    request.xml_response.info("added config {}".format(unicode(config_obj)), logger)
+                    request.xml_response.info("added config {}".format(str(config_obj)), logger)
                 elif local_checked:
                     # delete local config
                     # check if we can safely remove the config
@@ -225,7 +225,7 @@ class alter_config(View):
                         toggle_exclude_mon_device(request, mc_obj, device_obj)
                     else:
                         delete_object(request, local_dc, xml_log=False)
-                        request.xml_response.info("removed config {}".format(unicode(config_obj)), logger)
+                        request.xml_response.info("removed config {}".format(str(config_obj)), logger)
                 elif meta_checked and not local_checked:
                     # create local config, remove meta config, set all other device configs
                     if _mode == "mon":
@@ -233,7 +233,7 @@ class alter_config(View):
                         toggle_exclude_mon_device(request, mc_obj, device_obj)
                     else:
                         if get_related_models(meta_dc):
-                            request.xml_response.error("meta config {} is in use".format(unicode(config_obj)), logger)
+                            request.xml_response.error("meta config {} is in use".format(str(config_obj)), logger)
                         else:
                             delete_object(request, meta_dc, xml_log=False)
                             for set_dev in meta_obj.device_group.device_group.all().exclude(Q(pk__in=[meta_obj.pk, device_obj.pk])):
@@ -243,7 +243,7 @@ class alter_config(View):
                                 ).save()
                             request.xml_response.warn(
                                 "removed meta config {} and added {}".format(
-                                    unicode(config_obj),
+                                    str(config_obj),
                                     logging_tools.get_plural("device", devs_in_group - 1)
                                 ),
                                 logger
@@ -276,7 +276,7 @@ class alter_config(View):
                 E.config(
                     *[
                         E.entry(
-                            **{k: str(v) for k, v in result.iteritems()}
+                            **{k: str(v) for k, v in result.items()}
                         ) for result in device_config.objects.filter(
                             Q(config=pk)
                         ).values("device", "config", "pk", "date")
@@ -331,13 +331,13 @@ class ConfigTreeStruct(object):
             [
                 "{}{} ({:d}, {:d}), {}".format(
                     "  " * self.depth,
-                    unicode(self.node),
+                    str(self.node),
                     self.depth,
                     len(self),
                     self.get_name()
                 )
             ] + [
-                u"{}".format(unicode(sub_entry)) for sub_entry in self.childs
+                "{}".format(str(sub_entry)) for sub_entry in self.childs
             ]
         )
 
@@ -378,7 +378,7 @@ class generate_config(View):
         logger.info(
             "generating config for {}: {}".format(
                 logging_tools.get_plural("device", len(dev_list)),
-                ", ".join([unicode(dev) for dev in dev_list])))
+                ", ".join([str(dev) for dev in dev_list])))
         srv_com = server_command.srv_command(command="build_config")
         srv_com["devices"] = srv_com.builder(
             "devices",
@@ -389,7 +389,7 @@ class generate_config(View):
             _json_result = {"devices": []}
             # request.xml_response["result"] = E.devices()
             for dev_node in result.xpath(".//ns:device", smart_strings=False):
-                res_node = {key: dev_node.get(key) for key in dev_node.attrib.keys()}
+                res_node = {key: dev_node.get(key) for key in list(dev_node.attrib.keys())}
                 res_node["text"] = dev_node.text
                 res_node["info_dict"] = []
                 for sub_el in dev_node:
@@ -464,7 +464,7 @@ DEFAULT_MAP = {"description": "description"}
 
 def interpret_xml(el_name, in_xml, mapping):
     new_el = getattr(E, el_name)()
-    for key, value in in_xml.attrib.iteritems():
+    for key, value in in_xml.attrib.items():
         if key in IGNORE_ATTRS:
             pass
         elif key in IGNORE_WHEN_EMPTY and not value.strip():
@@ -479,7 +479,7 @@ def interpret_xml(el_name, in_xml, mapping):
 class upload_config(View):
     @method_decorator(login_required)
     def post(self, request):
-        _data = StringIO.StringIO(request.FILES["config"].read())
+        _data = io.StringIO(request.FILES["config"].read())
         if _data.getvalue().startswith("<configuration>"):
             # old value
             _tree = etree.fromstring(_data.getvalue())  # @UndefinedVariable
@@ -501,7 +501,7 @@ class upload_config(View):
                     if sub_el.tag == "config_script":
                         sub_el.attrib["description"] = "config script"
                     t_list.append(interpret_xml("list-item", sub_el, mapping))
-            _data = StringIO.StringIO(etree.tostring(new_tree, pretty_print=False))  # @UndefinedVariable
+            _data = io.StringIO(etree.tostring(new_tree, pretty_print=False))  # @UndefinedVariable
             # print etree.tostring(new_tree, pretty_print=True)
             # sys.exit(-1)
             # print etree.tostring(_tree, pretty_print=True)
@@ -607,7 +607,7 @@ class handle_cached_config(View):
             request.xml_response.error(
                 "config {} already exists in config catalog {}".format(
                     conf["name"],
-                    unicode(ccat)
+                    str(ccat)
                 ),
                 logger=logger
             )
@@ -631,7 +631,7 @@ class handle_cached_config(View):
                         logger.log(logging_tools.LOG_LEVEL_ERROR, entry)
                     request.xml_response.error(
                         "error saving entry '{}': {}".format(
-                            unicode(_ent),
+                            str(_ent),
                             process_tools.get_except_info()
                         ),
                         logger=logger
@@ -639,7 +639,7 @@ class handle_cached_config(View):
                 else:
                     taken = True
                     # add sub-sets
-                    for key in _sets.iterkeys():
+                    for key in _sets.keys():
                         for entry in _sets[key]:
                             entry["config"] = dummy_name
                             if not entry.get("description", None):
@@ -652,7 +652,7 @@ class handle_cached_config(View):
                                 except:
                                     request.xml_response.error(
                                         "error saving subentry '{}': {}".format(
-                                            unicode(_sub_ent),
+                                            str(_sub_ent),
                                             process_tools.get_except_info()
                                         ),
                                         logger=logger
@@ -663,7 +663,7 @@ class handle_cached_config(View):
                                 request.xml_response.error(
                                     "cannot create {} object: {}".format(
                                         key,
-                                        unicode(_sub_ent.errors)
+                                        str(_sub_ent.errors)
                                     ),
                                     logger=logger
                                 )
@@ -673,15 +673,15 @@ class handle_cached_config(View):
                     request.xml_response["new_pk"] = "{:d}".format(_ent.object.pk)
                     request.xml_response.info(
                         "create new config {} ({:d}) in config catalog {}".format(
-                            unicode(_ent.object),
+                            str(_ent.object),
                             sub_added,
-                            unicode(ccat)
+                            str(ccat)
                         )
                     )
             else:
                 request.xml_response.error(
                     "cannot create config object: {}".format(
-                        unicode(_ent.errors)
+                        str(_ent.errors)
                     ),
                     logger=logger
                 )
@@ -727,7 +727,7 @@ class copy_mon(View):
         while True:
             if mon_check_command.objects.filter(Q(name=new_name)).count():
                 name_s = name_re.match(new_name)
-                new_name = u"{}_{:d}".format(name_s.group("pre"), int(name_s.group("idx")) + 1)
+                new_name = "{}_{:d}".format(name_s.group("pre"), int(name_s.group("idx")) + 1)
             else:
                 break
         src_cats = mon_source.categories.all().values_list("pk", flat=True)
@@ -735,7 +735,7 @@ class copy_mon(View):
         mon_source.name = new_name
         mon_source.save()
         mon_source.categories.add(*[_entry for _entry in category.objects.filter(Q(pk__in=src_cats))])
-        logger.info("duplicate mon_check_command '{}' ({:d})".format(unicode(mon_source), mon_source.pk))
+        logger.info("duplicate mon_check_command '{}' ({:d})".format(str(mon_source), mon_source.pk))
         _json = mon_check_command_serializer(mon_source).data
         _json["date"] = _json["date"].isoformat()
         request.xml_response.log(logging_tools.LOG_LEVEL_OK, "duplicated MonCheckCommand")
@@ -750,7 +750,7 @@ class delete_objects(View):
         del_dict = {}
         for obj_type, obj_idx in del_list:
             del_dict.setdefault(obj_type, []).append(obj_idx)
-        for obj_type, pk_list in del_dict.iteritems():
+        for obj_type, pk_list in del_dict.items():
             {
                 "mon": mon_check_command,
                 "script": config_script,

@@ -148,7 +148,7 @@ class GeneralTreeNode(object):
             )
         ]
         if self.is_dir:
-            ret_f.extend([unicode(cur_c) for cur_c in self.childs.itervalues()])
+            ret_f.extend([str(cur_c) for cur_c in self.childs.values()])
         return "\n".join(ret_f)
 
     def write_node(self, cur_c, cur_bc, **kwargs):
@@ -181,7 +181,7 @@ class GeneralTreeNode(object):
         cur_wc.save()
         node_list.append((cur_tn, cur_wc))
         if self.is_dir:
-            node_list.extend(sum([cur_child.write_node(cur_c, cur_bc, parent=cur_tn) for cur_child in self.childs.itervalues()], []))
+            node_list.extend(sum([cur_child.write_node(cur_c, cur_bc, parent=cur_tn) for cur_child in self.childs.values()], []))
         return node_list
 
 
@@ -213,7 +213,7 @@ class GeneratedTree(GeneralTreeNode):
             "e": os.path.join(cur_c.node_dir, "config_delete_{}".format(active_identifier)),
         }
         _line_dict = {}
-        num_dict = dict([(key, 0) for key in config_dict.iterkeys()])
+        num_dict = dict([(key, 0) for key in config_dict.keys()])
         for cur_tn, cur_wc in write_list:
             if cur_wc.dest_type not in ["i", "?"] and not cur_tn.intermediate:
                 eff_type = cur_tn.node.content_node.get_effective_type()
@@ -232,7 +232,7 @@ class GeneratedTree(GeneralTreeNode):
                     )
                 else:
                     _lines.append("{:d} {}".format(num_dict[eff_type], add_line))
-        for _key, _lines in _line_dict.iteritems():
+        for _key, _lines in _line_dict.items():
             file(config_dict[_key], "w").write("\n".join(_lines + [""]))
         cur_c.log("wrote {}".format(logging_tools.get_plural("file", len(_line_dict))))
         # print cur_c.node_dir, dir(cur_c)
@@ -377,14 +377,14 @@ class BuildContainer(object):
         )
         # copy local vars
         conf_dict = self.conf_dict
-        for key, value in local_vars.iteritems():
+        for key, value in local_vars.items():
             conf_dict[key] = value
         self.log(
             "config {}: {} defined, {} enabled, {}".format(
                 cur_conf.name,
                 logging_tools.get_plural("script", len(cur_conf.config_script_set.all())),
                 logging_tools.get_plural("script", len([cur_scr for cur_scr in cur_conf.config_script_set.all() if cur_scr.enabled])),
-                logging_tools.get_plural("local variable", len(local_vars.keys()))
+                logging_tools.get_plural("local variable", len(list(local_vars.keys())))
             )
         )
         for cur_script in [cur_scr for cur_scr in cur_conf.config_script_set.all() if cur_scr.enabled]:
@@ -517,7 +517,7 @@ class BuildContainer(object):
                     code_obj = None
         # print unicode(self.g_tree)
         # remove local vars
-        for key in local_vars.iterkeys():
+        for key in local_vars.keys():
             del conf_dict[key]
         del self.cur_conf
 

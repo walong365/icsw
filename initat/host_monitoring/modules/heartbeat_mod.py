@@ -16,9 +16,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import print_function,  unicode_literals
 
-import commands
+
+import subprocess
 
 from initat.host_monitoring import limits, hm_classes
 from initat.tools import logging_tools, process_tools
@@ -26,7 +26,7 @@ from initat.tools import logging_tools, process_tools
 
 class _general(hm_classes.hm_module):
     def _exec_command(self, com, **kwargs):
-        c_stat, c_out = commands.getstatusoutput(com)
+        c_stat, c_out = subprocess.getstatusoutput(com)
         if kwargs.get("full_output", False):
             return c_out, c_stat
         else:
@@ -136,7 +136,7 @@ class heartbeat_status_command(hm_classes.hm_command):
             hb_dict["version"],
             hb_dict["current_dc"]))
         for online in [False, True]:
-            nodes = [name for name, stuff in hb_dict["nodes"].iteritems() if stuff["online"] == online]
+            nodes = [name for name, stuff in hb_dict["nodes"].items() if stuff["online"] == online]
             if nodes:
                 out_f.append(
                     "{}({:d}): [{}]".format(

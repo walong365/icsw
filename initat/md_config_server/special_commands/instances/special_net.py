@@ -19,7 +19,7 @@
 #
 """ special for network monitoring """
 
-from __future__ import unicode_literals, print_function
+
 
 import re
 
@@ -55,7 +55,7 @@ class SpecialNet(SpecialBase):
                 )
                 _bps = net_dev.netdevice_speed.speed_bps
                 cur_temp = self.get_arg_template(
-                    u"{} [HM]".format(name_with_descr),
+                    "{} [HM]".format(name_with_descr),
                     w="{:.0f}".format(_bps * 0.9) if _bps else "-",
                     c="{:.0f}".format(_bps * 0.95) if _bps else "-",
                     arg_1=net_dev.devname,

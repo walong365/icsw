@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import commands
+import subprocess
 import re
 
 from initat.host_monitoring import limits, hm_classes
@@ -56,7 +56,7 @@ class lmstat_command(hm_classes.hmb_command):
                 lm_call = "%s lmstat -a%s" % (lmstat_bin, lic_file_loc)
             else:
                 lm_call = "%s -a%s" % (lmstat_bin, lic_file_loc)
-            stat, out = commands.getstatusoutput(lm_call)
+            stat, out = subprocess.getstatusoutput(lm_call)
             if stat:
                 return "error calling %s (%d): %s" % (lmstat_bin, stat, out)
             else:
@@ -82,8 +82,8 @@ class lmstat_command(hm_classes.hmb_command):
             elif "servers" in l_dict and "server_status" in l_dict:
                 # num servers
                 num_servers = len(l_dict["servers"])
-                servers_up = sorted([k for k, v in l_dict["server_status"].iteritems() if v.lower().count("server up")])
-                servers_down = sorted([k for k, v in l_dict["server_status"].iteritems() if k not in servers_up])
+                servers_up = sorted([k for k, v in l_dict["server_status"].items() if v.lower().count("server up")])
+                servers_down = sorted([k for k, v in l_dict["server_status"].items() if k not in servers_up])
                 if servers_down:
                     return limits.mon_STATE_CRITICAL, "error %s down: %s, %s up: %s; %s: %s" % (
                         logging_tools.get_plural("server", len(servers_down)),
@@ -124,7 +124,7 @@ def parse_lmstat_out(out):
                 act_mode = "server stuff"
         elif act_mode == "server stuff":
             srv_name = line.split(":")[0]
-            if srv_name in r_dict["server_status"].keys():
+            if srv_name in list(r_dict["server_status"].keys()):
                 r_dict["server_status"][srv_name] = line.split(":", 1)[1]
             if line.lower().startswith("feature usage info"):
                 act_mode = "feature stuff"

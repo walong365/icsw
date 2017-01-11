@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 import re
@@ -108,7 +108,7 @@ _kpi_to_icinga_service_state_map = {
 }
 
 _icinga_service_to_kpi_state_map = {
-    v: k for k, v in _kpi_to_icinga_service_state_map.iteritems()
+    v: k for k, v in _kpi_to_icinga_service_state_map.items()
 }
 
 _kpi_to_icinga_host_state_map = {
@@ -121,7 +121,7 @@ _kpi_to_icinga_host_state_map = {
 }
 
 _icinga_host_to_kpi_state_map = {
-    v: k for k, v in _kpi_to_icinga_host_state_map.iteritems()
+    v: k for k, v in _kpi_to_icinga_host_state_map.items()
 }
 
 
@@ -154,7 +154,7 @@ class KpiObject(object):
         # we serialize for the client to show something, not for a functional representation
         return {
             'kpi_id': self.kpi_id,
-            'result': None if self.result is None else unicode(self.result),
+            'result': None if self.result is None else str(self.result),
             'host_name': self.host_name,
             'host_pk': self.host_pk,
             'device_category': ", ".join(self.device_category),
@@ -189,7 +189,7 @@ class KpiObject(object):
             return cls.IdType.service
         elif obj_len == 2:
             return cls.IdType.rrd
-        elif isinstance(ident, (int, long)):
+        elif isinstance(ident, int):
             return cls.IdType.device
         else:
             raise ValueError()
@@ -246,7 +246,7 @@ class KpiDetailObject(KpiObject):
         )
         return dict(
             aggregated_tl={
-                unicode(k): v for k, v in aggr_tl.iteritems()
+                str(k): v for k, v in aggr_tl.items()
             },
             **super(KpiDetailObject, self).serialize()
         )
@@ -400,7 +400,7 @@ class KpiTimeLineObject(KpiObject):
         )
         return dict(
             aggregated_tl={
-                unicode(k): v for k, v in aggr_tl.iteritems()
+                str(k): v for k, v in aggr_tl.items()
             },
             **super(KpiTimeLineObject, self).serialize()
         )
@@ -580,9 +580,9 @@ class KpiSet(object):
             else:
                 return match_check_fun(obj)
 
-        for k, v in parameters.iteritems():
+        for k, v in parameters.items():
             # match_check_fun is actually 'equality'-testing
-            if isinstance(v, basestring):
+            if isinstance(v, str):
                 match_re = re.compile(v)
 
                 def create_matcher(match_re=match_re):  # force closure
@@ -702,7 +702,7 @@ class KpiSet(object):
 
         origin = KpiOperation(
             KpiOperation.Type.at_least,
-            arguments={'num_ok': num_ok, 'num_warn': num_warn, 'result': unicode(result)},
+            arguments={'num_ok': num_ok, 'num_warn': num_warn, 'result': str(result)},
             operands=[self]
         )
 
@@ -824,7 +824,7 @@ class KpiSet(object):
                     )
                 )
 
-            for ident, time_line in time_lines.iteritems():
+            for ident, time_line in time_lines.items():
                 id_objs = self.get_by_id(ident)
                 if id_objs:
                     obj_id = KpiObject.get_machine_object_id_type(ident)
@@ -874,7 +874,7 @@ class KpiSet(object):
             arguments={
                 'ratio_ok': ratio_ok,
                 'ratio_warn': ratio_warn,
-                'result': unicode(result),
+                'result': str(result),
                 'method': method
             },
             operands=[self]
@@ -890,12 +890,12 @@ class KpiSet(object):
 
                 # also aggregate state types
                 ratio = sum(
-                    v for k, v in aggregated_tl.iteritems() if k[0] <= result
+                    v for k, v in aggregated_tl.items() if k[0] <= result
                 )
 
                 if discard_planned_downtimes:
                     ratio_planned_down = sum(
-                        v for k, v in aggregated_tl.iteritems() if k[0] == KpiResult.planned_down
+                        v for k, v in aggregated_tl.items() if k[0] == KpiResult.planned_down
                     )
                     # ignore ratio_planned_down
                     try:

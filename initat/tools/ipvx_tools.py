@@ -19,7 +19,7 @@
 """ handles ipv4 addresses """
 
 
-from __future__ import unicode_literals, print_function
+
 
 
 class ipv4(object):
@@ -27,9 +27,9 @@ class ipv4(object):
         if isinstance(in_value, ipv4):
             in_value = str(in_value)
         # cast tuple to list
-        if type(in_value) in [long, int]:
+        if type(in_value) in [int, int]:
             in_value = list(in_value)
-        if isinstance(in_value, basestring):
+        if isinstance(in_value, str):
             # value is a string
             if len(
                 [
@@ -38,14 +38,14 @@ class ipv4(object):
                     ] if 0 <= x <= 255
                 ]
             ) == 4:
-                self.parts = map(int, in_value.strip().split("."))
+                self.parts = list(map(int, in_value.strip().split(".")))
                 self.inv_parts = [x for x in self.parts]
                 self.inv_parts.reverse()
                 # print "+",in_value, self.parts, self.inv_parts, "*<br>"
             else:
                 raise ValueError("error parsing IP address '{}'".format(in_value))
         elif type(in_value) == list:
-            if type(in_value[0]) in [type(0), type(0L)]:
+            if type(in_value[0]) in [type(0), type(0)]:
                 # value is a list of integer
                 self.parts = [val for val in in_value]
             else:
@@ -128,7 +128,7 @@ class ipv4(object):
             return ipv4(".".join([str(x) for x in new_v]))
 
     def __lt__(self, other):
-        for i in xrange(4):
+        for i in range(4):
             if self.parts[i] > other.parts[i]:
                 return False
             elif self.parts[i] < other.parts[i]:
@@ -136,7 +136,7 @@ class ipv4(object):
         return False
 
     def __gt__(self, other):
-        for i in xrange(4):
+        for i in range(4):
             if self.parts[i] < other.parts[i]:
                 return False
             elif self.parts[i] > other.parts[i]:
@@ -144,7 +144,7 @@ class ipv4(object):
         return False
 
     def __le__(self, other):
-        for i in xrange(4):
+        for i in range(4):
             if self.parts[i] > other.parts[i]:
                 return False
             elif self.parts[i] < other.parts[i]:
@@ -152,7 +152,7 @@ class ipv4(object):
         return True
 
     def __ge__(self, other):
-        for i in xrange(4):
+        for i in range(4):
             if self.parts[i] < other.parts[i]:
                 return False
             elif self.parts[i] > other.parts[i]:

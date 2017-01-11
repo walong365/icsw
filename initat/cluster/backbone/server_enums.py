@@ -22,7 +22,7 @@
 
 """ init all enums and create the IcswAppEnum object """
 
-from __future__ import unicode_literals, print_function
+
 
 from enum import Enum
 
@@ -49,7 +49,7 @@ icswServiceEnum = None
 class BaseEnum(Enum):
     @classmethod
     def get_server_enums(cls):
-        return {name: entry.value for name, entry in cls.__members__.items() if entry.value.server_service}
+        return {name: entry.value for name, entry in list(cls.__members__.items()) if entry.value.server_service}
 
 
 def init_app_enum():

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+
 from initat.tools import logging_tools
 from django.db import models, migrations
 from django.db.models import Q
@@ -19,7 +19,7 @@ def to_new_log_format(apps, schema_editor):
     background_job_run = apps.get_model("backbone", "background_job_run")
     cur_c = DeviceLogEntry.objects.all().count()
     if not cur_c:
-        print("migrating to new logging scheme, logs to handle: {:d}".format(devicelog.objects.all().count()))
+        print(("migrating to new logging scheme, logs to handle: {:d}".format(devicelog.objects.all().count())))
         # old to new log_source dict
         _ls_dict = {}
         for _ls in log_source.objects.all():
@@ -70,7 +70,7 @@ def to_new_log_format(apps, schema_editor):
             _new_le.save()
         # rewrite job runs
         _runs = background_job_run.objects.exclude(Q(log_source=None))
-        print("background_runs to migrate: {:d}".format(_runs.count()))
+        print(("background_runs to migrate: {:d}".format(_runs.count())))
         for _run in _runs:
             if _run.log_source_id in _ls_dict:
                 _run.source = _ls_dict[_run.log_source_id]

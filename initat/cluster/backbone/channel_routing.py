@@ -22,7 +22,7 @@
 Channel settings
 """
 
-from __future__ import print_function, unicode_literals
+
 
 from channels.routing import route, route_class
 

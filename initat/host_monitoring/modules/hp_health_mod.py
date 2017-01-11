@@ -96,13 +96,13 @@ class HPPsu(object):
     def interpret(self, srv_com, cur_ns):
         psu_list = srv_com["*result"]
         if psu_list:
-            ret_v = [u"found {}".format(logging_tools.get_plural("PSU", len(psu_list)))]
+            ret_v = ["found {}".format(logging_tools.get_plural("PSU", len(psu_list)))]
             ret_state = limits.mon_STATE_OK
             for entry in psu_list:
                 if entry["condition"].lower() != "ok":
                     ret_state = max(limits.mon_STATE_CRITICAL, ret_state)
                     ret_v.append(
-                        u"PS {}, present: {}, condition: {}".format(
+                        "PS {}, present: {}, condition: {}".format(
                             entry["num"],
                             entry["present"],
                             entry["condition"]
@@ -110,7 +110,7 @@ class HPPsu(object):
                     )
                 else:
                     ret_v.append(
-                        u"PS {}, {}".format(
+                        "PS {}, {}".format(
                             entry["num"],
                             entry.get("power", "power not defined")
                         )

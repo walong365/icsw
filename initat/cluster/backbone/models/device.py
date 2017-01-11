@@ -134,8 +134,8 @@ class HardwareFingerPrint(models.Model):
         return server_command.decompress(in_str, json=True)
 
     def __unicode__(self):
-        return u"HFP for {} ({})".format(
-            unicode(self.device),
+        return "HFP for {} ({})".format(
+            str(self.device),
             self.fingerprint,
         )
 
@@ -285,7 +285,7 @@ class device(models.Model):
             description="lock for '{}'".format(str(lock_type)),
         )
         new_lock.save()
-        return new_lock, [("created {}".format(unicode(new_lock)), logging_tools.LOG_LEVEL_OK)]
+        return new_lock, [("created {}".format(str(new_lock)), logging_tools.LOG_LEVEL_OK)]
 
     @property
     def com_uuid(self):
@@ -326,7 +326,7 @@ class device(models.Model):
 
     def crypt(self, in_pwd):
         if in_pwd:
-            salt = "".join([chr(random.randint(65, 90)) for _idx in xrange(4)])
+            salt = "".join([chr(random.randint(65, 90)) for _idx in range(4)])
             _crypted = crypt.crypt(in_pwd, salt)
             if _crypted == "*0":
                 _crypted = ""
@@ -362,7 +362,7 @@ class device(models.Model):
 
     def get_simple_xml(self):
         return E.device(
-            unicode(self),
+            str(self),
             pk="{:d}".format(self.pk),
             key="dev__{:d}".format(self.pk),
             name=self.name
@@ -419,9 +419,9 @@ class device(models.Model):
         )
 
     def __unicode__(self):
-        return u"{}{}".format(
+        return "{}{}".format(
             self.name,
-            u" ({})".format(self.comment) if self.comment else ""
+            " ({})".format(self.comment) if self.comment else ""
         )
 
     class CSW_Meta:
@@ -456,10 +456,10 @@ class device(models.Model):
         ]
 
     class Meta:
-        db_table = u'device'
+        db_table = 'device'
         ordering = ("name",)
         unique_together = [("name", "domain_tree_node"), ]
-        verbose_name = u'Device'
+        verbose_name = 'Device'
 
 
 @receiver(signals.pre_save, sender=device)
@@ -527,8 +527,8 @@ def device_pre_save(sender, **kwargs):
                 raise ValidationError(
                     "UUID clash (same value '{}' for {} and {})".format(
                         cur_inst.uuid,
-                        unicode(cur_inst),
-                        unicode(present_dev),
+                        str(cur_inst),
+                        str(present_dev),
                     )
                 )
         # check for device group
@@ -588,8 +588,8 @@ def device_post_save(sender, **kwargs):
                 _count_dict.setdefault(_dc["device_class"], []).append(_dc["pk"])
             if _count_dict:
                 # get device_classes with highest count
-                _max_count = max([len(_value) for _value in _count_dict.itervalues()])
-                _possible_classes = [_key for _key, _value in _count_dict.iteritems() if len(_value) == _max_count]
+                _max_count = max([len(_value) for _value in _count_dict.values()])
+                _possible_classes = [_key for _key, _value in _count_dict.items() if len(_value) == _max_count]
                 # get metadevice
                 _md = _cur_inst.device_group.device
                 if _md.device_class_id not in _possible_classes:
@@ -641,10 +641,10 @@ class DeviceScanLock(models.Model):
             Q(date__lte=self.date - datetime.timedelta(days=1))
         ).delete()
         # close current lock and return a list of (what, level) lines
-        return [("closed {}".format(unicode(self)), logging_tools.LOG_LEVEL_OK)]
+        return [("closed {}".format(str(self)), logging_tools.LOG_LEVEL_OK)]
 
     def __unicode__(self):
-        return u"DSL {}".format(self.uuid)
+        return "DSL {}".format(self.uuid)
 
 
 @receiver(signals.post_save, sender=DeviceScanLock)
@@ -698,8 +698,8 @@ class DeviceClass(models.Model):
             else:
                 _ci = "SYS"
         else:
-            _ci = unicode(self.create_user)
-        return u"DeviceClass '{}' ({})".format(
+            _ci = str(self.create_user)
+        return "DeviceClass '{}' ({})".format(
             self.name,
             _ci,
         )
@@ -727,10 +727,10 @@ class cd_connection(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"{} (via {}) {}".format(
-            unicode(self.parent),
+        return "{} (via {}) {}".format(
+            str(self.parent),
             self.connection_info,
-            unicode(self.child)
+            str(self.child)
         )
 
     class Meta:
@@ -742,7 +742,7 @@ class cd_connection(models.Model):
 def cd_connection_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        for par_idx in xrange(1, 5):
+        for par_idx in range(1, 5):
             check_integer(cur_inst, "parameter_i{:d}".format(par_idx), min_val=0, max_val=256)
         try:
             cd_connection.objects.get(Q(parent=cur_inst.parent_id) & Q(child=cur_inst.child_id))
@@ -800,9 +800,9 @@ class device_group(models.Model):
     #        return self.name
 
     class Meta:
-        db_table = u'device_group'
+        db_table = 'device_group'
         ordering = ("-cluster_device_group", "name",)
-        verbose_name = u"Device group"
+        verbose_name = "Device group"
 
     class CSW_Meta:
         permissions = (
@@ -811,7 +811,7 @@ class device_group(models.Model):
         )
 
     def __unicode__(self):
-        return u"{}{}{}".format(
+        return "{}{}{}".format(
             self.name,
             " ({})".format(self.description) if self.description else "",
             "[*]" if self.cluster_device_group else ""
@@ -873,7 +873,7 @@ class LogLevel(models.Model):
 
 @lru_cache()
 def log_level_lookup(key):
-    if isinstance(key, basestring):
+    if isinstance(key, str):
         return LogLevel.objects.get(Q(identifier=key))
     else:
         return LogLevel.objects.get(Q(level=key))
@@ -894,18 +894,18 @@ class LogSource(models.Model):
         ls_dev = kwargs.get("device", None)
         sources = LogSource.objects.filter(Q(identifier=identifier) & Q(device=ls_dev))
         if len(sources) > 1:
-            print(
+            print((
                 "Too many LogSources present for identifier '{}': {}, exiting".format(
                     identifier,
-                    ", ".join([unicode(_src) for _src in sources])
+                    ", ".join([str(_src) for _src in sources])
                 )
-            )
+            ))
             cur_source = None
         elif not len(sources):
             if ls_dev is not None:
                 new_source = LogSource(
                     identifier=identifier,
-                    description=u"{} on {}".format(identifier, unicode(ls_dev)),
+                    description="{} on {}".format(identifier, str(ls_dev)),
                     device=ls_dev,
                 )
                 new_source.save()
@@ -928,7 +928,7 @@ class LogSource(models.Model):
 
 @lru_cache()
 def log_source_lookup(identifier, device=None):
-    if type(identifier) in [int, long]:
+    if type(identifier) in [int, int]:
         return LogSource.objects.get(Q(pk=identifier))
     elif device is not None:
         return LogSource.objects.get(Q(identifier=identifier) & Q(device=device))
@@ -960,13 +960,13 @@ class DeviceLogEntry(models.Model):
         source = kwargs.get("source")
         if source is None:
             source = log_source_lookup("webfrontend")
-        elif isinstance(source, basestring) or isinstance(source, int):
+        elif isinstance(source, str) or isinstance(source, int):
             source = log_source_lookup(source)
 
         level = kwargs.get("level")
         if level is None:
             level = log_level_lookup("o")
-        elif isinstance(level, basestring) or type(level) in [int, long]:
+        elif isinstance(level, str) or type(level) in [int, int]:
             level = log_level_lookup(level)
 
         cur_log = DeviceLogEntry.objects.create(
@@ -979,7 +979,7 @@ class DeviceLogEntry(models.Model):
         return cur_log
 
     def __unicode__(self):
-        return u"{} ({}, {}:{:d}, {})".format(
+        return "{} ({}, {}:{:d}, {})".format(
             self.text,
             self.source.identifier,
             self.level.identifier,

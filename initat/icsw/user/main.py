@@ -22,7 +22,7 @@
 #
 """ user commands for icsw """
 
-from __future__ import unicode_literals, print_function
+
 
 import base64
 import bz2
@@ -141,7 +141,7 @@ def do_list(cur_opts, log_com):
                 logging_tools.form_entry(_user.comment, header="comment"),
             ]
         )
-    print(unicode(out_list))
+    print(str(out_list))
 
 
 def do_export(cur_opts, log_com):
@@ -152,7 +152,7 @@ def do_export(cur_opts, log_com):
     for _user in users:
         if _user.group_id not in groups:
             groups[_user.group.pk] = _user.group
-    _group_exp = JSONRenderer().render(group_flat_serializer(groups.values(), many=True).data)
+    _group_exp = JSONRenderer().render(group_flat_serializer(list(groups.values()), many=True).data)
     _user_exp = JSONRenderer().render(user_flat_serializer(users, many=True).data)
     _exp = json.dumps(
         {
@@ -198,8 +198,8 @@ def do_import(cur_opts, log_com):
                 _user["group"] = default_group.pk
                 data = user_flat_serializer(data=_user)
         if not data.is_valid():
-            if "export" in data.errors and len(exp_dict.keys()) == 1:
-                _user["export"] = exp_dict.keys()[0]
+            if "export" in data.errors and len(list(exp_dict.keys())) == 1:
+                _user["export"] = list(exp_dict.keys())[0]
                 data = user_flat_serializer(data=_user)
         if not data.is_valid():
             log_com("")
@@ -215,14 +215,14 @@ def do_import(cur_opts, log_com):
                 data.object.save()
             except:
                 log_com(
-                    u"Cannot create user '{}': {}".format(
-                        unicode(data.object),
+                    "Cannot create user '{}': {}".format(
+                        str(data.object),
                         process_tools.get_except_info(),
                     )
                 )
             else:
                 log_com(
-                    "created user '{}'".format(unicode(data.object))
+                    "created user '{}'".format(str(data.object))
                 )
 
 
@@ -234,7 +234,7 @@ def do_modify(cur_opts, log_com):
         if cur_opts.new_export and _user.export_id and _user.export_id != cur_opts.new_export:
             log_com(
                 "changing export_id of user '{}' from {:d} to {:d}".format(
-                    unicode(_user),
+                    str(_user),
                     _user.export_id,
                     cur_opts.new_export,
                 )
@@ -296,11 +296,11 @@ def do_info(cur_opts, log_com):
         from initat.cluster.backbone.models import user_quota_setting
         print("")
         print(
-            u"User with loginname '{}' (user {}), uid={:d}, group={} (gid={:d})".format(
+            "User with loginname '{}' (user {}), uid={:d}, group={} (gid={:d})".format(
                 _user.login,
-                unicode(_user),
+                str(_user),
                 _user.uid,
-                unicode(_user.group),
+                str(_user.group),
                 _user.group.gid,
             )
         )
@@ -312,7 +312,7 @@ def do_info(cur_opts, log_com):
                 _bd = _qs.quota_capable_blockdevice
                 print(
                     "    device {} ({} on {}): {}".format(
-                        unicode(_bd.device.full_name),
+                        str(_bd.device.full_name),
                         _bd.block_device_path,
                         _bd.mount_path,
                         get_quota_str(_qs),
@@ -372,7 +372,7 @@ def do_info(cur_opts, log_com):
                         logging_tools.form_entry(_var.description, header="description"),
                     ]
                 )
-            print(unicode(out_list))
+            print(str(out_list))
 
     return _ret_state
 
@@ -386,7 +386,7 @@ def get_pass(prompt=">"):
     passwd = None
     while True:
         try:
-            passwd = raw_input(prompt)
+            passwd = input(prompt)
         except KeyboardInterrupt:
             print("press <CTRL-d> to exit")
             passwd = ""

@@ -16,9 +16,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import print_function,  unicode_literals
 
-import commands
+
+import subprocess
 import re
 import time
 
@@ -44,7 +44,7 @@ class _general(hm_classes.hm_module):
                 )
                 com, out = (None, "")
         if com:
-            c_stat, out = commands.getstatusoutput(com)
+            c_stat, out = subprocess.getstatusoutput(com)
             if c_stat and out:
                 self.log(
                     "cannot execute {} ({:d}): {}".format(
@@ -221,14 +221,14 @@ class c_con(object):
 
     def tunnel_installed(self):
         if self.__tunnels:
-            return any([_tunnel.installed for _tunnel in self.__tunnels.itervalues()])
+            return any([_tunnel.installed for _tunnel in self.__tunnels.values()])
         else:
             # no tunnels
             return False
 
     def tunnel_rekeying(self):
         if self.__tunnels:
-            return any([_tunnel.rekeying for _tunnel in self.__tunnels.itervalues()])
+            return any([_tunnel.rekeying for _tunnel in self.__tunnels.values()])
         else:
             # no tunnels
             return False

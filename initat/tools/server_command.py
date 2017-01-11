@@ -19,7 +19,7 @@
 #
 """ server command structure definitions """
 
-from __future__ import unicode_literals, print_function
+
 
 import base64
 import bz2
@@ -146,7 +146,7 @@ class srv_command(object):
         self.__builder = ElementMaker(namespace=XML_NS)
         self.ignore_unicode_errors = False
         if "source" in kwargs:
-            if isinstance(kwargs["source"], basestring):
+            if isinstance(kwargs["source"], str):
                 self.__tree = etree.fromstring(kwargs["source"])
             else:
                 self.__tree = kwargs["source"]
@@ -159,7 +159,7 @@ class srv_command(object):
                 self.__builder.identity(kwargs.pop("identity", "not set")),
                 # set srv_command version
                 srvc_version="{:d}".format(kwargs.pop("srvc_version", 1)))
-            for key, value in kwargs.iteritems():
+            for key, value in kwargs.items():
                 self[key] = value
 
     def xpath(self, *args, **kwargs):
@@ -175,7 +175,7 @@ class srv_command(object):
             raise ValueError("srv_com_level '{}' not valid".format(level))
         self["result"].attrib.update(
             {
-                "reply": unicode(ret_str),
+                "reply": str(ret_str),
                 "state": "{:d}".format(level)
             }
         )
@@ -313,7 +313,7 @@ class srv_command(object):
     def _to_unicode(self, value):
         if type(value) == bool:
             return "True" if value else "False", "bool"
-        elif type(value) in [int, long]:
+        elif type(value) in [int, int]:
             return ("{:d}".format(value), "int")
         else:
             return (value, "str")
@@ -336,7 +336,7 @@ class srv_command(object):
     def _element(self, value, cur_element=None):
         if cur_element is None:
             cur_element = self.builder("value")
-        if isinstance(value, basestring):
+        if isinstance(value, str):
             try:
                 cur_element.text = value
             except ValueError:
@@ -348,7 +348,7 @@ class srv_command(object):
                     else:
                         raise
             cur_element.attrib["type"] = "str"
-        elif type(value) in [int, long]:
+        elif type(value) in [int, int]:
             cur_element.text = "{:d}".format(value)
             cur_element.attrib["type"] = "int"
         elif type(value) in [float]:
@@ -368,9 +368,9 @@ class srv_command(object):
             cur_element.attrib["type"] = "bool"
         elif type(value) in [dict, collections.OrderedDict]:
             cur_element.attrib["type"] = "dict"
-            for sub_key, sub_value in value.iteritems():
+            for sub_key, sub_value in value.items():
                 sub_el = self._element(sub_value, self.builder(sub_key))
-                if type(sub_key) in [int, long]:
+                if type(sub_key) in [int, int]:
                     sub_el.attrib["dict_key"] = "__int__{:d}".format(sub_key)
                 elif sub_key is None:
                     sub_el.attrib["dict_key"] = "__none__"
@@ -448,7 +448,7 @@ class srv_command(object):
             if el_type == "int":
                 value = int(value)
             elif el_type == "bool":
-                if isinstance(value, basestring):
+                if isinstance(value, str):
                     value = True if len(value) and value[0].lower() in ["t", "1", "y"] else False
                 else:
                     value = bool(value)
@@ -460,7 +460,7 @@ class srv_command(object):
             elif el_type == "float":
                 value = float(value)
             elif el_type == "str":
-                value = value or u""
+                value = value or ""
             return value
         return result
 
@@ -495,10 +495,10 @@ class srv_command(object):
             return int(_source[0].attrib.get("sendcounter", 0))
 
     def pretty_print(self):
-        return etree.tostring(self.__tree, encoding=unicode, pretty_print=True)
+        return etree.tostring(self.__tree, encoding=str, pretty_print=True)
 
     def __unicode__(self):
-        return etree.tostring(self.__tree, encoding=unicode)
+        return etree.tostring(self.__tree, encoding=str)
 
     def tostring(self, **kwargs):
         return etree.tostring(self.__tree, **kwargs)

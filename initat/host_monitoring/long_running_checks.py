@@ -23,7 +23,7 @@
 long running check implementation by sieghart, to be improved ...
 """
 
-from __future__ import unicode_literals, print_function
+
 
 from multiprocessing import Process
 

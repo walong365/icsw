@@ -72,8 +72,8 @@ class CtrlCommand(object):
 
     def _interpret(self, in_value):
         if type(in_value) is dict:
-            for key, value in in_value.iteritems():
-                if isinstance(value, basestring):
+            for key, value in in_value.items():
+                if isinstance(value, str):
                     if value.isdigit() and "%d" % (int(value)) == value:
                         in_value[key] = int(value)
                     elif value.lower() == "true":
@@ -134,7 +134,7 @@ class DriveList(CtrlCommand):
                 _parts = [_val.strip() for _val in line.strip().split("|")[1:-1]]
                 if _parts[0].isdigit() and len(_parts) == 12:
                     _id = int(_parts.pop(0))
-                    drive_dict[_id] = dict(zip(HEADERS, _parts))
+                    drive_dict[_id] = dict(list(zip(HEADERS, _parts)))
         return drive_dict
 
 

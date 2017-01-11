@@ -22,7 +22,7 @@
 
 """ logging server, central logging facility, server-part """
 
-from __future__ import print_function, unicode_literals
+
 
 import grp
 import logging
@@ -71,7 +71,7 @@ class MainProcess(ICSWBasePool):
         int_names = ["log", "log_py", "err_py"]
         for name in int_names:
             _handle = self.get_python_handle(name)
-        self.log("opened handles for {}".format(", ".join(self.__handles.keys())))
+        self.log("opened handles for {}".format(", ".join(list(self.__handles.keys()))))
         self._flush_log_cache()
         self.__last_stat_time = time.time()
         # error gather dict
@@ -191,7 +191,7 @@ class MainProcess(ICSWBasePool):
     def loop_end(self):
         self._check_error_dict(force=True)
         self.__num_write += 3
-        self.log("closing {:d} handles".format(len(self.__handles.keys())))
+        self.log("closing {:d} handles".format(len(list(self.__handles.keys()))))
         self.log("logging process exiting (pid {:d})".format(self.pid))
         self.log("statistics (open/close/written): {:d} / {:d} / {:d}".format(self.__num_open, self.__num_close, self.__num_write))
         key_list = list(self.__handles.keys())
@@ -214,19 +214,19 @@ class MainProcess(ICSWBasePool):
     def _feed_error(self, in_dict):
         try:
             # error_str is set in io_stream_helper.io_stream
-            error_str = u"{}{}".format(
-                in_dict.get("exc_text", u"") or u"",
-                in_dict.get("error_str", u"") or u"",
+            error_str = "{}{}".format(
+                in_dict.get("exc_text", "") or "",
+                in_dict.get("error_str", "") or "",
             )
             if not error_str:
                 self.log("cannot extract error_str, using dump of error_dict", logging_tools.LOG_LEVEL_ERROR)
                 error_f = []
                 for key in sorted(in_dict.keys()):
                     try:
-                        error_f.append(u"  {:<20s} : {}".format(key, unicode(in_dict[key])))
+                        error_f.append("  {:<20s} : {}".format(key, str(in_dict[key])))
                     except:
                         error_f.append(
-                            u"  error logging key '{}' : {}".format(
+                            "  error logging key '{}' : {}".format(
                                 key,
                                 process_tools.get_except_info(),
                             )
@@ -236,7 +236,7 @@ class MainProcess(ICSWBasePool):
                 in_dict["pid"], {
                     "last_update": time.time(),
                     # error as unicode
-                    "error_str": u"",
+                    "error_str": "",
                     # how many lines we have already logged
                     "lines_logged": 0,
                     "proc_dict": in_dict
@@ -253,7 +253,7 @@ class MainProcess(ICSWBasePool):
                 gname = grp.getgrgid(in_dict.get("gid", -1))[0]
             except:
                 gname = "<unknown>"
-            pid_str = u"{} (uid {:d} [{}], gid {:d} [{}])".format(
+            pid_str = "{} (uid {:d} [{}], gid {:d} [{}])".format(
                 in_dict.get("name", "N/A"),
                 in_dict.get("uid", 0),
                 uname,
@@ -296,7 +296,7 @@ class MainProcess(ICSWBasePool):
         mails_sent = 0
         s_time = time.time()
         ep_dels = []
-        for ep, es in self.__eg_dict.items():
+        for ep, es in list(self.__eg_dict.items()):
             t_diff = s_time - es["last_update"]
             if force or (t_diff < 0 or t_diff > 60):
                 subject = "Python error for pid {:d} on {}@{} ({}, {})".format(
@@ -401,7 +401,7 @@ class MainProcess(ICSWBasePool):
             del self.__handle_usecount[h_name]
 
     def _update(self, **kwargs):
-        c_handles = sorted([key for key, value in self.__handles.items() if isinstance(value, logging_tools.logfile) and value.check_for_temp_close()])
+        c_handles = sorted([key for key, value in list(self.__handles.items()) if isinstance(value, logging_tools.logfile) and value.check_for_temp_close()])
         if c_handles:
             self.log(
                 "temporarily closing {}: {}".format(
@@ -417,14 +417,14 @@ class MainProcess(ICSWBasePool):
     def _check_excess_log(self):
         cur_time = time.time()
         diff_time = max(1, abs(cur_time - self.__usecount_ts))
-        s_dict = {key: float(value) / diff_time for key, value in self.__handle_usecount.iteritems()}
+        s_dict = {key: float(value) / diff_time for key, value in self.__handle_usecount.items()}
         self.__handle_usecount = {key: 0 for key in self.__handle_usecount}
         # ("EXCESS_LIMIT", configfile.int_c_var(1000, help_string="log lines per second to trigger excess_log [%(default)s]")),
         # s_dict = {key: value for key, value in s_dict.iteritems() if value > global_config["EXCESS_LIMIT"]}
         # pprint.pprint(s_dict)
 
     def get_python_handle(self, record):
-        if isinstance(record, basestring):
+        if isinstance(record, str):
             # special type for direct handles (log, log_py, err_py)
             sub_dirs = []
             record_host = "localhost"
@@ -530,7 +530,7 @@ class MainProcess(ICSWBasePool):
                     h_name,
                     base_name,
                     base_dir,
-                    logging_tools.get_plural("handle", len(self.__handles.keys()))
+                    logging_tools.get_plural("handle", len(list(self.__handles.keys())))
                 )
             )
         return self.__handles[h_name]
@@ -584,7 +584,7 @@ class MainProcess(ICSWBasePool):
         except:
             src_key = ("main", "main")
         # needed ?
-        if isinstance(log_msg, basestring) and log_msg.lower().startswith("<lch>") and log_msg.lower().endswith("</lch>"):
+        if isinstance(log_msg, str) and log_msg.lower().startswith("<lch>") and log_msg.lower().endswith("</lch>"):
             log_it, is_command = (
                 self._handle_command(handle, src_key, log_com, log_msg),
                 True,

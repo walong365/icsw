@@ -21,7 +21,7 @@
 #
 """ license file reader """
 
-from __future__ import print_function, unicode_literals
+
 
 import base64
 import datetime
@@ -174,7 +174,7 @@ class LicenseFileReader(object):
                     "reader": self,
                 }
         # build hashes
-        for _uuid, _struct in package_uuid_map.iteritems():
+        for _uuid, _struct in package_uuid_map.items():
             # compare hash
             _struct["hash"] = (_struct["version"], _struct["date"], _struct["idx"])
         self.package_uuid_map = package_uuid_map
@@ -195,7 +195,7 @@ class LicenseFileReader(object):
         """
         only check if the license is valid by examining the given timeframe, do not check fingerprint violations
         """
-        parse_date = lambda date_str: datetime.date(*(int(i) for i in date_str.split(u"-")))
+        parse_date = lambda date_str: datetime.date(*(int(i) for i in date_str.split("-")))
 
         valid_from = parse_date(lic_xml.find("icsw:valid-from", ICSW_XML_NS_MAP).text)
         valid_to = parse_date(lic_xml.find("icsw:valid-to", ICSW_XML_NS_MAP).text)
@@ -241,7 +241,7 @@ class LicenseFileReader(object):
         # check parameters via xpath
         license_parameter_check = ["icsw:id/text()='{}'".format(license.name)]
         if parameters is not None:
-            for lic_param_type, value in parameters.iteritems():
+            for lic_param_type, value in parameters.items():
                 license_parameter_check.append(
                     "icsw:parameters/icsw:parameter[@id='{}']/text() >= {}".format(
                         lic_param_type.name,
@@ -323,7 +323,7 @@ class LicenseFileReader(object):
         # merge all maps for the given license readers
         _res_map = {}
         for _reader in license_readers:
-            for _uuid, _struct in _reader.package_uuid_map.iteritems():
+            for _uuid, _struct in _reader.package_uuid_map.items():
                 if _uuid not in _res_map:
                     _add = True
                 elif _struct["hash"] > _res_map[_uuid]["hash"]:
@@ -437,7 +437,7 @@ class LicenseFileReader(object):
                 } for lic_xml in cluster_xml.xpath("icsw:license", namespaces=ICSW_XML_NS_MAP)
             ]
             return _r_list
-        return [extract_package_data(_struct["pack_xml"], _struct["customer_xml"]) for _struct in package_uuid_map.itervalues()]
+        return [extract_package_data(_struct["pack_xml"], _struct["customer_xml"]) for _struct in package_uuid_map.values()]
 
     @staticmethod
     def verify_signature(lic_file_xml, signature_xml):
@@ -448,7 +448,7 @@ class LicenseFileReader(object):
         signed_string = LicenseFileReader._extract_string_for_signature(lic_file_xml)
         signature = base64.b64decode(signature_xml.text)
 
-        cert_files = glob.glob(u"{}/*.pem".format(CERT_DIR))
+        cert_files = glob.glob("{}/*.pem".format(CERT_DIR))
 
         if not cert_files:
             # raise Exception("No certificate files in certificate dir {}.".format(CERT_DIR))
@@ -485,13 +485,13 @@ class LicenseFileReader(object):
     @staticmethod
     def _extract_string_for_signature(content):
         def dict_to_str(d):
-            return u";".join(u"{}:{}".format(k, v) for k, v in d.iteritems())
-        return u"_".join(
+            return ";".join("{}:{}".format(k, v) for k, v in d.items())
+        return "_".join(
             (
-                u"{}/{}/{}".format(
+                "{}/{}/{}".format(
                     el.tag,
                     dict_to_str(el.attrib),
-                    el.text.strip() if el.text is not None else u""
+                    el.text.strip() if el.text is not None else ""
                 ) for el in content.iter()
             )
         )
@@ -512,7 +512,7 @@ class LicenseFileReader(object):
         _num = {"lics": 0, "paras": 0}
         for _list in [_lic_info]:
             for _lic_entry in _list:
-                _cl_info = _lic_entry["lic_info"].keys()
+                _cl_info = list(_lic_entry["lic_info"].keys())
                 for _cl_name in _cl_info:
                     _cluster_ids.add(_cl_name)
                     _cl_struct = _lic_entry["lic_info"][_cl_name]

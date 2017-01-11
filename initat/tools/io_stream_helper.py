@@ -19,7 +19,7 @@
 #
 """ sends everything to the local logging-server """
 
-from __future__ import unicode_literals, print_function
+
 
 import atexit
 import os
@@ -35,7 +35,7 @@ class icswIOStream(object):
         # late init of context and socket to reduce threads
         self.__zmq_context = kwargs.get("zmq_context", None)
         self.__zmq_sock = None
-        self.__buffer = u""
+        self.__buffer = ""
         if kwargs.get("register_atexit", True):
             atexit.register(self.close)
 
@@ -61,10 +61,10 @@ class icswIOStream(object):
         return self.__sock_name
 
     def write(self, err_str):
-        if not isinstance(err_str, unicode):
-            err_str = unicode(err_str, errors="replace")
+        if not isinstance(err_str, str):
+            err_str = str(err_str, errors="replace")
             # print(type(self.__buffer), type(err_str))
-        self.__buffer = u"{}{}".format(self.__buffer, err_str)
+        self.__buffer = "{}{}".format(self.__buffer, err_str)
         if len(self.__buffer) > 1024 or not self.__buffered:
             # syslog.syslog(syslog.LOG_INFO, "****")
             self.flush()
@@ -99,7 +99,7 @@ class icswIOStream(object):
                         t_dict[r_what] = rest
         self.open()
         self.__zmq_sock.send(pickle.dumps(t_dict))
-        self.__buffer = u""
+        self.__buffer = ""
 
     def fileno(self):
         # dangerous, do not use

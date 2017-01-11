@@ -21,7 +21,7 @@
 #
 """ classes for multiprocessing (using multiprocessing) """
 
-from __future__ import unicode_literals, print_function
+
 
 try:
     import multiprocessing
@@ -116,7 +116,7 @@ def safe_unicode(obj):
 
 
 def get_except_info():
-    return u"{} ({})".format(
+    return "{} ({})".format(
         safe_unicode(sys.exc_info()[0]),
         safe_unicode(sys.exc_info()[1])
     )
@@ -472,7 +472,7 @@ class PollerBase(object):
         self.poller_handler.setdefault(zmq_socket, {})[sock_type] = callback
         self.poller_kwargs.setdefault(zmq_socket, {})[sock_type] = kwargs
         cur_mask = 0
-        for mask in self.poller_handler[zmq_socket].keys():
+        for mask in list(self.poller_handler[zmq_socket].keys()):
             cur_mask |= mask
         if self.debug_zmq and not isinstance(zmq_socket, int):
             self.poller.register(zmq_socket._sock, cur_mask)
@@ -494,7 +494,7 @@ class PollerBase(object):
                 zmq_socket.close()
         else:
             cur_mask = 0
-            for mask in self.poller_handler[zmq_socket].keys():
+            for mask in list(self.poller_handler[zmq_socket].keys()):
                 cur_mask |= mask
             self.poller.register(zmq_socket, cur_mask)
 
@@ -504,7 +504,7 @@ class PollerBase(object):
         self.poller_handler.setdefault(n_socket, {})[event_mask] = callback
         self.poller_kwargs.setdefault(n_socket, {})[event_mask] = kwargs
         cur_mask = 0
-        for mask in self.poller_handler[n_socket].keys():
+        for mask in list(self.poller_handler[n_socket].keys()):
             cur_mask |= mask
         self.poller.register(n_socket, cur_mask)
         self.__normal_sockets = True
@@ -534,7 +534,7 @@ class PollerBase(object):
         # print "**", in_list, zmq.POLLIN, zmq.POLLOUT, select.POLLIN, select.POLLOUT
         # self.__waiting = len(in_list)
         for sock, c_type in in_list:
-            if self.debug_zmq and type(sock) not in [int, long]:
+            if self.debug_zmq and type(sock) not in [int, int]:
                 sock = self.fd_lookup[sock]
             if sock in self._socket_lut:
                 sock = self._socket_lut[sock]
@@ -827,7 +827,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBas
         # print("context of {:d} is {}".format(os.getpid(), str(self.zmq_context)))
         com_socket = self.zmq_context.socket(zmq.ROUTER)
         # cast to str, no unicode allowed
-        if isinstance(self.name, unicode):
+        if isinstance(self.name, str):
             com_socket.setsockopt_string(zmq.IDENTITY, self.name)
         else:
             com_socket.setsockopt(zmq.IDENTITY, self.name)
@@ -855,7 +855,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBas
     def add_com_socket(self):
         cs_name = self.get_com_socket_name(self.name)
         zmq_socket = self.zmq_context.socket(zmq.ROUTER)
-        if isinstance(self.name, unicode):
+        if isinstance(self.name, str):
             zmq_socket.setsockopt_string(zmq.IDENTITY, self.name)
         else:
             zmq_socket.setsockopt(zmq.IDENTITY, self.name)
@@ -870,7 +870,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBas
         self.send_pool_message("process_start")
 
     def _send_module_list(self):
-        _keys = sys.modules.keys()
+        _keys = list(sys.modules.keys())
         _files = set()
         for _key in _keys:
             _value = sys.modules[_key]
@@ -885,7 +885,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBas
         # wait for the last commands to settle, commented out by ALN on 20.7.2014
         time.sleep(0.25)
         self.__com_socket.close()
-        for _cs_name, _sock in self.__add_sockets.iteritems():
+        for _cs_name, _sock in self.__add_sockets.items():
             _sock.close()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -1157,7 +1157,7 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
 
     def check_cpu_usage(self):
         _excess = False
-        _pids = [self.pid] + [value.pid for value in self.processes.itervalues()]
+        _pids = [self.pid] + [value.pid for value in self.processes.values()]
         try:
             usage = [sum([int(_val) for _val in file("/proc/{:d}/stat".format(_pid), "r").read().split()[13:15]], 0) for _pid in _pids]
         except:
@@ -1342,7 +1342,7 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
         return flushed
 
     def get_process_names(self):
-        return self.__processes.keys() + [self.get_name()]
+        return list(self.__processes.keys()) + [self.get_name()]
 
     def get_process(self, p_name):
         if p_name == self.get_name():
@@ -1405,7 +1405,7 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
 
     def _process_exception(self, t_name, t_pid, *args):
         self.log(
-            "process {} (pid {:d}) exception: {}".format(t_name, t_pid, unicode(args[0])),
+            "process {} (pid {:d}) exception: {}".format(t_name, t_pid, str(args[0])),
             logging_tools.LOG_LEVEL_CRITICAL)
         self["exit_requested"] = True
 
@@ -1489,7 +1489,7 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
         if self["signal_handlers_installed"]:
             self["signal_handlers_installed"] = False
             self.log("uninstalling signal handlers")
-            for sig_num, orig_h in self.__orig_sig_handlers.items():
+            for sig_num, orig_h in list(self.__orig_sig_handlers.items()):
                 signal.signal(sig_num, orig_h)
 
     def process_init(self):
@@ -1599,7 +1599,7 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
 
     def stop_running_processes(self):
         pri_dict = {}
-        for key, value in self.__processes.items():
+        for key, value in list(self.__processes.items()):
             if key not in self.__processes_stopped:
                 pri_dict.setdefault(value["priority"], []).append(key)
         # flag: any processes stopped in previous priorities, all processes deads in previous priorities
@@ -1633,5 +1633,5 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
     def __repr__(self):
         return "process_pool {}, {}".format(
             self.name,
-            logging_tools.get_plural("process", len(self.__processes.keys())),
+            logging_tools.get_plural("process", len(list(self.__processes.keys()))),
         )

@@ -17,7 +17,7 @@
 #
 """ SNMP relayer, server part """
 
-from __future__ import print_function, unicode_literals
+
 
 import difflib
 import os
@@ -83,7 +83,7 @@ class server_process(server_mixins.ICSWBasePool):
         for _mh in _mon_handlers:
             for _mc in _mh.config_mon_check():
                 self.__gen_schemes["SS:{}".format(_mc.Meta.name)] = _mc
-                self.log("found gen scheme '{}' in handler {}".format(_mc.Meta.name, unicode(_mh)))
+                self.log("found gen scheme '{}' in handler {}".format(_mc.Meta.name, str(_mh)))
 
     def _init_host_objects(self):
         self.__host_objects = {}
@@ -178,7 +178,7 @@ class server_process(server_mixins.ICSWBasePool):
                 raise
             else:
                 setattr(self, "{}_socket".format(short_sock_name), cur_socket)
-                os.chmod(file_name, 0777)
+                os.chmod(file_name, 0o777)
                 self.receiver_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
                 self.receiver_socket.setsockopt(zmq.RCVHWM, hwm_size)  # @UndefinedVariable
                 self.receiver_socket.setsockopt(zmq.SNDHWM, hwm_size)  # @UndefinedVariable
@@ -384,10 +384,10 @@ class server_process(server_mixins.ICSWBasePool):
                                 logging_tools.form_entry(_s_name, header="name"),
                             ]
                         )
-                    self._send_return(envelope, limits.mon_STATE_OK, unicode(_out_list))
+                    self._send_return(envelope, limits.mon_STATE_OK, str(_out_list))
                     s_type = None
                 else:
-                    guess_list = ", ".join(difflib.get_close_matches(scheme, self.__local_schemes.keys() + self.__gen_schemes.keys()))
+                    guess_list = ", ".join(difflib.get_close_matches(scheme, list(self.__local_schemes.keys()) + list(self.__gen_schemes.keys())))
                     err_str = "got unknown scheme '{}'{}".format(
                         scheme,
                         ", maybe one of {}".format(guess_list) if guess_list else ", no similar scheme found"
@@ -478,12 +478,12 @@ class server_process(server_mixins.ICSWBasePool):
         except TypeError:
             self.sender_socket.send_string(envelope, zmq.SNDMORE)
 
-        self.sender_socket.send_unicode(u"{:d}\0{}".format(ret_state, ret_str))
+        self.sender_socket.send_unicode("{:d}\0{}".format(ret_state, ret_str))
 
     def _send_return_xml(self, scheme):
         self._check_ret_dict(scheme.envelope)
         self.sender_socket.send(scheme.envelope, zmq.SNDMORE)  # @UndefinedVariable
-        self.sender_socket.send_unicode(unicode(scheme.srv_com))
+        self.sender_socket.send_unicode(str(scheme.srv_com))
 
     def _check_ret_dict(self, env_str):
         max_sto = 0.001
@@ -499,7 +499,7 @@ class server_process(server_mixins.ICSWBasePool):
                         )
                     )
                 time.sleep(max_sto)
-            del_keys = [key for key, value in self.__ret_dict.iteritems() if abs(value - cur_time) > 60 and key != env_str]
+            del_keys = [key for key, value in self.__ret_dict.items() if abs(value - cur_time) > 60 and key != env_str]
             if del_keys:
                 if self.__verbose > 2:
                     self.log(

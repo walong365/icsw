@@ -43,7 +43,7 @@ class architecture(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'architecture'
+        db_table = 'architecture'
 
 
 class image(models.Model):
@@ -71,7 +71,7 @@ class image(models.Model):
     enabled = models.BooleanField(default=True)
 
     class Meta:
-        db_table = u'image'
+        db_table = 'image'
         ordering = ("name",)
 
 
@@ -116,7 +116,7 @@ class kernel(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'kernel'
+        db_table = 'kernel'
 
 
 class initrd_build(models.Model):
@@ -139,7 +139,7 @@ class kernel_build(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'kernel_build'
+        db_table = 'kernel_build'
 
 
 class kernel_local_info(models.Model):
@@ -151,7 +151,7 @@ class kernel_local_info(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'kernel_local_info'
+        db_table = 'kernel_local_info'
 
 
 class kernel_log(models.Model):
@@ -164,4 +164,4 @@ class kernel_log(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'kernel_log'
+        db_table = 'kernel_log'

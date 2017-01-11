@@ -19,7 +19,7 @@
 #
 """ discovery-server, host monitoring functions """
 
-import commands
+import subprocess
 import tempfile
 import time
 
@@ -58,7 +58,7 @@ class NDStruct(object):
 
     @staticmethod
     def handle_bonds():
-        for _master_name, _struct in NDStruct.bond_dict.iteritems():
+        for _master_name, _struct in NDStruct.bond_dict.items():
             _master = NDStruct.dict[_master_name]
             _master.nd.is_bond = True
             _master.nd.save(update_fields=["is_bond"])
@@ -100,7 +100,7 @@ class NDStruct(object):
                 domain_tree_node=self.device.domain_tree_node,
             )
             new_ip.save()
-            self.log("added IP {} (network {})".format(new_ip.ip, unicode(new_ip.network)))
+            self.log("added IP {} (network {})".format(new_ip.ip, str(new_ip.network)))
 
     def link_bridge_slaves(self):
         for _slave_name in self.br_dict.get("interfaces", []):
@@ -119,7 +119,7 @@ class HostMonitoringMixin(object):
     def _interpret_dmiinfo(self, dmi_dump):
         with tempfile.NamedTemporaryFile() as tmp_file:
             file(tmp_file.name, "w").write(dmi_dump)
-            _dmi_stat, dmi_result = commands.getstatusoutput(
+            _dmi_stat, dmi_result = subprocess.getstatusoutput(
                 "{} --from-dump {}".format(
                     process_tools.find_file("dmidecode"),
                     tmp_file.name,
@@ -140,7 +140,7 @@ class HostMonitoringMixin(object):
         self.get_route_to_devices([scan_dev])
         self.log(
             "scanning system for device '{}' ({:d}), scan_address is '{}'".format(
-                unicode(scan_dev),
+                str(scan_dev),
                 scan_dev.pk,
                 scan_dev.target_ip,
             )
@@ -153,7 +153,7 @@ class HostMonitoringMixin(object):
             scan_dev.target_ip,
             hm_port,
         )
-        self.log(u"connection_str for {} is {}".format(unicode(scan_dev), conn_str))
+        self.log("connection_str for {} is {}".format(str(scan_dev), conn_str))
         zmq_con.add_connection(
             conn_str,
             server_command.srv_command(command="sysinfo"),
@@ -233,7 +233,7 @@ class HostMonitoringMixin(object):
         scan_address = dev_com.get("scan_address")
         self.log(
             "scanning network for device '{}' ({:d}), scan_address is '{}', strict_mode is {}".format(
-                unicode(scan_dev),
+                str(scan_dev),
                 scan_dev.pk,
                 scan_address,
                 "on" if strict_mode else "off",
@@ -247,7 +247,7 @@ class HostMonitoringMixin(object):
             scan_address,
             hm_port,
         )
-        self.log(u"connection_str for {} is {}".format(unicode(scan_dev), conn_str))
+        self.log("connection_str for {} is {}".format(str(scan_dev), conn_str))
         zmq_con.add_connection(
             conn_str,
             server_command.srv_command(command="network_info"),
@@ -260,19 +260,19 @@ class HostMonitoringMixin(object):
             Q(speed_bps__in=[1000000000, 100000000])
         ).order_by("-speed_bps", "-full_duplex", "-check_via_ethtool")
         default_nds = nds_list[0]
-        self.log("default nds is {}".format(unicode(default_nds)))
+        self.log("default nds is {}".format(str(default_nds)))
 
         for _idx, (result, target_dev) in enumerate(zip(res_list, [scan_dev])):
-            self.log("device {} ...".format(unicode(target_dev)))
+            self.log("device {} ...".format(str(target_dev)))
             res_state = -1 if result is None else int(result["result"].attrib["state"])
             if res_state:
                 # num_errors += 1
                 if res_state == -1:
-                    res_node.error(u"{}: no result".format(unicode(target_dev)))
+                    res_node.error("{}: no result".format(str(target_dev)))
                 else:
                     res_node.error(
-                        u"{}: error {:d}: {}".format(
-                            unicode(target_dev),
+                        "{}: error {:d}: {}".format(
+                            str(target_dev),
                             int(result["result"].attrib["state"]),
                             result["result"].attrib["reply"]
                         )
@@ -282,7 +282,7 @@ class HostMonitoringMixin(object):
                     bridges = result["bridges"]
                     networks = result["networks"]
                 except:
-                    res_node.error(u"{}: error missing keys in dict".format(target_dev))
+                    res_node.error("{}: error missing keys in dict".format(target_dev))
                 else:
                     # clear current network
                     with transaction.atomic():
@@ -357,8 +357,8 @@ class HostMonitoringMixin(object):
                                         ", ".join(sorted(exc_dict[key]))
                                     )
                                 )
-                        if _old_peer_dict.keys():
-                            _err_str = "not all peers migrated: {}".format(", ".join(_old_peer_dict.keys()))
+                        if list(_old_peer_dict.keys()):
+                            _err_str = "not all peers migrated: {}".format(", ".join(list(_old_peer_dict.keys())))
                             if strict_mode:
                                 res_node.error(_err_str)
                                 all_ok = False

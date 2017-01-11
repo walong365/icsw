@@ -19,9 +19,9 @@
 #
 """ system related information """
 
-from __future__ import print_function,  unicode_literals
 
-import commands
+
+import subprocess
 
 from initat.host_monitoring import hm_classes, limits
 from initat.tools import process_tools, logging_tools, server_command
@@ -38,7 +38,7 @@ class lsmodinfo_command(hm_classes.hm_command):
         self.parser.add_argument("--required", dest="required", type=str, default="")
 
     def __call__(self, srv_com, cur_ns):
-        _stat, _out = commands.getstatusoutput(self.module.lsmod_command)
+        _stat, _out = subprocess.getstatusoutput(self.module.lsmod_command)
         if _stat:
             srv_com.set_result("error getting module list", server_command.SRV_REPLY_STATE_ERROR)
         else:

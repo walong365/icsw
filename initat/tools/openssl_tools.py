@@ -17,9 +17,9 @@
 #
 """ tools for openssl """
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import datetime
 import os
 import shutil
@@ -92,12 +92,12 @@ class OpenSSLConfig(object):
             if len(self._pdicts[_part]):
                 max_key_len = max([len(key) for key in self._pdicts[_part]])
                 _form_str = "{{:{:d}s}} = {{}}".format(max_key_len)
-                for key, value in self._pdicts[_part].iteritems():
+                for key, value in self._pdicts[_part].items():
                     _lines.append(_form_str.format(key, value))
         file(name, "w").write("\n".join(_lines))
 
     def keys(self):
-        return self._pdicts.keys()
+        return list(self._pdicts.keys())
 
     def __getitem__(self, key):
         return self._pdicts[key]
@@ -132,7 +132,7 @@ class OpenSSLConfig(object):
     def copy_part(self, src_part, dst_part):
         if dst_part not in self._parts:
             self._parts.append(dst_part)
-        self._pdicts[dst_part] = OrderedDict([(key, value) for key, value in self._pdicts[src_part].iteritems()])
+        self._pdicts[dst_part] = OrderedDict([(key, value) for key, value in self._pdicts[src_part].items()])
 
 
 class CAIndex(OrderedDict):
@@ -458,7 +458,7 @@ class CA(object):
         )
         self.log("command '{}'".format(_com))
         success, result = (False, [])
-        c_stat, c_out = commands.getstatusoutput(_com)
+        c_stat, c_out = subprocess.getstatusoutput(_com)
         if c_stat:
             result = ["{:d}".format(c_stat)] + c_out.split("\n")
         else:

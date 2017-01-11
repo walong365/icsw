@@ -47,7 +47,7 @@ def get_installed_packages_for_keypath(keypath):
 
                     _val, _data, _type = subvalue
 
-                    _data = str(_data).split("\u0000")[0]
+                    _data = str(_data).split("\\u0000")[0]
 
                     if _val == "DisplayName":
                         package.displayName = _data
@@ -79,4 +79,4 @@ if __name__=="__main__":
     package_list.sort()
 
     output = json.dumps([(package.displayName, package.displayVersion, package.estimatedSize, package.installDate) for package in package_list])
-    print(nrpe_encode(output))
+    print((nrpe_encode(output)))

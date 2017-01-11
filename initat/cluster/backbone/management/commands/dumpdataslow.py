@@ -110,7 +110,7 @@ class Command(BaseCommand):
                     if model is None:
                         raise CommandError("Unknown model: %s.%s" % (app_label, model_label))
 
-                    if app in app_list.keys():
+                    if app in list(app_list.keys()):
                         if app_list[app] and model not in app_list[app]:
                             app_list[app].append(model)
                     else:
@@ -138,7 +138,7 @@ class Command(BaseCommand):
 
         deps = Dependencies()
         models = set()
-        for app_config, model_list in app_list.items():
+        for app_config, model_list in list(app_list.items()):
             if model_list is None:
                 model_list = app_config.get_models()
 

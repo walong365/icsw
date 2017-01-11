@@ -21,7 +21,7 @@ import base64
 import bz2
 import re
 import json
-import commands
+import subprocess
 
 from initat.host_monitoring import limits, hm_classes
 from initat.host_monitoring.host_monitoring_struct import ExtReturn
@@ -426,7 +426,7 @@ def generate_dict(in_list):
                     elif offset > 3:
                         parts = [entry.strip() for entry in line.lower().split("|")]
                         num = int(parts[0].split()[-1])
-                        loc_dict = dict(zip(cur_map, parts))
+                        loc_dict = dict(list(zip(cur_map, parts)))
                         cur_dict[num] = loc_dict
     return r_dict
 
@@ -529,7 +529,7 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
         _DEF_VERSION = 2110
         if self.__smcipmi_binary:
             self.log("found {} at {}".format(SMCIPMI_BIN, self.__smcipmi_binary))
-            _stat, _out = commands.getstatusoutput("{}".format(self.__smcipmi_binary))
+            _stat, _out = subprocess.getstatusoutput("{}".format(self.__smcipmi_binary))
             vers_re = re.compile("^smc\s*ipmi\s*tool\s*(?P<version>v\d+[^(]+).*$", re.IGNORECASE)
             for _line in _out.split("\n"):
                 _match = vers_re.match(_line.strip())
@@ -703,7 +703,7 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
                         key,
                         value["present"],
                         value["possible"],
-                    ) for key, value in r_dict.iteritems()
+                    ) for key, value in r_dict.items()
                 ]
             )
             _prefix = cur_ns.passive_check_prefix
@@ -711,12 +711,12 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
                 _list = []
                 for m_key in sorted(r_dict):
                     _struct = r_dict[m_key]
-                    for e_key in sorted([_key for _key in _struct.iterkeys() if type(_key) in [int]]):
+                    for e_key in sorted([_key for _key in _struct.keys() if type(_key) in [int]]):
                         _handle = getattr(self, "_handle_{}".format(m_key))
                         _state, _result = _handle(r_dict[m_key][e_key], obj_type=m_key)
                         _list.append(
                             (
-                                u"{} {:d}".format(_struct["info"], e_key),
+                                "{} {:d}".format(_struct["info"], e_key),
                                 _state,
                                 _result,
                             )

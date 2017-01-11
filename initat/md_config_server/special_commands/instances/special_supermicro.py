@@ -19,7 +19,7 @@
 #
 """ supermicro special """
 
-from __future__ import unicode_literals, print_function
+
 
 from argparse import Namespace
 
@@ -42,7 +42,7 @@ class special_supermicro(SpecialBase):
         _hints = []
         for m_key in sorted(r_dict):
             _struct = r_dict[m_key]
-            for e_key in sorted([_key for _key in _struct.iterkeys() if type(_key) in [int]]):
+            for e_key in sorted([_key for _key in _struct.keys() if type(_key) in [int]]):
                 _hints.append(
                     monitoring_hint(
                         key="{}.{:d}".format(m_key, e_key),
@@ -112,13 +112,13 @@ class special_supermicro_passive(SpecialBase):
         ]
         for m_key in sorted(r_dict):
             _struct = r_dict[m_key]
-            for e_key in sorted([_key for _key in _struct.iterkeys() if type(_key) in [int]]):
+            for e_key in sorted([_key for _key in _struct.keys() if type(_key) in [int]]):
                 _hints.append(
                     monitoring_hint(
                         key="{}.{:d}".format(m_key, e_key),
                         v_type="s",
                         value_string="present",
-                        info=u"{} {:d}".format(_struct["info"], e_key),
+                        info="{} {:d}".format(_struct["info"], e_key),
                         is_active=False,
                     )
                 )

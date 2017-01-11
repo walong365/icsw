@@ -130,14 +130,14 @@ class rest_client(object):
             xml = None
         if self.options.mode in ["create", "detail"] and self.options.only_pk:
             if xml is not None:
-                print xml.findtext(".//idx")
+                print(xml.findtext(".//idx"))
             else:
-                print "-1"
+                print("-1")
         else:
             if xml is None:
-                print response.text
+                print(response.text)
             else:
-                print etree.tostring(xml, pretty_print=True)  # @UndefinedVariable
+                print(etree.tostring(xml, pretty_print=True))  # @UndefinedVariable
         return ret_code
 
 

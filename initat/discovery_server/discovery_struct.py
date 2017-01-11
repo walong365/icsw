@@ -45,7 +45,7 @@ class ExtCom(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(
-            u"[ec {:d}{}] {}".format(
+            "[ec {:d}{}] {}".format(
                 self.idx,
                 ", {}".format(self.__name) if self.__name else "",
                 what,

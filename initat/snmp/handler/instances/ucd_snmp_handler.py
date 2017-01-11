@@ -118,7 +118,7 @@ class handler(SNMPHandler):
     def collect_feed(self, result_dict, **kwargs):
         result_dict = self.reorganize(self.filter_results(result_dict))
         if result_dict:
-            _dict = result_dict.values()[0]
+            _dict = list(result_dict.values())[0]
             mv_tree = kwargs["mv_tree"]
             # import pprint
             # pprint.pprint(_dict)

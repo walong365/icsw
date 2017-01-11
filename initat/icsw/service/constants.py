@@ -20,7 +20,7 @@
 
 """ constants for service handling """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 
@@ -92,19 +92,19 @@ TARGET_STATE_RUNNING = 1
 _locs = locals()
 
 STATE_DICT = {
-    _locs[_key]: _key.split("_", 1)[1].lower().replace("_", " ") for _key in _locs.keys() if _key.startswith("SERVICE_")
+    _locs[_key]: _key.split("_", 1)[1].lower().replace("_", " ") for _key in list(_locs.keys()) if _key.startswith("SERVICE_")
 }
 
 LIC_STATE_DICT = {
-    _locs[_key]: _key.split("_", 2)[2].lower().replace("_", " ") for _key in _locs.keys() if _key.startswith("LIC_STATE_")
+    _locs[_key]: _key.split("_", 2)[2].lower().replace("_", " ") for _key in list(_locs.keys()) if _key.startswith("LIC_STATE_")
 }
 
 CONF_STATE_DICT = {
-    _locs[_key]: _key.split("_", 2)[2].lower().replace("_", " ") for _key in _locs.keys() if _key.startswith("CONF_STATE_")
+    _locs[_key]: _key.split("_", 2)[2].lower().replace("_", " ") for _key in list(_locs.keys()) if _key.startswith("CONF_STATE_")
 }
 
 TARGET_STATE_DICT = {
-    _locs[_key]: _key.split("_", 2)[2].lower().replace("_", " ") for _key in _locs.keys() if _key.startswith("TARGET_STATE_")
+    _locs[_key]: _key.split("_", 2)[2].lower().replace("_", " ") for _key in list(_locs.keys()) if _key.startswith("TARGET_STATE_")
 }
 
 # path definitions

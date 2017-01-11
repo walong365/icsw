@@ -19,7 +19,7 @@
 #
 """ module to parse the drbd status """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import stat
@@ -59,7 +59,7 @@ class drbd_config(object):
             "status_present": False
         }
 
-    def __nonzero__(self):
+    def __bool__(self):
         return True if self.__config_dict["last_check"] else False
 
     def _parse_config(self):
@@ -122,12 +122,12 @@ class drbd_config(object):
         # local hostname
         hostname = os.uname()[1]
         # reorder resources
-        res_keys = [key for key in c_dict.iterkeys() if key.startswith("resource ")]
+        res_keys = [key for key in c_dict.keys() if key.startswith("resource ")]
         for key in res_keys:
             res_name = key.split(None, 1)[1]
             _loc_config = c_dict[key]
             _loc_config["hosts"] = {}
-            host_keys = [sub_key for sub_key in _loc_config.keys() if sub_key.startswith("on ")]
+            host_keys = [sub_key for sub_key in list(_loc_config.keys()) if sub_key.startswith("on ")]
             for host_key in host_keys:
                 _loc_config["hosts"][host_key.split()[1]] = _loc_config[host_key]
                 del _loc_config[host_key]

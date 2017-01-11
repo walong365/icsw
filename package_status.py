@@ -33,22 +33,22 @@ SQL_ACCESS = "cluster_full_access"
 def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], "d:g:s:thnSGH", ["help"])
-    except getopt.GetoptError, why:
-        print "Error parsing commandline %s: %s" % (" ".join(sys.argv[1:]), str(why))
+    except getopt.GetoptError as why:
+        print("Error parsing commandline %s: %s" % (" ".join(sys.argv[1:]), str(why)))
         sys.exit(-1)
     dev_list, group_list, show_it, state_str, show_no_ok, show_only_ea, group_by_devgroup, show_headers = ([], [], 0, "-IUD", 0, 0, 0, 1)
     for opt, arg in opts:
         if opt in ["-h", "--help"]:
-            print "Usage: %s [ OPTIONS ] [ regexp-list for package-names ]" % (os.path.basename(sys.argv[0]))
-            print "where OPTIONS is one of:"
-            print "  -t           enable display of install date/time"
-            print "  -d DEVS      comma-separated list of devices to check"
-            print "  -g GROUPS    comma-separated list of groups to check"
-            print "  -s STATESTR  show (and count) only packages where state (-,I, D) is in STATESTR"
-            print "  -n           show (and count) only packages where the status_str does not start with 'ok '"
-            print "  -S           show only nodes with effective associated packages"
-            print "  -G           group by devicegroup"
-            print "  -H           suppress header"
+            print("Usage: %s [ OPTIONS ] [ regexp-list for package-names ]" % (os.path.basename(sys.argv[0])))
+            print("where OPTIONS is one of:")
+            print("  -t           enable display of install date/time")
+            print("  -d DEVS      comma-separated list of devices to check")
+            print("  -g GROUPS    comma-separated list of groups to check")
+            print("  -s STATESTR  show (and count) only packages where state (-,I, D) is in STATESTR")
+            print("  -n           show (and count) only packages where the status_str does not start with 'ok '")
+            print("  -S           show only nodes with effective associated packages")
+            print("  -G           group by devicegroup")
+            print("  -H           suppress header")
             sys.exit(0)
         if opt == "-H":
             show_headers = 0
@@ -81,9 +81,9 @@ def main():
             group_dict.setdefault(act_group, []).append(act_dev)
             dev_dict[act_dev] = {"num_tot" : 0, "num_p" : 0, "packages" : {}}
     if not dev_dict:
-        print "No devices found, exiting ..."
+        print("No devices found, exiting ...")
         sys.exit(1)
-    sql_str = "SELECT d.name, p.name AS pname, id.install, id.del, id.upgrade, id.nodeps, id.forceflag, ip.native, id.status, UNIX_TIMESTAMP(id.install_time) AS install_time, p.version, p.release, a.architecture FROM architecture a, device d, inst_package ip, instp_device id, package p WHERE p.architecture=a.architecture_idx AND id.device=d.device_idx AND id.inst_package=ip.inst_package_idx AND ip.package=p.package_idx AND (%s)" % (" OR ".join(["d.name='%s'" % (x) for x in dev_dict.keys()]))
+    sql_str = "SELECT d.name, p.name AS pname, id.install, id.del, id.upgrade, id.nodeps, id.forceflag, ip.native, id.status, UNIX_TIMESTAMP(id.install_time) AS install_time, p.version, p.release, a.architecture FROM architecture a, device d, inst_package ip, instp_device id, package p WHERE p.architecture=a.architecture_idx AND id.device=d.device_idx AND id.inst_package=ip.inst_package_idx AND ip.package=p.package_idx AND (%s)" % (" OR ".join(["d.name='%s'" % (x) for x in list(dev_dict.keys())]))
     dc.execute(sql_str)
     for x in dc.fetchall():
         if x["install"]:
@@ -117,7 +117,7 @@ def main():
         hosts = sorted(dev_dict.keys())
     for host in [x for x in hosts if x and (not show_only_ea or (show_only_ea and dev_dict[x]["packages"]))]:
         packs = dev_dict[host]["packages"]
-        dev_dict[host]["num_p"] = len(dev_dict[host]["packages"].keys())
+        dev_dict[host]["num_p"] = len(list(dev_dict[host]["packages"].keys()))
         out_list = logging_tools.form_list()
         for p_name in sorted(packs.keys()):
             p_stuff = packs[p_name]
@@ -149,10 +149,10 @@ def main():
             out_list.set_format_string(4, "s", "")
             out_list.set_format_string(6, "s", "")
             if show_headers:
-                print "device %20s : %4d packages (%4d with unique names) associated" % (host, dev_dict[host]["num_p"], dev_dict[host]["num_tot"])
-            print out_list
+                print("device %20s : %4d packages (%4d with unique names) associated" % (host, dev_dict[host]["num_p"], dev_dict[host]["num_tot"]))
+            print(out_list)
 
 if __name__ == "__main__":
-    print "not ready right now, please wait for rewrite"
+    print("not ready right now, please wait for rewrite")
     sys.exit(1)
     main()

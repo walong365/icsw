@@ -19,7 +19,7 @@
 #
 """ midleware layer for rrdtools """
 
-from __future__ import unicode_literals
+
 
 import os
 import re
@@ -39,7 +39,7 @@ WS_RE = re.compile("^(?P<slot_num>\d+)\s*(?P<slot_type>\S+?)s*\s+for\s+(?P<total
 def _format_value(in_value):
     if in_value is None:
         return "NaN"
-    elif type(in_value) in [int, long]:
+    elif type(in_value) in [int, int]:
         return "{:d}".format(in_value)
     else:
         return "{:.10e}".format(in_value)
@@ -64,7 +64,7 @@ def _parse_rrd_info(rrd_info):
     else:
         # reinterpret rrd-tool
         new_info = {}
-        for key, value in rrd_info.iteritems():
+        for key, value in rrd_info.items():
             if key.count("["):
                 key_list = get_key_list(key)
                 sub_dict = new_info
@@ -125,7 +125,7 @@ class RRA(object):
         if self.log_com:
             self.log_com("[RRA] {}".format(what), log_level)
         else:
-            print("[RRA {}] {}".format(logging_tools.get_log_level_str(log_level), what))
+            print(("[RRA {}] {}".format(logging_tools.get_log_level_str(log_level), what)))
 
     @property
     def popcount(self):
@@ -258,11 +258,11 @@ class RRA(object):
 
     def check_slot_mismatch(self, ignore_error):
         if self.pdp_per_row * self.step != self.stream_info[2]:
-            print "%s, reported step differs from expected vor rra %s (file %s): %d != %d" % (" +++ Warn" if ignore_error else " *** Error",
+            print("%s, reported step differs from expected vor rra %s (file %s): %d != %d" % (" +++ Warn" if ignore_error else " *** Error",
                                                                                               self.name,
                                                                                               self.src_file,
                                                                                               self.pdp_per_row * self.step,
-                                                                                              self.stream_info[2])
+                                                                                              self.stream_info[2]))
             slot_ok = ignore_error
         else:
             slot_ok = True
@@ -296,8 +296,8 @@ class RRA(object):
         ds_list = self.stream[1]
         rra_stream = self.stream
         if len(rra_stream[2]) < 10:
-            print self.name
-            print rra_stream
+            print(self.name)
+            print(rra_stream)
         if rra_stream[0][2] == 0:
             print("empty step size")
             return None
@@ -323,7 +323,7 @@ class RRA(object):
                         *[
                             E.v(_format_value(value)) for value in values
                         ]
-                    ) for _act_time, values in zip(range(*rra_stream[0]), rra_stream[2])[:-1]
+                    ) for _act_time, values in zip(list(range(*rra_stream[0])), rra_stream[2])[:-1]
                 ]
             )
         )
@@ -431,7 +431,7 @@ class RRD(dict):
             self.log_com("[RRD] {}".format(what), log_level)
         else:
             if log_level > logging_tools.LOG_LEVEL_WARN:
-                print "**** [RRD, {}] {}".format(logging_tools.get_log_level_str(log_level), what)
+                print("**** [RRD, {}] {}".format(logging_tools.get_log_level_str(log_level), what))
 
     def add_rra(self, new_rra):
         self["rra_list"].append(new_rra.name)
@@ -461,7 +461,7 @@ class RRD(dict):
             (
                 RRA.rra_name(_value, self["step"]),
                 RRA.rra_name(_value, self["step"], short=True)
-            ) for _value in self["rra"].itervalues()
+            ) for _value in self["rra"].values()
         ]:
             if _new_name not in self["rra_names"]:
                 self["rra_names"].append(_new_name)
@@ -472,7 +472,7 @@ class RRD(dict):
     def build_rras(self):
         if not self.__rras_built:
             self.__rras_built = True
-            for _rra_idx, rra_entry in self["rra"].iteritems():
+            for _rra_idx, rra_entry in self["rra"].items():
                 # print rra_entry
                 _new_name = RRA.rra_name(rra_entry, self["step"])
                 if _new_name not in self["rra_list"]:
@@ -496,12 +496,12 @@ class RRD(dict):
             # s_steps = 300
         # s_length = s_steps * s_rows * s_pdps
         take_name, take_rows = ("", 0)
-        cf_matches = [key for key, stuff in self["rra_dict"].iteritems() if stuff.cf == s_cf]
+        cf_matches = [key for key, stuff in self["rra_dict"].items() if stuff.cf == s_cf]
         if not cf_matches and "default_cf" in args:
             use_default_cf = True
         else:
             use_default_cf = False
-        for rra_name, stuff in self["rra_dict"].iteritems():
+        for rra_name, stuff in self["rra_dict"].items():
             # print s_steps, stuff["step"], stuff
             if stuff.cf == s_cf or (use_default_cf and stuff.cf == args["default_cf"]):
                 # must match consolidation function
@@ -511,12 +511,12 @@ class RRD(dict):
                         take_name, take_rows = (rra_name, stuff.rows)
                     else:
                         take_new = stuff.rows > take_rows
-                        print "**** %s another match for pdps, target_rows is %d, previous match has %d rows, actual has %d rows" % (
+                        print("**** %s another match for pdps, target_rows is %d, previous match has %d rows, actual has %d rows" % (
                             "using" if take_new else "found",
                             s_rows,
                             take_rows,
                             stuff.rows
-                        )
+                        ))
                         if take_new:
                             take_name, take_rows = (rra_name, stuff.rows)
         if not take_name:
@@ -525,19 +525,19 @@ class RRD(dict):
                 stuff = self["rra_dict"][cf_match]
                 pdp_fac = int(stuff.pdp_per_row / s_pdps)
                 if pdp_fac * s_pdps == stuff.pdp_per_row and not take_name:
-                    print " +++ taking suboptimal RRA, pdp_factor is %d" % (pdp_fac)
+                    print(" +++ taking suboptimal RRA, pdp_factor is %d" % (pdp_fac))
                     take_name = cf_match
         return take_name
 
     def merge_object(self, merge_obj):
         for rra in self["rra_list"]:
             if rra in merge_obj["rra_list"]:
-                print "   merging RRA %s ..." % (rra)
+                print("   merging RRA %s ..." % (rra))
                 my_rra = self["rra_dict"][rra]
                 other_rra = merge_obj["rra_dict"][rra]
                 if my_rra.stream[0] != other_rra.stream[0]:
-                    print "      Timeinfo of both streams differ: %s != %s" % (str(my_rra.stream[0]),
-                                                                               str(other_rra.stream[0]))
+                    print("      Timeinfo of both streams differ: %s != %s" % (str(my_rra.stream[0]),
+                                                                               str(other_rra.stream[0])))
                 else:
                     merged_stream, num_merged = ([], 0)
                     for my_vals, other_vals in zip(my_rra.stream[2], other_rra.stream[2]):
@@ -557,18 +557,18 @@ class RRD(dict):
                                     my_val = other_val
                             new_vals.append(my_val)
                         merged_stream.append(tuple(new_vals))
-                    print "      took %s from merge_stream" % (logging_tools.get_plural("value", num_merged))
+                    print("      took %s from merge_stream" % (logging_tools.get_plural("value", num_merged)))
                     my_rra.stream = (my_rra.stream[0], my_rra.stream[1], merged_stream)
             else:
-                print " *** RRA %s not present in merge_obj" % (rra)
+                print(" *** RRA %s not present in merge_obj" % (rra))
 
     def copy_inline(self):
-        print "  Filling data from one rra with values from other rras"
+        print("  Filling data from one rra with values from other rras")
         changed = False
         all_rras = self["rra_list"]
         rra_structs = [self["rra_dict"][key] for key in all_rras]
         cf_dict = dict([(cf, []) for cf in set([rra.cf for rra in rra_structs])])
-        for key in cf_dict.iterkeys():
+        for key in cf_dict.keys():
             sort_keys = sorted([(value.pdp_per_row, -value.rows, value.name) for value in rra_structs if value.cf == key])
             # cf_rras is now a list of rras with the correct cf, sorted so that the rras
             #   with the finest granularity come first (and we prefer longer rras)
@@ -590,10 +590,10 @@ class RRD(dict):
             else:
                 rra_to_take = copy_obj.find_best_match(rra)
             if rra_to_take:
-                print "   merging RRA %s with %s from copy_obj ..." % (rra, rra_to_take)
+                print("   merging RRA %s with %s from copy_obj ..." % (rra, rra_to_take))
                 self.copy_rra_object(copy_obj, rra, rra_to_take, s_time, e_time)
             else:
-                print " *** RRA %s not present in copy_obj and no best_match found" % (rra)
+                print(" *** RRA %s not present in copy_obj and no best_match found" % (rra))
 
     def check_values(self, cap_to_none, min_value, max_value):
         tot_changed = 0
@@ -609,13 +609,13 @@ class RRD(dict):
         if e_time < stream_s_time or s_time > stream_e_time:
             # time out of range
                 # print e_time, stream_s_time, s_time, stream_e_time
-            print "    time_range for copying out of stream_range"
+            print("    time_range for copying out of stream_range")
         else:
             copy_stream = True
             real_source_stream = other_rra.stream
             if my_rra.stream[0] != other_rra.stream[0]:
-                print "      Timeinfo of both streams differ: %s != %s" % (str(my_rra.stream[0]),
-                                                                           str(other_rra.stream[0]))
+                print("      Timeinfo of both streams differ: %s != %s" % (str(my_rra.stream[0]),
+                                                                           str(other_rra.stream[0])))
                 # self._show_stream_info(my_rra.stream)
                 # self._show_stream_info(other_rra.stream)
                 if my_rra.stream[0][2] != other_rra.stream[0][2]:
@@ -623,14 +623,14 @@ class RRD(dict):
                     rev_fac = int(my_rra.stream[0][2] / other_rra.stream[0][2])
                     if fac * my_rra.stream[0][2] == other_rra.stream[0][2]:
                         # stretching other_stream by fac
-                        print " ++++ stretching source stream by %d" % (fac)
+                        print(" ++++ stretching source stream by %d" % (fac))
                         src_info = other_rra.stream[0]
                         new_stream = sum([[val] * fac for val in other_rra.stream[2]], [])
                         # new stream info
                         new_src_info = (src_info[1] - src_info[2] / fac * len(new_stream), src_info[1], src_info[2] / fac)
                         real_source_stream = (new_src_info, other_rra.stream[1], new_stream)
                     elif rev_fac * other_rra.stream[0][2] == my_rra.stream[0][2]:
-                        print " ++++ compressing source_stream by %d" % (rev_fac)
+                        print(" ++++ compressing source_stream by %d" % (rev_fac))
                         src_info = other_rra.stream[0]
                         new_stream = []
                         tuple_size = len(other_rra.stream[2][0])
@@ -650,7 +650,7 @@ class RRD(dict):
                         real_source_stream = (new_src_info, other_rra.stream[1], new_stream)
                         self._show_stream_info(other_rra.stream)
                 if my_rra.stream[0][2] != other_rra.stream[0][2]:
-                    print " *** effective steps differ, error, skipping stream", my_rra.stream[0][2], other_rra.stream[0][2], self["step"], copy_obj["step"]
+                    print(" *** effective steps differ, error, skipping stream", my_rra.stream[0][2], other_rra.stream[0][2], self["step"], copy_obj["step"])
                     copy_stream = False
                 else:
                     # extend or shorten other stream
@@ -661,11 +661,11 @@ class RRD(dict):
                         # exakt match
                         sub_stream = other_rra.stream[2]
                     elif my_stream_len < other_stream_len:
-                        print "      removing %s from copy_stream" % (logging_tools.get_plural("entry", diff_len))
+                        print("      removing %s from copy_stream" % (logging_tools.get_plural("entry", diff_len)))
                         sub_stream = other_rra.stream[2][diff_len:]
                     else:
                         num_vals = len(my_rra.stream[2][0])
-                        print "      padding copy_stream with %s" % (logging_tools.get_plural("entry", diff_len))
+                        print("      padding copy_stream with %s" % (logging_tools.get_plural("entry", diff_len)))
                         sub_stream = [tuple([None] * num_vals)] * diff_len + other_rra.stream[2]
                     real_source_stream = (other_rra.stream[0], other_rra.stream[1], sub_stream)
                     # copy_stream = False
@@ -679,8 +679,8 @@ class RRD(dict):
                         if my_rra.stream[1] in args.get("row_mapping", {}):
                             trans_dict = args["row_mapping"][my_rra.stream[1]]
                         else:
-                            print "row_format differs, ERROR (%s != %s)" % (str(my_rra.stream[1]),
-                                                                            str(real_source_stream[1]))
+                            print("row_format differs, ERROR (%s != %s)" % (str(my_rra.stream[1]),
+                                                                            str(real_source_stream[1])))
                             success = False
                     else:
                         try:
@@ -689,12 +689,12 @@ class RRD(dict):
                             if my_rra.stream[1] in args.get("row_mapping", {}):
                                 trans_dict = args["row_mapping"][my_rra.stream[1]]
                             else:
-                                print "row_names differ, ERROR (%s != %s)" % (str(my_rra.stream[1]),
-                                                                              str(real_source_stream[1]))
+                                print("row_names differ, ERROR (%s != %s)" % (str(my_rra.stream[1]),
+                                                                              str(real_source_stream[1])))
                                 success = False
             if copy_stream and success:
                 merged_stream, num_copied = ([], 0)
-                for diff_time, my_vals, other_vals in zip(xrange(len(my_rra.stream[2])), my_rra.stream[2], real_source_stream[2]):
+                for diff_time, my_vals, other_vals in zip(range(len(my_rra.stream[2])), my_rra.stream[2], real_source_stream[2]):
                     act_time = stream_s_time + time_step * diff_time
                     if act_time > s_time and act_time < e_time:
                         # copy
@@ -702,7 +702,7 @@ class RRD(dict):
                             if len(other_vals) < len(my_vals):
                                 # pad if necessary
                                 other_vals = tuple(list(other_vals) + [None] * (len(my_vals) - len(other_vals)))
-                            other_vals = tuple([other_vals[trans_dict[idx]] for idx in xrange(len(other_vals))])
+                            other_vals = tuple([other_vals[trans_dict[idx]] for idx in range(len(other_vals))])
                         if my_vals != none_tuple and args.get("overwrite_if_unknown", False):
                             merged_stream.append(my_vals)
                         else:
@@ -711,8 +711,8 @@ class RRD(dict):
                         # print my_vals, other_vals, merged_stream[-1]
                     else:
                         merged_stream.append(my_vals)
-                print "      took %s from copy_stream, resulting stream has %s" % (logging_tools.get_plural("value", num_copied),
-                                                                                   logging_tools.get_plural("value", len(merged_stream)))
+                print("      took %s from copy_stream, resulting stream has %s" % (logging_tools.get_plural("value", num_copied),
+                                                                                   logging_tools.get_plural("value", len(merged_stream))))
                 my_rra.stream = (my_rra.stream[0], my_rra.stream[1], merged_stream)
         return success
 
@@ -734,7 +734,7 @@ class RRD(dict):
                     E.last_ds(ds_struct["last_ds"]),
                     E.value(_format_value(ds_struct["value"])),
                     E.unknown_sec(_format_value(ds_struct["unknown_sec"])),
-                ) for ds_name, ds_struct in [(_ds_name, self["ds"][_ds_name]) for _ds_name in self["rra_dict"].values()[0].stream[1]]
+                ) for ds_name, ds_struct in [(_ds_name, self["ds"][_ds_name]) for _ds_name in list(self["rra_dict"].values())[0].stream[1]]
             ] + [
                 # rra databases
                 self["rra_dict"][rra_name].xml() for rra_name in self["rra_list"]
@@ -763,19 +763,19 @@ class RRD(dict):
 
     def show_info(self, **args):
         if args.get("full_info", False):
-            print(
+            print((
                 "{}:".format(
                     logging_tools.get_plural("RRA", len(self["rra_list"]))
                 )
-            )
+            ))
             for rra_key in sorted(self["rra_list"]):
-                print(
+                print((
                     self["rra_dict"][rra_key].show_info()
-                )
+                ))
         else:
-            print(
+            print((
                 "{}: {}".format(
                     logging_tools.get_plural("RRA", len(self["rra_list"])),
                     ", ".join(sorted(self["rra_list"]))
                 )
-            )
+            ))

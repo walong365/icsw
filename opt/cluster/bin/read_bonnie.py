@@ -187,17 +187,17 @@ class res_line(object):
 
 def main():
     if len(sys.argv) != 2:
-        print "Need file to parse"
+        print("Need file to parse")
         sys.exit(1)
     file_name = sys.argv[1]
     if not os.path.isfile(file_name):
-        print "File %s does not exist" % (file_name)
+        print("File %s does not exist" % (file_name))
         sys.exit(2)
     try:
         file_struct = server_command.net_to_sys(file(file_name, "r").read())
     except:
-        print "Error reading file %s: %s" % (file_name,
-                                             process_tools.get_except_info())
+        print("Error reading file %s: %s" % (file_name,
+                                             process_tools.get_except_info()))
         sys.exit(3)
     out_list = logging_tools.form_list()
     out_list.set_header_string(0, ["tnum", "ttot", "time spent",
@@ -215,19 +215,19 @@ def main():
     out_list.set_format_string("cin_spd", "s", "")
     out_list.set_format_string("seqin_spd", "s", "")
     out_list.set_format_string("seek_spd", "s", "")
-    run_keys = sorted([x for x in file_struct.keys() if type(x) in [type(0), type(0L)]])
-    print "Found %s: %s" % (logging_tools.get_plural("run", len(run_keys)),
-                            ", ".join([logging_tools.get_plural("thread", file_struct[x]["num_threads"]) for x in run_keys]))
+    run_keys = sorted([x for x in list(file_struct.keys()) if type(x) in [type(0), type(0)]])
+    print("Found %s: %s" % (logging_tools.get_plural("run", len(run_keys)),
+                            ", ".join([logging_tools.get_plural("thread", file_struct[x]["num_threads"]) for x in run_keys])))
     # dict special_key -> thread_num -> values
     spec_dict = dict([(key, {}) for key in res_line().get_out_keys() if key.count("speed")])
     for run_key in run_keys:
         run_stuff = file_struct[run_key]
         tot_threads = run_stuff["num_threads"]
-        print "run with %s:" % (logging_tools.get_plural("thread", tot_threads))
+        print("run with %s:" % (logging_tools.get_plural("thread", tot_threads)))
         if run_stuff["started"] != run_stuff["ended"] or run_stuff["started"] != run_stuff["num_threads"]:
-            print " + started / ended / num_threads differ: %d / %d / %d" % (run_stuff["started"],
+            print(" + started / ended / num_threads differ: %d / %d / %d" % (run_stuff["started"],
                                                                              run_stuff["ended"],
-                                                                             run_stuff["num_threads"])
+                                                                             run_stuff["num_threads"]))
         else:
             run_res = run_stuff["results"]
             run_obj = res_line()
@@ -244,7 +244,7 @@ def main():
                     line_obj.add_line(act_res_line)
                     run_obj.add_line(act_res_line)
                 except:
-                    print " + %s" % (process_tools.get_except_info())
+                    print(" + %s" % (process_tools.get_except_info()))
                 else:
                     out_list.add_line([res_thread,
                                        tot_threads,
@@ -254,10 +254,10 @@ def main():
                                "all",
                                logging_tools.get_time_str(run_time) or "---",
                                run_obj.machine_name] + [run_obj[key] for key in run_obj.get_out_keys()])
-            for key in spec_dict.keys():
+            for key in list(spec_dict.keys()):
                 spec_dict[key][tot_threads] = run_obj[key]
     if out_list:
-        print str(out_list)
+        print(str(out_list))
     if spec_dict:
         out_list = logging_tools.form_list()
         out_list.set_header_string(0, ["key", "threads", "value", "percent", "graph"])
@@ -276,7 +276,7 @@ def main():
                                    "%7.2f %%" % (act_perc),
                                    act_struct.get_perc_graph(act_perc)])
             out_list.add_line(["-" * 50])
-        print out_list
+        print(out_list)
 
 if __name__ == "__main__":
     main()

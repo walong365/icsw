@@ -18,7 +18,7 @@
 
 """ checks image directories for valid images """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 
@@ -26,7 +26,7 @@ from initat.cluster_server.config import global_config
 from initat.tools import logging_tools, process_tools, server_command
 from initat.cluster.backbone.server_enums import icswServiceEnum
 
-import cs_base_class
+from . import cs_base_class
 
 NEEDED_IMAGE_DIRS = ["usr", "etc", "bin", "sbin", "var"]
 
@@ -75,12 +75,12 @@ class get_image_list(cs_base_class.icswCSServerCom):
                         )
                     )
             cur_inst.srv_com.set_result(
-                "found {}".format(logging_tools.get_plural("image", len(valid_sys.keys())))
+                "found {}".format(logging_tools.get_plural("image", len(list(valid_sys.keys()))))
             )
             if valid_sys:
                 image_list = cur_inst.srv_com.builder("image_list", image_dir=source_dir)
                 cur_inst.srv_com["result"] = image_list
-                for image_name, sys_dict in valid_sys.iteritems():
+                for image_name, sys_dict in valid_sys.items():
                     sys_dict["bitcount"] = "{:d}".format(sys_dict["bitcount"])
                     image_list.append(
                         cur_inst.srv_com.builder("image", image_name, **sys_dict)

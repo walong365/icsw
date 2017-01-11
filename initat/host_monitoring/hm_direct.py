@@ -22,7 +22,7 @@
 
 """ host-monitoring for 0MQ >=  4.x.y, direct socket part """
 
-from __future__ import unicode_literals, print_function
+
 
 import re
 import select
@@ -64,14 +64,14 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
         return self.__work_dict[key]
 
     def __delitem__(self, key):
-        for seq_key in self.__work_dict[key]["sent_list"].keys():
+        for seq_key in list(self.__work_dict[key]["sent_list"].keys()):
             if seq_key in self.__seqno_dict:
                 del self.__seqno_dict[seq_key]
         del self.__work_dict[key]
 
     def _check_timeout(self):
         cur_time = time.time()
-        _to_del = [key for key, value in self.__work_dict.iteritems() if abs(value["start"] - cur_time) > 60]
+        _to_del = [key for key, value in self.__work_dict.items() if abs(value["start"] - cur_time) > 60]
         if _to_del:
             _unhandled = [key for key in _to_del if key not in self.__handled]
             self.log(
@@ -103,7 +103,7 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
             )
         cur_time = time.time()
         if len(target_list) > 1:
-            seq_list = ["group_{:d}".format(idx) for idx in xrange(self.__group_idx, self.__group_idx + len(target_list))]
+            seq_list = ["group_{:d}".format(idx) for idx in range(self.__group_idx, self.__group_idx + len(target_list))]
             self.__group_idx += len(target_list)
             self.__group_dict[seq_str] = dict([(cur_seq_str, None) for cur_seq_str in seq_list])
             for cur_seq_str in seq_list:
@@ -137,11 +137,11 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
                 )
             self.__pings_in_flight += 1
         if self.__debug:
-            _wft = [key for key, value in self.__work_dict.iteritems() if key in self.__handled]
+            _wft = [key for key, value in self.__work_dict.items() if key in self.__handled]
             self.log(
                 "{} in flight: {}, {} waiting for timeout: {}".format(
                     logging_tools.get_plural("ping", self.__pings_in_flight),
-                    ", ".join(sorted([value["host"] for key, value in self.__work_dict.iteritems() if key not in self.__handled])),
+                    ", ".join(sorted([value["host"] for key, value in self.__work_dict.items() if key not in self.__handled])),
                     logging_tools.get_plural("ping", len(_wft)),
                     ", ".join(sorted(_wft)),
                 )
@@ -185,7 +185,7 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
             # print value["sent_list"]
             if not from_reply:
                 # only check timeouts when called from reactor via callLater
-                for seq_to in [s_key for s_key, _s_value in value["sent_list"].iteritems() if cur_time >= value["end"] and s_key not in value["recv_list"]]:
+                for seq_to in [s_key for s_key, _s_value in value["sent_list"].items() if cur_time >= value["end"] and s_key not in value["recv_list"]]:
                     value["recv_fail"] += 1
                     value["recv_list"][seq_to] = None
             # check for ping finish
@@ -194,14 +194,14 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
             ):
                 all_times = [
                     value["recv_list"][s_key] - value["sent_list"][s_key] for s_key in
-                    value["sent_list"].iterkeys() if value["recv_list"].get(s_key, None) is not None
+                    value["sent_list"].keys() if value["recv_list"].get(s_key, None) is not None
                 ]
                 if key in self.__group_dict:
                     t_seq_str = self.__group_dict[key]
                     self.__group_dict[t_seq_str][key] = (value["host"], value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
-                    if len([t_key for t_key, value in self.__group_dict[t_seq_str].iteritems() if value is None]) == 0:
+                    if len([t_key for t_key, value in self.__group_dict[t_seq_str].items() if value is None]) == 0:
                         # group done
-                        self.__process.send_ping_result(t_seq_str, list(self.__group_dict[t_seq_str].itervalues()))
+                        self.__process.send_ping_result(t_seq_str, list(self.__group_dict[t_seq_str].values()))
                         del self.__group_dict[t_seq_str]
                     del self.__group_dict[key]
                 else:
@@ -267,7 +267,7 @@ class TCPCon(object):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-            self.__process.send_result(self.src_id, unicode(self.srv_com), "error resolving host '{}'".format(self._host), True)
+            self.__process.send_result(self.src_id, str(self.srv_com), "error resolving host '{}'".format(self._host), True)
             # no need to set registered flag because we dont add us to the list of pending connections
             # self.__registered = False
         else:
@@ -299,7 +299,7 @@ class TCPCon(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
-            u"[{}:{:d}] {}".format(
+            "[{}:{:d}] {}".format(
                 self._host,
                 self._port,
                 logging_tools.only_printable(what),
@@ -310,7 +310,7 @@ class TCPCon(object):
     def _error(self, sock):
         self.log("POLLERR in hm_direct for socket {}".format(str(sock)), logging_tools.LOG_LEVEL_ERROR)
         _err_str = "error in sending"
-        self.__process.send_result(self.src_id, unicode(self.srv_com), _err_str, True)
+        self.__process.send_result(self.src_id, str(self.srv_com), _err_str, True)
         self.close()
 
     def _send(self, sock):
@@ -319,7 +319,7 @@ class TCPCon(object):
         except:
             _err_str = "error sending TCP: {}".format(process_tools.get_except_info())
             self.log(_err_str, logging_tools.LOG_LEVEL_ERROR)
-            self.__process.send_result(self.src_id, unicode(self.srv_com), _err_str, True)
+            self.__process.send_result(self.src_id, str(self.srv_com), _err_str, True)
             self.close()
         else:
             self.__process.unregister_socket(self.socket)
@@ -362,7 +362,7 @@ class TCPCon(object):
                 _recv_str,
                 logging_tools.LOG_LEVEL_ERROR
             )
-        self.__process.send_result(self.src_id, unicode(self.srv_com), _recv_str, _is_error)
+        self.__process.send_result(self.src_id, str(self.srv_com), _recv_str, _is_error)
         self.close()
 
     def close(self):

@@ -19,9 +19,9 @@
 #
 """ cluster-server, quota handling """
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import grp
 import pwd
 import time
@@ -148,7 +148,7 @@ class quota_line(object):
         ]:
             for _key in ["used", "soft", "hard", "gracetime"]:
                 _val = _dict[_key]
-                if type(_val) in [int, long] and _key not in ["gracetime"]:
+                if type(_val) in [int, int] and _key not in ["gracetime"]:
                     _val *= _fact
                 _f_key = "{}_{}".format(_pf, _key)
                 setattr(cur_qs, _f_key, _val)
@@ -166,7 +166,7 @@ class quota_stuff(BackgroundBase):
         self.Meta.creates_machvector = global_config["MONITOR_QUOTA_USAGE"]
         self.__track_all_quotas = global_config["TRACK_ALL_QUOTAS"]
         self.__effective_device = self.sql_info.effective_device
-        self.log(u"effective device for quota tracking is {}".format(unicode(self.__effective_device)))
+        self.log("effective device for quota tracking is {}".format(str(self.__effective_device)))
         # user/group cache
         self.__user_dict = {}
         self.__group_dict = {}
@@ -202,7 +202,7 @@ class quota_stuff(BackgroundBase):
                         "db_rec": db_rec,
                     }
                 act_dict = self.__user_dict[db_rec.uid]
-                act_dict["info"] = u"uid {:d}, login {} (from SQL), ({} {}, {})".format(
+                act_dict["info"] = "uid {:d}, login {} (from SQL), ({} {}, {})".format(
                     act_dict["uid"],
                     act_dict["login"],
                     act_dict["firstname"] or "<first_name not set>",
@@ -231,7 +231,7 @@ class quota_stuff(BackgroundBase):
                     "info": "uid {:d}, login {} (from pwd)".format(missing_uid, pw_stuff[0])
                 }
         # add missing keys
-        for _uid, u_stuff in self.__user_dict.iteritems():
+        for _uid, u_stuff in self.__user_dict.items():
             u_stuff.setdefault("last_mail_sent", None)
 
     def _resolve_gids(self, gid_list):
@@ -261,7 +261,7 @@ class quota_stuff(BackgroundBase):
                         "db_rec": db_rec,
                     }
                 act_dict = self.__group_dict[db_rec.gid]
-                act_dict["info"] = u"gid {:d}, groupname {} (from SQL), ({} {}, {})".format(
+                act_dict["info"] = "gid {:d}, groupname {} (from SQL), ({} {}, {})".format(
                     act_dict["uid"],
                     act_dict["groupname"],
                     act_dict["firstname"] or "<first_name not set>",
@@ -290,7 +290,7 @@ class quota_stuff(BackgroundBase):
                     "info": "gid {:d}, groupname {} (from grp)".format(missing_gid, grp_stuff[0])
                 }
         # add missing keys
-        for _gid, g_stuff in self.__group_dict.iteritems():
+        for _gid, g_stuff in self.__group_dict.items():
             g_stuff.setdefault("last_mail_sent", None)
 
     def _get_uid_info(self, uid, default=None):
@@ -310,7 +310,7 @@ class quota_stuff(BackgroundBase):
             self.log(sep_str)
             self.log("starting quotacheck")
             q_cmd = "{} -aniugp".format(_quota_bin)
-            q_stat, q_out = commands.getstatusoutput(q_cmd)
+            q_stat, q_out = subprocess.getstatusoutput(q_cmd)
             if q_stat:
                 self.log(
                     "Cannot call '{}' (stat={:d}): {}".format(q_cmd, q_stat, str(q_out)),
@@ -337,7 +337,7 @@ class quota_stuff(BackgroundBase):
                 Q(device=self.__effective_device)
             ).select_related("fs_type")
         }
-        for _dev, _stuff in dev_dict.iteritems():
+        for _dev, _stuff in dev_dict.items():
             try:
                 _part_fs = partition_fs.objects.get(Q(name=_stuff.fstype))
             except partition_fs.DoesNotExist:
@@ -358,7 +358,7 @@ class quota_stuff(BackgroundBase):
                             setattr(_qcb, attr_name, new_val)
                             _changed = True
                     if _changed:
-                        self.log("qcb {} changed".format(unicode(_qcb)))
+                        self.log("qcb {} changed".format(str(_qcb)))
                         _qcb.save()
                 else:
                     # create new entry
@@ -369,7 +369,7 @@ class quota_stuff(BackgroundBase):
                         mount_path=str(_stuff.mountpoint),
                         size=_size,
                     )
-                    self.log("created new qcb_entry {}".format(unicode(new_qcb)))
+                    self.log("created new qcb_entry {}".format(str(new_qcb)))
                     cur_qcb[new_qcb.block_device_path] = new_qcb
         return cur_qcb
 
@@ -388,7 +388,7 @@ class quota_stuff(BackgroundBase):
                         q_line = quota_line(q_mode, _parts)
                     except:
                         self.log(
-                            u"cannot parse quota_line '{}': {}".format(
+                            "cannot parse quota_line '{}': {}".format(
                                 line,
                                 process_tools.get_except_info()
                             ),
@@ -409,7 +409,7 @@ class quota_stuff(BackgroundBase):
         prob_objs, prob_devs = ({"user": {}, "group": {}}, set())
         quota_cache = []
         missing_ids = {"user": set(), "group": set()}
-        for dev, obj_dict in q_dict.iteritems():
+        for dev, obj_dict in q_dict.items():
             # try:
             #    _osres = os.statvfs(dev)
             # except:
@@ -425,9 +425,9 @@ class quota_stuff(BackgroundBase):
             if True:
                 # always use a fixed block size of 1024 bytes
                 f_frsize = 1024
-                for obj_name, ug_dict in obj_dict.iteritems():
+                for obj_name, ug_dict in obj_dict.items():
                     missing_ids.setdefault(obj_name, set())
-                    for num_id, stuff in ug_dict.iteritems():
+                    for num_id, stuff in ug_dict.items():
                         if self.Meta.creates_machvector:
                             if stuff.quotas_defined or self.__track_all_quotas:
                                 missing_ids[obj_name].add(num_id)
@@ -440,8 +440,8 @@ class quota_stuff(BackgroundBase):
                                 {}
                             )[dev] = stuff.get_prob_str(f_frsize)
                             prob_devs.add(dev)
-        self._resolve_uids(list(set(prob_objs["user"].keys() + list(missing_ids["user"]))))
-        self._resolve_gids(list(set(prob_objs["group"].keys() + list(missing_ids["group"]))))
+        self._resolve_uids(list(set(list(prob_objs["user"].keys()) + list(missing_ids["user"]))))
+        self._resolve_gids(list(set(list(prob_objs["group"].keys()) + list(missing_ids["group"]))))
         return prob_devs, prob_objs, quota_cache
 
     def _send_quota_mails(self, prob_devs, prob_objs, dev_dict):
@@ -449,8 +449,8 @@ class quota_stuff(BackgroundBase):
         email_targets = [_admin_key]
         mail_lines = {_key: [] for _key in email_targets}
         log_line = "{} / {} violated the quota policies on {}".format(
-            logging_tools.get_plural("user", len(prob_objs["user"].keys())),
-            logging_tools.get_plural("group", len(prob_objs["group"].keys())),
+            logging_tools.get_plural("user", len(list(prob_objs["user"].keys()))),
+            logging_tools.get_plural("group", len(list(prob_objs["group"].keys()))),
             logging_tools.get_plural("device", len(prob_devs)),
         )
         self.log(log_line)
@@ -479,8 +479,8 @@ class quota_stuff(BackgroundBase):
         else:
             email_targets.remove(_admin_key)
         mail_lines[_admin_key].extend(["", "user info:", ""])
-        for obj_name, ug_dict in prob_objs.iteritems():
-            for num_id, stuff in ug_dict.iteritems():
+        for obj_name, ug_dict in prob_objs.items():
+            for num_id, stuff in ug_dict.items():
                 _mail_key = (obj_name, num_id)
                 if obj_name == "group":
                     _info = self._get_gid_info(num_id)
@@ -515,7 +515,7 @@ class quota_stuff(BackgroundBase):
                         "{} (no email-address set)".format(_info["info"])
                     )
                 self.log(_info["info"])
-                for dev, d_stuff in stuff.iteritems():
+                for dev, d_stuff in stuff.items():
                     log_line = " --- violated {} on {}".format(d_stuff, dev)
                     mail_lines[_admin_key].append(log_line)
                     mail_lines[_mail_key].append(log_line)
@@ -558,7 +558,7 @@ class quota_stuff(BackgroundBase):
                     self.log(log_line)
 
     def _write_quota_usage(self, qcb_dict, quota_cache):
-        qcb_ids = [_value.pk for _value in qcb_dict.itervalues()]
+        qcb_ids = [_value.pk for _value in qcb_dict.values()]
         qs_dict = {
             "user": {
                 (uqs.user_id, uqs.quota_capable_blockdevice_id): uqs for uqs in user_quota_setting.objects.filter(

@@ -42,7 +42,7 @@ class resize_process(threading_tools.process_obj, server_mixins.OperationalError
         db_tools.close_connection()
         self.rrd_cache_socket = global_config["RRD_CACHED_SOCKET"]
         self.rrd_root = global_config["RRD_DIR"]
-        cov_keys = [_key for _key in global_config.keys() if _key.startswith("RRD_COVERAGE")]
+        cov_keys = [_key for _key in list(global_config.keys()) if _key.startswith("RRD_COVERAGE")]
         self.rrd_coverage = [global_config[_key] for _key in cov_keys]
         self.log("RRD coverage: {}".format(", ".join(self.rrd_coverage)))
         self.register_timer(self.check_size, 6 * 3600, first_timeout=1)
@@ -64,10 +64,10 @@ class resize_process(threading_tools.process_obj, server_mixins.OperationalError
     def get_tc_dict(self, step):
         if step not in self.tc_dict:
             _dict = {_key: rrd_tools.RRA.parse_width_str(_key, step) for _key in self.rrd_coverage}
-            _dict = {_key: _value for _key, _value in _dict.iteritems() if _value is not None}
+            _dict = {_key: _value for _key, _value in _dict.items() if _value is not None}
             self.tc_dict[step] = _dict
             self.log("target coverage (step={:d}): {:d} entries".format(step, len(self.tc_dict)))
-            for _idx, _key in enumerate(sorted(_dict.iterkeys()), 1):
+            for _idx, _key in enumerate(sorted(_dict.keys()), 1):
                 self.log(" {:2d} :: {} -> {}".format(_idx, _key, _dict[_key]["name"]))
         return self.tc_dict[step]
 
@@ -115,7 +115,7 @@ class resize_process(threading_tools.process_obj, server_mixins.OperationalError
 
     def find_best_tc(self, rra_name, tc_dict):
         _tw = rrd_tools.RRA.total_width(rra_name)
-        _min_key = min([(abs(_tw - _value["total"]), _key) for _key, _value in tc_dict.iteritems()])[1]
+        _min_key = min([(abs(_tw - _value["total"]), _key) for _key, _value in tc_dict.items()])[1]
         return _min_key
 
     def check_rrd_file(self, f_name):
@@ -171,7 +171,7 @@ class resize_process(threading_tools.process_obj, server_mixins.OperationalError
         # flush cache
         _rrd_short_names = set(_rrd["rra_short_names"])
         tc_dict = self.get_tc_dict(_rrd["step"])
-        _target_short_names = set([_value["name"] for _value in tc_dict.itervalues()])
+        _target_short_names = set([_value["name"] for _value in tc_dict.values()])
         if _rrd_short_names != _target_short_names:
             _rrd.build_rras()
             self.log("RRAs for {} differ from target".format(f_name))
@@ -189,7 +189,7 @@ class resize_process(threading_tools.process_obj, server_mixins.OperationalError
             _prev_popcount = {_key: _rrd["rra_dict"][_key].popcount[1] for _key in _prev_names}
             _new_names = set()
             _new_popcount = {}
-            for _key in tc_dict.iterkeys():
+            for _key in tc_dict.keys():
                 _short_src_rra_name = self.find_best_rra_name(_rrd["rra_short_names"], tc_dict, _key)
                 # find best srouce
                 _src_rra_names = [_name for _name in _rrd["rra_names"] if _name.endswith("-{}".format(_short_src_rra_name))]

@@ -21,7 +21,7 @@
 #
 """ network middleware """
 
-from __future__ import unicode_literals, print_function
+
 
 import argparse
 import operator
@@ -71,7 +71,7 @@ class ZMQConnection(object):
     def register_poller(self, zmq_socket, sock_fd, poll_type, callback):
         self.poller_handler.setdefault(zmq_socket, {})[poll_type] = callback
         if sock_fd in self.__registered:
-            self.poller.modify(zmq_socket, operator.ior(*self.poller_handler[zmq_socket].keys()))
+            self.poller.modify(zmq_socket, operator.ior(*list(self.poller_handler[zmq_socket].keys())))
         else:
             self.poller.register(zmq_socket, poll_type)
             self.__registered.add(sock_fd)
@@ -110,14 +110,14 @@ class ZMQConnection(object):
             self.__dummy_fd -= 1
             cur_fd = self.__dummy_fd
             self.__add_list.append((cur_fd, c_type))
-            _result = server_command.srv_command(source=unicode(command))
+            _result = server_command.srv_command(source=str(command))
             _result.set_result(
                 "error connecting: {}".format(
                     process_tools.get_except_info()
                 ),
                 server_command.SRV_REPLY_STATE_CRITICAL
             )
-            self.__results[cur_fd] = unicode(_result)
+            self.__results[cur_fd] = str(_result)
         else:
             # self.register_poller(new_sock, zmq.POLLOUT, self.__show)
             sock_fd = new_sock.getsockopt(zmq.FD)
@@ -130,9 +130,9 @@ class ZMQConnection(object):
             self.__add_list.append((sock_fd, c_type))
             self.__socket_dict[sock_fd] = new_sock
             try:
-                new_sock.send_unicode(unicode(command))
+                new_sock.send_unicode(str(command))
             except:
-                _result = server_command.srv_command(source=unicode(command))
+                _result = server_command.srv_command(source=str(command))
                 _result.set_result(
                     "error sending to {}: {}".format(
                         conn_str,
@@ -140,7 +140,7 @@ class ZMQConnection(object):
                     ),
                     server_command.SRV_REPLY_STATE_CRITICAL
                 )
-                self.__results[sock_fd] = unicode(_result)
+                self.__results[sock_fd] = str(_result)
                 new_sock.close()
             else:
                 self.__results[sock_fd] = None
@@ -237,7 +237,7 @@ def SendCommandDefaults(**kwargs):
         only_send=False,
         quiet=True,
     )
-    for key, value in kwargs.iteritems():
+    for key, value in kwargs.items():
         setattr(_def, key, value)
     return _def
 
@@ -332,7 +332,7 @@ class SendCommand(object):
 
     def send_and_receive(self, srv_com=None):
         _reply = None
-        for cur_iter in xrange(self.args.iterations):
+        for cur_iter in range(self.args.iterations):
             self.verbose("iteration {:d}".format(cur_iter))
             if srv_com is None:
                 srv_com = self._build_com()
@@ -384,7 +384,7 @@ class SendCommand(object):
 
     def send(self, srv_com):
         self.s_time = time.time()
-        self.send_sock.send_unicode(unicode(srv_com))
+        self.send_sock.send_unicode(str(srv_com))
         if self.args.raw:
             self.verbose(srv_com)
         else:

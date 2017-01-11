@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import unicode_literals, print_function
+
 
 from initat.tools import logging_tools
 
@@ -185,7 +185,7 @@ class limits(object):
             if (self.warn_val_f is not None) and ret_code == mon_STATE_OK:
                 if val >= self.warn_val_f:
                     ret_code, state = (mon_STATE_WARNING, "Warning")
-        elif type(val) in [int, long]:
+        elif type(val) in [int, int]:
             if self.crit_val is not None:
                 if val >= self.crit_val:
                     ret_code, state = (mon_STATE_CRITICAL, "Critical")
@@ -206,7 +206,7 @@ class limits(object):
             if (self.warn_val_f is not None) and ret_code == mon_STATE_OK:
                 if val <= self.warn_val_f:
                     ret_code, state = (mon_STATE_WARNING, "Warning")
-        elif type(val) in [int, long]:
+        elif type(val) in [int, int]:
             if self.crit_val is not None:
                 if val <= self.crit_val:
                     ret_code, state = (mon_STATE_CRITICAL, "Critical")

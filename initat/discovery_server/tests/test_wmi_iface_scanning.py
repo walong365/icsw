@@ -43,7 +43,7 @@ class WmiScanning(TestCase):
 
         # do what run() would do
         finished_method = lambda: 0
-        for ext_com in scan_batch._ext_coms.itervalues():
+        for ext_com in scan_batch._ext_coms.values():
             ext_com.finished = finished_method
             ext_com.result = 0
         scan_batch._ext_coms[WmiScanBatch.NETWORK_ADAPTER_MODEL].communicate =\

@@ -21,9 +21,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import print_function, unicode_literals
 
-import commands
+
+import subprocess
 import getopt
 import os
 import sys
@@ -130,7 +130,7 @@ class license_object(object):
             ""
         ]
         file(self["START_SCRIPT"], "w").write("\n".join(start_lines))
-        os.chmod(self["START_SCRIPT"], 0550)
+        os.chmod(self["START_SCRIPT"], 0o550)
 
     def get_pid(self):
         # try to extract the pid of the (running ?) license server
@@ -152,7 +152,7 @@ class license_object(object):
                 )
             else:
                 start_com = self["START_SCRIPT"]
-            stat, out = commands.getstatusoutput(start_com)
+            stat, out = subprocess.getstatusoutput(start_com)
             if stat:
                 self.log(
                     "error calling start_script via {} ({:d}): {}".format(
@@ -233,9 +233,9 @@ class license_tree(object):
 
     def get_licenses(self, only_enabled=True):
         if only_enabled:
-            return [x for x in self.__license_dict.values() if x["ENABLED"] == "yes"]
+            return [x for x in list(self.__license_dict.values()) if x["ENABLED"] == "yes"]
         else:
-            return self.__license_dict.values()
+            return list(self.__license_dict.values())
 
 
 def main():

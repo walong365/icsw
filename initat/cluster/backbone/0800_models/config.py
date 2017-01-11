@@ -73,7 +73,7 @@ class config(models.Model):
     categories = models.ManyToManyField("backbone.category")
 
     class Meta:
-        db_table = u'new_config'
+        db_table = 'new_config'
         ordering = ["name", "config_catalog__name"]
         unique_together = (("name", "config_catalog"),)
 
@@ -89,7 +89,7 @@ class config_str(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'config_str'
+        db_table = 'config_str'
         ordering = ("name",)
 
 
@@ -105,7 +105,7 @@ class config_blob(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'config_blob'
+        db_table = 'config_blob'
 
 
 class config_bool(models.Model):
@@ -120,7 +120,7 @@ class config_bool(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'config_bool'
+        db_table = 'config_bool'
 
 
 class config_int(models.Model):
@@ -135,7 +135,7 @@ class config_int(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'config_int'
+        db_table = 'config_int'
 
 
 class config_script(models.Model):
@@ -152,6 +152,6 @@ class config_script(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'config_script'
+        db_table = 'config_script'
         ordering = ("priority", "name",)
 

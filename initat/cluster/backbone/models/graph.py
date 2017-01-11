@@ -21,7 +21,7 @@
 #
 """ graph models for NOCTUA, CORVUS and NESTOR """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.db import models
 from django.db.models import signals, Q
@@ -82,7 +82,7 @@ class MachineVector(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"MachineVector for device {}".format(unicode(self.device))
+        return "MachineVector for device {}".format(str(self.device))
 
 
 class MVStructEntry(models.Model):
@@ -114,7 +114,7 @@ class MVStructEntry(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"MVStructEntry ({}, {}{}), file is {}".format(
+        return "MVStructEntry ({}, {}{}), file is {}".format(
             self.se_type,
             self.key,
             ", ti={}".format(self.type_instance) if self.type_instance else "",
@@ -158,7 +158,7 @@ class MVValueEntry(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"MVValueEntry ({}{}, '{}'), '{}' b/f={:d}/{:d} ({})".format(
+        return "MVValueEntry ({}{}, '{}'), '{}' b/f={:d}/{:d} ({})".format(
             self.key or "NONE",
             ", name={}@{:d}".format(self.name, self.rra_idx) if (self.name or self.rra_idx) else "",
             self.info,
@@ -182,7 +182,7 @@ class MVValueEntry(models.Model):
             rra_idx=self.rra_idx,
             date=self.date,
         )
-        for _key, _value in mod_dict.iteritems():
+        for _key, _value in mod_dict.items():
             if _key not in {"key", "full_key"}:
                 setattr(new_mv, _key, _value)
         return new_mv
@@ -285,13 +285,13 @@ class SensorThreshold(models.Model):
     def __unicode__(self):
         return "SensorThreshold '{}' [{}@{:.4f}({}), {}@{:.4f}({})] for {}".format(
             self.name,
-            unicode(self.lower_sensor_action),
+            str(self.lower_sensor_action),
             self.lower_value,
             "enabled" if self.lower_enabled else "disabled",
-            unicode(self.upper_sensor_action),
+            str(self.upper_sensor_action),
             self.upper_value,
             "enabled" if self.upper_enabled else "disabled",
-            unicode(self.mv_value_entry),
+            str(self.mv_value_entry),
         )
 
     class CSW_Meta:

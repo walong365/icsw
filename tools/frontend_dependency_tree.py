@@ -79,7 +79,7 @@ class DirDefinition(object):
         return self.namespace_ok and self.name_valid
 
     def __repr__(self):
-        return unicode(self)
+        return str(self)
 
     def __unicode__(self):
         return "{} {} ({:d}@{})".format(
@@ -128,7 +128,7 @@ def main(args):
         coffefiles.extend([os.path.join(root, f) for f in files if f.endswith("coffee") and not ignore_re.search(f)])
         htmlfiles.extend([os.path.join(root, f) for f in files if f.endswith("html") and not ignore_re.search(f)])
 
-    print("{:d} Coffee and {:d} HTML files".format(len(coffefiles), len(htmlfiles)))
+    print(("{:d} Coffee and {:d} HTML files".format(len(coffefiles), len(htmlfiles))))
 
     def_matcher = re.compile(".*\.(?P<type>(directive|service|controller|factory))\((\'|\")(?P<name>(.*?))(\'|\").*")
     html_matcher = re.compile(".*script type=.text/ng-template. id=(\'|\")(?P<name>.*)(\'|\").")
@@ -140,16 +140,16 @@ def main(args):
     # get definitions
 
     for name in coffefiles:
-        for line_num, line in enumerate(open(name, "rb").xreadlines(), 1):
+        for line_num, line in enumerate(open(name, "rb"), 1):
             match = def_matcher.match(line)
             if match:
                 _gd = match.groupdict()
                 my_sink.feed(name, line_num, line, _gd["type"], _gd["name"])
-    print(
+    print((
         "done (found {:d})".format(
             len(my_sink._defs)
         )
-    )
+    ))
 
     # find refs in HTML to services
 
@@ -163,7 +163,7 @@ def main(args):
     _refs = 0
     s_time = time.time()
     for name in htmlfiles:
-        for line_num, line in enumerate(open(name, "rb").xreadlines(), 1):
+        for line_num, line in enumerate(open(name, "rb"), 1):
             match = html_matcher.match(line)
             if match:
                 _gd = match.groupdict()
@@ -178,16 +178,16 @@ def main(args):
                             continue
                         # only one match per line
                         _add_dict[word] = True
-                for word in _add_dict.iterkeys():
+                for word in _add_dict.keys():
                     dir_dict[word].add_reference(name, line_num, line)
                     _refs += 1
     e_time = time.time()
-    print(
+    print((
         "Reference from HTML to directive took {} (found: {:d})".format(
             logging_tools.get_diff_time_str(e_time - s_time),
             _refs,
         )
-    )
+    ))
 
     # find refs to Services and Factories in coffee
     sf_refs = my_sink.get_type_defs("factory") + my_sink.get_type_defs("service")
@@ -201,7 +201,7 @@ def main(args):
     _refs = 0
     s_time = time.time()
     for name in coffefiles:
-        for line_num, line in enumerate(open(name, "rb").xreadlines(), 1):
+        for line_num, line in enumerate(open(name, "rb"), 1):
             # print line
             for word in re.split("([^a-zA-Z])+", line):
                 if word in sf_matcher:
@@ -215,12 +215,12 @@ def main(args):
                 if _temp_ref in html_matcher:
                     html_dict[_temp_ref].add_reference(name, line_num, line)
     e_time = time.time()
-    print(
+    print((
         "Reference from coffee to service / factory took {} (found: {:d})".format(
             logging_tools.get_diff_time_str(e_time - s_time),
             _refs,
         )
-    )
+    ))
 
     # generate output
     # raw list
@@ -234,11 +234,11 @@ def main(args):
     _list = [entry for entry in _list if name_re.search(entry.name)]
 
     if _list:
-        print(
+        print((
             "{} in result list:".format(
                 logging_tools.get_plural("entry", len(_list)),
             )
-        )
+        ))
 
         if args.order_by == "name":
             _list = sorted(_list, key=attrgetter("name"))
@@ -263,14 +263,14 @@ def main(args):
             if args.show_refs:
                 out_list.extend(_def.get_ref_list())
                 _def.add_file_refs(files_referenced)
-        print(unicode(out_list))
+        print((str(out_list)))
 
         if args.show_refs and files_referenced:
-            print
+            print()
             print(
                 "Referenced files:"
             )
-            print
+            print()
             pprint.pprint(files_referenced)
 
 if __name__ == "__main__":

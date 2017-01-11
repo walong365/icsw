@@ -19,9 +19,9 @@
 #
 """ machine information """
 
-from __future__ import print_function, unicode_literals
 
-import commands
+
+import subprocess
 import subprocess
 import itertools
 import json
@@ -78,11 +78,11 @@ class _general(hm_classes.hm_module):
         )
 
     def _lstopo_int(self):
-        _lstopo_stat, _lstopo_result = commands.getstatusoutput("{} --of xml".format(self.lstopo_ng_bin))
+        _lstopo_stat, _lstopo_result = subprocess.getstatusoutput("{} --of xml".format(self.lstopo_ng_bin))
         return server_command.compress(_lstopo_result)
 
     def _lshw_int(self):
-        (_lshw_stat, _lshw_result) = commands.getstatusoutput(
+        (_lshw_stat, _lshw_result) = subprocess.getstatusoutput(
             "{} -xml".format(self.lshw_bin)
         )
         return server_command.compress(_lshw_result)
@@ -93,7 +93,7 @@ class _general(hm_classes.hm_module):
         # version 2.23.2 has a maximum length of command line arguments, so
         # only pass some selected columns to "lsblk".
         if not self.__lsblk_version:
-            _stat, _result = commands.getstatusoutput("lsblk -h")
+            _stat, _result = subprocess.getstatusoutput("lsblk -h")
             self.__lsblk_columns = []
             _in_opt = False
             for line in _result.split("\n"):
@@ -175,7 +175,7 @@ class _general(hm_classes.hm_module):
                 display,
                 self.xrandr_bin
             )
-            (xrandr_stat, xrandr_result) = commands.getstatusoutput(cmd)
+            (xrandr_stat, xrandr_result) = subprocess.getstatusoutput(cmd)
             return server_command.compress(xrandr_result)
 
     def _disk_usage_int(self):
@@ -194,7 +194,7 @@ class _general(hm_classes.hm_module):
     def _dmiinfo_int(self):
         # _dmi_stat, _dmi_result = commands.getstatusoutput(self.dmi_bin)
         with tempfile.NamedTemporaryFile() as tmp_file:
-            _dmi_stat, _dmi_result = commands.getstatusoutput(
+            _dmi_stat, _dmi_result = subprocess.getstatusoutput(
                 "{} --dump-bin {}".format(
                     self.dmi_bin,
                     tmp_file.name
@@ -249,10 +249,10 @@ class _general(hm_classes.hm_module):
         else:
             self.log(
                 "Found {} and {}: {}; {}".format(
-                    logging_tools.get_plural("device_name", len(valid_block_devs.keys())),
-                    logging_tools.get_plural("major number", len(valid_major_nums.keys())),
-                    ", ".join(valid_block_devs.keys()),
-                    ", ".join(["%d" % (x) for x in valid_major_nums.keys()])
+                    logging_tools.get_plural("device_name", len(list(valid_block_devs.keys()))),
+                    logging_tools.get_plural("major number", len(list(valid_major_nums.keys()))),
+                    ", ".join(list(valid_block_devs.keys())),
+                    ", ".join(["%d" % (x) for x in list(valid_major_nums.keys())])
                 )
             )
         self.valid_block_devs, self.valid_major_nums = (
@@ -288,7 +288,7 @@ class _general(hm_classes.hm_module):
         stat_list = self._proc_stat_info()
         for what in stat_list:
             mv.register_entry("vms.{}".format(what), 0., "percentage of time spent for $2 (total)", "%")
-        self.cpu_list = ["{:d}".format(_cpu_idx) for _cpu_idx in xrange(psutil.cpu_count(logical=True))]
+        self.cpu_list = ["{:d}".format(_cpu_idx) for _cpu_idx in range(psutil.cpu_count(logical=True))]
         if mv.cs["detailed_cpu_statistics"]:
             if not self.cpu_list:
                 self.cpu_list = ["0"]
@@ -435,9 +435,9 @@ class _general(hm_classes.hm_module):
             #        continue
             #    stat_dict[line[0]] = [long(_line) for _line in line[1:]]
             if line[0] == "ctxt":
-                stat_dict["ctxt"] = long(line[1])
+                stat_dict["ctxt"] = int(line[1])
             elif line[0] == "intr":
-                stat_dict["intr"] = long(line[1])
+                stat_dict["intr"] = int(line[1])
         # use psutil
         stat_dict["cpu"] = psutil.cpu_times()
         if mvect.cs["detailed_cpu_statistics"]:
@@ -471,7 +471,7 @@ class _general(hm_classes.hm_module):
                     parts[2].strip(): [
                         int(parts[0]), int(parts[1])
                     ] + [
-                        long(cur_val) for cur_val in parts[3:]
+                        int(cur_val) for cur_val in parts[3:]
                     ] for parts in [
                         line.strip().split() for line in open("/proc/diskstats", "r").readlines()
                     ] if len(parts) == 14
@@ -486,7 +486,7 @@ class _general(hm_classes.hm_module):
                     ]
                 except:
                     # cannot read, take all devs
-                    mount_list = ds_dict.keys()
+                    mount_list = list(ds_dict.keys())
                 else:
                     # check for by-* devices
                     mount_list = [
@@ -530,7 +530,7 @@ class _general(hm_classes.hm_module):
                 _resolve = True
                 while _resolve:
                     _resolve = False
-                    for _key, _value in _slave_dict.iteritems():
+                    for _key, _value in _slave_dict.items():
                         _new_list = []
                         for _skey in _value:
                             if _skey in _slave_dict:
@@ -542,13 +542,13 @@ class _general(hm_classes.hm_module):
                             else:
                                 _new_list.append(_skey)
                         _slave_dict[_key] = _new_list
-                _slave_dict = {key: value for key, value in _slave_dict.iteritems() if value}
+                _slave_dict = {key: value for key, value in _slave_dict.items() if value}
                 # get unique devices
-                ds_keys_ok_by_name = sorted([key for key in ds_dict.iterkeys() if key in self.valid_block_devs])
+                ds_keys_ok_by_name = sorted([key for key in ds_dict.keys() if key in self.valid_block_devs])
                 # sort out partition stuff
                 _last_disk_name = ""
                 ds_keys_ok_by_major = []
-                for p_name in sorted([key for key, value in ds_dict.iteritems() if value[0] in self.valid_major_nums.keys()]):
+                for p_name in sorted([key for key, value in ds_dict.items() if value[0] in list(self.valid_major_nums.keys())]):
                     _disk_name = _remove_partition_part(p_name)
                     if _last_disk_name and not (p_name.startswith("dm-") or p_name.startswith("md")) and _disk_name == _last_disk_name:
                         pass
@@ -561,12 +561,12 @@ class _general(hm_classes.hm_module):
                     self.local_lvm_info.update()
                 mounted_lvms = {}
                 if self.local_lvm_info.lvm_present:
-                    for _loc_lvm_name, loc_lvm_info in self.local_lvm_info.lv_dict.get("lv", {}).iteritems():
+                    for _loc_lvm_name, loc_lvm_info in self.local_lvm_info.lv_dict.get("lv", {}).items():
                         lv_k_major, lv_k_minor = (
                             int(loc_lvm_info["kernel_major"]),
                             int(loc_lvm_info["kernel_minor"])
                         )
-                        if lv_k_major in self.valid_major_nums.keys():
+                        if lv_k_major in list(self.valid_major_nums.keys()):
                             mount_dev = os.path.join(
                                 loc_lvm_info["vg_name"],
                                 loc_lvm_info["name"]
@@ -583,7 +583,7 @@ class _general(hm_classes.hm_module):
                         True for m_entry in mount_list if m_entry.startswith(ds_key)
                     ]
                 ] + [
-                    value for key, value in mounted_lvms.iteritems() if key in mount_list
+                    value for key, value in mounted_lvms.items() if key in mount_list
                 ] + extra_block_devs
                 # resolve according to slave_dict
                 dev_list = list(set(sum([_slave_dict.get(key, [key]) for key in dev_list], [])))
@@ -619,7 +619,7 @@ class _general(hm_classes.hm_module):
                 # pprint.pprint(psutil.disk_io_counters(perdisk=False))
                 # pprint.pprint(psutil.disk_io_counters(perdisk=True))
                 disk_stat["total"] = []
-                for idx in xrange(7):
+                for idx in range(7):
                     disk_stat["total"].append(sum([disk_stat[d_name][idx] for d_name in dev_list]))
                 dev_list.append("total")
                 unique_dev_list = dev_list
@@ -645,7 +645,7 @@ class _general(hm_classes.hm_module):
                     _vals = [
                         float(
                             sub_wrap(stat_dict[cpu_str][idx], self.vmstat_dict[cpu_str][idx]) / (vms_tdiff / 100.)
-                        ) for idx in xrange(len(self.stat_list))
+                        ) for idx in range(len(self.stat_list))
                     ]
                     if not name_p and len(self.stat_list) > 7:
                         # correction factor for small rounding errors, correct ?
@@ -675,7 +675,7 @@ class _general(hm_classes.hm_module):
                         mvect.register_entry("{}.time.read".format(_pf), 0., "milliseconds spent reading {}".format(info_str), "s")
                         mvect.register_entry("{}.time.written".format(_pf), 0., "milliseconds spent writing {}".format(info_str), "s")
                         mvect.register_entry("{}.time.io".format(_pf), 0., "milliseconds spent doing I/O {}".format(info_str), "s")
-            for old_disk in self.disk_stat.keys():
+            for old_disk in list(self.disk_stat.keys()):
                 if old_disk not in disk_stat:
                     _pf = "io.{}".format(old_disk)
                     mvect.unregister_entry("{}.blks.read".format(_pf))
@@ -915,7 +915,7 @@ class _general(hm_classes.hm_module):
                 part_bin = self.parted_path
                 if part_bin:
                     self.log("getting partition info via parted")
-                    cur_stat, out = commands.getstatusoutput("{} -sl".format(part_bin))
+                    cur_stat, out = subprocess.getstatusoutput("{} -sl".format(part_bin))
                     skip_until_next_blank_line = False
                     parted_dict = {}
                     dev_dict = {}
@@ -998,8 +998,8 @@ class _general(hm_classes.hm_module):
                 else:
                     self.log("getting partition info via sfdisk (deprecated)")
                     # fetch fdisk information
-                    for dev in dev_dict.keys():
-                        cur_stat, out = commands.getstatusoutput("/sbin/fdisk -l {}".format(dev))
+                    for dev in list(dev_dict.keys()):
+                        cur_stat, out = subprocess.getstatusoutput("/sbin/fdisk -l {}".format(dev))
                         if cur_stat:
                             ret_str = "error reading partition table of %s (%d): %s" % (dev, cur_stat, out)
                             break
@@ -1023,12 +1023,12 @@ class _general(hm_classes.hm_module):
                             }
                             part_lut[part] = (dev, part_num)
                 # kick empty devices
-                dev_dict = {key: value for key, value in dev_dict.iteritems() if value}
+                dev_dict = {key: value for key, value in dev_dict.items() if value}
                 if not ret_str:
                     if not dev_dict:
                         # no device_dict up to now, maybe xen-machine, check part_dict
-                        for major, m_stuff in part_dict.iteritems():
-                            for minor, part_stuff in m_stuff.iteritems():
+                        for major, m_stuff in part_dict.items():
+                            for minor, part_stuff in m_stuff.items():
                                 part_name, part_size = part_stuff
                                 dev_name = part_name
                                 while dev_name[-1].isdigit():
@@ -1234,7 +1234,7 @@ class df_command(hm_classes.hm_command):
                             "perc": n_dict[disk]["b_free_perc"],
                             "used": n_dict[disk]["b_used"],
                             "total": n_dict[disk]["b_size"]
-                        } for disk in n_dict.keys()
+                        } for disk in list(n_dict.keys())
                     }
                 else:
                     store_info = True
@@ -1295,7 +1295,7 @@ class df_command(hm_classes.hm_command):
                             "fs": cur_fs,
                         }
                         if cur_fs == "btrfs" and self.module.btrfs_path:
-                            cur_stat, cur_out = commands.getstatusoutput(
+                            cur_stat, cur_out = subprocess.getstatusoutput(
                                 "{} fi df {}".format(
                                     self.module.btrfs_path,
                                     mapped_info["mountpoint"]
@@ -1338,17 +1338,17 @@ class df_command(hm_classes.hm_command):
                 btrfs_dict = result["btrfs_info"]
                 # only check metadata (and dup) for now
                 btrfs_result = {}
-                for key, value in btrfs_dict.iteritems():
+                for key, value in btrfs_dict.items():
                     key = key.split(":")
                     r_key = key[0]
                     mult = 2 if (len(key) == 2 and key[1] == "dup") else 1
                     loc_dict = btrfs_result.setdefault(r_key, {})
-                    for s_key, s_value in value.iteritems():
+                    for s_key, s_value in value.items():
                         if s_key not in loc_dict:
                             loc_dict[s_key] = 0
                         loc_dict[s_key] += mult * s_value
                 for res_key in ["used", "total"]:
-                    btrfs_result[res_key] = sum([value[res_key] for value in btrfs_result.itervalues() if type(value) == dict])
+                    btrfs_result[res_key] = sum([value[res_key] for value in btrfs_result.values() if type(value) == dict])
                 # report used data as total system + total metadata + used data
                 result["used"] = (
                     btrfs_result["system"]["total"] +
@@ -1370,7 +1370,7 @@ class df_command(hm_classes.hm_command):
                     inode_str = "no info"
             else:
                 inode_str = ""
-            return ret_state, u"%.0f %% used (%s of %s%s%s)%s on %s | total=%d used=%d free=%d" % (
+            return ret_state, "%.0f %% used (%s of %s%s%s)%s on %s | total=%d used=%d free=%d" % (
                 result["perc"],
                 logging_tools.get_size_str(result["used"] * 1024, strip_spaces=True),
                 logging_tools.get_size_str(result["total"] * 1024, strip_spaces=True),
@@ -1694,7 +1694,7 @@ class sysinfo_command(hm_classes.hm_command):
             )
         else:
             ret_str = "Distribution is %s version %s on an %s" % (result["vendor"], result["version"], result["arch"])
-            if "imageinfo" in result.keys():
+            if "imageinfo" in list(result.keys()):
                 ii_dict = result["imageinfo"]
                 if "image_name" in ii_dict and "image_version" in ii_dict:
                     ret_str += ", image is %s (version %s)" % (ii_dict["image_name"], ii_dict["image_version"])
@@ -1806,7 +1806,7 @@ class date_command(hm_classes.hm_command):
         warn_diff, err_diff = (10, 5 * 60)
         local_date = time.time()
         remote_date = hm_classes.net_to_sys(result[3:])["date"]
-        if isinstance(remote_date, basestring):
+        if isinstance(remote_date, str):
             remote_date = time.mktime(time.strptime(remote_date))
         diff_time = int(abs(remote_date - local_date))
         if diff_time > err_diff:
@@ -1837,7 +1837,7 @@ class macinfo_command(hm_classes.hm_command):
                     if os.path.isfile(addr_file):
                         net_dict[net.lower()] = open(addr_file, "r").read().strip().lower()
             else:
-                c_stat, out = commands.getstatusoutput("ip link show")
+                c_stat, out = subprocess.getstatusoutput("ip link show")
                 if not c_stat:
                     # ip link show successfull
                     head_match = re.compile("^(?P<idx>\d+):\s+(?P<devname>\S+):.*$")
@@ -1855,7 +1855,7 @@ class macinfo_command(hm_classes.hm_command):
                 else:
                     # try via ifconfig
                     net_match = re.compile("(?P<devname>\S+)\s+.*addr\s+(?P<macadr>\S+)\s*$")
-                    c_stat, out = commands.getstatusoutput("/sbin/ifconfig -a")
+                    c_stat, out = subprocess.getstatusoutput("/sbin/ifconfig -a")
                     if not c_stat:
                         for act_name, act_mac in [
                             (
@@ -1872,7 +1872,7 @@ class macinfo_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         if "macinfo" in srv_com:
             mac_list = []
-            for sub_el in sorted(srv_com["macinfo"].iterkeys()):
+            for sub_el in sorted(srv_com["macinfo"].keys()):
                 mac_list.append("%s (%s)" % (sub_el, srv_com["macinfo"][sub_el]))
             return limits.mon_STATE_OK, "{}: {}".format(
                 logging_tools.get_plural("device", len(mac_list)),
@@ -1885,8 +1885,8 @@ class macinfo_command(hm_classes.hm_command):
         if result.startswith("ok"):
             net_dict = hm_classes.net_to_sys(result[3:])
             return limits.mon_STATE_OK, "{:d} ether-devices found: {}".format(
-                len(net_dict.keys()),
-                ", ".join(["%s (%s)" % (k, net_dict[k]) for k in net_dict.keys()])
+                len(list(net_dict.keys())),
+                ", ".join(["%s (%s)" % (k, net_dict[k]) for k in list(net_dict.keys())])
             )
         else:
             return limits.mon_STATE_CRITICAL, "error parsing return"
@@ -1906,7 +1906,7 @@ class umount_command(hm_classes.hm_command):
                 # mount points must not be in ignore list and have to be below an automount-directory
                 if not (any([m_point.startswith(ignore_part) for ignore_part in ignore_list]) or any([m_point.startswith(a_mpoint) for a_mpoint in auto_list])):
                     self.log("trying to umount %s (source is %s)" % (m_point, src))
-                    um_stat, um_out = commands.getstatusoutput("umount %s" % (m_point))
+                    um_stat, um_out = subprocess.getstatusoutput("umount %s" % (m_point))
                     cur_umount_node = srv_com.builder("umount_result", m_point, src=src, error="0")
                     if um_stat:
                         cur_umount_node.attrib.update(
@@ -1949,7 +1949,7 @@ class ksminfo_command(hm_classes.hm_command):
         ksm_info = srv_com["ksm"]
         if type(ksm_info) == dict:
             page_size = 4096
-            ksm_info = {key: int(value) * page_size if value.isdigit() else value for key, value in ksm_info.iteritems()}
+            ksm_info = {key: int(value) * page_size if value.isdigit() else value for key, value in ksm_info.items()}
             info_field = [
                 "{} shared".format(
                     logging_tools.get_size_str(ksm_info["pages_shared"], strip_spaces=True)
@@ -1990,7 +1990,7 @@ class hugepageinfo_command(hm_classes.hm_command):
         if type(hpage_info) == dict:
             ret_state = limits.mon_STATE_OK
             info_field = []
-            for page_dir, page_dict in hpage_info.iteritems():
+            for page_dir, page_dict in hpage_info.items():
                 local_size = page_dir.split("-")[-1].lower()
                 if local_size.endswith("kb"):
                     local_size = int(local_size[:-2]) * 1024
@@ -2003,7 +2003,7 @@ class hugepageinfo_command(hm_classes.hm_command):
                     info_field.append("cannot interpret %s" % (local_size))
                     ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                 if local_size is not None:
-                    hpage_info = {key: int(value) * local_size if value.isdigit() else value for key, value in page_dict.iteritems()}
+                    hpage_info = {key: int(value) * local_size if value.isdigit() else value for key, value in page_dict.items()}
                     info_field.append("%s: %s reserved, %s used" % (
                         logging_tools.get_size_str(local_size, strip_spaces=True),
                         logging_tools.get_size_str(hpage_info["nr_hugepages"], strip_spaces=True),
@@ -2078,7 +2078,7 @@ class pciinfo_command(hm_classes.hm_command):
                                 s_dict["devicename"]
                             )
                             if s_dict["revision"] != "00":
-                                out_str = u"{} (rev {})".format(out_str, s_dict["revision"])
+                                out_str = "{} (rev {})".format(out_str, s_dict["revision"])
                             cmr_b.append(out_str)
         elif "pci_dump" in srv_com:
             _dump = pci_database.pci_struct_to_xml(pci_database.decompress_pci_info(srv_com["*pci_dump"]))
@@ -2097,7 +2097,7 @@ class pciinfo_command(hm_classes.hm_command):
                     func.get("devicename", ""),
                 )
                 if func.get("revision", "") != "00":
-                    out_str = u"{} (rev {})".format(out_str, func.get("revision"))
+                    out_str = "{} (rev {})".format(out_str, func.get("revision"))
                 cmr_b.append(out_str)
         else:
             _dump = None
@@ -2120,7 +2120,7 @@ class cpuflags_command(hm_classes.hm_command):
                     cpu_num = int(value)
                 elif key == "flags":
                     flag_dict[cpu_num] = sorted(value.split())
-        ret_lines = ["found %s:" % (logging_tools.get_plural("CPU", len(flag_dict.keys())))]
+        ret_lines = ["found %s:" % (logging_tools.get_plural("CPU", len(list(flag_dict.keys()))))]
         for cpu_num in sorted(flag_dict.keys()):
             cpu_flags = flag_dict[cpu_num]
             ret_lines.append("CPU %2d: %s" % (cpu_num, logging_tools.get_plural("flag", len(cpu_flags))))
@@ -2262,7 +2262,7 @@ class partinfo_command(hm_classes.hm_command):
             # pprint.pprint(sys_dict)
         else:
             sys_dict = srv_com["sys_dict"]
-            for _key, _value in sys_dict.iteritems():
+            for _key, _value in sys_dict.items():
                 if type(_value) == list and len(_value) == 1:
                     _value = _value[0]
                     sys_dict[_key] = _value
@@ -2273,7 +2273,7 @@ class partinfo_command(hm_classes.hm_command):
         ret_f = [
             "found {} ({}, {}) and {}:".format(
                 logging_tools.get_plural("disc", len(all_disks)),
-                logging_tools.get_plural("partition", sum([len(value) for value in dev_dict.itervalues()])),
+                logging_tools.get_plural("partition", sum([len(value) for value in dev_dict.values()])),
                 logging_tools.get_plural("mounted partition", len(partitions)),
                 logging_tools.get_plural("special mount", len(all_sys))
             )
@@ -2465,12 +2465,12 @@ class cpufreq_info_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         info_dict = json.loads(srv_com["*cpu_info"])
-        _num_cpus = len(info_dict.keys())
-        _unknown = [key for key, value in info_dict.iteritems() if value is None]
-        _offline = [key for key, value in info_dict.iteritems() if value is False]
+        _num_cpus = len(list(info_dict.keys()))
+        _unknown = [key for key, value in info_dict.items() if value is None]
+        _offline = [key for key, value in info_dict.items() if value is False]
         ret_state = limits.mon_STATE_OK
-        all_govs = set([value["scaling_governor"] for value in info_dict.itervalues() if value and "scaling_governor" in value])
-        all_drivers = set([value["scaling_driver"] for value in info_dict.itervalues() if value and "scaling_driver" in value])
+        all_govs = set([value["scaling_governor"] for value in info_dict.values() if value and "scaling_governor" in value])
+        all_drivers = set([value["scaling_driver"] for value in info_dict.values() if value and "scaling_driver" in value])
         ret_f = ["found {}".format(logging_tools.get_plural("CPU", _num_cpus))]
         if _unknown:
             ret_state = max(ret_state, limits.mon_STATE_WARNING)
@@ -2589,7 +2589,7 @@ class dmiinfo_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         with tempfile.NamedTemporaryFile() as tmp_file:
             file(tmp_file.name, "w").write(server_command.decompress(srv_com["dmi_dump"].text))
-            _dmi_stat, dmi_result = commands.getstatusoutput("{} --from-dump {}".format(self.module.dmi_bin, tmp_file.name))
+            _dmi_stat, dmi_result = subprocess.getstatusoutput("{} --from-dump {}".format(self.module.dmi_bin, tmp_file.name))
             _xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(dmi_result.split("\n")))
             # sys.exit(0)
             # print dmi_result
@@ -2728,8 +2728,8 @@ def get_nfs_mounts():
 def sub_wrap(val_1, val_0):
     sub = val_1 - val_0
     while sub < 0:
-        sub += sys.maxint
-    if sub > sys.maxint / 8:
+        sub += sys.maxsize
+    if sub > sys.maxsize / 8:
         sub = 0
     return sub
 

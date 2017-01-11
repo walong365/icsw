@@ -22,9 +22,9 @@
 
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
-from __future__ import unicode_literals, print_function
 
-import StringIO
+
+import io
 import os
 import resource
 import socket
@@ -118,14 +118,14 @@ class RelayCode(ICSWBasePool, HMHRMixin):
     def _objgraph_run(self):
         # lines = unicode(self.hpy.heap().byrcs[0].byid).split("\n")
         cur_stdout = sys.stdout
-        my_io = StringIO.StringIO()
+        my_io = io.StringIO()
         sys.stdout = my_io
         self.objgraph.show_growth()
-        lines = [line.rstrip() for line in unicode(my_io.getvalue()).split("\n") if line.strip()]
+        lines = [line.rstrip() for line in str(my_io.getvalue()).split("\n") if line.strip()]
         self.log("objgraph show_growth ({})".format(logging_tools.get_plural("line", len(lines)) if lines else "no output"))
         if lines:
             for line in lines:
-                self.log(u" - {}".format(line))
+                self.log(" - {}".format(line))
         sys.stdout = cur_stdout
 
     def _hup_error(self, err_cause):
@@ -133,7 +133,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         self.log(" - setting all clients with connmode TCP to unknown", logging_tools.LOG_LEVEL_WARN)
         self.log(" - reloading 0MQ mappings", logging_tools.LOG_LEVEL_WARN)
         num_c = 0
-        for t_host, c_state in self.__client_dict.iteritems():
+        for t_host, c_state in self.__client_dict.items():
             if c_state == "T":
                 self.__client_dict[t_host] = None
                 num_c += 1
@@ -195,7 +195,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         cur_time = time.time()
         # check nhm timeouts
         del_list = []
-        for key, value in self.__nhm_dict.iteritems():
+        for key, value in self.__nhm_dict.items():
             if abs(value[0] - cur_time) > self.__global_timeout:
                 del_list.append(key)
                 self._send_result(
@@ -215,7 +215,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 del self.__nhm_dict[key]
         # check raw_nhm timeouts
         del_list = []
-        for key, value in self.__raw_nhm_dict.iteritems():
+        for key, value in self.__raw_nhm_dict.items():
             if abs(value[0] - cur_time) > self.__global_timeout:
                 del_list.append(key)
                 self._send_result(
@@ -266,7 +266,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
     def send_to_syncer(self, srv_com):
         try:
             self.main_socket.send_unicode(self.__local_syncer_uuid, zmq.SNDMORE)
-            self.main_socket.send_unicode(unicode(srv_com))
+            self.main_socket.send_unicode(str(srv_com))
         except:
             self.log("cannot send to local syncer: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
 
@@ -327,7 +327,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 raise
             else:
                 setattr(self, "{}_socket".format(short_sock_name), cur_socket)
-                os.chmod(file_name, 0777)
+                os.chmod(file_name, 0o777)
                 cur_socket.setsockopt(zmq.LINGER, 0)
                 cur_socket.setsockopt(zmq.SNDHWM, hwm_size)
                 cur_socket.setsockopt(zmq.RCVHWM, hwm_size)
@@ -651,11 +651,11 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             try:
                 self.client.disconnect(conn_str)
             except:
-                self.log(u"error disconnecting {}: {}".format(conn_str, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log("error disconnecting {}: {}".format(conn_str, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             else:
                 self.log("disconnected {}".format(conn_str))
         else:
-            self.log(u"connection {} not present in __nhm_connections, ignoring disconnect".format(conn_str), logging_tools.LOG_LEVEL_WARN)
+            self.log("connection {} not present in __nhm_connections, ignoring disconnect".format(conn_str), logging_tools.LOG_LEVEL_WARN)
 
     def _send_to_nhm_service(self, src_id, srv_com, xml_input, **kwargs):
         conn_str = "tcp://{}:{:d}".format(
@@ -686,7 +686,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                         self.client_socket.send_unicode(srv_com["command"].text, zmq.DONTWAIT)
                     else:
                         self.client_socket.send_unicode(ZMQDiscovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)
-                        self.client_socket.send_unicode(unicode(srv_com), zmq.DONTWAIT)
+                        self.client_socket.send_unicode(str(srv_com), zmq.DONTWAIT)
                 except:
                     self._send_result(
                         src_id,

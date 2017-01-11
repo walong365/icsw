@@ -24,7 +24,7 @@ for password-types we need to add some encryption / message digest code via {alg
 
 """
 
-from __future__ import unicode_literals, print_function
+
 
 import grp
 import os
@@ -100,10 +100,10 @@ class AccessModeEnum(Enum):
 
 ACCESS_MODE_DICT = {
     AccessModeEnum.GLOBAL: {
-        "mode": 0664,
+        "mode": 0o664,
     },
     AccessModeEnum.LOCAL: {
-        "mode": 0640,
+        "mode": 0o640,
     }
 }
 
@@ -112,7 +112,7 @@ class ConfigVar(object):
     def __init__(self, name, val, descr=""):
         self.name = name
         self.value = val
-        if type(self.value) in [int, long]:
+        if type(self.value) in [int, int]:
             self._type = "int"
         elif type(self.value) is bool:
             self._type = "bool"
@@ -210,7 +210,7 @@ class ConfigStore(object):
         print(self.prefix)
         if self.prefix:
             raise ValueError("prefix already set ({})".format(self.prefix))
-        vars = {_key: _value.get_value() for _key, _value in self.vars.iteritems()}
+        vars = {_key: _value.get_value() for _key, _value in self.vars.items()}
         self.vars = {}
         self.prefix = prefix
         self[index] = vars
@@ -381,7 +381,7 @@ class ConfigStore(object):
                 }
             )
         _kl = E("key-list")
-        for _key in sorted(self.vars.iterkeys()):
+        for _key in sorted(self.vars.keys()):
             _kl.append(self.vars[_key].get_element())
         _root.append(_kl)
         return _root
@@ -393,7 +393,7 @@ class ConfigStore(object):
     @property
     def info(self):
         return "{} and {} defined, {}, access mode is {} {}".format(
-            logging_tools.get_plural("key", len(self.keys())),
+            logging_tools.get_plural("key", len(list(self.keys()))),
             logging_tools.get_plural("value", len(self.vars)),
             "prefix is '{}'".format(self.prefix) if self.prefix else "no prefix defined",
             "valid" if self.access_mode_is_ok else "invalid",
@@ -423,9 +423,9 @@ class ConfigStore(object):
                 except:
                     _mode_set_ok = False
                 if self.__access_mode == AccessModeEnum.GLOBAL:
-                    _tmod = 0664
+                    _tmod = 0o664
                 else:
-                    _tmod = 0640
+                    _tmod = 0o640
                 try:
                     os.chmod(self.file_name, _tmod)
                 except:
@@ -454,7 +454,7 @@ class ConfigStore(object):
         if self.tree_valid:
             if self.prefix:
                 _keys = set()
-                for _key in self.vars.keys():
+                for _key in list(self.vars.keys()):
                     if _key.startswith("{}_".format(self.prefix)) and _key.count("_") > 1:
                         _keys.add(_key.split("_")[1])
                     else:
@@ -462,7 +462,7 @@ class ConfigStore(object):
                             _keys.add(_key)
                 return list(_keys)
             else:
-                return self.vars.keys()
+                return list(self.vars.keys())
         else:
             return []
 
@@ -471,7 +471,7 @@ class ConfigStore(object):
             if self.prefix and key not in self.vars:
                 _r_dict = {}
                 _pf = "{}_{}_".format(self.prefix, key)
-                for _key in self.vars.iterkeys():
+                for _key in self.vars.keys():
                     if _key.startswith(_pf):
                         _r_dict[_key[len(_pf):]] = self.vars[_key].get_value()
                 if _r_dict:
@@ -501,7 +501,7 @@ class ConfigStore(object):
     def __setitem__(self, key, value):
         if isinstance(value, dict):
             if self.prefix:
-                for _skey, _svalue in value.iteritems():
+                for _skey, _svalue in value.items():
                     _full_key = "{}_{}_{}".format(
                         self.prefix,
                         key,
@@ -521,13 +521,13 @@ class ConfigStore(object):
 
     def __contains__(self, key):
         if self.prefix:
-            return key in self.keys()
+            return key in list(self.keys())
         else:
             return key in self.vars
 
     def get_dict(self, uppercase_keys=False):
         _dict = {}
-        for _key, _value in self.vars.iteritems():
+        for _key, _value in self.vars.items():
             if uppercase_keys:
                 _key = _key.upper()
             _dict[_key] = _value.get_value()
@@ -541,7 +541,7 @@ class ConfigStore(object):
         _adds = []
         for _src, _dst in mapping:
             _val = self[_src]
-            if type(_val) in [int, long]:
+            if type(_val) in [int, int]:
                 _obj = configfile.int_c_var
             elif type(_val) == bool:
                 _obj = configfile.bool_c_var
@@ -568,4 +568,4 @@ if __name__ == "__main__":
     print(cs.show())
     print(cs["awqe"])
     print(cs["xqe"])
-    print(cs.keys())
+    print(list(cs.keys()))

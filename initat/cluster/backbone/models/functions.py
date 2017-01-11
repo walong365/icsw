@@ -21,7 +21,7 @@
 #
 """ helper functions for ICSW models """
 
-from __future__ import unicode_literals, print_function
+
 
 import collections
 import datetime
@@ -263,12 +263,12 @@ def can_delete_obj(obj, logger=None):
     num_refs = get_related_models(obj, ignore_objs=ignore_objs, related_objects=related_objects)
 
     delete_ok = False
-    msg = u''
+    msg = ''
     if num_refs:
         if logger:
             logger.error(
                 "lock_list for {} contains {}:".format(
-                    unicode(obj),
+                    str(obj),
                     logging_tools.get_plural("entry", len(obj._lock_list))
                 )
             )
@@ -291,7 +291,7 @@ def can_delete_obj(obj, logger=None):
             self.msg = msg
             self.related_objects = related_objects
 
-        def __nonzero__(self):
+        def __bool__(self):
             return self.delete_ok
 
     return CanDeleteAnswer(delete_ok, msg, related_objects)
@@ -322,7 +322,7 @@ def get_change_reset_list(s_obj, d_obj, required_changes=None):
             "PositiveIntegerField", "BooleanField", "NullBooleanField", "ForeignKey"
         ]:
             if s_val != d_val:
-                c_list.append((_f.verbose_name, u"changed from '{!s}' to '{!s}'".format(s_val, d_val)))
+                c_list.append((_f.verbose_name, "changed from '{!s}' to '{!s}'".format(s_val, d_val)))
         # elif cur_t in ["ForeignKey"]:
         #    print "**", _f.name, s_val, d_val
         elif cur_t in ["DateTimeField", "AutoField", "FloatField", "DateField", "GenericIPAddressField"]:
@@ -360,7 +360,7 @@ class duration(object):
 
         @classmethod
         def get_display_date(cls, timepoint):
-            return u"{:02d}-{:02d}".format(timepoint.month, timepoint.day)
+            return "{:02d}-{:02d}".format(timepoint.month, timepoint.day)
 
         @classmethod
         def get_shorter_duration(cls):
@@ -380,7 +380,7 @@ class duration(object):
 
         @classmethod
         def get_display_date(cls, timepoint):
-            return u"{}-{:02d}".format(timepoint.year, timepoint.month)
+            return "{}-{:02d}".format(timepoint.year, timepoint.month)
 
         @classmethod
         def get_shorter_duration(cls):
@@ -400,7 +400,7 @@ class duration(object):
 
         @classmethod
         def get_display_date(cls, timepoint):
-            return u"{:02d}:{:02d}".format(timepoint.hour, 0)
+            return "{:02d}:{:02d}".format(timepoint.hour, 0)
 
         @classmethod
         def get_shorter_duration(cls):
@@ -421,7 +421,7 @@ class duration(object):
 
         @classmethod
         def get_display_date(cls, timepoint):
-            return u"{:02d}-{:02d}".format(timepoint.month, timepoint.day)
+            return "{:02d}-{:02d}".format(timepoint.month, timepoint.day)
 
         @classmethod
         def get_shorter_duration(cls):
@@ -441,7 +441,7 @@ class duration(object):
 
         @classmethod
         def get_display_date(cls, timepoint):
-            return u"{:04d}".format(timepoint.year)
+            return "{:04d}".format(timepoint.year)
 
         @classmethod
         def get_shorter_duration(cls):
@@ -461,7 +461,7 @@ class duration(object):
 
         @classmethod
         def get_display_date(cls, timepoint):
-            return u"{:04d}".format(timepoint.year)
+            return "{:04d}".format(timepoint.year)
 
         @classmethod
         def get_shorter_duration(cls):
@@ -490,7 +490,7 @@ def memoize_with_expiry(expiry_time=0, _cache=None, num_args=None):
         mem_args = args[:num_args]
         # frozenset is used to ensure hashability
         if kw:
-            key = mem_args, frozenset(kw.iteritems())
+            key = mem_args, frozenset(iter(kw.items()))
         else:
             key = mem_args
         if key in cache:

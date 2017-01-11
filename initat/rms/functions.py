@@ -20,9 +20,9 @@
 
 """ rms-server, helper functions """
 
-from __future__ import print_function, unicode_literals
 
-import commands
+
+import subprocess
 import time
 
 from initat.tools import logging_tools
@@ -30,7 +30,7 @@ from initat.tools import logging_tools
 
 def call_command(command, log_com=None):
     start_time = time.time()
-    stat, out = commands.getstatusoutput(command)
+    stat, out = subprocess.getstatusoutput(command)
     end_time = time.time()
     log_lines = [
         "calling '{}' took {}, result (stat {:d}) is {} ({})".format(

@@ -19,7 +19,7 @@
 #
 """ inject addons in already compiled main.html """
 
-from __future__ import unicode_literals, print_function
+
 
 import codecs
 import json
@@ -114,13 +114,13 @@ class FileModify(object):
                         # ignore icon location
                         pass
                     else:
-                        for _key, _value in _xml.attrib.iteritems():
+                        for _key, _value in _xml.attrib.items():
                             if _key in {"href", "src"}:
                                 _new_dict[_key] = "{}{}".format(
                                     "static/" if "/static/" in _value else "",
                                     os.path.basename(_value)
                                 )
-                        for _key, _value in _new_dict.iteritems():
+                        for _key, _value in _new_dict.items():
                             _xml.attrib[_key] = _value
                         line = etree.tostring(_xml, method="html")
                 if line.lower().count("<body>"):
@@ -145,7 +145,7 @@ class FileModify(object):
             # print("***", el.tag)
             # build local dict
             r_v = {}
-            for _attr_name in el.attrib.iterkeys():
+            for _attr_name in el.attrib.keys():
                 if _attr_name.count("_") == 1:
                     _name, _type = _attr_name.split("_")
                 else:
@@ -245,7 +245,7 @@ class FileModify(object):
         # sys.exit(0)
         # check for validity
         overall_dict = {}
-        for _layout, _total_xml in res_dict.iteritems():
+        for _layout, _total_xml in res_dict.items():
             try:
                 _my_relax.validate(_total_xml)
             except:
@@ -320,7 +320,7 @@ class FileModify(object):
                         menu_paths = [
                              ("frontend", os.path.join("config", "config.xml"))
                          ] + [
-                            (_key, _value["config"]) for _key, _value in _v_dict["ICSW_ADDITIONAL_APPS"].iteritems()
+                            (_key, _value["config"]) for _key, _value in _v_dict["ICSW_ADDITIONAL_APPS"].items()
                         ]
                         menu_json_lines = self.read_configs(menu_paths)
                         for _line in menu_json_lines:

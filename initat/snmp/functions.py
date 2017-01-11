@@ -31,7 +31,7 @@ def simplify_dict(in_dict, start_tuple, sub_key_filter=[]):
     # processing
     _slist = list(start_tuple)
     # get all valid keys
-    _ref_keys = set([_key for _key in in_dict.iterkeys() if list(_key)[:len(start_tuple)] == _slist])
+    _ref_keys = set([_key for _key in in_dict.keys() if list(_key)[:len(start_tuple)] == _slist])
     # the last entry is the reference idx
     _result = {}
     if sub_key_filter:
@@ -62,7 +62,7 @@ def reorder_dict(in_dict):
     # take in dict an reorder it using the following method:
     # in_dict: {key:value} where key has the form (idx, key[::])
     r_dict = {}
-    for key, value in in_dict.iteritems():
+    for key, value in in_dict.items():
         r_dict.setdefault(key[1:], {})[key[0]] = value
     return r_dict
 
@@ -72,17 +72,17 @@ def flatten_dict(in_dict):
     while _changed:
         _changed = False
         if len(in_dict) == 1:
-            in_dict = in_dict.values()[0]
+            in_dict = list(in_dict.values())[0]
         _r_dict = {}
-        for _key, _value in in_dict.iteritems():
+        for _key, _value in in_dict.items():
             if type(_value) == dict:
                 _changed = True
-                if type(_key) in [int, long]:
+                if type(_key) in [int, int]:
                     _key = [_key]
                 else:
                     _key = list(_key)
-                for _s_key, _s_value in _value.iteritems():
-                    if type(_s_key) in [int, long]:
+                for _s_key, _s_value in _value.items():
+                    if type(_s_key) in [int, int]:
                         _s_key = _key + [_s_key]
                     else:
                         _s_key = _key + list(_s_key)

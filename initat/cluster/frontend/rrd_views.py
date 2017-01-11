@@ -22,7 +22,7 @@
 
 """ RRD views """
 
-from __future__ import print_function, unicode_literals
+
 
 import datetime
 import os
@@ -112,8 +112,8 @@ class graph_rrds(View):
             E.debug_mode("1" if settings.DEBUG else "0"),
             # graph_setting is jsonified dict
             E.graph_setting(_post["graph_setting"]),
-            E.start_time(unicode(start_time)),
-            E.end_time(unicode(end_time)),
+            E.start_time(str(start_time)),
+            E.end_time(str(end_time)),
             E.job_mode(_post.get("job_mode", "none")),
             E.selected_job(_post.get("selected_job", "0")),
             E.ordering(_post.get("ordering", "")),

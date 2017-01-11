@@ -21,7 +21,7 @@
 #
 """ permission decorated for views """
 
-from __future__ import unicode_literals, print_function
+
 
 import logging
 
@@ -56,7 +56,7 @@ class permission_required_mixin(object):
             if not request.user.has_object_perms(self.all_required_permissions):
                 logger.error(
                     "user {} has not the required permissions {}".format(
-                        unicode(request.user),
+                        str(request.user),
                         str(self.all_required_permissions),
                     )
                 )
@@ -71,7 +71,7 @@ class permission_required_mixin(object):
             if not request.user.has_any_object_perms(self.any_required_permissions):
                 logger.error(
                     "user {} has not any of the required permissions {}".format(
-                        unicode(request.user),
+                        str(request.user),
                         str(self.any_required_permissions),
                     )
                 )

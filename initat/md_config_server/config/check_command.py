@@ -19,7 +19,7 @@
 #
 """ config part of md-config-server """
 
-from __future__ import unicode_literals, print_function
+
 
 import time
 
@@ -109,7 +109,7 @@ class CheckCommand(object):
                 else:
                     # only default_value
                     value = self.__default_values[arg_name]
-            if type(value) in [int, long]:
+            if type(value) in [int, int]:
                 out_list.append("{:d}".format(value))
             else:
                 out_list.append(value)
@@ -163,4 +163,4 @@ class CheckCommand(object):
         return (self.__arg_lut, self.__arg_list)
 
     def __repr__(self):
-        return u"{} [{}]".format(self.__name, self.command_line)
+        return "{} [{}]".format(self.__name, self.command_line)

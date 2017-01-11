@@ -17,7 +17,7 @@
 #
 """ cluster-server, backup process """
 
-from __future__ import unicode_literals, print_function
+
 
 import bz2
 import datetime
@@ -194,7 +194,7 @@ class BackupProcess(threading_tools.process_obj):
                             else:
                                 _passcontent = None
                             file(_pgpassfile, "w").write("{HOST}:*:{NAME}:{USER}:{PASSWORD}\n".format(**_def_db))
-                            os.chmod(_pgpassfile, 0600)
+                            os.chmod(_pgpassfile, 0o600)
                         try:
                             _output = subprocess.check_output(cmdline.split(), stderr=subprocess.PIPE)
                         except subprocess.CalledProcessError:
@@ -217,7 +217,7 @@ class BackupProcess(threading_tools.process_obj):
                         if _pgpass:
                             if _passcontent:
                                 file(_pgpassfile, "w").write(_passcontent)
-                                os.chmod(_pgpassfile, 0600)
+                                os.chmod(_pgpassfile, 0o600)
                             else:
                                 os.unlink(_pgpassfile)
             else:

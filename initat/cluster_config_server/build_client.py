@@ -68,7 +68,7 @@ class build_client(object):
         self.__error_dict = {}
 
     def set_kwargs(self, **kwargs):
-        new_keys = [key for key in kwargs.keys() if key not in ["name", "pk"]]
+        new_keys = [key for key in list(kwargs.keys()) if key not in ["name", "pk"]]
         self.set_keys = sorted(self.set_keys + new_keys)
         for key in new_keys:
             setattr(self, key, kwargs[key])
@@ -317,7 +317,7 @@ class build_client(object):
         if sum(num_removed.values()):
             self.log(
                 "removed {} for key '{}'".format(
-                    " and ".join([logging_tools.get_plural(key, value) for key, value in num_removed.iteritems()]),
+                    " and ".join([logging_tools.get_plural(key, value) for key, value in num_removed.items()]),
                     prod_key
                 )
             )

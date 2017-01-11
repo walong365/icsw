@@ -19,7 +19,7 @@
 #
 """ special ovirt call """
 
-from __future__ import unicode_literals, print_function
+
 
 import json
 from lxml import etree

@@ -19,4 +19,4 @@
 #
 """ import wrapper """
 
-from base import SNMPSink
+from .base import SNMPSink

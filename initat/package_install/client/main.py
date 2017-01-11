@@ -53,7 +53,7 @@ def main():
         try:
             file(ps_file_name, "w").write("localhost\n")
         except:
-            print("error writing to {}: {}".format(ps_file_name, process_tools.get_except_info()))
+            print(("error writing to {}: {}".format(ps_file_name, process_tools.get_except_info())))
             ret_code = 5
         else:
             pass
@@ -65,7 +65,7 @@ def main():
             ]
         )
     except:
-        print("error reading from {}: {}".format(ps_file_name, process_tools.get_except_info()))
+        print(("error reading from {}: {}".format(ps_file_name, process_tools.get_except_info())))
         ret_code = 5
     if not ret_code:
         global_config.add_config_entries([("DEBIAN", configfile.bool_c_var(os.path.isfile("/etc/debian_version")))])

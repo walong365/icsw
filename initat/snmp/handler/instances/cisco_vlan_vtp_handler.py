@@ -42,25 +42,25 @@ class handler(SNMPHandler):
     def update(self, dev, scheme, result_dict, oid_list, flags):
         _vlan_dict = simplify_dict(result_dict[VLAN_BASE], (1, 3, 1, 1))
         # rewrite (1, x) keys to x
-        _vlan_dict = {key[1]: value for key, value in _vlan_dict.iteritems()}
+        _vlan_dict = {key[1]: value for key, value in _vlan_dict.items()}
         # pprint.pprint(_vlan_dict)
         _port_dict = simplify_dict(result_dict[VLAN_BASE], (1, 6, 1, 1))
-        _vlan_ids = _vlan_dict.keys()
+        _vlan_ids = list(_vlan_dict.keys())
         # rewrite hexstrings
         for _port in sorted(_port_dict):
             _pd = _port_dict[_port]
-            for _key, _value in _pd.iteritems():
+            for _key, _value in _pd.items():
                 if _key in [4, 10, 17, 18, 19]:
                     if _key == 4:
                         allowed_vlans = [_id for _id in _vlan_ids if ord(_value[int(_id / 8)]) & (_id & 7)]
-                        print(
+                        print((
                             "{:<6d} ts={:d} vlan={:d} {}".format(
                                 _port,
                                 _pd[14],
                                 _pd[5],
                                 allowed_vlans,
                             )
-                        )
+                        ))
                         # print _port, _key, _port_dict[_port][5], allowed_vlans, "".join(["{:02x}".format(ord(_v)) for _v in _value[:4]])
         # pprint.pprint(_port_dict)
         # if _added:

@@ -17,7 +17,7 @@
 #
 """ knurr schemes for SNMP relayer """
 
-from __future__ import print_function, unicode_literals
+
 
 from initat.host_monitoring import limits
 from initat.snmp.snmp_struct import snmp_oid
@@ -46,7 +46,7 @@ class temperature_knurr_scheme(SNMPRelayScheme):
             "inlet": 2
         }[sensor_type]
         new_dict = self._simplify_keys(
-            {key[1]: float(value) / 10. for key, value in self.snmp_dict.values()[0].iteritems() if key[0] == lut_id}
+            {key[1]: float(value) / 10. for key, value in list(self.snmp_dict.values())[0].iteritems() if key[0] == lut_id}
         )
         warn_val, crit_val = (new_dict[5], new_dict[6])
         cur_val = new_dict[3]
@@ -70,7 +70,7 @@ class humidity_knurr_scheme(SNMPRelayScheme):
 
     def process_return(self):
         new_dict = self._simplify_keys(
-            {key[0]: float(value) / 10. for key, value in self.snmp_dict.values()[0].iteritems()}
+            {key[0]: float(value) / 10. for key, value in list(self.snmp_dict.values())[0].iteritems()}
         )
         low_crit, high_crit = (new_dict[3], new_dict[4])
         cur_val = new_dict[2]
@@ -89,7 +89,7 @@ class environment_knurr_base(object):
     def process_return(self):
         new_dict = self._simplify_keys(
             {
-                key[0]: int(value) for key, value in self.snmp_dict.values()[0].iteritems()
+                key[0]: int(value) for key, value in list(self.snmp_dict.values())[0].iteritems()
             }
         )
         del new_dict[4]

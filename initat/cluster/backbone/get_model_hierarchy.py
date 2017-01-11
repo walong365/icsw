@@ -88,12 +88,12 @@ def sort_dependencies(app_list):
 
 def main():
     app_dict = SortedDict([(app, None) for app in get_apps()])
-    mod_list = sort_dependencies(app_dict.items())
+    mod_list = sort_dependencies(list(app_dict.items()))
     for mod in mod_list:
         if mod._meta.app_label == "backbone":
-            print mod._meta.db_table
-    print
-    print " ".join([mod._meta.db_table for mod in mod_list if mod._meta.app_label == "backbone"])
+            print(mod._meta.db_table)
+    print()
+    print(" ".join([mod._meta.db_table for mod in mod_list if mod._meta.app_label == "backbone"]))
 
 
 if __name__ == "__main__":

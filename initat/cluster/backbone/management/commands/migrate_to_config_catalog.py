@@ -21,7 +21,7 @@
 #
 """ migrate to configuration catalogs """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.core.management.base import BaseCommand
 
@@ -36,7 +36,7 @@ class Command(BaseCommand):
         num_cc = config_catalog.objects.all().count()
         if not num_cc:
             def_cc = config_catalog.create_local_catalog()
-            print("created config_catalog '{}'".format(unicode(def_cc)))
+            print("created config_catalog '{}'".format(str(def_cc)))
         else:
             print("{} already present".format(logging_tools.get_plural("config catalog", num_cc)))
             def_cc = config_catalog.objects.get(system_catalog=True)
@@ -48,5 +48,5 @@ class Command(BaseCommand):
                 try:
                     conf.save()
                 except:
-                    print("Error migrating {}".format(unicode(conf)))
+                    print("Error migrating {}".format(str(conf)))
         print("migrated {:d} configs".format(_conv))

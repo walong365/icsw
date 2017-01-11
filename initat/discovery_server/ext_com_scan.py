@@ -19,7 +19,7 @@
 #
 """ discovery-server, base scan functions """
 
-from __future__ import unicode_literals, print_function
+
 
 import collections
 import datetime
@@ -55,8 +55,8 @@ SERVER_RESULT_RUN_RESULT = {
     server_command.SRV_REPLY_STATE_UNSET: RunResult.UNKNOWN,
 }
 
-HM_CMD_TUPLES = [(asset_type, hm_command, 60) for asset_type, hm_command in ASSETTYPE_HM_COMMAND_MAP.items()]
-NRPE_CMD_TUPLES = ASSETTYPE_NRPE_COMMAND_MAP.items()
+HM_CMD_TUPLES = [(asset_type, hm_command, 60) for asset_type, hm_command in list(ASSETTYPE_HM_COMMAND_MAP.items())]
+NRPE_CMD_TUPLES = list(ASSETTYPE_NRPE_COMMAND_MAP.items())
 
 
 class ScanBatch(object):
@@ -83,7 +83,7 @@ class ScanBatch(object):
             self.__class__.process.get_route_to_devices([self.device])
 
         if not self.device.target_ip:
-            self.log("no valid IP found for {}".format(unicode(self.device)), logging_tools.LOG_LEVEL_ERROR)
+            self.log("no valid IP found for {}".format(str(self.device)), logging_tools.LOG_LEVEL_ERROR)
             self.start_result = ResultNode(error="no valid IP found")
             self.finish()
         # NOTE: set self.start_result in subclass accordingly
@@ -120,7 +120,7 @@ class ScanBatch(object):
     @classmethod
     def g_check_ext_com(cls):
         # iterate on copy since function calls can change the dict
-        for item in list(cls._batch_lut.itervalues()):
+        for item in list(cls._batch_lut.values()):
             item.check_ext_com()
 
 
@@ -249,7 +249,7 @@ class WmiScanBatch(ScanBatch):
 
         self._ext_coms = {}
 
-        for query_structure in query_structures.iteritems():
+        for query_structure in query_structures.items():
             cmd = WmiUtils.get_wmic_cmd(
                 username=self.username,
                 password=self.password,
@@ -266,12 +266,12 @@ class WmiScanBatch(ScanBatch):
         self.start_result = ResultNode(ok="started base_scan")
 
     def check_ext_com(self):
-        if all(ext_com.finished() is not None for ext_com in self._ext_coms.itervalues()):
+        if all(ext_com.finished() is not None for ext_com in self._ext_coms.values()):
 
-            outputs = {ext_com_key: ext_com.communicate() for ext_com_key, ext_com in self._ext_coms.iteritems()}
+            outputs = {ext_com_key: ext_com.communicate() for ext_com_key, ext_com in self._ext_coms.items()}
 
             any_err = False
-            for ext_com_key, ext_com in self._ext_coms.iteritems():
+            for ext_com_key, ext_com in self._ext_coms.items():
                 if ext_com.result != 0:
                     any_err = True
                     self.log("Error querying {}, output:".format(ext_com_key), logging_tools.LOG_LEVEL_ERROR)
@@ -567,14 +567,14 @@ class PlannedRunState(object):
         self.zmq_conn_str = conn_str
         self.zmq_command = server_command.srv_command(command=self.ext_com)
         self.log(
-            u"connection_str is {} ({})".format(
+            "connection_str is {} ({})".format(
                 self.zmq_conn_str,
                 self.ext_com,
             )
         )
 
     def get_send_parameters(self):
-        return self.run_idx, self.zmq_conn_str, unicode(self.zmq_command)
+        return self.run_idx, self.zmq_conn_str, str(self.zmq_command)
 
     def start(self):
         self.started = True
@@ -680,7 +680,7 @@ class PlannedRunsForDevice(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.disp.log(
             "[PR] [{}] {}".format(
-                unicode(self.device),
+                str(self.device),
                 what
             ),
             log_level
@@ -835,7 +835,7 @@ class Dispatcher(object):
                 schedule_item.delete()
 
         # step 1: init commands
-        for _dev_idx, prfd_list in self.__device_planned_runs.iteritems():
+        for _dev_idx, prfd_list in self.__device_planned_runs.items():
             for prfd in prfd_list:
                 if prfd.ip:
                     for prs in prfd.planned_runs:
@@ -865,7 +865,7 @@ class Dispatcher(object):
         # check for finished ext coms
         cur_time = timezone.now()
         _to_remove = set()
-        for key, prd in self.__ext_bg_lut.iteritems():
+        for key, prd in self.__ext_bg_lut.items():
             _ext_com_state = prd.ext_com.finished()
             if _ext_com_state is not None:
                 _output = prd.ext_com.communicate()
@@ -893,7 +893,7 @@ class Dispatcher(object):
         # check for finished hm connections
         cur_time = timezone.now()
         _to_remove = set()
-        for key, planned_run_state in self.__ext_con_lut.iteritems():
+        for key, planned_run_state in self.__ext_con_lut.items():
             diff_time = (cur_time - planned_run_state.run_db_obj.run_start_time).seconds
 
             if diff_time > planned_run_state.timeout:
@@ -907,7 +907,7 @@ class Dispatcher(object):
         self._check_for_finished_runs()
 
         _now = timezone.now()
-        for run_index, host_monitoring_command in HostMonitoringCommand.host_monitoring_commands.items():
+        for run_index, host_monitoring_command in list(HostMonitoringCommand.host_monitoring_commands.items()):
             if _now > host_monitoring_command.timeout_date:
                 host_monitoring_command.handle()
                 self.discovery_process.send_pool_message("host_monitoring_command_timeout_handler", run_index)
@@ -923,7 +923,7 @@ class Dispatcher(object):
     def _check_for_finished_runs(self):
         # remove PlannedRuns which should be deleted
         _removed = 0
-        for _dev_idx, pdrf_list in self.__device_planned_runs.iteritems():
+        for _dev_idx, pdrf_list in self.__device_planned_runs.items():
             _keep = []
             for entry in pdrf_list:
                 if not entry.to_delete:
@@ -1007,7 +1007,7 @@ class Dispatcher(object):
                     self.__device_planned_runs[_dev.idx] = []
 
                 self.discovery_process.get_route_to_devices([_dev])
-                self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
+                self.log("Address of device {} is {}".format(str(_dev), _dev.target_ip))
                 new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip, _user)
                 new_pr.nrpe_port = device_variable.objects.get_device_variable_value(_dev, "NRPE_PORT", DEFAULT_NRPE_PORT)
 
@@ -1020,7 +1020,7 @@ class Dispatcher(object):
                 else:
                     self.log(
                         "Skipping non-capable device {}".format(
-                            unicode(_device)
+                            str(_device)
                         ),
                         logging_tools.LOG_LEVEL_ERROR
                     )
@@ -1051,7 +1051,7 @@ class Dispatcher(object):
             "send_host_monitor_command",
             hm_command.run_index,
             conn_str,
-            unicode(new_srv_com)
+            str(new_srv_com)
         )
 
     def network_scan_schedule_handler_callback(self, callback_dict, result):

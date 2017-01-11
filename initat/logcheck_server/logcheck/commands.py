@@ -100,7 +100,7 @@ class MonCommand(object):
             )
 
     def send_to_remote_server(self, srv_type, srv_com):
-        MonCommand.machine_class.srv_proc.send_to_remote_server(srv_type, unicode(srv_com))
+        MonCommand.machine_class.srv_proc.send_to_remote_server(srv_type, str(srv_com))
 
     def parse(self, srv_com):
         if "arg_list" in srv_com:
@@ -157,19 +157,19 @@ class LogRateCommand(MonCommand):
             _res = {
                 _key: server_command.nag_state_to_srv_reply(
                     limits.check_ceiling(_rates[_key], args.warn, args.crit)
-                ) for _key in _rates.keys()
+                ) for _key in list(_rates.keys())
             }
             ret_state = max(_res.values())
-            _warn = {key for key, value in _res.iteritems() if value == server_command.SRV_REPLY_STATE_WARN}
-            _crit = {key for key, value in _res.iteritems() if value == server_command.SRV_REPLY_STATE_ERROR}
+            _warn = {key for key, value in _res.items() if value == server_command.SRV_REPLY_STATE_WARN}
+            _crit = {key for key, value in _res.items() if value == server_command.SRV_REPLY_STATE_ERROR}
             _rf = [
                 "rates: {}{}{}".format(
                     _dev.filewatcher.get_rate_info(_rates),
                     ", warning: {}".format(
-                        ", ".join([logging_tools.get_diff_time_str(_val, long=False) for _val in sorted(_warn)])
+                        ", ".join([logging_tools.get_diff_time_str(_val, int=False) for _val in sorted(_warn)])
                     ) if _warn else "",
                     ", critical: {}".format(
-                        ", ".join([logging_tools.get_diff_time_str(_val, long=False) for _val in sorted(_crit)])
+                        ", ".join([logging_tools.get_diff_time_str(_val, int=False) for _val in sorted(_crit)])
                     ) if _crit else "",
                 )
             ]
@@ -179,7 +179,7 @@ class LogRateCommand(MonCommand):
             )
         else:
             srv_com.set_result(
-                "no rates found for {}".format(unicode(_dev.device)),
+                "no rates found for {}".format(str(_dev.device)),
                 server_command.SRV_REPLY_STATE_WARN,
             )
 

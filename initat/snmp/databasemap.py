@@ -54,10 +54,10 @@ class Schemes(object):
         self.__log_com("[Sc] {}".format(what), log_level)
 
     def all_schemes(self):
-        return self.__scheme_dict.itervalues()
+        return iter(self.__scheme_dict.values())
 
     def all_tl_oids(self):
-        return sum([list(_sc.snmp_scheme_tl_oid_set.all()) for _sc in self.__scheme_dict.itervalues()], [])
+        return sum([list(_sc.snmp_scheme_tl_oid_set.all()) for _sc in self.__scheme_dict.values()], [])
 
     def get_scheme(self, key):
         return self.__scheme_dict[key]
@@ -68,9 +68,9 @@ class Schemes(object):
     def filter_results(self, in_dict, oids):
         # return a dict where only the given oids are present
         # and the top level keys are only strings
-        _oid_lut = {oid_to_str(oid): oid for oid in in_dict.iterkeys()}
+        _oid_lut = {oid_to_str(oid): oid for oid in in_dict.keys()}
         oids = [oid_to_str(oid) for oid in oids]
         return {oid: in_dict[_oid_lut[oid]] for oid in oids if oid in _oid_lut}
 
     def get_handlers(self, scheme_names):
-        print "gh", scheme_names
+        print("gh", scheme_names)

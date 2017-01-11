@@ -23,7 +23,7 @@
 """ host-monitoring, inotify process """
 
 
-from __future__ import unicode_literals, print_function
+
 
 import fnmatch
 import os
@@ -456,7 +456,7 @@ class HMInotifyProcess(threading_tools.process_obj):
 
     def _fw_timeout(self):
         remove_ids = []
-        for fw_id, fw_struct in self.__file_watcher_dict.iteritems():
+        for fw_id, fw_struct in self.__file_watcher_dict.items():
             if not fw_struct.inotify():
                 # huh ? FIXME, argument missing
                 fw_struct.update()
@@ -501,10 +501,10 @@ class HMInotifyProcess(threading_tools.process_obj):
             "got '{}', {}: {}".format(
                 in_com,
                 logging_tools.get_plural("argument", len(args)),
-                ", ".join(["{}='{}' ({})".format(key, value, type(value)) for key, value in args.iteritems()])
+                ", ".join(["{}='{}' ({})".format(key, value, type(value)) for key, value in args.items()])
             )
         )
-        args = {key.replace("-", "_"): value for key, value in args.iteritems()}
+        args = {key.replace("-", "_"): value for key, value in args.items()}
         found_keys = set(args.keys())
         needed_keys = {
             "register_file_watch": {
@@ -536,7 +536,7 @@ class HMInotifyProcess(threading_tools.process_obj):
                 "command {}, keys missing: {}".format(in_com, ", ".join(needed_keys - found_keys)),
                 server_command.SRV_REPLY_STATE_ERROR
             )
-        self.send_pool_message("callback_result", src_id, unicode(srv_com))
+        self.send_pool_message("callback_result", src_id, str(srv_com))
 
     def _register_file_watch(self, cur_com, kwargs):
         new_fw = HMFileWatcher(self, **kwargs)
@@ -558,7 +558,7 @@ class HMInotifyProcess(threading_tools.process_obj):
                 self.log(
                     "cannot remove HMFileWatcher entry with id {} (present: {})".format(
                         fw_id,
-                        self.__file_watcher_dict and ", ".join(self.__file_watcher_dict.keys()) or "none"
+                        self.__file_watcher_dict and ", ".join(list(self.__file_watcher_dict.keys())) or "none"
                     ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
@@ -587,10 +587,10 @@ class HMInotifyProcess(threading_tools.process_obj):
             send_socket.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
             self.log("init connection to {}".format(targ_str))
             self.__target_dict[targ_str] = send_socket
-        self.__target_dict[targ_str].send_unicode(unicode(srv_com))
+        self.__target_dict[targ_str].send_unicode(str(srv_com))
 
     def loop_post(self):
-        for targ_str, targ_sock in self.__target_dict.iteritems():
+        for targ_str, targ_sock in self.__target_dict.items():
             self.log("closing socket to {}".format(targ_str))
             targ_sock.close()
         self.__log_template.close()

@@ -19,7 +19,7 @@
 #
 """ monitoring for nsX.init.at """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 
@@ -52,7 +52,7 @@ class Monitoring(object):
                     Q(domain_tree_node__full_name=_ns.name.split(".", 1)[1])
                 )
             )
-        print("Nameservers: {}".format(", ".join([unicode(_ns) for _ns in self.ns])))
+        print("Nameservers: {}".format(", ".join([str(_ns) for _ns in self.ns])))
 
     def run(self):
         from initat.cluster.backbone.models import config, device_config, mon_check_command

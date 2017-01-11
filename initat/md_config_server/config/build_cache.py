@@ -19,7 +19,7 @@
 #
 """ cache of various settings and luts for md-config-server """
 
-from __future__ import unicode_literals, print_function
+
 
 import time
 
@@ -172,7 +172,7 @@ class BuildCache(object):
         # global luts
         self.mcc_lut_3 = {_check.pk: _check for _check in mon_check_command.objects.all()}
         # add dummy entries
-        for _value in self.mcc_lut_3.itervalues():
+        for _value in self.mcc_lut_3.values():
             _value.mccs_id = None
             _value.check_command_pk = _value.pk
         self.mcc_lut = {
@@ -215,7 +215,7 @@ class BuildCache(object):
                 "monhosttrace_set"
             )
         }
-        for _host in self.all_hosts_dict.itervalues():
+        for _host in self.all_hosts_dict.values():
             _host.reachable = True
         # print(_res)
         # traces in database
@@ -318,7 +318,7 @@ class BuildCache(object):
         for _value in list(mccs_dict.values()):
             mccs_dict[_value.name] = _value
 
-        for value in self.global_config["command"].values():
+        for value in list(self.global_config["command"].values()):
             if value.mccs_id:
                 # add links back to check_command_names
                 mccs_dict[value.mccs_id].check_command_name = value.name
@@ -332,7 +332,7 @@ class BuildCache(object):
 
     def feed_unreachable_pks(self, unreachable_pks):
         # set reachable flag
-        for key, value in self.all_hosts_dict.iteritems():
+        for key, value in self.all_hosts_dict.items():
             value.reachable = value.pk not in unreachable_pks
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -399,7 +399,7 @@ class BuildCache(object):
                     self.log(
                         "error saving trace {} for {}: {}".format(
                             str(traces),
-                            unicode(_match_trace),
+                            str(_match_trace),
                             process_tools.get_except_info(),
                         ),
                         logging_tools.LOG_LEVEL_ERROR

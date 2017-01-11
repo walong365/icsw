@@ -102,7 +102,7 @@ class hpl_result(object):
         if self.__results:
             self.__results[-1].add_pass_fail(m_obj)
         else:
-            print "Got fail/pass line without previous result"
+            print("Got fail/pass line without previous result")
 
     def __len__(self):
         return len(self.__results)
@@ -177,39 +177,39 @@ class hpl_i_loader(object):
 
     def _load_files(self):
         if not self.__file_names:
-            print "Need some files to interpret"
+            print("Need some files to interpret")
         else:
             for f_name in self.__file_names:
                 try:
                     act_file = hpl_file(f_name, self.__opts)
                 except:
-                    print(
+                    print((
                         "error reading file {}: {}".format(
                             f_name,
                             process_tools.get_except_info()
                         )
-                    )
+                    ))
                 else:
                     if self.__opts.merge_same_hosts:
-                        nn_dict = dict([(value.node_name, value) for value in self.__file_dict.itervalues()])
-                        if act_file.node_name in nn_dict.keys():
+                        nn_dict = dict([(value.node_name, value) for value in self.__file_dict.values()])
+                        if act_file.node_name in list(nn_dict.keys()):
                             nn_dict[act_file.node_name].add_file(f_name)
                         else:
                             self.__file_dict[f_name] = act_file
                     else:
                         self.__file_dict[f_name] = act_file
             if self.__opts.verbose:
-                print(
+                print((
                     "loaded {} from list with {}".format(
-                        logging_tools.get_plural("file", len(self.__file_dict.keys())),
+                        logging_tools.get_plural("file", len(list(self.__file_dict.keys()))),
                         logging_tools.get_plural("file_name", len(self.__file_names)),
                     )
-                )
+                ))
 
     def show_info(self):
-        for hpl_f in self.__file_dict.itervalues():
+        for hpl_f in self.__file_dict.values():
             if hpl_f.get_min_result() or self.__opts.verbose:
-                print hpl_f.get_info()
+                print(hpl_f.get_info())
 
 
 def main():

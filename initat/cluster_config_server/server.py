@@ -102,7 +102,7 @@ class server_process(server_mixins.ICSWBasePool):
         config_control.close_clients()
 
     def loop_post(self):
-        for open_sock in self.socket_dict.itervalues():
+        for open_sock in self.socket_dict.values():
             open_sock.close()
         self.CC.close()
 
@@ -192,12 +192,12 @@ class server_process(server_mixins.ICSWBasePool):
                     srv_com.set_result(
                         "0MQ_ID is {}".format(self.bind_id),
                     )
-                    self._send_simple_return(c_uid, unicode(srv_com))
+                    self._send_simple_return(c_uid, str(srv_com))
                 elif cur_com == "status":
                     srv_com.set_result(
                         "up and running"
                     )
-                    self._send_simple_return(c_uid, unicode(srv_com))
+                    self._send_simple_return(c_uid, str(srv_com))
                 else:
                     if c_uid.endswith("webfrontend"):
                         # special command from webfrontend, FIXME
@@ -234,7 +234,7 @@ class server_process(server_mixins.ICSWBasePool):
             "got command {} for {}: {}".format(
                 cur_com,
                 logging_tools.get_plural("device", len(device_list)),
-                ", ".join([unicode(cur_dev) for cur_dev in device_list])
+                ", ".join([str(cur_dev) for cur_dev in device_list])
             )
         )
         dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device_list])
@@ -243,7 +243,7 @@ class server_process(server_mixins.ICSWBasePool):
             cur_dev.attrib["command"] = cur_com
             cur_dev.attrib["internal_state"] = "pre_init"
             cur_dev.attrib["run_idx"] = "%d" % (self.__run_idx)
-            cur_dev.text = unicode(dev_dict[int(cur_dev.attrib["pk"])])
+            cur_dev.text = str(dev_dict[int(cur_dev.attrib["pk"])])
             cur_dev.attrib["short_name"] = dev_dict[int(cur_dev.attrib["pk"])].name
             cur_dev.attrib["name"] = dev_dict[int(cur_dev.attrib["pk"])].full_name
         self._handle_command(self.__run_idx)
@@ -281,14 +281,14 @@ class server_process(server_mixins.ICSWBasePool):
 
     def _send_return(self, cur_com):
         if cur_com["command"].attrib["source"] == "external":
-            self._send_simple_return(cur_com["command"].attrib["uuid"], unicode(cur_com))
+            self._send_simple_return(cur_com["command"].attrib["uuid"], str(cur_com))
         else:
-            config_control.complex_result(int(cur_com["command"].attrib["uuid"]), unicode(cur_com))
+            config_control.complex_result(int(cur_com["command"].attrib["uuid"]), str(cur_com))
 
     def _send_simple_return(self, zmq_id, send_str):
         send_sock = self.socket_dict["router"]
         send_sock.send_unicode(zmq_id, zmq.SNDMORE)  # @UndefinedVariable
-        send_sock.send_unicode(unicode(send_str))
+        send_sock.send_unicode(str(send_str))
 
     def _client_update(self, *args, **kwargs):
         _src_proc, _src_id, upd_dict = args
@@ -296,10 +296,10 @@ class server_process(server_mixins.ICSWBasePool):
         if run_idx in self.__pending_commands:
             cur_com = self.__pending_commands[run_idx]
             cur_dev = cur_com.xpath(".//ns:device[@name='{}']".format(upd_dict["name"]), smart_strings=False)[0]
-            for key, value in upd_dict.iteritems():
+            for key, value in upd_dict.items():
                 if key.endswith("_dict"):
                     new_dict = E.info_dict()
-                    for s_key, s_value in value.iteritems():
+                    for s_key, s_value in value.items():
                         # very hackish, fixme
                         new_dict.append(E.entry("\n".join(s_value), key=s_key))
                     cur_dev.append(new_dict)
@@ -320,7 +320,7 @@ class server_process(server_mixins.ICSWBasePool):
                             parent_value.append(E.var(value=s_value, key=key_parts[1]))
                     cur_dev.append(new_tl)
                 else:
-                    if type(value) in [int, long]:
+                    if type(value) in [int, int]:
                         cur_dev.attrib[key] = "%d" % (value)
                     else:
                         cur_dev.attrib[key] = value

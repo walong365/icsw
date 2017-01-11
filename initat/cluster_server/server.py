@@ -17,7 +17,7 @@
 #
 """ cluster-server, server process """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 import time
@@ -144,7 +144,7 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
-            self.log(u" - clf: [{:d}] {}".format(log_level, line))
+            self.log(" - clf: [{:d}] {}".format(log_level, line))
         conf_info = global_config.get_config_info()
         self.log("Found {:d} valid config-lines:".format(len(conf_info)))
         for conf in conf_info:
@@ -184,17 +184,17 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
         if dev_r.device_dict:
             self.log(
                 " - i am also host for {}: {}".format(
-                    logging_tools.get_plural("virtual device", len(dev_r.device_dict.keys())),
+                    logging_tools.get_plural("virtual device", len(list(dev_r.device_dict.keys()))),
                     ", ".join(
                         sorted(
                             [
-                                cur_dev.name for cur_dev in dev_r.device_dict.itervalues()
+                                cur_dev.name for cur_dev in dev_r.device_dict.values()
                             ]
                         )
                     )
                 )
             )
-            for cur_dev in dev_r.device_dict.itervalues():
+            for cur_dev in dev_r.device_dict.values():
                 cluster_location.db_device_variable(cur_dev, "is_virtual", description="Flag set for Virtual Machines", value=1)
 
     def loop_end(self):
@@ -234,7 +234,7 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
             srv_com = server_command.srv_command(source=data[1])
             if self._process_command(srv_com):
                 zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
-                zmq_sock.send_unicode(unicode(srv_com))
+                zmq_sock.send_unicode(str(srv_com))
         else:
             self.log(
                 "data stream has wrong length ({}) != 2".format(len(data)),
@@ -324,7 +324,7 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
                     server_command.SRV_REPLY_STATE_CRITICAL
                 )
             self.log(
-                u"result for {} was ({:d}) {}".format(
+                "result for {} was ({:d}) {}".format(
                     com_name,
                     int(srv_com["result"].attrib["state"]),
                     srv_com["result"].attrib["reply"]

@@ -73,7 +73,7 @@ class SNMPBatch(object):
         return not self.__timed_out and not self.__other_errors
 
     def oid_pretty_print(self, oids):
-        return ";".join([unicode(oid) for oid in oids])
+        return ";".join([str(oid) for oid in oids])
 
     def add_error(self, err_str):
         self.__error_list.append(err_str)
@@ -98,7 +98,7 @@ class SNMPBatch(object):
                         self.log("bulk-walk tables test: done")
                     for _head in header_list:
                         if _head.as_tuple() not in self.__snmp_dict:
-                            self.add_error("oid {} gave no results".format(unicode(_head)))
+                            self.add_error("oid {} gave no results".format(str(_head)))
                 elif key == "S":
                     # set value, header_list is now a list of (mib, value) tuples
                     if self.__verbose > 1:

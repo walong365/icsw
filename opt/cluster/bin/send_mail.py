@@ -23,7 +23,7 @@
 #
 """ thin wrapper for old send_mail.py, calls icsw user mail """
 
-from __future__ import unicode_literals, print_function
+
 
 import argparse
 import subprocess

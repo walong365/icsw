@@ -52,7 +52,7 @@ class Threshold(object):
             self.lookup_key = "{}.{:d}".format(db_obj.mv_value_entry.mv_struct_entry.key, db_obj.mv_value_entry.rra_idx)
         else:
             self.lookup_key = self.key
-        self.log("init '{}'".format(unicode(db_obj)))
+        self.log("init '{}'".format(str(db_obj)))
         self.__cycle = 0
         self.__values = []
         self.log_info()
@@ -173,7 +173,7 @@ class Threshold(object):
         self.log(
             "trigger {}: action is {}, send_mail is {}, enabled: {}, triggered_flag is {}".format(
                 what,
-                unicode(_action) if _action else "none",
+                str(_action) if _action else "none",
                 _mail,
                 str(_enabled),
                 str(triggered),
@@ -204,7 +204,7 @@ class Threshold(object):
             _subject = "{} Threshold event from {} for {} ({}){}".format(
                 what,
                 global_config["SERVER_FULL_NAME"],
-                unicode(self.th.name),
+                str(self.th.name),
                 _cluster_id,
                 ", triggered" if triggered else "",
             )
@@ -213,8 +213,8 @@ class Threshold(object):
             _message = [
                 "The {} event {} was triggered by device {}".format(
                     what,
-                    unicode(self.th),
-                    unicode(device.objects.get(Q(pk=self.dev_idx))),
+                    str(self.th),
+                    str(device.objects.get(Q(pk=self.dev_idx))),
                 ),
                 "",
                 "lower_threshold: {:.4f}".format(self.th.lower_value),
@@ -238,7 +238,7 @@ class Threshold(object):
             _message.extend(
                 [
                     "",
-                    "creating user was {}".format(unicode(self.th.create_user) if self.th.create_user_id else "---")
+                    "creating user was {}".format(str(self.th.create_user) if self.th.create_user_id else "---")
                 ]
             )
             _message.extend(
@@ -248,7 +248,7 @@ class Threshold(object):
                 ]
             )
             for _user in _to_users:
-                _message.append(u"   {} ({})".format(unicode(_user), _user.email))
+                _message.append("   {} ({})".format(str(_user), _user.email))
             if self.th.device_selection:
                 _devs = self.th.device_selection.resolve()
                 _message.extend(
@@ -256,7 +256,7 @@ class Threshold(object):
                         "",
                         "{} to operate on:".format(logging_tools.get_plural("device", len(_devs)))
                     ] + [
-                        "    {}".format(unicode(_dev)) for _dev in _devs
+                        "    {}".format(str(_dev)) for _dev in _devs
                     ]
                 )
                 _bg_job = create_bg_job(
@@ -264,7 +264,7 @@ class Threshold(object):
                     self.th.create_user,
                     # encode sensor action
                     "sensor_action",
-                    "{} event {}".format(what, unicode(self.th)),
+                    "{} event {}".format(what, str(self.th)),
                     _devs,
                     options="{:d}".format(_action.pk),
                 )
@@ -277,7 +277,7 @@ class Threshold(object):
                 )
                 self.__container.proc.send_to_remote_server(
                     icswServiceEnum.cluster_server,
-                    unicode(notify_command()),
+                    str(notify_command()),
                 )
             else:
                 _devs = []
@@ -294,7 +294,7 @@ class Threshold(object):
                 )
             )
             for _user in self.th.notify_users.all():
-                self.log(u"   {} ({})".format(unicode(_user), _user.email))
+                self.log("   {} ({})".format(str(_user), _user.email))
             if _to_users:
                 _to_mails = [_user.email for _user in _to_users]
                 try:
@@ -332,7 +332,7 @@ class ThresholdContainer(object):
 
     def _sync_enabled(self):
         self.log("syncing thresholds")
-        remove_pks = self.th_dict.keys()
+        remove_pks = list(self.th_dict.keys())
         new_pks = set()
         for _th in SensorThreshold.objects.all().select_related(
             "mv_value_entry__mv_struct_entry__machine_vector__device",
@@ -352,7 +352,7 @@ class ThresholdContainer(object):
             for idx in remove_pks:
                 del self.th_dict[idx]
         self.dev_dict = {}
-        for _th in self.th_dict.itervalues():
+        for _th in self.th_dict.values():
             self.dev_dict.setdefault(_th.dev_idx, {})[_th.lookup_key] = _th
         # pprint.pprint(self.dev_dict)
 

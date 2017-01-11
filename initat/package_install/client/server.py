@@ -94,7 +94,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
                 res_list = logging_tools.NewFormList()
                 for key in res_keys:
                     val = r_dict[key]
-                    if isinstance(val, basestring):
+                    if isinstance(val, str):
                         info_str = val
                     elif type(val) is tuple:
                         info_str = "{:8d} (hard), {:8d} (soft)".format(*val)
@@ -138,7 +138,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         )
         check_sock.connect(self.srv_conn_str)
         self.log("fetch srv_id socket, connected to {}".format(self.srv_conn_str))
-        check_sock.send_unicode(unicode(server_command.srv_command(command="get_0mq_id")))
+        check_sock.send_unicode(str(server_command.srv_command(command="get_0mq_id")))
         _timeout = 10
         my_poller = zmq.Poller()
         my_poller.register(check_sock, zmq.POLLIN)  # @UndefinedVariable
@@ -204,7 +204,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             self.log(
                 "error sending message to server {}, buffering ({:d} bytes, {})".format(
                     self.__package_server_id,
-                    len(unicode(send_com)),
+                    len(str(send_com)),
                     process_tools.get_except_info()
                 ),
                 logging_tools.LOG_LEVEL_ERROR
@@ -237,7 +237,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
                         "{}={:d}".format(
                             _key,
                             _value
-                        ) for _key, _value in self.network_info.iteritems()
+                        ) for _key, _value in self.network_info.items()
                     ]
                 )
             )
@@ -291,7 +291,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
                 self.__rst = cur_to
 
     def _send_to_server_int(self, xml_com):
-        self._send_to_server("self", os.getpid(), xml_com["command"].text, unicode(xml_com), "server command")
+        self._send_to_server("self", os.getpid(), xml_com["command"].text, str(xml_com), "server command")
 
     def _register(self):
         self._send_to_server_int(get_srv_command(command="register"))
@@ -349,7 +349,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             "install",
             "command_batch",
             [
-                unicode(srv_com)
+                str(srv_com)
             ]
         )
 

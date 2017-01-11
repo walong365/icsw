@@ -21,7 +21,7 @@
 #
 """ factories for ICSW models """
 
-from __future__ import unicode_literals, print_function
+
 
 import factory
 

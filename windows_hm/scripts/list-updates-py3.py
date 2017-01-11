@@ -215,8 +215,8 @@ if __name__=="__main__":
 
         time_kb_dict[str(_installTime)] = _k
 
-    time_kb_dict_keys = time_kb_dict.keys()
+    time_kb_dict_keys = list(time_kb_dict.keys())
   
     for _t in reversed(sorted(time_kb_dict_keys)):
-        print("{}: {}".format(_t, time_kb_dict[_t]))
+        print(("{}: {}".format(_t, time_kb_dict[_t])))
 

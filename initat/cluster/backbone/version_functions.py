@@ -22,7 +22,7 @@
 #
 """ return version information """
 
-from __future__ import unicode_literals, print_function
+
 
 import hashlib
 import os

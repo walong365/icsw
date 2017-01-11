@@ -138,7 +138,7 @@ class Machine(object):
     @staticmethod
     def shutdown():
         Machine.g_log("shutting down")
-        for dev in Machine.devname_dict.itervalues():
+        for dev in Machine.devname_dict.values():
             dev.close()
 
     @staticmethod
@@ -155,7 +155,7 @@ class Machine(object):
         Machine.g_log("starting log rotation")
         s_time = time.time()
         g_res = LogRotateResult()
-        for dev in Machine.devname_dict.itervalues():
+        for dev in Machine.devname_dict.values():
             g_res.feed(dev.rotate_logs())
         Machine.g_log(
             "rotated in {}, {} to compress".format(
@@ -222,7 +222,7 @@ class Machine(object):
                                     "rate",
                                     timeframe="{:d}".format(_seconds),
                                     rate="{:.4f}".format(_rate)
-                                ) for _seconds, _rate in rates.iteritems()
+                                ) for _seconds, _rate in rates.items()
                             ]
                         )
                     )
@@ -270,7 +270,7 @@ class Machine(object):
         self.pk = cur_dev.pk
         Machine.devname_dict[self.full_name] = self
         Machine.devpk_dict[self.pk] = self
-        self.log(u"Added to dict (full_name={}, pk={:d})".format(self.full_name, self.pk))
+        self.log("Added to dict (full_name={}, pk={:d})".format(self.full_name, self.pk))
         self.__fw = None
         self.__ip_dict = {}
         # if self.device.name == "a":
@@ -282,14 +282,14 @@ class Machine(object):
 
     @staticmethod
     def has_device(key):
-        if type(key) in [int, long]:
+        if type(key) in [int, int]:
             return key in Machine.devpk_dict
         else:
             return key in Machine.devname_dict
 
     @staticmethod
     def get_device(key):
-        if type(key) in [int, long]:
+        if type(key) in [int, int]:
             return Machine.devpk_dict[key]
         else:
             return Machine.devname_dict[key]
@@ -347,7 +347,7 @@ class Machine(object):
         _root_dir = os.path.join(global_config["SYSLOG_DIR"], self.full_name)
         link_array = [("d", _root_dir)]
         self.log("link-array root-dir is {}".format(_root_dir))
-        for ip, (nw_postfix, net_type, nw_name) in self.__ip_dict.iteritems():
+        for ip, (nw_postfix, net_type, nw_name) in self.__ip_dict.items():
             if nw_postfix or nw_name:
                 link_array.append(
                     (
@@ -606,7 +606,7 @@ class Machine(object):
                                     old_file = os.path.join(root_dir, file_name)
                                     _res.compress_list.append(old_file)
             except UnicodeDecodeError:
-                self.log(u"got a UnicodeDecodeError for dir {}".format(log_start_dir), logging_tools.LOG_LEVEL_CRITICAL)
+                self.log("got a UnicodeDecodeError for dir {}".format(log_start_dir), logging_tools.LOG_LEVEL_CRITICAL)
                 raise
             _res.stop()
             self.log(_res.info_str())

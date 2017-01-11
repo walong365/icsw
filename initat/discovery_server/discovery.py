@@ -21,7 +21,7 @@
 discovery-server, discovery part
 """
 
-from __future__ import unicode_literals, print_function
+
 
 import copy
 import time
@@ -65,31 +65,31 @@ class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, Host
     def _scan_system_info(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         self._iterate(srv_com, "scan_system_info", ActiveDeviceScanEnum.HM)
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", str(srv_com))
         self._check_for_pending_jobs()
 
     def _fetch_partition_info(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         self._iterate(srv_com, "fetch_partition_info", ActiveDeviceScanEnum.HM)
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", str(srv_com))
         self._check_for_pending_jobs()
 
     def _scan_network_info(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         self._iterate(srv_com, "scan_network_info", ActiveDeviceScanEnum.HM)
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", str(srv_com))
         self._check_for_pending_jobs()
 
     def _base_scan(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         self._iterate(srv_com, "base_scan", ActiveDeviceScanEnum.BASE)
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", str(srv_com))
         self._check_for_pending_jobs()
 
     def _wmi_scan(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         self._iterate(srv_com, "wmi_scan", ActiveDeviceScanEnum.BASE)
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", str(srv_com))
         self._check_for_pending_jobs()
 
     def _snmp_basic_scan(self, *args, **kwargs):
@@ -115,8 +115,8 @@ class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, Host
                 if self.EC.consume("discover", _dev):
                     if not self.device_is_capable(_dev, scan_type_enum):
                         res_node = ResultNode(
-                            error=u"device {} is missing the required ComCapability '{}'".format(
-                                unicode(_dev),
+                            error="device {} is missing the required ComCapability '{}'".format(
+                                str(_dev),
                                 scan_type_enum,
                             ),
                         )
@@ -126,9 +126,9 @@ class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, Host
                             self.__job_list.append(
                                 (c_name, _dev, scan_type_enum, _new_lock, copy.deepcopy(_dev_xml))
                             )
-                            res_node = ResultNode(ok=u"starting scan for device {}".format(unicode(_dev)))
+                            res_node = ResultNode(ok="starting scan for device {}".format(str(_dev)))
                         else:
-                            res_node = ResultNode(warning=u"lock not possible for device {}".format(unicode(_dev)))
+                            res_node = ResultNode(warning="lock not possible for device {}".format(str(_dev)))
                 else:
                     res_node = ResultNode(error="device not allowed (ova error)")
                 total_result.merge(res_node)
@@ -150,7 +150,7 @@ class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, Host
             finally:
                 [self.log(_what, _level) for _what, _level in _new_lock.close()]
             e_time = time.time()
-            self.log(u"calling {} for device {} took {}".format(c_name, unicode(_dev), logging_tools.get_diff_time_str(e_time - s_time)))
+            self.log("calling {} for device {} took {}".format(c_name, str(_dev), logging_tools.get_diff_time_str(e_time - s_time)))
         self.__job_list = []
 
     def device_is_capable(self, dev, lock_type):
@@ -164,7 +164,7 @@ class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, Host
             else:
                 self.log(
                     "device {} is missing the ComCapability '{}'".format(
-                        unicode(dev),
+                        str(dev),
                         ", ".join([str(_cap) for _cap in req_caps]),
                     ),
                     logging_tools.LOG_LEVEL_ERROR

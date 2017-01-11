@@ -155,7 +155,7 @@ def mock_license_call(com_line):
     # debug code
     if com_line.count("lwnsv42022"):
         ret_code = 0
-        usages = [random.randint(0, 12) for _idx in xrange(4)]
+        usages = [random.randint(0, 12) for _idx in range(4)]
         out = MOCK_DATA["s0"].format(usages[0], usages[1], usages[2])
     elif com_line.count("mcrsvtblic"):
         ret_code = 0

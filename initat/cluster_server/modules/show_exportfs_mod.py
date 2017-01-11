@@ -17,12 +17,12 @@
 #
 """ show exportfs entries for the current server """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.db.models import Q
 from initat.cluster.backbone.models import device_config, home_export_list
 from initat.cluster.backbone.server_enums import icswServiceEnum
-import cs_base_class
+from . import cs_base_class
 
 
 class show_exportfs(cs_base_class.icswCSServerCom):
@@ -60,10 +60,10 @@ class show_exportfs(cs_base_class.icswCSServerCom):
         # - export
         # - options
         exp_list = []
-        for _key, _struct in home_exp_dict.iteritems():
+        for _key, _struct in home_exp_dict.items():
             exp_list.append((_struct["entry"].device.pk, _struct["createdir"], _struct["options"]))
-        for _devpk, _sstruct in ei_dict.iteritems():
-            for _cpk, _struct in _sstruct.iteritems():
+        for _devpk, _sstruct in ei_dict.items():
+            for _cpk, _struct in _sstruct.items():
                 exp_list.append((_devpk, _struct["export"], _struct["options"]))
         num_dict = {}
         for _is_local in [True, False]:

@@ -21,7 +21,7 @@
 #
 """ kernel related parts of mother """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import time
@@ -58,7 +58,7 @@ class KernelSyncProcess(threading_tools.process_obj):
     def _rescan_kernels(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         self._check_kernel_dir(srv_com)
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", str(srv_com))
 
     def _check_kernel_dir(self, srv_com):
         self.log("checking kernel dir")
@@ -70,7 +70,7 @@ class KernelSyncProcess(threading_tools.process_obj):
             "check_list": [],
             "insert_all_found": False,
             "kernels_to_sync": {}
-        }.iteritems():
+        }.items():
             if key in srv_com:
                 cur_val = srv_com[key].text
                 if type(def_value) == bool:
@@ -81,10 +81,10 @@ class KernelSyncProcess(threading_tools.process_obj):
         # self.__ks_check._check(dc)
         self.log(
             "option_dict has {}: {}".format(
-                logging_tools.get_plural("key", len(opt_dict.keys())),
+                logging_tools.get_plural("key", len(list(opt_dict.keys()))),
                 ", ".join(
                     [
-                        "{} ({}, {})".format(key, str(type(value)), str(value)) for key, value in opt_dict.iteritems()
+                        "{} ({}, {})".format(key, str(type(value)), str(value)) for key, value in opt_dict.items()
                     ]
                 )
             )
@@ -104,7 +104,7 @@ class KernelSyncProcess(threading_tools.process_obj):
             self.log(
                 "found {}: {}".format(
                     logging_tools.get_plural("kernel_server", len(def_k_servers)),
-                    ", ".join(sorted([unicode(s_struct.effective_device) for s_struct in def_k_servers]))
+                    ", ".join(sorted([str(s_struct.effective_device) for s_struct in def_k_servers]))
                 )
             )
             all_kernels = {cur_kern.name: cur_kern for cur_kern in kernel.objects.all()}
@@ -113,7 +113,7 @@ class KernelSyncProcess(threading_tools.process_obj):
                 self.log("some kernels already present in database, not inserting all found", logging_tools.LOG_LEVEL_WARN)
                 opt_dict["insert_all_found"] = False
             kct_start = time.time()
-            self.log("Checking for kernels ({:d} already in database) ...".format(len(all_kernels.keys())))
+            self.log("Checking for kernels ({:d} already in database) ...".format(len(list(all_kernels.keys()))))
             if opt_dict["kernels_to_insert"]:
                 self.log(
                     " - only {} to insert: {}".format(
@@ -148,7 +148,7 @@ class KernelSyncProcess(threading_tools.process_obj):
                                 ),
                                 logging_tools.LOG_LEVEL_ERROR
                             )
-                            problems.append(unicode(process_tools.get_except_info()))
+                            problems.append(str(process_tools.get_except_info()))
                             for _log_line in process_tools.exception_info().log_lines:
                                 self.log("    {}".format(_log_line), logging_tools.LOG_LEVEL_ERROR)
                         else:

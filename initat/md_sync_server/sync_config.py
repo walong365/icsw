@@ -19,7 +19,7 @@
 #
 """ syncer definition for md-sync-server """
 
-from __future__ import print_function, unicode_literals
+
 
 import base64
 import bz2
@@ -229,7 +229,7 @@ class SyncConfig(object):
         return self.__slave_configs[self.__slave_lut[uuid]]
 
     def send_register_msg(self, **kwargs):
-        for _slave_struct in [self] + self.__slave_configs.values():
+        for _slave_struct in [self] + list(self.__slave_configs.values()):
             if _slave_struct.master:
                 self.log("register_master not necessary for master")
             else:
@@ -259,17 +259,17 @@ class SyncConfig(object):
                     r_dict["config_store"][_key] = self.config_store[_key]
         if self.master is None:
             r_dict["store_info"] = {
-                _fi.path: _fi.get_info_dict() for _fi in self.__file_dict.itervalues()
+                _fi.path: _fi.get_info_dict() for _fi in self.__file_dict.values()
             }
         return r_dict
 
     def store_satellite_info(self, si_info, dist_master):
-        for _key in si_info.get("config_store", {}).keys():
+        for _key in list(si_info.get("config_store", {}).keys()):
             self.config_store[_key] = si_info["config_store"][_key]
         self.__latest_contact = time.time()
         if "store_info" in si_info:
             if self.__file_dict:
-                for _key, _struct in si_info["store_info"].iteritems():
+                for _key, _struct in si_info["store_info"].items():
                     if _key not in self.__file_dict:
                         self.log("key '{}' not known in local file_dict".format(_key), logging_tools.LOG_LEVEL_ERROR)
                     else:
@@ -293,7 +293,7 @@ class SyncConfig(object):
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
-            u"[sc {}] {}".format(
+            "[sc {}] {}".format(
                 self.name if self.name else "master",
                 what
             ),
@@ -329,17 +329,17 @@ class SyncConfig(object):
 
     def send_slave_command(self, action_srvc, **kwargs):
         # send command from local master to remote slave
-        if isinstance(action_srvc, basestring):
+        if isinstance(action_srvc, str):
             srv_com = self._get_slave_srv_command(action_srvc, **kwargs)
         else:
             srv_com = action_srvc
 
         self.log(
-            u"send {} to {} (UUID={}, {})".format(
+            "send {} to {} (UUID={}, {})".format(
                 srv_com.get("action", srv_com["*command"]),
-                unicode(self.name),
+                str(self.name),
                 self.slave_uuid,
-                ", ".join(["{}='{}'".format(_key, str(_value)) for _key, _value in kwargs.iteritems()]),
+                ", ".join(["{}='{}'".format(_key, str(_value)) for _key, _value in kwargs.items()]),
             )
         )
         self.__process.send_command(
@@ -374,7 +374,7 @@ class SyncConfig(object):
         self.__latest_contact = time.time()
         # send info to monitor daemon
         info_list = [
-            _entry.get_info_dict() for _entry in [self] + self.__slave_configs.values()
+            _entry.get_info_dict() for _entry in [self] + list(self.__slave_configs.values())
         ]
         # print "ILIST", self.master_uuid, self.slave_uuid
         srv_com = self._get_config_srv_command(
@@ -386,7 +386,7 @@ class SyncConfig(object):
     def send_to_config_server(self, srv_com):
         self.__process.send_command(
             self.master_uuid,
-            unicode(srv_com),
+            str(srv_com),
         )
 
     def _get_dist_master_srv_command(self, action, **kwargs):
@@ -427,7 +427,7 @@ class SyncConfig(object):
         if self.__registered_at_master:
             self.__process.send_command(
                 self.config_store["master.uuid"],
-                unicode(srv_com),
+                str(srv_com),
             )
         else:
             self.log("slave not registered at master")
@@ -459,8 +459,8 @@ class SyncConfig(object):
 
     def _show_pending_info(self, dist_master):
         cur_time = time.time()
-        pend_keys = [key for key, value in self.__file_dict.iteritems() if value.is_pending]
-        error_keys = [key for key, value in self.__file_dict.iteritems() if value.is_error]
+        pend_keys = [key for key, value in self.__file_dict.items() if value.is_pending]
+        error_keys = [key for key, value in self.__file_dict.items() if value.is_error]
         self.log(
             "{:d} total, {} pending, {} error".format(
                 len(self.__file_dict),
@@ -499,7 +499,7 @@ class SyncConfig(object):
             in_list = [os.path.normpath(_entry) for _entry in in_list]
             _parts = in_list[0].split("/")
             while _parts:
-                _top = u"/".join(_parts)
+                _top = "/".join(_parts)
                 if all([_entry.startswith(_top) for _entry in in_list]):
                     break
                 _parts.pop(-1)
@@ -518,7 +518,7 @@ class SyncConfig(object):
         )
         # set forward flag
         srv_com["forwarded"] = True
-        for _slave in self.__slave_configs.itervalues():
+        for _slave in self.__slave_configs.values():
             _slave.send_slave_command(srv_com)
         # always send info message
         self.send_info_message()

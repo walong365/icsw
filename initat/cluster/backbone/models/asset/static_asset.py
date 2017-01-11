@@ -18,7 +18,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 import logging
@@ -78,7 +78,7 @@ class StaticAssetTemplate(models.Model):
         _dict = {}
         for entry in self.staticassettemplatefield_set.all():
             _dict.setdefault(entry.ordering, []).append(entry)
-        if any([len(_value) > 1 for _value in _dict.itervalues()]):
+        if any([len(_value) > 1 for _value in _dict.values()]):
             # reorder
             for _idx, _entry in enumerate(self.staticassettemplatefield_set.all().order_by("ordering")):
                 _entry.ordering = _idx

@@ -18,7 +18,7 @@
 
 """ ipc communication tools, now using 0MQ as communication layer """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import time
@@ -93,7 +93,7 @@ class IPCClientHandler(threading_tools.PollerBase):
         self.register_poller(client_recv, zmq.POLLIN, self._handle_message)
 
     def close(self):
-        for _srv, _sockets in self.__sock_lut.iteritems():
+        for _srv, _sockets in self.__sock_lut.items():
             self.unregister_poller(_sockets[1], zmq.POLLIN)
         for _sock in self.__sock_list:
             _sock.close()
@@ -119,7 +119,7 @@ class IPCClientHandler(threading_tools.PollerBase):
         # add arguments and keys
         srv_com["arg_list"] = " ".join(
             list(dc_action.args) + [
-                "--{}={}".format(_key, _value) for _key, _value in dc_action.kwargs.iteritems()
+                "--{}={}".format(_key, _value) for _key, _value in dc_action.kwargs.items()
             ]
         )
         # add additional keys
@@ -142,13 +142,13 @@ class IPCClientHandler(threading_tools.PollerBase):
                         "{}='{}'".format(
                             key,
                             str(value)
-                        ) for key, value in dc_action.kwargs.iteritems()
+                        ) for key, value in dc_action.kwargs.items()
                     ]
                 ) if dc_action.kwargs else "no kwargs",
             )
         )
         try:
-            self.__sock_lut[dc_action.srv_enum][0].send_unicode(unicode(srv_com))
+            self.__sock_lut[dc_action.srv_enum][0].send_unicode(str(srv_com))
         except:
             dc_action.log(
                 "unable to send: {}".format(
@@ -220,7 +220,7 @@ class IPCClientHandler(threading_tools.PollerBase):
                 exc_info = process_tools.exception_info()
                 self.log(
                     "an error occured (device={}): {}".format(
-                        unicode(dc_action.hbc.device),
+                        str(dc_action.hbc.device),
                         _info,
                     ),
                     logging_tools.LOG_LEVEL_ERROR

@@ -17,7 +17,7 @@
 #
 """contains command for reloading/restarting the virtual desktop"""
 
-from __future__ import unicode_literals, print_function
+
 
 from django.db.models.query_utils import Q
 

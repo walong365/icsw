@@ -20,7 +20,7 @@
 
 """ config part of md-config-server """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 
@@ -112,7 +112,7 @@ class MonAllServiceGroups(MonFileContainer):
             self.add_object(nag_conf)
 
     def clear_host(self, host_name):
-        for _key, value in self.__host_srv_lut.iteritems():
+        for _key, value in self.__host_srv_lut.items():
             if host_name in value:
                 value.remove(host_name)
 
@@ -146,7 +146,7 @@ class MonAllCommands(MonFileContainer):
         ).strip() == ""
 
     def _expand_str(self, in_str):
-        for key, value in self._str_repl_dict.iteritems():
+        for key, value in self._str_repl_dict.items():
             in_str = in_str.replace(key, value)
         return in_str
 
@@ -197,7 +197,7 @@ class MonAllCommands(MonFileContainer):
             for attr in ["subject", "content"]:
                 _old = getattr(cur_not, attr)
                 _new = _old
-                for key, value in _rewrite_dict.iteritems():
+                for key, value in _rewrite_dict.items():
                     _new = _new.replace(key, value)
                 if _new != _old:
                     setattr(cur_not, attr, _new)
@@ -387,7 +387,7 @@ class MonAllContacts(MonFileContainer):
     def _add_contacts_from_db(self, gen_conf):
         all_nots = mon_notification.objects.all()
         for contact in mon_contact.objects.all().prefetch_related("notifications").select_related("user"):
-            full_name = (u"{} {}".format(contact.user.first_name, contact.user.last_name)).strip().replace(" ", "_")
+            full_name = ("{} {}".format(contact.user.first_name, contact.user.last_name)).strip().replace(" ", "_")
             if not full_name:
                 full_name = contact.user.login
             not_h_list = [entry for entry in all_nots if entry.channel == "mail" and entry.not_type == "host" and entry.enabled]

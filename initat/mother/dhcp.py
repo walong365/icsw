@@ -21,7 +21,7 @@
 #
 """ DHCP support code """
 
-from __future__ import unicode_literals, print_function
+
 
 import re
 
@@ -123,7 +123,7 @@ class DHCPState(object):
         )
 
     def __repr__(self):
-        return unicode(self)
+        return str(self)
 
 
 class DHCPSyncer(object):
@@ -400,10 +400,10 @@ class DHCPSyncer(object):
                             pass
                         else:
                             _result_dict[cur_dict["name"]] = {
-                                _k: _v for _k, _v in cur_dict.iteritems()
+                                _k: _v for _k, _v in cur_dict.items()
                             }
                     cur_dict = {}
-        for _key, _dict in _result_dict.iteritems():
+        for _key, _dict in _result_dict.items():
             if _key in _error_dict:
                 _dict["error"] = _error_dict[_key]
                 self.log("device {}: {}".format(_key, _dict["error"]), logging_tools.LOG_LEVEL_ERROR)

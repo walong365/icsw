@@ -19,7 +19,7 @@
 #
 """ creates fixtures for device variables """
 
-from __future__ import unicode_literals, print_function
+
 
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import device_variable_scope, dvs_allowed_name
@@ -66,7 +66,7 @@ def add_fixtures(**kwargs):
             ("*SNMP_WRITE_COMMUNITY", "SNMP Write Community string", "snmp", "s"),
         ]
     }
-    for _scope_name, _var_list in _defaults.iteritems():
+    for _scope_name, _var_list in _defaults.items():
         for _name, _descr, _group, _forced_type in _var_list:
             editable = not _name.startswith("*")
             if not editable:
@@ -83,7 +83,7 @@ def add_fixtures(**kwargs):
     if False or process_tools.get_machine_name() in ["eddie"]:
         # debug output
         for _e in device_variable_scope.objects.all():
-            print(unicode(_e))
+            print(str(_e))
 
         for _e in dvs_allowed_name.objects.all():
-            print(unicode(_e))
+            print(str(_e))

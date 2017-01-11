@@ -22,7 +22,7 @@
 
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import re
@@ -89,7 +89,7 @@ class ZMQDiscovery(object):
                 self.log("send discovery message")
                 dealer_message = server_command.srv_command(command="get_0mq_id")
                 dealer_message["target_ip"] = self.host
-                self.socket.send_unicode(unicode(dealer_message))
+                self.socket.send_unicode(str(dealer_message))
 
     def send_return(self, error_msg):
         self.log(error_msg, logging_tools.LOG_LEVEL_ERROR)
@@ -191,7 +191,7 @@ class ZMQDiscovery(object):
         if config_store.ConfigStore.exists(CS_NAME):
             _log("read mapping from CStore")
             key_re = re.compile("^(?P<proto>\S+)@(?P<addr>[^:]+):(?P<port>\d+)$")
-            for key in ZMQDiscovery.CS.keys():
+            for key in list(ZMQDiscovery.CS.keys()):
                 _km = key_re.match(key)
                 if _km:
                     _gd = _km.groupdict()
@@ -234,7 +234,7 @@ class ZMQDiscovery(object):
                     "read {} from {} (in file: {:d})".format(
                         logging_tools.get_plural(
                             "mapping",
-                            len(ZMQDiscovery.CS.keys()),
+                            len(list(ZMQDiscovery.CS.keys())),
                         ),
                         MAPPING_FILE_IDS,
                         len(map_content.split("\n")),
@@ -253,7 +253,7 @@ class ZMQDiscovery(object):
                     ", ".join(sorted(list(ZMQDiscovery.vanished))),
                 )
             )
-        for key, value in ZMQDiscovery.mapping.iteritems():
+        for key, value in ZMQDiscovery.mapping.items():
             # only use ip-address / hostname from key
             ZMQDiscovery.reverse_mapping.setdefault(value, []).append(key[6:].split(":")[0])
 
@@ -280,7 +280,7 @@ class ZMQDiscovery(object):
     @staticmethod
     def get_hm_0mq_addrs():
         return [
-            _key.split("/")[-1].split(":")[0] for _key in ZMQDiscovery.mapping.iterkeys() if _key.endswith(":{:d}".format(ZMQDiscovery.hm_port))
+            _key.split("/")[-1].split(":")[0] for _key in ZMQDiscovery.mapping.keys() if _key.endswith(":{:d}".format(ZMQDiscovery.hm_port))
         ]
 
     @staticmethod
@@ -314,7 +314,7 @@ class ZMQDiscovery(object):
     @staticmethod
     def check_timeout(cur_time):
         del_list = []
-        for _conn_str, cur_ids in ZMQDiscovery.pending.iteritems():
+        for _conn_str, cur_ids in ZMQDiscovery.pending.items():
             diff_time = abs(cur_ids.init_time - cur_time)
             if diff_time > ZMQDiscovery.timeout:
                 del_list.append(cur_ids)

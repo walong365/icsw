@@ -19,7 +19,7 @@
 #
 """ database definitions for monitoring """
 
-from __future__ import unicode_literals, print_function
+
 
 import json
 import re
@@ -150,7 +150,7 @@ class MonHostTrace(models.Model):
         return self.traces == MonHostTrace.dump_trace(traces)
 
     def __unicode__(self):
-        return "MHT for {}".format(unicode(self.device))
+        return "MHT for {}".format(str(self.device))
 
 
 class mon_dist_base(models.Model):
@@ -409,7 +409,7 @@ def parse_commandline(com_line):
     if arg_lut:
         log_lines.append("lut : %s; %s" % (
             logging_tools.get_plural("key", len(arg_lut)),
-            ", ".join(["'%s' => '%s'" % (key, value) for key, value in arg_lut.iteritems()])
+            ", ".join(["'%s' => '%s'" % (key, value) for key, value in arg_lut.items()])
         ))
     if arg_list:
         log_lines.append("list: %s; %s" % (
@@ -462,7 +462,7 @@ class mon_check_command(models.Model):
         return "mon"
 
     class Meta:
-        db_table = u'ng_check_command'
+        db_table = 'ng_check_command'
         unique_together = (("name", "config"))
         verbose_name = "Check command"
 
@@ -533,17 +533,17 @@ class mon_contact(models.Model):
     mon_alias = models.CharField(max_length=64, default="", verbose_name="alias", blank=True)
 
     def get_user_name(self):
-        return u"{} ({} {})".format(
+        return "{} ({} {})".format(
             self.user.login,
             self.user.first_name,
             self.user.last_name,
         )
 
     def __unicode__(self):
-        return unicode(self.user)
+        return str(self.user)
 
     class Meta:
-        db_table = u'ng_contact'
+        db_table = 'ng_contact'
 
 
 @receiver(signals.pre_save, sender=mon_contact)
@@ -615,7 +615,7 @@ class mon_contactgroup(models.Model):
         return self.name
 
     class Meta:
-        db_table = u'ng_contactgroup'
+        db_table = 'ng_contactgroup'
 
 
 @receiver(signals.pre_save, sender=mon_contactgroup)
@@ -663,7 +663,7 @@ class mon_device_templ(models.Model):
         return self.name
 
     class Meta:
-        db_table = u'ng_device_templ'
+        db_table = 'ng_device_templ'
 
 
 @receiver(signals.pre_save, sender=mon_device_templ)
@@ -925,7 +925,7 @@ class mon_ext_host(models.Model):
 
     class Meta:
         ordering = ("name",)
-        db_table = u'ng_ext_host'
+        db_table = 'ng_ext_host'
 
 
 class mon_period(models.Model):
@@ -945,7 +945,7 @@ class mon_period(models.Model):
         return self.name
 
     class Meta:
-        db_table = u'ng_period'
+        db_table = 'ng_period'
 
 
 @receiver(signals.pre_save, sender=mon_period)
@@ -1010,7 +1010,7 @@ class mon_service_templ(models.Model):
         return self.name
 
     class Meta:
-        db_table = u'ng_service_templ'
+        db_table = 'ng_service_templ'
 
     def any_notification_enabled(self):
         return self.nrecovery or self.ncritical or self.nwarning or self.nunknown or self.nflapping or \
@@ -1148,12 +1148,12 @@ class monitoring_hint(models.Model):
         self.save()
 
     def update_limits(self, m_value, limit_dict):
-        if type(m_value) in [int, long]:
+        if type(m_value) in [int, int]:
             v_type = "int"
         else:
             v_type = "float"
         changed = False
-        for key, value in limit_dict.iteritems():
+        for key, value in limit_dict.items():
             v_key = "{}_{}".format(key, v_type)
             s_key = "{}_{}".format(v_key, "source")
             if getattr(self, s_key) in ["n", "s"]:
@@ -1177,9 +1177,9 @@ class monitoring_hint(models.Model):
                 return _val
 
     def set_value(self, value):
-        if type(value) in [int, long]:
+        if type(value) in [int, int]:
             v_type = "int"
-        elif isinstance(value, basestring):
+        elif isinstance(value, str):
             v_type = "str"
         else:
             v_type = "float"
@@ -1205,10 +1205,10 @@ class monitoring_hint(models.Model):
         ]
 
     def __unicode__(self):
-        return u"{} ({}) for {}, ds {}, persistent {}".format(
+        return "{} ({}) for {}, ds {}, persistent {}".format(
             self.m_type,
             self.key,
-            unicode(self.device) if self.device_id else "<unbound>",
+            str(self.device) if self.device_id else "<unbound>",
             self.datasource,
             "true" if self.persistent else "false",
         )

@@ -8,7 +8,7 @@ import socket
 import sys
 import argparse
 try:
-    import ConfigParser
+    import configparser
 except ImportError:
     import configparser as ConfigParser
 
@@ -91,7 +91,7 @@ def install_icsw_base_system(host, username, password, package_manager, machine_
 
             while True:
                 try:
-                    output = ssh_stdout.next()
+                    output = next(ssh_stdout)
                     log_file.write(output)
                 except StopIteration:
                     break
@@ -205,7 +205,7 @@ def basic_availability_test(host, test_system_name):
 
 
 def main():
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
     config.read("installation_test.cfg")
 
     parser = argparse.ArgumentParser(description='icsw installation tests')
@@ -222,7 +222,7 @@ def main():
 
     args = parser.parse_args()
 
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
     config.read("installation_test.cfg")
 
     test_system_name = args.test_machine[0]

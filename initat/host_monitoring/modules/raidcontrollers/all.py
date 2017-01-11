@@ -17,7 +17,7 @@
 #
 """ raid controller, container for all controllers """
 
-from __future__ import print_function,  unicode_literals
+
 
 from initat.tools import logging_tools
 
@@ -36,13 +36,13 @@ class AllRAIDCtrl(object):
     def init(module_struct):
         AllRAIDCtrl.CTRL_DICT = CTRL_DICT
         AllRAIDCtrl._all_types = {}
-        for _name, _value in CTRL_DICT.iteritems():
+        for _name, _value in CTRL_DICT.items():
             AllRAIDCtrl._all_types[_value.Meta.name] = _value(module_struct, AllRAIDCtrl)
 
     @staticmethod
     def update(c_type, ctrl_ids=[]):
         if c_type is None:
-            c_type = AllRAIDCtrl._all_types.keys()
+            c_type = list(AllRAIDCtrl._all_types.keys())
         elif type(c_type) != list:
             c_type = [c_type]
         for cur_type in c_type:

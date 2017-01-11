@@ -21,13 +21,14 @@
 #
 """ inotify tools """
 
-from __future__ import unicode_literals, print_function
+
 
 import logging
 
 import pyinotify
 
 from initat.tools import logging_tools
+from functools import reduce
 
 pyinotify.log.setLevel(logging.CRITICAL)
 
@@ -80,7 +81,7 @@ in_dict = {
 def mask_to_str(in_mask):
     return ", ".join(
         [
-            value for key, value in in_dict.iteritems() if in_mask & key == key
+            value for key, value in in_dict.items() if in_mask & key == key
         ]
     ) or "NONE"
 
@@ -96,7 +97,7 @@ class InotifyWatcher(pyinotify.Notifier):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_com:
             self.__log_com(
-                u"[inw] {}".format(what),
+                "[inw] {}".format(what),
                 log_level
             )
 
@@ -105,7 +106,7 @@ class InotifyWatcher(pyinotify.Notifier):
             old_mask = 0
             self.__watch_dict[name] = {}
         else:
-            old_mask = reduce(lambda v0, v1: v0 | v1, [value["mask"] for value in self.__watch_dict[name].values()])
+            old_mask = reduce(lambda v0, v1: v0 | v1, [value["mask"] for value in list(self.__watch_dict[name].values())])
         self.__watch_dict[name][ext_id] = {
             "mask": mask,
             "process_events": process_events
@@ -128,14 +129,14 @@ class InotifyWatcher(pyinotify.Notifier):
                 if ext_id in self.__watch_dict[event.path]:
                     self.__watch_dict[event.path][ext_id]["process_events"](event)
         else:
-            self.log(u"unknown event path '{}'".format(event.path), logging_tools.LOG_LEVEL_ERROR)
+            self.log("unknown event path '{}'".format(event.path), logging_tools.LOG_LEVEL_ERROR)
 
     def remove_watcher(self, ext_id, name):
         # remove watcher
         try:
             wd = self.__wm.get_wd(name)
         except KeyError:
-            self.log(u"unknown watcher name '{}'".format(name), logging_tools.LOG_LEVEL_ERROR)
+            self.log("unknown watcher name '{}'".format(name), logging_tools.LOG_LEVEL_ERROR)
         else:
             if wd:
                 self.__wm.rm_watch(wd)
@@ -143,7 +144,7 @@ class InotifyWatcher(pyinotify.Notifier):
         if self.__watch_dict[name]:
             self.__wm.add_watch(
                 name,
-                reduce(lambda v0, v1: v0 | v1, [value["mask"] for value in self.__watch_dict[name].values()]),
+                reduce(lambda v0, v1: v0 | v1, [value["mask"] for value in list(self.__watch_dict[name].values())]),
                 self._proc_events,
                 False
             )

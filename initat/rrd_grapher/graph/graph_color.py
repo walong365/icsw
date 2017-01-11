@@ -19,7 +19,7 @@
 #
 """ color structures for the grapher part of rrd-grapher service """
 
-from __future__ import print_function, unicode_literals
+
 
 import os
 import re
@@ -95,7 +95,7 @@ class Colorizer(object):
         if name in self.color_tables:
             return SimpleColorTable(self.color_tables[name])
         else:
-            return SimpleColorTable(self.color_tables[self.color_tables.keys()[0]])
+            return SimpleColorTable(self.color_tables[list(self.color_tables.keys())[0]])
 
     def get_color_and_style(self, mvs_entry, mvv_entry):
         if hasattr(mvv_entry, "color"):

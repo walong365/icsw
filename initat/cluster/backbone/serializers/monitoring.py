@@ -19,7 +19,7 @@
 #
 """ database definitions for monitoring """
 
-from __future__ import unicode_literals, print_function
+
 
 from initat.cluster.backbone.models import mon_host_cluster, mon_service_cluster, mon_ext_host, \
     mon_check_command, mon_host_dependency, mon_service_dependency, host_check_command, \

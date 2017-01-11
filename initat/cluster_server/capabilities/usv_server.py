@@ -17,9 +17,9 @@
 #
 """ cluster-server, USV handling """
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 
 from initat.cluster_server.capabilities.base import BackgroundBase
 from initat.host_monitoring import hm_classes
@@ -33,7 +33,7 @@ class usv_server_stuff(BackgroundBase):
         description = "device has an USV from APC directly attached"
 
     def do_apc_call(self):
-        _c_stat, out = commands.getstatusoutput("apcaccess")
+        _c_stat, out = subprocess.getstatusoutput("apcaccess")
         if _c_stat:
             self.log(
                 "cannot execute apcaccess (stat={:d}): {}".format(_c_stat, str(out)),
@@ -53,7 +53,7 @@ class usv_server_stuff(BackgroundBase):
         if apc_dict and self.Meta.creates_machvector:
             my_vector = builder("values")
             valid_until = cur_time + self.Meta.min_time_between_runs * 2
-            for key, value in apc_dict.iteritems():
+            for key, value in apc_dict.items():
                 if value.split():
                     first_v = value.split()[0]
                     if key == "linev":

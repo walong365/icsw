@@ -2,7 +2,7 @@
 
 import sys
 import datetime
-import commands
+import subprocess
 import os
 import os.path
 import time
@@ -11,7 +11,7 @@ TMP_DIR = "/var/lib/rrd_repair"
 
 def parse_ref(in_str):
     if len(in_str) != 12:
-        print "Len Ref != 12 (%d)" % (len(in_str))
+        print("Len Ref != 12 (%d)" % (len(in_str)))
         sys.exit(0)
     return datetime.datetime(int(in_str[0:4]),
                              int(in_str[4:6]),
@@ -22,37 +22,37 @@ def main():
     if not os.path.isdir(TMP_DIR):
         os.mkdir(TMP_DIR)
     if len(sys.argv) != 6:
-        print "Need filename new_filename start_repair and_repair start_ref (form YYYYMMDDHHMM)"
+        print("Need filename new_filename start_repair and_repair start_ref (form YYYYMMDDHHMM)")
         sys.exit(0)
     f_name, new_f_name = sys.argv[1:3]
     bu_file = "%s/%s_%s" % (TMP_DIR, os.path.basename(f_name), time.ctime().replace(" ", "_").replace("__", "_"))
-    print "Backup of %s is %s" % (f_name, bu_file)
+    print("Backup of %s is %s" % (f_name, bu_file))
     file(bu_file, "w").write(file(f_name, "r").read())
     # refs in form YYYYMMDDHHMM
     start_repair, end_repair = (parse_ref(sys.argv[3]), parse_ref(sys.argv[4]))
-    print start_repair, end_repair
+    print(start_repair, end_repair)
     start_ref = (parse_ref(sys.argv[5]))
     repair_length = end_repair - start_repair
     end_ref = start_ref + repair_length
-    print "Repair length is %s" % (str(repair_length))
-    dump_lines = commands.getoutput("/opt/rrdtool/bin/rrdtool dump %s" % (f_name)).split("\n")
+    print("Repair length is %s" % (str(repair_length)))
+    dump_lines = subprocess.getoutput("/opt/rrdtool/bin/rrdtool dump %s" % (f_name)).split("\n")
     # generate repair
     rep_db = {}
     in_db, db_idx = (False, 0)
     k, d = ({}, {})
     for line in dump_lines:
         if line.lstrip().startswith("<database>"):
-            print "db_start"
+            print("db_start")
             in_db = True
             data_ok = False
             ref_dates, rep_dates = ({}, {})
         elif line.lstrip().startswith("</database>"):
             # repair
-            print "Starting repair, length of ref_dates is %d, length of rep_dates is %d" % (len(ref_dates),
-                                                                                             len(rep_dates))
-            ref_keys = ref_dates.keys()
+            print("Starting repair, length of ref_dates is %d, length of rep_dates is %d" % (len(ref_dates),
+                                                                                             len(rep_dates)))
+            ref_keys = list(ref_dates.keys())
             ref_keys.sort()
-            rep_keys = rep_dates.keys()
+            rep_keys = list(rep_dates.keys())
             rep_keys.sort()
             if ref_keys:
                 if not k:
@@ -112,7 +112,7 @@ def main():
                 vals[8], vals[10] = rep_db[db_idx][(int(vals[5]), act_date)]
                 # trigger error if nan
                 if vals[8] == "nan" or vals[10] == "nan":
-                    print "*** Trying to insert nan at datetime %s, stopping" % (act_date)
+                    print("*** Trying to insert nan at datetime %s, stopping" % (act_date))
                     sys.exit(0)
                 line = " ".join(vals)
                 #rep_dates[(int(vals[5]), act_date)] = (float(vals[8]), float(vals[10]))
@@ -120,15 +120,15 @@ def main():
     new_file.close()
     rrd_file = "%s.rrd" % (new_f_name)
     if os.path.isfile(rrd_file):
-        print "Removing %s ..." % (rrd_file)
+        print("Removing %s ..." % (rrd_file))
         os.unlink(rrd_file)
     t_com = "/opt/rrdtool/bin/rrdtool restore %s.xml %s" % (new_f_name, rrd_file)
-    print "Doing %s" % (t_com)
-    act_stat, act_res = commands.getstatusoutput(t_com)
+    print("Doing %s" % (t_com))
+    act_stat, act_res = subprocess.getstatusoutput(t_com)
     if act_stat:
-        print "error (%d): %s" % (act_stat, act_res)
+        print("error (%d): %s" % (act_stat, act_res))
     else:
-        print "ok", act_res
+        print("ok", act_res)
     
 
 if __name__ == "__main__":

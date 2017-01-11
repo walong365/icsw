@@ -73,7 +73,7 @@ class IpmiLogJob(EventLogPollerJobBase):
         self.current_phase = self.FindMaximumPhase()
 
     def __unicode__(self):
-        return u"IpmiLogJob((dev={}, ip={}, phase={})".format(self.target_device, self.target_ip, self.current_phase)
+        return "IpmiLogJob((dev={}, ip={}, phase={})".format(self.target_device, self.target_ip, self.current_phase)
 
     __repr__ = __unicode__
 
@@ -227,7 +227,7 @@ class IpmiLogJob(EventLogPollerJobBase):
             return do_continue
 
         def __unicode(self):
-            return u"RetrieveEvents(cur_record_id={}, max_record_id={})".format(self.current_record_id,
+            return "RetrieveEvents(cur_record_id={}, max_record_id={})".format(self.current_record_id,
                                                                                 self.max_record_id)
 
         __repr__ = __unicode
@@ -292,11 +292,11 @@ class IpmiLogJob(EventLogPollerJobBase):
                 # timestamp section is first section (timestamp could be None for somewhat broken entries)
                 sections_db_data = [
                     {
-                        'Timestamp Local': unicode(timestamp) if timestamp is not None else None
+                        'Timestamp Local': str(timestamp) if timestamp is not None else None
                     }
                 ] + sections_db_data
 
-                keys_ordered = list(itertools.chain.from_iterable(sec.iterkeys() for sec in sections_db_data))
+                keys_ordered = list(itertools.chain.from_iterable(iter(sec.keys()) for sec in sections_db_data))
                 db_entry = {
                     'parse_date': django.utils.timezone.now(),
                     'creation_date': timestamp,

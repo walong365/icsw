@@ -22,7 +22,7 @@
 
 """ REST views """
 
-from __future__ import print_function, unicode_literals
+
 
 from django.apps import apps
 from django.conf import settings
@@ -56,6 +56,7 @@ import time
 import types
 import importlib
 import inspect
+from functools import reduce
 
 logger = logging.getLogger("cluster.rest")
 
@@ -93,12 +94,12 @@ def csw_exception_handler(exc, info_dict):
     if response is None:
         detail_str, detail_info = (exc.__class__.__name__, [])
         if hasattr(exc, "messages"):
-            detail_info.extend([unicode(_part) for _part in exc.messages])
+            detail_info.extend([str(_part) for _part in exc.messages])
         if hasattr(exc, "message"):
-            detail_info.append(unicode(exc.message))
+            detail_info.append(str(exc.message))
         if hasattr(exc, "args"):
             for entry in exc.args:
-                detail_info.append(unicode(entry))
+                detail_info.append(str(entry))
         detail_info = list(
             set(
                 [
@@ -110,11 +111,11 @@ def csw_exception_handler(exc, info_dict):
         )
         response = Response(
             {
-                u"detail": u"{}{}".format(
+                "detail": "{}{}".format(
                     detail_str,
-                    u" ({})".format(
-                        u", ".join(detail_info)
-                    ) if detail_info else u""
+                    " ({})".format(
+                        ", ".join(detail_info)
+                    ) if detail_info else ""
                 ),
             },
             status=status.HTTP_406_NOT_ACCEPTABLE,
@@ -135,10 +136,10 @@ class rest_logging(object):
     def log(self, what="", log_level=logging_tools.LOG_LEVEL_OK):
         logger.log(
             log_level,
-            u"[{}{}] {}".format(
+            "[{}{}] {}".format(
                 self.__name__,
-                u" {}".format(self.__obj_name) if self.__obj_name else "",
-                unicode(what),
+                " {}".format(self.__obj_name) if self.__obj_name else "",
+                str(what),
             )
         )
 
@@ -164,11 +165,11 @@ class rest_logging(object):
             exc_info = process_tools.exception_info()
             _err_str = process_tools.get_except_info()
             self.log(
-                u"exception: {}".format(_err_str),
+                "exception: {}".format(_err_str),
                 logging_tools.LOG_LEVEL_ERROR
             )
             for line in exc_info.log_lines:
-                self.log(u"  {}".format(line))
+                self.log("  {}".format(line))
             result = Response(_err_str, status=status.HTTP_406_NOT_ACCEPTABLE)
             # raise
         e_time = time.time()
@@ -341,7 +342,7 @@ class detail_view(
         except RestValidationError as exc:
             _err_str = ", ".join(
                 [
-                    "{}: {}".format(_key, ", ".join(_value)) for _key, _value in exc.detail.iteritems()
+                    "{}: {}".format(_key, ", ".join(_value)) for _key, _value in exc.detail.items()
                 ]
             )
             raise ValidationError(_err_str)
@@ -395,7 +396,7 @@ class list_view(
                             "{}: {}".format(
                                 _key,
                                 ", ".join(_value),
-                            ) for _key, _value in new_obj.errors.iteritems()
+                            ) for _key, _value in new_obj.errors.items()
                         ]
                     )
                 )
@@ -409,9 +410,9 @@ class list_view(
         if not silent and resp.status_code in [200, 201, 202, 203]:
             # TODO, FIXME, get name (or unicode representation) of new object
             resp.data["_messages"] = [
-                u"created new {} '{}'".format(
-                    unicode(self.model._meta.object_name),
-                    unicode(_obj),
+                "created new {} '{}'".format(
+                    str(self.model._meta.object_name),
+                    str(_obj),
                 )
             ]
         return resp
@@ -441,7 +442,7 @@ class list_view(
         res = self.model.objects.all()
         filter_list = []
         special_dict = {}
-        for key, value in self.request.query_params.iteritems():
+        for key, value in self.request.query_params.items():
             if key.startswith("_"):
                 special_dict[key[1:]] = value
             else:
@@ -596,11 +597,11 @@ class min_access_levels(viewsets.ViewSet):
             if min_dict is None:
                 min_dict = _cur_dict
             else:
-                for key, value in _cur_dict.iteritems():
+                for key, value in _cur_dict.items():
                     min_dict[key] = min(min_dict.get(key, -1), value)
         if min_dict is None:
             min_dict = {}
-        min_dict = {_key: _value for _key, _value in min_dict.iteritems() if _value >= 0}
+        min_dict = {_key: _value for _key, _value in min_dict.items() if _value >= 0}
         return Response(min_dict)
 
 
@@ -688,7 +689,7 @@ class device_tree_list(
                 _new_dev.creator = request.user
                 resp.data["creator"] = _new_dev.creator_id
                 _new_dev.save(update_fields=["creator"])
-            resp.data["_messages"] = [u"created '{}'".format(unicode(self.model._meta.object_name))]
+            resp.data["_messages"] = ["created '{}'".format(str(self.model._meta.object_name))]
         return resp
 
     @rest_logging

@@ -27,7 +27,7 @@ from initat.tools import logging_tools, module_dependency_tools
 
 
 def log_com(what, log_level=logging_tools.LOG_LEVEL_OK):
-    print("[{:2d}] {}".format(log_level, what))
+    print(("[{:2d}] {}".format(log_level, what)))
 
 
 def main():
@@ -36,7 +36,7 @@ def main():
     k_dir.resolve(["mpt2sas.ko"], verbose=True)
     if len(sys.argv) > 2:
         m_dict = k_dir.find_module_by_modalias(sys.argv[2:])
-        print sorted(list(set(sum(m_dict.values(), []))))
+        print(sorted(list(set(sum(list(m_dict.values()), [])))))
 
 if __name__ == "__main__":
     main()

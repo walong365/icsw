@@ -50,7 +50,7 @@ class Route(object):
         return "Route {} ({:d})".format(self.name, len(self.dicts))
 
     def __repr__(self):
-        return unicode(self)
+        return str(self)
 
     def _list_to_xml(self, l_name, l_values):
         _xml = getattr(E, l_name)(type="list")
@@ -92,7 +92,7 @@ class Route(object):
         _allowed_keys = _allowed_keys[d_name]
         _xml = getattr(E, d_name)(type="dict")
         _dict = s_dict[d_name]
-        for _key in _dict.keys():
+        for _key in list(_dict.keys()):
             if _key not in _allowed_keys:
                 raise KeyError(
                     "key '{}' not in {} ({})".format(
@@ -110,7 +110,7 @@ class Route(object):
                 _xml.attrib["{}_bool".format(_t_key)] = "yes" if _dict[_key] else "no"
             else:
                 _val = _dict[_key]
-                if type(_val) in [int, long]:
+                if type(_val) in [int, int]:
                     _xml.attrib["{}_int".format(_t_key)] = "{:d}".format(_val)
                 else:
                     _xml.attrib["{}_str".format(_t_key)] = _val
@@ -128,7 +128,7 @@ class Route(object):
 def main():
     routes = []
     _found = False
-    for _line in file(f_path, "r").xreadlines():
+    for _line in file(f_path, "r"):
         _line = _line.rstrip()
         if _line.lstrip().startswith("\"ICSW_MENU_JSON\", {"):
             _found = True
@@ -160,12 +160,12 @@ def main():
                 _key, _value = [_p.strip() for _p in _fs.strip().split(":")]
                 cur_r.add_sub2_element(cur_subs, cur_subs2, _key, _value)
             else:
-                print("Unhandled indent level {:d}: {}".format(_indent, _fs))
+                print(("Unhandled indent level {:d}: {}".format(_indent, _fs)))
     xml_routes = E.routes()
     for _r in routes:
         xml_routes.append(_r.to_xml())
     _my_relax = MenuRelax()
-    print etree.tostring(xml_routes, pretty_print=True)
+    print(etree.tostring(xml_routes, pretty_print=True))
     _my_relax.validate(xml_routes)
 
 

@@ -21,7 +21,7 @@
 #
 """ image information and modify """
 
-from __future__ import print_function, unicode_literals
+
 
 
 class Parser(object):

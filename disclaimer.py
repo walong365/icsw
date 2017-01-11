@@ -7,7 +7,7 @@ import re
 import subprocess
 import sys
 import tempfile
-from StringIO import StringIO
+from io import StringIO
 from email.parser import FeedParser
 
 from lxml import etree
@@ -157,12 +157,12 @@ class disclaimer_handler(object):
                             _key, _value = _part.split("=", 1)
                             _add_dict[_key] = _value
                 self.log(
-                    u"found code tag '{}' in line '{}' ({})".format(
+                    "found code tag '{}' in line '{}' ({})".format(
                         _code,
                         _line,
                         ", ".join(
                             [
-                                "{}='{}'".format(_key, _value) for _key, _value in _add_dict.iteritems()
+                                "{}='{}'".format(_key, _value) for _key, _value in _add_dict.items()
                             ]
                         )
                     )
@@ -187,9 +187,9 @@ class disclaimer_handler(object):
                     self.log(" ... not found, using '{}'".format(rep_str), logging_tools.LOG_LEVEL_ERROR)
                 else:
                     raw_rep_str = _found_el.text
-                    rep_str = u"{}{}{}".format(_add_dict["pre"], raw_rep_str, _add_dict["post"])
+                    rep_str = "{}{}{}".format(_add_dict["pre"], raw_rep_str, _add_dict["post"])
                     self.log(
-                        u"found replacement for code {} ({}): '{}' ({})".format(
+                        "found replacement for code {} ({}): '{}' ({})".format(
                             _code,
                             s_str,
                             rep_str,
@@ -197,13 +197,13 @@ class disclaimer_handler(object):
                         )
                     )
                 out_lines.append(
-                    u"{}{}{}".format(
+                    "{}{}{}".format(
                         _cur_m.group("pre_text"),
                         rep_str,
                         _cur_m.group("post_text")
                     )
                 )
-        return u"\n".join(out_lines)
+        return "\n".join(out_lines)
 
     def do_rewrite(self, _email, user_xml):
         _tmpdir = tempfile.mkdtemp()

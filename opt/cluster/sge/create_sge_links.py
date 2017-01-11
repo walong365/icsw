@@ -23,9 +23,9 @@
 
 """ create links for SGE """
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import os
 import shutil
 import sys
@@ -50,7 +50,7 @@ def read_base_config():
 
 
 def call_command(com):
-    c_stat, out = commands.getstatusoutput(com)
+    c_stat, out = subprocess.getstatusoutput(com)
     if c_stat:
         print("Calling {} resulted in an error ({:d}):".format(com, c_stat))
         print(out)
@@ -81,7 +81,7 @@ def copy_files(var_dict, src_name, dst_dir):
 
 
 def generate_links(l_dict):
-    for l_target, l_sources in l_dict.iteritems():
+    for l_target, l_sources in l_dict.items():
         t_dir, t_file = os.path.split(l_target)
         for l_source in l_sources:
             s_dir, s_file = os.path.split(l_source)
@@ -137,7 +137,7 @@ setenv SGE_CELL %{SGE_CELL}
 setenv SGE_ARCH %{SGE_ARCH}
 """
     var_dict["SGE_VERSION"] = call_command("{} -help".format(os.path.join(var_dict["SGE_ROOT"], "bin", var_dict["SGE_ARCH"], "qstat")))[0].split()[1]
-    for key, var in var_dict.iteritems():
+    for key, var in var_dict.items():
         _vss = "%{{{}}}".format(key)
         while sge_template.count(_vss):
             sge_template = sge_template.replace(_vss, var)
@@ -158,7 +158,7 @@ def main():
     # get SGE_ARCH
     var_dict["SGE_ARCH"] = call_command("{}/util/arch".format(var_dict["SGE_ROOT"]))[0]
     # show variables
-    for key, value in var_dict.iteritems():
+    for key, value in var_dict.items():
         print("{:<12s} : {}".format(key, value))
     # check for missing dirs
     mis_dirs = [os.path.join(var_dict["SGE_ROOT"], _entry) for _entry in [

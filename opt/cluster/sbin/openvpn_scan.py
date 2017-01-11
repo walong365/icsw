@@ -21,10 +21,10 @@ class vpn_con(object):
         self.end_time = end_dt
 
     def __repr__(self):
-        return unicode(self)
+        return str(self)
 
     def __unicode__(self):
-        return u"VPN %s (from %s:%d), %s - %s" % (
+        return "VPN %s (from %s:%d), %s - %s" % (
             self.name,
             self.ip,
             self.port,
@@ -58,11 +58,11 @@ class scan_container(object):
                     elif content.lower().count("client-instance restarting"):
                         self._close_peer_con(cur_ts, parts[6:])
                     elif content.lower().count("inactivity timeout"):
-                        print cur_ts, content
+                        print(cur_ts, content)
                     elif content.lower().count("restarting"):
-                        print cur_ts, content
+                        print(cur_ts, content)
                 except:
-                    print "error parsing line %s: %s" % (line, process_tools.get_except_info())
+                    print("error parsing line %s: %s" % (line, process_tools.get_except_info()))
 
     def _handle_peer_con(self, cur_ts, parts):
         c_name, src_ipp = (parts[1][1:-1], parts[0])
@@ -84,7 +84,7 @@ class scan_container(object):
             self.__con_lut[c_key].stop(cur_ts)
             del self.__con_lut[c_key]
         else:
-            print "connection_key %s not found" % (str(c_key))
+            print("connection_key %s not found" % (str(c_key)))
 
     def _add_connection(self, n_con):
         self.__con_lut[(n_con.ip, n_con.port)] = n_con

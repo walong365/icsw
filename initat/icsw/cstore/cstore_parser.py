@@ -20,7 +20,7 @@
 """
 parser for config store
 """
-from __future__ import print_function, unicode_literals
+
 
 
 class Parser(object):

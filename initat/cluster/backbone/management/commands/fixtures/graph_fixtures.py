@@ -19,7 +19,7 @@
 #
 """ creates fixtures for graph """
 
-from __future__ import unicode_literals, print_function
+
 
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import GraphForecastModeEnum

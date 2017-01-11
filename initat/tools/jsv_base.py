@@ -19,7 +19,7 @@
 #
 """ SGE Job submission verifier """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import re
@@ -220,11 +220,11 @@ class JSVBase(object):
             self.send_command('ENV DEL {}'.format(var))
 
     def show_params(self):
-        for k, v in self.param.iteritems():
+        for k, v in self.param.items():
             self.log_sge("got param {}={}".format(k, v))
 
     def show_envs(self):
-        for k, v in self.env.iteritems():
+        for k, v in self.env.items():
             self.log_sge("got env {}={}".format(k, v))
 
     def send_env(self):

@@ -17,7 +17,7 @@
 #
 """ cluster-server, reload_virtual_desktop dispatcher """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 
@@ -50,7 +50,7 @@ class ReloadVirtualDesktopDispatcher(BGInotifyTask):
                 background_job_run(
                     background_job=cur_bg,
                     server=vdus.device,
-                    command_xml=unicode(srv_com),
+                    command_xml=str(srv_com),
                     start=cluster_timezone.localize(datetime.datetime.now()),
                 ),
                 srv_com,

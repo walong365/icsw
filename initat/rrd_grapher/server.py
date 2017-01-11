@@ -19,7 +19,7 @@
 #
 """ server-part of rrd-grapher """
 
-from __future__ import print_function, unicode_literals
+
 
 import json
 import os

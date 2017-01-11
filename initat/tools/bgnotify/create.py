@@ -21,7 +21,7 @@ for various servers
   o send to websocket channels
 """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 import json
@@ -93,13 +93,13 @@ def create_bg_job(server_pk, user_obj, cmd, cause, obj, **kwargs):
         cause = "{} of {}".format(cause, logging_tools.get_plural("object", len(obj_list)))
     else:
         obj_list = [obj]
-        cause = "{} of {}".format(cause, unicode(obj))
+        cause = "{} of {}".format(cause, str(obj))
 
     if obj_list is not None:
         srv_com[None] = _bld.objects(
             *[
                 _bld.object(
-                    unicode(obj),
+                    str(obj),
                     model=obj._meta.model_name,
                     app=obj._meta.app_label,
                     pk="{:d}".format(obj.pk),
@@ -113,7 +113,7 @@ def create_bg_job(server_pk, user_obj, cmd, cause, obj, **kwargs):
         options=kwargs.get("options", ""),
         initiator=device.objects.get(Q(pk=server_pk)),
         user=user_obj,
-        command_xml=unicode(srv_com),
+        command_xml=str(srv_com),
         num_objects=len(obj_list) if obj_list else 0,
         # valid for 4 hours
         valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(seconds=timeout)),

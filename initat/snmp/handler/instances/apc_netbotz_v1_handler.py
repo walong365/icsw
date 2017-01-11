@@ -49,7 +49,7 @@ class handler(SNMPHandler):
     def collect_feed(self, result_dict, **kwargs):
         result_dict = self.filter_results(result_dict).get(APC_OID, {})
         if result_dict:
-            for _key, _value in result_dict.iteritems():
+            for _key, _value in result_dict.items():
                 if _key[:2] == (1, 7):
                     mv_tree = kwargs["mv_tree"]
                     mv_tree.append(

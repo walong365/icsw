@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import print_function, unicode_literals
+
 
 import json
 import traceback
@@ -91,7 +91,7 @@ class KpiProcess(threading_tools.process_obj):
         srv_com.set_result("ok")
         srv_com['kpi_set'] = json.dumps(kpi_set.serialize())
 
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", str(srv_com))
 
         self.log("Finished KPI source data")
 
@@ -190,7 +190,7 @@ class KpiProcess(threading_tools.process_obj):
         kpi_idx = kpi_serialized.get('idx', None)
         kpi_db = Kpi.objects.get(pk=kpi_idx) if kpi_idx is not None else Kpi()
         field_names = frozenset([_f.name for _f in Kpi._meta.get_fields()])
-        for k, v in kpi_serialized.iteritems():
+        for k, v in kpi_serialized.items():
             if k in field_names:
                 setattr(kpi_db, k, v)
 
@@ -215,7 +215,7 @@ class KpiProcess(threading_tools.process_obj):
             srv_com['kpi_error_report'] = json.dumps(e.message)
         srv_com.set_result("ok")
 
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", str(srv_com))
         self.log("Finished calculating KPI")
 
     def _evaluate_kpi(self, kpi_set, kpi_db):
@@ -237,16 +237,16 @@ class KpiProcess(threading_tools.process_obj):
         eval_locals = {}
         result_str = None
         # build function such that return works in the kpi function
-        eval_formula = u"def _kpi():\n"
+        eval_formula = "def _kpi():\n"
         # indent
-        eval_formula += u"\n".join(
+        eval_formula += "\n".join(
             (
-                u"    {}".format(
+                "    {}".format(
                     line.replace("\t", "    ")
-                ) for line in kpi_db.formula.split(u"\n")
+                ) for line in kpi_db.formula.split("\n")
             )
-        ) + u"\n"
-        eval_formula += u"kpi = _kpi()\n"
+        ) + "\n"
+        eval_formula += "kpi = _kpi()\n"
         try:
             # KpiGlobals are used for evaluation, but not exposed to kpi user
             KpiGlobals.current_kpi = kpi_db
@@ -254,7 +254,7 @@ class KpiProcess(threading_tools.process_obj):
         except Exception as e:
             self.log(e)
             error_report = [
-                u"Exception while calculating kpi {}: {}".format(kpi_db, e)
+                "Exception while calculating kpi {}: {}".format(kpi_db, e)
             ]
             for idx, line in enumerate(traceback.format_exc().split("\n")):
                 if idx not in (1, 2):  # these are internal

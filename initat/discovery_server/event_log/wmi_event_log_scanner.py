@@ -82,7 +82,7 @@ class WmiLogFileJob(_WmiJobBase):
         self.logfile_com = None
 
     def __unicode__(self):
-        return u"WmiLogFileJob(dev={}, ip={})".format(self.target_device, self.target_ip)
+        return "WmiLogFileJob(dev={}, ip={})".format(self.target_device, self.target_ip)
 
     __repr__ = __unicode__
 
@@ -164,7 +164,7 @@ class WmiLogEntryJob(_WmiJobBase):
         self.current_phase = WmiLogEntryJob.InitialPhase()
 
     def __unicode__(self):
-        return u"WmiLogEntryJob(dev={}, ip={}, logfile={}, rec_num={}, phase={})".format(
+        return "WmiLogEntryJob(dev={}, ip={}, logfile={}, rec_num={}, phase={})".format(
             self.target_device,
             self.target_ip,
             self.logfile_name,
@@ -199,7 +199,7 @@ class WmiLogEntryJob(_WmiJobBase):
                     entry["RecordNumber"] = int(rec_num)
                 except ValueError:
                     if log is not None:
-                        log("Failed to parse RecordNumber {} of entry {}".format(rec_num, unicode(entry)))
+                        log("Failed to parse RecordNumber {} of entry {}".format(rec_num, str(entry)))
                 else:
                     output.append(entry)
         return output
@@ -382,7 +382,7 @@ class WmiLogEntryJob(_WmiJobBase):
                         'record_number': entry["record_number"],
                         'device_pk': entry["device_pk"],
                     })):
-                        raise RuntimeError("DUPLICATE WMI for " + unicode(entry))
+                        raise RuntimeError("DUPLICATE WMI for " + str(entry))
 
                 if db_entries:
                     # must not feed empty list to mongo

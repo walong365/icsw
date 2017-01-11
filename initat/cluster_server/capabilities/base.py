@@ -17,7 +17,7 @@
 #
 """ cluster-server, background base object """
 
-from __future__ import unicode_literals, print_function
+
 
 from initat.cluster_server.config import global_config
 from initat.tools import logging_tools, mail_tools

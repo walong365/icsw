@@ -35,13 +35,13 @@ def kill_previous():
     # check for already running rrdcached processes and kill them
     proc_dict = process_tools.get_proc_list(proc_name_list=["rrdcached", "collectd"])
     if proc_dict:
-        for _key in proc_dict.iterkeys():
+        for _key in proc_dict.keys():
             try:
                 os.kill(_key, 15)
             except:
                 pass
         time.sleep(0.5)
-        for _key in proc_dict.iterkeys():
+        for _key in proc_dict.keys():
             try:
                 os.kill(_key, 9)
             except:

@@ -19,7 +19,7 @@
 #
 """ data_store structure for rrd-grapher """
 
-from __future__ import print_function, unicode_literals
+
 
 import os
 import re
@@ -115,7 +115,7 @@ class CompoundEntry(object):
             # update dict with attribute dicts from the top-level node
             gd.update(
                 {
-                    _sk: _sv for _sk, _sv in ref_dict[key][0].iteritems() if _sk in ["info", "ti"]
+                    _sk: _sv for _sk, _sv in ref_dict[key][0].items() if _sk in ["info", "ti"]
                 }
             )
         # set default values
@@ -269,7 +269,7 @@ class DataStore(object):
     def __init__(self, machine_vector):
         self.mv = machine_vector
         self.pk = machine_vector.device.pk
-        self.name = unicode(machine_vector.device.full_name)
+        self.name = str(machine_vector.device.full_name)
         # link
         DataStore.__devices[self.pk] = self
 
@@ -285,7 +285,7 @@ class DataStore(object):
                 if not mvv.full_key:
                     mvv.full_key = "{}{}".format(mvs.key, ".{}".format(mvv.key) if mvv.key else "")
                     mvv.save(update_fields=["full_key"])
-                    self.log("correcting full_key of {}".format(unicode(mvv)), logging_tools.LOG_LEVEL_WARN)
+                    self.log("correcting full_key of {}".format(str(mvv)), logging_tools.LOG_LEVEL_WARN)
                 mvv_list.append(
                     {
                         "unit": mvv.unit,
@@ -347,7 +347,7 @@ class DataStore(object):
 
     @staticmethod
     def present_pks():
-        return DataStore.__devices.keys()
+        return list(DataStore.__devices.keys())
 
     @staticmethod
     def get_instance(pk):
@@ -365,10 +365,10 @@ class DataStore(object):
         #     os.mkdir(data_store.store_dir)
         # entry_re = re.compile("^(?P<full_name>.*)_(?P<pk>\d+).info.xml$")
         for mv in MachineVector.objects.filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)):
-            DataStore.g_log(u"building structure for {}".format(unicode(mv.device)))
+            DataStore.g_log("building structure for {}".format(str(mv.device)))
             new_ds = DataStore(mv)
         DataStore.compound_tree = CompoundTree(DataStore.g_log)
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        DataStore.process.log(u"[ds] {}".format(what), log_level)
+        DataStore.process.log("[ds] {}".format(what), log_level)

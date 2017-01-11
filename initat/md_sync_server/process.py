@@ -39,7 +39,7 @@ class ExternalProcess(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(
-            u"[EP {}] {}".format(
+            "[EP {}] {}".format(
                 self.__name,
                 what,
             ),
@@ -50,7 +50,7 @@ class ExternalProcess(object):
         self.log("closed")
 
     def run(self):
-        for _name, _cf in self.__create_files.iteritems():
+        for _name, _cf in self.__create_files.items():
             if not os.path.isfile(_name):
                 try:
                     file(_name, "w").close()
@@ -84,7 +84,7 @@ class ExternalProcess(object):
             try:
                 return self.popen.communicate()
             except (OSError, ValueError):
-                self.log(u"error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log("error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 return ("", "")
         else:
             return ("", "")
@@ -94,7 +94,7 @@ class ExternalProcess(object):
             pid = self.popen.pid
             self.popen.terminate()
         except (OSError, ValueError):
-            self.log(u"error in popen.terminate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.log("error in popen.terminate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("called terminate (pid={:d})".format(pid))
 
@@ -103,7 +103,7 @@ class ExternalProcess(object):
             pid = self.popen.pid
             self.popen.kill()
         except (OSError, ValueError):
-            self.log(u"error in popen.kill: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.log("error in popen.kill: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("called kill (pid={:d})".format(pid))
 
@@ -112,7 +112,7 @@ class ExternalProcess(object):
             pid = self.popen.pid
             self.popen.wait()
         except (OSError, ValueError):
-            self.log(u"error in popen.wait: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.log("error in popen.wait: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("called wait (pid={:d})".format(pid))
 
@@ -136,7 +136,7 @@ class ProcessControl(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
-            u"[PC {}] {}".format(self.__proc_name, what),
+            "[PC {}] {}".format(self.__proc_name, what),
             log_level
         )
 
@@ -300,7 +300,7 @@ class ProcessControl(object):
         # kill all icinga processes
         for _proc in psutil.process_iter():
             if _proc.name == self.__proc_name:
-                print _proc
+                print(_proc)
 
     def check_md_config(self):
         # checks the current config and returns True or False

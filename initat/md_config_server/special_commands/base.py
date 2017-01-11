@@ -19,7 +19,7 @@
 #
 """ special (dynamic) tasks for md-config-server """
 
-from __future__ import unicode_literals, print_function
+
 
 import time
 
@@ -288,7 +288,7 @@ class ArgTemplate(dict):
         self.argument_names = sorted(list(set(self.__arg_list) | set(self.__arg_lut.values())))
         for arg_name in self.argument_names:
             dict.__setitem__(self, arg_name, "")
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             self[key] = value
 
     @property

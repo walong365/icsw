@@ -21,7 +21,7 @@
 #
 """ frontend for SGE qstat """
 
-from __future__ import print_function, unicode_literals
+
 
 import argparse
 import os
@@ -194,7 +194,7 @@ class window(object):
         self.set_question_text(self.tree.get_cur_text())
 
     def _handler_data(self, in_char):
-        if isinstance(in_char, basestring):
+        if isinstance(in_char, str):
             if self.tree:
                 handled = self.tree.handle_input(in_char, self)
             else:
@@ -216,7 +216,7 @@ class window(object):
 
     def get_data(self):
         if self.callback:
-            return unicode(self.callback(*self.cb_args))
+            return str(self.callback(*self.cb_args))
         else:
             return "no data"
 

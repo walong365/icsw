@@ -19,7 +19,7 @@
 #
 """ constants for md-config-server """
 
-from __future__ import unicode_literals, print_function
+
 
 __all__ = [
     b"MON_VAR_IP_NAME",

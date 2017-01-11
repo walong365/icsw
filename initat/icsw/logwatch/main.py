@@ -21,7 +21,7 @@
 #
 """ show and follow cluster logs """
 
-from __future__ import print_function, unicode_literals
+
 
 import time
 

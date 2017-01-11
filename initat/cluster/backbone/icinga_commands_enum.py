@@ -21,7 +21,7 @@
 #
 """ enums for all defined icinga commands """
 
-from __future__ import unicode_literals, print_function
+
 
 import time
 
@@ -50,7 +50,7 @@ class IcingaCommand(object):
         self.for_contact = for_contact
         self.for_contactgroup = for_contactgroup
         self.__arg_dict = {arg.name: arg for arg in self.args}
-        _arg_names = self.__arg_dict.keys()
+        _arg_names = list(self.__arg_dict.keys())
         for (flag_name, arg_name) in [
             ("for_host", "host_name"),
             ("for_service", "service_description"),
@@ -69,7 +69,7 @@ class IcingaCommand(object):
                 )
 
     def resolve_args(self, args):
-        for name, struct in args.iteritems():
+        for name, struct in args.items():
             self.__arg_dict[name].resolve(struct)
         return args
 

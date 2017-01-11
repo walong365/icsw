@@ -19,7 +19,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import print_function, unicode_literals
+
 
 import os
 
@@ -74,7 +74,7 @@ class SmartKey(object):
                     print(
                         "unresolvable '{}' for object '{}'".format(
                             _prt,
-                            unicode(_obj),
+                            str(_obj),
                         )
                     )
                     _obj = None
@@ -85,7 +85,7 @@ class SmartKey(object):
                         print(
                             "found more than one in list {} of '{}' ({:d})".format(
                                 _prt,
-                                unicode(_obj),
+                                str(_obj),
                                 len(_next),
                             )
                         )
@@ -94,7 +94,7 @@ class SmartKey(object):
                         print(
                             "list {} of '{}' is empty".format(
                                 _prt,
-                                unicode(_obj),
+                                str(_obj),
                             )
                         )
                         _obj = None
@@ -112,10 +112,10 @@ class SmartKey(object):
             _prev = getattr(self.object, self.attr_name)
             print(
                 "changing attribute '{}' of '{}' form '{}' to '{}'".format(
-                    unicode(self.attr_name),
-                    unicode(self.object),
+                    str(self.attr_name),
+                    str(self.object),
                     _prev,
-                    unicode(value)
+                    str(value)
                 )
             )
             setattr(self.object, self.attr_name, value)
@@ -129,7 +129,7 @@ def main(opt_ns):
         reader = csv.DictReader(csv_file)
         for _ld in reader:
             if "name" not in _ld:
-                print("Need name in line_dict (found: {})".format(", ".join(_ld.keys())))
+                print("Need name in line_dict (found: {})".format(", ".join(list(_ld.keys()))))
             else:
                 _name = _ld.pop("name")
                 try:
@@ -137,7 +137,7 @@ def main(opt_ns):
                 except device.DoesNotExist:
                     print("no device with name '{}' found".format(_name))
                 else:
-                    for _key, _value in _ld.iteritems():
+                    for _key, _value in _ld.items():
                         _sm = SmartKey(_dev, _key)
                         if _sm.resolved:
                             _sm.set(_value)

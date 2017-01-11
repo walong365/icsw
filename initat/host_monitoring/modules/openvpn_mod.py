@@ -16,7 +16,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import commands
+import subprocess
 import datetime
 import glob
 import os
@@ -65,9 +65,9 @@ class _general(hm_classes.hm_module):
         self.__inst_dict = {}
 
     def _exec_command(self, com, logger):
-        stat, out = commands.getstatusoutput(com)
+        stat, out = subprocess.getstatusoutput(com)
         if stat:
-            logger.warning(u"cannot execute {} ({:d}): {}".format(com, stat, out))
+            logger.warning("cannot execute {} ({:d}): {}".format(com, stat, out))
             out = ""
         return out.split("\n")
 
@@ -79,7 +79,7 @@ class _general(hm_classes.hm_module):
 
     def update_machine_vector(self, mv):
         self.update_status()
-        ovpn_keys = self.keys()
+        ovpn_keys = list(self.keys())
         num_total = len(ovpn_keys)
         if num_total and not self.__base_mv_registered:
             self.__base_mv_registered = True
@@ -94,7 +94,7 @@ class _general(hm_classes.hm_module):
             mv["ovpn.offline"] = num_offline
         for ovpn_inst in [self[key] for key in ovpn_keys if self[key].ovpn_type == "server"]:
             ovpn_name = ovpn_inst.name.split(".")[0]
-            clients = ovpn_inst.keys()
+            clients = list(ovpn_inst.keys())
             if not ovpn_inst.mv_registered:
                 ovpn_inst.mv_registered = True
                 self.__client_dict[ovpn_name] = {}
@@ -141,7 +141,7 @@ class _general(hm_classes.hm_module):
                                 self.__inst_dict[e_key].update()
                             except:
                                 self.log(
-                                    u"unable to update instance {}: {}".format(
+                                    "unable to update instance {}: {}".format(
                                         entry,
                                         process_tools.get_except_info()
                                     ),
@@ -154,7 +154,7 @@ class _general(hm_classes.hm_module):
                                 new_inst = OpenVPNInstance(self.log, entry)
                             except:
                                 self.log(
-                                    u"unable to create new OpenVPNInstance for {}: {}".format(
+                                    "unable to create new OpenVPNInstance for {}: {}".format(
                                         entry,
                                         process_tools.get_except_info()
                                     ),
@@ -163,10 +163,10 @@ class _general(hm_classes.hm_module):
                             else:
                                 self.__inst_dict[e_key] = new_inst
                                 found_inst.append(e_key)
-            old_inst = [key for key in self.__inst_dict.keys() if key not in found_inst]
+            old_inst = [key for key in list(self.__inst_dict.keys()) if key not in found_inst]
             if old_inst:
                 self.log(
-                    u"removing {}: {}".format(
+                    "removing {}: {}".format(
                         logging_tools.get_plural("instance", len(old_inst)),
                         ", ".join(sorted(old_inst))
                     )
@@ -175,7 +175,7 @@ class _general(hm_classes.hm_module):
                     del self.__inst_dict[inst]
 
     def keys(self):
-        return self.__inst_dict.keys()
+        return list(self.__inst_dict.keys())
 
     def __getitem__(self, key):
         return self.__inst_dict[key]
@@ -202,10 +202,10 @@ class OpenVPNInstance(object):
         self.update()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_handle.log(u"[oi] {}".format(what), log_level)
+        self.__log_handle.log("[oi] {}".format(what), log_level)
 
     def keys(self):
-        return self.__act_dict.keys()
+        return list(self.__act_dict.keys())
 
     def __getitem__(self, key):
         return self.__act_dict[key]
@@ -269,14 +269,14 @@ class OpenVPNInstance(object):
                                 key = line.pop(0)
                                 if key in ["TIME"]:
                                     cur_time = int(line[-1])
-                                    keys = self.__speed_dict.keys()
+                                    keys = list(self.__speed_dict.keys())
                                     if cur_time not in keys:
                                         # remove oldest one
                                         if len(keys) > 1:
                                             del self.__speed_dict[min(keys)]
                                         self.__speed_dict[cur_time] = {}
                                         # get keys again
-                                        keys = self.__speed_dict.keys()
+                                        keys = list(self.__speed_dict.keys())
                                     if len(keys) == 2:
                                         prev_speed_dict, cur_speed_dict = (self.__speed_dict[min(keys)], self.__speed_dict[max(keys)])
                                         diff_time = abs(keys[0] - keys[1])
@@ -306,7 +306,7 @@ class OpenVPNInstance(object):
                                         act_dict[line[1]]["reference"] = int(line[4])
                         # try to add client dirs
                         if self.__ccd:
-                            for client_name in act_dict.keys():
+                            for client_name in list(act_dict.keys()):
                                 cconf_name = os.path.join(
                                     self.__ccd,
                                     client_name)
@@ -321,7 +321,7 @@ class OpenVPNInstance(object):
                                             line_split = client_line.strip().split()
                                             if line_split and line_split[0] == "ifconfig-push":
                                                 act_dict.setdefault(client_name, {"oneline": False})["client_ip"] = line_split[1]
-                        self.state, self.status_str = (True, "{} connected".format(logging_tools.get_plural("client", len(act_dict.keys()))))
+                        self.state, self.status_str = (True, "{} connected".format(logging_tools.get_plural("client", len(list(act_dict.keys())))))
                     else:
                         self.state, self.status_str = (False, "wrong version of server status file")
             else:
@@ -351,7 +351,7 @@ class certificate_status_command(hm_classes.hm_command):
             self._openssl_command,
             file_name,
         )
-        c_stat, c_out = commands.getstatusoutput(pem_com)
+        c_stat, c_out = subprocess.getstatusoutput(pem_com)
         if not c_stat:
             act_dict = {}
             for line in c_out.split("\n"):
@@ -396,7 +396,7 @@ class certificate_status_command(hm_classes.hm_command):
                                 key, value = l_parts
                                 if key.lower() in ["ca", "cert"]:
                                     map_dict[os.path.join(OPENVPN_DIR, value)] = file_name
-                for key, value in inline_pems.iteritems():
+                for key, value in inline_pems.items():
                     if key not in ["key"]:
                         full_name = os.path.join(temp_dir, "{}_{}.pem".format(conf_file.replace(".conf", ""), key))
                         file(full_name, "w").write("\n".join(inline_pems[key]))
@@ -489,7 +489,7 @@ class openvpn_status_command(hm_classes.hm_command):
 
     def __call__(self, srv_com, cur_ns):
         self.module.update_status()
-        insts = self.module.keys()
+        insts = list(self.module.keys())
         if insts:
             ret_dict = {}
             for inst in sorted(insts):
@@ -564,13 +564,13 @@ class openvpn_status_command(hm_classes.hm_command):
         inst_name = cur_ns.instance
         peer_name = cur_ns.peer
         if peer_name == "ALL":
-            ret_state, res_field = (limits.mon_STATE_OK, [logging_tools.get_plural("instance", len(res_dict.keys()))])
+            ret_state, res_field = (limits.mon_STATE_OK, [logging_tools.get_plural("instance", len(list(res_dict.keys())))])
         else:
             ret_state, res_field = (limits.mon_STATE_OK, [])
         if inst_name != "ALL":
             check_instances = [inst_name]
         else:
-            check_instances = res_dict.keys()
+            check_instances = list(res_dict.keys())
         for inst_name in sorted(check_instances):
             # iterate over instances
             if inst_name in res_dict:
@@ -630,7 +630,7 @@ class openvpn_status_command(hm_classes.hm_command):
                                     "{} (server via {}, {}: {})".format(
                                         inst_name,
                                         vpn_device,
-                                        logging_tools.get_plural("client", len(clients.keys())),
+                                        logging_tools.get_plural("client", len(list(clients.keys()))),
                                         ",".join(sorted(clients.keys()))
                                     )
                                 )

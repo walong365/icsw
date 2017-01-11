@@ -17,7 +17,7 @@
 #
 """ virtual desktop capability """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 import glob
@@ -127,7 +127,7 @@ class vncserver(virtual_desktop_server):
 
         os.mkdir(self.vnc_dir)
         os.chown(self.vnc_dir, vnc_user_uid, self._get_gid_of_uid(vnc_user_uid))
-        os.chmod(self.vnc_dir, 0700)
+        os.chmod(self.vnc_dir, 0o700)
 
         # create startup file
         with open(self.vncstartup_file, "w") as f:
@@ -137,7 +137,7 @@ class vncserver(virtual_desktop_server):
 
         # make startup file executable
         os.chown(self.vncstartup_file, vnc_user_uid, self._get_gid_of_uid(vnc_user_uid))
-        os.chmod(self.vncstartup_file, 0700)
+        os.chmod(self.vncstartup_file, 0o700)
 
     def _write_password_file(self, pw):
         # get binary data using vncpasswd
@@ -149,13 +149,13 @@ class vncserver(virtual_desktop_server):
         outfile.close()
 
         os.chown(self.pwd_file, self.vdus.user.uid, self._get_gid_of_uid(self.vdus.user.uid))
-        os.chmod(self.pwd_file, 0600)
+        os.chmod(self.pwd_file, 0o600)
 
     def start(self):
         self._setup()
 
         # create pw for session (vnc truncates passwords longer than 8 characters)
-        self.vdus.password = "".join(random.choice(string.ascii_letters + string.digits) for _i in xrange(8))
+        self.vdus.password = "".join(random.choice(string.ascii_letters + string.digits) for _i in range(8))
 
         self._write_password_file(self.vdus.password)
 

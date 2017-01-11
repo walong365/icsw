@@ -17,9 +17,9 @@
 #
 """ modifies yp-databases """
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import os
 import re
 import shutil
@@ -32,8 +32,8 @@ from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster_server.config import global_config
 from initat.tools import logging_tools, server_command
 
-import cs_base_class
-import cs_tools
+from . import cs_base_class
+from . import cs_tools
 
 
 class write_yp_config(cs_base_class.icswCSServerCom):
@@ -42,7 +42,7 @@ class write_yp_config(cs_base_class.icswCSServerCom):
 
     def _call(self, cur_inst):  # call_it(self, opt_dict, call_params):
         try:
-            import gdbm
+            import dbm.gnu
         except ImportError:
             return "error unable to load gdbm-Module (gdbm-devel missing on compile machine?)"
         par_dict = dict([(cur_var.name, cur_var.value) for cur_var in config_str.objects.filter(Q(config__name="yp_server"))])
@@ -97,16 +97,16 @@ class write_yp_config(cs_base_class.icswCSServerCom):
                 for c_str in entry.config.config_str_set.all():
                     if c_str.name in ei_dict[dev_name][act_pk]:
                         ei_dict[dev_name][act_pk][c_str.name] = c_str.value
-        for mach, aeid_d in ei_dict.iteritems():
-            for _aeid_idx, aeid in aeid_d.iteritems():
+        for mach, aeid_d in ei_dict.items():
+            for _aeid_idx, aeid in aeid_d.items():
                 if aeid["export"] and aeid["import"]:
                     aeid["import"] = cs_tools.hostname_expand(mach, aeid["import"])
                     export_dict[aeid["import"]] = (aeid["options"], "%s%s:%s" % (mach, aeid["node_postfix"], aeid["export"]))
         # home-exports
         home_exp_dict = home_export_list().exp_dict
-        for user_stuff in [cur_u for cur_u in all_users.values() if cur_u.active and cur_u.group.active]:
+        for user_stuff in [cur_u for cur_u in list(all_users.values()) if cur_u.active and cur_u.group.active]:
             group_stuff = all_groups[user_stuff.group_id]
-            if user_stuff.export_id in home_exp_dict.keys():
+            if user_stuff.export_id in list(home_exp_dict.keys()):
                 home_stuff = home_exp_dict[user_stuff.export_id]
                 export_dict[
                     os.path.normpath(
@@ -117,19 +117,19 @@ class write_yp_config(cs_base_class.icswCSServerCom):
                     "%s%s:%s/%s" % (home_stuff["name"], home_stuff["node_postfix"], home_stuff["homeexport"], user_stuff.home)
                 )
             else:
-                self.log("skipping user %s (no valid export entry)" % (unicode(user_stuff)), logging_tools.LOG_LEVEL_WARN)
+                self.log("skipping user %s (no valid export entry)" % (str(user_stuff)), logging_tools.LOG_LEVEL_WARN)
         # print export_dict
         # auto.master map
         auto_master = []
         # print export_dict
         ext_keys = {}
-        for ext_k in export_dict.keys():
+        for ext_k in list(export_dict.keys()):
             splits = ext_k.split("/")
             dirname = os.path.normpath(splits.pop())
             mountpoint = "/".join(splits).replace("/", "").strip()
             if mountpoint:
                 exp = "auto.%s" % (mountpoint)
-                if exp not in ext_keys.keys():
+                if exp not in list(ext_keys.keys()):
                     ext_keys[exp] = []
                     auto_master.append((os.path.normpath("%s/" % ("/".join(splits))), exp))
                 ext_keys[exp].append((dirname, " ".join(export_dict[ext_k])))
@@ -138,10 +138,10 @@ class write_yp_config(cs_base_class.icswCSServerCom):
         gbg = []
         gbn = []
         # self.dc.execute("SELECT g.ggroup_idx, g.ggroupname, g.gid FROM ggroup g WHERE g.active=1")
-        for group_pk, group_struct in all_groups.iteritems():
+        for group_pk, group_struct in all_groups.items():
             # groups[name] = entry
             # self.dc.execute("SELECT u.login FROM user u, ggroup g WHERE u.ggroup=g.ggroup_idx AND u.export > 0 AND g.gid=%d" % (gid))
-            users = [cur_u.login for cur_u in all_users.itervalues() if cur_u.group_id == group_pk]
+            users = [cur_u.login for cur_u in all_users.values() if cur_u.group_id == group_pk]
             if len(users):
                 gbn.append((group_struct.groupname, "%s:*:%d:%s" % (group_struct.groupname, group_struct.gid, ",".join(users))))
                 gbg.append(("%d" % (group_struct.gid), "%s:*:%d:%s" % (group_struct.groupname, group_struct.gid, ",".join(users))))
@@ -150,7 +150,7 @@ class write_yp_config(cs_base_class.icswCSServerCom):
         # passwd-entries
         pbu = []
         pbn = []
-        for _user_pk, user_struct in all_users.iteritems():
+        for _user_pk, user_struct in all_users.items():
             group_struct = all_groups[user_struct.group_id]
             home = os.path.normpath(
                 os.path.join(
@@ -209,7 +209,7 @@ class write_yp_config(cs_base_class.icswCSServerCom):
                         "homeexport": ""
                     }
                 )[entry["csname"]] = entry["value"]
-            valid_home_keys = [x for x in home_exp_dict.keys() if home_exp_dict[x]["homeexport"]]
+            valid_home_keys = [x for x in list(home_exp_dict.keys()) if home_exp_dict[x]["homeexport"]]
             if valid_home_keys:
                 # self.dc.execute("SELECT u.login, g.homestart, u.home, u.export FROM user u,
                 # ggroup g WHERE u.ggroup=g.ggroup_idx AND (%s)" % (" OR ".join(["u.export=%d" % (x) for x in valid_home_keys])))
@@ -273,7 +273,7 @@ class write_yp_config(cs_base_class.icswCSServerCom):
                 self.log("creating map named %s ..." % (mapname))
                 map_name = os.path.join(temp_map_dir, mapname)
                 # print map_name
-                gdbf = gdbm.open(map_name, "n", 0600)
+                gdbf = dbm.gnu.open(map_name, "n", 0o600)
                 gdbf["YP_INPUT_NAME"] = "{}.dbl".format(mapname)
                 gdbf["YP_OUTPUT_NAME"] = map_name
                 gdbf["YP_MASTER_NAME"] = global_config["SERVER_FULL_NAME"]
@@ -287,11 +287,11 @@ class write_yp_config(cs_base_class.icswCSServerCom):
             if os.path.isdir(map_dir):
                 shutil.rmtree(map_dir, 1)
             os.rename(temp_map_dir, map_dir)
-            num_maps = len(ext_keys.keys())
+            num_maps = len(list(ext_keys.keys()))
             if os.path.isfile("/usr/lib64/yp/makedbm"):
-                cstat, cout = commands.getstatusoutput("/usr/lib64/yp/makedbm -c")
+                cstat, cout = subprocess.getstatusoutput("/usr/lib64/yp/makedbm -c")
             else:
-                cstat, cout = commands.getstatusoutput("/usr/lib/yp/makedbm -c")
+                cstat, cout = subprocess.getstatusoutput("/usr/lib/yp/makedbm -c")
             if cstat:
                 cur_inst.srv_com.set_result(
                     "wrote {}, reloading gave: '{}'".format(

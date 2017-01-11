@@ -4,7 +4,7 @@
 # Copyright 1997, Corporation for National Research Initiatives
 # written by Jeremy Hylton, jeremy@cnri.reston.va.us
 
-from __future__ import unicode_literals, print_function
+
 
 import array
 import socket
@@ -118,7 +118,7 @@ class Packet:
         self.type = ord(packet[0])
         self.code = ord(packet[1])
         elts = struct.unpack('hhh', packet[2:8])
-        [self.cksum, self.id, self.seq] = map(lambda x: x & 0xffff, elts)
+        [self.cksum, self.id, self.seq] = [x & 0xffff for x in elts]
         self.data = packet[8:]
 
     def __compute_cksum(self):

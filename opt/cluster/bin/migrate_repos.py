@@ -30,7 +30,7 @@ deprecated script, no longer in use
 
 """
 
-from __future__ import print_function, unicode_literals
+
 
 import argparse
 import os
@@ -66,7 +66,7 @@ class Repo(dict):
         self.content = file(self.name, "r").read().split("\n")
         self._to_dict()
         if "baseurl" not in self:
-            print(u"no baseurl in repo {}, ingoring".format(self.name))
+            print("no baseurl in repo {}, ingoring".format(self.name))
             return
         b_url = self["baseurl"]
         if b_url.count("www.initat.org") or (b_url.startswith("dir:///") and b_url.count("packages/RPMs")):
@@ -74,7 +74,7 @@ class Repo(dict):
             # print b_url, url_m
             if url_m:
                 if self.opts.list:
-                    print(u"repo {}, current url is {}".format(self.name, b_url))
+                    print("repo {}, current url is {}".format(self.name, b_url))
                 else:
                     rest = url_m.groupdict()["rest"]
                     if self.opts.migrate and rest in ["", "", None]:
@@ -111,10 +111,10 @@ class Repo(dict):
                 self[kv_m.group("key").lower()] = kv_m.group("value")
 
     def _emit(self, f_name, **kwargs):
-        c_dict = dict([(key, kwargs.get(key, value)) for key, value in self.iteritems()])
+        c_dict = dict([(key, kwargs.get(key, value)) for key, value in self.items()])
         # pprint.pprint(c_dict)
         content = ["[{}]".format(c_dict["name"])]
-        for key, value in c_dict.iteritems():
+        for key, value in c_dict.items():
             content.append("{}={}".format(key, value))
         file(f_name, "w").write("\n".join(content + [""]))
 

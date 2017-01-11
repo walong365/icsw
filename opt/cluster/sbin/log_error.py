@@ -21,7 +21,7 @@
 #
 """ logs an error """
 
-from __future__ import print_function, unicode_literals
+
 
 import argparse
 
@@ -38,7 +38,7 @@ def main():
     s_str = " ".join(opts.args)
     print("Sending '{}' to {} (repeat: {:d})".format(s_str, opts.target, opts.repeat))
     _ctx = zmq.Context()
-    for _rep in xrange(opts.repeat):
+    for _rep in range(opts.repeat):
         err_h = io_stream_helper.icswIOStream(opts.target, zmq_context=_ctx)
         err_h.write(s_str)
         err_h.close()

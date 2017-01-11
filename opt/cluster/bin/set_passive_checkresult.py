@@ -19,7 +19,7 @@
 #
 """ set the result of a passive checkcommand """
 
-from __future__ import print_function, unicode_literals
+
 
 import argparse
 import os
@@ -60,7 +60,7 @@ def main():
         output=opts.output,
     )
     _sender.connect(conn_str)
-    _sender.send_unicode(unicode(_com))
+    _sender.send_unicode(str(_com))
     if _sender.poll(opts.timeout * 1000):
         recv_str = server_command.srv_command(source=_sender.recv())
         _str, _ret = recv_str.get_log_tuple()

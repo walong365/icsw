@@ -16,7 +16,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import unicode_literals, print_function
+
 
 import codecs
 import os
@@ -24,7 +24,7 @@ import os
 import networkx
 from django.db.models import Q
 
-import cs_base_class
+from . import cs_base_class
 from initat.cluster.backbone.models import netdevice, device, device_variable, domain_tree_node
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import ipvx_tools, logging_tools, process_tools, cluster_location, config_tools
@@ -61,7 +61,7 @@ class write_etc_hosts(cs_base_class.icswCSServerCom):
         route_obj = config_tools.RouterObject(cur_inst.log)
         all_paths = []
         for s_ndev in my_idxs:
-            all_paths.extend(networkx.shortest_path(route_obj.nx, s_ndev, weight="weight").values())
+            all_paths.extend(list(networkx.shortest_path(route_obj.nx, s_ndev, weight="weight").values()))
         # pprint.pprint(all_paths)
         nd_lut = {
             cur_nd.pk: cur_nd for cur_nd in netdevice.objects.all().select_related(
@@ -174,7 +174,7 @@ class write_etc_hosts(cs_base_class.icswCSServerCom):
                         ip_dict[cur_ip.ip].append((min_value, out_names))
         # out_list
         loc_dict = {}
-        for ip, h_list in ip_dict.iteritems():
+        for ip, h_list in ip_dict.items():
             all_values = sorted([entry[0] for entry in h_list])
             if all_values:
                 min_value = all_values[0]
@@ -227,7 +227,7 @@ class write_etc_hosts(cs_base_class.icswCSServerCom):
             dg_dict = {}
             for dev_name, dg_name in all_devs:
                 dg_dict.setdefault(dg_name, []).append(dev_name)
-            for file_name, content in dg_dict.iteritems():
+            for file_name, content in dg_dict.items():
                 codecs.open(os.path.join(GROUP_DIR, file_name), "w", "utf-8").write("\n".join(sorted(set(content)) + [""]))
         file_list.append(ETC_HOSTS_FILENAME)
         codecs.open(ETC_HOSTS_FILENAME, "w+", "utf-8").write(

@@ -18,17 +18,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import os
 import shutil
 import tempfile
 
 from django.db.models import Q
 
-import cs_base_class
-import cs_tools
+from . import cs_base_class
+from . import cs_tools
 from initat.cluster.backbone.models import user, config_str
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster_server.config import global_config
@@ -80,7 +80,7 @@ class create_user_home(cs_base_class.icswCSServerCom):
                 )
             else:
                 exp_dict = dict([(hd_export.name, hd_export.value) for hd_export in hd_exports])
-                self.log("export dict: {}".format(", ".join(["{}='{}'".format(key, value) for key, value in exp_dict.iteritems()])))
+                self.log("export dict: {}".format(", ".join(["{}='{}'".format(key, value) for key, value in exp_dict.items()])))
                 homestart = exp_dict.get("createdir", exp_dict["homeexport"])
                 # check for skeleton directory
                 skel_dir = None
@@ -154,14 +154,14 @@ class create_user_home(cs_base_class.icswCSServerCom):
                         os.chown(full_home, uid, gid)
                         os.path.walk(full_home, change_own, (uid, gid))
                         try:
-                            os.chmod(full_home, 0755)
+                            os.chmod(full_home, 0o755)
                         except:
                             pass
                         hdir_exists = True
                         post_create_user_command = "/etc/sysconfig/post_create_user"
                         if os.path.isfile(post_create_user_command):
                             pcun_args = "0 %d %d %s %s" % (uid, gid, user, full_home)
-                            pc_stat, pc_out = commands.getstatusoutput("%s %s" % (post_create_user_command, pcun_args))
+                            pc_stat, pc_out = subprocess.getstatusoutput("%s %s" % (post_create_user_command, pcun_args))
                             self.log("Calling '%s %s' gave (%d): %s" % (
                                 post_create_user_command,
                                 pcun_args,
@@ -172,7 +172,7 @@ class create_user_home(cs_base_class.icswCSServerCom):
                         cur_inst.srv_com.set_result(
                             "created homedirectory '{}' for user '{}'".format(
                                 full_home,
-                                unicode(user)
+                                str(user)
                             )
                         )
                     else:
@@ -208,7 +208,7 @@ class create_sge_user(cs_base_class.icswCSServerCom):
         try:
             sge_root = file("/etc/sge_root", "r").readline().strip()
             sge_cell = file("/etc/sge_cell", "r").readline().strip()
-            _sge_stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
+            _sge_stat, sge_arch = subprocess.getstatusoutput("/%s/util/arch" % (sge_root))
         except:
             cur_inst.srv_com["result"].attrib.update({
                 "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR),
@@ -227,7 +227,7 @@ class create_sge_user(cs_base_class.icswCSServerCom):
             tf.close()
             os.environ["SGE_ROOT"] = sge_root
             os.environ["SGE_CELL"] = sge_cell
-            cstat, cout = commands.getstatusoutput("/%s/bin/%s/qconf -Auser %s" % (sge_root, sge_arch, tmp_name))
+            cstat, cout = subprocess.getstatusoutput("/%s/bin/%s/qconf -Auser %s" % (sge_root, sge_arch, tmp_name))
             if cstat:
                 cur_inst.srv_com.set_result(
                     "error cannot create SGE user {}: '{}'".format(user, cout),
@@ -252,7 +252,7 @@ class delete_sge_user(cs_base_class.icswCSServerCom):
         try:
             sge_root = file("/etc/sge_root", "r").readline().strip()
             sge_cell = file("/etc/sge_cell", "r").readline().strip()
-            _sge_stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
+            _sge_stat, sge_arch = subprocess.getstatusoutput("/%s/util/arch" % (sge_root))
         except:
             cur_inst.srv_com["result"].attrib.update({
                 "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR),
@@ -261,7 +261,7 @@ class delete_sge_user(cs_base_class.icswCSServerCom):
         else:
             os.environ["SGE_ROOT"] = sge_root
             os.environ["SGE_CELL"] = sge_cell
-            cstat, cout = commands.getstatusoutput("/%s/bin/%s/qconf -duser %s" % (sge_root, sge_arch, user))
+            cstat, cout = subprocess.getstatusoutput("/%s/bin/%s/qconf -duser %s" % (sge_root, sge_arch, user))
             if cstat:
                 cur_inst.srv_com["result"].attrib.update({
                     "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR),
@@ -285,14 +285,14 @@ class rename_sge_user(cs_base_class.icswCSServerCom):
         try:
             sge_root = file("/etc/sge_root", "r").readline().strip()
             sge_cell = file("/etc/sge_cell", "r").readline().strip()
-            _sge_stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
+            _sge_stat, sge_arch = subprocess.getstatusoutput("/%s/util/arch" % (sge_root))
         except:
             cur_inst.srv_com.set_result(
                 "error sge-/etc/files not found",
                 server_command.SRV_REPLY_STATE_ERROR,
             )
         else:
-            cstat, cout = commands.getstatusoutput("/%s/bin/%s/qconf -suser %s" % (sge_root, sge_arch, old_user))
+            cstat, cout = subprocess.getstatusoutput("/%s/bin/%s/qconf -suser %s" % (sge_root, sge_arch, old_user))
             if cstat:
                 cur_inst.srv_com.set_result(
                     "error cannot fetch info for SGE user %s: %s" % (old_user, cout),
@@ -306,11 +306,11 @@ class rename_sge_user(cs_base_class.icswCSServerCom):
                 }
                 user_dict["name"] = user
                 tmp_name = tempfile.mktemp("sge")
-                file(tmp_name, "w").write("\n".join(["%s %s" % (k, v) for k, v in user_dict.iteritems()]))
+                file(tmp_name, "w").write("\n".join(["%s %s" % (k, v) for k, v in user_dict.items()]))
                 os.environ["SGE_ROOT"] = sge_root
                 os.environ["SGE_CELL"] = sge_cell
-                commands.getstatusoutput("/%s/bin/%s/qconf -duser %s" % (sge_root, sge_arch, old_user))
-                cstat, cout = commands.getstatusoutput("/%s/bin/%s/qconf -Auser %s" % (sge_root, sge_arch, tmp_name))
+                subprocess.getstatusoutput("/%s/bin/%s/qconf -duser %s" % (sge_root, sge_arch, old_user))
+                cstat, cout = subprocess.getstatusoutput("/%s/bin/%s/qconf -Auser %s" % (sge_root, sge_arch, tmp_name))
                 if cstat:
                     cur_inst.srv_com["result"].attrib.update({
                         "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR),

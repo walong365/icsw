@@ -26,7 +26,7 @@ to compile openmpi 1.8.1 with PGC 14.4 on Centos 6.5:
 
 """
 import argparse
-import commands
+import subprocess
 import os
 import shutil
 import subprocess
@@ -87,7 +87,7 @@ class my_opt_parser(argparse.ArgumentParser):
             dest="mpi_version",
             help="Choose MPI Version [%(default)s]",
             action="store",
-            choices=self.version_dict.keys(),
+            choices=list(self.version_dict.keys()),
             default=self.highest_version
         )
         self.add_argument(
@@ -223,7 +223,7 @@ class my_opt_parser(argparse.ArgumentParser):
                     "F77": "gfortran",
                     "FC": "gfortran"
                 }
-            stat, out = commands.getstatusoutput("{} --version".format(self.compiler_dict['CC']))
+            stat, out = subprocess.getstatusoutput("{} --version".format(self.compiler_dict['CC']))
             if stat:
                 raise ValueError("Cannot get Version from gcc (%d): %s" % (stat, out))
             self.small_version = out.split(")")[1].split()[0]
@@ -269,12 +269,12 @@ class my_opt_parser(argparse.ArgumentParser):
                     "F77": "pathf95",
                     "FC": "pathf95"
                 }
-                _stat, pathf95_out = commands.getstatusoutput("%s/bin/pathf95 -dumpversion" % (self.options.fcompiler_path))
+                _stat, pathf95_out = subprocess.getstatusoutput("%s/bin/pathf95 -dumpversion" % (self.options.fcompiler_path))
                 if _stat:
                     raise ValueError("Cannot get Version from pathf95 (%d): %s" % (_stat, pathf95_out))
                 self.small_version = pathf95_out.split("\n")[0]
                 self.compiler_version_dict = {"pathf95": pathf95_out}
-                _stat, pathcc_out = commands.getstatusoutput("%s/bin/pathcc -dumpversion" % (self.options.fcompiler_path))
+                _stat, pathcc_out = subprocess.getstatusoutput("%s/bin/pathcc -dumpversion" % (self.options.fcompiler_path))
                 if _stat:
                     raise ValueError("Cannot get Version from pathcc (%d): %s" % (_stat, pathcc_out))
                 self.compiler_version_dict = {
@@ -305,10 +305,10 @@ class my_opt_parser(argparse.ArgumentParser):
                 # "CPPFLAGS" : "-DNO_PGI_OFFSET",
                 "FCFLAGS": "-fast",
             }
-            _stat, _out = commands.getstatusoutput("pgf90 -V")
+            _stat, _out = subprocess.getstatusoutput("pgf90 -V")
             self.small_version = _out.strip().split()[1]
             self.compiler_version_dict = {"pgf90": _out}
-            print _stat, _out
+            print(_stat, _out)
         else:
             raise ValueError("Compiler settings %s unknown" % (self.options.fcompiler))
 
@@ -316,7 +316,7 @@ class my_opt_parser(argparse.ArgumentParser):
         if os.path.isfile(self.MPI_VERSION_FILE):
             version_lines = [line.strip().split() for line in file(self.MPI_VERSION_FILE, "r").read().split("\n") if line.strip()]
             self.version_dict = dict([(key, value) for key, value in version_lines])
-            vers_dict = dict([(tuple([part.isdigit() and int(part) or part for part in key.split(".")]), key) for key in self.version_dict.keys()])
+            vers_dict = dict([(tuple([part.isdigit() and int(part) or part for part in key.split(".")]), key) for key in list(self.version_dict.keys())])
             vers_keys = sorted(vers_dict.keys())
             self.highest_version = vers_dict[vers_keys[-1]]
         else:
@@ -341,11 +341,11 @@ class my_opt_parser(argparse.ArgumentParser):
                     self.mpi_dir
                 ),
                 " - extra_settings for configure: %s" % (self.options.extra_settings),
-                "compiler settings: %s" % ", ".join(["%s=%s" % (key, value) for key, value in self.compiler_dict.iteritems()]),
-                "add_path_dict    : %s" % ", ".join(["%s=%s:$%s" % (key, ":".join(value), key) for key, value in self.add_path_dict.iteritems()]),
+                "compiler settings: %s" % ", ".join(["%s=%s" % (key, value) for key, value in self.compiler_dict.items()]),
+                "add_path_dict    : %s" % ", ".join(["%s=%s:$%s" % (key, ":".join(value), key) for key, value in self.add_path_dict.items()]),
                 "version info:"
             ] + [
-                "%s:\n%s" % (key, "\n".join(["    %s" % (line.strip()) for line in value.split("\n")])) for key, value in self.compiler_version_dict.iteritems()
+                "%s:\n%s" % (key, "\n".join(["    %s" % (line.strip()) for line in value.split("\n")])) for key, value in self.compiler_version_dict.items()
             ]
         )
 
@@ -363,13 +363,13 @@ class mpi_builder(object):
                     self.compile_ok = True
                     self._remove_tempdir()
         if not self.compile_ok:
-            print "Not removing temporary directory %s" % (self.tempdir)
+            print("Not removing temporary directory %s" % (self.tempdir))
 
     def _init_tempdir(self):
         self.tempdir = tempfile.mkdtemp("_mpi")
 
     def _remove_tempdir(self):
-        print "Removing temporary directory"
+        print("Removing temporary directory")
         shutil.rmtree(self.tempdir)
         try:
             os.rmdir(self.tempdir)
@@ -379,14 +379,14 @@ class mpi_builder(object):
     def _untar_source(self):
         tar_source = self.parser.version_dict[self.parser.options.mpi_version]
         if not os.path.isfile(tar_source):
-            print "Cannot find MPI source {} ({})".format(tar_source, self.parser.mode)
+            print("Cannot find MPI source {} ({})".format(tar_source, self.parser.mode))
             success = False
         else:
-            print "Extracting tarfile %s ..." % (tar_source),
+            print("Extracting tarfile %s ..." % (tar_source), end=' ')
             tar_file = tarfile.open(tar_source, "r")
             tar_file.extractall(self.tempdir)
             tar_file.close()
-            print "done"
+            print("done")
             success = True
         return success
 
@@ -394,10 +394,10 @@ class mpi_builder(object):
         num_cores = cpu_database.global_cpu_info(parse=True).num_cores() * 2 if self.parser.options.pmake else 1
         act_dir = os.getcwd()
         os.chdir(os.path.join(self.tempdir, "{}-{}".format(self.parser.mode, self.parser.options.mpi_version)))
-        print "Modifying environment"
-        for env_name, env_value in self.parser.compiler_dict.iteritems():
+        print("Modifying environment")
+        for env_name, env_value in self.parser.compiler_dict.items():
             os.environ[env_name] = env_value
-        for path_name, path_add_value in self.parser.add_path_dict.iteritems():
+        for path_name, path_add_value in self.parser.add_path_dict.items():
             os.environ[path_name] = "%s:%s" % (":".join(path_add_value), os.environ.get(path_name, ""))
         self.time_dict, self.log_dict = ({}, {})
         # remove link if needed
@@ -422,19 +422,19 @@ class mpi_builder(object):
             ("make install", "install")
         ]:
             self.time_dict[time_name] = {"start": time.time()}
-            print "Doing command {}".format(command)
+            print("Doing command {}".format(command))
             sp_obj = subprocess.Popen(command.split(), 0, None, None, subprocess.PIPE, subprocess.STDOUT)
             out_lines = []
             while True:
                 c_stat = sp_obj.poll()
                 while True:
                     try:
-                        new_lines = sp_obj.stdout.next()
+                        new_lines = next(sp_obj.stdout)
                     except StopIteration:
                         break
                     else:
                         if self.parser.options.verbose:
-                            print new_lines,
+                            print(new_lines, end=' ')
                         if type(new_lines) == list:
                             out_lines.extend(new_lines)
                         else:
@@ -445,13 +445,13 @@ class mpi_builder(object):
             self.time_dict[time_name]["diff"] = self.time_dict[time_name]["end"] - self.time_dict[time_name]["start"]
             self.log_dict[time_name] = "".join(out_lines)
             if c_stat:
-                print "Something went wrong ({:d}):".format(c_stat)
+                print("Something went wrong ({:d}):".format(c_stat))
                 if not self.parser.options.verbose:
-                    print "".join(out_lines)
+                    print("".join(out_lines))
                 success = False
                 break
             else:
-                print "done, took {}".format(logging_tools.get_diff_time_str(self.time_dict[time_name]["diff"]))
+                print("done, took {}".format(logging_tools.get_diff_time_str(self.time_dict[time_name]["diff"])))
         os.chdir(act_dir)
         return success
 
@@ -535,14 +535,14 @@ class mpi_builder(object):
         file("%s/%s" % (targ_dir, self.mpi_selector_csh_name), "w").write("\n".join(csh_lines))
 
     def package_it(self):
-        print "Packaging ..."
+        print("Packaging ...")
         info_name = "README.%s" % (self.parser.package_name)
         sep_str = "-" * 50
         readme_lines = [sep_str] + self.parser.get_compile_options().split("\n") + [
             "Compile times: {}".format(
                 ", ".join(
                     [
-                        "%s: %s" % (key, logging_tools.get_diff_time_str(self.time_dict[key]["diff"])) for key in self.time_dict.keys()
+                        "%s: %s" % (key, logging_tools.get_diff_time_str(self.time_dict[key]["diff"])) for key in list(self.time_dict.keys())
                     ]
                 )
             ),
@@ -551,7 +551,7 @@ class mpi_builder(object):
         ]
         if self.parser.options.include_log:
             readme_lines.extend(
-                ["Compile logs:"] + sum([self.log_dict[key].split("\n") + [sep_str] for key in self.log_dict.keys()], [])
+                ["Compile logs:"] + sum([self.log_dict[key].split("\n") + [sep_str] for key in list(self.log_dict.keys())], [])
             )
         file("%s/%s" % (self.tempdir, info_name), "w").write("\n".join(readme_lines))
         package_name, package_version, package_release = (
@@ -622,12 +622,12 @@ class mpi_builder(object):
         new_p.write_specfile(content)
         new_p.build_package()
         if new_p.build_ok:
-            print "Build successfull, package locations:"
-            print new_p.long_package_name
-            print new_p.src_package_name
+            print("Build successfull, package locations:")
+            print(new_p.long_package_name)
+            print(new_p.src_package_name)
             success = True
         else:
-            print "Something went wrong, please check tempdir %s" % (self.tempdir)
+            print("Something went wrong, please check tempdir %s" % (self.tempdir))
             success = False
         if remove_mca:
             os.unlink(mca_local_file)
@@ -637,7 +637,7 @@ class mpi_builder(object):
 def main():
     my_parser = my_opt_parser()
     my_parser.parse()
-    print my_parser.get_compile_options()
+    print(my_parser.get_compile_options())
     my_builder = mpi_builder(my_parser)
     my_builder.build_it()
 

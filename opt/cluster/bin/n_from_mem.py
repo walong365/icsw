@@ -21,7 +21,7 @@
 #
 """ calculates N for HPL from memory """
 
-from __future__ import print_function, unicode_literals
+
 
 import argparse
 import math
@@ -52,7 +52,7 @@ def main():
                 line.split(":") for line in file("/proc/meminfo", "r").read().lower().split("\n") if line.count(":")
             ]
         }
-        for key, value in mem_dict.iteritems():
+        for key, value in mem_dict.items():
             if len(value) == 2 and value[1] in ["kb", "mb"]:
                 mem_dict[key] = value[0] * {
                     "k": 1024,

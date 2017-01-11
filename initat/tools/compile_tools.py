@@ -18,9 +18,9 @@
 #
 """ simple compile tools """
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import os
 
 
@@ -46,7 +46,7 @@ def get_add_paths_for_intel(intel_path):
 
 
 def get_short_version_for_intel(intel_path, command):
-    stat, icom_out = commands.getstatusoutput(
+    stat, icom_out = subprocess.getstatusoutput(
         "{}/{} -V".format(
             get_intel_path(os.path.join(intel_path, "bin")),
             command,

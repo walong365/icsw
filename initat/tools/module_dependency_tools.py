@@ -19,9 +19,9 @@
 #
 """ handles module dependencies """
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import copy
 import fnmatch
 import os
@@ -130,8 +130,8 @@ class dependency_handler(object):
             dep_lines2 = [line.replace("//", "/").replace("//", "/").split(":") for line in dep_lines2]
             dep_dict = {key: value.strip().split() for key, value in [entry for entry in dep_lines2 if len(entry) == 2]}
             # kernel_mod_dict = dict([(os.path.basename(key), key) for key in dep_dict.iterkeys()])
-            kernel_lut_dict = {key: os.path.basename(key) for key in dep_dict.iterkeys()}
-            dep_dict = {os.path.basename(key): set([kernel_lut_dict[m_path] for m_path in value]) for key, value in dep_dict.iteritems()}
+            kernel_lut_dict = {key: os.path.basename(key) for key in dep_dict.keys()}
+            dep_dict = {os.path.basename(key): set([kernel_lut_dict[m_path] for m_path in value]) for key, value in dep_dict.items()}
             first_found = copy.deepcopy(matches_found)
             m_iter = 0
             while True:
@@ -149,11 +149,11 @@ class dependency_handler(object):
         for entry in matches_found:
             mod_dict[self._shorten_module_name(entry)] = entry
         not_found_mods = [key for key in mod_names if key not in mod_dict]
-        found_mods = [value for key, value in mod_dict.iteritems()]
+        found_mods = [value for key, value in mod_dict.items()]
         if kwargs.get("firmware", True):
             fw_lines = []
             for f_module in found_mods:
-                fw_stat, fw_out = commands.getstatusoutput("modinfo {}".format(file_dict[f_module]))
+                fw_stat, fw_out = subprocess.getstatusoutput("modinfo {}".format(file_dict[f_module]))
                 if fw_stat:
                     self.log(
                         "Error calling modinfo for {} ({:d}): {}".format(
@@ -180,7 +180,7 @@ class dependency_handler(object):
                         self.log("no firmware files needed for {}".format(f_module))
             self.firmware_list = fw_lines
         if kwargs.get("resolve_module_dict", False):
-            mod_dict = {key: file_dict[value] for key, value in mod_dict.iteritems()}
+            mod_dict = {key: file_dict[value] for key, value in mod_dict.items()}
         self.module_dict = mod_dict
         self.module_list = [file_dict[entry] for entry in matches_found]
         self.error_list = not_found_mods

@@ -22,7 +22,7 @@
 #
 """ ask license server and return an XML-represenation of license situation """
 
-from __future__ import unicode_literals, print_function
+
 
 import argparse
 import sys
@@ -88,7 +88,7 @@ def main():
                     logging_tools.form_entry_right(cur_lic.attrib["reserved"], header="reserved"),
                 ]
             )
-        print(unicode(out_form))
+        print(str(out_form))
     sys.exit(ret_code)
 
 if __name__ == "__main__":

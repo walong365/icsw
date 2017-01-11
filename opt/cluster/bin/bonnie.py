@@ -19,7 +19,7 @@
 #
 """ parallel bonnie runs, deprecated """
 
-import commands
+import subprocess
 import getopt
 import grp
 import os
@@ -44,7 +44,7 @@ class slave_thread(threading_tools.thread_obj):
     def _sync(self):
         s_time = time.time()
         self.log("syncing...")
-        stat, out = commands.getstatusoutput("sync")
+        stat, out = subprocess.getstatusoutput("sync")
         e_time = time.time()
         self.log("syncing took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
 
@@ -60,7 +60,7 @@ class slave_thread(threading_tools.thread_obj):
                                                                 self.__loc_config["SET_RAM_SIZE"] and " -r %d" % (self.__loc_config["RAM_SIZE"]) or "")
         self.log("starting run (bonnie_args: %s)" % (bonnie_args))
         s_time = time.time()
-        stat, result = commands.getstatusoutput("bonnie++ %s" % (bonnie_args))
+        stat, result = subprocess.getstatusoutput("bonnie++ %s" % (bonnie_args))
         e_time = time.time()
         self.log("done in %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
         result = result.split("\n")
@@ -106,7 +106,7 @@ class server_thread_pool(threading_tools.thread_pool):
     def _sync(self):
         s_time = time.time()
         self.log("syncing...")
-        stat, out = commands.getstatusoutput("sync")
+        stat, out = subprocess.getstatusoutput("sync")
         e_time = time.time()
         self.log("syncing took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
     def _int_error(self, err_cause):
@@ -119,7 +119,7 @@ class server_thread_pool(threading_tools.thread_pool):
             self.log("init run_dict")
             self.__act_run += 1
             self.__act_run_dict = {"sysinfo" : process_tools.fetch_sysinfo()[1]}
-        if not self.__act_run_dict.has_key(self.__act_run):
+        if self.__act_run not in self.__act_run_dict:
             self.log("init run_dict for run %d" % (self.__act_run))
             self.__act_run_dict[self.__act_run] = {"num_threads" : self.__thread_list[self.__act_run - 1],
                                                    "started"     : 0,
@@ -144,7 +144,8 @@ class server_thread_pool(threading_tools.thread_pool):
             else:
                 self.__act_run += 1
                 self._check_for_next_run()
-    def _run_finished(self, (t_num, result)):
+    def _run_finished(self, xxx_todo_changeme):
+        (t_num, result) = xxx_todo_changeme
         self.log("Got result from thread %d" % (t_num))
         self.__act_run_dict[self.__act_run]["results"][t_num] = result
         self.__act_run_dict[self.__act_run]["ended"] += 1
@@ -153,8 +154,8 @@ class server_thread_pool(threading_tools.thread_pool):
 def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], "u:g:d:ht:n:s:Sr:", ["help", "daemon", "sync-local", "sync-global"])
-    except getopt.GetoptError, bla:
-        print "Commandline error : %s" % (process_tools.get_except_info())
+    except getopt.GetoptError as bla:
+        print("Commandline error : %s" % (process_tools.get_except_info()))
         sys.exit(2)
     pname = os.path.basename(sys.argv[0])
     user_name = pwd.getpwuid(os.getuid())[0]
@@ -178,20 +179,20 @@ def main():
                                                      "RESULT_FILE"     : configfile.str_c_var("/tmp/bonnie_res_%s" % (time.ctime().replace(" ", "_").replace("__", "_")))})
     for opt, arg in opts:
         if opt in ["-h", "--help"]:
-            print "Usage: %s [OPTIONS]" % (pname)
-            print "where OPTIONS are:"
-            print " -h,--help       this help"
-            print " -d DIR          sets scratch directory, default is %s" % (loc_config["TMP_DIR"])
-            print " -u user         run as user USER, default is %s" % (loc_config["USER"])
-            print " -g group        run as group GROUP, default is %s" % (loc_config["GROUP"])
-            print " -t THREADS      set threads to start, <NUM>[:<NUM>[:<NUM>]], default is %s" % (loc_config["THREADS"])
-            print " -n NUM          sets number of tests, default is %d" % (loc_config["NUM_TESTS"])
-            print " -s SIZE         size, defaults to %d MB" % (loc_config["BONNIE_SIZE"])
-            print " -r RAM          RAM size to set, as default the RAM-Size will be discovered automatically"
-            print " -S              do not wait for semaphore"
-            print " --daemon        daemonize"
-            print " --sync-local    sync before and after every bonnie run (thread-local)"
-            print " --sync-global   sync before and after every bonnie run (thread-global)"
+            print("Usage: %s [OPTIONS]" % (pname))
+            print("where OPTIONS are:")
+            print(" -h,--help       this help")
+            print(" -d DIR          sets scratch directory, default is %s" % (loc_config["TMP_DIR"]))
+            print(" -u user         run as user USER, default is %s" % (loc_config["USER"]))
+            print(" -g group        run as group GROUP, default is %s" % (loc_config["GROUP"]))
+            print(" -t THREADS      set threads to start, <NUM>[:<NUM>[:<NUM>]], default is %s" % (loc_config["THREADS"]))
+            print(" -n NUM          sets number of tests, default is %d" % (loc_config["NUM_TESTS"]))
+            print(" -s SIZE         size, defaults to %d MB" % (loc_config["BONNIE_SIZE"]))
+            print(" -r RAM          RAM size to set, as default the RAM-Size will be discovered automatically")
+            print(" -S              do not wait for semaphore")
+            print(" --daemon        daemonize")
+            print(" --sync-local    sync before and after every bonnie run (thread-local)")
+            print(" --sync-global   sync before and after every bonnie run (thread-global)")
             sys.exit(0)
         if opt == "-u":
             loc_config["USER"] = arg
@@ -216,27 +217,27 @@ def main():
         if opt == "-r":
             loc_config["SET_RAM_SIZE"] = True
             loc_config["RAM_SIZE"] = int(arg)
-    print "Results will be written to %s" % (loc_config["RESULT_FILE"])
+    print("Results will be written to %s" % (loc_config["RESULT_FILE"]))
     # check options
     if not os.path.isdir(loc_config["TMP_DIR"]):
-        print "tmp_dir %s is no directory, exiting ..." % (loc_config["TMP_DIR"])
+        print("tmp_dir %s is no directory, exiting ..." % (loc_config["TMP_DIR"]))
         sys.exit(1)
     try:
         loc_config["UID"] = pwd.getpwnam(loc_config["USER"])[2]
     except:
-        print "cannot get uid: %s" % (process_tools.get_except_info())
+        print("cannot get uid: %s" % (process_tools.get_except_info()))
         sys.exit(1)
     try:
         loc_config["GID"] = grp.getgrnam(loc_config["GROUP"])[2]
     except:
-        print "cannot get gid: %s" % (process_tools.get_except_info())
+        print("cannot get gid: %s" % (process_tools.get_except_info()))
         sys.exit(1)
     if loc_config["THREADS"]:
         if [True for x in loc_config["THREADS"].split(":") if not x.isdigit()]:
-            print "Wrong thread_info %s, exiting ..." % (loc_config["THREADS"])
+            print("Wrong thread_info %s, exiting ..." % (loc_config["THREADS"]))
             sys.exit(0)
     else:
-        print "empty thread_info, exiting ..."
+        print("empty thread_info, exiting ...")
         sys.exit(1)
     logger = logging_tools.get_logger(loc_config["LOG_NAME"],
                                       loc_config["LOG_DESTINATION"],

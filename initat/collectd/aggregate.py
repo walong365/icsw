@@ -59,7 +59,7 @@ class AGStruct(object):
         self.__prob_snames = set()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com(u"[ags] {}".format(what), log_level)
+        self.__log_com("[ags] {}".format(what), log_level)
 
     def add_group(self, agg):
         agg.struct = self
@@ -125,7 +125,7 @@ class AGStruct(object):
         if sum(_mdict.values()):
             self.log(
                 "match info: {}".format(
-                    ", ".join(["{}={:d}".format(_key, _value) for _key, _value in _mdict.iteritems() if _value])
+                    ", ".join(["{}={:d}".format(_key, _value) for _key, _value in _mdict.items() if _value])
                 )
             )
         # list of valid uuids for this run
@@ -135,10 +135,10 @@ class AGStruct(object):
         for _valid_uuid in _valid_uuids:
             _comp_dict.setdefault(self.__lut[_valid_uuid].group.uuid, []).append(_valid_uuid)
         # list how to build to aggregates
-        _build_list = [(_key, self.__group_names[_key], _value) for _key, _value in _comp_dict.iteritems()]
+        _build_list = [(_key, self.__group_names[_key], _value) for _key, _value in _comp_dict.items()]
         if _build_list:
             # append sys list
-            _build_list.append((self.__sys_uuid, self.__sys_send_name, _comp_dict.keys()))
+            _build_list.append((self.__sys_uuid, self.__sys_send_name, list(_comp_dict.keys())))
         return _build_list
 
     def set_last_update(self, h_dict):
@@ -224,7 +224,7 @@ class AGTopLevelStruct(object):
         self._update_re()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com(u"[tls] {}".format(what), log_level)
+        self.__log_com("[tls] {}".format(what), log_level)
 
     def __getitem__(self, name):
         return self.__agg_lut[name]
@@ -236,7 +236,7 @@ class AGTopLevelStruct(object):
         _obj.name = "agg{:d}".format(self.__agg_idx)
         self.__agg_lut[_obj.name] = _obj
         self.__re_list.extend(_obj.re_list)
-        for _tl, _re_list in _obj.re_dict.iteritems():
+        for _tl, _re_list in _obj.re_dict.items():
             self.__re_dict.setdefault(_tl, []).append((_obj.name, _re_list))
         # print "-" * 20
         self._update_re()
@@ -252,7 +252,7 @@ class AGTopLevelStruct(object):
             if len(_parts) > 1:
                 self.__second_level_keys.add(".".join(_parts[:2]))
             self.__top_level_res.setdefault(_parts[0], []).extend(self.__re_dict[_key])
-        for _key, _list in self.__top_level_res.iteritems():
+        for _key, _list in self.__top_level_res.items():
             self.__top_level_res[_key] = self._build_re(_key, _list)
 
     def _build_re(self, key, _in_list):
@@ -284,7 +284,7 @@ class AGTopLevelStruct(object):
                     # print _key, _parts[0], _match
                     for _match in _matches:
                         if _match:
-                            for _mk, _mv in _match.groupdict().iteritems():
+                            for _mk, _mv in _match.groupdict().items():
                                 self.__all_matched.add(_mv)
                                 self.__all_matched_lut.setdefault(_mv, []).append(_mk)
                                 # _res.append((self.__all_matched_lut[_key], _format, _key, _info, _unit, _v_type, _value, _base, _factor))
@@ -300,7 +300,7 @@ class VE(object):
         self.format, self.key, self.info, self.unit, self.v_type, self.value, self.base, self.factor = args
 
     def __repr__(self):
-        return u"ve {}".format(self.key)
+        return "ve {}".format(self.key)
 
     def get_value(self):
         return self.value * self.factor
@@ -323,7 +323,7 @@ class AGSink(object):
         # base data set ?
 
     def get_vector(self):
-        return [_key_sink.get_vector() for _key_sink in self.key_sinks.itervalues()]
+        return [_key_sink.get_vector() for _key_sink in self.key_sinks.values()]
 
     def feed_ve(self, _ve):
         # feed vector entry
@@ -335,19 +335,19 @@ class AGSink(object):
         self.key_sinks[_ve.key].feed_ve(_ve)
 
     def __repr__(self):
-        return u"ag_sink [{}] {}: {}; {}".format(
+        return "ag_sink [{}] {}: {}; {}".format(
             self.target_key if self.target_key else "N/A",
             logging_tools.get_plural("key_sink", len(self.key_sinks)),
             ", ".join(sorted(self.key_sinks.keys())),
-            ", ".join([str(_val) for _val in self.key_sinks.itervalues()]),
+            ", ".join([str(_val) for _val in self.key_sinks.values()]),
         )
 
     def get_debug(self, num_src):
         # return debug info
-        _sinks = [_value.get_debug(num_src) for _value in self.key_sinks.itervalues()]
+        _sinks = [_value.get_debug(num_src) for _value in self.key_sinks.values()]
         _sinks = [_entry for _entry in _sinks if _entry]
         _total = len(self.key_sinks)
-        return u"ag_sink ({:d} keys): {:.1f}%; {}".format(
+        return "ag_sink ({:d} keys): {:.1f}%; {}".format(
             _total,
             float((_total - len(_sinks)) * 100. / len(self.key_sinks)),
             ", ".join(_sinks) or "---",
@@ -366,7 +366,7 @@ class KeySink(object):
         self.__values.append(_ve.get_value())
 
     def __repr__(self):
-        return u"key_sink {}, {:d} values ({})".format(
+        return "key_sink {}, {:d} values ({})".format(
             self.key,
             len(self.__values),
             str(self.__values),
@@ -390,7 +390,7 @@ class KeySink(object):
             else:
                 return 0
         else:
-            print("action '{}' not implemented for key_sink, return 0".format(self.action))
+            print(("action '{}' not implemented for key_sink, return 0".format(self.action)))
             return 0
 
     @staticmethod
@@ -608,7 +608,7 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
                 for _target_agg, _ve in _v_list:
                     [_local_aggs[_agg_name].feed_ve(_ve) for _agg_name in _target_agg]
         # build values for cluster-wide aggregation
-        _group_values = sum([_ag_sink.get_vector() for _ag_sink in _local_aggs.itervalues()], [])
+        _group_values = sum([_ag_sink.get_vector() for _ag_sink in _local_aggs.values()], [])
         if self.__debug:
             _num_src = len(v_dict)
             self.log(
@@ -616,7 +616,7 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
                     _num_src,
                     ", ".join(
                         [
-                            _ag_sink.get_debug(_num_src) for _ag_sink in _local_aggs.itervalues()
+                            _ag_sink.get_debug(_num_src) for _ag_sink in _local_aggs.values()
                         ]
                     )
                 )
@@ -649,7 +649,7 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
             simple="0"
         )
         try:
-            self.drop_socket.send_unicode(unicode(etree.tostring(_vector)))  # @UndefinedVariable
+            self.drop_socket.send_unicode(str(etree.tostring(_vector)))  # @UndefinedVariable
         except:
             self.log(
                 "error sending vector: {}".format(

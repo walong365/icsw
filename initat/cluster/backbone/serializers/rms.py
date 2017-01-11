@@ -21,7 +21,7 @@
 #
 """ serializers for RMS """
 
-from __future__ import print_function, unicode_literals
+
 
 from initat.cluster.backbone.models import rms_project, rms_department, rms_queue, \
     rms_pe, rms_job, rms_job_run, rms_pe_info, ext_license, ext_license_check, \

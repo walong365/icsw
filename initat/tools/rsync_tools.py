@@ -17,9 +17,9 @@
 #
 """ rsync tools """
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import time
 
 from initat.tools import logging_tools
@@ -59,7 +59,7 @@ class rsync_call(object):
         if self["verbose"]:
             self.log("rsync target is {}".format(self["dest_path"]))
             self.log("starting rsync-command '{}' ...".format(self["rsync_com"]))
-        sync_stat, sync_out = commands.getstatusoutput(self["rsync_com"])
+        sync_stat, sync_out = subprocess.getstatusoutput(self["rsync_com"])
         self["call_stat"] = sync_stat
         self["call_log"] = sync_out.split("\n")
         e_time = time.time()

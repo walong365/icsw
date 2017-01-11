@@ -17,7 +17,7 @@
 #
 """ SNMP schemes for SNMP relayer """
 
-from __future__ import print_function, unicode_literals
+
 
 import socket
 import re
@@ -40,7 +40,7 @@ class load_scheme(SNMPRelayScheme):
         self.parse_options(kwargs["options"])
 
     def process_return(self):
-        simple_dict = self._simplify_keys(self.snmp_dict.values()[0])
+        simple_dict = self._simplify_keys(list(self.snmp_dict.values())[0])
         load_array = [float(simple_dict[key]) for key in [1, 2, 3]]
         max_load = max(load_array)
         ret_state = limits.mon_STATE_CRITICAL if max_load > self.opts.crit else (limits.mon_STATE_WARNING if max_load > self.opts.warn else limits.mon_STATE_OK)
@@ -95,7 +95,7 @@ class host_process_scheme(SNMPRelayScheme):
         self.parse_options(kwargs["options"])
 
     def process_return(self):
-        _dict = self._reorder_dict(self.snmp_dict.values()[0])
+        _dict = self._reorder_dict(list(self.snmp_dict.values())[0])
         # keys:
         # 1 ... pid
         # 2 ... name
@@ -108,7 +108,7 @@ class host_process_scheme(SNMPRelayScheme):
             _name_re = re.compile(self.opts.name)
             # import pprint
             # pprint.pprint(_dict)
-            _dict = {key: value for key, value in _dict.iteritems() if 2 in value and _name_re.match(value[2])}
+            _dict = {key: value for key, value in _dict.items() if 2 in value and _name_re.match(value[2])}
             _lim = limits.limits(warn_val=self.opts.w, crit_val=self.opts.c)
             ret_state, _state_str = _lim.check_floor(len(_dict))
             info_f = [
@@ -136,7 +136,7 @@ class host_process_scheme(SNMPRelayScheme):
             # use range_parameter in limits for comparision
         elif self.opts.overview:
             _type_dict = {}
-            for _entry in _dict.itervalues():
+            for _entry in _dict.values():
                 _type_dict.setdefault(_entry[6], []).append(_entry)
             _info_str = ", ".join(
                 [
@@ -171,7 +171,7 @@ class ucd_memory_scheme(SNMPRelayScheme, MemoryMixin):
         self.requests = snmp_oid("1.3.6.1.4.1.2021.4", cache=True, cache_timeout=5)
 
     def process_return(self):
-        use_dict = self._simplify_keys(self.snmp_dict.values()[0])
+        use_dict = self._simplify_keys(list(self.snmp_dict.values())[0])
         swap_total, swap_avail = (
             use_dict[(3, 0)] * 1024,
             use_dict[(4, 0)] * 1024,
@@ -196,14 +196,14 @@ class linux_memory_scheme(SNMPRelayScheme, MemoryMixin):
         self.parse_options(kwargs["options"])
 
     def process_return(self):
-        use_dict = self._simplify_keys(self.snmp_dict.values()[0])
+        use_dict = self._simplify_keys(list(self.snmp_dict.values())[0])
         use_dict = {
             use_dict[(3, key)].lower(): {
                 "allocation_units": use_dict[(4, key)],
                 "size": use_dict[(5, key)],
                 "used": use_dict.get((6, key), None)
             } for key in [
-                _key[1] for _key in use_dict.keys() if _key[0] == 1
+                _key[1] for _key in list(use_dict.keys()) if _key[0] == 1
             ] if not use_dict[(3, key)].startswith("/")
         }
         return self.show_memory(
@@ -222,7 +222,7 @@ class snmp_info_scheme(SNMPRelayScheme):
         self.parse_options(kwargs["options"])
 
     def process_return(self):
-        simple_dict = self.snmp_dict.values()[0]
+        simple_dict = list(self.snmp_dict.values())[0]
         self._check_for_missing_keys(simple_dict, needed_keys={(4, 0), (5, 0), (6, 0)})
         ret_state = limits.mon_STATE_OK
         return ret_state, "SNMP Info: contact {}, name {}, location {}".format(
@@ -257,7 +257,7 @@ class qos_cfg(object):
             self.idx,
             self.if_idx,
             self.direction,
-            ", ".join([str(value) for value in self.class_dict.itervalues()]) if self.class_dict else "<NC>")
+            ", ".join([str(value) for value in self.class_dict.values()]) if self.class_dict else "<NC>")
 
 
 class check_snmp_qos_scheme(SNMPRelayScheme):
@@ -284,16 +284,16 @@ class check_snmp_qos_scheme(SNMPRelayScheme):
                 self.qos_key, self.if_idx = [int(value) for value in self.opts.key.split(",")]
             else:
                 self.qos_key, self.if_idx = (int(self.opts.key), 0)
-        self.requests = [snmp_oid(value, cache=True, cache_timeout=150) for value in self.oid_dict.itervalues()]
+        self.requests = [snmp_oid(value, cache=True, cache_timeout=150) for value in self.oid_dict.values()]
 
     def _build_base_cfg(self):
         self.__qos_cfg_dict, self.__rev_dict = ({}, {})
         idx_list, idx_set = ([], set())
         cfg_keys = sorted(
             [
-                key for key in self.snmp_dict[
+                key for key in list(self.snmp_dict[
                     self.oid_dict["cb_qos_if_index"]
-                ].keys() if self.snmp_dict[self.oid_dict["cb_qos_policy_direction"]][key] == 2
+                ].keys()) if self.snmp_dict[self.oid_dict["cb_qos_policy_direction"]][key] == 2
             ]
         )
         for key in cfg_keys:
@@ -322,11 +322,11 @@ class check_snmp_qos_scheme(SNMPRelayScheme):
             ret_lines = ["%d!%s" % (value, self.snmp_dict[self.oid_dict["if_name"]][value]) for value in sorted(idx_set)]
         elif self.qos_key in [5, 6]:
             # qos class names
-            cm_dict = {key: value for key, value in self.snmp_dict[self.oid_dict["cb_qos_cmname"]].iteritems()}
+            cm_dict = {key: value for key, value in self.snmp_dict[self.oid_dict["cb_qos_cmname"]].items()}
             if self.opts.qos_ids:
-                needed_keys = [key for key, value in cm_dict.iteritems() if value in self.opts.qos_ids.split(",")]
+                needed_keys = [key for key, value in cm_dict.items() if value in self.opts.qos_ids.split(",")]
             else:
-                needed_keys = cm_dict.keys()
+                needed_keys = list(cm_dict.keys())
             # index dict
             try:
                 cfg_idx_start, val_idx_start = (
@@ -336,15 +336,15 @@ class check_snmp_qos_scheme(SNMPRelayScheme):
                 # cfg_idx_start = tuple(list(cfg_idx_start) + [rev_dict[self.if_idx]])
                 # val_idx_start = tuple(list(val_idx_start) + [rev_dict[self.if_idx]])
                 # pprint.pprint(self.snmp_dict)
-                idx_dict = {key[1]: value for key, value in self.snmp_dict[cfg_idx_start].iteritems() if key[0] == self.__rev_dict[self.if_idx]}
-                value_dict = {key[1]: value for key, value in self.snmp_dict[val_idx_start].iteritems() if key[0] == self.__rev_dict[self.if_idx]}
+                idx_dict = {key[1]: value for key, value in self.snmp_dict[cfg_idx_start].items() if key[0] == self.__rev_dict[self.if_idx]}
+                value_dict = {key[1]: value for key, value in self.snmp_dict[val_idx_start].items() if key[0] == self.__rev_dict[self.if_idx]}
                 # #pprint.pprint(value_dict)
             except KeyError:
                 ret_value, ret_lines = (limits.mon_STATE_CRITICAL, ["Could not find interface %d, giving up." % (self.if_idx)])
             else:
                 # value dict
                 # reindex value_dict
-                r_value_dict = {idx_dict[key]: value for key, value in value_dict.iteritems()}
+                r_value_dict = {idx_dict[key]: value for key, value in value_dict.items()}
                 ret_lines = [
                     " ".join(
                         [
@@ -394,7 +394,7 @@ class port_info_scheme(SNMPRelayScheme):
         s_type_dict = self._simplify_keys(self.snmp_dict[self.__th_type])
         p_num = self.opts.p_num
         port_ref_dict = {}
-        for key, value in s_mac_dict.iteritems():
+        for key, value in s_mac_dict.items():
             mac = ":".join(["%02x" % (int(val)) for val in key])
             port_ref_dict.setdefault(value, []).append((mac, int(s_type_dict.get(key, 5))))
         macs = [mac for mac, p_type in port_ref_dict.get(p_num, []) if p_type == 3]
@@ -423,9 +423,9 @@ class trunk_info_scheme(SNMPRelayScheme):
         self.requests = snmp_oid("1.0.8802.1.1.2.1.4.1.1", cache=True)
 
     def process_return(self):
-        simple_dict = self._simplify_keys(self.snmp_dict.values()[0])
+        simple_dict = self._simplify_keys(list(self.snmp_dict.values())[0])
         trunk_dict = {}
-        for key, value in simple_dict.iteritems():
+        for key, value in simple_dict.items():
             sub_idx, trunk_id, port_num, _idx = key
             trunk_dict.setdefault(trunk_id, {}).setdefault(port_num, {})[sub_idx] = value
         t_array = []
@@ -464,12 +464,12 @@ class ibm_bc_blade_status_scheme(SNMPRelayScheme):
                 ["idx", "id", "exists", "power_state", "health_state", "name"]
             )
         }
-        for value in self.__blade_oids.values():
+        for value in list(self.__blade_oids.values()):
             self.requests = snmp_oid(value, cache=True)
         self.parse_options(kwargs["options"])
 
     def process_return(self):
-        all_blades = self.snmp_dict[self.__blade_oids["idx"]].values()
+        all_blades = list(self.snmp_dict[self.__blade_oids["idx"]].values())
         ret_state, state_dict = (limits.mon_STATE_OK, {})
         for blade_idx in all_blades:
             loc_dict = {
@@ -500,7 +500,7 @@ class ibm_bc_blade_status_scheme(SNMPRelayScheme):
             state_dict.setdefault(loc_str, []).append(loc_dict["name"])
         return ret_state, "%s, %s" % (
             logging_tools.get_plural("blade", len(all_blades)),
-            "; ".join(["%s: %s" % (key, ", ".join(value)) for key, value in state_dict.iteritems()]))
+            "; ".join(["%s: %s" % (key, ", ".join(value)) for key, value in state_dict.items()]))
 
 
 class ibm_bc_storage_status_scheme(SNMPRelayScheme):
@@ -511,14 +511,14 @@ class ibm_bc_storage_status_scheme(SNMPRelayScheme):
                 ["idx", "module", "status", "name"]
             )
         }
-        for value in self.__blade_oids.values():
+        for value in list(self.__blade_oids.values()):
             self.requests = snmp_oid(value, cache=True)
         self.parse_options(kwargs["options"])
 
     def process_return(self):
         store_dict = {}
-        for key, value in self.__blade_oids.iteritems():
-            for s_key, s_value in self._simplify_keys(self.snmp_dict[value]).iteritems():
+        for key, value in self.__blade_oids.items():
+            for s_key, s_value in self._simplify_keys(self.snmp_dict[value]).items():
                 if key in ["module"]:
                     s_value = int(s_value)
                 store_dict.setdefault(s_key, {})[key] = s_value
@@ -535,7 +535,7 @@ class ibm_bc_storage_status_scheme(SNMPRelayScheme):
             logging_tools.get_plural("item", len(store_dict)),
             "; ".join(
                 [
-                    "%s: %s" % (key, ", ".join(value)) for key, value in state_dict.iteritems()
+                    "%s: %s" % (key, ", ".join(value)) for key, value in state_dict.items()
                 ]
             )
         )
@@ -552,8 +552,8 @@ class temperature_probe_scheme(SNMPRelayScheme):
     def process_return(self):
         warn_temp = int(self.opts.warn)
         crit_temp = int(self.opts.crit)
-        use_dict = self._simplify_keys(self.snmp_dict.values()[0])
-        cur_temp = float(use_dict.values()[0])
+        use_dict = self._simplify_keys(list(self.snmp_dict.values())[0])
+        cur_temp = float(list(use_dict.values())[0])
         if cur_temp > crit_temp:
             cur_state = limits.mon_STATE_CRITICAL
         elif cur_temp > warn_temp:
@@ -577,8 +577,8 @@ class temperature_probe_hum_scheme(SNMPRelayScheme):
     def process_return(self):
         warn_hum = int(self.opts.warn)
         crit_hum = int(self.opts.crit)
-        use_dict = self._simplify_keys(self.snmp_dict.values()[0])
-        cur_hum = float(use_dict.values()[0])
+        use_dict = self._simplify_keys(list(self.snmp_dict.values())[0])
+        cur_hum = float(list(use_dict.values())[0])
         if cur_hum > crit_hum:
             cur_state = limits.mon_STATE_CRITICAL
         elif cur_hum > warn_hum:

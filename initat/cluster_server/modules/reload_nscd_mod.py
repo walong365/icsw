@@ -16,9 +16,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import unicode_literals, print_function
 
-import cs_base_class
+
+from . import cs_base_class
 from initat.tools import process_tools, server_command
 
 

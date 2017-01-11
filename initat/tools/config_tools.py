@@ -24,7 +24,7 @@ module to operate with config and ip relationsships in the database. This
 module gets included from configfile
 """
 
-from __future__ import unicode_literals, print_function
+
 
 if __name__ == "__main__":
     # for testing
@@ -75,7 +75,7 @@ class RouterObject(object):
         self.fp = hashlib.new("sha256")
 
     def add_nodes(self):
-        self.nx.add_nodes_from(self.nd_dict.keys())
+        self.nx.add_nodes_from(list(self.nd_dict.keys()))
         for _key in sorted(self.nd_dict.keys()):
             self.fp.update("n{:d}".format(_key))
 
@@ -88,7 +88,7 @@ class RouterObject(object):
         )
 
     def add_edges(self):
-        for node_pair, penalty in self.simple_peer_dict.iteritems():
+        for node_pair, penalty in self.simple_peer_dict.items():
             src_node, dst_node = node_pair
             self.nx.add_edge(src_node, dst_node, weight=penalty)
             self.fp.update("e{:d},{:d},{:d}".format(src_node, dst_node, penalty))
@@ -159,11 +159,11 @@ class RouterObject(object):
                     self.peer_dict[(d_nd_id, s_nd_id)] = penalty + self.nd_dict[s_nd_id][3] + self.nd_dict[d_nd_id][3]
                     self.simple_peer_dict[(s_nd_id, d_nd_id)] = penalty
             # add simple peers for device-internal networks
-            for nd_list in self.dev_dict.itervalues():
+            for nd_list in self.dev_dict.values():
                 route_nds = [cur_nd for cur_nd in nd_list if cur_nd[4]]
                 if len(route_nds) > 1:
-                    for s_idx in xrange(len(route_nds)):
-                        for d_idx in xrange(s_idx + 1, len(route_nds)):
+                    for s_idx in range(len(route_nds)):
+                        for d_idx in range(s_idx + 1, len(route_nds)):
                             s_pk, d_pk = (route_nds[s_idx][0], route_nds[d_idx][0])
                             int_penalty = 1
                             self.peer_dict[(s_pk, d_pk)] = int_penalty
@@ -194,7 +194,7 @@ class RouterObject(object):
             self.__cur_gen = latest_gen
 
     def get_penalty(self, in_path):
-        return sum([self.peer_dict[(in_path[idx], in_path[idx + 1])] for idx in xrange(len(in_path) - 1)]) + \
+        return sum([self.peer_dict[(in_path[idx], in_path[idx + 1])] for idx in range(len(in_path) - 1)]) + \
             sum([self.nd_dict[entry][3] for entry in in_path])
 
     def add_penalty(self, in_path):
@@ -286,7 +286,7 @@ class TopologyObject(object):
 
     def add_edges(self):
         # for node_pair, network_idx_list in self.simple_peer_dict.iteritems():
-        for node_pair, penalty_list in self.simple_peer_dict.iteritems():
+        for node_pair, penalty_list in self.simple_peer_dict.items():
             src_node, dst_node = node_pair
             if src_node == dst_node:
                 pass
@@ -336,7 +336,7 @@ class TopologyObject(object):
                 while True:
                     dev_list = [nd_dict[s_val] for s_val, d_val in p_list]
                     rem_devs = set([key for key in dev_list if dev_list.count(key) == 1])
-                    rem_nds = set([key for key, value in nd_dict.iteritems() if value in rem_devs])
+                    rem_nds = set([key for key, value in nd_dict.items() if value in rem_devs])
                     p_list = [(s_val, d_val) for s_val, d_val in p_list if s_val not in rem_nds and d_val not in rem_nds]
                     _dev_pks -= rem_devs
                     # self.dev_dict = {key: value for key, value in self.dev_dict.iteritems() if key not in rem_devs}
@@ -362,7 +362,7 @@ class TopologyObject(object):
         }
         # reorder ip_dict
         nd_lut = {}
-        for _net_ip_pk, (nd_pk, nw_pk) in ip_dict.iteritems():
+        for _net_ip_pk, (nd_pk, nw_pk) in ip_dict.items():
             nd_lut.setdefault(nd_pk, []).append(nw_pk)
         self.log(
             "init topology helper object, {} / {}, device_groups={}".format(
@@ -677,8 +677,8 @@ class server_check(object):
             # fetch ip_info
             self._db_check_ip()
             self._fetch_network_info()
-            self.server_info_str = u"device {}".format(
-                unicode(self.device),
+            self.server_info_str = "device {}".format(
+                str(self.device),
             )
 
     def fetch_config_vars(self):
@@ -691,7 +691,7 @@ class server_check(object):
         return var_name in self.__config_vars
 
     def keys(self):
-        return self.__config_vars.keys()
+        return list(self.__config_vars.keys())
 
     def is_fixed(self, var_name):
         return self.__config_vars[var_name].fixed
@@ -765,7 +765,7 @@ class server_check(object):
                 ) for if_name in netifaces.interfaces()
             ] if netifaces.AF_INET in value
         }
-        my_ips = set(sum(ipv4_dict.values(), []))
+        my_ips = set(sum(list(ipv4_dict.values()), []))
         # check for virtual-device
         # get all real devices with the requested config, no meta-device handling possible
         if self.__server_type is None:
@@ -842,8 +842,8 @@ class server_check(object):
         }
         for _ip, _dev_idx, _nw_idx, _nd_idx, _nw_id in ip_list:
             dev_dict[_dev_idx]["nd_list"].add(_nd_idx)
-        res_dict = {dev_idx: [] for dev_idx in dev_dict.iterkeys()}
-        for dev_idx, dev in dev_dict.iteritems():
+        res_dict = {dev_idx: [] for dev_idx in dev_dict.keys()}
+        for dev_idx, dev in dev_dict.items():
             if self.netdevice_idx_list and dev["nd_list"]:
                 all_pathes = router_obj.get_ndl_ndl_pathes(self.netdevice_idx_list, list(dev["nd_list"]), add_penalty=True, only_endpoints=True)
                 _raw = dev["raw"]
@@ -860,9 +860,9 @@ class server_check(object):
                     # dicts identifier -> ips
                     source_ip_lut, dest_ip_lut = ({}, {})
                     for s_ip in self.netdevice_ip_lut[s_nd_pk]:
-                        source_ip_lut.setdefault(self.ip_identifier_lut[unicode(s_ip)], []).append(unicode(s_ip))
+                        source_ip_lut.setdefault(self.ip_identifier_lut[str(s_ip)], []).append(str(s_ip))
                     for d_ip in nd_ip_lut[d_nd_pk]:
-                        dest_ip_lut.setdefault(ip_id_lut[unicode(d_ip)], []).append(unicode(d_ip))
+                        dest_ip_lut.setdefault(ip_id_lut[str(d_ip)], []).append(str(d_ip))
                     # print source_ip_lut, dest_ip_lut
                     # common identifiers, ignore localhost
                     common_identifiers = (set(source_ip_lut.keys()) & set(dest_ip_lut.keys())) - set(["l"])
@@ -880,8 +880,8 @@ class server_check(object):
                                 )
                     else:
                         if kwargs.get("allow_route_to_other_networks", False):
-                            for src_id in set(source_ip_lut.iterkeys()) & {"p", "o"}:
-                                for dst_id in set(dest_ip_lut.iterkeys()) & {"p", "o"}:
+                            for src_id in set(source_ip_lut.keys()) & {"p", "o"}:
+                                for dst_id in set(dest_ip_lut.keys()) & {"p", "o"}:
                                     add_actual = True
                                     if add_actual:
                                         nc_ret_list.append(
@@ -920,9 +920,9 @@ class server_check(object):
                 # dicts identifier -> ips
                 source_ip_lut, dest_ip_lut = ({}, {})
                 for s_ip in self.netdevice_ip_lut[s_nd_pk]:
-                    source_ip_lut.setdefault(self.ip_identifier_lut[unicode(s_ip)], []).append(unicode(s_ip))
+                    source_ip_lut.setdefault(self.ip_identifier_lut[str(s_ip)], []).append(str(s_ip))
                 for d_ip in other.netdevice_ip_lut[d_nd_pk]:
-                    dest_ip_lut.setdefault(other.ip_identifier_lut[unicode(d_ip)], []).append(unicode(d_ip))
+                    dest_ip_lut.setdefault(other.ip_identifier_lut[str(d_ip)], []).append(str(d_ip))
                 # common identifiers, ignore localhost
                 common_identifiers = (set(source_ip_lut.keys()) & set(dest_ip_lut.keys())) - set(["l"])
                 if common_identifiers:
@@ -942,8 +942,8 @@ class server_check(object):
                             )
                 else:
                     if kwargs.get("allow_route_to_other_networks", False):
-                        for src_id in set(source_ip_lut.iterkeys()) & {"p", "o"}:
-                            for dst_id in set(dest_ip_lut.iterkeys()) & {"p", "o"}:
+                        for src_id in set(source_ip_lut.keys()) & {"p", "o"}:
+                            for dst_id in set(dest_ip_lut.keys()) & {"p", "o"}:
                                 add_actual = True
                                 if filter_ip:
                                     if filter_ip not in source_ip_lut[src_id] and filter_ip not in dest_ip_lut[dst_id]:
@@ -1086,7 +1086,7 @@ class device_with_config(dict):
             cur_dev.pk: cur_dev for cur_dev in device.objects.select_related(
                 "domain_tree_node"
             ).filter(
-                Q(pk__in=[key[1] for key in dev_conf_dict.iterkeys()] + list(md_set))
+                Q(pk__in=[key[1] for key in dev_conf_dict.keys()] + list(md_set))
             ).prefetch_related(
                 "netdevice_set__net_ip_set__network__network_type"
             )
@@ -1094,7 +1094,7 @@ class device_with_config(dict):
         conf_dict = {
             cur_conf.pk: cur_conf for cur_conf in config.objects.filter(Q(pk__in=conf_pks))
         }
-        for dev_key, conf_list in dev_conf_dict.iteritems():
+        for dev_key, conf_list in dev_conf_dict.items():
             dev_name, dev_pk, devg_pk, _dev_type = dev_key
             for conf_or_srv_name, conf_pk, m_type, src_type in conf_list:
                 # print "%s (%s/%s), %s" % (conf_name, m_type, src_type, dev_key[0])

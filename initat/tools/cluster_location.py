@@ -19,7 +19,7 @@
 #
 """ module for checking current server status and extracting routes to other server """
 
-from __future__ import unicode_literals, print_function
+
 
 import array
 import datetime
@@ -91,14 +91,14 @@ def read_config_from_db(g_config, sql_info, init_list=[]):
                 elif local_host_name == "":
                     l_var_wo_host[var_name.upper()] = new_val
         # check for vars to insert
-        for wo_var_name, wo_var in l_var_wo_host.iteritems():
+        for wo_var_name, wo_var in l_var_wo_host.items():
             if wo_var_name not in g_config or g_config.get_source(wo_var_name) == "default":
                 g_config.add_config_entries([(wo_var_name, wo_var)])
 
 
 class db_device_variable(object):
     def __init__(self, cur_dev, var_name, **kwargs):
-        if type(cur_dev) in [int, long]:
+        if type(cur_dev) in [int, int]:
             try:
                 self.__device = device.objects.get(Q(pk=cur_dev))
             except device.DoesNotExist:
@@ -159,9 +159,9 @@ class db_device_variable(object):
 
     def set_value(self, value, type_ok=False):
         if not type_ok:
-            if isinstance(value, basestring):
+            if isinstance(value, str):
                 v_type = "s"
-            elif isinstance(value, int) or isinstance(value, long):
+            elif isinstance(value, int) or isinstance(value, int):
                 v_type = "i"
             elif isinstance(value, datetime.datetime):
                 v_type = "d"
@@ -202,7 +202,7 @@ def write_config_to_db(g_config, sql_info):
             var_obj = type_dict.get(g_config.get_type(key), None)
             # print key, var_obj, g_config.database(key)
             if var_obj is not None and g_config.database(key):
-                other_types = set([value for _key, value in type_dict.items() if _key != g_config.get_type(key)])
+                other_types = set([value for _key, value in list(type_dict.items()) if _key != g_config.get_type(key)])
                 # var global / local
                 var_range_name = g_config.is_global(key) and "global" or "local"
                 # build real var name
@@ -286,7 +286,7 @@ class DeviceRecognition(object):
             ] if 2 in value
         }
         # remove loopback addresses
-        self_ips = [_ip for _ip in sum(ipv4_dict.values(), []) if not _ip.startswith("127.")]
+        self_ips = [_ip for _ip in sum(list(ipv4_dict.values()), []) if not _ip.startswith("127.")]
         self.ip_lut = {}
         self.ip_r_lut = {}
         if self_ips:
@@ -303,7 +303,7 @@ class DeviceRecognition(object):
                 self.ip_lut[_ip] = self.device
             self.ip_r_lut[self.device] = self.local_ips
             # build lut
-            for _dev in self.device_dict.itervalues():
+            for _dev in self.device_dict.values():
                 # gather all ips
                 _dev_ips = sum([list(_ndev.net_ip_set.all()) for _ndev in _dev.netdevice_set.all()], [])
                 # filter for valid ips (no loopback addresses)

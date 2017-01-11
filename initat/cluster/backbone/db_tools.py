@@ -21,7 +21,7 @@
 #
 """ helper functions for db access / close """
 
-from __future__ import unicode_literals, print_function
+
 
 import socket
 

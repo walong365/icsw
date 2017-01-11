@@ -17,7 +17,7 @@
 #
 """ checks for Threeware RAID controller """
 
-from __future__ import print_function,  unicode_literals
+
 
 import re
 
@@ -47,7 +47,7 @@ class ctrl_type_tw(ctrl_type):
 
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
-            ctrl_list = self._dict.keys()
+            ctrl_list = list(self._dict.keys())
         return ["{} info {}".format(self._check_exec, ctrl_id) for ctrl_id in ctrl_list]
 
     def scan_ctrl(self):
@@ -213,7 +213,7 @@ class ctrl_type_tw(ctrl_type):
         num_warn, num_error = (0, 0)
         ret_list = []
         if tw_dict:
-            for ctrl, ctrl_dict in tw_dict.iteritems():
+            for ctrl, ctrl_dict in tw_dict.items():
                 info = ctrl_dict.get("info", "")
                 if info.startswith("error"):
                     num_error += 1
@@ -222,7 +222,7 @@ class ctrl_type_tw(ctrl_type):
                     num_units, num_ports = (len(ctrl_dict["units"]), len(ctrl_dict["ports"]))
                     unit_info, port_info = ([], [])
                     # check units
-                    for u_num, u_stuff in ctrl_dict["units"].iteritems():
+                    for u_num, u_stuff in ctrl_dict["units"].items():
                         l_status = u_stuff["status"].lower()
                         if l_status in ["degraded"]:
                             num_error += 1
@@ -242,13 +242,13 @@ class ctrl_type_tw(ctrl_type):
                                 ) and " ({} %)".format(u_stuff.get("cmpl", "???")) or ""
                             )
                         )
-                    for p_num, p_stuff in ctrl_dict["ports"].iteritems():
+                    for p_num, p_stuff in ctrl_dict["ports"].items():
                         if p_stuff["status"].lower() != "ok":
                             num_error += 1
                             port_info.append("port {} (u{}): {}".format(p_num, p_stuff.get("unit", "???"), p_stuff["status"]))
                     if "bbu" in ctrl_dict:
                         bbu_errors, bbu_ok = ([], 0)
-                        for key in sorted(ctrl_dict["bbu"].iterkeys()):
+                        for key in sorted(ctrl_dict["bbu"].keys()):
                             value = ctrl_dict["bbu"][key]
                             if value.lower() not in ["on", "ok", "yes"]:
                                 bbu_errors.append((key, value))

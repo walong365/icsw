@@ -19,7 +19,7 @@
 #
 """ tools for the SGE """
 
-from __future__ import unicode_literals, print_function
+
 
 import argparse
 import copy
@@ -30,7 +30,7 @@ import re
 import stat
 import time
 import uuid
-from StringIO import StringIO
+from io import StringIO
 
 import memcache
 import zmq
@@ -54,7 +54,7 @@ def get_empty_job_options(**kwargs):
     options.long_status = False
     options.show_stdoutstderr = True
     options.show_variables = False
-    for key, value in kwargs.iteritems():
+    for key, value in kwargs.items():
         if not hasattr(options, key):
             print("wrong key in get_empty_node_options: {}".format(key))
         else:
@@ -81,7 +81,7 @@ def get_empty_node_options(**kwargs):
     options.show_acl = False
     options.merge_node_queue = False
     options.queue_name = ""
-    for key, value in kwargs.iteritems():
+    for key, value in kwargs.items():
         if not hasattr(options, key):
             print("wrong key in get_empty_node_options: {}".format(key))
         else:
@@ -128,8 +128,8 @@ def compress_list(ql, queues=None, postfix=""):
                 i_idx = 0
         nc_dict.setdefault(pef, {}).setdefault(pof, {})[i_idx] = idx
     nc_a = []
-    for pef in nc_dict.keys():
-        for pof, act_l in nc_dict[pef].iteritems():
+    for pef in list(nc_dict.keys()):
+        for pof, act_l in nc_dict[pef].items():
             s_idx = None
             for e_idx in sorted(act_l.keys()):
                 e_num = act_l[e_idx]
@@ -214,7 +214,7 @@ class SGEInfo(object):
         self.__persistent_socket = kwargs.pop("persistent_socket", True)
         _riu = kwargs.pop("run_initial_update", True)
         if kwargs:
-            print("*** not all kwargs parsed for sge_info.__init__(): {}".format(", ".join(kwargs.keys())))
+            print("*** not all kwargs parsed for sge_info.__init__(): {}".format(", ".join(list(kwargs.keys()))))
         if self.__source not in ["server", "local"]:
             print("*** wrong source set {}, using local".format(self.__source))
             self.__source = "local"
@@ -244,12 +244,12 @@ class SGEInfo(object):
         self.__valid_dicts = [
             v_key for _bla, v_key in sorted(
                 [
-                    (rel, key) for key, (rel, _s_call) in setup_dict.iteritems()
+                    (rel, key) for key, (rel, _s_call) in setup_dict.items()
                 ]
             ) if v_key not in kwargs.get("ignore_dicts", [])
         ]
         self.__update_call_dict = {
-            key: s_call for key, (rel, s_call) in setup_dict.iteritems()
+            key: s_call for key, (rel, s_call) in setup_dict.items()
         }
         self.__timeout_dicts = {
             key: {
@@ -314,7 +314,7 @@ class SGEInfo(object):
         # return etree.fromstring(etree.tostring(self.__tree))
         r_tree = copy.deepcopy(self.__tree)
         if "file_dict" in kwargs:
-            for job_id, file_dict in kwargs["file_dict"].iteritems():
+            for job_id, file_dict in kwargs["file_dict"].items():
                 job_el = r_tree.xpath(
                     ".//job_list[@full_id='{}' and master/text() = \"MASTER\"]".format(job_id),
                     smart_strings=False
@@ -325,10 +325,10 @@ class SGEInfo(object):
                     if file_info is not None:
                         for sub_el in file_info:
                             file_info.remove(sub_el)
-                        for _f_name, f_el in file_dict.iteritems():
+                        for _f_name, f_el in file_dict.items():
                             file_info.append(f_el)
         if "pinning_dict" in kwargs:
-            for job_id, _struct in kwargs["pinning_dict"].iteritems():
+            for job_id, _struct in kwargs["pinning_dict"].items():
                 job_el = r_tree.xpath(
                     ".//job_list[@full_id='{}' and master/text() = \"MASTER\"]".format(job_id),
                     smart_strings=False
@@ -544,7 +544,7 @@ class SGEInfo(object):
                 # print srv_com.pretty_print()
                 my_poller = zmq.Poller()
                 my_poller.register(client, zmq.POLLIN)  # @UndefinedVariable
-                client.send_unicode(unicode(srv_com))
+                client.send_unicode(str(srv_com))
                 _sc = True
             else:
                 _sc = False
@@ -597,7 +597,7 @@ class SGEInfo(object):
                 )
             )
         # copy direct results to tree
-        for dict_name, new_el in _direct_results.iteritems():
+        for dict_name, new_el in _direct_results.items():
             for prev_el in self.__tree.findall(dict_name):
                 prev_el.getparent().remove(prev_el)
             self.__tree.append(new_el)
@@ -700,7 +700,7 @@ class SGEInfo(object):
         if os.path.exists(base_com):
             s_time = time.time()
             c_stat, c_out = process_tools.getstatusoutput(command)
-            c_out = unicode(c_out, errors='replace')
+            c_out = str(c_out, errors='replace')
             e_time = time.time()
             if c_stat and not _silent_error:
                 self.log(
@@ -836,7 +836,7 @@ class SGEInfo(object):
             if "id" in _dict:
                 _feed_dict(_dict)
         # create links
-        for _p_id, _childs in child_dict.iteritems():
+        for _p_id, _childs in child_dict.items():
             for _child in _childs:
                 id_lut[_p_id].find("childs").append(id_lut[_child])
         cur_fs_tree = E.fstree()
@@ -1055,10 +1055,10 @@ class SGEInfo(object):
         return self.__host_lut.get(h_id, default)
 
     def get_all_hosts(self):
-        return self.__host_lut.itervalues()
+        return iter(self.__host_lut.values())
 
     def get_all_queues(self):
-        return self.__queue_lut.itervalues()
+        return iter(self.__queue_lut.values())
 
     def get_job(self, j_id, default=None):
         # for strange errors happening at LWN
@@ -1099,7 +1099,7 @@ class SGEInfo(object):
         hg_lut = {
             cur_hg.get("name"): cur_hg for cur_hg in self.__tree.findall("hostgroup/hostgroup")
         }
-        for queue in self.__queue_lut.itervalues():
+        for queue in self.__queue_lut.values():
             if not queue.findall("hosts"):
                 hosts_el = E.hosts()
                 queue.append(hosts_el)
@@ -1389,7 +1389,7 @@ def build_running_list(s_info, options, **kwargs):
                     # number of master devices
                     "mc": len(jh_pe_lut["MASTER"]),
                     # set of all devices
-                    "devs": list(set(sum(jh_pe_lut.values(), []))),
+                    "devs": list(set(sum(list(jh_pe_lut.values()), []))),
                 }
                 if options.compress_nodelist:
                     cur_job.append(
@@ -1412,7 +1412,7 @@ def build_running_list(s_info, options, **kwargs):
                                 [
                                     ",".join(
                                         [
-                                            u"{}{}".format(_entry, "(M)" if key == "MASTER" else "") for _entry in sorted(jh_pe_lut[key])
+                                            "{}{}".format(_entry, "(M)" if key == "MASTER" else "") for _entry in sorted(jh_pe_lut[key])
                                         ]
                                     ) for key in ["MASTER", "SLAVE"] if key in jh_pe_lut
                                 ]
@@ -1754,7 +1754,7 @@ class SGETopologyInfo(object):
 
     def _feed(self, in_char):
         _ref = self._info
-        for _idx in xrange({"s": 0, "c": 1, "t": 2}[in_char.lower()]):
+        for _idx in range({"s": 0, "c": 1, "t": 2}[in_char.lower()]):
             _ref = _ref[-1].setdefault("l", [])
         _ref.append({"u": in_char.lower() == in_char, "t": in_char.upper()})
 
@@ -2286,7 +2286,7 @@ def build_node_list(s_info, options):
 def _stress_test():
     a = SGEInfo(mode="local", verbose=True)
     _iters = 100
-    for _x in xrange(_iters):
+    for _x in range(_iters):
         a.update(force_update=True)
     print("{:d} iterations done".format(_iters))
     time.sleep(3600)

@@ -19,7 +19,7 @@
 #
 """ special config for MegaRaid SAS modules """
 
-from __future__ import unicode_literals, print_function
+
 
 from argparse import Namespace
 

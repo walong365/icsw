@@ -17,7 +17,7 @@
 #
 """ SNMP process definition """
 
-from __future__ import unicode_literals, print_function
+
 
 import signal
 
@@ -81,7 +81,7 @@ class SNMPProcess(threading_tools.process_obj):
 
     def unregister_batch(self, cur_batch):
         # ids we will no longer handle because of finish
-        to_keys = [key for key, value in self.__req_id_lut.iteritems() if value == cur_batch]
+        to_keys = [key for key, value in self.__req_id_lut.items() if value == cur_batch]
         if to_keys:
             for to_key in to_keys:
                 del self.__req_id_lut[to_key]
@@ -129,7 +129,7 @@ class SNMPProcess(threading_tools.process_obj):
 
     def _inject(self, cur_batch):
         try:
-            next_tuple = cur_batch.iterator.next()
+            next_tuple = next(cur_batch.iterator)
         except StopIteration:
             cur_batch.finish()
         else:
@@ -157,7 +157,7 @@ class SNMPProcess(threading_tools.process_obj):
             self.log("unknown batch_id {}".format(batch_id), logging_tools.LOG_LEVEL_ERROR)
 
     def _timer_func(self, act_time):
-        timed_out = [key for key, cur_job in self.__job_dict.iteritems() if cur_job.timer_func(act_time)]
+        timed_out = [key for key, cur_job in self.__job_dict.items() if cur_job.timer_func(act_time)]
         for to_key in timed_out:
             self.__job_dict[to_key].finish()
         self.step()

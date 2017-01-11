@@ -17,9 +17,9 @@
 #
 """ tools for handling partition tables (LVM and UUID / label stuff) """
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import os
 import re
 
@@ -32,13 +32,13 @@ class uuid_label_struct(dict):
         # _uls = uuid_label_struct()
         # print _uls[UUID]
         dict.__init__(self)
-        c_stat, c_out = commands.getstatusoutput("/sbin/blkid")
+        c_stat, c_out = subprocess.getstatusoutput("/sbin/blkid")
         if not c_stat:
             for _line in c_out.split("\n"):
                 if _line.count(":"):
                     part, _rest = _line.split(":", 1)
                     _dict = dict([_part.split("=", 1) for _part in _rest.strip().split()])
-                    _dict = {key: value[1:-1] if value.startswith('"') else value for key, value in _dict.iteritems()}
+                    _dict = {key: value[1:-1] if value.startswith('"') else value for key, value in _dict.items()}
                     _dict["part"] = part
                     for key in set(_dict) & {"UUID"}:
                         self[_dict[key]] = _dict
@@ -51,17 +51,17 @@ class lvm_object(dict):
         self.__ignore_list = ["percent"]
         self.__int_keys = ["major", "minor", "kernel_major", "kernel_minor", "used", "max_pv", "max_lv", "stripes", "free"]
         if type(in_dict) == dict:
-            for key, value in in_dict.iteritems():
+            for key, value in in_dict.items():
                 self[key] = value
         else:
             # xml input
-            for key, value in in_dict.attrib.iteritems():
+            for key, value in in_dict.attrib.items():
                 self[key] = value
             if len(in_dict):
                 self["mount_options"] = {
                     sub_key: sub_value if sub_key not in [
                         "fsck", "dump"
-                    ] else int(sub_value) for sub_key, sub_value in in_dict[0].attrib.iteritems()
+                    ] else int(sub_value) for sub_key, sub_value in in_dict[0].attrib.items()
                 }
 
     def __setitem__(self, key, value):
@@ -71,7 +71,7 @@ class lvm_object(dict):
             if value.endswith("B"):
                 value = value[:-1]
             value = int(value)
-        elif isinstance(value, basestring):
+        elif isinstance(value, str):
             value = value.strip()
         dict.__setitem__(self, key, value)
 
@@ -84,10 +84,10 @@ class lvm_object(dict):
     def _get_xml_attributes(self, src_obj=None):
         src_obj = src_obj or self
         r_dict = {}
-        for key, value in src_obj.iteritems():
-            if isinstance(value, basestring):
+        for key, value in src_obj.items():
+            if isinstance(value, str):
                 r_dict[key] = value
-            elif type(value) in [int, long]:
+            elif type(value) in [int, int]:
                 r_dict[key] = "{:d}".format(value)
         return r_dict
 
@@ -97,7 +97,7 @@ class lvm_object(dict):
                 "{",
                 "--- name {}, type {} --- ".format(self["name"], self.lv_type)
             ] + [
-                "{:<20s}: ({}) {}".format(key, str(type(value)), str(value)) for key, value in self.iteritems()
+                "{:<20s}: ({}) {}".format(key, str(type(value)), str(value)) for key, value in self.items()
             ] + ["}"]
         )
 
@@ -114,7 +114,7 @@ class multipath_struct(object):
         mp_path = ["/sbin", "/usr/sbin", "/usr/local/sbin"]
         mp_bins = {"multipath": "-ll"}
         self.__mp_bin_dict = {}
-        for bn, bn_opts in mp_bins.iteritems():
+        for bn, bn_opts in mp_bins.items():
             path_found = [entry for entry in [os.path.join(name, bn) for name in mp_path] if os.path.isfile(entry)]
             if path_found:
                 self.__mp_bin_dict[bn] = (path_found[0], bn_opts)
@@ -122,7 +122,7 @@ class multipath_struct(object):
     def update(self):
         dev_dict = {}
         if self.__mp_bin_dict:
-            cur_stat, cur_out = commands.getstatusoutput("{} {}".format(*self.__mp_bin_dict["multipath"]))
+            cur_stat, cur_out = subprocess.getstatusoutput("{} {}".format(*self.__mp_bin_dict["multipath"]))
             if not cur_stat:
                 re_dict = {
                     "header1": re.compile("^(?P<name>\S+)\s+\((?P<id>\S+)\)\s+(?P<devname>\S+)\s+(?P<info>.*)$"),
@@ -138,7 +138,7 @@ class multipath_struct(object):
                 result_list = []
                 prev_re, all_parsed = (None, True)
                 for line in cur_out.split("\n"):
-                    re_line = [(re_name, cur_re.match(line).groupdict()) for re_name, cur_re in re_dict.iteritems() if cur_re.match(line)]
+                    re_line = [(re_name, cur_re.match(line).groupdict()) for re_name, cur_re in re_dict.items() if cur_re.match(line)]
                     if re_line:
                         re_type, re_obj = re_line[0]
                         # check for correct order
@@ -160,7 +160,7 @@ class multipath_struct(object):
                     _int_set = ["hwhandler", "major", "minor", "prio"]
                     # build dict
                     for re_name, g_dict in result_list:
-                        for key, value in g_dict.iteritems():
+                        for key, value in g_dict.items():
                             # tidy
                             g_dict[key] = value.strip()
                             if key in _int_set:
@@ -220,7 +220,7 @@ class lvm_struct(object):
             ]
         }
         self.__lvm_bin_dict = {}
-        for bn, bn_opts in lvm_bins.iteritems():
+        for bn, bn_opts in lvm_bins.items():
             path_found = [
                 entry for entry in [
                     os.path.join(name, "{}s".format(bn)) for name in lvm_path
@@ -252,12 +252,12 @@ class lvm_struct(object):
         if self.__source == "bin" and self.__lvm_bin_dict:
             self.lvm_present = True
             ret_dict = {}
-            for name, (bin_path, options) in self.__lvm_bin_dict.iteritems():
+            for name, (bin_path, options) in self.__lvm_bin_dict.items():
                 ret_dict[name] = []
                 if bin_path:
                     num_sep = len(options)
                     com = "{} --separator \; --units b -o {}".format(bin_path, ",".join(options))
-                    c_stat, c_out = commands.getstatusoutput(com)
+                    c_stat, c_out = subprocess.getstatusoutput(com)
                     if not c_stat:
                         lines = [line.strip() for line in c_out.split("\n") if line.strip() and line.count(";") >= num_sep / 2]
                         if lines:
@@ -271,7 +271,7 @@ class lvm_struct(object):
                                     line_p = line[:-1].split(";")
                                 else:
                                     line_p = line.split(";")
-                                targ_dict = dict(zip(options, line_p))
+                                targ_dict = dict(list(zip(options, line_p)))
                                 ret_dict[name].append(targ_dict)
             self._parse_dict(ret_dict)
 
@@ -298,10 +298,10 @@ class lvm_struct(object):
         lvm_el = builder("lvm_config",
                          version="2",
                          lvm_present="1" if self.lvm_present else "0")
-        for m_key, val_list in self.lv_dict.iteritems():
+        for m_key, val_list in self.lv_dict.items():
             sub_struct = builder("lvm_{}".format(m_key), lvm_type=m_key, entities="{:d}".format(len(val_list)))
             lvm_el.append(sub_struct)
-            for _el_key, element in val_list.iteritems():
+            for _el_key, element in val_list.items():
                 sub_struct.append(element.build_xml(builder))
         return lvm_el
 
@@ -379,17 +379,17 @@ class lvm_struct(object):
                             logging_tools.form_entry(""),
                             logging_tools.form_entry(lv_stuff["attr"]),
                         ])
-            return unicode(ret_info)
+            return str(ret_info)
 
     def __repr__(self):
         order_list = ["pv", "vg", "lv"]
         ret_a = [
             "{}:".format(
-                ", ".join(["{}".format(logging_tools.get_plural(k, len(self.lv_dict.get(k, {}).keys()))) for k in order_list])
+                ", ".join(["{}".format(logging_tools.get_plural(k, len(list(self.lv_dict.get(k, {}).keys())))) for k in order_list])
             )
         ]
         for ol in order_list:
-            ret_a.append("\n".join([str(x) for x in self.lv_dict.get(ol, {}).values()]))
+            ret_a.append("\n".join([str(x) for x in list(self.lv_dict.get(ol, {}).values())]))
         return "\n".join(ret_a)
 
 
@@ -414,11 +414,11 @@ class disk_lut(object):
         # pprint.pprint(self.__rev_lut)
 
     def get_top_keys(self):
-        return self.__lut.keys()
+        return list(self.__lut.keys())
 
     def __getitem__(self, key):
         entry_type = None
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             if key.startswith("by-"):
                 return self.__lut[key]
             elif key.startswith("/dev/disk/by-"):

@@ -19,7 +19,7 @@
 #
 """ check for stale and old graphs, part of rrd-grapher """
 
-from __future__ import print_function, unicode_literals
+
 
 import os
 import rrdtool
@@ -121,7 +121,7 @@ class GraphStaleProcess(threading_tools.process_obj, server_mixins.OperationalEr
                     "({:d} of {:d}) updated active info for {}: {:d} enabled, {:d} disabled".format(
                         mv_idx,
                         _total,
-                        unicode(mv),
+                        str(mv),
                         enabled,
                         disabled,
                     )

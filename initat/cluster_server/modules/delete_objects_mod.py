@@ -21,7 +21,7 @@ contains command for deleting objects in background (we are the background)
 
 """
 
-from __future__ import unicode_literals, print_function
+
 
 import json
 import time
@@ -89,7 +89,7 @@ class handle_delete_requests(cs_base_class.icswCSServerCom):
             _bgj = create_bg_job(
                 global_config["SERVER_IDX"],
                 None,
-                "delete object '{}'".format(unicode(obj_to_delete)),
+                "delete object '{}'".format(str(obj_to_delete)),
                 "delete",
                 None,
                 state=BackgroundJobState.pending,

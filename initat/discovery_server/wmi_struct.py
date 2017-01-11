@@ -21,7 +21,7 @@
 import csv
 import itertools
 import logging
-from StringIO import StringIO
+from io import StringIO
 
 logger = logging.getLogger("discovery.wmi_struct")
 
@@ -31,7 +31,7 @@ def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
     a, b = itertools.tee(iterable)
     next(b, None)
-    return itertools.izip(a, b)
+    return zip(a, b)
 
 
 class WmiUtils(object):
@@ -198,7 +198,7 @@ class WmiUtils(object):
         elif isinstance(incoming, dict):
             output = dict()
 
-            for (key, value) in incoming.items():
+            for (key, value) in list(incoming.items()):
                 if value == "(null)":
                     output[key] = None
                 elif value == "True":

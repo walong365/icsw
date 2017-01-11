@@ -20,7 +20,7 @@
 #
 """ package server """
 
-from __future__ import print_function, unicode_literals
+
 
 import os
 
@@ -94,7 +94,7 @@ class server_process(
 
     def loop_post(self):
         self.network_unbind()
-        for open_sock in self.socket_dict.itervalues():
+        for open_sock in self.socket_dict.values():
             open_sock.close()
         self.CC.close()
 
@@ -119,7 +119,7 @@ class server_process(
         _ok = True
         try:
             send_sock.send_unicode(t_uid, zmq.SNDMORE | zmq.NOBLOCK)
-            send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)
+            send_sock.send_unicode(str(srv_com), zmq.NOBLOCK)
         except:
             self.log("error sending to {}: {}".format(t_uid, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             _ok = False
@@ -131,7 +131,7 @@ class server_process(
             "send command {} to {} ({})".format(
                 command,
                 logging_tools.get_plural("client", len(send_list)),
-                ", ".join(["{}={}".format(key, value) for key, value in kwargs.iteritems()]) if kwargs else "no kwargs",
+                ", ".join(["{}={}".format(key, value) for key, value in kwargs.items()]) if kwargs else "no kwargs",
             )
         )
         send_com = server_command.srv_command(command=command, **kwargs)
@@ -181,11 +181,11 @@ class server_process(
                     )
                     if act_routing_info:
                         _ip = act_routing_info[0][3][1][0]
-                        self.log("found routing_info for {}, IP is {}".format(unicode(cur_c.device), _ip))
+                        self.log("found routing_info for {}, IP is {}".format(str(cur_c.device), _ip))
                         self.connect_client(cur_c.device, _ip)
                         # self.send_reply(cur_c.uid, server_command.srv_command(command="hello"))
                     else:
-                        self.log("no routing_info found for {}".format(unicode(cur_c.device)))
+                        self.log("no routing_info found for {}".format(str(cur_c.device)))
 
     @RemoteCall()
     def status(self, srv_com, **kwargs):
@@ -225,7 +225,7 @@ class server_process(
                 logging_tools.LOG_LEVEL_ERROR
             )
         else:
-            self.send_to_process("repo", "clear_cache", unicode(srv_com))
+            self.send_to_process("repo", "clear_cache", str(srv_com))
         self.log(
             "sending clear_cache to {}".format(
                 logging_tools.get_plural("device", len(all_devs))

@@ -22,7 +22,7 @@
 
 """ monitoring views """
 
-from __future__ import unicode_literals, print_function
+
 
 import base64
 import datetime
@@ -123,7 +123,7 @@ class call_icinga(View):
     def post(self, request):
         pw = request.session.get("password")
         pw = base64.b64decode(pw) if pw else "no_passwd"
-        _url = u"http{}://{}:{}@{}/icinga/".format(
+        _url = "http{}://{}:{}@{}/icinga/".format(
             "s" if request.is_secure() else "",
             request.user.login,
             # fixme, if no password is set (due to automatic login) use no_passwd
@@ -142,7 +142,7 @@ class fetch_partition(View):
     def post(self, request):
         _post = request.POST
         part_dev = device.objects.get(Q(pk=_post["pk"]))
-        logger.info("reading partition info from %s" % (unicode(part_dev)))
+        logger.info("reading partition info from %s" % (str(part_dev)))
         srv_com = server_command.srv_command(command="fetch_partition_info")
         _dev_node = srv_com.builder("device")
         _dev_node.attrib.update(
@@ -160,15 +160,15 @@ class clear_partition(View):
     def post(self, request):
         _post = request.POST
         part_dev = device.objects.get(Q(pk=_post["pk"]))
-        logger.info("clearing partition info from {}".format(unicode(part_dev)))
+        logger.info("clearing partition info from {}".format(str(part_dev)))
         _part = part_dev.act_partition_table
         if _part is None:
-            request.xml_response.error(u"no partition table defined for {}".format(unicode(part_dev)))
+            request.xml_response.error("no partition table defined for {}".format(str(part_dev)))
         else:
             part_dev.act_partition_table = None
             part_dev.save(update_fields=["act_partition_table"])
             if not _part.user_created and not get_related_models(_part):
-                request.xml_response.warn(u"partition table {} removed".format(_part))
+                request.xml_response.warn("partition table {} removed".format(_part))
                 _part.delete()
 
 
@@ -178,10 +178,10 @@ class use_partition(View):
     def post(self, request):
         _post = request.POST
         part_dev = device.objects.get(Q(pk=_post["pk"]))
-        logger.info("using partition info from {} as act_partition".format(unicode(part_dev)))
+        logger.info("using partition info from {} as act_partition".format(str(part_dev)))
         part_dev.act_partition_table = part_dev.partition_table
         part_dev.save(update_fields=["act_partition_table"])
-        request.xml_response.info("set {} as act_partition_table".format(unicode(part_dev.partition_table)))
+        request.xml_response.info("set {} as act_partition_table".format(str(part_dev.partition_table)))
 
 
 class get_node_config(View):
@@ -232,7 +232,7 @@ class toggle_sys_flag(View):
 
 class DummyLogger(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        logger.log(log_level, u"[DL] {}".format(what))
+        logger.log(log_level, "[DL] {}".format(what))
 
 
 class NodeStatusViewSet(viewsets.ViewSet):
@@ -240,7 +240,7 @@ class NodeStatusViewSet(viewsets.ViewSet):
     def get_all(self, request):
         def _to_fqdn(_vals):
             if _vals[2]:
-                return u"{}.{}".format(_vals[1], _vals[2])
+                return "{}.{}".format(_vals[1], _vals[2])
             else:
                 return _vals[1]
 
@@ -330,7 +330,7 @@ class get_mon_vars(View):
         )
         for _mc in mon_check_commands:
             _mon_info, _log_lines = parse_commandline(_mc.command_line)
-            for _key, _value in _mon_info["default_values"].iteritems():
+            for _key, _value in _mon_info["default_values"].items():
                 if type(_value) == tuple:
                     res_list.append(
                         (
@@ -346,7 +346,7 @@ class get_mon_vars(View):
         )
         for _mc in mon_special_check_commands:
             _mon_info, _log_lines = parse_commandline(_mc.command_line)
-            for _key, _value in _mon_info["default_values"].iteritems():
+            for _key, _value in _mon_info["default_values"].items():
                 if type(_value) == tuple:
                     _checks = _mc.mon_check_command_set.all()
                     if len(_checks) == 1:
@@ -393,7 +393,7 @@ class resolve_name(View):
             except:
                 pass
             else:
-                logger.info(u"resolved {} to {}".format(fqdn, _ip))
+                logger.info("resolved {} to {}".format(fqdn, _ip))
                 request.xml_response["ip"] = _ip
 
 
@@ -535,9 +535,9 @@ class _device_status_history_util(object):
 
         # init mon_check_command cache
         if not for_host:
-            mon_icinga_log_raw_service_alert_data.objects.init_service_name_cache([key[1] for key in alert_list.alerts.iterkeys()])
+            mon_icinga_log_raw_service_alert_data.objects.init_service_name_cache([key[1] for key in alert_list.alerts.keys()])
 
-        for key, amended_list in alert_list.alerts.iteritems():
+        for key, amended_list in alert_list.alerts.items():
             # print "*" * 20, key
             # only use dev/serv keys which have entries in the time frame (i.e. those from entries)
             # they might be active before and after, but not during the time frame, in which case
@@ -674,7 +674,7 @@ class get_hist_device_data(ListAPIView):
         data_merged_state_types = {}
         _eco = server_mixins.EggConsumeObject(DummyLogger())
         _eco.init({"SERVICE_ENUM_NAME": icswServiceEnum.monitor_server.name})
-        for device_id, device_data in data_per_device.iteritems():
+        for device_id, device_data in data_per_device.items():
             if _eco.consume("dashboard", device_id):
                 data_merged_state_types[device_id] = mon_icinga_log_aggregated_service_data.objects.merge_state_types(
                     device_data,
@@ -726,7 +726,7 @@ class get_hist_service_line_graph_data(ListAPIView):
 
         return_data = defaultdict(lambda: {})
 
-        for ((dev_id, service_identifier), values) in prelim_return_data.iteritems():
+        for ((dev_id, service_identifier), values) in prelim_return_data.items():
             return_data[dev_id][service_identifier] = values
 
         """

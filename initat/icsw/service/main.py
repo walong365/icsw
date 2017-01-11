@@ -21,7 +21,7 @@
 
 """ checks installed servers on system """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 import os
@@ -52,7 +52,7 @@ def show_form_list(form_list, run_time):
         )
     )
     form_list.display_attribute_map = d_map
-    print(unicode(form_list))
+    print(str(form_list))
 
 
 def _state_overview(opt_ns, result):

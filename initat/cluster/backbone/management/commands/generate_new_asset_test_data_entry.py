@@ -21,7 +21,7 @@
 #
 """ shows and updates the current cluster routing table """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.core.management.base import BaseCommand
 from initat.cluster.backbone.models.asset.dynamic_asset import ASSETTYPE_HM_COMMAND_MAP, ASSETTYPE_NRPE_COMMAND_MAP, \
@@ -319,7 +319,7 @@ class Command(BaseCommand):
             hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
             conn_str = "tcp://{}:{:d}".format(options['ip'], hm_port)
 
-            for asset_type, hm_command in ASSETTYPE_HM_COMMAND_MAP.items():
+            for asset_type, hm_command in list(ASSETTYPE_HM_COMMAND_MAP.items()):
                 result_dict[asset_type] = None
 
                 print("Running command [{}] on {}".format(hm_command, conn_str))
@@ -339,7 +339,7 @@ class Command(BaseCommand):
         else:
             scan_type = ScanType.NRPE
 
-            for asset_type, nrpe_command in ASSETTYPE_NRPE_COMMAND_MAP.items():
+            for asset_type, nrpe_command in list(ASSETTYPE_NRPE_COMMAND_MAP.items()):
                 result_dict[asset_type] = None
 
                 _com = "/opt/cluster/sbin/check_nrpe -H{} -2 -P1048576 -p{} -n -c{} -t{}".format(
@@ -372,7 +372,7 @@ class Command(BaseCommand):
         else:
             print("Failed to generate new entry")
             missing_types = []
-            for asset_type, result in result_dict.items():
+            for asset_type, result in list(result_dict.items()):
                 if result is None:
                     missing_types.append(asset_type)
             print("No result for: {}".format(missing_types))
@@ -435,7 +435,7 @@ class Command(BaseCommand):
             print("Index:\t\t\t\t{}".format(index))
             print("Identifier:\t\t\t{}".format(result_obj.identifier))
             print("Ignored Tests:\t\t\t{}".format(result_obj.ignore_tests))
-            print("HM/NRPE Results:\t\t{}".format(len(result_obj.result_dict.items())))
+            print("HM/NRPE Results:\t\t{}".format(len(list(result_obj.result_dict.items()))))
             print("Scan Type:\t\t\t{}".format(result_obj.scan_type.name))
             print("Expected HDDs:\t\t\t{}".format(expected_hdds_str))
             print("Expected Partitions:\t\t{}".format(expected_partitions_str))

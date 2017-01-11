@@ -19,7 +19,7 @@
 #
 """ discovery-server, server part """
 
-from __future__ import print_function, unicode_literals
+
 
 import zmq
 from django.db.models import Q
@@ -198,7 +198,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             self.__ext_con_dict[run_idx].close()
             del self.__ext_con_dict[run_idx]
         if srv_reply and run_idx:
-            self.send_to_process("discovery", "ext_con_result", run_idx, unicode(srv_reply))
+            self.send_to_process("discovery", "ext_con_result", run_idx, str(srv_reply))
 
     def send_host_monitor_command(self, *args, **kwargs):
         _from_name, _from_pid, run_index, conn_str, srv_com = args
@@ -222,7 +222,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             run_index = int(srv_reply["*run_index"])
 
         if run_index:
-            self.send_to_process("discovery", "host_monitor_result", run_index, unicode(srv_reply))
+            self.send_to_process("discovery", "host_monitor_result", run_index, str(srv_reply))
             self.__pending_host_monitoring_commands[run_index].close()
             del self.__pending_host_monitoring_commands[run_index]
 
@@ -268,7 +268,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             # snmp_address="192.168.1.50",
             # snmp_address="192.168.2.12",
         )
-        self.send_to_process("discovery", _srv_com["*command"], unicode(_srv_com))
+        self.send_to_process("discovery", _srv_com["*command"], str(_srv_com))
 
     def _snmp_run(self, *args, **kwargs):
         # ignore src specs

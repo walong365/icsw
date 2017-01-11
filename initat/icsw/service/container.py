@@ -21,7 +21,7 @@
 
 """ container for service checks """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import time
@@ -105,7 +105,7 @@ class ServiceContainer(object):
         self.update_version_tuple()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com(u"[SrvC] {}".format(what), log_level)
+        self.__log_com("[SrvC] {}".format(what), log_level)
 
     def filter_msi_file_name(self, check_list, file_name):
         return [entry for entry in check_list if entry.msi_name == file_name]

@@ -19,7 +19,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-from __future__ import print_function, unicode_literals
+
 
 import itertools
 import json
@@ -45,7 +45,7 @@ logger = logging.getLogger("cluster.history")
 
 class DummyLogger(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        logger.log(log_level, u"[DL] {}".format(what))
+        logger.log(log_level, "[DL] {}".format(what))
 
 
 class get_models_with_history(RetrieveAPIView):
@@ -154,13 +154,13 @@ class get_historical_data(ListAPIView):
 
         def resolve_reference(target_model, foreign_key_val):
             try:
-                return unicode(target_model.objects.get(pk=foreign_key_val))
+                return str(target_model.objects.get(pk=foreign_key_val))
             except target_model.DoesNotExist:
                 try:
                     # unicode on Version object gives the saved object repr, which we use here
-                    return unicode(deleted_objects_cache[target_model][foreign_key_val])
+                    return str(deleted_objects_cache[target_model][foreign_key_val])
                 except KeyError:
-                    return u"untracked object"
+                    return "untracked object"
 
         def get_human_readable_value(key, value):
             if value is None:
@@ -193,12 +193,12 @@ class get_historical_data(ListAPIView):
             # extract change info and only transmit that
             if pk in last_entry_by_pk:
                 entry['changes'] = {}
-                for k in set(itertools.chain(entry['data'].iterkeys(), last_entry_by_pk[pk].iterkeys())):
+                for k in set(itertools.chain(iter(entry['data'].keys()), iter(last_entry_by_pk[pk].keys()))):
                     old = last_entry_by_pk[pk].get(k, None)
                     new = entry['data'].get(k, None)
                     if old != new:
                         patch = None
-                        if isinstance(old, basestring) and isinstance(new, basestring):
+                        if isinstance(old, str) and isinstance(new, str):
                             dmp = diff_match_patch()
                             diffs = dmp.diff_main(old, new)
                             dmp.diff_cleanupSemantic(diffs)
@@ -216,7 +216,7 @@ class get_historical_data(ListAPIView):
             else:
                 entry['changes'] = {
                     'full_dump': entry['data'],
-                    'full_dump_human': {k: get_human_readable_value(k, v) for k, v in entry['data'].iteritems()},
+                    'full_dump_human': {k: get_human_readable_value(k, v) for k, v in entry['data'].items()},
                 }
 
             last_entry_by_pk[pk] = entry['data']

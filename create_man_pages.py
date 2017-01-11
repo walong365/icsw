@@ -61,7 +61,7 @@ def help2man(path):
 
 def write_manpage(filename, content, file_creator=open):
     if os.path.exists(filename):
-        print "Not writing {}: File exists!".format(filename)
+        print("Not writing {}: File exists!".format(filename))
     else:
         with file_creator(filename, "w") as f:
             f.write(content)
@@ -72,7 +72,7 @@ def main():
     try:
         subprocess.check_output(["help2man", "--help"], stderr=subprocess.STDOUT)
     except OSError:
-        print "Install 'help2man' to use this script!"
+        print("Install 'help2man' to use this script!")
         sys.exit(1)
 
     symbol_tables = []
@@ -97,7 +97,7 @@ a man page.
         if args.quiet:
             return
         else:
-            print message
+            print(message)
 
     output("[+] Scanning files and generating symbol tables")
     for path in args.paths:
@@ -122,7 +122,7 @@ a man page.
 
     if args.list:
         for file_to_check in files_to_check:
-            print file_to_check
+            print(file_to_check)
     else:
         output("[+] Generating man pages")
         for file_to_check in files_to_check:

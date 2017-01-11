@@ -20,7 +20,7 @@
 
 """ special tasks for md-config-server, load from submodule instances """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.db.models import Q
 
@@ -35,7 +35,7 @@ from initat.tools import logging_tools
 def check_special_commands(log_com):
     pks_found = set()
     mccs_dict = {}
-    for _name, _entry in dynamic_checks.class_dict.iteritems():
+    for _name, _entry in dynamic_checks.class_dict.items():
         _inst = _entry(log_com)
         if dynamic_checks.meta_to_class_name(_inst.Meta.name) != _name:
             log_com(
@@ -64,7 +64,7 @@ def check_special_commands(log_com):
         for _del_mcc in del_mccs:
             log_com(
                 "trying to remove stale {}...".format(
-                    unicode(_del_mcc),
+                    str(_del_mcc),
                 )
             )
             _refs = get_related_models(_del_mcc)
@@ -75,7 +75,7 @@ def check_special_commands(log_com):
                 log_com("  ...done")
     # rewrite
     for to_rewrite in mon_check_command.objects.filter(Q(name__startswith="@")):
-        log_com("rewriting {} to new format... ".format(unicode(to_rewrite)))
+        log_com("rewriting {} to new format... ".format(str(to_rewrite)))
         _key = to_rewrite.name.split("@")[1].lower()
         if _key in mccs_dict:
             to_rewrite.name = to_rewrite.name.split("@")[2]

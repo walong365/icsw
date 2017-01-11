@@ -21,7 +21,7 @@
 #
 """ serviceEnum Base for 'global' configenum object, for servers """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.db.models import Q
 from initat.host_monitoring.service_enum_base import icswServiceEnumBaseClient
@@ -37,7 +37,7 @@ class EggAction(object):
     def __init__(self, action, content_type, weight=1, timeframe=0, ghost=False):
         # timeframe is in days
         self.action = action
-        if isinstance(content_type, basestring):
+        if isinstance(content_type, str):
             try:
                 content_type = ContentType.objects.get(Q(model=content_type))
             except ContentType.DoesNotExist:
@@ -55,7 +55,7 @@ class EggAction(object):
         self.ghost = ghost
 
     def __unicode__(self):
-        return u"{} {}".format(self.action, unicode(self.content_type))
+        return "{} {}".format(self.action, str(self.content_type))
 
 
 class icswServiceEnumBase(icswServiceEnumBaseClient):

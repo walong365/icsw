@@ -21,7 +21,7 @@
 #
 """ create version entries after DB migration run """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q

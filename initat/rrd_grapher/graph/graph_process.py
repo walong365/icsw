@@ -19,7 +19,7 @@
 #
 """ grapher part of rrd-grapher service """
 
-from __future__ import print_function, unicode_literals
+
 
 import json
 import select
@@ -164,7 +164,7 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
                     "generated {}".format(logging_tools.get_plural("graph", len(xml_el))),
                     server_command.SRV_REPLY_STATE_OK
                 )
-                self.send_pool_message("remote_call_async_result", unicode(srv_com))
+                self.send_pool_message("remote_call_async_result", str(srv_com))
             else:
                 self.log("return already sent", logging_tools.LOG_LEVEL_ERROR)
 
@@ -209,4 +209,4 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
 
         self._close_rrdcached_socket()
         if not self._early_return_sent:
-            self.send_pool_message("remote_call_async_result", unicode(srv_com))
+            self.send_pool_message("remote_call_async_result", str(srv_com))

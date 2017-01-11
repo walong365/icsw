@@ -17,9 +17,9 @@
 #
 """ NVidia GPU monitoring """
 
-from __future__ import print_function, unicode_literals
 
-import commands
+
+import subprocess
 
 from lxml import etree
 
@@ -370,7 +370,7 @@ class _general(hm_classes.hm_module):
                 )
                 com, out = ("", "")
         if com:
-            c_stat, out = commands.getstatusoutput(com)
+            c_stat, out = subprocess.getstatusoutput(com)
             if c_stat:
                 self.log(
                     "cannot execute {} ({:d}): {}".format(
@@ -423,7 +423,7 @@ class _general(hm_classes.hm_module):
                     logging_tools.LOG_LEVEL_ERROR
                 )
             else:
-                for _idx, _gpu in self.__gpus.iteritems():
+                for _idx, _gpu in self.__gpus.items():
                     _cur_tree = _tree.xpath(".//gpu[uuid[text()='{}']]".format(_gpu.uuid))
                     if len(_cur_tree):
                         _gpu.feed_xml(_cur_tree[0], mv)

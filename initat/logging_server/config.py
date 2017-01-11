@@ -20,7 +20,7 @@
 
 """ logging-server, config """
 
-from __future__ import unicode_literals, print_function
+
 
 from initat.tools import configfile, process_tools
 

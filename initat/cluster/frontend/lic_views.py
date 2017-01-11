@@ -22,7 +22,7 @@
 
 """ License views """
 
-from __future__ import print_function, unicode_literals
+
 
 import collections
 import json
@@ -51,7 +51,7 @@ def _dump_xml(s_node):
     return (
         s_node.tag.split("}")[-1],
         {
-            _key: int(_value) if _value.isdigit() else _value for _key, _value in s_node.attrib.iteritems()
+            _key: int(_value) if _value.isdigit() else _value for _key, _value in s_node.attrib.items()
         },
         [
             _dump_xml(_child) for _child in s_node
@@ -165,7 +165,7 @@ class _license_usage_view(ListAPIView):
             summing[(name, full_start_date)] += val
 
         result = []
-        for entry in summing.iteritems():
+        for entry in summing.items():
             name = entry[0][0]
             full_start_date = entry[0][1]
             val_sum = entry[1]

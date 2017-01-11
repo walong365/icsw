@@ -16,9 +16,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import os
 import re
 import time
@@ -260,7 +260,7 @@ class rpmlist_command(hm_classes.hm_command):
                             ]
                         )
                         out_f.add_line((key, d_flag, s_flag, e_flag, ver, rel, summary))
-            return limits.mon_STATE_OK, "{}\n{}".format(header_line, unicode(out_f))
+            return limits.mon_STATE_OK, "{}\n{}".format(header_line, str(out_f))
         else:
             return limits.mon_STATE_CRITICAL, "{}, nothing found".format(header_line)
 
@@ -305,7 +305,7 @@ def rpmlist_int(rpm_root_dir, re_strs, is_debian):
             log_list.append(
                 "  dpkg-command is {}".format(rpm_com.strip())
             )
-            stat, ipl = commands.getstatusoutput(rpm_com)
+            stat, ipl = subprocess.getstatusoutput(rpm_com)
             ipl = ipl.decode("utf-8")
             if not stat:
                 ret_dict = {}
@@ -353,7 +353,7 @@ def rpmlist_int(rpm_root_dir, re_strs, is_debian):
             ]
         for rpm_com in rpm_coms:
             log_list.append("  rpm-command is {}".format(rpm_com.strip()))
-            stat, ipl = commands.getstatusoutput(rpm_com)
+            stat, ipl = subprocess.getstatusoutput(rpm_com)
             ipl = ipl.decode("utf-8")
             num_tot, num_match = (0, 0)
             if not stat:
@@ -415,9 +415,9 @@ def get_update_list():
     update_list = []
 
     if use_zypper:
-        status, output = commands.getstatusoutput("zypper refresh")
+        status, output = subprocess.getstatusoutput("zypper refresh")
         # todo error handling
-        status, output = commands.getstatusoutput("zypper list-updates")
+        status, output = subprocess.getstatusoutput("zypper list-updates")
         # todo error handling
         lines = output.split("\n")
 
@@ -434,7 +434,7 @@ def get_update_list():
             else:
                 pass
     elif use_yum:
-        status, output = commands.getstatusoutput("yum check-update -q")
+        status, output = subprocess.getstatusoutput("yum check-update -q")
         # todo error handling
         lines = output.split("\n")
 
@@ -455,9 +455,9 @@ def get_update_list():
                         prevline = comps[0].strip()
 
     elif use_apt:
-        status, output = commands.getstatusoutput("apt-get update")
+        status, output = subprocess.getstatusoutput("apt-get update")
         # todo error handling
-        status, output = commands.getstatusoutput("apt-get --just-print upgrade")
+        status, output = subprocess.getstatusoutput("apt-get --just-print upgrade")
         # todo error handling
 
         lines = output.split("\n")

@@ -21,7 +21,7 @@
 #
 """ simple db-router """
 
-from __future__ import unicode_literals, print_function
+
 
 
 class icswDBRouter(object):

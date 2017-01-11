@@ -22,7 +22,7 @@
 
 """ base views """
 
-from __future__ import print_function, unicode_literals
+
 
 import datetime
 import json
@@ -96,7 +96,7 @@ class upload_location_gfx(View):
         _location_gfx = location_gfx.objects.get(Q(pk=request.POST["location_gfx_id"]))
 
         if len(request.FILES) == 1:
-            _file = request.FILES[request.FILES.keys()[0]]
+            _file = request.FILES[list(request.FILES.keys())[0]]
             if _file.content_type in ["image/png", "image/jpeg"]:
                 _img = Image.open(_file)
                 _w, _h = _img.size
@@ -276,15 +276,15 @@ class change_category(View):
             )
         if mon_loc_removed:
             request.xml_response.warn(
-                u"removed {}".format(
+                "removed {}".format(
                     logging_tools.get_plural("Location reference", len(mon_loc_removed))
                 ),
                 logger
             )
 
         request.xml_response.info(
-            u"{}: {}".format(
-                unicode(sc_cat),
+            "{}: {}".format(
+                str(sc_cat),
                 ", ".join(_info_f) or "nothing done",
             )
         )
@@ -380,7 +380,7 @@ class CheckDeleteObject(View):
                         # ignore all fields starting with underscore '_' (for example '_state')
                         referenced_objects_list.append(
                             {
-                                k: v for (k, v) in referenced_object.__dict__.iteritems() if not k.startswith("_")
+                                k: v for (k, v) in referenced_object.__dict__.items() if not k.startswith("_")
                             }
                         )
                         refs_of_refs.update(get_related_models(referenced_object, simple_tuples=True))
@@ -479,7 +479,7 @@ class CheckDeletionStatus(View):
     def post(self, request):
         del_requests = json.loads(request.POST.get("del_requests"))
         rs = {}
-        for k, del_request in del_requests.iteritems():
+        for k, del_request in del_requests.items():
             model_name, obj_pks = del_request
             model = apps.get_model("backbone", model_name)
 

@@ -19,7 +19,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import commands
+import subprocess
 import os
 import sys
 
@@ -70,13 +70,13 @@ class my_modclass(hm_classes.hm_fileinfo):
         try:
             cmd = "%s -client %s" % (self.__exe_dict[com_name], jobargs[0])
             if len(jobargs) > 1:
-                print "got 2nd arg"
+                print("got 2nd arg")
                 cmd += " -warningAge=%s" % (jobargs[1])
             if len(jobargs) > 2:
-                print "got 3rd arg"
+                print("got 3rd arg")
                 cmd += " -criticalAge=%s" % (jobargs[2])
 #            print "command= %s" % (cmd)
-            cstat, result = commands.getstatusoutput(cmd)
+            cstat, result = subprocess.getstatusoutput(cmd)
 #            print "result:", cstat, result
             j_dict = dict([("status", 0), ("message", result)])
             if cstat == 256:  # got warning message
@@ -98,7 +98,7 @@ class my_modclass(hm_classes.hm_fileinfo):
         com_name = "omshowu"
         if self.__exe_dict[com_name]:
             try:
-                cstat, result = commands.getstatusoutput("%s -m all" % (self.__exe_dict[com_name]))
+                cstat, result = subprocess.getstatusoutput("%s -m all" % (self.__exe_dict[com_name]))
                 if cstat:
                     return "error %s gave (%d) %s" % (com_name, cstat, result)
                 else:
@@ -114,7 +114,7 @@ class my_modclass(hm_classes.hm_fileinfo):
         com_name = "omshowu"
         if self.__exe_dict[com_name]:
             try:
-                cstat, result = commands.getstatusoutput("%s -n '%s' -f" % (self.__exe_dict[com_name],
+                cstat, result = subprocess.getstatusoutput("%s -n '%s' -f" % (self.__exe_dict[com_name],
                                                                             user_name))
                 if cstat:
                     return "error %s gave (%d) %s" % (com_name, cstat, result)
@@ -129,7 +129,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                     total_size = 0
                     if self.__exe_dict["sxdu"]:
                         try:
-                            cstat, result = commands.getstatusoutput("%s -a '%s'" % (self.__exe_dict["sxdu"],
+                            cstat, result = subprocess.getstatusoutput("%s -a '%s'" % (self.__exe_dict["sxdu"],
                                                                                      user_name))
                         except:
                             pass
@@ -137,7 +137,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                             total_size = int(result.split()[0]) * 1024
                     if self.__exe_dict["omlimit"]:
                         try:
-                            cstat, result = commands.getstatusoutput("%s -u '%s' -r" % (self.__exe_dict["omlimit"],
+                            cstat, result = subprocess.getstatusoutput("%s -u '%s' -r" % (self.__exe_dict["omlimit"],
                                                                                         user_name))
                         except:
                             pass
@@ -161,7 +161,7 @@ class my_modclass(hm_classes.hm_fileinfo):
         com_name = "omstat"
         if self.__exe_dict[com_name]:
             try:
-                cstat, result = commands.getstatusoutput("%s -s ; %s -a" % (self.__exe_dict[com_name],
+                cstat, result = subprocess.getstatusoutput("%s -s ; %s -a" % (self.__exe_dict[com_name],
                                                                             self.__exe_dict[com_name]))
                 if cstat:
                     return "error %s gave (%d) %s" % (com_name, cstat, result)
@@ -305,5 +305,5 @@ class bacula_serviceinfo_command(hm_classes.hmb_command):
 
 
 if __name__ == "__main__":
-    print "This is a loadable module."
+    print("This is a loadable module.")
     sys.exit(0)

@@ -23,7 +23,7 @@
 
 """ database definitions for license / ova management """
 
-from __future__ import print_function, unicode_literals
+
 
 import collections
 import datetime
@@ -73,7 +73,7 @@ class InitProduct(enum.Enum):
 
     def get_version_family(self, version):
         if version == "0.0":
-            version = _PRODUCT_FAMILY_MATRIX.keys()[-1]
+            version = list(_PRODUCT_FAMILY_MATRIX.keys())[-1]
 
         return _PRODUCT_FAMILY_MATRIX.get(version, {}).get(self, "")
 
@@ -82,25 +82,25 @@ _PRODUCT_FAMILY_MATRIX = collections.OrderedDict(  # ordered dict so we know whi
         (
             "2.5",
             {
-                InitProduct.CORVUS: u"Corvus hawaiiensis",  # Hawaiikraehe
-                InitProduct.NOCTUA: u"Strigidae occidentalis",  # Fleckenkauz
-                InitProduct.NESTOR: u"Nestor notabilis",  # Kea
+                InitProduct.CORVUS: "Corvus hawaiiensis",  # Hawaiikraehe
+                InitProduct.NOCTUA: "Strigidae occidentalis",  # Fleckenkauz
+                InitProduct.NESTOR: "Nestor notabilis",  # Kea
             }
         ),
         (
             "3.0",
             {
-                InitProduct.CORVUS: u"CORVUS Corax",  # Kolkrabe
-                InitProduct.NOCTUA: u"NOCTUA Athene",  # Steinkauz
-                InitProduct.NESTOR: u"NESTOR Notabilis",  # Kea
+                InitProduct.CORVUS: "CORVUS Corax",  # Kolkrabe
+                InitProduct.NOCTUA: "NOCTUA Athene",  # Steinkauz
+                InitProduct.NESTOR: "NESTOR Notabilis",  # Kea
             }
         ),
         (
             "3.1",
             {
-                InitProduct.CORVUS: u"Corvus splendens",  # Glanzkraehe
-                InitProduct.NOCTUA: u"Strigidae rufipes",  # Rostfusskauz
-                InitProduct.NESTOR: u"Nestor meridionalis",  # Kaka (Waldpapagei)
+                InitProduct.CORVUS: "Corvus splendens",  # Glanzkraehe
+                InitProduct.NOCTUA: "Strigidae rufipes",  # Rostfusskauz
+                InitProduct.NESTOR: "Nestor meridionalis",  # Kaka (Waldpapagei)
             }
         )
     ]
@@ -220,7 +220,7 @@ class _LicenseManager(models.Manager):
         return [
             lic for lic in set().union(
                 *[
-                    _struct["reader"].get_valid_licenses() for _struct in merged_maps.itervalues()
+                    _struct["reader"].get_valid_licenses() for _struct in merged_maps.values()
                 ]
             )
         ]
@@ -233,7 +233,7 @@ class _LicenseManager(models.Manager):
         # import pprint
         # pprint.pprint(merged_maps)
         res = set()
-        for _struct in merged_maps.itervalues():
+        for _struct in merged_maps.values():
             _idx = _struct["idx"]
             # pprint.pprint(_struct)
             for _val in _struct["reader"].get_valid_parameters():
@@ -515,8 +515,8 @@ class icswEggBasket(models.Model):
     def get_info_line(self):
         return [
             logging_tools.form_entry(self.dummy, header="Dummy"),
-            logging_tools.form_entry(unicode(self.valid_from), header="valid from"),
-            logging_tools.form_entry(unicode(self.valid_to), header="valdi to"),
+            logging_tools.form_entry(str(self.valid_from), header="valid from"),
+            logging_tools.form_entry(str(self.valid_to), header="valdi to"),
             logging_tools.form_entry_center("yes" if self.is_valid else "no", header="valid"),
             logging_tools.form_entry_right(self.eggs, header="eggs"),
         ]
@@ -583,12 +583,12 @@ class icswEggEvaluationDef(models.Model):
         from initat.cluster.backbone.server_enums import icswServiceEnum
         from initat.cluster.backbone.models import ConfigServiceEnum
         if not self.active:
-            raise StandardError("Cannot create consumers from inactive EggEvaluationDef")
+            raise Exception("Cannot create consumers from inactive EggEvaluationDef")
         icswEggConsumer.objects.filter(Q(content_type=None)).delete()
         # create or update all consumers
         # build list of required consumers
         _c_list = []
-        for _name, _server in icswServiceEnum.get_server_enums().iteritems():
+        for _name, _server in icswServiceEnum.get_server_enums().items():
             _cs_enum = ConfigServiceEnum.objects.get(Q(enum_name=_name))
             if _server.egg_actions:
                 for _action in _server.egg_actions:
@@ -751,10 +751,10 @@ class icswEggConsumer(models.Model):
         _consumed = self.get_all_consumed()
         return [
             logging_tools.form_entry(self.action, header="action"),
-            logging_tools.form_entry(unicode(self.config_service_enum), header="ConfigService"),
+            logging_tools.form_entry(str(self.config_service_enum), header="ConfigService"),
             logging_tools.form_entry_right(self.multiplier, header="Weight"),
             logging_tools.form_entry_center("yes" if self.ghost else "no", header="Ghost"),
-            logging_tools.form_entry_center(unicode(self.content_type), header="ContentType"),
+            logging_tools.form_entry_center(str(self.content_type), header="ContentType"),
             logging_tools.form_entry_right(
                 logging_tools.get_diff_time_str(self.timeframe_secs) if self.timeframe_secs else "---",
                 header="timeframe",
@@ -765,7 +765,7 @@ class icswEggConsumer(models.Model):
         ]
 
     def __unicode__(self):
-        return u"EggConsumer {}@{} -> {} per {}".format(
+        return "EggConsumer {}@{} -> {} per {}".format(
             self.action,
             self.config_service_enum.name,
             logging_tools.get_plural("egg", self.multiplier),

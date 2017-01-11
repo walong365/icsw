@@ -89,163 +89,163 @@ def get_available_licenses():
 
     available_licenses.append(
         AvailableLicense(
-            id=u'md_config_server',
+            id='md_config_server',
             enum_value=LicenseEnum.md_config_server,
-            name=u'MD Config Server',
-            description=u'Monitoring Daemon Configuration Writer',
+            name='MD Config Server',
+            description='Monitoring Daemon Configuration Writer',
             product=InitProduct.NOCTUA,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'kpi',
+            id='kpi',
             enum_value=LicenseEnum.kpi,
-            name=u'Key Performance Indicators',
-            description=u'Calculate key figures to measure the performance of your cluster',
+            name='Key Performance Indicators',
+            description='Calculate key figures to measure the performance of your cluster',
             product=InitProduct.NOCTUA,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'graphing',
+            id='graphing',
             enum_value=LicenseEnum.graphing,
-            name=u'Graphing',
-            description=u'Comprehensive graphical evaluation using RRDs',
+            name='Graphing',
+            description='Comprehensive graphical evaluation using RRDs',
             product=InitProduct.NOCTUA,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'discovery_server',
+            id='discovery_server',
             enum_value=LicenseEnum.discovery_server,
-            name=u'Discovery Server',
-            description=u'Automatical configuration using SNMP',
+            name='Discovery Server',
+            description='Automatical configuration using SNMP',
             product=InitProduct.NOCTUA,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'monitoring_dashboard',
+            id='monitoring_dashboard',
             enum_value=LicenseEnum.monitoring_dashboard,
-            name=u'Monitoring Dashboard',
-            description=u'Central monitoring unit consisting of livestatus, geolocation and maplocation',
+            name='Monitoring Dashboard',
+            description='Central monitoring unit consisting of livestatus, geolocation and maplocation',
             product=InitProduct.NOCTUA,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'distributed_monitoring',
+            id='distributed_monitoring',
             enum_value=LicenseEnum.distributed_monitoring,
-            name=u'Distributed Monitoring',
-            description=u'Distribute monitoring load to multiple workers',
+            name='Distributed Monitoring',
+            description='Distribute monitoring load to multiple workers',
             product=InitProduct.NOCTUA,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'snapshot',
+            id='snapshot',
             enum_value=LicenseEnum.snapshot,
-            name=u'Database Snapshot',
-            description=u'Keep track of the configuration changes',
+            name='Database Snapshot',
+            description='Keep track of the configuration changes',
             product=InitProduct.NOCTUA,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'notification',
+            id='notification',
             enum_value=LicenseEnum.notification,
-            name=u'Notifications',
-            description=u'Status notifications via mail and text messages',
+            name='Notifications',
+            description='Status notifications via mail and text messages',
             product=InitProduct.NOCTUA,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'network_weathermap',
+            id='network_weathermap',
             enum_value=LicenseEnum.network_weathermap,
-            name=u'Network Weathermap',
-            description=u'Overview of relevant network utilization data',
+            name='Network Weathermap',
+            description='Overview of relevant network utilization data',
             product=InitProduct.NOCTUA,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'rootkit_hunter',
+            id='rootkit_hunter',
             enum_value=LicenseEnum.rootkit_hunter,
-            name=u'Rootkit Hunter',
-            description=u'Security scan for installations',
+            name='Rootkit Hunter',
+            description='Security scan for installations',
             product=InitProduct.NOCTUA,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'reporting',
+            id='reporting',
             enum_value=LicenseEnum.reporting,
-            name=u'Reporting',
-            description=u'Generate graphs to view the state of your cluster',
+            name='Reporting',
+            description='Generate graphs to view the state of your cluster',
             product=InitProduct.NOCTUA,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'ext_license',
+            id='ext_license',
             enum_value=LicenseEnum.ext_license,
-            name=u'License Optimization Management',
-            description=u'Interactive graphic license utlilization evaluation',
+            name='License Optimization Management',
+            description='Interactive graphic license utlilization evaluation',
             product=InitProduct.NESTOR,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'virtual_desktop',
+            id='virtual_desktop',
             enum_value=LicenseEnum.virtual_desktop,
-            name=u'Virtual Desktop',
-            description=u'Manage virtual desktop sessions on your cluster',
+            name='Virtual Desktop',
+            description='Manage virtual desktop sessions on your cluster',
             product=InitProduct.NESTOR,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'hpc_workbench',
+            id='hpc_workbench',
             enum_value=LicenseEnum.hpc_workbench,
-            name=u'HPC Workbench',
-            description=u'Convenient interface for job management',
+            name='HPC Workbench',
+            description='Convenient interface for job management',
             product=InitProduct.NESTOR,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'package_install',
+            id='package_install',
             enum_value=LicenseEnum.package_install,
-            name=u'Package Install',
-            description=u'Configure repositories and install packages on your nodes',
+            name='Package Install',
+            description='Configure repositories and install packages on your nodes',
             product=InitProduct.NESTOR,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'rms',
+            id='rms',
             enum_value=LicenseEnum.rms,
-            name=u'Resource Management System',
-            description=u'Overview over your job system',
+            name='Resource Management System',
+            description='Overview over your job system',
             product=InitProduct.NESTOR,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'netboot',
+            id='netboot',
             enum_value=LicenseEnum.netboot,
-            name=u'Netboot',
-            description=u'Manage the boot process of your nodes',
+            name='Netboot',
+            description='Manage the boot process of your nodes',
             product=InitProduct.NESTOR,
         )
     )
     available_licenses.append(
         AvailableLicense(
-            id=u'fast_frontend',
+            id='fast_frontend',
             enum_value=LicenseEnum.fast_frontend,
-            name=u'Allegro Webfrontend',
-            description=u'Transforms the Webfrontend into a super-fast single-page app',
+            name='Allegro Webfrontend',
+            description='Transforms the Webfrontend into a super-fast single-page app',
             product=InitProduct.NOCTUA,
         )
     )

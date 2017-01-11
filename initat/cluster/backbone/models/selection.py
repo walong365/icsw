@@ -21,7 +21,7 @@
 #
 """ selection models for NOCTUA, CORVUS and NESTOR """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.db import models
 from django.db.models import Q
@@ -61,9 +61,9 @@ class DeviceSelection(models.Model):
         )
 
     def __unicode__(self):
-        return u"Selection '{}' for user {}".format(
+        return "Selection '{}' for user {}".format(
             self.name,
-            unicode(self.user),
+            str(self.user),
         )
 
     class Meta:

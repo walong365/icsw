@@ -309,7 +309,7 @@ class mon_check_command(models.Model):
     tcp_coverage = models.CharField(default="", max_length=256, blank=True)
 
     class Meta:
-        db_table = u'ng_check_command'
+        db_table = 'ng_check_command'
         unique_together = (("name", "config"))
         app_label = "backbone"
 
@@ -320,7 +320,7 @@ class mon_check_command_type(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ng_check_command_type'
+        db_table = 'ng_check_command_type'
         app_label = "backbone"
 
 
@@ -345,7 +345,7 @@ class mon_contact(models.Model):
     mon_alias = models.CharField(max_length=64, default="", verbose_name="alias", blank=True)
 
     class Meta:
-        db_table = u'ng_contact'
+        db_table = 'ng_contact'
         app_label = "backbone"
 
 
@@ -385,7 +385,7 @@ class mon_contactgroup(models.Model):
     service_esc_templates = models.ManyToManyField("backbone.mon_service_esc_templ", blank=True)
 
     class Meta:
-        db_table = u'ng_contactgroup'
+        db_table = 'ng_contactgroup'
         app_label = "backbone"
 
 
@@ -427,7 +427,7 @@ class mon_device_templ(models.Model):
         return self.name
 
     class Meta:
-        db_table = u'ng_device_templ'
+        db_table = 'ng_device_templ'
         app_label = "backbone"
 
 
@@ -541,7 +541,7 @@ class mon_ext_host(models.Model):
 
     class Meta:
         ordering = ("name",)
-        db_table = u'ng_ext_host'
+        db_table = 'ng_ext_host'
         app_label = "backbone"
 
 
@@ -559,7 +559,7 @@ class mon_period(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ng_period'
+        db_table = 'ng_period'
         app_label = "backbone"
 
 
@@ -592,7 +592,7 @@ class mon_service_templ(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ng_service_templ'
+        db_table = 'ng_service_templ'
         app_label = "backbone"
 
 
@@ -725,7 +725,7 @@ class raw_host_alert_manager(models.Manager):
                 .filter(device_independent=True, date__range=(start_time, end_time)):
             for key in host_alerts:
                 host_alerts[key].append(entry)
-        for l in host_alerts.itervalues():
+        for l in host_alerts.values():
             # not in order due to dev independents
             l.sort(key=operator.attrgetter('date'))
         return host_alerts
@@ -770,7 +770,7 @@ class raw_service_alert_manager(models.Manager):
         for entry in self.filter(device_independent=True, date__range=(start_time, end_time)):
             for key in service_alerts:
                 service_alerts[key].append(entry)
-        for l in service_alerts.itervalues():
+        for l in service_alerts.values():
             # not in order due to dev independents
             l.sort(key=operator.attrgetter('date'))
         return service_alerts
@@ -853,7 +853,7 @@ class raw_service_alert_manager(models.Manager):
 
         # NOTE: apparently, in django, if you use group_by, you can only select the elements you group_by and
         #       the annotated elements therefore we retrieve the extra parameters manually
-        for k, v in last_service_alert_cache.iteritems():
+        for k, v in last_service_alert_cache.items():
             if any(key not in v[0] for key in additional_fields):
                 if is_host:
                     additional_fields_query = obj_man.filter(device_id=k, date=v[1])
@@ -866,7 +866,7 @@ class raw_service_alert_manager(models.Manager):
                 v[0].update(additional_fields_query.values(*additional_fields)[0])
 
         # drop extreme date
-        return {k: v[0] for (k, v) in last_service_alert_cache.iteritems()}
+        return {k: v[0] for (k, v) in last_service_alert_cache.items()}
 
     @staticmethod
     def calculate_service_name_for_client(entry):
@@ -885,8 +885,8 @@ class raw_service_alert_manager(models.Manager):
 
     @staticmethod
     def _do_calculate_service_name_for_client(service, service_info):
-        service_name = service.name if service else u""
-        return u"{},{}".format(service_name, service_info if service_info else u"")
+        service_name = service.name if service else ""
+        return "{},{}".format(service_name, service_info if service_info else "")
 
 
 class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):

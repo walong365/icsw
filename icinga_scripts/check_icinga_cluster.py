@@ -49,7 +49,7 @@ def main():
         try:
             opts.data = [int(_value) for _value in opts.data.split(",")]
         except:
-            print("cannot parse data '{}'".format(opts.data))
+            print(("cannot parse data '{}'".format(opts.data)))
         else:
             if opts.names.strip():
                 opts.names = [_value.strip() for _value in opts.names.split(",") if _value.strip()]
@@ -71,8 +71,8 @@ def main():
             else:
                 # host check
                 info_dict = {0: "up", 1: "down", 2: "unreachable"}
-            count_dict = {key: opts.data.count(key) for key, value in info_dict.iteritems()}
-            prob_count = sum([value for key, value in count_dict.iteritems() if key])
+            count_dict = {key: opts.data.count(key) for key, value in info_dict.items()}
+            prob_count = sum([value for key, value in count_dict.items() if key])
             if prob_count >= opts.critical and opts.critical:
                 ret_value = 2
             elif prob_count >= opts.warning and opts.warning:
@@ -92,7 +92,7 @@ def main():
                         )
                     )
             info_str = ", ".join(info_f) or "---"
-            print(
+            print((
                 "CLUSTER {}: {}{}".format(
                     {
                         0: "OK",
@@ -102,7 +102,7 @@ def main():
                     "{}: ".format(opts.label) if opts.label else "",
                     info_str,
                 )
-            )
+            ))
     return ret_value
 
 

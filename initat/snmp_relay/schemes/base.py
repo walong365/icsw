@@ -17,10 +17,10 @@
 #
 """ base objects for SNMP schemes for SNMP relayer """
 
-from __future__ import print_function, unicode_literals
+
 
 import argparse
-import cStringIO
+import io
 import sys
 import time
 
@@ -147,7 +147,7 @@ class SNMPRelayScheme(object):
         if self.__dummy_init:
             return
         old_stdout, old_stderr = (sys.stdout, sys.stderr)
-        act_io = cStringIO.StringIO()
+        act_io = io.StringIO()
         sys.stdout = act_io
         sys.stderr = act_io
         one_integer_ok = kwargs.get("one_integer_arg_allowed", False)
@@ -186,7 +186,7 @@ class SNMPRelayScheme(object):
             # self.net_obj.lock()
             cache_ok = all(
                 [
-                    True if oid_struct.cache_it and self.net_obj.snmp_tree_valid(wf_oid) else False for wf_oid, oid_struct in self.__hv_mapping.iteritems()
+                    True if oid_struct.cache_it and self.net_obj.snmp_tree_valid(wf_oid) else False for wf_oid, oid_struct in self.__hv_mapping.items()
                 ]
             )
             if cache_ok:
@@ -311,7 +311,7 @@ class SNMPRelayScheme(object):
 
     def _simplify_keys(self, in_dict):
         # changes all keys from (x,) to x
-        return {key[0] if (type(key) == tuple and len(key) == 1) else key: value for key, value in in_dict.iteritems()}
+        return {key[0] if (type(key) == tuple and len(key) == 1) else key: value for key, value in in_dict.items()}
 
     def _check_for_missing_keys(self, in_dict, needed_keys):
         if not needed_keys < set(in_dict.keys()):
@@ -320,7 +320,7 @@ class SNMPRelayScheme(object):
 
     def _reorder_dict(self, in_dict):
         new_dict = {}
-        for key, value in in_dict.iteritems():
+        for key, value in in_dict.items():
             sub_idx, part_idx = key
             new_dict.setdefault(part_idx, {})[sub_idx] = value
         return new_dict

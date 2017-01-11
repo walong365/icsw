@@ -1,4 +1,4 @@
-from StringIO import StringIO
+from io import StringIO
 import time
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -106,7 +106,7 @@ class Webdriver(webdriver.Remote):
         height = int(element.size['height'])
         image = image.crop((x, y, x + width, y + height))
         file_name = '{}.png'.format(name)
-        print 'Saving "{}"'.format(file_name)
+        print('Saving "{}"'.format(file_name))
         with open(os.path.join(self.screenshot_dir, file_name), 'wb') as file_:
             image.save(file_, 'png', quality=90)
 

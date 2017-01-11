@@ -22,7 +22,7 @@
 
 """ model definitions, internal stuff (database version, patch levels, ....) """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.db import models
 from django.db.models import Q

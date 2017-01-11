@@ -17,7 +17,7 @@
 #
 """ checks for HPACU Controllers """
 
-from __future__ import print_function,  unicode_literals
+
 
 import re
 
@@ -60,7 +60,7 @@ class ctrl_type_hpacu(ctrl_type):
 
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
-            ctrl_list = self._dict.keys()
+            ctrl_list = list(self._dict.keys())
         return [
             "{} ctrl slot={:d} show config detail".format(
                 self._check_exec,
@@ -220,18 +220,18 @@ class ctrl_type_hpacu(ctrl_type):
             new_style = False
         else:
             new_style = True
-        for slot_num, c_stuff in ctrl_dict.get("ctrl", {}).iteritems():
+        for slot_num, c_stuff in ctrl_dict.get("ctrl", {}).items():
             num_cont += 1
             # new code
             if new_style:
                 status_dict = {
                     key: value for key, value in c_stuff.get(
                         "config", {}
-                    ).iteritems() if key.count("status") and not (key.count("6_adg") or key.count("encrypt"))
+                    ).items() if key.count("status") and not (key.count("6_adg") or key.count("encrypt"))
                 }
             else:
                 status_dict = {
-                    key: value for key, value in c_stuff.get("status", {}).iteritems()
+                    key: value for key, value in c_stuff.get("status", {}).items()
                 }
             if set(status_dict.values()) - set(["ok", "not redundant"]):
                 error_f.append(
@@ -240,15 +240,15 @@ class ctrl_type_hpacu(ctrl_type):
                         slot_num,
                         ", ".join(
                             [
-                                "{}: {}".format(key, value) for key, value in status_dict.iteritems() if value != "ok"
+                                "{}: {}".format(key, value) for key, value in status_dict.items() if value != "ok"
                             ]
                         )
                     )
                 )
-            for array_name, array_stuff in c_stuff["arrays"].iteritems():
+            for array_name, array_stuff in c_stuff["arrays"].items():
                 array_names.append("{} in slot {:d}".format(array_name, slot_num))
                 num_array += 1
-                for log_num, log_stuff in array_stuff["logicals"].iteritems():
+                for log_num, log_stuff in array_stuff["logicals"].items():
                     num_log += 1
                     if "config" in log_stuff:
                         # new format
@@ -275,7 +275,7 @@ class ctrl_type_hpacu(ctrl_type):
                                     log_stuff["raid_info"],
                                 )
                             )
-                for _phys_num, phys_stuff in array_stuff["physicals"].iteritems():
+                for _phys_num, phys_stuff in array_stuff["physicals"].items():
                     num_phys += 1
                     _pc = phys_stuff["config"]
                     size_phys += get_size(_pc["size"])

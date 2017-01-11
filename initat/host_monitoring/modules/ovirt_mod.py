@@ -19,7 +19,7 @@
 monitor ovirt instances, also used from md-config-server
 """
 
-from __future__ import print_function, unicode_literals
+
 
 import copy
 
@@ -46,7 +46,7 @@ class FilterList(list):
     """
     def filter(self, **kwargs):
         for i in self:
-            for name, given_value in kwargs.items():
+            for name, given_value in list(kwargs.items()):
                 actual_value = getattr(i, name)
                 if actual_value == given_value:
                     yield i
@@ -58,7 +58,7 @@ class XpathPropertyMeta(type):
     xpath_properties attribute of the class.
     """
     def __new__(cls, cls_name, bases, attrs):
-        for name, (xpath, post_func) in attrs["xpath_properties"].items():
+        for name, (xpath, post_func) in list(attrs["xpath_properties"].items()):
             # This forces a new environment for the closure
             def outer(xpath, post_func):
                 return lambda x: post_func(x.xml.xpath(xpath))
@@ -142,20 +142,18 @@ class APIObject(object):
         return elements
 
 
-class Statistic(APIObject):
+class Statistic(APIObject, metaclass=XpathPropertyMeta):
     xpath_properties = {
         "name": ("/statistic/name", APIObject.zero_text_strip),
         "value": ("/statistic/values/value/datum", APIObject.zero_text_strip),
         "unit": ("/statistic/unit", APIObject.zero_text_strip),
     }
-    __metaclass__ = XpathPropertyMeta
 
 
-class Disk(APIObject):
+class Disk(APIObject, metaclass=XpathPropertyMeta):
     xpath_properties = {
         "name": ("/disk/name", APIObject.zero_text_strip),
     }
-    __metaclass__ = XpathPropertyMeta
 
     @property
     def statistics(self):
@@ -166,11 +164,10 @@ class Disk(APIObject):
         )
 
 
-class NIC(APIObject):
+class NIC(APIObject, metaclass=XpathPropertyMeta):
     xpath_properties = {
         "name": ("/nic/name", APIObject.zero_text_strip),
     }
-    __metaclass__ = XpathPropertyMeta
 
     @property
     def statistics(self):
@@ -181,7 +178,7 @@ class NIC(APIObject):
         )
 
 
-class VM(APIObject):
+class VM(APIObject, metaclass=XpathPropertyMeta):
     class Meta:
         root = "/api/vms"
         obj_xpath = "/vms/vm"
@@ -190,7 +187,6 @@ class VM(APIObject):
         "name": ("/vm/name", APIObject.zero_text_strip),
         "status": ("/vm/status/state", APIObject.zero_text_strip),
     }
-    __metaclass__ = XpathPropertyMeta
 
     def __init__(self, xml, client):
         super(VM, self).__init__(xml, client)
@@ -229,7 +225,7 @@ class VM(APIObject):
         return _vms
 
 
-class StorageDomain(APIObject):
+class StorageDomain(APIObject, metaclass=XpathPropertyMeta):
     class Meta:
         root = "/api/storagedomains"
         obj_xpath = "/storage_domains/storage_domain"
@@ -238,7 +234,6 @@ class StorageDomain(APIObject):
         "name": ("/storage_domain/name", APIObject.zero_text_strip),
         "status": ("/storage_domain/external_status/state", APIObject.zero_text_strip),
     }
-    __metaclass__ = XpathPropertyMeta
 
     def __init__(self, xml, client):
         super(StorageDomain, self).__init__(xml, client)
@@ -267,7 +262,7 @@ class StorageDomain(APIObject):
         return _sds
 
 
-class Host(APIObject):
+class Host(APIObject, metaclass=XpathPropertyMeta):
     class Meta:
         root = "/api/hosts"
         obj_xpath = "/hosts/host"
@@ -276,7 +271,6 @@ class Host(APIObject):
         "name": ("/host/name", APIObject.zero_text_strip),
         "status": ("/host/status/state", APIObject.zero_text_strip),
     }
-    __metaclass__ = XpathPropertyMeta
 
     def __init__(self, xml, client):
         super(Host, self).__init__(xml, client)
@@ -359,7 +353,7 @@ class OvirtCheck(LongRunningCheck):
             )
         else:
             self.api.api_object.serialize(_result, self.srv_com)
-        queue.put(unicode(self.srv_com))
+        queue.put(str(self.srv_com))
 
 
 class OvirtBaseMixin(object):

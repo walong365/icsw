@@ -18,7 +18,7 @@
 
 """ ipc communication tools, now using 0MQ as communication layer """
 
-from __future__ import unicode_literals, print_function
+
 
 import time
 
@@ -32,7 +32,7 @@ class IPCCommandHandler(object):
         self.__parent = parent
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__parent.log(u"[ICH] {}".format(what), log_level)
+        self.__parent.log("[ICH] {}".format(what), log_level)
 
     def handle(self, data):
         # for format see ccollclientzmq.c and csendsyncerzmq.c
@@ -128,10 +128,10 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
     srv_com["raw"] = "True"
     srv_com["arg_list"] = " ".join(args)
     # add additional keys
-    for key, value in kwargs.iteritems():
-        srv_com[key] = "{:d}".format(value) if type(value) in [int, long] else value
+    for key, value in kwargs.items():
+        srv_com[key] = "{:d}".format(value) if type(value) in [int, int] else value
     s_time = time.time()
-    client_send.send_unicode(unicode(srv_com))
+    client_send.send_unicode(str(srv_com))
     client_send.close()
     if client_recv.poll(cur_timeout * 1000):
         id_str = client_recv.recv()

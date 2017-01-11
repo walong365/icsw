@@ -22,9 +22,9 @@
 #
 """ shows error recorded in the error file """
 
-from __future__ import print_function, unicode_literals
 
-import commands
+
+import subprocess
 import datetime
 import os
 import sys
@@ -104,7 +104,7 @@ class ErrorRecord(object):
 
     def show_lines(self):
         f_str = "%%3d (%%%ds) : %%s" % (max([len(x) for x, _y in self.__lines]))
-        return "\n".join([f_str % (l_idx, state, line) for (state, line), l_idx in zip(self.__lines, xrange(len(self.__lines)))])
+        return "\n".join([f_str % (l_idx, state, line) for (state, line), l_idx in zip(self.__lines, range(len(self.__lines)))])
 
     def __repr__(self):
         return "error from pid {:d} ({})".format(
@@ -128,16 +128,16 @@ def main(options):
         if process_tools.find_file("xz"):
             _pf = ".xz"
             _compr = "J"
-            c_stat, out = commands.getstatusoutput("tar cpJf {}{} {}".format(new_file_name, _pf, err_file_name))
+            c_stat, out = subprocess.getstatusoutput("tar cpJf {}{} {}".format(new_file_name, _pf, err_file_name))
         elif process_tools.find_file("bzip2"):
             _pf = ".bz2"
             _compr = "j"
-            c_stat, out = commands.getstatusoutput("tar cpjf {}{} {}".format(new_file_name, _pf, err_file_name))
+            c_stat, out = subprocess.getstatusoutput("tar cpjf {}{} {}".format(new_file_name, _pf, err_file_name))
         else:
             _pf = ""
             _compr = ""
         print("taring {} to {}{} ...".format(err_file_name, new_file_name, _pf))
-        c_stat, out = commands.getstatusoutput("tar cp{}f {}{} {}".format(_compr, new_file_name, _pf, err_file_name))
+        c_stat, out = subprocess.getstatusoutput("tar cp{}f {}{} {}".format(_compr, new_file_name, _pf, err_file_name))
         if c_stat:
             print("*** error (%d): %s" % (c_stat, out))
         else:
@@ -226,12 +226,12 @@ def main(options):
             out_list = logging_tools.NewFormList()
             for err in errs_found:
                 out_list.append(err.get_form_parts())
-            print(unicode(out_list))
+            print(str(out_list))
     elif options.stat:
         uid_dict = {}
         for err in errs_found:
             uid_dict.setdefault(err.uid, []).append(err)
-        all_uids = uid_dict.keys()
+        all_uids = list(uid_dict.keys())
         all_uids.sort()
         out_list = logging_tools.NewFormList()
         for uid in all_uids:
@@ -250,9 +250,9 @@ def main(options):
                     logging_tools.form_entry(", ".join(diff_sources), header="sources"),
                 )
             )
-        print(unicode(out_list))
+        print(str(out_list))
     elif options.num:
-        idx_l = idx_dict.keys()
+        idx_l = list(idx_dict.keys())
         idx_l.sort()
         idx_show = []
         while options.num and idx_l:
@@ -270,6 +270,6 @@ def main(options):
                 print(
                     "Index {:d} not in index_list {}".format(
                         idx,
-                        logging_tools.compress_num_list(idx_dict.keys())
+                        logging_tools.compress_num_list(list(idx_dict.keys()))
                     )
                 )

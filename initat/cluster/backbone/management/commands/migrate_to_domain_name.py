@@ -21,7 +21,7 @@
 #
 """ migrates from network-based names to domain-base names """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
@@ -78,7 +78,7 @@ class DTNode(object):
             )
         cur_db.save()
         self.db_obj = cur_db
-        [value.create_db_entries(top_node=self) for value in self.sub_nodes.itervalues()]
+        [value.create_db_entries(top_node=self) for value in self.sub_nodes.values()]
 
 
 class Command(BaseCommand):
@@ -100,7 +100,7 @@ def main():
         net_tree.create_db_entries()
     cur_dnt = domain_name_tree()
     # check for intermediate nodes
-    for key in cur_dnt.keys():
+    for key in list(cur_dnt.keys()):
         cur_node = cur_dnt[key]
         if cur_node == cur_dnt._root_node:
             im_state = False

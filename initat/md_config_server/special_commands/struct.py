@@ -19,7 +19,7 @@
 #
 """ structs fopr special (dynamic) tasks for md-config-server """
 
-from __future__ import unicode_literals, print_function
+
 
 import inflection
 from enum import Enum
@@ -61,7 +61,7 @@ class DynamicCheckAction(object):
         return "DynamicCheckAction {} for {}".format(self.command, self.srv_enum.name)
 
     def __repr__(self):
-        return unicode(self)
+        return str(self)
 
 
 class DynamicCheckActionCopyIp(DynamicCheckAction):

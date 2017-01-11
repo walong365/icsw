@@ -125,7 +125,7 @@ class Kpi(models.Model):
         return start, end
 
     def __unicode__(self):
-        return u"KPI {}".format(self.name)
+        return "KPI {}".format(self.name)
 
     class Meta:
         ordering = ('idx', )  # rest view in order of creation
@@ -145,7 +145,7 @@ class DataSourceTuple(models.Model):
     monitoring_category = models.ForeignKey(category, related_name="monitoring_category")
 
     def __repr__(self):
-        return u"DataSourceTuple(dev_cat={}, mon_cat={})".format(
+        return "DataSourceTuple(dev_cat={}, mon_cat={})".format(
             self.device_category,
             self.monitoring_category,
         )
@@ -162,7 +162,7 @@ class KpiDataSourceTuple(DataSourceTuple):
     kpi = models.ForeignKey(Kpi, null=True)
 
     def __repr__(self):
-        return u"KpiDataSourceTuple(kpi={}, dev_cat={}, mon_cat={})".format(
+        return "KpiDataSourceTuple(kpi={}, dev_cat={}, mon_cat={})".format(
             self.kpi,
             self.device_category,
             self.monitoring_category,

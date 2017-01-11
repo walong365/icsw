@@ -22,7 +22,7 @@
 
 """ host-monitoring client """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 
@@ -55,7 +55,7 @@ def ClientCode(global_config):
         com_struct = modules.command_dict[com_name]
         try:
             cur_ns, rest = com_struct.handle_commandline(arg_list)
-        except ValueError, what:
+        except ValueError as what:
             ret = ExtReturn(limits.mon_STATE_CRITICAL, "error parsing: {}".format(what[1]))
         else:
             # see also struct.py in collrelay
@@ -63,7 +63,7 @@ def ClientCode(global_config):
                 for arg_index, arg in enumerate(cur_ns.arguments):
                     srv_com["arguments:arg{:d}".format(arg_index)] = arg
             srv_com["arguments:rest"] = " ".join(rest)
-            for key, value in vars(cur_ns).iteritems():
+            for key, value in vars(cur_ns).items():
                 srv_com["namespace:{}".format(key)] = value
             result = net_tools.ZMQConnection(
                 "{}:{:d}".format(
@@ -101,7 +101,7 @@ def ClientCode(global_config):
                 ret = ExtReturn(limits.mon_STATE_CRITICAL, "timeout")
     else:
         import difflib
-        c_matches = difflib.get_close_matches(com_name, modules.command_dict.keys())
+        c_matches = difflib.get_close_matches(com_name, list(modules.command_dict.keys()))
         if c_matches:
             cm_str = "close matches: {}".format(", ".join(c_matches))
         else:

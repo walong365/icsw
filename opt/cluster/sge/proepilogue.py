@@ -23,7 +23,7 @@
 #
 """ pro/epilogue script for SGE """
 
-from __future__ import print_function, unicode_literals
+
 
 import sys
 
@@ -138,7 +138,7 @@ class RMSJob(object):
             print(what)
         except:
             self.log(
-                u"cannot print '{}': {}".format(
+                "cannot print '{}': {}".format(
                     what,
                     process_tools.get_except_info()
                 ),
@@ -210,8 +210,8 @@ class RMSJob(object):
         file(dst_file, "w").write("\n".join(df_lines))
         file(var_file, "w").write("#!/bin/bash\n")
         self.write_file("wrapper_script", df_lines)
-        os.chmod(dst_file, 0755)
-        os.chmod(var_file, 0755)
+        os.chmod(dst_file, 0o755)
+        os.chmod(var_file, 0o755)
         os.chown(var_file, global_config["UID"], global_config["GID"])
 
     def _delete_wrapper_script(self):
@@ -342,10 +342,10 @@ class RMSJob(object):
             zmq=True,
             context=self.p_pool.zmq_context
         )
-        if isinstance(content, basestring) and content.startswith("/"):
+        if isinstance(content, str) and content.startswith("/"):
             # content is a filename
             content = file(content, "r").read().split("\n")
-        if isinstance(content, basestring):
+        if isinstance(content, str):
             content = content.split("\n")
         log_str = "content '{}', {}:".format(
             name,
@@ -353,7 +353,7 @@ class RMSJob(object):
         )
         logger.log(logging_tools.LOG_LEVEL_OK, log_str)
         if args.get("linenumbers", True):
-            for line_num, line in zip(xrange(len(content)), content):
+            for line_num, line in zip(range(len(content)), content):
                 log_str = "{:3d} {}".format(line_num + 1, line)
                 logger.log(logging_tools.LOG_LEVEL_OK, log_str)
         else:
@@ -370,7 +370,7 @@ class RMSJob(object):
         logger.close()
 
     def _copy_environments(self):
-        self.__env_dict = {key: str(os.environ[key]) for key in os.environ.keys()}
+        self.__env_dict = {key: str(os.environ[key]) for key in list(os.environ.keys())}
         if "SGE_JOB_SPOOL_DIR" in self.__env_dict:
             self.__env_int_dict = {
                 key: value for key, value in [
@@ -454,7 +454,7 @@ class RMSJob(object):
                         s_list = None
                     num_lines, num_sge, num_init = (len(lines), 0, 0)
                     init_dict = {}
-                    for line, line_num in zip(lines, xrange(len(lines))):
+                    for line, line_num in zip(lines, range(len(lines))):
                         if s_list is not None:
                             s_list.append(
                                 [
@@ -709,7 +709,7 @@ class RMSJob(object):
                 ]
             )
         try:
-            self.write_file(u"env_{}".format(global_config["CALLER_NAME"]), str(out_list).split("\n"))
+            self.write_file("env_{}".format(global_config["CALLER_NAME"]), str(out_list).split("\n"))
         except:
             self.log("error creating env_ file: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         out_list = logging_tools.NewFormList()
@@ -721,7 +721,7 @@ class RMSJob(object):
                 ]
             )
         try:
-            self.write_file(u"env_int_{}".format(global_config["CALLER_NAME"]), str(out_list).split("\n"))
+            self.write_file("env_int_{}".format(global_config["CALLER_NAME"]), str(out_list).split("\n"))
         except:
             self.log("error creating env_int_ file: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
 
@@ -905,7 +905,7 @@ class RMSJob(object):
             res_list = logging_tools.NewFormList()
             for key in res_keys:
                 val = r_dict[key]
-                if isinstance(val, basestring):
+                if isinstance(val, str):
                     info_str = val
                 elif type(val) == tuple:
                     info_str = "{:8d} (hard), {:8d} (soft)".format(val[0], val[1])
@@ -917,7 +917,7 @@ class RMSJob(object):
                         logging_tools.form_entry(info_str, header="value")
                     ]
                 )
-            for _line in unicode(res_list).split("\n"):
+            for _line in str(res_list).split("\n"):
                 self.log(_line)
             self.write_file(
                 "limits_{}".format(
@@ -1006,7 +1006,7 @@ class RMSJob(object):
                     global_config["JOB_QUEUE"]
                 )
             )
-            for key, value in node_dict.iteritems():
+            for key, value in node_dict.items():
                 value["mpi_name"] = "{}{}".format(key, mpi_postfix)
         # resolve names
         for node_name in self.__node_list:
@@ -1143,12 +1143,12 @@ class RMSJob(object):
     def _send_to_rms_server(self, srv_com, **kwargs):
         _added, _content = (0, 0)
         _job_dict = {}
-        for _key in global_config.keys():
+        for _key in list(global_config.keys()):
             if any([_key.lower().startswith(_pf) for _pf in ["job", "pe", "sge", "task"]]):
                 _added += 1
                 _value = global_config[_key]
                 _job_dict[_key.lower()] = _value
-                if isinstance(_value, basestring) and _value.startswith("/") and os.path.isfile(_value):
+                if isinstance(_value, str) and _value.startswith("/") and os.path.isfile(_value):
                     _content += 1
                     _job_dict["{}_content".format(_key.lower())] = file(_value, "r").read()
         srv_com["config"] = _job_dict
@@ -1177,8 +1177,8 @@ class RMSJob(object):
 
     def _flight_check(self, flight_type):
         s_time = time.time()
-        all_ips = sorted(list(set(sum([node_stuff["ip_list"] for node_stuff in self.__node_dict.itervalues()], []))))
-        all_nfs_ips = [node_stuff["ip"] for node_stuff in self.__node_dict.itervalues()]
+        all_ips = sorted(list(set(sum([node_stuff["ip_list"] for node_stuff in self.__node_dict.values()], []))))
+        all_nfs_ips = [node_stuff["ip"] for node_stuff in self.__node_dict.values()]
         reach_dict = {
             cur_ip: {
                 "sent": len(all_nfs_ips),
@@ -1237,7 +1237,7 @@ class RMSJob(object):
                 failure_list.append(targ_ip)
         self._pprint(reach_dict, "reach_dict")
         # simple rule: add all hosts which are not reachable from any other host to failure hosts
-        for key, value in reach_dict.iteritems():
+        for key, value in reach_dict.items():
             if value["error_from"]:
                 failure_list.append(key)
         failure_list = sorted(list(set(failure_list)))

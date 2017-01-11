@@ -19,7 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-from __future__ import print_function
+
 
 import logging
 
@@ -292,8 +292,8 @@ def main():
     opts = parse_args()
 
     if not opts.show_commands and not opts.assume_yes:
-        answer = input("This script will add repositories and install packages using your package management. " +
-                       "Continue? (y/n) ")
+        answer = eval(input("This script will add repositories and install packages using your package management. " +
+                       "Continue? (y/n) "))
         if answer.lower() != "y":
             print("Exiting.")
             sys.exit(0)
@@ -335,5 +335,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print(u"Exiting due to error: {}".format(e))
+        print("Exiting due to error: {}".format(e))
         sys.exit(1)

@@ -19,7 +19,7 @@
 #
 """ client for logging-server """
 
-from __future__ import print_function, unicode_literals
+
 
 import argparse
 
@@ -57,7 +57,7 @@ class log_process(threading_tools.process_obj):
     def _start_logging(self, **kwargs):
         self.log("start logging")
         emitted = 0
-        for rep_num in xrange(self.__options.repeat):
+        for rep_num in range(self.__options.repeat):
             self.log("{:d}/{:d}: {}".format(rep_num + 1, self.__options.repeat, self.__log_str))
             emitted += len(self.__log_str)
         self.log("bytes emitted: {}".format(logging_tools.get_size_str(emitted)))
@@ -77,7 +77,7 @@ class my_thread_pool(threading_tools.process_pool):
         self.register_func("stop_logging", self._stop_logging)
         self.__process_names = []
         # init processes
-        for t_num in xrange(self.__options.processes):
+        for t_num in range(self.__options.processes):
             cur_name = "process_{:d}".format(t_num + 1)
             self.add_process(log_process(cur_name, self.__options, self.__log_template), start=True)
             self.__process_names.append(cur_name)

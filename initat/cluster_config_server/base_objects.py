@@ -39,7 +39,7 @@ class new_config_object(object):
             self.mode = cur_config.dir_mode if self.c_type == "d" else (cur_config.link_mode if self.c_type == "l" else cur_config.file_mode)
             if "config" not in kwargs:
                 cur_config._add_object(self)
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             setattr(self, key, value)
 
     def get_effective_type(self):
@@ -65,7 +65,7 @@ class new_config_object(object):
         self.gid = gid
 
     def _set_mode(self, mode):
-        if isinstance(mode, basestring):
+        if isinstance(mode, str):
             self.__mode = int(mode, 8)
         else:
             self.__mode = mode
@@ -78,12 +78,12 @@ class new_config_object(object):
         self += what
 
     def __iadd__(self, line):
-        if isinstance(line, basestring):
+        if isinstance(line, str):
             self.content.append("%s\n" % (line))
         elif type(line) == list:
             self.content.extend(["%s\n" % (s_line) for s_line in line])
         elif type(line) == dict:
-            for key, value in line.iteritems():
+            for key, value in line.items():
                 self.content.append("%s='%s'\n" % (key, value))
         elif type(line) == type(array.array("b")):
             self.content.append(line.tostring())
@@ -200,7 +200,7 @@ class copy_object(new_config_object):
 
     def write_object(self, t_file):
         file(t_file, "w").write("".join(self.content))
-        os.chmod(t_file, 0644)
+        os.chmod(t_file, 0o644)
         return "%d %d %s %s" % (
             self.uid,
             self.gid,

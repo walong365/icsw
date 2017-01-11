@@ -21,7 +21,7 @@
 #
 """ setup models (kernel, image, architecture) for NOCTUA and CORVUS """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 import os
@@ -53,8 +53,8 @@ class architecture(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'architecture'
-        verbose_name = u"Architecture"
+        db_table = 'architecture'
+        verbose_name = "Architecture"
 
     def __unicode__(self):
         return self.architecture
@@ -189,12 +189,12 @@ class image(models.Model):
             xml_wrapper.error("image already exists", logger)
 
     def __unicode__(self):
-        return "Image {} ({}, arch={})".format(self.name, self.full_version, unicode(self.architecture))
+        return "Image {} ({}, arch={})".format(self.name, self.full_version, str(self.architecture))
 
     class Meta:
-        db_table = u'image'
+        db_table = 'image'
         ordering = ("name",)
-        verbose_name = u"Image"
+        verbose_name = "Image"
 
 
 class ImageDeviceHistory(HistoryObject):
@@ -265,8 +265,8 @@ class kernel(models.Model):
         return _kdh
 
     class Meta:
-        db_table = u'kernel'
-        verbose_name = u"Kernel"
+        db_table = 'kernel'
+        verbose_name = "Kernel"
         ordering = ("display_name", "pk",)
 
     @property
@@ -307,7 +307,7 @@ class kernel_build(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'kernel_build'
+        db_table = 'kernel_build'
 
 
 class kernel_local_info(models.Model):
@@ -319,7 +319,7 @@ class kernel_local_info(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'kernel_local_info'
+        db_table = 'kernel_local_info'
 
 
 class kernel_log(models.Model):
@@ -332,7 +332,7 @@ class kernel_log(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'kernel_log'
+        db_table = 'kernel_log'
 
 
 class PopulateRamdiskCmdLine(models.Model):

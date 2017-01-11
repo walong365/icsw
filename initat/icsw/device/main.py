@@ -19,7 +19,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import print_function, unicode_literals
+
 
 import datetime
 import os
@@ -61,11 +61,11 @@ class JoinedLogs(object):
     def format_boot_record(self, entry, device=None):
         return "  {} {}kernel: {}, image: {}".format(
             to_system_tz(entry.date),
-            "dev={:<30s}".format(unicode(device)) if device else "",
+            "dev={:<30s}".format(str(device)) if device else "",
             ", ".join(
                 [
                     "{} ({}, {})".format(
-                        unicode(_kernel.kernel.name),
+                        str(_kernel.kernel.name),
                         _kernel.full_version,
                         _kernel.timespan,
                     ) for _kernel in entry.kerneldevicehistory_set.all()
@@ -74,7 +74,7 @@ class JoinedLogs(object):
             ", ".join(
                 [
                     "{} ({}, {})".format(
-                        unicode(_image.image.name),
+                        str(_image.image.name),
                         _image.full_version,
                         _image.timespan,
                     ) for _image in entry.imagedevicehistory_set.all()
@@ -90,10 +90,10 @@ class JoinedLogs(object):
 
 
 def device_info(opt_ns, cur_dev, j_logs):
-    print(u"Information about device '{}' (full name {}, devicegroup {})".format(
-        unicode(cur_dev),
-        unicode(cur_dev.full_name),
-        unicode(cur_dev.device_group))
+    print("Information about device '{}' (full name {}, devicegroup {})".format(
+        str(cur_dev),
+        str(cur_dev.full_name),
+        str(cur_dev.device_group))
     )
     print("UUID is '{}', database-ID is {:d}".format(cur_dev.uuid, cur_dev.pk))
     if opt_ns.ip:
@@ -109,7 +109,7 @@ def device_info(opt_ns, cur_dev, j_logs):
                     print(
                         "        IP {} in network {}".format(
                             cur_ip.ip,
-                            unicode(cur_ip.network),
+                            str(cur_ip.network),
                         )
                     )
         print("")
@@ -127,10 +127,10 @@ def device_info(opt_ns, cur_dev, j_logs):
 
 
 def device_syslog(opt_ns, cur_dev, j_logs):
-    print(u"Information about device '{}' (full name {}, devicegroup {})".format(
-        unicode(cur_dev),
-        unicode(cur_dev.full_name),
-        unicode(cur_dev.device_group))
+    print("Information about device '{}' (full name {}, devicegroup {})".format(
+        str(cur_dev),
+        str(cur_dev.full_name),
+        str(cur_dev.device_group))
     )
     print("UUID is '{}', database-ID is {:d}".format(cur_dev.uuid, cur_dev.pk))
     _cr = routing.SrvTypeRouting(force=True, ignore_errors=True)
@@ -202,7 +202,7 @@ def device_syslog(opt_ns, cur_dev, j_logs):
                         logging_tools.form_entry(_entry["text"], header="text"),
                     ]
                 )
-            print(unicode(_out_lines))
+            print(str(_out_lines))
         else:
             print("got no result from {} ({})".format(_conn_str, _ST))
     else:
@@ -214,17 +214,17 @@ def show_vector(_dev):
         "mvstructentry_set",
         "mvstructentry_set__mvvalueentry_set",
     )[0]
-    print
-    print("showing {} ({:d} structural entries)".format(unicode(_mv), len(_mv.mvstructentry_set.all())))
+    print()
+    print("showing {} ({:d} structural entries)".format(str(_mv), len(_mv.mvstructentry_set.all())))
     for _struct in _mv.mvstructentry_set.all():
         _key = _struct.key
-        print(" {:<40s}  + {}".format(_key, unicode(_struct)))
+        print(" {:<40s}  + {}".format(_key, str(_struct)))
         for _value in _struct.mvvalueentry_set.all():
             if _value.key:
                 _fkey = "{}.{}".format(_key, _value.key)
             else:
                 _fkey = _key
-            print("   {:<40s}   - {}".format(_fkey, unicode(_value)))
+            print("   {:<40s}   - {}".format(_fkey, str(_value)))
 
 
 def remove_graph(_dev, opt_ns):
@@ -242,7 +242,7 @@ def remove_graph(_dev, opt_ns):
         print(
             "Found {} to delete: {}".format(
                 logging_tools.get_plural("entry", len(_to_delete)),
-                ", ".join([unicode(_v) for _v in _to_delete]),
+                ", ".join([str(_v) for _v in _to_delete]),
             )
         )
         if opt_ns.doit:
@@ -282,7 +282,7 @@ def dev_main(opt_ns):
             print(
                 "unknown action {} for device {}".format(
                     opt_ns.childcom,
-                    unicode(cur_dev),
+                    str(cur_dev),
                 )
             )
     if opt_ns.childcom == "info":
@@ -303,7 +303,7 @@ def overview_main(opt_ns):
             print(
                 "G [pk={:4d}] {}, {}".format(
                     _devg.pk,
-                    unicode(_devg),
+                    str(_devg),
                     logging_tools.get_plural("device", _devg.device_group.all().count()),
                 )
             )
@@ -312,6 +312,6 @@ def overview_main(opt_ns):
                     print(
                         "    D [pk={:4d}] {}".format(
                             _dev.pk,
-                            unicode(_dev),
+                            str(_dev),
                         )
                     )

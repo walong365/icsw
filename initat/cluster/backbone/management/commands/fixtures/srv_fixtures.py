@@ -19,7 +19,7 @@
 #
 """ creates fixtures for cluster-server """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.db.models import Q
 

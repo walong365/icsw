@@ -21,7 +21,7 @@
 
 """ loggers for commandline usage """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 import os
@@ -41,7 +41,7 @@ def _get_logger(log_all):
     def logger(what, log_level=logging_tools.LOG_LEVEL_OK):
         if log_all or log_level > logging_tools.LOG_LEVEL_OK:
             print(
-                u"{} [{}] {}".format(
+                "{} [{}] {}".format(
                     str(datetime.datetime.now()),
                     logging_tools.get_log_level_str(log_level),
                     what
@@ -95,8 +95,8 @@ class GLog(object):
         self._names = {
             key: os.path.join(self._log_dir, key) for key in {"stdout", "stderr", "unified"}
         }
-        self._ends_with_cr = {key: True for key in self._names.iterkeys()}
-        self._last_was_debug = {key: False for key in self._names.iterkeys()}
+        self._ends_with_cr = {key: True for key in self._names.keys()}
+        self._last_was_debug = {key: False for key in self._names.keys()}
         print("Logs are in {}".format(self._log_dir))
         sys.stdout = Redirect(self, "stdout")
         sys.stderr = Redirect(self, "stderr")

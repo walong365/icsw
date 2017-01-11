@@ -17,7 +17,7 @@
 #
 """ cluster-server, background inotify import script """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 
@@ -55,7 +55,7 @@ class SyncUserTask(BGInotifyTask):
                         background_job_run(
                             background_job=cur_bg,
                             server=create_user.export.device,
-                            command_xml=unicode(srv_com),
+                            command_xml=str(srv_com),
                             start=cluster_timezone.localize(datetime.datetime.now()),
                         ),
                         srv_com,
@@ -73,14 +73,14 @@ class SyncUserTask(BGInotifyTask):
             ("monitor_server", "sync_http_users", icswServiceEnum.monitor_server),
         ]:
             _cdict = config_tools.device_with_config(_config)
-            for _sc_list in _cdict.itervalues():
+            for _sc_list in _cdict.values():
                 for _sc in _sc_list:
                     if _sc.effective_device:
                         self.log(
-                            u"effective device for {} (command {}) is {}".format(
+                            "effective device for {} (command {}) is {}".format(
                                 _config,
                                 _command,
-                                unicode(_sc.effective_device),
+                                str(_sc.effective_device),
                             )
                         )
                         srv_com = server_command.srv_command(command=_command)
@@ -89,7 +89,7 @@ class SyncUserTask(BGInotifyTask):
                                 background_job_run(
                                     background_job=cur_bg,
                                     server=_sc.effective_device,
-                                    command_xml=unicode(srv_com),
+                                    command_xml=str(srv_com),
                                     start=cluster_timezone.localize(datetime.datetime.now()),
                                 ),
                                 srv_com,

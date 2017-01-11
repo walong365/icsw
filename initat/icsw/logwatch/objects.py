@@ -21,7 +21,7 @@
 #
 """ show and follow cluster logs """
 
-from __future__ import print_function, unicode_literals
+
 
 import codecs
 import datetime
@@ -60,7 +60,7 @@ class LogLine(object):
         return self.__line_format.format(**self.__dict__)
 
     def __repr__(self):
-        return unicode(self)
+        return str(self)
 
 
 class LogWatcher(object):
@@ -144,10 +144,10 @@ class LogWatcher(object):
                     _prev_line = _ll
 
     def __unicode__(self):
-        return u"LogWatcher for {}".format(self.name)
+        return "LogWatcher for {}".format(self.name)
 
     def __repr__(self):
-        return unicode(self)
+        return str(self)
 
 
 class LogCache(object):
@@ -167,9 +167,9 @@ class LogCache(object):
     def show(self):
         if self.lines:
             print(
-                u"\n".join(
+                "\n".join(
                     [
-                        unicode(_line) for _line in self.lines
+                        str(_line) for _line in self.lines
                     ]
                 )
             )

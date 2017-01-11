@@ -21,7 +21,7 @@
 #
 """ shows and updates the current cluster routing table """
 
-from __future__ import unicode_literals, print_function
+
 
 from django.core.management.base import BaseCommand
 
@@ -38,7 +38,7 @@ class Command(BaseCommand):
         _rsd = _csr.resolv_dict
         print(
             "local device is {}".format(
-                unicode(_csr.local_device),
+                str(_csr.local_device),
             )
         )
         for _conf in sorted(_rsd):

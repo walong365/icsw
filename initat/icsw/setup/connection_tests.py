@@ -21,7 +21,7 @@
 #
 """ database connection tests """
 
-from __future__ import unicode_literals, print_function
+
 
 from initat.tools import process_tools
 

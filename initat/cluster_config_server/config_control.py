@@ -80,7 +80,7 @@ class config_control(object):
                 zmq=True,
                 context=config_control.srv_process.zmq_context,
                 init_logger=True)
-            self.log("added client %s (%s)" % (unicode(self.device), self.device.uuid))
+            self.log("added client %s (%s)" % (str(self.device), self.device.uuid))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -292,13 +292,13 @@ class config_control(object):
                 kernel_name)
             dep_h = module_dependency_tools.dependency_handler(kernel_dir, log_com=self.log)
             dep_h.resolve(s_req.data.split(), firmware=False, resolve_module_dict=True)
-            for key, value in dep_h.module_dict.iteritems():
+            for key, value in dep_h.module_dict.items():
                 self.log("kmod mapping: %20s -> %s" % (key, value))
             for value in dep_h.auto_modules:
                 self.log("dependencies: %20s    %s" % ("", value))
             # walk the kernel dir
             # mod_list = ["%s.o" % (key) for key in mod_dict.keys()] + ["%s.ko" % (key) for key in mod_dict.keys()]
-            return "ok {}".format(" ".join([mod_name[len(global_config["TFTP_DIR"]):] for mod_name in dep_h.module_dict.itervalues()]))
+            return "ok {}".format(" ".join([mod_name[len(global_config["TFTP_DIR"]):] for mod_name in dep_h.module_dict.values()]))
         else:
             return "error no kernel set"
 
@@ -493,7 +493,7 @@ class config_control(object):
 
     @staticmethod
     def close_clients():
-        for cur_c in config_control.__cc_dict.itervalues():
+        for cur_c in config_control.__cc_dict.values():
             cur_c.close()
 
     @staticmethod
@@ -551,7 +551,7 @@ class config_control(object):
             config_control.__cc_dict[new_dev.name] = new_c
             for key in ["pk", "name", "uuid"]:
                 config_control.__lut_dict[getattr(new_dev, key)] = new_c
-            config_control.cc_log("added client {}".format(unicode(new_dev)))
+            config_control.cc_log("added client {}".format(str(new_dev)))
         else:
             config_control.__cc_dict[new_dev.name].refresh()
         return config_control.__cc_dict[new_dev.name]

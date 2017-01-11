@@ -19,7 +19,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import print_function, unicode_literals
+
 
 import os
 import sys
@@ -103,16 +103,16 @@ def main(opts):
         for cur_dl in all_logs:
             new_entry.append(
                 [
-                    logging_tools.form_entry(unicode(cur_dl.date), header="date"),
-                    logging_tools.form_entry(unicode(cur_dl.device), header="device"),
-                    logging_tools.form_entry(unicode(cur_dl.source), header="source"),
-                    logging_tools.form_entry(unicode(cur_dl.source.device or "---"), header="sdevice"),
-                    logging_tools.form_entry(unicode(cur_dl.level), header="level"),
-                    logging_tools.form_entry(unicode(cur_dl.user or "---"), header="user"),
-                    logging_tools.form_entry(unicode(cur_dl.text), header="text"),
+                    logging_tools.form_entry(str(cur_dl.date), header="date"),
+                    logging_tools.form_entry(str(cur_dl.device), header="device"),
+                    logging_tools.form_entry(str(cur_dl.source), header="source"),
+                    logging_tools.form_entry(str(cur_dl.source.device or "---"), header="sdevice"),
+                    logging_tools.form_entry(str(cur_dl.level), header="level"),
+                    logging_tools.form_entry(str(cur_dl.user or "---"), header="user"),
+                    logging_tools.form_entry(str(cur_dl.text), header="text"),
                 ]
             )
-        print(unicode(new_entry))
+        print(str(new_entry))
         ret_code = 0
     elif opts.mode == "create":
         if opts.user:
@@ -132,7 +132,7 @@ def main(opts):
                 text=" ".join(opts.text),
             )
             ret_code = 0
-            print("created '{}'".format(unicode(new_log_entry)))
+            print("created '{}'".format(str(new_log_entry)))
     else:
         print("Uknown mode '{}'".format(opts.mode))
     sys.exit(ret_code)

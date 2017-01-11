@@ -75,9 +75,9 @@ def check_failed_backups(courser, time, time_unit, unit, state, warning, critica
     state = ["'{}'".format(i) for i in state]
     if state == []:
         state = 'f'
-    print state
-    print ','.join(state)
-    print get_state(state)
+    print(state)
+    print(','.join(state))
+    print(get_state(state))
     query = """
     SELECT Job.Name,Level,starttime, JobStatus
     FROM Job
@@ -455,7 +455,7 @@ def connectDB(userName, pw, hostName, database):
             cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     
             return cursor 
-        except psycopg2.DatabaseError, e:
+        except psycopg2.DatabaseError as e:
             check_state = {}
             check_state["returnCode"] = 2
             check_state["returnMessage"] = "CRITICAL - " + str(e)[:-1]
@@ -466,7 +466,7 @@ def connectDB(userName, pw, hostName, database):
         try:
             conn = MySQLdb.connect(host=hostName, user=userName, passwd=pw, db=databaseName)
             return conn.cursor() 
-        except MySQLdb.Error, e:
+        except MySQLdb.Error as e:
                         check_state = {}
                         check_state["returnCode"] = 2
                         check_state["returnMessage"] = "CRITICAL - " + str(e)[:-1]
@@ -475,10 +475,10 @@ def connectDB(userName, pw, hostName, database):
     
 def printNagiosOutput(checkResult):
     if checkResult != None:
-        print checkResult["returnMessage"] + "|" + checkResult["performanceData"]
+        print(checkResult["returnMessage"] + "|" + checkResult["performanceData"])
         sys.exit(checkResult["returnCode"])
     else:
-        print "Critical - Error in Script"
+        print("Critical - Error in Script")
         sys.exit(2)
 
 def argumentParser():

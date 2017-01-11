@@ -17,7 +17,7 @@
 #
 """ emerson PDU schemes for SNMP relayer """
 
-from __future__ import print_function, unicode_literals
+
 
 from initat.host_monitoring import limits
 from initat.snmp.snmp_struct import snmp_oid
@@ -32,7 +32,7 @@ class current_pdu_emerson_scheme(SNMPRelayScheme):
         self.parse_options(kwargs["options"])
 
     def process_return(self):
-        new_dict = self._simplify_keys(dict([(key[0], int(value)) for key, value in self.snmp_dict.values()[0].iteritems()]))
+        new_dict = self._simplify_keys(dict([(key[0], int(value)) for key, value in list(self.snmp_dict.values())[0].iteritems()]))
 
         cur_state = limits.mon_STATE_OK
 
@@ -58,7 +58,7 @@ class currentLLG_pdu_emerson_scheme(SNMPRelayScheme):
         self.parse_options(kwargs["options"])
 
     def process_return(self):
-        new_dict = self._simplify_keys(dict([(key[0], int(value)) for key, value in self.snmp_dict.values()[0].iteritems()]))
+        new_dict = self._simplify_keys(dict([(key[0], int(value)) for key, value in list(self.snmp_dict.values())[0].iteritems()]))
 
         cur_state = limits.mon_STATE_OK
 
@@ -87,7 +87,7 @@ class voltageLL_pdu_emerson_scheme(SNMPRelayScheme):
         self.parse_options(kwargs["options"])
 
     def process_return(self):
-        new_dict = self._simplify_keys(dict([(key[0], int(value)) for key, value in self.snmp_dict.values()[0].iteritems()]))
+        new_dict = self._simplify_keys(dict([(key[0], int(value)) for key, value in list(self.snmp_dict.values())[0].iteritems()]))
 
         cur_state = limits.mon_STATE_OK
 

@@ -66,11 +66,11 @@ class handler(SNMPHandler):
 
     def update(self, dev, scheme, result_dict, oid_list, flags):
         _if_dict = {
-            key: ifSNMPStruct(value) for key, value in simplify_dict(result_dict[IF_BASE], (2, 1)).iteritems()
+            key: ifSNMPStruct(value) for key, value in simplify_dict(result_dict[IF_BASE], (2, 1)).items()
         }
         if HS_BASE in result_dict:
             _hs_dict = {
-                key: IfSNMPHighSpeed(value) for key, value in simplify_dict(result_dict[HS_BASE], ()).iteritems()
+                key: IfSNMPHighSpeed(value) for key, value in simplify_dict(result_dict[HS_BASE], ()).items()
             }
             # pprint.pprint(_hs_dict)
         else:
@@ -91,7 +91,7 @@ class handler(SNMPHandler):
                 pnd_lut[entry.snmp_idx] = entry
         # pprint.pprint(pnd_lut)
         # lookup dict for snmp_if -> dev_nd
-        for if_idx, if_struct in _if_dict.iteritems():
+        for if_idx, if_struct in _if_dict.items():
             _created = False
             _dev_nd = pnd_lut.get(if_idx, pnd_lut.get(if_struct.name, None))
             if _dev_nd is None:
@@ -243,7 +243,7 @@ class handler(SNMPHandler):
             mv_tree = kwargs["mv_tree"]
             _vc = kwargs["vc"]
             _sum_vector = [0., 0., 0., 0.]
-            for _if_idx, _if in _base_dict.iteritems():
+            for _if_idx, _if in _base_dict.items():
                 if 10 not in _if:
                     continue
                 if _if_idx in _hi_dict and _hi_dict[_if_idx].get(6, 0):
@@ -343,7 +343,7 @@ class if_mon(MonCheckDefinition):
         _net_obj = scheme.net_obj
         # import pprint
         # attention: value 15 is a mirror from HS_BASE
-        _val_dict = {list(_key)[-2]: _value for _key, _value in scheme.snmp.iteritems()}
+        _val_dict = {list(_key)[-2]: _value for _key, _value in scheme.snmp.items()}
         # pprint.pprint(_val_dict)
         # print ND_SPEED_LUT
         _key = "network-if-{:d}".format(scheme.opts.if_idx[0])

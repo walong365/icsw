@@ -17,7 +17,7 @@
 #
 """ load all defined commands """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import inspect

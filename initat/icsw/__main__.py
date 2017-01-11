@@ -20,7 +20,7 @@
 
 """ frontend to ICSW command """
 
-from __future__ import unicode_literals, print_function
+
 
 from .icsw_parser import ICSWParser
 

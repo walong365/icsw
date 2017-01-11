@@ -43,7 +43,7 @@ def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
     a, b = itertools.tee(iterable)
     next(b, None)
-    return itertools.izip(a, b)
+    return zip(a, b)
 
 
 class icinga_log_aggregator(object):
@@ -295,13 +295,13 @@ class icinga_log_aggregator(object):
             last_service_alert_cache = mon_icinga_log_raw_service_alert_data.objects.calc_limit_alerts(start_time)
             # only need cache format here:
             last_service_alert_cache = {
-                k: (v['state'], v['state_type']) for k, v in last_service_alert_cache.iteritems()
+                k: (v['state'], v['state_type']) for k, v in last_service_alert_cache.items()
             }
 
         last_host_alert_cache = mon_icinga_log_raw_host_alert_data.objects.calc_limit_alerts(start_time)
         # only need cache format again
         last_host_alert_cache = {
-            k: (v['state'], v['state_type']) for k, v in last_host_alert_cache.iteritems()
+            k: (v['state'], v['state_type']) for k, v in last_host_alert_cache.items()
         }
 
         # regular changes in time span
@@ -428,7 +428,7 @@ class icinga_log_aggregator(object):
                         )
                     ] = flapping_ratio
 
-                for ((state, state_type), value) in weighted_states.iteritems():
+                for ((state, state_type), value) in weighted_states.items():
                     service_db_rows.append(
                         mon_icinga_log_aggregated_service_data(
                             state=state,
@@ -442,7 +442,7 @@ class icinga_log_aggregator(object):
                     )
 
                 essential_weighted_states = sum(
-                    val for (state, state_type), val in weighted_states.iteritems() if state != mon_icinga_log_aggregated_service_data.STATE_FLAPPING
+                    val for (state, state_type), val in weighted_states.items() if state != mon_icinga_log_aggregated_service_data.STATE_FLAPPING
                 )
                 if abs(essential_weighted_states - 1.0) > 0.01:
                     self.log(
@@ -488,7 +488,7 @@ class icinga_log_aggregator(object):
                         )
                     ] = flapping_ratio
 
-                for ((state, state_type), value) in weighted_states.iteritems():
+                for ((state, state_type), value) in weighted_states.items():
                     host_db_rows.append(
                         mon_icinga_log_aggregated_host_data(
                             state=state,
@@ -500,7 +500,7 @@ class icinga_log_aggregator(object):
                     )
 
                 essential_weighted_states_sum = sum(
-                    val for (state, state_type), val in weighted_states.iteritems() if state != mon_icinga_log_aggregated_host_data.STATE_FLAPPING
+                    val for (state, state_type), val in weighted_states.items() if state != mon_icinga_log_aggregated_host_data.STATE_FLAPPING
                 )
                 if abs(essential_weighted_states_sum - 1.0) > 0.01:
                     self.log(
@@ -547,8 +547,8 @@ class icinga_log_aggregator(object):
                 data_sum[device_id, state, state_type] += value
                 data_timespans[device_id].add(timespan_id)
 
-            for device_id, timespan_entries in data_timespans.iteritems():
-                for i in xrange(len(timespan_entries), number_of_source_timespans):
+            for device_id, timespan_entries in data_timespans.items():
+                for i in range(len(timespan_entries), number_of_source_timespans):
                     # add undetermined entry for each iteration here
                     data_sum[
                         device_id,
@@ -556,7 +556,7 @@ class icinga_log_aggregator(object):
                         mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED
                     ] += 1.0
 
-            for ((device_id, state, state_type), value_sum) in data_sum.iteritems():
+            for ((device_id, state, state_type), value_sum) in data_sum.items():
                 host_entries.append(
                     mon_icinga_log_aggregated_host_data(
                         state=state,
@@ -589,14 +589,14 @@ class icinga_log_aggregator(object):
                 data_sum[device_id, service_id, service_info, state, state_type] += value
                 data_timespans[device_id, service_id, service_info].add(timespan_id)
 
-            for (device_id, service_id, service_info), timespan_entries in data_timespans.iteritems():
-                for i in xrange(len(timespan_entries), number_of_source_timespans):
+            for (device_id, service_id, service_info), timespan_entries in data_timespans.items():
+                for i in range(len(timespan_entries), number_of_source_timespans):
                     # add undetermined entry for each iteration here
                     data_sum[device_id, service_id, service_info,
                              mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
                              mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED] += 1.0
 
-            for ((device_id, service_id, service_info, state, state_type), value_sum) in data_sum.iteritems():
+            for ((device_id, service_id, service_info, state, state_type), value_sum) in data_sum.items():
                 serv_entries.append(
                     mon_icinga_log_aggregated_service_data(
                         state=state,

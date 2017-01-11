@@ -24,7 +24,7 @@ daphne consumers
 
 """
 
-from __future__ import print_function, unicode_literals
+
 
 from channels import Group
 from channels.generic import BaseConsumer
@@ -63,7 +63,7 @@ def ws_add(message, model_name):
 
 @channel_session_user_from_http
 def ws_disconnect(message):
-    if GROUP_KEY not in message.channel_session.keys():
+    if GROUP_KEY not in list(message.channel_session.keys()):
         print(
             "GROUP_KEY '{}' missing from channel_session keys(): {}".format(
                 GROUP_KEY,

@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import pickle
 import re
 
@@ -28,7 +28,7 @@ def check_for_new_packages():
     new_packages = {}
 
     for distro_name, repo_uri in repos:
-        data = urllib2.urlopen(repo_uri).read()
+        data = urllib.request.urlopen(repo_uri).read()
 
         for line in data.split("\n"):
             match = PACKAGE_NAME_PATTERN.match(line)
@@ -55,4 +55,4 @@ def check_for_new_packages():
 
 
 if __name__ == "__main__":
-    print(check_for_new_packages())
+    print((check_for_new_packages()))

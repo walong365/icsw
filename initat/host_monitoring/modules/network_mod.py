@@ -17,7 +17,7 @@
 #
 """ network througput and status information """
 
-import commands
+import subprocess
 import datetime
 import os
 import re
@@ -115,7 +115,7 @@ class ArgusProcess(object):
             try:
                 return self.popen.communicate()
             except:
-                self.log(u"error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log("error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 return ("", "")
         else:
             return ("", "")
@@ -189,7 +189,7 @@ class FCEntry(object):
             _current = self._values[-1]
             time_diff = abs(_current["when"] - _prev["when"])
             values = {key: (_current["data"][key] - _prev["data"][key]) / time_diff for key in self.keys}
-            values = {key: value if value > 0 else 0 for key, value in values.iteritems()}
+            values = {key: value if value > 0 else 0 for key, value in values.items()}
             _pf = "net.fc.{}".format(self.name)
             if not self.__registered:
                 self.__registered = True
@@ -230,7 +230,7 @@ class NetCompressJob(object):
             try:
                 return self.popen.communicate()
             except:
-                self.log(u"error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log("error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 return ("", "")
         else:
             return ("", "")
@@ -270,7 +270,7 @@ class _general(hm_classes.hm_module):
         systool_path = process_tools.find_file("systool")
         if systool_path:
             self.log("found systool at {}".format(systool_path))
-            _fc_stat, _fc_out = commands.getstatusoutput("{} -c fc_host".format(systool_path))
+            _fc_stat, _fc_out = subprocess.getstatusoutput("{} -c fc_host".format(systool_path))
             if _fc_stat:
                 self.log("found no fc_hosts ({:d}): {}".format(_fc_stat, _fc_out), logging_tools.LOG_LEVEL_WARN)
             else:
@@ -359,7 +359,7 @@ class _general(hm_classes.hm_module):
 
     def _compress_files(self):
         if os.path.isdir(ARGUS_TARGET) and self.__bzip2_path:
-            _in_flight = [struct.target_file for struct in self.__argus_map.itervalues()]
+            _in_flight = [struct.target_file for struct in self.__argus_map.values()]
             try:
                 _files = [entry for entry in os.listdir(ARGUS_TARGET) if not entry.count(".") and entry not in _in_flight]
                 _bz2_files = [entry for entry in os.listdir(ARGUS_TARGET) if entry.endswith(".bz2")]
@@ -389,7 +389,7 @@ class _general(hm_classes.hm_module):
                 )
 
     def stop_module(self):
-        for _cur_if, _struct in self.__argus_map.iteritems():
+        for _cur_if, _struct in self.__argus_map.items():
             # _struct.terminate()
             if _struct.finished() is None:
                 _struct.terminate()
@@ -418,7 +418,7 @@ class _general(hm_classes.hm_module):
                     self.__argus_map[new_if] = ArgusProcess(self, new_if, self.__argus_path)
                     self.__argus_interfaces.add(new_if)
         _failed = set()
-        for cur_if, _struct in self.__argus_map.iteritems():
+        for cur_if, _struct in self.__argus_map.items():
             _stop = False
             if _struct.finished() is None:
                 if _struct.check_file_size():
@@ -480,8 +480,8 @@ class _general(hm_classes.hm_module):
                 for _line in _lines:
                     _head, _rest = _line.strip().split(":", 1)
                     loc_dict.setdefault(_head, []).append(_rest)
-                loc_dict = {key: value for key, value in loc_dict.iteritems() if len(value) == 2}
-                for key, value in loc_dict.iteritems():
+                loc_dict = {key: value for key, value in loc_dict.items() if len(value) == 2}
+                for key, value in loc_dict.items():
                     _ckey = camel_to_dot(key)
                     if len(value) == 2:
                         ns_info.update(
@@ -571,7 +571,7 @@ class _general(hm_classes.hm_module):
         if self._detailed_network:
             ns_info = self.get_netstat_info()
             dn_keys = set(ns_info.keys())
-            for _key, _value in ns_info.iteritems():
+            for _key, _value in ns_info.items():
                 _mv_key = "net.detail.{}".format(_key)
                 if _mv_key not in mvect:
                     mvect.register_entry(_mv_key, 0, _value[1], "1/s", 1000)
@@ -590,8 +590,8 @@ class _general(hm_classes.hm_module):
             # add total and maximum info
             total_dict = {}
             max_dict = {}
-            for key, stuff in nd_dict.iteritems():
-                for s_key, s_value in stuff.iteritems():
+            for key, stuff in nd_dict.items():
+                for s_key, s_value in stuff.items():
                     if s_key not in TOTAL_IGNORE_LIST:
                         total_dict.setdefault(s_key, 0)
                         total_dict[s_key] += s_value
@@ -600,7 +600,7 @@ class _general(hm_classes.hm_module):
                         max_dict[s_key] = max(max_dict[s_key], s_value)
         nd_dict[TOTAL_DEVICE_NAME] = total_dict
         nd_dict[MAX_DEVICE_NAME] = max_dict
-        for key in [_key for _key in self.dev_dict.keys() if _key not in nd_dict]:
+        for key in [_key for _key in list(self.dev_dict.keys()) if _key not in nd_dict]:
             _pf = "net.{}".format(key)
             mvect.unregister_entry("{}.rx".format(key))
             mvect.unregister_entry("{}.tx".format(key))
@@ -610,7 +610,7 @@ class _general(hm_classes.hm_module):
                 mvect.unregister_entry("{}.rxdrop".format(_pf))
                 mvect.unregister_entry("{}.txdrop".format(_pf))
                 mvect.unregister_entry("{}.carrier".format(_pf))
-        for key in [_key for _key in nd_dict.keys() if _key not in self.dev_dict]:
+        for key in [_key for _key in list(nd_dict.keys()) if _key not in self.dev_dict]:
             _pf = "net.{}".format(key)
             mvect.register_entry("{}.rx".format(_pf), 0, "bytes per second received by $2", "Byte/s", 1000)
             mvect.register_entry("{}.tx".format(_pf), 0, "bytes per second transmitted by $2", "Byte/s", 1000)
@@ -621,7 +621,7 @@ class _general(hm_classes.hm_module):
                 mvect.register_entry("{}.txdrop".format(_pf), 0, "received packets dropped per second on $2", "1/s", 1000)
                 mvect.register_entry("{}.carrier".format(_pf), 0, "carrier errors per second on $2", "1/s", 1000)
         self.dev_dict = nd_dict
-        for key in self.dev_dict.keys():
+        for key in list(self.dev_dict.keys()):
             _pf = "net.{}".format(key)
             mvect["{}.rx".format(_pf)] = self.dev_dict[key]["rx"]
             mvect["{}.tx".format(_pf)] = self.dev_dict[key]["tx"]
@@ -650,7 +650,7 @@ class _general(hm_classes.hm_module):
             for ent in os.listdir(net_dir):
                 if os.path.isdir(os.path.join(net_dir, ent, "bridge")):
                     bdir_dict[ent] = os.path.join(net_dir, ent)
-        for ent, loc_dir in bdir_dict.iteritems():
+        for ent, loc_dir in bdir_dict.items():
             b_dict[ent] = {
                 "interfaces": os.listdir(os.path.join(loc_dir, "brif"))
             }
@@ -669,7 +669,7 @@ class _general(hm_classes.hm_module):
     def _check_for_networks(self):
         n_dict = {}
         ip_com = "ip addr show"
-        c_stat, c_out = commands.getstatusoutput(ip_com)
+        c_stat, c_out = subprocess.getstatusoutput(ip_com)
         if c_stat:
             self.log(
                 "error calling {} ({:d}): {}".format(
@@ -759,10 +759,10 @@ class NetDevice(object):
 
     def feed(self, cur_line):
         # print self.name, cur_line, self.ibv_results, self.perfquery_path
-        line_dict = {key: long(value) for key, value in zip(self.nd_mapping, cur_line.split()) if key}
+        line_dict = {key: int(value) for key, value in zip(self.nd_mapping, cur_line.split()) if key}
         if self.ibv_results and self.perfquery_path:
             if "port_lid" in self.ibv_results and "port_lid" in self.ibv_results:
-                p_stat, p_out = commands.getstatusoutput(
+                p_stat, p_out = subprocess.getstatusoutput(
                     "{} -x {:d} {:d}".format(
                         self.perfquery_path,
                         self.ibv_results["port_lid"],
@@ -793,7 +793,7 @@ class NetDevice(object):
                     for key in self.nd_keys:
                         res_dict[key].append(min(1000 * 1000 * 1000 * 1000 * 1000, max(0, (cur_dict[key] - last_dict[key]) / diff_time)))
                 last_time, last_dict = (cur_time, cur_dict)
-        res_dict = {key: sum(value) / len(value) if len(value) else 0. for key, value in res_dict.iteritems()}
+        res_dict = {key: sum(value) / len(value) if len(value) else 0. for key, value in res_dict.items()}
         return res_dict
 
     def update_ibv_devinfo(self):
@@ -801,7 +801,7 @@ class NetDevice(object):
         if cur_time > self.last_update + 30:
             res_dict = {}
             if self.__check_ibv_devinfo and self.ibv_devinfo_path:
-                ib_stat, ib_out = commands.getstatusoutput("{} -v".format(self.ibv_devinfo_path))
+                ib_stat, ib_out = subprocess.getstatusoutput("{} -v".format(self.ibv_devinfo_path))
                 cur_port, hca_id = (None, None)
                 if not ib_stat:
                     for line in ib_out.split("\n"):
@@ -834,7 +834,7 @@ class NetDevice(object):
                 addr_file = "/sys/class/net/{}/address".format(self.name)
                 if os.path.isfile(addr_file):
                     ib_addr = file(addr_file, "r").read().strip().replace(":", "").lower()[-8:]
-                    for ref_spec, struct in res_dict.iteritems():
+                    for ref_spec, struct in res_dict.items():
                         gid_list = struct.get("gid", "")
                         if type(gid_list) != list:
                             gid_list = [gid_list]
@@ -852,7 +852,7 @@ class NetDevice(object):
             res_dict = {}
             if self.__check_ethtool and self.ethtool_path:
                 if not self.__driver_info:
-                    ce_stat, ce_out = commands.getstatusoutput("{} -i {}".format(self.ethtool_path, self.name))
+                    ce_stat, ce_out = subprocess.getstatusoutput("{} -i {}".format(self.ethtool_path, self.name))
                     if not ce_stat:
                         res_dict = {
                             key.lower(): value.strip() for key, value in [
@@ -861,7 +861,7 @@ class NetDevice(object):
                         self.__driver_info = res_dict.get("driver", "driver unknown")
                     else:
                         self.__driver_info = "driver unknown"
-                ce_stat, ce_out = commands.getstatusoutput("{} {}".format(self.ethtool_path, self.name))
+                ce_stat, ce_out = subprocess.getstatusoutput("{} {}".format(self.ethtool_path, self.name))
                 if not ce_stat:
                     res_dict = {
                         key.lower(): value.strip() for key, value in [
@@ -879,7 +879,7 @@ class NetDevice(object):
             srv_com.builder(
                 "values",
                 *[
-                    srv_com.builder(key, "%.2f" % (value)) for key, value in cur_speed.iteritems()
+                    srv_com.builder(key, "%.2f" % (value)) for key, value in cur_speed.items()
                 ]
             )
         )
@@ -888,7 +888,7 @@ class NetDevice(object):
                 srv_com.builder(
                     "ethtool",
                     *[
-                        srv_com.builder("value", value, name=key) for key, value in self.ethtool_results.iteritems()
+                        srv_com.builder("value", value, name=key) for key, value in self.ethtool_results.items()
                     ]
                 )
             )
@@ -897,7 +897,7 @@ class NetDevice(object):
                 srv_com.builder(
                     "ibv",
                     *[
-                        srv_com.builder("value", str(value), name=key) for key, value in self.ibv_results.iteritems()
+                        srv_com.builder("value", str(value), name=key) for key, value in self.ibv_results.items()
                     ]
                 )
             )
@@ -959,11 +959,11 @@ class NetSpeed(object):
         return key in self.devices
 
     def keys(self):
-        return self.devices.keys()
+        return list(self.devices.keys())
 
     def make_speed_dict(self):
         return {
-            key: self[key].get_speed() for key in self.keys()
+            key: self[key].get_speed() for key in list(self.keys())
         }
 
     def update(self):
@@ -979,7 +979,7 @@ class NetSpeed(object):
                 pass
             else:
                 # invalidate devices
-                for key in self.keys():
+                for key in list(self.keys()):
                     self[key].invalidate()
                 for key, value in line_list:
                     if key not in self:
@@ -1064,7 +1064,7 @@ class argus_status_command(hm_classes.hm_command):
 
     def __call__(self, srv_com, cur_ns):
         # if not cur_ns.arguments:
-        srv_com["argus_interfaces"] = self.module.argus_map.keys()
+        srv_com["argus_interfaces"] = list(self.module.argus_map.keys())
 
     def interpret(self, srv_com, cur_ns):
         arg_list = srv_com["*argus_interfaces"]
@@ -1128,7 +1128,7 @@ class ping_command(hm_classes.hm_command):
                 ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                 ret_f.append("{}: {}".format(target, ping_res.text))
             else:
-                time_f = map(float, srv_com.xpath("ns:times/ns:time/text()", start_el=ping_res, smart_strings=False))
+                time_f = list(map(float, srv_com.xpath("ns:times/ns:time/text()", start_el=ping_res, smart_strings=False)))
                 if time_f:
                     max_time, min_time, mean_time = (
                         max(time_f),
@@ -1717,7 +1717,7 @@ class network_info_command(hm_classes.hm_command):
                 b_state = "---"
             _line = [
                 logging_tools.form_entry(net_name, header="name"),
-                logging_tools.form_entry("yes" if net_name in bridge_dict.keys() else "no", header="bridge"),
+                logging_tools.form_entry("yes" if net_name in list(bridge_dict.keys()) else "no", header="bridge"),
                 logging_tools.form_entry(b_state, header="bonding"),
             ]
             for _flag in sorted(all_flags):
@@ -1787,8 +1787,8 @@ class iptables_info_command(hm_classes.hm_command):
             )
         else:
             ret_state = limits.mon_STATE_OK
-            all_chains = sum([c_dict.keys() for c_dict in res_dict.itervalues()], [])
-            num_lines = sum([sum([c_dict["lines"] for _c_key, c_dict in t_dict.iteritems()], 0) for _t_key, t_dict in res_dict.iteritems()], 0)
+            all_chains = sum([list(c_dict.keys()) for c_dict in res_dict.values()], [])
+            num_lines = sum([sum([c_dict["lines"] for _c_key, c_dict in t_dict.items()], 0) for _t_key, t_dict in res_dict.items()], 0)
             if cur_ns.crit is not None and num_lines < cur_ns.crit:
                 ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
             elif cur_ns.warn is not None and num_lines < cur_ns.warn:
@@ -1888,11 +1888,11 @@ class NmapScanCheck(LongRunningCheck):
     def perform_check(self, queue):
         command = "/opt/cluster/bin/nmap -vv -sn -oX - {}".format(self.network_str)
 
-        status, output = commands.getstatusoutput(command)
+        status, output = subprocess.getstatusoutput(command)
 
         self.srv_command_obj.set_result(output)
 
-        queue.put(unicode(self.srv_command_obj))
+        queue.put(str(self.srv_command_obj))
 
     def post_perform_check(self):
         self.nmap_scan_command_obj.current_nmap_scan_check = None

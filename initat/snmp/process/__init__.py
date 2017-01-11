@@ -33,6 +33,6 @@ rfc1155.Counter.clone = counter_clone_hack
 rfc1902.Counter32.clone = counter_clone_hack
 rfc1902.Counter64.clone = counter_clone_hack
 
-from batch import SNMPBatch
-from process import SNMPProcess
-from container import SNMPProcessContainer
+from .batch import SNMPBatch
+from .process import SNMPProcess
+from .container import SNMPProcessContainer

@@ -22,12 +22,12 @@
 Checks related to pgpool-II >= 3.0 via SQL interface.
 """
 
-from __future__ import unicode_literals, print_function
 
-import cPickle
+
+import pickle
 import os
 import subprocess
-from ConfigParser import SafeConfigParser
+from configparser import SafeConfigParser
 
 from initat.host_monitoring import limits
 from initat.host_monitoring.hm_classes import hm_command, hm_module
@@ -91,7 +91,7 @@ class PGPoolUsage(object):
             )
             _res.setdefault(_ke, []).append((event["Connected"], event["Counter"]))
         _mv_list = []
-        for _key, _value in _res.iteritems():
+        for _key, _value in _res.items():
             _key = "pgpool.worker.{}".format(_key)
             _len = len(_value)
             _connected = len([True for _ev in _value if _ev[0]])
@@ -234,7 +234,7 @@ class PgPoolCommand(hm_command):
             self.config["password"] = parser.get(SECTION, "PASSWORD")
             self.config["database"] = parser.get(SECTION, "DATABASE")
         else:
-            for key, value in DEFAULTS.iteritems():
+            for key, value in DEFAULTS.items():
                 self.config[key.lower()] = value
         # Access via UNIX socket
         if not self.config["host"]:
@@ -252,12 +252,12 @@ class PgPoolCommand(hm_command):
     def pack(self, value):
         """ Since dicts are passed through use pack and unpack to pass arbitrary objects """
         d = {}
-        d["result"] = cPickle.dumps(value)
+        d["result"] = pickle.dumps(value)
         return d
 
     def unpack(self, packed_dict):
         value = packed_dict["result"]
-        return cPickle.loads(value)
+        return pickle.loads(value)
 
     def __call__(self, srv_com, cur_ns):
         try:
@@ -298,7 +298,7 @@ class pgpool_nodes_command(PgPoolCommand):
             _key: [_entry for _entry in result if int(_entry[3]) == _key] for _key in [NODE_DOWN, NODE_UP, NODE_UP_NO_CONN]
         }
         # filter empty states
-        state_dict = {_key: _value for _key, _value in state_dict.iteritems() if _value}
+        state_dict = {_key: _value for _key, _value in state_dict.items() if _value}
         # state string
         state_str = ", ".join(
             [

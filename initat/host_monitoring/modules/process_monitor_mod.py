@@ -18,9 +18,9 @@
 
 """ process monitor """
 
-from __future__ import print_function, unicode_literals
 
-import commands
+
+import subprocess
 import os
 import re
 import signal
@@ -98,7 +98,7 @@ class AffinityStruct(object):
         self.__counter += 1
         cur_time = time.time()
         proc_keys = set()
-        for key, value in p_dict.iteritems():
+        for key, value in p_dict.items():
             try:
                 if value.is_running() and self.affinity_re.match(value.name()):
                     proc_keys.add(key)
@@ -121,7 +121,7 @@ class AffinityStruct(object):
                     # clear affinity mask on first run
                     self.log(
                         "clearing affinity mask for {} (cpu was {:d})".format(
-                            unicode(new_ps),
+                            str(new_ps),
                             new_ps.single_cpu_num
                         )
                     )
@@ -129,19 +129,19 @@ class AffinityStruct(object):
                 if new_ps.single_cpu_set:
                     self.log(
                         "process {} is already pinned to cpu {:d}".format(
-                            unicode(new_ps),
+                            str(new_ps),
                             new_ps.single_cpu_num
                         )
                     )
                 else:
-                    self.log("added {}".format(unicode(new_ps)))
+                    self.log("added {}".format(str(new_ps)))
         if old_keys:
             self.log(
                 "{}: {}".format(
                     logging_tools.get_plural("old key", len(old_keys)),
                     ", ".join(
                         [
-                            "{}".format(unicode(self.dict[old_key])) for old_key in sorted(old_keys)
+                            "{}".format(str(self.dict[old_key])) for old_key in sorted(old_keys)
                         ]
                     )
                 )
@@ -214,7 +214,7 @@ class AffinityStruct(object):
             self.__server_socket.connect(_srv_address)
             self.log("connected to {}".format(_srv_address))
         try:
-            self.__server_socket.send_unicode(unicode(srv_com))
+            self.__server_socket.send_unicode(str(srv_com))
         except:
             self.log(
                 "error sending affinity info: {}".format(
@@ -269,8 +269,8 @@ class AffinityStruct(object):
                         _job_id, _task_id = (None, None)
                     # get optimal CPU (i.e. with lowest load)
                     self.log(
-                        u"pinning process {} (JobID={}) to core {:d}".format(
-                            unicode(cur_s),
+                        "pinning process {} (JobID={}) to core {:d}".format(
+                            str(cur_s),
                             str(_job_id),
                             targ_cpu,
                         )
@@ -308,7 +308,7 @@ class _general(hm_classes.hm_module):
         self.affinity_set = set()
         if config_store.ConfigStore.exists(AFFINITY_CSTORE):
             _afc = config_store.ConfigStore(AFFINITY_CSTORE, log_com=self.log)
-            for _key in _afc.keys():
+            for _key in list(_afc.keys()):
                 self.affinity_set.add(_afc[_key])
         if self.affinity_set:
             self.feed_affinity = True
@@ -331,7 +331,7 @@ class _general(hm_classes.hm_module):
 
     def init_machine_vector(self, mv):
         mv.register_entry("proc.total", 0, "total number of processes")
-        for key, value in process_tools.PROC_INFO_DICT.iteritems():
+        for key, value in process_tools.PROC_INFO_DICT.items():
             mv.register_entry("proc.{}".format(key), 0, value)
 
     def close_module(self):
@@ -344,11 +344,11 @@ class _general(hm_classes.hm_module):
         pdict = process_tools.get_proc_list()
         if self.feed_affinity:
             self.af_struct.feed(pdict)
-        pids = pdict.keys()
-        n_dict = {key: 0 for key in process_tools.PROC_INFO_DICT.iterkeys()}
+        pids = list(pdict.keys())
+        n_dict = {key: 0 for key in process_tools.PROC_INFO_DICT.keys()}
         # mem_mon_procs = []
         # mem_found_procs = {}
-        for p_stuff in pdict.values():
+        for p_stuff in list(pdict.values()):
             try:
                 if p_stuff.status() in n_dict:
                     n_dict[p_stuff.status()] += 1
@@ -363,7 +363,7 @@ class _general(hm_classes.hm_module):
                     )
             except psutil.NoSuchProcess:
                 pass
-        for key, value in n_dict.iteritems():
+        for key, value in n_dict.items():
             mv["proc.{}".format(key)] = value
         mv["proc.total"] = len(pids)
 
@@ -386,7 +386,7 @@ class procstat_command(hm_classes.hm_command):
         else:
             name_list = []
         _p_dict = {}
-        for key, value in process_tools.get_proc_list(proc_name_list=name_list).iteritems():
+        for key, value in process_tools.get_proc_list(proc_name_list=name_list).items():
             try:
                 if value.is_running():
                     _p_dict[key] = value.as_dict(
@@ -399,9 +399,9 @@ class procstat_command(hm_classes.hm_command):
                 pass
         if cur_ns.arguments:
             # try to be smart about cron / crond
-            t_dict = {key: value for key, value in _p_dict.iteritems() if value["name"] in cur_ns.arguments}
+            t_dict = {key: value for key, value in _p_dict.items() if value["name"] in cur_ns.arguments}
             if not t_dict and cur_ns.arguments[0] == "cron":
-                t_dict = {key: value for key, value in _p_dict.iteritems() if value["name"] in ["crond"]}
+                t_dict = {key: value for key, value in _p_dict.items() if value["name"] in ["crond"]}
             _p_dict = t_dict
         srv_com["process_tree"] = process_tools.compress_struct(_p_dict)
         srv_com["process_tree"].attrib["format"] = "2"
@@ -437,7 +437,7 @@ class procstat_command(hm_classes.hm_command):
             _cmdre = re.compile(cur_ns.cmdre)
         else:
             _cmdre = None
-        for _pid, value in result.iteritems():
+        for _pid, value in result.items():
             if _cmdre and not _cmdre.search(" ".join(value["cmdline"])):
                 continue
             if _form < 2:
@@ -465,11 +465,11 @@ class procstat_command(hm_classes.hm_command):
         else:
             ret_state = limits.mon_STATE_OK
         if len(p_names) == 1 and len(result) == 1:
-            found_name = result.values()[0]["name"]
+            found_name = list(result.values())[0]["name"]
             if found_name != p_names[0]:
                 p_names[0] = "{} instead of {}".format(found_name, p_names[0])
             # print p_names, result
-        zombie_dict = {key: len(value) for key, value in zombie_dict.iteritems()}
+        zombie_dict = {key: len(value) for key, value in zombie_dict.items()}
         ret_state = max(ret_state, limits.check_floor(res_dict["ok"], cur_ns.warn, cur_ns.crit))
         ret_str = "{} running ({}{}{}{})".format(
             " + ".join(
@@ -594,13 +594,13 @@ class proclist_command(hm_classes.hm_command):
             num_cores = srv_com["*num_cores"]
             # unpack and cast pid to integer
             result = {
-                int(key): value for key, value in process_tools.decompress_struct(result.text).iteritems()
+                int(key): value for key, value in process_tools.decompress_struct(result.text).items()
             }
-            for _val in result.itervalues():
+            for _val in result.values():
                 _val["state"] = process_tools.PROC_STATUSES_REV[_val["status"]]
         # print etree.tostring(srv_com.tree, pretty_print=True)
         ret_state = limits.mon_STATE_CRITICAL
-        pids = sorted([key for key, value in result.iteritems() if name_re.match(value["name"])])
+        pids = sorted([key for key, value in result.items() if name_re.match(value["name"])])
         for act_pid in pids:
             proc_stuff = result[act_pid]
             proc_name = proc_stuff["name"] if proc_stuff["exe"] else "[%s]" % (proc_stuff["name"])
@@ -667,7 +667,7 @@ class ipckill_command(hm_classes.hm_command):
                         if act_dict["uid"] >= cur_ns.min_uid and act_dict["uid"] <= cur_ns.max_uid:
                             key = act_dict[ipc_dict["key_name"]]
                             rem_com = "/usr/bin/ipcrm -{} {:d}".format(ipc_dict["ipcrm_opt"], key)
-                            rem_stat, rem_out = commands.getstatusoutput(rem_com)
+                            rem_stat, rem_out = subprocess.getstatusoutput(rem_com)
                             # stat, out = (1, "???")
                             if rem_stat:
                                 rem_node.attrib.update(
@@ -817,9 +817,9 @@ def find_pids(ptree, check):
             else:
                 r_list = []
             if new_add >= 0:
-                p_dict = {_sp.pid: _sp for _sp in ptree.itervalues() if _sp.is_running() and _sp.ppid() == start}
+                p_dict = {_sp.pid: _sp for _sp in ptree.values() if _sp.is_running() and _sp.ppid() == start}
                 if p_dict:
-                    for pid in p_dict.keys():
+                    for pid in list(p_dict.keys()):
                         r_list.extend(search(p_dict, add, pid))
         return r_list
-    return search(ptree, 0, ptree.keys()[0])
+    return search(ptree, 0, list(ptree.keys())[0])

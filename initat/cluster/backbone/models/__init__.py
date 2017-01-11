@@ -209,11 +209,11 @@ class home_export_list(object):
                 if c_bool.name in home_exp_dict[act_pk]:
                     home_exp_dict[act_pk][c_bool.name] = c_bool.value
         # remove invalid exports (with no homeexport-entry)
-        invalid_home_keys = [key for key, value in home_exp_dict.iteritems() if not value["homeexport"]]
+        invalid_home_keys = [key for key, value in home_exp_dict.items() if not value["homeexport"]]
         for ihk in invalid_home_keys:
             del home_exp_dict[ihk]
-        for key, value in home_exp_dict.iteritems():
-            value["info"] = u"{} on {}".format(value["homeexport"], value["name"])
+        for key, value in home_exp_dict.items():
+            value["info"] = "{} on {}".format(value["homeexport"], value["name"])
             value["entry"].info_str = value["info"]
             value["entry"].info_dict = value
         self.exp_dict = home_exp_dict
@@ -223,7 +223,7 @@ class home_export_list(object):
         return self.exp_dict[int(kwargs["pk"])]["entry"]
 
     def all(self):
-        for pk in [s_pk for _s_info, s_pk in sorted([(value["info"], key) for key, value in self.exp_dict.iteritems()])]:
+        for pk in [s_pk for _s_info, s_pk in sorted([(value["info"], key) for key, value in self.exp_dict.items()])]:
             yield self.exp_dict[pk]["entry"]
 
 
@@ -236,7 +236,7 @@ class device_rsync_config(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'device_rsync_config'
+        db_table = 'device_rsync_config'
 
 
 class log_status(models.Model):
@@ -247,7 +247,7 @@ class log_status(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'log_status'
+        db_table = 'log_status'
 
 
 class mac_ignore(models.Model):
@@ -257,7 +257,7 @@ class mac_ignore(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'mac_ignore'
+        db_table = 'mac_ignore'
 
 
 class macbootlog(models.Model):
@@ -278,7 +278,7 @@ class macbootlog(models.Model):
             return ""
 
     class Meta:
-        db_table = u'macbootlog'
+        db_table = 'macbootlog'
 
 
 class status(models.Model):
@@ -295,11 +295,11 @@ class status(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def info_string(self):
-        return unicode(self)
+        return str(self)
 
     def __unicode__(self):
         # print ".", self.status
-        return u"{} ({}){}".format(
+        return "{} ({}){}".format(
             self.status,
             ",".join(
                 [
@@ -317,7 +317,7 @@ class status(models.Model):
         )
 
     class Meta:
-        db_table = u'status'
+        db_table = 'status'
 
 
 class ConfigTreeNode(models.Model):
@@ -359,7 +359,7 @@ class WrittenConfigFile(models.Model):
     # config = models.CharField(max_length=255, blank=True)
     uid = models.IntegerField(default=0, blank=True)
     gid = models.IntegerField(default=0, blank=True)
-    mode = models.IntegerField(default=0755, blank=True)
+    mode = models.IntegerField(default=0o755, blank=True)
     dest_type = models.CharField(
         max_length=8,
         choices=(

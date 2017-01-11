@@ -16,7 +16,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import commands
+import subprocess
 import os
 
 from lxml import etree
@@ -36,7 +36,7 @@ class _general(hm_classes.hm_module):
                 sge_dict[v_name] = file(v_src, "r").read().strip()
                 os.environ[v_name] = sge_dict[v_name]
         if set(sge_dict.keys()) == set(["SGE_ROOT", "SGE_CELL"]):
-            sge_dict["SGE_ARCH"] = commands.getoutput(os.path.join(sge_dict["SGE_ROOT"], "util", "arch")).strip()
+            sge_dict["SGE_ARCH"] = subprocess.getoutput(os.path.join(sge_dict["SGE_ROOT"], "util", "arch")).strip()
         self.sge_dict = sge_dict
 
 
@@ -51,7 +51,7 @@ class sge_queue_status_command(hm_classes.hm_command):
         if not cur_ns.sge_host:
             srv_com.set_result("need queue and host value", server_command.SRV_REPLY_STATE_ERROR)
         else:
-            cur_stat, cur_out = commands.getstatusoutput(
+            cur_stat, cur_out = subprocess.getstatusoutput(
                 os.path.join(
                     sge_dict["SGE_ROOT"], "bin", sge_dict["SGE_ARCH"], "qhost -q -xml"
                 )

@@ -21,7 +21,7 @@
 #
 """ model definitions, partitions """
 
-from __future__ import unicode_literals, print_function
+
 
 import re
 
@@ -73,9 +73,9 @@ class partition_fs(models.Model):
         fk_ignore_list = ["initrd_build", "kernel_build"]
 
     class Meta:
-        db_table = u'partition_fs'
+        db_table = 'partition_fs'
         ordering = ("name",)
-        verbose_name = u"Partition: File System"
+        verbose_name = "Partition: File System"
 
 
 class sys_partition(models.Model):
@@ -87,8 +87,8 @@ class sys_partition(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sys_partition'
-        verbose_name = u"Partition: System Partition"
+        db_table = 'sys_partition'
+        verbose_name = "Partition: System Partition"
 
 
 class lvm_lv(models.Model):
@@ -107,9 +107,9 @@ class lvm_lv(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'lvm_lv'
+        db_table = 'lvm_lv'
         ordering = ("name",)
-        verbose_name = u"Partition: LVM Logical Volume"
+        verbose_name = "Partition: LVM Logical Volume"
 
 
 @receiver(signals.pre_save, sender=lvm_lv)
@@ -131,9 +131,9 @@ class lvm_vg(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'lvm_vg'
+        db_table = 'lvm_vg'
         ordering = ("name",)
-        verbose_name = u"Partition: LVM Volume Group"
+        verbose_name = "Partition: LVM Volume Group"
 
 
 class LogicalDisc(models.Model):
@@ -191,9 +191,9 @@ class partition(models.Model):
         return self.partition_fs.name
 
     class Meta:
-        db_table = u'partition'
+        db_table = 'partition'
         ordering = ("pnum",)
-        verbose_name = u"Partition"
+        verbose_name = "Partition"
 
 
 @receiver(signals.pre_save, sender=partition)
@@ -201,7 +201,7 @@ def partition_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         p_num = cur_inst.pnum
-        if isinstance(p_num, basestring):
+        if isinstance(p_num, str):
             if not p_num.strip():
                 p_num = "0"
         try:
@@ -279,9 +279,9 @@ class partition_disc(models.Model):
         return p_list
 
     class Meta:
-        db_table = u'partition_disc'
+        db_table = 'partition_disc'
         ordering = ("priority", "disc",)
-        verbose_name = u"Partition: Disc"
+        verbose_name = "Partition: Disc"
 
     def __unicode__(self):
         return self.disc
@@ -368,13 +368,13 @@ class partition_table(models.Model):
                     True
                 )
             )
-        if u"/" in sys_mps:
+        if "/" in sys_mps:
             prob_list.append(
                 (
                     logging_tools.LOG_LEVEL_ERROR, "'/' is defined as system partition", True
                 )
             )
-        if u"/" not in phys_mps:
+        if "/" not in phys_mps:
             prob_list.append(
                 (
                     logging_tools.LOG_LEVEL_ERROR, "no '/' mountpoint on physical discs defined", True
@@ -398,8 +398,8 @@ class partition_table(models.Model):
         return self.name
 
     class Meta:
-        db_table = u'partition_table'
-        verbose_name = u"Partition: Table"
+        db_table = 'partition_table'
+        verbose_name = "Partition: Table"
 
     class CSW_Meta:
         fk_ignore_list = ["partition_disc", "sys_partition", "lvm_lv", "lvm_vg"]

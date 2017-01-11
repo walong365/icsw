@@ -47,7 +47,7 @@ def main():
         _dst_list = set(os.listdir(_dst_dir))
         _copy = _src_list - _dst_list
         for _entry in _copy:
-            print("Transfering {}/{}".format(_sys, _entry))
+            print(("Transfering {}/{}".format(_sys, _entry)))
             shutil.copy2(os.path.join(_src_dir, _entry), os.path.join(_dst_dir, _entry))
     xml = E.hpc_library_versions()
     for _sys in SYSTEM_LIST:
@@ -76,9 +76,9 @@ def main():
                 ] + [""]
             )
         )
-        print("content of version file {}:".format(_vers_file))
+        print(("content of version file {}:".format(_vers_file)))
         for _vers, _entry in _entries:
-            print("    {} -> {}".format(_vers, _entry))
+            print(("    {} -> {}".format(_vers, _entry)))
     file(os.path.join(VERS_DIR, "versions.xml"), "w").write(etree.tostring(xml, pretty_print=True))
 
 if __name__ == "__main__":

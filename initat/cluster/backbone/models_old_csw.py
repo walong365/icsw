@@ -33,7 +33,7 @@ class apc_device(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'apc_device'
+        db_table = 'apc_device'
 
 
 class app_config_con(models.Model):
@@ -43,7 +43,7 @@ class app_config_con(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'app_config_con'
+        db_table = 'app_config_con'
 
 
 class app_devgroup_con(models.Model):
@@ -53,7 +53,7 @@ class app_devgroup_con(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'app_devgroup_con'
+        db_table = 'app_devgroup_con'
 
 
 class app_instpack_con(models.Model):
@@ -63,7 +63,7 @@ class app_instpack_con(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'app_instpack_con'
+        db_table = 'app_instpack_con'
 
 
 class application(models.Model):
@@ -73,7 +73,7 @@ class application(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'application'
+        db_table = 'application'
 
 
 class architecture(models.Model):
@@ -82,7 +82,7 @@ class architecture(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'architecture'
+        db_table = 'architecture'
 
 
 class ccl_dgroup_con(models.Model):
@@ -92,7 +92,7 @@ class ccl_dgroup_con(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ccl_dgroup_con'
+        db_table = 'ccl_dgroup_con'
 
 
 class ccl_dloc_con(models.Model):
@@ -102,7 +102,7 @@ class ccl_dloc_con(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ccl_dloc_con'
+        db_table = 'ccl_dloc_con'
 
 
 class ccl_event(models.Model):
@@ -118,7 +118,7 @@ class ccl_event(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ccl_event'
+        db_table = 'ccl_event'
 
 
 class ccl_event_log(models.Model):
@@ -130,7 +130,7 @@ class ccl_event_log(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ccl_event_log'
+        db_table = 'ccl_event_log'
 
 
 class ccl_user_con(models.Model):
@@ -140,7 +140,7 @@ class ccl_user_con(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ccl_user_con'
+        db_table = 'ccl_user_con'
 
 
 class cluster_event(models.Model):
@@ -152,7 +152,7 @@ class cluster_event(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'cluster_event'
+        db_table = 'cluster_event'
 
 
 class config_blob(models.Model):
@@ -178,7 +178,7 @@ class config_blob(models.Model):
         )
 
     class Meta:
-        db_table = u'config_blob'
+        db_table = 'config_blob'
 
 
 class config_bool(models.Model):
@@ -207,7 +207,7 @@ class config_bool(models.Model):
         return "True" if self.value else "False"
 
     class Meta:
-        db_table = u'config_bool'
+        db_table = 'config_bool'
 
 
 class config_int(models.Model):
@@ -236,7 +236,7 @@ class config_int(models.Model):
         return "%d" % (self.value or 0)
 
     class Meta:
-        db_table = u'config_int'
+        db_table = 'config_int'
 
 
 class config_script(models.Model):
@@ -265,7 +265,7 @@ class config_script(models.Model):
         )
 
     class Meta:
-        db_table = u'config_script'
+        db_table = 'config_script'
         ordering = ("priority", "name",)
 
 
@@ -291,10 +291,10 @@ class config_str(models.Model):
         )
 
     def __unicode__(self):
-        return self.value or u""
+        return self.value or ""
 
     class Meta:
-        db_table = u'config_str'
+        db_table = 'config_str'
         ordering = ("name",)
 
 
@@ -363,7 +363,7 @@ class device(models.Model):
 
     def get_xml(self, full=True):
         r_xml = E.device(
-            unicode(self),
+            str(self),
             name=self.name,
             pk="%d" % (self.pk),
             key="dev__%d" % (self.pk),
@@ -377,11 +377,11 @@ class device(models.Model):
         return r_xml
 
     def __unicode__(self):
-        return u"%s%s" % (self.name,
+        return "%s%s" % (self.name,
                           " (%s)" % (self.comment) if self.comment else "")
 
     class Meta:
-        db_table = u'device'
+        db_table = 'device'
         ordering = ("name",)
 
 
@@ -392,7 +392,7 @@ class device_class(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'device_class'
+        db_table = 'device_class'
 
 
 class device_config(models.Model):
@@ -410,7 +410,7 @@ class device_config(models.Model):
         )
 
     class Meta:
-        db_table = u'device_config'
+        db_table = 'device_config'
 
 
 class device_connection(models.Model):
@@ -420,7 +420,7 @@ class device_connection(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'device_connection'
+        db_table = 'device_connection'
 
 
 class device_selection(models.Model):
@@ -430,7 +430,7 @@ class device_selection(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'device_selection'
+        db_table = 'device_selection'
 
 
 class device_device_selection(models.Model):
@@ -440,7 +440,7 @@ class device_device_selection(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'device_device_selection'
+        db_table = 'device_device_selection'
 
 
 class device_group(models.Model):
@@ -467,7 +467,7 @@ class device_group(models.Model):
 
     def get_xml(self, full=True):
         return E.device_group(
-            unicode(self),
+            str(self),
             E.devices(*[cur_dev.get_xml(full=full) for cur_dev in self.device_group.all()]),
             pk="%d" % (self.pk),
             key="devg__%d" % (self.pk),
@@ -476,10 +476,10 @@ class device_group(models.Model):
         )
 
     class Meta:
-        db_table = u'device_group'
+        db_table = 'device_group'
 
     def __unicode__(self):
-        return u"%s%s%s" % (
+        return "%s%s%s" % (
             self.name,
             " (%s)" % (self.description) if self.description else "",
             "[*]" if self.cluster_device_group else ""
@@ -492,7 +492,7 @@ class device_location(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'device_location'
+        db_table = 'device_location'
 
 
 class device_relationship(models.Model):
@@ -503,7 +503,7 @@ class device_relationship(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'device_relationship'
+        db_table = 'device_relationship'
 
 
 class device_rsync_config(models.Model):
@@ -515,7 +515,7 @@ class device_rsync_config(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'device_rsync_config'
+        db_table = 'device_rsync_config'
 
 
 class device_shape(models.Model):
@@ -528,7 +528,7 @@ class device_shape(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'device_shape'
+        db_table = 'device_shape'
 
 
 class device_type(models.Model):
@@ -539,7 +539,7 @@ class device_type(models.Model):
 
     def get_xml(self):
         return E.device_type(
-            unicode(self),
+            str(self),
             name=self.description,
             identifier=self.identifier,
             pk="%d" % (self.pk),
@@ -550,7 +550,7 @@ class device_type(models.Model):
         return self.description
 
     class Meta:
-        db_table = u'device_type'
+        db_table = 'device_type'
 
 
 class device_variable(models.Model):
@@ -569,7 +569,7 @@ class device_variable(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'device_variable'
+        db_table = 'device_variable'
 
 
 class devicelog(models.Model):
@@ -582,7 +582,7 @@ class devicelog(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'devicelog'
+        db_table = 'devicelog'
 
 
 class distribution(models.Model):
@@ -591,7 +591,7 @@ class distribution(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'distribution'
+        db_table = 'distribution'
 
 
 class dmi_entry(models.Model):
@@ -604,7 +604,7 @@ class dmi_entry(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'dmi_entry'
+        db_table = 'dmi_entry'
 
 
 class dmi_ext_key(models.Model):
@@ -614,7 +614,7 @@ class dmi_ext_key(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'dmi_ext_key'
+        db_table = 'dmi_ext_key'
 
 
 class dmi_key(models.Model):
@@ -625,7 +625,7 @@ class dmi_key(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'dmi_key'
+        db_table = 'dmi_key'
 
 
 class extended_log(models.Model):
@@ -639,7 +639,7 @@ class extended_log(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'extended_log'
+        db_table = 'extended_log'
 
 
 class genstuff(models.Model):
@@ -650,7 +650,7 @@ class genstuff(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'genstuff'
+        db_table = 'genstuff'
 
 
 class hopcount(models.Model):
@@ -662,7 +662,7 @@ class hopcount(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'hopcount'
+        db_table = 'hopcount'
 
 
 class hw_entry(models.Model):
@@ -676,7 +676,7 @@ class hw_entry(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'hw_entry'
+        db_table = 'hw_entry'
 
 
 class hw_entry_type(models.Model):
@@ -690,7 +690,7 @@ class hw_entry_type(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'hw_entry_type'
+        db_table = 'hw_entry_type'
 
 
 class ibc_connection(models.Model):
@@ -704,7 +704,7 @@ class ibc_connection(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ibc_connection'
+        db_table = 'ibc_connection'
 
 
 class ibc_device(models.Model):
@@ -715,7 +715,7 @@ class ibc_device(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ibc_device'
+        db_table = 'ibc_device'
 
 
 class image(models.Model):
@@ -739,7 +739,7 @@ class image(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'image'
+        db_table = 'image'
 
 
 class image_excl(models.Model):
@@ -751,7 +751,7 @@ class image_excl(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'image_excl'
+        db_table = 'image_excl'
 
 
 class inst_package(models.Model):
@@ -765,7 +765,7 @@ class inst_package(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'inst_package'
+        db_table = 'inst_package'
 
 
 class instp_device(models.Model):
@@ -784,7 +784,7 @@ class instp_device(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'instp_device'
+        db_table = 'instp_device'
 
 
 class kernel(models.Model):
@@ -824,7 +824,7 @@ class kernel(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'kernel'
+        db_table = 'kernel'
 
 
 class kernel_build(models.Model):
@@ -837,7 +837,7 @@ class kernel_build(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'kernel_build'
+        db_table = 'kernel_build'
 
 
 class kernel_local_info(models.Model):
@@ -849,7 +849,7 @@ class kernel_local_info(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'kernel_local_info'
+        db_table = 'kernel_local_info'
 
 
 class kernel_log(models.Model):
@@ -862,7 +862,7 @@ class kernel_log(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'kernel_log'
+        db_table = 'kernel_log'
 
 
 class log_source(models.Model):
@@ -874,7 +874,7 @@ class log_source(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'log_source'
+        db_table = 'log_source'
 
 
 class log_status(models.Model):
@@ -885,7 +885,7 @@ class log_status(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'log_status'
+        db_table = 'log_status'
 
 
 class lvm_lv(models.Model):
@@ -904,7 +904,7 @@ class lvm_lv(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'lvm_lv'
+        db_table = 'lvm_lv'
 
 
 class lvm_vg(models.Model):
@@ -914,7 +914,7 @@ class lvm_vg(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'lvm_vg'
+        db_table = 'lvm_vg'
 
 
 class mac_ignore(models.Model):
@@ -923,7 +923,7 @@ class mac_ignore(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'mac_ignore'
+        db_table = 'mac_ignore'
 
 
 class macbootlog(models.Model):
@@ -936,7 +936,7 @@ class macbootlog(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'macbootlog'
+        db_table = 'macbootlog'
 
 
 class ms_outlet(models.Model):
@@ -955,7 +955,7 @@ class ms_outlet(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'msoutlet'
+        db_table = 'msoutlet'
 
 
 class netbotz_picture(models.Model):
@@ -971,7 +971,7 @@ class netbotz_picture(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'netbotz_picture'
+        db_table = 'netbotz_picture'
 
 
 class netdevice(models.Model):
@@ -1007,7 +1007,7 @@ class netdevice(models.Model):
             return ndt_list[0]
 
     class Meta:
-        db_table = u'netdevice'
+        db_table = 'netdevice'
         ordering = ("devname",)
 
     @property
@@ -1079,7 +1079,7 @@ class netdevice_speed(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'netdevice_speed'
+        db_table = 'netdevice_speed'
 
     def __unicode__(self):
         s_str, lut_idx = ("", 0)
@@ -1087,7 +1087,7 @@ class netdevice_speed(models.Model):
         while cur_s > 999:
             cur_s = cur_s / 1000
             lut_idx += 1
-        return u"%d%sBps, %s duplex, %s" % (
+        return "%d%sBps, %s duplex, %s" % (
             cur_s,
             " kMGT"[lut_idx].strip(),
             "full" if self.full_duplex else "half",
@@ -1106,7 +1106,7 @@ class net_ip(models.Model):
 
     def get_xml(self):
         return E.net_ip(
-            unicode(self),
+            str(self),
             pk="%d" % (self.pk),
             ip=self.ip,
             key="ni_%d" % (self.pk),
@@ -1121,7 +1121,7 @@ class net_ip(models.Model):
         return self.ip
 
     class Meta:
-        db_table = u'netip'
+        db_table = 'netip'
 
 
 class network(models.Model):
@@ -1148,7 +1148,7 @@ class network(models.Model):
 
     def get_xml(self):
         return E.network(
-            unicode(self),
+            str(self),
             pk="%d" % (self.pk),
             key="nw_%d" % (self.pk),
             identifier=self.identifier,
@@ -1157,7 +1157,7 @@ class network(models.Model):
             netmask=self.netmask)
 
     class Meta:
-        db_table = u'network'
+        db_table = 'network'
 
     def get_full_postfix(self):
         return "%s.%s" % (self.postfix, self.name)
@@ -1174,7 +1174,7 @@ class network(models.Model):
         return log_str
 
     def __unicode__(self):
-        return u"%s (%s, %s)" % (
+        return "%s (%s, %s)" % (
             self.name,
             self.network,
             self.network_type.identifier
@@ -1189,10 +1189,10 @@ class network_device_type(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'network_device_type'
+        db_table = 'network_device_type'
 
     def __unicode__(self):
-        return u"%s (%s [%d])" % (
+        return "%s (%s [%d])" % (
             self.identifier,
             self.description,
             self.mac_bytes)
@@ -1205,7 +1205,7 @@ class network_network_device_type(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'network_network_device_type'
+        db_table = 'network_network_device_type'
 
 
 class network_type(models.Model):
@@ -1220,10 +1220,10 @@ class network_type(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'network_type'
+        db_table = 'network_type'
 
     def __unicode__(self):
-        return u"%s (%s)" % (self.description,
+        return "%s (%s)" % (self.description,
                              self.identifier)
 
 
@@ -1239,8 +1239,8 @@ class config(models.Model):
         r_xml = E.config(
             pk="%d" % (self.pk),
             key="conf__%d" % (self.pk),
-            name=unicode(self.name),
-            description=unicode(self.description or ""),
+            name=str(self.name),
+            description=str(self.description or ""),
             priority="%d" % (self.priority or 0),
             config_type="%d" % (self.config_type_id)
         )
@@ -1278,10 +1278,10 @@ class config(models.Model):
         if detail:
             for var_type in ["str", "int", "bool"]:
                 for cur_var in getattr(self, "config_%s_set" % (var_type)).all():
-                    log_com("    %-20s : %s" % (cur_var.name, unicode(cur_var)))
+                    log_com("    %-20s : %s" % (cur_var.name, str(cur_var)))
 
     class Meta:
-        db_table = u'new_config'
+        db_table = 'new_config'
 
 
 class config_type(models.Model):
@@ -1292,18 +1292,18 @@ class config_type(models.Model):
 
     def get_xml(self):
         return E.config_type(
-            unicode(self),
+            str(self),
             pk="%d" % (self.pk),
             key="ctype__%d" % (self.pk),
-            name=unicode(self.name),
-            description=unicode(self.description or "")
+            name=str(self.name),
+            description=str(self.description or "")
         )
 
     def __unicode__(self):
         return self.name
 
     class Meta:
-        db_table = u'new_config_type'
+        db_table = 'new_config_type'
 
 
 class new_rrd_data(models.Model):
@@ -1323,7 +1323,7 @@ class new_rrd_data(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'new_rrd_data'
+        db_table = 'new_rrd_data'
 
 
 class ng_ccgroup(models.Model):
@@ -1333,7 +1333,7 @@ class ng_ccgroup(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ng_ccgroup'
+        db_table = 'ng_ccgroup'
 
 
 class ng_cgservicet(models.Model):
@@ -1343,7 +1343,7 @@ class ng_cgservicet(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ng_cgservicet'
+        db_table = 'ng_cgservicet'
 
 
 class ng_check_command(models.Model):
@@ -1373,7 +1373,7 @@ class ng_check_command(models.Model):
         )
 
     class Meta:
-        db_table = u'ng_check_command'
+        db_table = 'ng_check_command'
 
 
 class ng_check_command_type(models.Model):
@@ -1390,7 +1390,7 @@ class ng_check_command_type(models.Model):
         )
 
     class Meta:
-        db_table = u'ng_check_command_type'
+        db_table = 'ng_check_command_type'
 
 
 class ng_contact(models.Model):
@@ -1410,7 +1410,7 @@ class ng_contact(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ng_contact'
+        db_table = 'ng_contact'
 
 
 class ng_contactgroup(models.Model):
@@ -1420,7 +1420,7 @@ class ng_contactgroup(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ng_contactgroup'
+        db_table = 'ng_contactgroup'
 
 
 class ng_device_contact(models.Model):
@@ -1430,7 +1430,7 @@ class ng_device_contact(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ng_device_contact'
+        db_table = 'ng_device_contact'
 
 
 class ng_device_templ(models.Model):
@@ -1448,7 +1448,7 @@ class ng_device_templ(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ng_device_templ'
+        db_table = 'ng_device_templ'
 
 
 class ng_ext_host(models.Model):
@@ -1461,7 +1461,7 @@ class ng_ext_host(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ng_ext_host'
+        db_table = 'ng_ext_host'
 
 
 class ng_period(models.Model):
@@ -1478,7 +1478,7 @@ class ng_period(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ng_period'
+        db_table = 'ng_period'
 
 
 class ng_service(models.Model):
@@ -1493,7 +1493,7 @@ class ng_service(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ng_service'
+        db_table = 'ng_service'
 
 
 class ng_service_templ(models.Model):
@@ -1521,7 +1521,7 @@ class ng_service_templ(models.Model):
         )
 
     class Meta:
-        db_table = u'ng_service_templ'
+        db_table = 'ng_service_templ'
 
 
 class package(models.Model):
@@ -1541,7 +1541,7 @@ class package(models.Model):
     date = models.DateTimeField(auto_now_add=True, default=datetime.datetime.now())
 
     class Meta:
-        db_table = u'package'
+        db_table = 'package'
 
 
 class package_set(models.Model):
@@ -1550,7 +1550,7 @@ class package_set(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'package_set'
+        db_table = 'package_set'
 
 
 class partition(models.Model):
@@ -1571,7 +1571,7 @@ class partition(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'partition'
+        db_table = 'partition'
 
 
 class partition_disc(models.Model):
@@ -1582,7 +1582,7 @@ class partition_disc(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'partition_disc'
+        db_table = 'partition_disc'
 
 
 class partition_fs(models.Model):
@@ -1594,7 +1594,7 @@ class partition_fs(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'partition_fs'
+        db_table = 'partition_fs'
 
 
 class partition_table(models.Model):
@@ -1606,7 +1606,7 @@ class partition_table(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'partition_table'
+        db_table = 'partition_table'
 
 
 class pci_entry(models.Model):
@@ -1628,7 +1628,7 @@ class pci_entry(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'pci_entry'
+        db_table = 'pci_entry'
 
 
 class peer_information(models.Model):
@@ -1653,7 +1653,7 @@ class peer_information(models.Model):
         )
 
     class Meta:
-        db_table = u'peer_information'
+        db_table = 'peer_information'
 
 
 class pi_connection(models.Model):
@@ -1664,7 +1664,7 @@ class pi_connection(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'pi_connection'
+        db_table = 'pi_connection'
 
 
 class rrd_class(models.Model):
@@ -1675,7 +1675,7 @@ class rrd_class(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'rrd_class'
+        db_table = 'rrd_class'
 
 
 class rrd_data(models.Model):
@@ -1695,7 +1695,7 @@ class rrd_data(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'rrd_data'
+        db_table = 'rrd_data'
 
 
 class rrd_data_store(models.Model):
@@ -1706,7 +1706,7 @@ class rrd_data_store(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'rrd_data_store'
+        db_table = 'rrd_data_store'
 
 
 class rrd_rra(models.Model):
@@ -1719,7 +1719,7 @@ class rrd_rra(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'rrd_rra'
+        db_table = 'rrd_rra'
 
 
 class rrd_set(models.Model):
@@ -1729,7 +1729,7 @@ class rrd_set(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'rrd_set'
+        db_table = 'rrd_set'
 
 
 class session_data(models.Model):
@@ -1746,7 +1746,7 @@ class session_data(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'session_data'
+        db_table = 'session_data'
 
 
 class sge_complex(models.Model):
@@ -1760,7 +1760,7 @@ class sge_complex(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sge_complex'
+        db_table = 'sge_complex'
 
 
 class sge_host(models.Model):
@@ -1770,7 +1770,7 @@ class sge_host(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sge_host'
+        db_table = 'sge_host'
 
 
 class sge_job(models.Model):
@@ -1787,7 +1787,7 @@ class sge_job(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sge_job'
+        db_table = 'sge_job'
 
 
 class sge_job_run(models.Model):
@@ -1817,7 +1817,7 @@ class sge_job_run(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sge_job_run'
+        db_table = 'sge_job_run'
 
 
 class sge_log(models.Model):
@@ -1830,7 +1830,7 @@ class sge_log(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sge_log'
+        db_table = 'sge_log'
 
 
 class sge_pe_host(models.Model):
@@ -1842,7 +1842,7 @@ class sge_pe_host(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sge_pe_host'
+        db_table = 'sge_pe_host'
 
 
 class sge_project(models.Model):
@@ -1853,7 +1853,7 @@ class sge_project(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sge_project'
+        db_table = 'sge_project'
 
 
 class sge_queue(models.Model):
@@ -1862,7 +1862,7 @@ class sge_queue(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sge_queue'
+        db_table = 'sge_queue'
 
 
 class sge_ul_ult(models.Model):
@@ -1872,7 +1872,7 @@ class sge_ul_ult(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sge_ul_ult'
+        db_table = 'sge_ul_ult'
 
 
 class sge_user(models.Model):
@@ -1885,7 +1885,7 @@ class sge_user(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sge_user'
+        db_table = 'sge_user'
 
 
 class sge_user_con(models.Model):
@@ -1895,7 +1895,7 @@ class sge_user_con(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sge_user_con'
+        db_table = 'sge_user_con'
 
 
 class sge_userlist(models.Model):
@@ -1906,7 +1906,7 @@ class sge_userlist(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sge_userlist'
+        db_table = 'sge_userlist'
 
 
 class sge_userlist_type(models.Model):
@@ -1915,7 +1915,7 @@ class sge_userlist_type(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sge_userlist_type'
+        db_table = 'sge_userlist_type'
 
 
 class snmp_class(models.Model):
@@ -1929,7 +1929,7 @@ class snmp_class(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'snmp_class'
+        db_table = 'snmp_class'
 
 
 class snmp_config(models.Model):
@@ -1941,7 +1941,7 @@ class snmp_config(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'snmp_config'
+        db_table = 'snmp_config'
 
 
 class snmp_mib(models.Model):
@@ -1958,7 +1958,7 @@ class snmp_mib(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'snmp_mib'
+        db_table = 'snmp_mib'
 
 
 class status(models.Model):
@@ -1968,7 +1968,7 @@ class status(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'status'
+        db_table = 'status'
 
 
 class sys_partition(models.Model):
@@ -1980,7 +1980,7 @@ class sys_partition(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sys_partition'
+        db_table = 'sys_partition'
 
 
 class capability(models.Model):
@@ -2007,7 +2007,7 @@ class capability(models.Model):
         self.authorized_by, self.enabled = (source, True)
 
     class Meta:
-        db_table = u'capability'
+        db_table = 'capability'
 
 
 class user(models.Model):
@@ -2071,13 +2071,13 @@ class user(models.Model):
         self.sge_servers[srv_dev.pk] = srv_dev
 
     def get_sge_servers(self):
-        return self.sge_servers.keys()
+        return list(self.sge_servers.keys())
 
     def add_user_var(self, u_var):
         self.user_vars[u_var.pk] = u_var
 
     def save_modified_user_vars(self):
-        print "save_modified_user_vars"
+        print("save_modified_user_vars")
 
     def capability_ok(self, cap_name, only_user=False):
         # do not use, superuser has all rights
@@ -2105,7 +2105,7 @@ class user(models.Model):
         return "userX%dX" % (self.pk)
 
     class Meta:
-        db_table = u'user'
+        db_table = 'user'
         permissions = {
             ("wf_apc", "APC control"),
             ("wf_bc", "Boot control"),
@@ -2152,7 +2152,7 @@ class user(models.Model):
         }
 
     def __unicode__(self):
-        return u"%s (%d; %s, %s)" % (
+        return "%s (%d; %s, %s)" % (
             self.login,
             self.pk,
             self.uservname or "novname",
@@ -2213,10 +2213,10 @@ class group(models.Model):
         return "groupX%dX" % (self.pk)
 
     def get_num_users(self):
-        return len([key for key in self.users if type(key) == unicode])
+        return len([key for key in self.users if type(key) == str])
 
     class Meta:
-        db_table = u'ggroup'
+        db_table = 'ggroup'
 
     def __unicode__(self):
         return "%s (%d)" % (self.groupname,
@@ -2230,7 +2230,7 @@ class group_cap(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'ggroupcap'
+        db_table = 'ggroupcap'
 
 
 class user_device_login(models.Model):
@@ -2240,7 +2240,7 @@ class user_device_login(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'user_device_login'
+        db_table = 'user_device_login'
 
 
 # for secondary groups
@@ -2251,7 +2251,7 @@ class user_group(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'user_ggroup'
+        db_table = 'user_ggroup'
 
 
 class user_var(models.Model):
@@ -2266,7 +2266,7 @@ class user_var(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'user_var'
+        db_table = 'user_var'
 
 
 class user_cap(models.Model):
@@ -2276,7 +2276,7 @@ class user_cap(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'usercap'
+        db_table = 'usercap'
 
 
 class vendor(models.Model):
@@ -2285,7 +2285,7 @@ class vendor(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'vendor'
+        db_table = 'vendor'
 
 
 class wc_files(models.Model):
@@ -2304,7 +2304,7 @@ class wc_files(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'wc_files'
+        db_table = 'wc_files'
 
 
 class xen_device(models.Model):
@@ -2318,7 +2318,7 @@ class xen_device(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'xen_device'
+        db_table = 'xen_device'
 
 
 class xen_vbd(models.Model):
@@ -2336,7 +2336,7 @@ class xen_vbd(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'xen_vbd'
+        db_table = 'xen_vbd'
 
 
 # signals

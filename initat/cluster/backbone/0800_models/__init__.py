@@ -118,7 +118,7 @@ class device_variable(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'device_variable'
+        db_table = 'device_variable'
         unique_together = ("name", "device",)
         ordering = ("name",)
 
@@ -130,7 +130,7 @@ class device_config(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'device_config'
+        db_table = 'device_config'
 
 
 class DeviceSNMPInfo(models.Model):
@@ -287,7 +287,7 @@ class device(models.Model):
         ]
 
     class Meta:
-        db_table = u'device'
+        db_table = 'device'
         ordering = ("name",)
         unique_together = [("name", "domain_tree_node"), ]
 
@@ -327,7 +327,7 @@ class device_group(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'device_group'
+        db_table = 'device_group'
         ordering = ("-cluster_device_group", "name",)
 
 
@@ -352,7 +352,7 @@ class device_rsync_config(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'device_rsync_config'
+        db_table = 'device_rsync_config'
 
 
 class device_type(models.Model):
@@ -364,7 +364,7 @@ class device_type(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'device_type'
+        db_table = 'device_type'
 
 
 class DeviceLogEntry(models.Model):
@@ -408,7 +408,7 @@ class devicelog(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'devicelog'
+        db_table = 'devicelog'
 
 
 class log_source(models.Model):
@@ -424,8 +424,8 @@ class log_source(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'log_source'
-        verbose_name = u"Log source (old)"
+        db_table = 'log_source'
+        verbose_name = "Log source (old)"
 
 
 class log_status(models.Model):
@@ -436,7 +436,7 @@ class log_status(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'log_status'
+        db_table = 'log_status'
 
 
 class mac_ignore(models.Model):
@@ -446,7 +446,7 @@ class mac_ignore(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'mac_ignore'
+        db_table = 'mac_ignore'
 
 
 class macbootlog(models.Model):
@@ -459,7 +459,7 @@ class macbootlog(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'macbootlog'
+        db_table = 'macbootlog'
 
 
 class status(models.Model):
@@ -476,7 +476,7 @@ class status(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'status'
+        db_table = 'status'
 
 
 class tree_node(models.Model):
@@ -499,7 +499,7 @@ class wc_files(models.Model):
     # config = models.CharField(max_length=255, blank=True)
     uid = models.IntegerField(default=0, blank=True)
     gid = models.IntegerField(default=0, blank=True)
-    mode = models.IntegerField(default=0755, blank=True)
+    mode = models.IntegerField(default=0o755, blank=True)
     dest_type = models.CharField(max_length=8, choices=(
         ("f", "file"),
         ("l", "link"),
@@ -520,7 +520,7 @@ class wc_files(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'wc_files'
+        db_table = 'wc_files'
         app_label = "backbone"
 
 

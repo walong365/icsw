@@ -25,7 +25,7 @@ dynamically creates config entries for devices (for devices queried via IPMI or 
 
 """
 
-from __future__ import unicode_literals, print_function
+
 
 import time
 
@@ -73,7 +73,7 @@ class DynConfigProcess(threading_tools.process_obj):
                 self.log("no valid mon_check_command with name '{}' found".format(_check_name), logging_tools.LOG_LEVEL_ERROR)
             else:
                 if _check.is_active:
-                    self.log("mon_check_command {} is active".format(unicode(_check)), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("mon_check_command {} is active".format(str(_check)), logging_tools.LOG_LEVEL_ERROR)
                 else:
                     _check.check_command_pk = _check.pk
                     _check.mccs_id = None
@@ -118,7 +118,7 @@ class DynConfigProcess(threading_tools.process_obj):
                     self.log(
                         "pcr line has wrong format (len {:d} != 3): '{}'".format(
                             len(_line),
-                            unicode(_line),
+                            str(_line),
                         ),
                         logging_tools.LOG_LEVEL_ERROR
                     )
@@ -136,7 +136,7 @@ class DynConfigProcess(threading_tools.process_obj):
                     except:
                         self.log(
                             "error generating ocsp_result from '{}': {}".format(
-                                unicode(_line),
+                                str(_line),
                                 process_tools.get_except_info(),
                             ),
                             logging_tools.LOG_LEVEL_ERROR
@@ -196,8 +196,8 @@ class DynConfigProcess(threading_tools.process_obj):
                     # mon check command not found
                     self.log(
                         "no mcc for mccs {} / device [or device_group] {} found".format(
-                            unicode(_mcs),
-                            unicode(cur_dev),
+                            str(_mcs),
+                            str(cur_dev),
                         ),
                         logging_tools.LOG_LEVEL_ERROR
                     )
@@ -215,8 +215,8 @@ class DynConfigProcess(threading_tools.process_obj):
                 # more than one check command found
                 self.log(
                     "more than one mcc for mccs {} / device {} found".format(
-                        unicode(_mcs),
-                        unicode(cur_dev),
+                        str(_mcs),
+                        str(cur_dev),
                     ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
@@ -232,7 +232,7 @@ class DynConfigProcess(threading_tools.process_obj):
         }
         _ocsp_prefix = self._get_ipmi_service_prefix(cur_dev)
         if not _ocsp_prefix:
-            self.log("cannot get prefix for IPMI service results for device {}".format(unicode(cur_dev)))
+            self.log("cannot get prefix for IPMI service results for device {}".format(str(cur_dev)))
         ocsp_lines = []
         # pprint.pprint(cur_hints)
         n_updated, n_created, n_deleted = (0, 0, 0)
@@ -298,12 +298,12 @@ class DynConfigProcess(threading_tools.process_obj):
         # experimental: delete all hints with correct m_type
         if len(mon_info) and _used_types:
             _del_keys = [
-                key for key, value in cur_hints.iteritems() if key not in _present_keys and key[0] in _used_types and not value.persistent
+                key for key, value in cur_hints.items() if key not in _present_keys and key[0] in _used_types and not value.persistent
             ]
             if _del_keys:
                 self.log(
                     "{} / {}: {} to delete".format(
-                        unicode(cur_dev),
+                        str(cur_dev),
                         ", ".join(sorted(list(_used_types))),
                         logging_tools.get_plural("key", len(_del_keys))
                     ),
@@ -315,11 +315,11 @@ class DynConfigProcess(threading_tools.process_obj):
         if _ocsp_prefix:
             self.send_pool_message("ocsp_results", ocsp_lines)
         if updated or created:
-            self.log("for {}: created {:d}, updated {:d}".format(unicode(cur_dev), n_created, n_updated))
+            self.log("for {}: created {:d}, updated {:d}".format(str(cur_dev), n_created, n_updated))
 
     def _check_status_ipmi(self, _val, cur_hint):
         _ret = limits.mon_STATE_OK
-        if type(_val) in [int, long]:
+        if type(_val) in [int, int]:
             form_str = "{:d}"
         else:
             form_str = "{:.2f}"

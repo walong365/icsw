@@ -17,7 +17,7 @@
 #
 """ cluster-server, user_scan capability """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import stat
@@ -34,7 +34,7 @@ from initat.tools import logging_tools, process_tools
 
 def sub_sum(_dict):
     _size = _dict.size
-    for _key, _value in _dict.iteritems():
+    for _key, _value in _dict.items():
         _size += sub_sum(_value)
     return _size
 
@@ -56,7 +56,7 @@ class sub_dir(dict):
 
     def total(self, attr):
         _total = getattr(self, attr)
-        for _key, _value in self.iteritems():
+        for _key, _value in self.items():
             _total += _value.total(attr)
         return _total
 
@@ -76,7 +76,7 @@ class sub_dir(dict):
                 num_dirs_total=self.total("dirs"),
                 full_name=self.full_name,
             )
-        for _total_size, key in sorted([(-self[key].total("size"), key) for key in self.iterkeys()]):
+        for _total_size, key in sorted([(-self[key].total("size"), key) for key in self.keys()]):
             self[key].create_db_entries(new_run, key, new_entry)
 
 
@@ -105,20 +105,20 @@ class user_scan_stuff(BackgroundBase):
     def _scan_users(self):
         _hel = home_export_list()
         _scanned_ok, _scanned_error = (0, 0)
-        for _key, _value in _hel.exp_dict.iteritems():
+        for _key, _value in _hel.exp_dict.items():
             if _value["entry"].device.pk == self.sql_info.effective_device.pk:
                 for _scan_user in user.objects.filter(Q(export=_value["entry"]) & Q(scan_user_home=True)):  # @UndefinedVariable
                     _h_dir = os.path.join(_value["createdir"], _scan_user.home or _scan_user.login)
                     if os.path.isdir(_h_dir):
                         s_time = time.time()
-                        self.log(u"scanning user '{}' in {}".format(_scan_user, _h_dir))
+                        self.log("scanning user '{}' in {}".format(_scan_user, _h_dir))
                         self.step(blocking=False, handle_timer=True)
                         self._scan_dir(_scan_user, _h_dir)
                         e_time = time.time()
                         self.log("... took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
                         _scanned_ok += 1
                     else:
-                        self.log(u"homedir {} doest not exist for user '{}'".format(_h_dir, unicode(_scan_user)), logging_tools.LOG_LEVEL_ERROR)
+                        self.log("homedir {} doest not exist for user '{}'".format(_h_dir, str(_scan_user)), logging_tools.LOG_LEVEL_ERROR)
                         _scanned_error += 1
         self.log("scan info: {:d} ok, {:d} with errors".format(_scanned_ok, _scanned_error))
 
@@ -132,7 +132,7 @@ class user_scan_stuff(BackgroundBase):
         _top_depth = _start_dir.count("/")
         try:
             nfs_mounts, nfs_ignore = (set(), [])
-            _last_dir = u""
+            _last_dir = ""
             for _main, _dirs, _files in scandir.walk(_start_dir):
                 if os.path.ismount(_main):
                     nfs_mounts.add(_main)
@@ -165,7 +165,7 @@ class user_scan_stuff(BackgroundBase):
                 )
         except UnicodeDecodeError:
             self.log(
-                u"UnicodeDecode: {}, _last_dir is '{}'".format(
+                "UnicodeDecode: {}, _last_dir is '{}'".format(
                     process_tools.get_except_info(),
                     _last_dir,
                 ),

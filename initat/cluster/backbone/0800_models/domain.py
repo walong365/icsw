@@ -10,7 +10,7 @@ from django.core.urlresolvers import reverse
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-import StringIO
+import io
 import os
 from initat.tools import process_tools
 import re

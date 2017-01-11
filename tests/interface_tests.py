@@ -280,7 +280,7 @@ class TestIcsw(unittest.TestCase):
         self.click_button('delete', base_element=table_row)
         self.click_button('Yes')
         self.driver.refresh()
-        self.assert_(location_name not in self.driver.page_source)
+        self.assertTrue(location_name not in self.driver.page_source)
 
     def test_090_domain_names(self):
         # create a new domain
@@ -449,7 +449,7 @@ class TestIcsw(unittest.TestCase):
         modals = self.driver.find_elements_by_xpath(
             '//div[@class="modal-content"]'
             )
-        self.assert_(modals, 'Modal dialog could not be found.')
+        self.assertTrue(modals, 'Modal dialog could not be found.')
         return modals[-1]
 
     def click_button(self, text=None, ng_click=None, base_element=None):
@@ -469,7 +469,7 @@ class TestIcsw(unittest.TestCase):
     def fill_form(self, values, base_element=None, edit_object='edit_obj'):
         if not base_element:
             base_element = self.driver
-        for (key, value) in values.items():
+        for (key, value) in list(values.items()):
             e = base_element.find_element_by_xpath(
                 '(.//input|.//textarea)[@ng-model="{}.{}"]'.format(
                     edit_object, key)

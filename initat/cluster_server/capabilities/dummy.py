@@ -17,7 +17,7 @@
 #
 """ cluster-server """
 
-from __future__ import unicode_literals, print_function
+
 
 from initat.cluster_server.capabilities.base import BackgroundBase
 from initat.host_monitoring import hm_classes

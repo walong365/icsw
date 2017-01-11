@@ -21,7 +21,7 @@
 #
 """ database setup for NOCTUA / CORVUS / NESTOR """
 
-from __future__ import unicode_literals, print_function
+
 
 import importlib
 import os
@@ -92,7 +92,7 @@ for module_name, key in (
     except:
         DB_PRESENT[key] = False
 
-AVAILABLE_DATABASES = [key for key, value in DB_PRESENT.items() if value]
+AVAILABLE_DATABASES = [key for key, value in list(DB_PRESENT.items()) if value]
 if "psql" in AVAILABLE_DATABASES:
     DEFAULT_ENGINE = "psql"
 else:

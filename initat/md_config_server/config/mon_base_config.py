@@ -19,7 +19,7 @@
 #
 """ config part of md-config-server """
 
-from __future__ import unicode_literals, print_function
+
 
 import time
 
@@ -75,7 +75,7 @@ class MonBaseConfig(dict):
         super(MonBaseConfig, self).__init__()
         for _key, _value in args:
             self[_key] = _value
-        for _key, _value in kwargs.iteritems():
+        for _key, _value in kwargs.items():
             self[_key] = _value
         self.act_content, self.prev_content = ([], [])
 
@@ -188,20 +188,20 @@ class StructuredContentEmitter(object):
     """
     def emit_content(self):
         _content = [
-            u"define {} {{".format(self.obj_type)
+            "define {} {{".format(self.obj_type)
         ]
-        for _key in sorted(self.iterkeys()):
+        for _key in sorted(self.keys()):
             _info_str, _value_str = self._build_value_string(_key)
             _content.extend(
                 [
                     # add some simple metadata to enable easy parsing of the files
-                    u"    # {}".format(_info_str),
-                    u"    {} {}".format(_key, _value_str),
+                    "    # {}".format(_info_str),
+                    "    {} {}".format(_key, _value_str),
                 ]
             )
         _content.extend(
             [
-                u"}",
+                "}",
                 ""
             ]
         )
@@ -216,7 +216,7 @@ class StructuredContentEmitter(object):
                     (
                         key,
                         self._build_value_string(key)[1]
-                    ) for key in sorted(self.iterkeys())
+                    ) for key in sorted(self.keys())
                 ]
             )
         )
@@ -236,7 +236,7 @@ class StructuredContentEmitter(object):
                 )
             else:
                 _first_val = in_list[0]
-                if type(_first_val) in [int, long]:
+                if type(_first_val) in [int, int]:
                     _ts = "int"
                     _vs = ",".join(["{:d}".format(_val) for _val in in_list])
                 else:
@@ -248,7 +248,7 @@ class StructuredContentEmitter(object):
                             )
                         )
                     _ts = "str"
-                    _vs = u",".join([unicode(_val) for _val in in_list])
+                    _vs = ",".join([str(_val) for _val in in_list])
                 _ts = "{}.{:d}".format(_ts, len(in_list))
                 return (_ts, _vs)
         else:
@@ -277,12 +277,12 @@ class FlatContentEmitter(object):
             else:
                 if type(value) == list:
                     pass
-                elif type(value) in [int, long]:
+                elif type(value) in [int, int]:
                     value = ["{:d}".format(value)]
                 else:
                     value = [value]
                 for act_v in value:
-                    c_lines.append(u"{}={}".format(key, act_v))
+                    c_lines.append("{}={}".format(key, act_v))
         return c_lines
 
 

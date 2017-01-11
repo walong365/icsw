@@ -52,7 +52,7 @@ class partition_fs(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'partition_fs'
+        db_table = 'partition_fs'
         ordering = ("name",)
 
 
@@ -65,7 +65,7 @@ class sys_partition(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'sys_partition'
+        db_table = 'sys_partition'
 
 
 class lvm_lv(models.Model):
@@ -84,7 +84,7 @@ class lvm_lv(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'lvm_lv'
+        db_table = 'lvm_lv'
         ordering = ("name",)
 
 
@@ -95,7 +95,7 @@ class lvm_vg(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'lvm_vg'
+        db_table = 'lvm_vg'
         ordering = ("name",)
 
 
@@ -119,7 +119,7 @@ class partition(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'partition'
+        db_table = 'partition'
         ordering = ("pnum",)
 
 
@@ -132,7 +132,7 @@ class partition_disc(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'partition_disc'
+        db_table = 'partition_disc'
         ordering = ("priority", "disc",)
 
 
@@ -149,4 +149,4 @@ class partition_table(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'partition_table'
+        db_table = 'partition_table'

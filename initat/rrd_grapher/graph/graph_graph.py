@@ -19,7 +19,7 @@
 #
 """ structures and functions for the grapher part of rrd-grapher service """
 
-from __future__ import print_function, unicode_literals
+
 
 import datetime
 import os
@@ -56,7 +56,7 @@ class RRDGraph(object):
         self.early_return_call = earyl_return_call
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.log_com(u"[RRDG] {}".format(what), log_level)
+        self.log_com("[RRDG] {}".format(what), log_level)
 
     def _create_graph_keys(self, graph_keys):
         g_key_dict = {}
@@ -78,7 +78,7 @@ class RRDGraph(object):
         if self.para_dict["job_mode"] in ["selected", "all"]:
             _jobs = rms_job_run.objects.filter(
                 (
-                    Q(device__in=dev_dict.keys()) | Q(rms_pe_info__device__in=dev_dict.keys())
+                    Q(device__in=list(dev_dict.keys())) | Q(rms_pe_info__device__in=list(dev_dict.keys()))
                 ) & (
                     (
                         Q(start_time_py__lte=self.para_dict["end_time_fc"]) &
@@ -140,7 +140,7 @@ class RRDGraph(object):
                             "start_time": _start_time,
                             "end_time_fc": _end_time,
                             "job": _run.rms_job.full_id,
-                            "user": unicode(_run.rms_job.user.login),
+                            "user": str(_run.rms_job.user.login),
                             "hostname": _entry["hostname"],
                         }
                     )
@@ -239,7 +239,7 @@ class RRDGraph(object):
         # store for DEF generation
         self.width = graph_width
         self.height = graph_height
-        dev_dict = {cur_dev.pk: unicode(cur_dev.display_name) for cur_dev in device.objects.filter(Q(pk__in=dev_pks))}
+        dev_dict = {cur_dev.pk: str(cur_dev.display_name) for cur_dev in device.objects.filter(Q(pk__in=dev_pks))}
         s_graph_key_dict = self._create_graph_keys(graph_keys)
         self.log(
             "found {}: {}".format(
@@ -254,7 +254,7 @@ class RRDGraph(object):
         if self.para_dict["graph_setting"].merge_graphs:
             # reorder all graph_keys into one graph_key_dict
             s_graph_key_dict = {
-                "all": sum(s_graph_key_dict.values(), [])
+                "all": sum(list(s_graph_key_dict.values()), [])
             }
         self.log(
             "{}: {}".format(
@@ -279,11 +279,11 @@ class RRDGraph(object):
             graph_key_list = [
                 [
                     GraphTarget(g_key, enumerated_dev_pks, v_list)
-                ] for g_key, v_list in s_graph_key_dict.iteritems()
+                ] for g_key, v_list in s_graph_key_dict.items()
             ]
         else:
             graph_key_list = []
-            for g_key, v_list in sorted(s_graph_key_dict.iteritems()):
+            for g_key, v_list in sorted(s_graph_key_dict.items()):
                 graph_key_list.append(
                     [
                         GraphTarget(
@@ -439,17 +439,17 @@ class RRDGraph(object):
                                 # in case of strange 'argument 0 has to be a string or a list of strings' 
                                 self.log("error creating graph: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                                 for _line in process_tools.exception_info().log_lines:
-                                    self.log(u"    {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
+                                    self.log("    {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
                                 if global_config["DEBUG"]:
                                     for _idx, _entry in enumerate(rrd_args, 1):
-                                        self.log(u"  {:4d} {}".format(_idx, _entry))
+                                        self.log("  {:4d} {}".format(_idx, _entry))
                                 draw_result = None
                                 draw_it = False
                             else:
                                 # compare draw results, add -l / -u when scale_mode is not None
                                 val_dict = {}
                                 # new code
-                                for key, value in draw_result.iteritems():
+                                for key, value in draw_result.items():
                                     if not key.startswith("print["):
                                         continue
                                     _xml = etree.fromstring(value)
@@ -467,16 +467,16 @@ class RRDGraph(object):
                                         val_dict.setdefault(_key, {})[_xml.get("cf")] = (value, _xml)
                                 # list of empty (all none or 0.0 values) keys
                                 _zero_keys = [
-                                    key for key, value in val_dict.iteritems() if all(
+                                    key for key, value in val_dict.items() if all(
                                         [
-                                            _v[0] in [0.0, None] or math.isnan(_v[0]) for _k, _v in value.iteritems()
+                                            _v[0] in [0.0, None] or math.isnan(_v[0]) for _k, _v in value.items()
                                         ]
                                     )
                                 ]
                                 if _zero_keys and self.para_dict["graph_setting"].hide_empty:
                                     # remove all-zero structs
-                                    val_dict = {key: value for key, value in val_dict.iteritems() if key not in _zero_keys}
-                                for key, value in val_dict.iteritems():
+                                    val_dict = {key: value for key, value in val_dict.items() if key not in _zero_keys}
+                                for key, value in val_dict.items():
                                     _graph_target.feed_draw_result(key, value)
                                 # check if the graphs shall always include y=0
                                 draw_it = False
@@ -492,7 +492,7 @@ class RRDGraph(object):
                                 empty_keys = set(_graph_target.draw_keys) - set(val_dict.keys())
                                 if empty_keys and self.para_dict["graph_setting"].hide_empty:
                                     self.log(
-                                        u"{}: {}".format(
+                                        "{}: {}".format(
                                             logging_tools.get_plural("empty key", len(empty_keys)),
                                             ", ".join(sorted(["{} (dev {:d})".format(_key, _pk) for _pk, _key in empty_keys])),
                                         )

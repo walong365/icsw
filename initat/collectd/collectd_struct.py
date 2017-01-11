@@ -19,7 +19,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import print_function, unicode_literals
+
 
 import json
 import os
@@ -43,7 +43,7 @@ class FileCreator(object):
         self.__log_com = log_com
         self.log("init file_creator")
         # dict, from {uuid, fqdn} to (uuid, fqdn, target_dir)
-        cov_keys = [_key for _key in global_config.keys() if _key.startswith("RRD_COVERAGE")]
+        cov_keys = [_key for _key in list(global_config.keys()) if _key.startswith("RRD_COVERAGE")]
         self.rrd_coverage = [global_config[_key] for _key in cov_keys]
         self.log("RRD coverage: {}".format(", ".join(self.rrd_coverage)))
         self.__step = global_config["RRD_STEP"]
@@ -54,7 +54,7 @@ class FileCreator(object):
         self.__created = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com(u"[hm] {}".format(what), log_level)
+        self.__log_com("[hm] {}".format(what), log_level)
 
     def sane_name(self, name):
         return name.replace("/", "_sl_")
@@ -222,7 +222,7 @@ class HostMatcher(object):
         self.__active_dict = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com(u"[hm] {}".format(what), log_level)
+        self.__log_com("[hm] {}".format(what), log_level)
 
     def update(self, uuid_spec, host_name):
         # print in_vector, type(in_vector), etree.tostring(in_vector, pretty_print=True)
@@ -279,12 +279,12 @@ class HostMatcher(object):
         _uuid_path = os.path.join(main_dir, match_dev.uuid)
         _check_dict = {"u": _uuid_path, "f": _fqdn_path}
         _found = {}
-        for _cn, _path in _check_dict.iteritems():
+        for _cn, _path in _check_dict.items():
             if os.path.isdir(_path):
                 _found[_cn] = os.path.islink(_path)
         if not _found:
             # create structure
-            self.log("creating disk structure (dir / link) for {}".format(unicode(match_dev)))
+            self.log("creating disk structure (dir / link) for {}".format(str(match_dev)))
             os.mkdir(_uuid_path)
             os.symlink(match_dev.uuid, _fqdn_path)
         else:
@@ -293,12 +293,12 @@ class HostMatcher(object):
                 pass
             else:
                 # remove all links
-                for _key, _value in _found.iteritems():
+                for _key, _value in _found.items():
                     if _value:
                         self.log("removing link {}".format(_check_dict[_key]))
                         os.unlink(_check_dict[_key])
                 # remove all links
-                _found = {_key: _value for _key, _value in _found.iteritems() if not _value}
+                _found = {_key: _value for _key, _value in _found.items() if not _value}
                 if "f" in _found:
                     # rename fqdn
                     if os.path.exists(_check_dict["u"]):
@@ -315,7 +315,7 @@ class HostMatcher(object):
                     _found["u"] = False
                     del _found["f"]
                 if "u" in _found and "f" not in _found and not _found["u"]:
-                    self.log("creating FQDN link for {}".format(unicode(match_dev)))
+                    self.log("creating FQDN link for {}".format(str(match_dev)))
                     os.symlink(match_dev.uuid, _fqdn_path)
                 # if "f" not in _found:
                 #    self.log("creating FQDN dir for {}".format(unicode(match_dev)))
@@ -351,7 +351,7 @@ class ext_com(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(
-            u"[ec {:d}{}] {}".format(
+            "[ec {:d}{}] {}".format(
                 self.idx,
                 ", {}".format(self.__name) if self.__name else "",
                 what,
@@ -397,7 +397,7 @@ class ext_com(object):
             try:
                 return self.popen.communicate()
             except OSError:
-                self.log(u"error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log("error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 return ("", "")
         else:
             return ("", "")
@@ -447,7 +447,7 @@ class CollectdHostInfo(object):
     def host_update(hi):
         cur_time = time.time()
         # delete old entries
-        del_keys = [key for key, value in CollectdHostInfo.entries.iteritems() if abs(value[0] - cur_time) > 15 * 60]
+        del_keys = [key for key, value in CollectdHostInfo.entries.items() if abs(value[0] - cur_time) > 15 * 60]
         if del_keys:
             for del_key in del_keys:
                 del CollectdHostInfo.entries[del_key]
@@ -459,7 +459,7 @@ class CollectdHostInfo(object):
         return "cc_hc_{}".format(self.uuid)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com(u"[h {}] {}".format(self.name, what), log_level)
+        self.__log_com("[h {}] {}".format(self.name, what), log_level)
 
     def target_file(self, name, **kwargs):
         _tf, _exists = self.__target_files[name]
@@ -543,7 +543,7 @@ class CollectdHostInfo(object):
         # check for timeout
         to_keys = set(
             [
-                key for key, _value in self.__dict.iteritems() if _value.timeout and _value.timeout < cur_time
+                key for key, _value in self.__dict.items() if _value.timeout and _value.timeout < cur_time
             ]
         )
         for to_key in to_keys:
@@ -572,7 +572,7 @@ class CollectdHostInfo(object):
         self._store_json_to_memcached()
 
     def _store_json_to_memcached(self):
-        json_vector = [_value.get_json() for _value in self.__dict.itervalues()]
+        json_vector = [_value.get_json() for _value in self.__dict.values()]
         CollectdHostInfo.host_update(self)
         # set and ignore errors, default timeout is 2 minutes
         CollectdHostInfo.mc.set(self.mc_key(), json.dumps(json_vector), self.__mc_timeout)

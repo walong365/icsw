@@ -23,7 +23,7 @@
 #
 """ python interface to emulate a loadsensor for SGE """
 
-from __future__ import print_function, unicode_literals
+
 
 import os
 import stat
@@ -79,7 +79,7 @@ def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_objec
     all_server_addrs = set(
         sum(
             [
-                act_lic.get_license_server_addresses() for act_lic in actual_licenses.values() if act_lic.license_type == "simple"
+                act_lic.get_license_server_addresses() for act_lic in list(actual_licenses.values()) if act_lic.license_type == "simple"
                 ],
             []
         )
@@ -163,8 +163,8 @@ def main():
         sge_license_tools.get_site_config_file_name(base_dir, act_site),
     ).dict
     log_template.info("read config for actual site '{}'".format(act_site))
-    log_template.info("{} in config:".format(logging_tools.get_plural("key", len(act_conf.keys()))))
-    for key, value in act_conf.iteritems():
+    log_template.info("{} in config:".format(logging_tools.get_plural("key", len(list(act_conf.keys())))))
+    for key, value in act_conf.items():
         log_template.info(" - {:<20s} : {}".format(key, value))
     call_num = 0
     io_in_fd = sys.stdin.fileno()
@@ -202,14 +202,14 @@ def main():
                         )
                         lic_read_time = file_time
                     if not sge_license_tools.handle_license_policy(base_dir):
-                        cur_used = {_key: _value.used for _key, _value in actual_licenses.iteritems()}
+                        cur_used = {_key: _value.used for _key, _value in actual_licenses.items()}
                         srv_result = parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_object)
                         sge_license_tools.update_usage(actual_licenses, srv_result)
                         # [cur_lic.handle_node_grouping() for cur_lic in actual_licenses.itervalues()]
                         for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses):
                             log_template.log(log_line, log_level)
                         sge_license_tools.calculate_usage(actual_licenses)
-                        configured_licenses = [_key for _key, _value in actual_licenses.iteritems() if _value.is_used]
+                        configured_licenses = [_key for _key, _value in actual_licenses.items() if _value.is_used]
                         sge_lines, rep_dict = build_sge_report_lines(log_template, configured_licenses, actual_licenses, cur_used)
                     else:
                         log_template.log("licenses are controlled via rms-server, reporting nothing to SGE", logging_tools.LOG_LEVEL_WARN)
@@ -220,7 +220,7 @@ def main():
                     if rep_dict:
                         log_template.info(
                             "{} defined, {:d} configured, {:d} in use{}, ({:d} simple, {:d} complex), took {}".format(
-                                logging_tools.get_plural("license", len(actual_licenses.keys())),
+                                logging_tools.get_plural("license", len(list(actual_licenses.keys()))),
                                 len(configured_licenses),
                                 len(rep_dict["lics_in_use"]),
                                 rep_dict["lics_in_use"] and " ({})".format(", ".join(sorted(rep_dict["lics_in_use"]))) or "",

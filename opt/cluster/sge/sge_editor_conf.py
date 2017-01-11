@@ -58,31 +58,31 @@ def main():
         pass
     else:
         k_new, k_change = (set(), set())
-        for key, value in new_keys.iteritems():
+        for key, value in new_keys.items():
             if key in content:
                 old_val = ",".join([_line.strip() for _line in content.get(key, "").split(",")])
                 new_val = ",".join([_line.strip() for _line in value.split(",")])
                 if old_val != new_val:
                     k_change.add(key)
-                    print("Altered key '{}' from '{}' to '{}'".format(key, old_val, new_val))
+                    print(("Altered key '{}' from '{}' to '{}'".format(key, old_val, new_val)))
                     content[key] = new_val
             else:
                 k_new.add(key)
-                print(
+                print((
                     "Set key '{}' to '{}'".format(key, value)
-                )
+                ))
                 content[key] = value
         k_new = sorted(list(k_new))
         k_change = sorted(list(k_change))
         if k_new or k_change:
-            print(
+            print((
                 "Set {}: {}, changed {}: {}".format(
                     logging_tools.get_plural("key", len(k_new)),
                     ", ".join(k_new) or "none",
                     logging_tools.get_plural("key", len(k_change)),
                     ", ".join(k_change) or "none",
                 )
-            )
+            ))
             file(fname, "w").write("\n".join(["{} {}".format(key, str(content[key])) for key in sorted(content.keys())] + [""]))
         try:
             os.unlink("/tmp/.qconf_config")

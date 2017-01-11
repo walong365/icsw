@@ -36,7 +36,7 @@ class RemoteServer(object):
         self.uuid = uuid
 
     def __unicode__(self):
-        return u"RemoteServer at {} [{}]".format(self.conn_str, self.uuid)
+        return "RemoteServer at {} [{}]".format(self.conn_str, self.uuid)
 
 
 class SlaveState(Enum):

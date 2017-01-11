@@ -17,7 +17,7 @@
 #
 """ cluster-server, background inotify import script """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 
@@ -44,7 +44,7 @@ class SyncSensorThresholdTask(BGInotifyTask):
                     background_job_run(
                         background_job=cur_bg,
                         server=_sc.effective_device,
-                        command_xml=unicode(srv_com),
+                        command_xml=str(srv_com),
                         start=cluster_timezone.localize(datetime.datetime.now()),
                     ),
                     srv_com,

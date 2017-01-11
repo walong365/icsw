@@ -19,7 +19,7 @@
 #
 """ discovery-server, SNMP functions """
 
-from __future__ import print_function, unicode_literals
+
 
 import time
 
@@ -50,7 +50,7 @@ class SNMPBatch(object):
         try:
             _dev = self.srv_com.xpath(".//ns:devices/ns:device")[0]
             self.device = device.objects.get(Q(pk=_dev.attrib["pk"]))
-            self.log("device is {}".format(unicode(self.device)))
+            self.log("device is {}".format(str(self.device)))
             self.set_snmp_props(
                 int({"2c": "2"}.get(_dev.attrib["snmp_version"], _dev.attrib["snmp_version"])),
                 _dev.attrib["scan_address"],
@@ -153,7 +153,7 @@ class SNMPBatch(object):
             # pprint.pprint(self.__snmp_results)
             # unify dict
             _errors, _found, _res_dict = ([], set(), {})
-            for _key, _value in self.__snmp_results.iteritems():
+            for _key, _value in self.__snmp_results.items():
                 _errors.extend(_value[0])
                 _found |= _value[1]
                 _res_dict.update(_value[2])
@@ -222,7 +222,7 @@ class SNMPBatch(object):
                     )
                 )
                 for _scan_scheme in _scan_schemes:
-                    self.log("    {}".format(unicode(_scan_scheme)))
+                    self.log("    {}".format(str(_scan_scheme)))
                 self.init_run("snmp_initial_scan")
                 for _scheme in _scan_schemes:
                     self.new_run(
@@ -259,7 +259,7 @@ class SNMPBatch(object):
         SNMPBatch.remove_batch(self)
 
     def send_return(self):
-        self.process.send_pool_message("remote_call_async_result", unicode(self.srv_com))
+        self.process.send_pool_message("remote_call_async_result", str(self.srv_com))
 
     @staticmethod
     def glob_feed_snmp(_run_id, error, src, results):

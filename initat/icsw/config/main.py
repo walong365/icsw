@@ -21,7 +21,7 @@
 
 """ show config script for simple use in CSW """
 
-from __future__ import print_function, unicode_literals
+
 
 import base64
 import bz2
@@ -61,7 +61,7 @@ def _service_enum_show_command(options):
                 _c_dict[entry.name].update_values(entry)
             _db_str = "yes ({:d})".format(_c_dict[entry.name].pk)
         if entry.value.server_service:
-            _egg_action = ", ".join([unicode(_action) for _action in entry.value.egg_actions]) or "none"
+            _egg_action = ", ".join([str(_action) for _action in entry.value.egg_actions]) or "none"
         else:
             _egg_action = "---"
         _list.append(
@@ -76,7 +76,7 @@ def _service_enum_show_command(options):
                 logging_tools.form_entry(_egg_action, header="Egg actions"),
             ]
         )
-    print(unicode(_list))
+    print(str(_list))
     if options.sync:
         _change_list = []
         # compat dict
@@ -100,7 +100,7 @@ def _service_enum_show_command(options):
                         except ValidationError:
                             print(
                                 "cannot save {}: {}".format(
-                                    unicode(c_con),
+                                    str(c_con),
                                     process_tools.get_except_info()
                                 )
                             )
@@ -109,7 +109,7 @@ def _service_enum_show_command(options):
                             break
         _create_list = []
         sys_cc = config_catalog.objects.get(Q(system_catalog=True))
-        for db_enum in _c_dict.itervalues():
+        for db_enum in _c_dict.values():
             if not db_enum.config_set.all().count():
                 _create_list.append(
                     factories.Config(
@@ -126,12 +126,12 @@ def _service_enum_show_command(options):
             print("")
             print("{} moved to ConfigServiceEnum:".format(logging_tools.get_plural("Config", len(_change_list))))
             for entry in _change_list:
-                print("    {} ({})".format(entry.name, unicode(entry.config_service_enum)))
+                print("    {} ({})".format(entry.name, str(entry.config_service_enum)))
         if len(_create_list):
             print("")
             print("{} created:".format(logging_tools.get_plural("Config", len(_create_list))))
             for entry in _create_list:
-                print("    {} ({})".format(entry.name, unicode(entry.config_service_enum)))
+                print("    {} ({})".format(entry.name, str(entry.config_service_enum)))
 
 
 def _domain_enum_show_command(options):
@@ -170,7 +170,7 @@ def _domain_enum_show_command(options):
                 logging_tools.form_entry(_domain_info, header="Domain Enum"),
             ]
         )
-    print(unicode(_list))
+    print(str(_list))
 
 
 def enum_show_command(options):
@@ -220,7 +220,7 @@ def show_command(options):
                         "import bz2",
                         "import base64",
                         "",
-                        u"{} += bz2.decompress(base.b64decode('{}'))".format(
+                        "{} += bz2.decompress(base.b64decode('{}'))".format(
                             obj_name,
                             base64.b64encode(bz2.compress(content)),
                         )
@@ -234,22 +234,22 @@ def show_command(options):
                 p_line = " " * 4
                 try:
                     out_lines.append(
-                        u"{} += [\n{}]\n".format(
+                        "{} += [\n{}]\n".format(
                             obj_name,
                             "".join(
                                 [
-                                    u"{}'{}',\n".format(p_line, _line.replace("'", '"').replace("\\", "\\\\")) for _line in f_lines
+                                    "{}'{}',\n".format(p_line, _line.replace("'", '"').replace("\\", "\\\\")) for _line in f_lines
                                 ]
                             )
                         )
                     )
                 except UnicodeDecodeError:
-                    print
+                    print()
                     print("'{}' seems to be a binary file, please use -b switch".format(f_name))
-                    print
+                    print()
                     sys.exit(3)
             out_lines.append(
-                u"{}.mode = 0{:o}".format(
+                "{}.mode = 0{:o}".format(
                     obj_name,
                     stat.S_IMODE(f_stat[stat.ST_MODE])
                 )

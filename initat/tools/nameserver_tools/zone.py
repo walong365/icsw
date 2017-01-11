@@ -19,9 +19,9 @@
 #
 """ generates zonefiles for nsX.init.at """
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import json
 import os
 import pwd
@@ -114,7 +114,7 @@ class Zone(object):
         content = self.get_header()
         content.extend(
             [
-                MX_RECORD.format(pri, make_qualified(name)) for name, pri in self.Meta.mx_records.iteritems()
+                MX_RECORD.format(pri, make_qualified(name)) for name, pri in self.Meta.mx_records.items()
             ]
         )
         if self.spf_record:
@@ -140,7 +140,7 @@ class Zone(object):
             _iter = True
             while _iter:
                 _iter = False
-                for _src, _dst in cname_dict.iteritems():
+                for _src, _dst in cname_dict.items():
                     if (_dst in used_names or _dst.endswith(".")) and _src not in _cnames_consumed:
                         _cnames_consumed.add(_src)
                         used_names.append(_src)
@@ -249,7 +249,7 @@ class Zone(object):
         print("{} defined:".format(logging_tools.get_plural("Zone", len(Zone.zones))))
         for _name, _zone in sorted([(_zone.name, _zone) for _zone in Zone.zones]):
             print(
-                u"   {} ({})".format(
+                "   {} ({})".format(
                     _name,
                     logging_tools.get_plural("A record", len(_zone.records)),
                 )
@@ -274,7 +274,7 @@ class Zone(object):
         if not os.path.exists(_res_name):
             _res_dict = {}
             for _key in ["public", "private"]:
-                _res_dict[_key] = commands.getoutput(
+                _res_dict[_key] = subprocess.getoutput(
                     "/usr/sbin/dnssec-keygen -v 10 -a HMAC-MD5 -n HOST -b 128 -r /dev/urandom -K {} {}".format(
                         _key_dir,
                         _key,
@@ -282,7 +282,7 @@ class Zone(object):
                 ).strip()
             file(_res_name, "w").write(json.dumps(_res_dict))
         key_dict = {}
-        for _key, _value in json.loads(file(_res_name, "r").read()).iteritems():
+        for _key, _value in json.loads(file(_res_name, "r").read()).items():
             for _t in ["key", "private"]:
                 _content = file(os.path.join(_key_dir, "{}.{}".format(_value, _t)), "r").read()
                 key_dict.setdefault(_key, {})[_t] = {
@@ -488,7 +488,7 @@ class Zone(object):
             print("[DR] {}".format(com))
             _stat, _out = (0, "dryrun")
         else:
-            _stat, _out = commands.getstatusoutput(com)
+            _stat, _out = subprocess.getstatusoutput(com)
             print("command '{}' gave ({:d}): {}".format(com, _stat, _out))
         return _stat, _out
 
@@ -506,7 +506,7 @@ class Zone(object):
                 logging_tools.get_plural("Nameserver", len(Zone.Meta.nameservers)),
                 ", ".join(
                     [
-                        unicode(_entry) for _entry in Zone.Meta.nameservers
+                        str(_entry) for _entry in Zone.Meta.nameservers
                     ]
                 ),
             )
@@ -622,9 +622,9 @@ class Zone(object):
                 _master = _srv.name in [_entry.name for _entry in Zone.Meta.primary]
                 if _master == _is_master:
                     if _local:
-                        print("{}ing local {} {}".format(_mode, "master" if _master else "slave", unicode(_srv)))
+                        print("{}ing local {} {}".format(_mode, "master" if _master else "slave", str(_srv)))
                         Zone.call_command("/etc/init.d/named {}".format(_mode))
                     else:
-                        print("{}ing remote {} {}".format(_mode, "master" if _master else "slave", unicode(_srv)))
+                        print("{}ing remote {} {}".format(_mode, "master" if _master else "slave", str(_srv)))
                         Zone.call_command("ssh root@{} /etc/init.d/named {}".format(_srv.deploy_ip, _mode))
         print("")

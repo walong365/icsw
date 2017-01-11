@@ -22,7 +22,7 @@
 
 """ helper functions for the init.at clustersoftware """
 
-from __future__ import print_function, unicode_literals
+
 
 import memcache
 import time
@@ -112,7 +112,7 @@ class XMLWrapper(object):
         :param in_dict: dictionary with the actual key-value pairs
         :type in_dict: dict
         """
-        for key, value in in_dict.iteritems():
+        for key, value in in_dict.items():
             self[key] = value
 
     def is_ok(self):
@@ -137,14 +137,14 @@ class XMLWrapper(object):
                 ret_val.append(self._get_value_xml(key, sub_val))
         else:
             ret_val = E.value(
-                value if isinstance(value, etree._Element) else unicode(value),  # @UndefinedVariable
+                value if isinstance(value, etree._Element) else str(value),  # @UndefinedVariable
                 ** {
                     "name": key,
                     "type": {
                         int: "integer",
-                        long: "integer",
+                        int: "integer",
                         str: "string",
-                        unicode: "string",
+                        str: "string",
                         float: "float",
                         etree._Element: "xml",  # @UndefinedVariable
                     }.get(type(value), "unknown")
@@ -189,7 +189,7 @@ class XMLWrapper(object):
                 }
             ),
             E.values(
-                *[self._get_value_xml(key, value) for key, value in self.val_dict.iteritems()]
+                *[self._get_value_xml(key, value) for key, value in self.val_dict.items()]
             )
         )
 
@@ -197,7 +197,7 @@ class XMLWrapper(object):
         """
         :returns: the unicode representation of xml response
         """
-        return etree.tostring(self.build_response(), encoding=unicode)  # @UndefinedVariable
+        return etree.tostring(self.build_response(), encoding=str)  # @UndefinedVariable
 
     def show(self, logger=None):
         def _log(what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -218,7 +218,7 @@ class XMLWrapper(object):
         creates a new xml response
         """
         return HttpResponse(
-            unicode(self),
+            str(self),
             content_type="application/xml",
         )
 
@@ -408,7 +408,7 @@ def contact_server(request, srv_type_enum, send_com, **kwargs):
         # print("done", cur_conn_id)
     else:
         result = None
-        _err_str = u"ServiceType '{}' not defined in routing".format(srv_type_enum.name)
+        _err_str = "ServiceType '{}' not defined in routing".format(srv_type_enum.name)
         cur_router._log(request, _log_lines, _err_str, logging_tools.LOG_LEVEL_ERROR)
     if _xml_req:
         return result

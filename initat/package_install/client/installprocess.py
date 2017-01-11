@@ -20,7 +20,7 @@
 """ install process structures """
 
 from lxml import etree  # @UnresolvedImport
-import urlparse
+import urllib.parse
 import os
 
 from lxml.builder import E
@@ -40,7 +40,7 @@ def get_repo_str(_type, in_repo):
         _username = in_repo.findtext("username")
         _password = in_repo.findtext("password")
         if _username:
-            _parsed = urlparse.urlparse(_url)
+            _parsed = urllib.parse.urlparse(_url)
             _url = "{}://{}:{}@{}{}".format(
                 _parsed.scheme,
                 _username,
@@ -158,7 +158,7 @@ class InstallProcess(threading_tools.process_obj):
         self.handle_pending_commands()
 
     def send_to_server(self, send_xml, info_str="no info"):
-        self.send_pool_message("send_to_server", send_xml["command"].text, unicode(send_xml), info_str)
+        self.send_pool_message("send_to_server", send_xml["command"].text, str(send_xml), info_str)
 
     def package_command_done(self, t_com):
         self.package_commands.remove(t_com)
@@ -650,7 +650,7 @@ class YumInstallProcess(InstallProcess):
         if rewrite_repos and self.CS["pc.modify.repos"]:
             self.log("rewritting repo files")
             # remove old ones
-            for old_r_name in old_repo_dict.iterkeys():
+            for old_r_name in old_repo_dict.keys():
                 f_name = os.path.join(repo_dir, "{}.repo".format(old_r_name))
                 try:
                     os.unlink(f_name)
@@ -658,7 +658,7 @@ class YumInstallProcess(InstallProcess):
                     self.log("cannot remove {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 else:
                     self.log("removed {}".format(f_name))
-            for new_r_name in new_repo_dict.iterkeys():
+            for new_r_name in new_repo_dict.keys():
                 f_name = os.path.join(repo_dir, "{}.repo".format(new_r_name))
                 try:
                     file(f_name, "w").write(new_repo_dict[new_r_name])
@@ -787,7 +787,7 @@ class ZypperInstallProcess(InstallProcess):
         if rewrite_repos and self.CS["pc.modify.repos"]:
             self.log("rewritting repo files")
             # remove old ones
-            for old_r_name in old_repo_dict.iterkeys():
+            for old_r_name in old_repo_dict.keys():
                 f_name = os.path.join(repo_dir, "{}.repo".format(old_r_name))
                 try:
                     os.unlink(f_name)
@@ -795,7 +795,7 @@ class ZypperInstallProcess(InstallProcess):
                     self.log("cannot remove {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 else:
                     self.log("removed {}".format(f_name))
-            for new_r_name in new_repo_dict.iterkeys():
+            for new_r_name in new_repo_dict.keys():
                 f_name = os.path.join(repo_dir, "{}.repo".format(new_r_name))
                 try:
                     file(f_name, "w").write(new_repo_dict[new_r_name])

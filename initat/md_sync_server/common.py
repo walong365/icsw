@@ -19,7 +19,7 @@
 #
 """ simple frontend to LiveStatus socket, also used by md-config-server (for KPI) """
 
-from __future__ import print_function, unicode_literals
+
 import csv
 import os.path
 import socket
@@ -149,7 +149,7 @@ class LiveSocket(object):
 
         _enum = getattr(cls.livestatus_enum, t_type).value
         for entry in res_list:
-            for _key, _value in entry.iteritems():
+            for _key, _value in entry.items():
                 try:
                     _type = getattr(_enum, _key).value["type"]
                     if _type == "int":
@@ -186,7 +186,7 @@ class LiveSocket(object):
         for entry in _result:
             _dict.setdefault(entry["table"], []).append(entry)
         if DEBUG:
-            log_com("tables found: {:d}".format(len(_dict.keys())))
+            log_com("tables found: {:d}".format(len(list(_dict.keys()))))
         for _table in sorted(_dict.keys()):
             _len = len(_dict[_table])
             if DEBUG:

@@ -19,7 +19,7 @@
 #
 """ server process for md-config-server """
 
-from __future__ import unicode_literals, print_function
+
 
 import time
 
@@ -169,15 +169,15 @@ class ServerProcess(
                     "mail": {
                         "host": (
                             global_config["HOST_NOTIFY_BY_EMAIL_SUBJECT"],
-                            [global_config["HOST_NOTIFY_BY_EMAIL_LINE{:02d}".format(idx)] for idx in xrange(1, 16)],
+                            [global_config["HOST_NOTIFY_BY_EMAIL_LINE{:02d}".format(idx)] for idx in range(1, 16)],
                         ),
                         "service": (
                             global_config["NOTIFY_BY_EMAIL_SUBJECT"],
-                            [global_config["NOTIFY_BY_EMAIL_LINE{:02d}".format(idx)] for idx in xrange(1, 16)],
+                            [global_config["NOTIFY_BY_EMAIL_LINE{:02d}".format(idx)] for idx in range(1, 16)],
                         ),
                     }
                 }
-                for key in global_config.keys():
+                for key in list(global_config.keys()):
                     if key.count("NOTIFY_BY") and (key.count("LINE") or key.count("SUBJECT")):
                         src = global_config.get_source(key)
                         if src.count("::"):
@@ -203,43 +203,43 @@ class ServerProcess(
                 str_dict = {
                     'mail': {
                         'host': (
-                            u'Host $HOSTSTATE$ alert for $HOSTNAME$@$INIT_CLUSTER_NAME$',
+                            'Host $HOSTSTATE$ alert for $HOSTNAME$@$INIT_CLUSTER_NAME$',
                             [
-                                u'***** $INIT_MONITOR_INFO$ *****',
-                                u'',
-                                u'Notification Type: $NOTIFICATIONTYPE$',
-                                u'',
-                                u'Cluster: $INIT_CLUSTER_NAME$',
-                                u'Host   : $HOSTNAME$',
-                                u'State  : $HOSTSTATE$',
-                                u'Address: $HOSTADDRESS$',
-                                u'Info   : $HOSTOUTPUT$',
-                                u'',
-                                u'Date/Time: $LONGDATETIME$',
-                                u'',
-                                u'',
-                                u'',
-                                u''
+                                '***** $INIT_MONITOR_INFO$ *****',
+                                '',
+                                'Notification Type: $NOTIFICATIONTYPE$',
+                                '',
+                                'Cluster: $INIT_CLUSTER_NAME$',
+                                'Host   : $HOSTNAME$',
+                                'State  : $HOSTSTATE$',
+                                'Address: $HOSTADDRESS$',
+                                'Info   : $HOSTOUTPUT$',
+                                '',
+                                'Date/Time: $LONGDATETIME$',
+                                '',
+                                '',
+                                '',
+                                ''
                             ]
                         ),
                         'service': (
-                            u'$NOTIFICATIONTYPE$ alert - $HOSTNAME$@$INIT_CLUSTER_NAME$ ($HOSTALIAS$)/$SERVICEDESC$ is $SERVICESTATE$',
+                            '$NOTIFICATIONTYPE$ alert - $HOSTNAME$@$INIT_CLUSTER_NAME$ ($HOSTALIAS$)/$SERVICEDESC$ is $SERVICESTATE$',
                             [
-                                u'***** $INIT_MONITOR_INFO$ *****',
-                                u'',
-                                u'Notification Type: $NOTIFICATIONTYPE$',
-                                u'',
-                                u'Cluster: $INIT_CLUSTER_NAME$',
-                                u'Service: $SERVICEDESC$',
-                                u'Host   : $HOSTALIAS$',
-                                u'Address: $HOSTADDRESS$',
-                                u'State  : $SERVICESTATE$',
-                                u'',
-                                u'Date/Time: $LONGDATETIME$',
-                                u'',
-                                u'Additional Info:',
-                                u'',
-                                u'$SERVICEOUTPUT$'
+                                '***** $INIT_MONITOR_INFO$ *****',
+                                '',
+                                'Notification Type: $NOTIFICATIONTYPE$',
+                                '',
+                                'Cluster: $INIT_CLUSTER_NAME$',
+                                'Service: $SERVICEDESC$',
+                                'Host   : $HOSTALIAS$',
+                                'Address: $HOSTADDRESS$',
+                                'State  : $SERVICESTATE$',
+                                '',
+                                'Date/Time: $LONGDATETIME$',
+                                '',
+                                'Additional Info:',
+                                '',
+                                '$SERVICEOUTPUT$'
                             ]
                         )
                     },
@@ -247,19 +247,19 @@ class ServerProcess(
                         'host': (
                             '',
                             [
-                                u'$HOSTSTATE$ alert for $HOSTNAME$ ($HOSTADDRESS$)'
+                                '$HOSTSTATE$ alert for $HOSTNAME$ ($HOSTADDRESS$)'
                             ]
                         ),
                         'service': (
                             '',
                             [
-                                u'$NOTIFICATIONTYPE$ alert - $SERVICEDESC$ is $SERVICESTATE$ on $HOSTNAME$'
+                                '$NOTIFICATIONTYPE$ alert - $SERVICEDESC$ is $SERVICESTATE$ on $HOSTNAME$'
                             ]
                         )
                     }
                 }
-            for channel, s_dict in str_dict.iteritems():
-                for not_type, (subject, content) in s_dict.iteritems():
+            for channel, s_dict in str_dict.items():
+                for not_type, (subject, content) in s_dict.items():
                     mon_notification.objects.create(
                         name="{}-notify-by-{}".format(not_type, channel),
                         channel=channel,
@@ -295,10 +295,10 @@ class ServerProcess(
     def handle_mon_command(self, srv_com):
         data = json.loads(srv_com["*data"])
         _enum = getattr(IcingaCommandEnum, data["action"].lower())
-        _val_dict = {key: {"raw": value} for key, value in data["arguments"].iteritems()}
+        _val_dict = {key: {"raw": value} for key, value in data["arguments"].items()}
         _val_dict = _enum.value.resolve_args(_val_dict)
         # add user
-        _val_dict["author"] = {"value": unicode(user.objects.get(Q(pk=data["user_idx"])))}
+        _val_dict["author"] = {"value": str(user.objects.get(Q(pk=data["user_idx"])))}
         # unroll keys
         host_idxs = set([entry["host_idx"] for entry in data["key_list"]])
         name_dict = {dev.idx: dev.full_name for dev in device.objects.filter(Q(idx__in=host_idxs))}
@@ -317,7 +317,7 @@ class ServerProcess(
                 command="ext_command",
                 lines=cmd_lines,
             )
-            self.send_to_process("syncer", "ext_command", unicode(ext_com))
+            self.send_to_process("syncer", "ext_command", str(ext_com))
         else:
             self.log("created no external commands", logging_tools.LOG_LEVEL_ERROR)
 
@@ -326,7 +326,7 @@ class ServerProcess(
         if remote_uuid not in self.__remotes:
             # in fact only one primary remote is handled
             rs = RemoteServer(remote_uuid, remote_ip, self.CC.Instance.get_port_dict(getattr(icswServiceEnum, remote_enum_name), command=True))
-            self.log("connecting to {}".format(unicode(rs)))
+            self.log("connecting to {}".format(str(rs)))
             self.main_socket.connect(rs.conn_str)
             self.__remotes[remote_uuid] = rs
 
@@ -354,7 +354,7 @@ class ServerProcess(
         self.send_command(full_uuid, srv_com)
 
     def send_command(self, full_uuid, srv_com):
-        _srv_com = unicode(srv_com)
+        _srv_com = str(srv_com)
         try:
             self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
             self.main_socket.send_unicode(_srv_com)
@@ -368,7 +368,7 @@ class ServerProcess(
                 logging_tools.LOG_LEVEL_ERROR
             )
             if full_uuid in self.__remotes:
-                self.log("target is {}".format(unicode(self.__remotes[full_uuid])))
+                self.log("target is {}".format(str(self.__remotes[full_uuid])))
         else:
             self.log("sent {:d} bytes to {}".format(len(srv_com), full_uuid))
 
@@ -427,7 +427,7 @@ class ServerProcess(
 
     @RemoteCall()
     def mon_process_handling(self, srv_com, **kwargs):
-        self.send_to_process("syncer", "mon_process_handling", unicode(srv_com))
+        self.send_to_process("syncer", "mon_process_handling", str(srv_com))
         srv_com.set_result("ok set new flags")
         return srv_com
 
@@ -447,7 +447,7 @@ class ServerProcess(
     @RemoteCall()
     def passive_check_result(self, srv_com, **kwargs):
         # pretend to be synchronous call such that reply is sent right away
-        self.send_to_process("dynconfig", "passive_check_result", unicode(srv_com))
+        self.send_to_process("dynconfig", "passive_check_result", str(srv_com))
         srv_com.set_result("ok processed command passive_check_result")
         return srv_com
 

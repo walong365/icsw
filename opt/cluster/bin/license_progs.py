@@ -23,7 +23,7 @@
 #
 """ modify license settings """
 
-from __future__ import print_function, unicode_literals
+
 
 import argparse
 import os
@@ -75,7 +75,7 @@ def _lic_show(opts, act_conf):
             _lic = elo.licenses[_name]
             if _lic.license_type == _t_type:
                 out_list.append(_lic.get_info_line())
-    print(unicode(out_list))
+    print(str(out_list))
 
 
 def _lic_fetch(opts, act_conf):
@@ -105,7 +105,7 @@ def _lic_fetch(opts, act_conf):
         print(
             "discovered {:d} licenses, {:d} of them are currently in use".format(
                 len(current_lics),
-                len([True for _lic in current_lics.itervalues() if _lic.is_used])
+                len([True for _lic in current_lics.values() if _lic.is_used])
             )
         )
         for _al_key in sorted(set(new_lics) - set(current_lics)):
@@ -165,7 +165,7 @@ def _lic_config(opts, act_conf):
     )
     current_lics = sge_license_tools.parse_license_lines(current_lics_file.lines, opts.site)
     sge_license_tools.handle_complex_licenses(current_lics)
-    _lics_to_use = [_lic.name for _lic in current_lics.itervalues() if _lic.is_used]
+    _lics_to_use = [_lic.name for _lic in current_lics.values() if _lic.is_used]
     # modify complexes
     with tempfile.NamedTemporaryFile() as _tmpfile:
         form_str = "{} {} INT <= YES YES 0 0\n"

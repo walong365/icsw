@@ -21,7 +21,7 @@
 #
 """ logging server, central logging facility, main part """
 
-from __future__ import unicode_literals, print_function
+
 
 from initat.client_version import VERSION_STRING
 from initat.logging_server.config import global_config

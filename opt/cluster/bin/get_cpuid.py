@@ -22,7 +22,7 @@ from initat.tools import cpu_database
 
 
 def main():
-    print cpu_database.get_cpuid()
+    print(cpu_database.get_cpuid())
 
 if __name__ == "__main__":
     main()

@@ -43,10 +43,10 @@ class SNMPSink(object):
         return self.__handlers
 
     def info(self):
-        print self.__reg_handlers
+        print(self.__reg_handlers)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com(u"[SS] {}".format(what), log_level)
+        self.__log_com("[SS] {}".format(what), log_level)
 
     def get_handlers(self, schemes):
         return [_val for _val in [self.get_handler(_scheme) for _scheme in schemes] if _val is not None]

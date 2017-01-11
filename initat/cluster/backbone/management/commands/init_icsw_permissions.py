@@ -22,7 +22,7 @@
 
 """ scan all apps in backbone for new ICSW rights """
 
-from __future__ import unicode_literals, print_function
+
 
 import pprint
 import time
@@ -85,7 +85,7 @@ class Command(BaseCommand):
                 logging_tools.get_plural("Permission", len(out_list)),
             )
         )
-        print(unicode(out_list))
+        print(str(out_list))
 
     def modify(self, **options):
         verbosity = int(options.get("verbosity"))
@@ -129,7 +129,7 @@ class Command(BaseCommand):
                             _local_created += 1
                             print(
                                 "Created '{}' for model {}".format(
-                                    unicode(new_perm),
+                                    str(new_perm),
                                     cur_ct.model
                                 )
                             )
@@ -137,8 +137,8 @@ class Command(BaseCommand):
                             if valid_for_object_level != full_dict[(app_label, code_name, model_name)].valid_for_object_level:
                                 print(
                                     "Change valid_for_object_level to {} for {}".format(
-                                        unicode(valid_for_object_level),
-                                        unicode(full_dict[(app_label, code_name, model_name)])
+                                        str(valid_for_object_level),
+                                        str(full_dict[(app_label, code_name, model_name)])
                                     )
                                 )
                                 full_dict[(app_label, code_name, model_name)].valid_for_object_level = valid_for_object_level
@@ -174,7 +174,7 @@ class Command(BaseCommand):
                         found_perms_list.count(dup_key),
                     )
                 )
-            raise(ImproperlyConfigured("CSW permissions not unique"))
+            raise ImproperlyConfigured
         # find old permissions
         old_perms = set(full_dict.keys()) - found_perms
         deleted = len(old_perms)

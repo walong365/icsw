@@ -21,7 +21,7 @@
 #
 """ show command helps """
 
-from __future__ import print_function, unicode_literals
+
 
 from initat.tools import process_tools
 

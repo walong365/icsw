@@ -36,7 +36,7 @@ class network_device_type(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'network_device_type'
+        db_table = 'network_device_type'
         app_label = "backbone"
 
 
@@ -54,7 +54,7 @@ class network_type(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'network_type'
+        db_table = 'network_type'
         app_label = "backbone"
 
 
@@ -87,7 +87,7 @@ class network(models.Model):
     enforce_unique_ips = models.BooleanField(default=False)
 
     class Meta:
-        db_table = u'network'
+        db_table = 'network'
         app_label = "backbone"
 
 
@@ -103,7 +103,7 @@ class net_ip(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u"netip"
+        db_table = "netip"
         app_label = "backbone"
 
 
@@ -149,7 +149,7 @@ class netdevice(models.Model):
     snmp_oper_status = models.IntegerField(default=0)
 
     class Meta:
-        db_table = u'netdevice'
+        db_table = 'netdevice'
         ordering = ("snmp_idx", "devname",)
         app_label = "backbone"
 
@@ -165,7 +165,7 @@ class netdevice_speed(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'netdevice_speed'
+        db_table = 'netdevice_speed'
         ordering = ("speed_bps", "full_duplex")
         app_label = "backbone"
 
@@ -183,7 +183,7 @@ class peer_information(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'peer_information'
+        db_table = 'peer_information'
         app_label = "backbone"
 
 

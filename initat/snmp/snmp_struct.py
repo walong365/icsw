@@ -78,7 +78,7 @@ class ResultNode(object):
             _state = server_command.SRV_REPLY_STATE_WARN
         else:
             _state = server_command.SRV_REPLY_STATE_OK
-        return unicode(self), _state
+        return str(self), _state
 
 
 class MonCheckDefinition(object):
@@ -164,7 +164,7 @@ class ifSNMPStruct(object):
         self.in_unknown_protos = in_dict.get(15, 0)
 
     def __repr__(self):
-        return u"if {} ({:d}), MTU is {:d}, type is {:d}".format(
+        return "if {} ({:d}), MTU is {:d}, type is {:d}".format(
             self.name,
             self.idx,
             self.mtu,
@@ -224,15 +224,15 @@ class simple_snmp_oid(object):
         self._target_value = kwargs.get("target_value", None)
         if type(oid[0]) in [tuple, list] and len(oid) == 1:
             oid = oid[0]
-        if type(oid) == tuple and len(oid) == 1 and isinstance(oid[0], basestring):
+        if type(oid) == tuple and len(oid) == 1 and isinstance(oid[0], str):
             oid = oid[0]
         # store oid in tuple-form
-        if isinstance(oid, basestring):
+        if isinstance(oid, str):
             self._oid = tuple([int(val) for val in oid.split(".")])
         else:
             self._oid = oid
         self._oid_len = len(self._oid)
-        self._str_oid = ".".join(["{:d}".format(i_val) if type(i_val) in [int, long] else i_val for i_val in self._oid])
+        self._str_oid = ".".join(["{:d}".format(i_val) if type(i_val) in [int, int] else i_val for i_val in self._oid])
 
     def has_max_oid(self):
         return False
@@ -248,7 +248,7 @@ class simple_snmp_oid(object):
         self.__idx = -1
         return self
 
-    def next(self):
+    def __next__(self):
         self.__idx += 1
         if self.__idx == self._oid_len:
             raise StopIteration
@@ -257,9 +257,9 @@ class simple_snmp_oid(object):
 
     def get_value(self, p_mod):
         if self._target_value is not None:
-            if isinstance(self._target_value, basestring):
+            if isinstance(self._target_value, str):
                 return p_mod.OctetString(self._target_value)
-            elif type(self._target_value) in [int, long]:
+            elif type(self._target_value) in [int, int]:
                 return p_mod.Integer(self._target_value)
             else:
                 return p_mod.Null("")

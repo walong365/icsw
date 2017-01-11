@@ -41,18 +41,18 @@ OBJ_DICT = {
 
 def main():
     if len(sys.argv) != 3:
-        print "need group und user XML name"
+        print("need group und user XML name")
         sys.exit(-1)
     _xml = {}
     for xml_type, name in zip(["group", "user"], sys.argv[1:3]):
         _xml[xml_type] = etree.fromstring(codecs.open(name, "r", "utf-8").read())  # @UndefinedVariable
-        print(
+        print((
             "read {} from {}, found {}".format(
                 xml_type,
                 name,
                 logging_tools.get_plural("entry", len(_xml[xml_type])),
             )
-        )
+        ))
     # integer / boolean fields
     int_fields = ["uid", "gid", "ggroup_idx", "user_idx", "ggroup"]
     boolean_fields = ["active"]
@@ -92,33 +92,33 @@ def main():
         for new_obj in _xml[c_type]:
             # print etree.tostring(new_obj, pretty_print=True)
             src_dict = dict([(key, new_obj.xpath(".//field[@name='%s']/text()" % (key))) for key in new_obj.xpath(".//field[@name]/@name")])
-            src_dict = dict([(key, value[0] if len(value) else None) for key, value in src_dict.iteritems()])
+            src_dict = dict([(key, value[0] if len(value) else None) for key, value in src_dict.items()])
             prim_value = src_dict[sprim_field]
-            for key in src_dict.iterkeys():
+            for key in src_dict.keys():
                 if key in int_fields:
                     src_dict[key] = int(src_dict[key])
                 elif key in boolean_fields:
                     src_dict[key] = True if int(src_dict[key]) else False
                 else:
-                    src_dict[key] = unicode(src_dict[key])
+                    src_dict[key] = str(src_dict[key])
             try:
                 db_obj = new_ot.objects.get(Q(**{prim_field: prim_value}))
             except new_ot.DoesNotExist:
-                print("%s with %s='%s' not found, creating new" % (
+                print(("%s with %s='%s' not found, creating new" % (
                     c_type,
                     prim_field,
                     prim_value)
-                )
+                ))
                 db_obj = new_ot()
                 if c_type == "user":
                     db_obj.group = group_lut[src_dict["ggroup"]]
                 db_obj.save()
             else:
-                print("{} with {}='{}' already exists".format(
+                print(("{} with {}='{}' already exists".format(
                     c_type,
                     prim_field,
                     prim_value)
-                )
+                ))
                 if c_type == "user":
                     if db_obj.export_id == 0:
                         db_obj.export = None

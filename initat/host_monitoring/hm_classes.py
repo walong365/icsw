@@ -17,10 +17,10 @@
 #
 """ base class for host-monitoring modules """
 
-from __future__ import unicode_literals, print_function
+
 
 import argparse
-import cPickle
+import pickle
 import marshal
 import subprocess
 import time
@@ -30,7 +30,7 @@ from initat.tools import logging_tools, server_command
 
 def net_to_sys(in_val):
     try:
-        result = cPickle.loads(in_val)
+        result = pickle.loads(in_val)
     except:
         try:
             result = marshal.loads(in_val)
@@ -40,7 +40,7 @@ def net_to_sys(in_val):
 
 
 def sys_to_net(in_val):
-    return cPickle.dumps(in_val)
+    return pickle.dumps(in_val)
 
 
 class CacheObject(object):
@@ -297,7 +297,7 @@ class hm_module(object):
 
     def register_server(self, main_proc):
         self.main_proc = main_proc
-        for _com_name, _com in self.__commands.iteritems():
+        for _com_name, _com in self.__commands.items():
             _com.flush_log_cache()
 
     def base_init(self):
@@ -317,7 +317,7 @@ class hm_module(object):
         self.main_proc.log("[{}] {}".format(self.name, what), log_level)
 
     def __unicode__(self):
-        return u"module {}, priority {:d}".format(self.name, self.Meta.priority)
+        return "module {}, priority {:d}".format(self.name, self.Meta.priority)
 
 
 class hm_command(object):
@@ -351,7 +351,7 @@ class hm_command(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if hasattr(self, "module"):
-            self.module.main_proc.log(u"[{}] {}".format(self.name, what), log_level)
+            self.module.main_proc.log("[{}] {}".format(self.name, what), log_level)
         else:
             self.__log_cache.append((what, log_level))
 
@@ -412,7 +412,7 @@ class mvect_entry(object):
             self.value = kwargs.get("value", self.default)
             self.v_type = {
                 type(0): "i",
-                type(0L): "i",
+                type(0): "i",
                 type(0.0): "f",
             }.get(type(self.default), "s")
         self.valid_until = kwargs.get("valid_until", None)
@@ -459,7 +459,7 @@ class mvect_entry(object):
     def get_form_entry(self, idx, max_num_keys):
         act_line = []
         sub_keys = (self.name.split(".") + [""] * max_num_keys)[0:max_num_keys]
-        for key_idx, sub_key in zip(xrange(max_num_keys), sub_keys):
+        for key_idx, sub_key in zip(range(max_num_keys), sub_keys):
             act_line.append(logging_tools.form_entry("{}{}".format("" if (key_idx == 0 or sub_key == "") else ".", sub_key), header="key{:d}".format(key_idx)))
         # check for unknow
         if self.value is None:
@@ -503,7 +503,7 @@ class mvect_entry(object):
     def _build_info_string(self):
         ret_str = self.info
         ref_p = self.name.split(".")
-        for idx in xrange(len(ref_p)):
+        for idx in range(len(ref_p)):
             ret_str = ret_str.replace("${:d}".format(idx + 1), ref_p[idx])
         return ret_str
 

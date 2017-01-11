@@ -22,7 +22,7 @@
 
 """ Serializers for license related objects (ova) """
 
-from __future__ import unicode_literals, print_function
+
 
 import logging
 

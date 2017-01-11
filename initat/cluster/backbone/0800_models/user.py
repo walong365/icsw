@@ -258,7 +258,7 @@ class user(models.Model):
         return True
 
     class Meta:
-        db_table = u'user'
+        db_table = 'user'
         ordering = ("login", "group__groupname")
         app_label = "backbone"
 
@@ -293,7 +293,7 @@ class group(models.Model):
         return True
 
     class Meta:
-        db_table = u'ggroup'
+        db_table = 'ggroup'
         ordering = ("groupname",)
         app_label = "backbone"
 
@@ -305,7 +305,7 @@ class user_device_login(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'user_device_login'
+        db_table = 'user_device_login'
         app_label = "backbone"
 
 

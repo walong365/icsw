@@ -21,7 +21,7 @@
 """ rms-server, license monitoring part """
 
 # from initat.cluster.backbone.models.functions import cluster_timezone
-from __future__ import print_function, unicode_literals
+
 
 import datetime
 import itertools
@@ -59,7 +59,7 @@ def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
     a, b = itertools.tee(iterable)
     next(b, None)
-    return itertools.izip(a, b)
+    return zip(a, b)
 
 
 class LicenseProcess(threading_tools.process_obj):
@@ -119,8 +119,8 @@ class LicenseProcess(threading_tools.process_obj):
             [
                 "{}={}".format(
                     _key,
-                    unicode(_value) if (isinstance(_value, basestring) or type(_value) in [int, long]) else str(_value.pk)
-                ) for _key, _value in kwargs.iteritems()
+                    str(_value) if (isinstance(_value, str) or type(_value) in [int, int]) else str(_value.pk)
+                ) for _key, _value in kwargs.items()
             ]
         )
         if full_key not in _obj_cache:
@@ -222,7 +222,7 @@ class LicenseProcess(threading_tools.process_obj):
             srv_com["license_usage"] = E.license_overview(
                 E.licenses(
                     *[
-                        _lic.get_xml(with_usage=True) for _lic in self.__elo_obj.licenses.itervalues()
+                        _lic.get_xml(with_usage=True) for _lic in self.__elo_obj.licenses.values()
                     ]
                 )
             )
@@ -232,7 +232,7 @@ class LicenseProcess(threading_tools.process_obj):
                 "no elo object defined",
                 server_command.SRV_REPLY_STATE_ERROR
             )
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+        self.send_pool_message("remote_call_async_result", str(srv_com))
         del srv_com
 
     def _update_coarse_data(self):
@@ -242,7 +242,7 @@ class LicenseProcess(threading_tools.process_obj):
 
         def create_timespan_entry_from_raw_data(start, end, duration_type, site):
             # last earlier need not exist
-            last_earlier_time = ext_license_check.objects.filter(date__lte=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
+            last_earlier_time = next(iter(ext_license_check.objects.filter(date__lte=start, ext_license_site=site).aggregate(Max('date')).values()))
             have_earlier_time = last_earlier_time is not None
             if have_earlier_time:
                 last_earlier_check = ext_license_check.objects.filter(date=last_earlier_time)[0]
@@ -252,7 +252,7 @@ class LicenseProcess(threading_tools.process_obj):
                 ).select_related('ext_license_check')
 
             # first later must exist
-            first_later_time = ext_license_check.objects.filter(date__gt=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
+            first_later_time = next(iter(ext_license_check.objects.filter(date__gt=start, ext_license_site=site).aggregate(Max('date')).values()))
             first_later_check = ext_license_check.objects.filter(date=first_later_time)[0]
             first_later_states = ext_license_state.objects.filter(
                 ext_license_check__date=first_later_time,
@@ -383,18 +383,18 @@ class LicenseProcess(threading_tools.process_obj):
                 print('exact', used_avg)
                 print('exact iss', issued_avg)
 
-                used_approximated = lic_state_data.aggregate(Avg('used')).itervalues().next()
+                used_approximated = next(iter(lic_state_data.aggregate(Avg('used')).values()))
 
                 if abs(used_approximated - used_avg) > max((abs(used_approximated) + abs(used_avg)) * 0.01, 0.0001):
                     print('used divergence: ', used_approximated, " ", used_avg, " at ", start, duration_type)
                 print('approx', used_approximated)
-                used_min = lic_state_data.aggregate(Min('used')).itervalues().next()
-                used_max = lic_state_data.aggregate(Max('used')).itervalues().next()
+                used_min = next(iter(lic_state_data.aggregate(Min('used')).values()))
+                used_max = next(iter(lic_state_data.aggregate(Max('used')).values()))
 
-                issued_approximated = lic_state_data.aggregate(Avg('issued')).itervalues().next()
+                issued_approximated = next(iter(lic_state_data.aggregate(Avg('issued')).values()))
                 print('approx iss', issued_approximated)
-                issued_min = lic_state_data.aggregate(Min('issued')).itervalues().next()
-                issued_max = lic_state_data.aggregate(Max('issued')).itervalues().next()
+                issued_min = next(iter(lic_state_data.aggregate(Min('issued')).values()))
+                issued_max = next(iter(lic_state_data.aggregate(Max('issued')).values()))
 
                 myround = lambda x: round(x, 2)
 
@@ -476,7 +476,7 @@ class LicenseProcess(threading_tools.process_obj):
 
                 # sanity check
                 estimated_usages = used_approximated * len(lic_state_data)
-                actual_usages = sum(_version_frequencies.itervalues())
+                actual_usages = sum(_version_frequencies.values())
                 # `used` is rounded, so might not be a perfect match
                 soft_limit = max((actual_usages + estimated_usages) * 0.001, 1)
                 hard_limit = max((actual_usages + estimated_usages) * 0.1, 1)
@@ -548,7 +548,7 @@ class LicenseProcess(threading_tools.process_obj):
         #    if log_level > logging_tools.LOG_LEVEL_WARN:
         #        self.log(log_line, log_level)
         # sge_license_tools.calculate_usage(actual_licenses)
-        configured_lics = [_key for _key, _value in elo_obj.licenses.iteritems() if _value.is_used]
+        configured_lics = [_key for _key, _value in elo_obj.licenses.items() if _value.is_used]
         self.write_ext_data(elo_obj.licenses)
         if self._modify_sge:
             self._set_sge_global_limits(elo_obj.licenses, configured_lics)
@@ -560,7 +560,7 @@ class LicenseProcess(threading_tools.process_obj):
             _lic = actual_licenses[_cl]
             _new_dict[_lic.name] = _lic.get_sge_available()
         # log differences
-        _diff_keys = [_key for _key in _new_dict.iterkeys() if _new_dict[_key] != self._sge_lic_set.get(_key, None)]
+        _diff_keys = [_key for _key in _new_dict.keys() if _new_dict[_key] != self._sge_lic_set.get(_key, None)]
         if _diff_keys:
             self.log(
                 "changing {}: {}".format(
@@ -593,7 +593,7 @@ class LicenseProcess(threading_tools.process_obj):
         all_server_addrs = set(
             sum(
                 [
-                    act_lic.get_license_server_addresses() for act_lic in actual_licenses.values() if act_lic.license_type == "simple"
+                    act_lic.get_license_server_addresses() for act_lic in list(actual_licenses.values()) if act_lic.license_type == "simple"
                 ],
                 []
             )
@@ -624,13 +624,13 @@ class LicenseProcess(threading_tools.process_obj):
         drop_com = server_command.srv_command(command="set_vector")
         add_obj = drop_com.builder("values")
         cur_time = time.time()
-        for lic_stuff in actual_licenses.itervalues():
+        for lic_stuff in actual_licenses.values():
             for cur_mve in lic_stuff.get_mvect_entries(hm_classes.mvect_entry):
                 cur_mve.valid_until = cur_time + 120
                 add_obj.append(cur_mve.build_xml(drop_com.builder))
         drop_com["vector_loadsensor"] = add_obj
         drop_com["vector_loadsensor"].attrib["type"] = "vector"
-        send_str = unicode(drop_com)
+        send_str = str(drop_com)
         self.log("sending {:d} bytes to vector_socket".format(len(send_str)))
         self.vector_socket.send_unicode(send_str)
 

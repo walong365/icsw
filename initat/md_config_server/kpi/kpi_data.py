@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from __future__ import unicode_literals, print_function
+
 
 import collections
 import json
@@ -36,6 +36,7 @@ from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiRR
     KpiServiceObject, KpiSet
 from initat.md_sync_server.common import LiveSocket
 from initat.tools import logging_tools
+from functools import reduce
 
 
 class KpiData(object):
@@ -180,7 +181,7 @@ class KpiData(object):
             self.icinga_socket = LiveSocket.get_mon_live_socket(self.log)
         except IOError as e:
             self.log(
-                u"error when opening monitoring socket: {}".format(e),
+                "error when opening monitoring socket: {}".format(e),
                 logging_tools.LOG_LEVEL_ERROR
             )
             raise
@@ -271,24 +272,24 @@ class KpiData(object):
                 raise Exception("host list is None")
         except Exception as e:
             self.log(
-                u"error when loading memcache host list: {}".format(e),
+                "error when loading memcache host list: {}".format(e),
                 logging_tools.LOG_LEVEL_ERROR
             )
         else:
             host_list = json.loads(host_list_mc)
 
-            for host_uuid, host_data in host_list.iteritems():
+            for host_uuid, host_data in host_list.items():
                 try:
                     host_db = device_full_names[host_data[1]]
                 except KeyError:
                     self.log(
-                        u"device {} does not exist but is referenced in rrd data".format(host_data[1]),
+                        "device {} does not exist but is referenced in rrd data".format(host_data[1]),
                         logging_tools.LOG_LEVEL_WARN
                     )
                 else:
                     if (host_data[0] + 60 * 60) < time.time():
                         self.log(
-                            u"data for {} is very old ({})".format(
+                            "data for {} is very old ({})".format(
                                 host_data[1],
                                 time.ctime(host_data[0])
                             )
@@ -310,7 +311,7 @@ class KpiData(object):
                             ) for ve in vector_entries
                         )
                     else:
-                        self.log(u"no memcache data for {} ({})".format(host_data[1], host_uuid))
+                        self.log("no memcache data for {} ({})".format(host_data[1], host_uuid))
 
         return host_rrd_data
 
@@ -392,7 +393,7 @@ class VE(object):
         self.format, self.key, self.info, self.unit, self.v_type, self.value, self.base, self.factor = args
 
     def __repr__(self):
-        return u"ve {}".format(self.key)
+        return "ve {}".format(self.key)
 
     def get_value(self):
         return self.value * self.factor

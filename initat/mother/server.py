@@ -21,7 +21,7 @@
 #
 """ mother daemon """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 
@@ -116,7 +116,7 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
             self.send_to_process(
                 "kernel",
                 "srv_command",
-                unicode(server_command.srv_command(command="check_kernel_dir", insert_all_found="1"))
+                str(server_command.srv_command(command="check_kernel_dir", insert_all_found="1"))
             )
             # restart hoststatus
             self.send_to_process("command", "delay_command", "/etc/init.d/hoststatus restart", delay_time=5)
@@ -170,7 +170,7 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
         # remove node with namespace, hack
         _id_el = srv_com.tree.find(".//ns:async_helper_id", namespaces={"ns": server_command.XML_NS})
         _id_el.getparent().remove(_id_el)
-        srv_com = server_command.add_namespace(unicode(srv_com))
+        srv_com = server_command.add_namespace(str(srv_com))
         srv_com["async_helper_id"] = _id_el.text
         return srv_com
 
@@ -214,7 +214,7 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
         zmq_id = "{}:hoststatus:".format(zmq_id)
         try:
             self.main_socket.send_unicode(zmq_id, zmq.SNDMORE)  # @UndefinedVariable
-            self.main_socket.send_unicode(unicode(com_str))
+            self.main_socket.send_unicode(str(com_str))
         except:
             self._log_con_error(zmq_id, dst_addr, process_tools.get_except_info())
         else:
@@ -320,12 +320,12 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
                 ("is_clean", False)]
         }
         for mod_status in status.objects.filter(Q(allow_boolean_modify=True)):
-            cur_uc = unicode(mod_status)
+            cur_uc = str(mod_status)
             if mod_status.status in map_dict:
                 for key, value in map_dict[mod_status.status]:
                     setattr(mod_status, key, value)
                 mod_status.allow_boolean_modify = False
-                new_uc = unicode(mod_status)
+                new_uc = str(mod_status)
                 self.log("changed from {} to {}".format(cur_uc, new_uc))
                 mod_status.save()
             else:
@@ -363,12 +363,12 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
             new_exports = {}
             exp_nets = ["{}/{}".format(cur_net.network, cur_net.netmask) for cur_net in valid_nets]
             if exp_nets:
-                for exp_dir, rws in exp_dict.iteritems():
+                for exp_dir, rws in exp_dict.items():
                     act_exp_dir = os.path.join(global_config["TFTP_DIR"], exp_dir)
                     if act_exp_dir not in act_exports:
                         new_exports[act_exp_dir] = " ".join(["{}({},no_root_squash,async,no_subtree_check)".format(exp_net, rws) for exp_net in exp_nets])
             if new_exports:
-                open(exp_file, "a").write("\n".join(["{:<30s} {}".format(x, y) for x, y in new_exports.iteritems()] + [""]))
+                open(exp_file, "a").write("\n".join(["{:<30s} {}".format(x, y) for x, y in new_exports.items()] + [""]))
                 # hm, dangerous, FIXME
                 for _srv_name in self.srv_helper.find_services(".*nfs.*serv.*"):
                     self.srv_helper.service_command(_srv_name, "restart")
@@ -405,7 +405,7 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
             "",
         ]
         # fix rights
-        os.chmod(_scan_file, 0755)
+        os.chmod(_scan_file, 0o755)
         slcn = "/etc/rsyslog.d/mother.conf"
         file(slcn, "w").write("\n".join(rsyslog_lines))
         self._restart_syslog()

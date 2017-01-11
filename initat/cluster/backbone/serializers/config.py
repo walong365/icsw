@@ -127,13 +127,13 @@ class config_dump_serializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         _sets = {}
-        for key in validated_data.iterkeys():
+        for key in validated_data.keys():
             # remove all subsets, needed because of limitations in DRF
             if key.endswith("_set"):
                 _sets[key] = validated_data[key]
                 del validated_data[key]
-        print "V=", validated_data
-        print "C"
+        print("V=", validated_data)
+        print("C")
         return config(**validated_data)
 
     class Meta:

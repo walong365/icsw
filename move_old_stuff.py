@@ -10,11 +10,11 @@ OLD_DIR_NAME = ".old"
 
 def main():
     if len(sys.argv) != 2:
-        print "Need directory"
+        print("Need directory")
         sys.exit(-1)
     start_dir = sys.argv[1]
     if not os.path.isdir(start_dir):
-        print "'%s' is not a directory" % (start_dir)
+        print("'%s' is not a directory" % (start_dir))
         sys.exit(-2)
     for dir_name, dir_list, file_list in os.walk(start_dir):
         if dir_name.endswith(OLD_DIR_NAME):
@@ -48,8 +48,8 @@ def main():
                                     act_arch,
                                     []
                                 ).append(([int(part) if part.isdigit() else part for part in act_ver.split(".")], int(act_rel), file_name))
-            for rpm_name, arch_dict in rpm_dict.iteritems():
-                for act_arch, rpm_list in arch_dict.iteritems():
+            for rpm_name, arch_dict in rpm_dict.items():
+                for act_arch, rpm_list in arch_dict.items():
                     rpm_list.sort()
                     while len(rpm_list) > 3:
                         ver_stuff, rel_stuff, full_name = rpm_list.pop(0)

@@ -18,7 +18,7 @@
 
 """ check smartctl status """
 
-import commands
+import subprocess
 
 from initat.host_monitoring import hm_classes
 from initat.host_monitoring import limits
@@ -59,7 +59,7 @@ class _general(hm_classes.hm_module):
 
     def smcall(self, args):
         cmd_line = "{} {}".format(self.smartctl_bin, args)
-        c_stat, c_out = commands.getstatusoutput(cmd_line)
+        c_stat, c_out = subprocess.getstatusoutput(cmd_line)
         if c_stat:
             self.log(
                 "error calling {} ({:d}): {}".format(
@@ -71,7 +71,7 @@ class _general(hm_classes.hm_module):
         return c_stat, c_out.split("\n")
 
     def update_smart(self, dev_list=[]):
-        dev_list = dev_list or self.devices.keys()
+        dev_list = dev_list or list(self.devices.keys())
         for dev in dev_list:
             c_stat, c_out = self.smcall("-a {} -q errorsonly".format(dev))
             self.devices[dev].update(
@@ -101,7 +101,7 @@ class smartstat_command(hm_classes.hm_command):
                     )
             else:
                 self.module.update_smart()
-                srv_com["smartstat"] = [self.module.devices[_dev] for _dev in self.module.devices.keys()]
+                srv_com["smartstat"] = [self.module.devices[_dev] for _dev in list(self.module.devices.keys())]
         else:
             srv_com.set_result(
                 "no smartctl binary found",

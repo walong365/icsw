@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import commands
+import subprocess
 import os
 import os.path
 import sys
@@ -74,7 +74,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                         break
             self.__services = {}
             act_service = None
-            for line in commands.getoutput("%s -e" % (self.__exe_dict["omsetsvc"])).split("\n"):
+            for line in subprocess.getoutput("%s -e" % (self.__exe_dict["omsetsvc"])).split("\n"):
                 if line.startswith("Details"):
                     if act_service:
                         self.__services[act_service["full_name"]] = act_service
@@ -96,7 +96,7 @@ class my_modclass(hm_classes.hm_fileinfo):
             if act_service:
                 self.__services[act_service["full_name"]] = act_service
             act_name = ""
-            for line in commands.getoutput("%s -l" % (self.__exe_dict["omshowlvl"])).split("\n"):
+            for line in subprocess.getoutput("%s -l" % (self.__exe_dict["omshowlvl"])).split("\n"):
                 if line.strip():
                     if not line.startswith("\t"):
                         act_name = line.strip()
@@ -105,7 +105,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                             self.__services[act_name]["abbrevs"].append(line.strip())
             # build lookup-dict
             self.__service_lut = {}
-            for full_name, service in self.__services.iteritems():
+            for full_name, service in self.__services.items():
                 self.__service_lut[full_name] = service
                 for abbr in service["abbrevs"]:
                     self.__service_lut[abbr] = service
@@ -130,7 +130,7 @@ class my_modclass(hm_classes.hm_fileinfo):
             res_dict = {}
             for queue_name in queue_names or SCALIX_QUEUES:
                 try:
-                    cstat, result = commands.getstatusoutput("%s -q %s" % (self.__exe_dict[com_name], queue_name))
+                    cstat, result = subprocess.getstatusoutput("%s -q %s" % (self.__exe_dict[com_name], queue_name))
                     if cstat:
                         res_dict[queue_name] = "error %s gave (%d) %s" % (com_name, cstat, result)
                     else:
@@ -146,7 +146,7 @@ class my_modclass(hm_classes.hm_fileinfo):
         com_name = "omshowu"
         if self.__exe_dict[com_name]:
             try:
-                cstat, result = commands.getstatusoutput("%s -m all" % (self.__exe_dict[com_name]))
+                cstat, result = subprocess.getstatusoutput("%s -m all" % (self.__exe_dict[com_name]))
                 if cstat:
                     return "error %s gave (%d) %s" % (com_name, cstat, result)
                 else:
@@ -162,7 +162,7 @@ class my_modclass(hm_classes.hm_fileinfo):
         com_name = "omshowu"
         if self.__exe_dict[com_name]:
             try:
-                cstat, result = commands.getstatusoutput("%s -n '%s' -f" % (self.__exe_dict[com_name],
+                cstat, result = subprocess.getstatusoutput("%s -n '%s' -f" % (self.__exe_dict[com_name],
                                                                             user_name))
                 if cstat:
                     return "error %s gave (%d) %s" % (com_name, cstat, result)
@@ -172,7 +172,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                     total_size = 0
                     if self.__exe_dict["sxdu"]:
                         try:
-                            cstat, result = commands.getstatusoutput("%s -a '%s'" % (self.__exe_dict["sxdu"],
+                            cstat, result = subprocess.getstatusoutput("%s -a '%s'" % (self.__exe_dict["sxdu"],
                                                                                      user_name))
                         except:
                             pass
@@ -180,7 +180,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                             total_size = int(result.split()[0]) * 1024
                     if self.__exe_dict["omlimit"]:
                         try:
-                            cstat, result = commands.getstatusoutput("%s -u '%s' -r" % (self.__exe_dict["omlimit"],
+                            cstat, result = subprocess.getstatusoutput("%s -u '%s' -r" % (self.__exe_dict["omlimit"],
                                                                                         user_name))
                         except:
                             pass
@@ -204,7 +204,7 @@ class my_modclass(hm_classes.hm_fileinfo):
         com_name = "omstat"
         if self.__exe_dict[com_name]:
             try:
-                cstat, result = commands.getstatusoutput("%s -s ; %s -a" % (self.__exe_dict[com_name],
+                cstat, result = subprocess.getstatusoutput("%s -s ; %s -a" % (self.__exe_dict[com_name],
                                                                             self.__exe_dict[com_name]))
                 if cstat:
                     return "error %s gave (%d) %s" % (com_name, cstat, result)
@@ -337,5 +337,5 @@ class scalix_serviceinfo_command(hm_classes.hmb_command):
 
 
 if __name__ == "__main__":
-    print "This is a loadable module."
+    print("This is a loadable module.")
     sys.exit(0)

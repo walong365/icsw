@@ -17,7 +17,7 @@
 #
 """ various servers, background inotify import script """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 
@@ -41,8 +41,8 @@ class ServerBackgroundNotifyMixin(object):
         self.srv_routing = SrvTypeRouting(force=True, logger=self.log_template)
         if self.srv_routing.local_device.pk != self.__server_idx:
             self.log(
-                u"local_device from srv_routing '{}' ({:d}) differs from SERVER_IDX '{:d}'".format(
-                    unicode(self.srv_routing.local_device),
+                "local_device from srv_routing '{}' ({:d}) differs from SERVER_IDX '{:d}'".format(
+                    str(self.srv_routing.local_device),
                     self.srv_routing.local_device.pk,
                     self.__server_idx,
                 ),
@@ -123,7 +123,7 @@ class ServerBackgroundNotifyMixin(object):
         _run_job = background_job_run.objects.select_related("background_job").get(Q(pk=_id))
         _run_job.state = server_command.log_level_to_srv_reply(_state)
         _run_job.result = _str
-        _run_job.result_xml = unicode(srv_com)
+        _run_job.result_xml = str(srv_com)
         _run_job.end = cluster_timezone.localize(datetime.datetime.now())
         _run_job.save()
         self.bg_notify_check_for_bgj_finish(_run_job.background_job)
@@ -139,7 +139,7 @@ class ServerBackgroundNotifyMixin(object):
                     cur_bg.set_state(BackgroundJobState.done, result=max(_states))
                 else:
                     cur_bg.set_state(BackgroundJobState.done, result=server_command.SRV_REPLY_STATE_UNSET)
-                self.log("{} finished".format(unicode(cur_bg)))
+                self.log("{} finished".format(str(cur_bg)))
         else:
             # no subcommands, mark as done
             cur_bg.set_state(BackgroundJobState.done)
@@ -167,10 +167,10 @@ class ServerBackgroundNotifyMixin(object):
                     _rsa = self.send_to_remote_server(_srv_type, _send_xml)
                     if _rsa.success:
                         self.log(
-                            u"command {} to remote {} on {} {}".format(
+                            "command {} to remote {} on {} {}".format(
                                 _send_xml["*command"],
                                 _srv_type.name,
-                                unicode(_run_job.server),
+                                str(_run_job.server),
                                 _rsa.connection_string,
                             )
                         )

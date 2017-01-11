@@ -19,7 +19,7 @@
 #
 """ build control structure for md-config-server """
 
-from __future__ import unicode_literals, print_function
+
 
 import time
 
@@ -49,7 +49,7 @@ class BuildControl(object):
         self.log("initial config_version is {:d}".format(self.version))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__process.log(u"[BC] {}".format(what), log_level)
+        self.__process.log("[BC] {}".format(what), log_level)
 
     def distribution_info(self, dist_info):
         # dist gets called as soon as the syncer process is up and running
@@ -106,7 +106,7 @@ class BuildControl(object):
                 getattr(self, _func_name)(srv_com)
             else:
                 self.log("buffering command {}".format(srv_com["*command"]), logging_tools.LOG_LEVEL_WARN)
-                self.__pending_commands.append(unicode(srv_com))
+                self.__pending_commands.append(str(srv_com))
         else:
             self.log("unknown function '{}'".format(_func_name), logging_tools.LOG_LEVEL_CRITICAL)
 
@@ -187,7 +187,7 @@ class BuildControl(object):
         if _mode not in [BuildModesEnum.some_check]:
             # build config for all hosts, one process per slave
             _b_list.extend(
-                [_slave.serialize() for _slave in self.__slave_configs.itervalues()]
+                [_slave.serialize() for _slave in self.__slave_configs.values()]
             )
 
         self._build_slave_names = []
@@ -201,7 +201,7 @@ class BuildControl(object):
                 _mode.name,
                 _ser_info,
                 self.version,
-                unicode(srv_com),
+                str(srv_com),
                 *args
             )
             if _mode in [BuildModesEnum.some_slave, BuildModesEnum.all_slave, BuildModesEnum.sync_users_slave]:
@@ -236,7 +236,7 @@ class BuildControl(object):
                 "fetch_dyn_config",
                 BuildModesEnum.dyn_master.name,
                 self.__master_config.serialize(),
-                unicode(srv_com),
+                str(srv_com),
                 *dev_pks
             )
             self.__dc_running = True

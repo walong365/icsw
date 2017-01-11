@@ -17,9 +17,9 @@
 #
 """ cluster-server, Infiniband query """
 
-from __future__ import unicode_literals, print_function
 
-import commands
+
+import subprocess
 import time
 
 from django.db.models import Q
@@ -241,11 +241,11 @@ class DeviceLookup(object):
         self.__unresolvable = set()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com(u"[DL] {}".format(what), log_level)
+        self.__log_com("[DL] {}".format(what), log_level)
 
     def check_freshness(self):
         cur_time = time.time()
-        to_delete = [key for key, value in self.__cache.iteritems() if value.too_old(cur_time)]
+        to_delete = [key for key, value in self.__cache.items() if value.too_old(cur_time)]
         if to_delete:
             self.log("removing {} from cache".format(logging_tools.get_plural("entry", len(to_delete))))
             for _to_del in to_delete:
@@ -311,7 +311,7 @@ class IBQueryClass(BackgroundBase):
         self.__dl.check_freshness()
         if self._ibq_bin:
             _cmd = "{} --counters --errors --details -k -K 2>/dev/null".format(process_tools.find_file("ibqueryerrors"))
-            _stat, _out = commands.getstatusoutput(_cmd)
+            _stat, _out = subprocess.getstatusoutput(_cmd)
             self.ibd.feed(_out)
             m_vectors = self.ibd.build_vectors(self.__dl)
         else:

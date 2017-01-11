@@ -85,7 +85,7 @@ def sql_iterator(queryset, step=2000):
         step_size = step
     steps = int(math.ceil(length / float(step_size)))
 
-    for i in xrange(steps):
+    for i in range(steps):
         for obj in queryset[i * step_size:(i + 1) * step_size]:
             yield obj
 
@@ -247,7 +247,7 @@ class Command(BaseCommand):
                         error(msg)
                         raise CommandError(msg)
 
-                    if app in app_list.keys():
+                    if app in list(app_list.keys()):
                         if app_list[app] and model not in app_list[app]:
                             app_list[app].append(model)
                     else:
@@ -268,7 +268,7 @@ class Command(BaseCommand):
         # Process the list of models
         deps = Dependencies()
         models = set()
-        for app, model_list in app_list.items():
+        for app, model_list in list(app_list.items()):
             if model_list is None:
                 model_list = get_models(app)
 
@@ -287,7 +287,7 @@ class Command(BaseCommand):
             except:
                 log(
                     "error dumping model {}: {}".format(
-                        unicode(model),
+                        str(model),
                         process_tools.get_except_info(),
                     )
                 )
@@ -304,13 +304,13 @@ class Command(BaseCommand):
             # print "The following database entries where found to be missing:"
             # for entry in self.validator.missing_entries:
             #    print "%s=%s" % entry
-            print "Not dumped: %d" % not_dumped
-            print "All missing entries are"
+            print("Not dumped: %d" % not_dumped)
+            print("All missing entries are")
             for entry in self.validator.missing_entries_count.most_common():
-                print "%s: %s times" % entry
+                print("%s: %s times" % entry)
 
         if self.validate:
-            print "Writing dot file"
+            print("Writing dot file")
             self.validator.write_dot()
 
         with open(os.path.join(self.directory, "DEPENDENCIES"), "w") as f:
@@ -343,7 +343,7 @@ class Command(BaseCommand):
                     value = getattr(obj, key)
 
                 if isinstance(value, bool):
-                    value = u"t" if value else u"f"
+                    value = "t" if value else "f"
                 # ForeignKey or OneToOne
                 elif isinstance(value, Model):
                     value = smart_unicode(value.pk)
@@ -368,18 +368,18 @@ class Command(BaseCommand):
                 elif isinstance(value, array.array):
                     value = smart_unicode(base64.b64encode(bz2.compress(value.tostring())))
                 elif value is None:
-                    value = ur"\N"
+                    value = r"\N"
                 elif value == "\x00":
-                    value = u""
+                    value = ""
                 else:
                     # Escape all backslashes, tab, newline and CR
                     value = smart_unicode(value)
-                    value = value.replace("\\", ur"\\")
-                    value = value.replace("\t", ur"\t").replace("\n", ur"\n").replace("\r", ur"\r")
+                    value = value.replace("\\", r"\\")
+                    value = value.replace("\t", r"\t").replace("\n", r"\n").replace("\r", r"\r")
 
                 converted_values.append(value)
 
-            return u"%s\n" % u"\t".join(converted_values)
+            return "%s\n" % "\t".join(converted_values)
 
         pg_copy = PostgresCopy(model)
         model_file = os.path.join(self.directory, "%s_%s" % (model._meta.app_label, model._meta.object_name))
@@ -407,7 +407,7 @@ class Command(BaseCommand):
         msg = "%s (%s)" % (model._meta.object_name, logging_tools.get_plural("entry", int(obj_count)))
         log(msg)
         if self.progress:
-            print msg
+            print(msg)
 
         if self.validate:
             # self.validator.clear()
@@ -441,15 +441,15 @@ class Command(BaseCommand):
 
         if self.stats:
             if self.progress:
-                print
+                print()
             if self.iterator is not None:
-                print "    Iterator: %s" % self.iterator.name
-            print "    Count: %s" % obj_count
-            print "    DB Queries: %s" % (len(connection.queries) - db_queries)
-            print "    Time : %6.2f s" % (time.time() - time_start)
+                print("    Iterator: %s" % self.iterator.name)
+            print("    Count: %s" % obj_count)
+            print("    DB Queries: %s" % (len(connection.queries) - db_queries))
+            print("    Time : %6.2f s" % (time.time() - time_start))
             if self.bz2:
-                print "    Time bz: %6.2f s" % (time.time() - time_bz_start)
-            print "    RAM  : %6.2f MB" % (mem_profile.max_usage / 1024.0)
+                print("    Time bz: %6.2f s" % (time.time() - time_bz_start))
+            print("    RAM  : %6.2f MB" % (mem_profile.max_usage / 1024.0))
 
         return pg_copy.many_to_many, "%s%s" % (model_file, ".bz2" if self.bz2 else ""), not_dumped
 
@@ -473,12 +473,12 @@ class PostgresCommand(object):
 
 class PostgresCopy(PostgresCommand):
     def header(self):
-        return u"COPY %s (%s) FROM stdin;\n" % (self.quote(self.table),
+        return "COPY %s (%s) FROM stdin;\n" % (self.quote(self.table),
                                                 ",".join((self.quote(x) for x in self.columns)))
 
     @staticmethod
     def footer():
-        return u"\\.\n\n"
+        return "\\.\n\n"
 
     def __str__(self):
         return "<PSQL Copy '%s'>" % self.table
@@ -527,9 +527,9 @@ c.handle("backend.customer", **opts)
         cProfile.run(CODE, "dumpfastprof")
         p = pstats.Stats("dumpfastprof")
         s = "-" * 10
-        print s, "cumulative", s
+        print(s, "cumulative", s)
         p.sort_stats("cumulative").print_stats(20)
-        print s, "time", s
+        print(s, "time", s)
         p.sort_stats("time").print_stats(20)
 
 
@@ -593,7 +593,7 @@ class DatabaseValidator(object):
                                 self.invalid_entries.add(key)
                                 self.add_counting_edge(r_obj._meta.object_name, obj._meta.object_name)
                                 res = new_res
-                elif isinstance(field, (ManyToManyField,)):
+                elif isinstance(field, ManyToManyField):
                     # TODO
                     pass
 

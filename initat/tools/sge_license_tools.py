@@ -24,7 +24,7 @@
 
 """ tools for handling of external license servers """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 import os
@@ -93,7 +93,7 @@ def get_sge_environment(log_com=None):
 def get_sge_log_line(sge_dict):
     return ", ".join(
         [
-            "{} is {}".format(_key, sge_dict[_key]) for _key in sorted(sge_dict.iterkeys())
+            "{} is {}".format(_key, sge_dict[_key]) for _key in sorted(sge_dict.keys())
         ]
     )
 
@@ -364,7 +364,7 @@ class SGELicense(object):
     def handle_complex(self, lic_dict, prev_dict=None):
         prev_dict = prev_dict or {}
         log_lines = []
-        _simple_keys = [_key for _key, _value in lic_dict.iteritems() if _value.license_type == "simple"]
+        _simple_keys = [_key for _key, _value in lic_dict.items() if _value.license_type == "simple"]
         # return log_lines
         for _type in {"total", "used", "limit", "sge_used_requested", "sge_used_issued"}:
             # if self.license_type == "complex" and _type in ["used", "limit"]:
@@ -433,7 +433,7 @@ def handle_license_policy(base_dir, flag=None):
 class LicenseTextFile(object):
     def __init__(self, f_name, **kwargs):
         self.__name = f_name
-        self.__opts = {key: value for key, value in kwargs.iteritems()}
+        self.__opts = {key: value for key, value in kwargs.items()}
         self.__read = False
         if not os.path.isfile(self.__name) and kwargs.get("create", False):
             self.write(kwargs.get("content", []))
@@ -458,11 +458,11 @@ class LicenseTextFile(object):
             file(self.__name, mode).write(
                 "\n".join(
                     [
-                        "{}={}".format(key, value) for key, value in content.iteritems()
+                        "{}={}".format(key, value) for key, value in content.items()
                     ] + [""]
                 )
             )
-        elif isinstance(content, basestring):
+        elif isinstance(content, str):
             file(self.__name, mode).write(content)
         else:
             file(self.__name, mode).write("\n".join(content + [""]))
@@ -500,7 +500,7 @@ def read_text_file(tf_name, ignore_hashes=False):
 
 def build_license_xml(act_site, in_dict):
     lic_xml = E.licenses(site=act_site)
-    for _key, _value in in_dict.iteritems():
+    for _key, _value in in_dict.items():
         lic_xml.append(_value.get_xml())
     return lic_xml
 
@@ -508,7 +508,7 @@ def build_license_xml(act_site, in_dict):
 def handle_complex_licenses(actual_licenses):
     _lines = []
     comp_keys = [
-        _key for _key, _value in actual_licenses.iteritems() if _value.is_used and _value.license_type == "complex"
+        _key for _key, _value in actual_licenses.items() if _value.is_used and _value.license_type == "complex"
     ]
     for comp_key in sorted(comp_keys):
         _lines.extend(actual_licenses[comp_key].handle_complex(actual_licenses))
@@ -595,7 +595,7 @@ def parse_license_lines(lines, act_site, **kwargs):
 
 
 def set_sge_used(lic_dict, used_dict):
-    for _key, _lic in lic_dict.iteritems():
+    for _key, _lic in lic_dict.items():
         if _key in used_dict:
             _lic.sge_used_requested += used_dict[_key]
 
@@ -621,12 +621,12 @@ def parse_sge_used(sge_dict, log_com=None):
                     pass
                 else:
                     _used.setdefault(_req.attrib["name"], []).append(_val)
-    _used = {_key: sum(_value) for _key, _value in _used.iteritems()}
+    _used = {_key: sum(_value) for _key, _value in _used.items()}
     return _used
 
 
 def update_usage(lic_dict, srv_xml):
-    [_value.reset() for _value in lic_dict.itervalues()]
+    [_value.reset() for _value in lic_dict.values()]
     for cur_lic in srv_xml.xpath(".//license[@name]", smart_strings=False):
         name = cur_lic.attrib["name"]
         act_lic = lic_dict.get(name, None)
@@ -646,7 +646,7 @@ def update_usage(lic_dict, srv_xml):
 
 def calculate_usage(actual_licenses):
     # set external_used / used according to the varous sge_used* fields
-    for act_lic in actual_licenses.itervalues():
+    for act_lic in actual_licenses.values():
         if act_lic.is_used:
             act_lic.sge_used = max(act_lic.sge_used_issued, act_lic.sge_used_requested)
             if act_lic.license_type == "simple":
@@ -721,7 +721,7 @@ class LicenseFile(object):
         self.multi_server = False
         self.server_list = []
         _parsed = False
-        if isinstance(self.lic_file_def, basestring):
+        if isinstance(self.lic_file_def, str):
             if self.lic_file_def.count("@"):
                 _parsed = True
                 self.server_list = [
@@ -746,7 +746,7 @@ class LicenseFile(object):
     def __unicode__(self):
         return "LicenseFile with {} ({})".format(
             logging_tools.get_plural("server", self.num_servers),
-            ", ".join([unicode(_srv) for _srv in self.server_list])
+            ", ".join([str(_srv) for _srv in self.server_list])
         )
 
 
@@ -764,12 +764,12 @@ class LicenseCheck(object):
                     kwargs.get("port", "1055"),
                 )
             )
-        self.log(unicode(self.license_file))
+        self.log(str(self.license_file))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if log_level == logging_tools.LOG_LEVEL_OK and not self.verbose:
             return
-        what = u"[lc] {}".format(what)
+        what = "[lc] {}".format(what)
         if self.log_com:
             self.log_com(what, log_level)
         else:
@@ -1032,7 +1032,7 @@ class ExternalLicenses(object):
             self.log(get_sge_log_line(self.__sge_dict))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com(u"[el] {}".format(what), log_level)
+        self.__log_com("[el] {}".format(what), log_level)
 
     def read(self):
         self.__license_dict = parse_license_lines(

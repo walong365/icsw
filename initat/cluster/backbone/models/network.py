@@ -20,7 +20,7 @@
 # -*- coding: utf-8 -*-
 #
 
-from __future__ import unicode_literals, print_function
+
 
 import math
 import logging
@@ -75,7 +75,7 @@ class network_device_type(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'network_device_type'
+        db_table = 'network_device_type'
 
     def match(self, devname):
         if self.allow_virtual_interfaces and devname.count(":") == 1:
@@ -85,7 +85,7 @@ class network_device_type(models.Model):
         return re.match(self.name_re, _m_name)
 
     def info_string(self):
-        return unicode(self)
+        return str(self)
 
     @staticmethod
     def create_new_type(ndev):
@@ -119,7 +119,7 @@ class network_device_type(models.Model):
         return new_ndt
 
     def __unicode__(self):
-        return u"{} ({} [{:d}])".format(
+        return "{} ({} [{:d}])".format(
             self.identifier,
             self.description,
             self.mac_bytes
@@ -179,10 +179,10 @@ class network_type(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'network_type'
+        db_table = 'network_type'
 
     def __unicode__(self):
-        return u"{} ({})".format(
+        return "{} ({})".format(
             self.description,
             self.identifier
         )
@@ -293,7 +293,7 @@ class network(models.Model):
         return self.net_ip_set.all().count()
 
     class Meta:
-        db_table = u'network'
+        db_table = 'network'
 
     def get_info(self):
         all_slaves = self.rel_master_network.all()
@@ -311,10 +311,10 @@ class network(models.Model):
         return log_str
 
     def info_string(self):
-        return unicode(self)
+        return str(self)
 
     def __unicode__(self):
-        return u"{} ({}/{}, {})".format(
+        return "{} ({}/{}, {})".format(
             self.identifier,
             self.network,
             ipvx_tools.get_network_name_from_mask(self.netmask),
@@ -352,7 +352,7 @@ def network_pre_save(sender, **kwargs):
         ip_dict = {
             key: None for key in ["network", "netmask", "broadcast", "gateway"]
         }
-        for key in ip_dict.keys():
+        for key in list(ip_dict.keys()):
             try:
                 ip_dict[key] = ipvx_tools.ipv4(getattr(cur_inst, key))
             except:
@@ -369,7 +369,7 @@ def network_pre_save(sender, **kwargs):
         # check netmask
         _mask = 0
         any_match = False
-        for _idx in xrange(32, -1, -1):
+        for _idx in range(32, -1, -1):
             if _mask == ip_dict["netmask"].value():
                 any_match = True
                 break
@@ -384,7 +384,7 @@ def network_pre_save(sender, **kwargs):
             for _ip in cur_inst.net_ip_set.all():
                 ip_dict.setdefault(_ip.ip, []).append(_ip)
             ip_dict = {
-                key: value for key, value in ip_dict.iteritems() if len(value) > 1
+                key: value for key, value in ip_dict.items() if len(value) > 1
             }
             if ip_dict:
                 raise ValidationError(
@@ -394,7 +394,7 @@ def network_pre_save(sender, **kwargs):
                                 "{}: used {}".format(
                                     _key,
                                     logging_tools.get_plural("time", len(_value)),
-                                ) for _key, _value in ip_dict.iteritems()
+                                ) for _key, _value in ip_dict.items()
                             ]
                         )
                     )
@@ -437,8 +437,8 @@ def network_pre_save(sender, **kwargs):
                         )
                     )
         # set values
-        for key, value in ip_dict.iteritems():
-            setattr(cur_inst, key, unicode(value))
+        for key, value in ip_dict.items():
+            setattr(cur_inst, key, str(value))
 
 
 class net_ip(models.Model):
@@ -493,7 +493,7 @@ class net_ip(models.Model):
         return _valid
 
     class Meta:
-        db_table = u"netip"
+        db_table = "netip"
         verbose_name = "IP address"
 
 
@@ -544,7 +544,7 @@ def net_ip_pre_save(sender, **kwargs):
             raise ValidationError(
                 "Address {} already used, device {}".format(
                     cur_inst.ip,
-                    unicode(cur_inst.netdevice.device)
+                    str(cur_inst.netdevice.device)
                 )
             )
         if cur_inst.network.enforce_unique_ips:
@@ -559,7 +559,7 @@ def net_ip_pre_save(sender, **kwargs):
             else:
                 raise ValidationError(
                     "IP already used for {} (enforce_unique_ips == True)".format(
-                        unicode(present_ip.netdevice.device)
+                        str(present_ip.netdevice.device)
                     )
                 )
 
@@ -747,7 +747,7 @@ class netdevice(models.Model):
         fk_ignore_list = ["net_ip", "peer_information"]
 
     class Meta:
-        db_table = u'netdevice'
+        db_table = 'netdevice'
         ordering = ("snmp_idx", "devname",)
         verbose_name = "Netdevice"
 
@@ -821,7 +821,7 @@ def netdevice_pre_save(sender, **kwargs):
                 else:
                     raise NoMatchingNetworkDeviceTypeFoundError(
                         "nothing found for '{}' ({})".format(
-                            unicode(cur_inst),
+                            str(cur_inst),
                             cur_inst.pk or "new nd"
                         )
                     )
@@ -915,11 +915,11 @@ class netdevice_speed(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'netdevice_speed'
+        db_table = 'netdevice_speed'
         ordering = ("speed_bps", "full_duplex")
 
     def info_string(self):
-        return unicode(self)
+        return str(self)
 
     @staticmethod
     def build_lut():
@@ -942,7 +942,7 @@ class netdevice_speed(models.Model):
             )
         else:
             _speed_str = "unspec."
-        return u"{}, {} duplex, {}".format(
+        return "{}, {} duplex, {}".format(
             _speed_str,
             "full" if self.full_duplex else "half",
             "check via ethtool" if self.check_via_ethtool else "no check"
@@ -1009,7 +1009,7 @@ class peer_information(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"{} [{:d}] {}".format(
+        return "{} [{:d}] {}".format(
             self.s_netdevice.devname,
             self.penalty,
             self.d_netdevice.devname
@@ -1056,7 +1056,7 @@ class peer_information(models.Model):
         )
 
     class Meta:
-        db_table = u'peer_information'
+        db_table = 'peer_information'
         verbose_name = "Peer information"
 
 
@@ -1079,11 +1079,11 @@ def peer_information_pre_save(sender, **kwargs):
         else:
             if _cur_peer.pk != cur_inst.pk:
                 raise ValidationError(
-                    u"peer already exists [{} on {} --- {} on {}]".format(
+                    "peer already exists [{} on {} --- {} on {}]".format(
                         cur_inst.s_netdevice.devname,
-                        unicode(cur_inst.s_netdevice.device),
+                        str(cur_inst.s_netdevice.device),
                         cur_inst.d_netdevice.devname,
-                        unicode(cur_inst.d_netdevice.device),
+                        str(cur_inst.d_netdevice.device),
                     )
                 )
         check_integer(cur_inst, "penalty", min_val=1)

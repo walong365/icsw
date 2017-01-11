@@ -71,12 +71,12 @@ class my_modclass(hm_classes.hm_fileinfo):
                 act_dict = {}
                 for f_name in [y for y in os.listdir(coretemp) if [True for pf in ["input", "label"] if y.endswith(pf)]]:
                     act_dict[f_name] = file("%s/%s" % (coretemp, f_name), "r").read().strip().lower().replace(" ", "")
-                if len(act_dict.keys()) == 2:
+                if len(list(act_dict.keys())) == 2:
                     sens_name = act_dict["temp1_label"]
                     sensor_found_list.append((sens_name, "%s/%s" % (coretemp, "temp1_input")))
                 else:
                     logger.warning("Dict not fully populated or over populated for %s (len is %d)" % (coretemp,
-                                                                                                      len(act_dict.keys())))
+                                                                                                      len(list(act_dict.keys()))))
         logger.info("Starting search for i2c-adapters in %s ..." % (start_path))
         start_path = "/sys/class/i2c-adapter"
         if os.path.isdir(start_path):
@@ -121,7 +121,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                     else:
                         targ_dict[sens_name] = "%s/%s" % (adap, sens_name)
                         logger.info("   setting sensor %-10s to path %s" % (sens_name, targ_dict[sens_name]))
-        logger.info("Saving targ_dict for sensors with %d entries" % (len(targ_dict.keys())))
+        logger.info("Saving targ_dict for sensors with %d entries" % (len(list(targ_dict.keys()))))
         self.targ_dict = targ_dict
 
     def process_client_args(self, opts, hmb):
@@ -174,12 +174,12 @@ class my_modclass(hm_classes.hm_fileinfo):
     def init_m_vect(self, mv, logger):
         if os.path.isfile(self.__sfile_name):
             if os.stat(self.__sfile_name)[stat.ST_MTIME] > self.__sfile_checked:
-                act_keys = [x["key"] for x in self.sens_dict.values()]
+                act_keys = [x["key"] for x in list(self.sens_dict.values())]
                 self.check_for_sensfile(logger)
-                new_keys = [x["key"] for x in self.sens_dict.values()]
+                new_keys = [x["key"] for x in list(self.sens_dict.values())]
                 for del_key in [x for x in act_keys if x not in new_keys]:
                     mv.unreg_entry(del_key)
-        for name, stuff in self.sens_dict.iteritems():
+        for name, stuff in self.sens_dict.items():
             if "key" in stuff and "key" not in mv:
                 # print "***", stuff
                 mv.reg_entry(stuff["key"], 0., stuff["info"], stuff["unit"], stuff["base"])
@@ -187,7 +187,7 @@ class my_modclass(hm_classes.hm_fileinfo):
     def update_m_vect(self, mv, logger):
         int_error = "IntError"
         self.init_m_vect(mv, logger)
-        short_sinfo = [x.lower() for x in self.sens_dict.keys()]
+        short_sinfo = [x.lower() for x in list(self.sens_dict.keys())]
         s_dict = {}
         for info in short_sinfo:
             s_dict[info] = 0.
@@ -217,7 +217,7 @@ class sensor_command(hm_classes.hmb_command):
         int_error = "IntError"
         if len(cm) != 1:
             return "invalid number of parameters (%d != 1)" % (len(cm))
-        s_dict = dict([(k.lower(), 0.) for k in self.module_info.sens_dict.keys()])
+        s_dict = dict([(k.lower(), 0.) for k in list(self.module_info.sens_dict.keys())])
         try:
             s_dict = sensor_int(self.module_info)
         except int_error:
@@ -228,7 +228,7 @@ class sensor_command(hm_classes.hmb_command):
             return "ok %s" % (hm_classes.sys_to_net({"sensor": cm[0], "value": s_dict[what]}))
         else:
             return "invalid parameter %s not known (not one of %s)" % (str(what),
-                                                                       ", ".join([str(x) for x in s_dict.keys()]) or "none set")
+                                                                       ", ".join([str(x) for x in list(s_dict.keys())]) or "none set")
 
     def client_call(self, result, parsed_coms):
         lim = parsed_coms[0]
@@ -257,7 +257,7 @@ def parse_sensinfo(mod_info, logger):
     devdict = {"mb": "mainboard",
                "cpu": "CPU",
                "nb": "northbridge"}
-    for name, stuff in mod_info.sens_dict.iteritems():
+    for name, stuff in mod_info.sens_dict.items():
         temp_m = re.match("^([a-z]+)(\d*)-temp$", name)
         fan_m = re.match("^([a-z]+)(\d*)-fan$", name)
         if temp_m:
@@ -294,7 +294,7 @@ def parse_sensinfo(mod_info, logger):
 def sensor_int(mod_info):
     ret_dict = {}
     int_error = "IntError"
-    for name, stuff in mod_info.sens_dict.iteritems():
+    for name, stuff in mod_info.sens_dict.items():
         if stuff["port"] in mod_info.targ_dict:
             try:
                 src = mod_info.targ_dict[stuff["port"]]
@@ -319,5 +319,5 @@ def sensor_int(mod_info):
 
 
 if __name__ == "__main__":
-    print "This is a loadable module."
+    print("This is a loadable module.")
     sys.exit(0)

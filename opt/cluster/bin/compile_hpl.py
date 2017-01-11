@@ -19,7 +19,7 @@
 #
 
 import argparse
-import commands
+import subprocess
 import optparse
 import os
 import shutil
@@ -107,9 +107,9 @@ class my_opt_parser(optparse.OptionParser):
             "-H",
             type="choice",
             dest="hpl_version",
-            help="Choose HPL Version, possible values are %s" % (", ".join(self.version_dict.keys())),
+            help="Choose HPL Version, possible values are %s" % (", ".join(list(self.version_dict.keys()))),
             action="store",
-            choices=self.version_dict.keys()
+            choices=list(self.version_dict.keys())
         )
         self.add_option(
             "--fflags",
@@ -156,7 +156,7 @@ class my_opt_parser(optparse.OptionParser):
     def parse(self):
         options, args = self.parse_args()
         if args:
-            print "Additional arguments found, exiting"
+            print("Additional arguments found, exiting")
             sys.exit(0)
         self.options = options
         self._check_compiler_settings()
@@ -180,7 +180,7 @@ class my_opt_parser(optparse.OptionParser):
                 "F77": "gfortran",
                 "FC": "gfortran"
             }
-            stat, out = commands.getstatusoutput("gcc --version")
+            stat, out = subprocess.getstatusoutput("gcc --version")
             if stat:
                 raise ValueError("Cannot get Version from gcc (%d): %s" % (stat, out))
             self.small_version = out.split("\n")[0].split()[2]
@@ -223,12 +223,12 @@ class my_opt_parser(optparse.OptionParser):
                     "CXX": "pathCC",
                     "F77": "pathf95"
                 }
-                stat, pathf95_out = commands.getstatusoutput("%s/bin/pathf95 -dumpversion" % (self.options.fcompiler_path))
+                stat, pathf95_out = subprocess.getstatusoutput("%s/bin/pathf95 -dumpversion" % (self.options.fcompiler_path))
                 if stat:
                     raise ValueError("Cannot get Version from pathf95 (%d): %s" % (stat, pathf95_out))
                 self.small_version = pathf95_out.split("\n")[0]
                 self.compiler_version_dict = {"pathf95": pathf95_out}
-                stat, pathcc_out = commands.getstatusoutput("%s/bin/pathcc -dumpversion" % (self.options.fcompiler_path))
+                stat, pathcc_out = subprocess.getstatusoutput("%s/bin/pathcc -dumpversion" % (self.options.fcompiler_path))
                 if stat:
                     raise ValueError("Cannot get Version from pathcc (%d): %s" % (stat, pathcc_out))
                 self.compiler_version_dict = {
@@ -275,7 +275,7 @@ class my_opt_parser(optparse.OptionParser):
         if os.path.isfile(HPL_VERSION_FILE):
             version_lines = [line.strip().split() for line in file(HPL_VERSION_FILE, "r").read().split("\n") if line.strip()]
             self.version_dict = dict([(key, value) for key, value in version_lines])
-            vers_dict = dict([(tuple([part.isdigit() and int(part) or part for part in key.split(".")]), key) for key in self.version_dict.keys()])
+            vers_dict = dict([(tuple([part.isdigit() and int(part) or part for part in key.split(".")]), key) for key in list(self.version_dict.keys())])
             vers_keys = sorted(vers_dict.keys())
             self.highest_version = vers_dict[vers_keys[-1]]
         else:
@@ -300,8 +300,8 @@ class my_opt_parser(optparse.OptionParser):
                     self.hpl_dir
                 ),
                 " - package name choosen is {}".format(self.package_name),
-                "compiler settings: {}".format(", ".join(["%s=%s" % (key, value) for key, value in self.compiler_dict.iteritems()])),
-                "add_path_dict    : {}".format(", ".join(["%s=%s:$%s" % (key, ":".join(value), key) for key, value in self.add_path_dict.iteritems()])),
+                "compiler settings: {}".format(", ".join(["%s=%s" % (key, value) for key, value in self.compiler_dict.items()])),
+                "add_path_dict    : {}".format(", ".join(["%s=%s:$%s" % (key, ":".join(value), key) for key, value in self.add_path_dict.items()])),
                 "version info:"
             ] + [
                 "{}:\n{}".format(
@@ -311,7 +311,7 @@ class my_opt_parser(optparse.OptionParser):
                             "    {}".format(line.strip()) for line in value.split("\n")
                         ]
                     )
-                ) for key, value in self.compiler_version_dict.iteritems()
+                ) for key, value in self.compiler_version_dict.items()
             ]
         )
         return "\n".join(ret_lines)
@@ -331,14 +331,14 @@ class hpl_builder(object):
                     self.compile_ok = True
                     self._remove_tempdir()
         if not self.compile_ok:
-            print "Not removing temporary directory %s" % (self.tempdir)
+            print("Not removing temporary directory %s" % (self.tempdir))
 
     def _init_tempdir(self):
         self.tempdir = tempfile.mkdtemp("_hpl")
         self.tempdir_2 = ""
 
     def _remove_tempdir(self):
-        print "Removing temporary directories"
+        print("Removing temporary directories")
         shutil.rmtree(self.tempdir)
         try:
             os.rmdir(self.tempdir)
@@ -354,14 +354,14 @@ class hpl_builder(object):
     def _untar_source(self):
         tar_source = self.parser.version_dict[self.parser.options.hpl_version]
         if not os.path.isfile(tar_source):
-            print "Cannot find Hpl source %s" % (tar_source)
+            print("Cannot find Hpl source %s" % (tar_source))
             success = False
         else:
-            print "Extracting tarfile %s ..." % (tar_source),
+            print("Extracting tarfile %s ..." % (tar_source), end=' ')
             tar_file = tarfile.open(tar_source, "r")
             tar_file.extractall(self.tempdir)
             tar_file.close()
-            print "done"
+            print("done")
             success = True
         return success
 
@@ -427,29 +427,29 @@ class hpl_builder(object):
         self._hpl_dir_name = os.listdir(self.tempdir)[0]
         self._hpl_dir = os.path.join(self.tempdir, self._hpl_dir_name)
         os.chdir(self._hpl_dir)
-        print "Modifying environment"
-        for env_name, env_value in self.parser.compiler_dict.iteritems():
+        print("Modifying environment")
+        for env_name, env_value in self.parser.compiler_dict.items():
             os.environ[env_name] = env_value
-        for path_name, path_add_value in self.parser.add_path_dict.iteritems():
+        for path_name, path_add_value in self.parser.add_path_dict.items():
             os.environ[path_name] = "%s:%s" % (":".join(path_add_value), os.environ.get(path_name, ""))
         self._generate_makefile()
         self.time_dict, self.log_dict = ({}, {})
         success = True
         for command, time_name in [("make arch=%s" % (self.cpu_arch), "make")]:
             self.time_dict[time_name] = {"start": time.time()}
-            print "Doing command %s" % (command)
+            print("Doing command %s" % (command))
             sp_obj = subprocess.Popen(command.split(), 0, None, None, subprocess.PIPE, subprocess.STDOUT)
             out_lines = []
             while True:
                 stat = sp_obj.poll()
                 while True:
                     try:
-                        new_lines = sp_obj.stdout.next()
+                        new_lines = next(sp_obj.stdout)
                     except StopIteration:
                         break
                     else:
                         if self.parser.options.verbose:
-                            print new_lines,
+                            print(new_lines, end=' ')
                         if type(new_lines) == list:
                             out_lines.extend(new_lines)
                         else:
@@ -460,18 +460,18 @@ class hpl_builder(object):
             self.time_dict[time_name]["diff"] = self.time_dict[time_name]["end"] - self.time_dict[time_name]["start"]
             self.log_dict[time_name] = "".join(out_lines)
             if stat:
-                print "Something went wrong (%d):" % (stat)
+                print("Something went wrong (%d):" % (stat))
                 if not self.parser.options.verbose:
-                    print "".join(out_lines)
+                    print("".join(out_lines))
                 success = False
                 break
             else:
-                print "done, took %s" % (logging_tools.get_diff_time_str(self.time_dict[time_name]["diff"]))
+                print("done, took %s" % (logging_tools.get_diff_time_str(self.time_dict[time_name]["diff"])))
         os.chdir(act_dir)
         return success
 
     def package_it(self):
-        print "Packaging ..."
+        print("Packaging ...")
         self.tempdir_2 = tempfile.mkdtemp("_hpl")
         info_name = "README.%s" % (self.parser.package_name)
         sep_str = "-" * 50
@@ -484,7 +484,7 @@ class hpl_builder(object):
                             "{}: {}".format(
                                 key,
                                 logging_tools.get_diff_time_str(self.time_dict[key]["diff"])
-                            ) for key in self.time_dict.keys()
+                            ) for key in list(self.time_dict.keys())
                         ]
                     )
                 ),
@@ -496,7 +496,7 @@ class hpl_builder(object):
                     "Compile logs:"
                 ] + sum(
                     [
-                        self.log_dict[key].split("\n") + [sep_str] for key in self.log_dict.keys()
+                        self.log_dict[key].split("\n") + [sep_str] for key in list(self.log_dict.keys())
                     ],
                     []
                 )
@@ -512,7 +512,7 @@ class hpl_builder(object):
         )
         xhpl_file_name = "%s/xhpl" % (hpl_base_dir)
         if not os.path.isfile(xhpl_file_name):
-            print "Cannot find %s" % (xhpl_file_name)
+            print("Cannot find %s" % (xhpl_file_name))
             success = False
         else:
             file("%s/xhpl" % (self.tempdir_2), "wb").write(file(xhpl_file_name, "rb").read())
@@ -523,7 +523,7 @@ class hpl_builder(object):
                 ).read()
             )
             file("%s/HPL.dat" % (self.tempdir_2), "wb").write(file("%s/HPL.dat" % (hpl_base_dir), "rb").read())
-            os.chmod("%s/xhpl" % (self.tempdir_2), 0775)
+            os.chmod("%s/xhpl" % (self.tempdir_2), 0o775)
             dummy_args = argparse.Namespace(
                 name=package_name,
                 version=package_version,
@@ -541,12 +541,12 @@ class hpl_builder(object):
             new_p.write_specfile(content)
             new_p.build_package()
             if new_p.build_ok:
-                print "Build successfull, package locations:"
-                print new_p.long_package_name
-                print new_p.src_package_name
+                print("Build successfull, package locations:")
+                print(new_p.long_package_name)
+                print(new_p.src_package_name)
                 success = True
             else:
-                print "Something went wrong, please check tempdir %s" % (self.tempdir)
+                print("Something went wrong, please check tempdir %s" % (self.tempdir))
                 success = False
         return success
 
@@ -554,7 +554,7 @@ class hpl_builder(object):
 def main():
     my_parser = my_opt_parser()
     my_parser.parse()
-    print my_parser.get_compile_options()
+    print(my_parser.get_compile_options())
     my_builder = hpl_builder(my_parser)
     my_builder.build_it()
 

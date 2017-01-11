@@ -22,16 +22,16 @@
 
 """ host-monitoring, with 0MQ and direct socket support, server code """
 
-from __future__ import unicode_literals, print_function
 
-import StringIO
+
+import io
 import argparse
 import difflib
 import netifaces
 import os
 import sys
 import time
-from Queue import Empty
+from queue import Empty
 from multiprocessing import Queue
 
 import zmq
@@ -175,14 +175,14 @@ class ServerCode(ICSWBasePool, HMHRMixin):
     def _objgraph_run(self):
         # lines = unicode(self.hpy.heap().byrcs[0].byid).split("\n")
         cur_stdout = sys.stdout
-        my_io = StringIO.StringIO()
+        my_io = io.StringIO()
         sys.stdout = my_io
         self.objgraph.show_growth()
-        lines = [line.rstrip() for line in unicode(my_io.getvalue()).split("\n") if line.strip()]
+        lines = [line.rstrip() for line in str(my_io.getvalue()).split("\n") if line.strip()]
         self.log("objgraph show_growth ({})".format(logging_tools.get_plural("line", len(lines)) if lines else "no output"))
         if lines:
             for line in lines:
-                self.log(u" - {}".format(line))
+                self.log(" - {}".format(line))
         sys.stdout = cur_stdout
 
     def _check_ksm(self):
@@ -376,7 +376,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 access_mode=config_store.AccessModeEnum.LOCAL,
                 fix_access_mode=True,
             )
-            for _idx, _key in enumerate(["*"] + sorted([_key for _key in zmq_id_dict.keys() if _key not in ["*"]])):
+            for _idx, _key in enumerate(["*"] + sorted([_key for _key in list(zmq_id_dict.keys()) if _key not in ["*"]])):
                 _cs["{:d}".format(_idx)] = {
                     "address": _key,
                     "uuid": zmq_id_dict[_key][0],
@@ -415,7 +415,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             _cs.write()
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
         zmq_id_dict = {}
-        for _idx in _cs.keys():
+        for _idx in list(_cs.keys()):
             _bind = _cs[_idx]
             zmq_id_dict[_bind["address"]] = (
                 _bind["uuid"],
@@ -429,8 +429,8 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             ] if 2 in value
         }
         # ipv4_lut = dict([(value, key) for key, value in ipv4_dict.iteritems()])
-        ipv4_addresses = ipv4_dict.values()
-        if zmq_id_dict.keys() == ["*"]:
+        ipv4_addresses = list(ipv4_dict.values())
+        if list(zmq_id_dict.keys()) == ["*"]:
             # wildcard bind
             pass
         else:
@@ -442,7 +442,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         ref_id = "*" if "*" in zmq_id_dict else "127.0.0.1"
         self.zeromq_id = zmq_id_dict[ref_id][0].split(":")[-1]
         self.log("0MQ bind info (global 0MQ id is {})".format(self.zeromq_id))
-        for key in sorted(zmq_id_dict.iterkeys()):
+        for key in sorted(zmq_id_dict.keys()):
             self.log(
                 "bind address {:<15s}: {}{}".format(
                     key,
@@ -496,7 +496,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             else:
                 setattr(self, "{}_socket".format(short_sock_name), cur_socket)
                 _backlog_size = self.CC.CS["hm.socket.backlog.size"]
-                os.chmod(file_name, 0777)
+                os.chmod(file_name, 0o777)
                 cur_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
                 cur_socket.setsockopt(zmq.SNDHWM, hwm_size)  # @UndefinedVariable
                 cur_socket.setsockopt(zmq.RCVHWM, hwm_size)  # @UndefinedVariable
@@ -566,13 +566,13 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         cur_com = srv_com["command"].text
         srv_com["client_version"] = VERSION_STRING
         srv_com.update_source()
-        if cur_com in self.__callbacks.keys():
+        if cur_com in list(self.__callbacks.keys()):
             call_proc, func_name = self.__callbacks[cur_com]
             self.send_to_process(
                 call_proc,
                 func_name,
                 src_id,
-                unicode(srv_com)
+                str(srv_com)
             )
         else:
             srv_com.set_result(
@@ -580,13 +580,13 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 server_command.SRV_REPLY_STATE_ERROR
             )
             self.result_socket.send_unicode(src_id, zmq.SNDMORE)
-            self.result_socket.send_unicode(unicode(srv_com))
+            self.result_socket.send_unicode(str(srv_com))
         # print "."
 
     def _callback_result(self, *args, **kwargs):
         _call_proc, _proc_pid, src_id, srv_com = args
         self.result_socket.send_unicode(src_id, zmq.SNDMORE)
-        self.result_socket.send_unicode(unicode(srv_com))
+        self.result_socket.send_unicode(str(srv_com))
 
     def _check_cpu_usage(self):
         if self.check_cpu_usage():
@@ -610,18 +610,18 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 for _entry in srv_com.xpath(".//ns:namespace/ns:*", smart_strings=False):
                     ns_key = _entry.tag.split("}", 1)[-1]
                     setattr(cur_ns, ns_key, srv_com["*namespace:{}".format(ns_key)])
-                rest_str = u""
+                rest_str = ""
             else:
                 # no namespace given, parse what we got form server
                 cur_ns = None
                 rest_el = srv_com.xpath(".//ns:arguments/ns:rest", smart_strings=False)
                 if rest_el:
-                    rest_str = rest_el[0].text or u""
+                    rest_str = rest_el[0].text or ""
                 elif len(srv_com.xpath(".//ns:arguments/ns:arg0")):
                     # no rest given but there are arguments
-                    rest_str = u" ".join([_el.text for _el in srv_com.xpath(".//ns:arguments")[0]])
+                    rest_str = " ".join([_el.text for _el in srv_com.xpath(".//ns:arguments")[0]])
                 else:
-                    rest_str = u""
+                    rest_str = ""
             # is a delayed command
             delayed = False
             cur_com = srv_com["command"].text
@@ -634,7 +634,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             if cur_com in self.commands:
                 delayed = self._handle_module_command(srv_com, cur_ns, rest_str)
             else:
-                c_matches = difflib.get_close_matches(cur_com, self.commands.keys())
+                c_matches = difflib.get_close_matches(cur_com, list(self.commands.keys()))
                 if c_matches:
                     cm_str = "close matches: {}".format(", ".join(c_matches))
                 else:
@@ -717,7 +717,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             self.log(info_str, log_level)
         srv_com.update_source()
         zmq_sock.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
-        zmq_sock.send_unicode(unicode(srv_com))
+        zmq_sock.send_unicode(str(srv_com))
         del srv_com
 
     def _check_delayed(self):

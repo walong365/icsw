@@ -17,7 +17,7 @@
 #
 """ checks for ips (AAC) RAID controller """
 
-from __future__ import print_function,  unicode_literals
+
 
 import base64
 import bz2
@@ -48,7 +48,7 @@ class ctrl_type_ips(ctrl_type):
         description = "Adapatec AAC RAID Controller"
 
     def get_exec_list(self, ctrl_ids=[]):
-        ctrl_ids = ctrl_ids or self._dict.keys()
+        ctrl_ids = ctrl_ids or list(self._dict.keys())
         return [("{} getconfig {:d} AL".format(self._check_exec, ctrl_id),
                  "config", ctrl_id) for ctrl_id in ctrl_ids] + \
                [("{} getstatus {:d}".format(self._check_exec, ctrl_id),
@@ -167,12 +167,12 @@ class ctrl_type_ips(ctrl_type):
     def _interpret(self, aac_dict, cur_ns):
         num_warn, num_error = (0, 0)
         ret_f = []
-        for c_num, c_stuff in aac_dict.iteritems():
+        for c_num, c_stuff in aac_dict.items():
             # pprint.pprint(c_stuff)
             act_field = []
             if c_stuff["logical"]:
                 log_field = []
-                for l_num, l_stuff in c_stuff["logical"].iteritems():
+                for l_num, l_stuff in c_stuff["logical"].items():
                     sold_name = "status_of_logical_device" if "status_of_logical_device" in l_stuff else "status_of_logical_drive"
                     log_field.append(
                         "ld%d: %s (%s, %s)" % (

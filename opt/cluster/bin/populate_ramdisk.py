@@ -22,7 +22,7 @@
 
 """ generates the inital ramdisk for clusterboot """
 
-from __future__ import unicode_literals, print_function
+
 
 import os
 import sys
@@ -41,7 +41,7 @@ else:
     from initat.cluster.backbone.server_enums import icswServiceEnum
 
 import argparse
-import commands
+import subprocess
 import datetime
 import gzip
 from initat.tools import logging_tools, process_tools, server_command, uuid_tools
@@ -118,7 +118,7 @@ stage2_file_dict = {
 
 
 def make_debian_fixes(in_dict):
-    for _key, val in in_dict.iteritems():
+    for _key, val in in_dict.items():
         # remove /dev/pts from stage-dicts
         if "dev/pts" in val:
             val.remove("dev/pts")
@@ -180,7 +180,7 @@ def which(file_name, sp):
 
 
 def get_lib_list(in_f):
-    _stat, out = commands.getstatusoutput("ldd {}".format(" ".join(in_f)))
+    _stat, out = subprocess.getstatusoutput("ldd {}".format(" ".join(in_f)))
     lib_l = []
     out_l = [line.strip() for line in out.split("\n")]
     found_list = []
@@ -240,13 +240,13 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         make_debian_fixes(in_file_dict)
     # rewrite dir and file dict
     dir_dict, file_dict = ({}, {})
-    for sev, names in in_dir_dict.iteritems():
+    for sev, names in in_dir_dict.items():
         for name in names:
             dir_dict[name] = sev
     choice_dict, choice_idx, choices_found, choice_lut = ({}, 0, {}, {})
-    for sev, names in in_file_dict.iteritems():
+    for sev, names in in_file_dict.items():
         for name in names:
-            if isinstance(name, basestring):
+            if isinstance(name, str):
                 file_dict[name] = sev
             else:
                 choice_idx += 1
@@ -285,39 +285,39 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     else:
         err_sev = "E"
     if verbose:
-        print("checking availability of {:d} directories ...".format(len(dir_dict.keys())))
+        print("checking availability of {:d} directories ...".format(len(list(dir_dict.keys()))))
     # check availability of directories
     for _dir, severity in [(os.path.normpath("/{}".format(x)), {
         0: "W",
         1: "E"
-    }[y]) for x, y in dir_dict.iteritems()]:
+    }[y]) for x, y in dir_dict.items()]:
         if not os.path.isdir(_dir):
             print(" {} dir '{}' not found".format(severity, _dir))
             sev_dict[severity] += 1
     if verbose:
-        print("checking availability of {:d} files ...".format(len(file_dict.keys())))
+        print("checking availability of {:d} files ...".format(len(list(file_dict.keys()))))
     new_file_dict = {}
     path = [x for x in os.environ["PATH"].split(":")] + ["/lib/mkinitrd/bin"]
-    for f_name, severity in [(x, {0: "W", 1: err_sev}[y]) for x, y in file_dict.iteritems()]:
+    for f_name, severity in [(x, {0: "W", 1: err_sev}[y]) for x, y in file_dict.items()]:
         full_path = which(f_name, path)
         if not full_path:
-            if f_name in choice_dict.keys():
+            if f_name in list(choice_dict.keys()):
                 pass
             else:
                 print(" {} file '{}' not found".format(severity, os.path.basename(f_name)))
                 sev_dict[severity] += 1
         else:
             for full in full_path:
-                if full not in new_file_dict.keys():
+                if full not in list(new_file_dict.keys()):
                     if f_name != os.path.basename(full) and verbose:
                         print("  adding file '{}' (triggered by '{}')".format(full, f_name))
                     new_file_dict[full] = severity
-                    if f_name in choice_dict.keys():
+                    if f_name in list(choice_dict.keys()):
                         choices_found[f_name] = choice_dict[f_name]
     if choice_dict:
         # check choices
-        for c_idx, p_cns in choice_lut.iteritems():
-            c_found = [p_cn for p_cn in p_cns if p_cn in choices_found.keys()]
+        for c_idx, p_cns in choice_lut.items():
+            c_found = [p_cn for p_cn in p_cns if p_cn in list(choices_found.keys())]
             c_found.sort()
             if c_found:
                 print(
@@ -354,7 +354,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             if special_lib.startswith("libnss") or special_lib.startswith("libnsl"):
                 if not [x for x in [re.match(".*{}.*".format(x), special_lib) for x in ["win", "ldap", "hesiod", "nis"]] if x]:
                     pam_lib_list += [os.path.normpath("/{}/{}".format(main_lib_dir, special_lib))]
-    new_libs = get_lib_list(new_file_dict.keys() + pam_lib_list) + pam_lib_list
+    new_libs = get_lib_list(list(new_file_dict.keys()) + pam_lib_list) + pam_lib_list
     lib_dict = {}
     if verbose:
         print("  ... found {:d} distinct libraries".format(len(new_libs)))
@@ -363,27 +363,27 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     if verbose:
         print(
             "resolving directories of {:d} files and libraries ...".format(
-                len(lib_dict.keys()) + len(new_file_dict.keys())
+                len(list(lib_dict.keys())) + len(list(new_file_dict.keys()))
             )
         )
-    dir_list = dir_dict.keys()
-    for nd in [os.path.dirname(x) for x in lib_dict.keys() + new_file_dict.keys()]:
+    dir_list = list(dir_dict.keys())
+    for nd in [os.path.dirname(x) for x in list(lib_dict.keys()) + list(new_file_dict.keys())]:
         if nd not in dir_list:
             dir_list += [nd]
     if verbose:
         print(" ... found {:d} distinct directories".format(len(dir_list)))
     # create missing entries
-    for dir_name, dir_mode in [("/dev/pts", 0755)]:
+    for dir_name, dir_mode in [("/dev/pts", 0o755)]:
         if not os.path.isdir(dir_name):
             if verbose > 1:
                 print("created directory {} (mode {:o})".format(dir_name, dir_mode))
             os.mkdir(dir_name)
             os.chmod(dir_name, dir_mode)
     for file_name, file_type, file_mode, major, minor, file_owner, file_group in [
-        ("/dev/ram0", "b", 0640, 1, 0, 0, 0),
-        ("/dev/ram1", "b", 0640, 1, 1, 0, 0),
-        ("/dev/ram2", "b", 0640, 1, 2, 0, 0),
-        ("/dev/console", "c", 0600, 5, 1, 0, 0)
+        ("/dev/ram0", "b", 0o640, 1, 0, 0, 0),
+        ("/dev/ram1", "b", 0o640, 1, 1, 0, 0),
+        ("/dev/ram2", "b", 0o640, 1, 2, 0, 0),
+        ("/dev/console", "c", 0o600, 5, 1, 0, 0)
     ]:
         if not os.path.exists(file_name):
             if file_type == "b":
@@ -412,7 +412,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     print(
         "Number of dirs / files / libraries: {:d} / {:d} / {:d}".format(
             len(dir_list),
-            len(new_file_dict.keys()),
+            len(list(new_file_dict.keys())),
             len(new_libs)
         )
     )
@@ -455,11 +455,11 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                     if verbose > 1:
                         print("creating directory {}".format(orig_path))
                     os.makedirs(eliminate_symlinks(temp_dir, target_dir))
-    os.chmod("{}/tmp".format(temp_dir), 01777)
+    os.chmod("{}/tmp".format(temp_dir), 0o1777)
     file_list = []
     # pprint.pprint(lib_dict)
     strip_files = []
-    new_files = new_file_dict.keys()
+    new_files = list(new_file_dict.keys())
     new_files.sort()
     act_file, num_files = (0, len(new_files))
     if verbose:
@@ -494,7 +494,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                 if verbose > 1:
                     print("{:4d} character device {}".format(act_file, file_name))
                 # character device
-                os.mknod(dest_file, 0600 | stat.S_IFCHR,
+                os.mknod(dest_file, 0o600 | stat.S_IFCHR,
                          os.makedev(os.major(file_stat.st_rdev),
                                     os.minor(file_stat.st_rdev)))
             elif stat.S_ISBLK(file_stat.st_mode):
@@ -503,7 +503,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                 # block device
                 os.mknod(
                     dest_file,
-                    0600 | stat.S_IFBLK,
+                    0o600 | stat.S_IFBLK,
                     os.makedev(
                         os.major(file_stat.st_rdev),
                         os.minor(file_stat.st_rdev)
@@ -521,7 +521,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             if verbose > 1:
                 print("{:4d} *** file not found: {}".format(act_file, file_name))
     # stage1 links for bash->ash, sh->ash
-    new_libs = lib_dict.keys()
+    new_libs = list(lib_dict.keys())
     new_libs.sort()
     num_libs = len(new_libs)
     if verbose:
@@ -565,7 +565,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     if strip_files:
         free_stat = os.statvfs(temp_dir)
         free_before = free_stat[statvfs.F_BFREE] * free_stat[statvfs.F_BSIZE]
-        _strip_stat, _strip_out = commands.getstatusoutput("strip -s {}".format(" ".join(strip_files)))
+        _strip_stat, _strip_out = subprocess.getstatusoutput("strip -s {}".format(" ".join(strip_files)))
         free_stat = os.statvfs(temp_dir)
         free_after = free_stat[statvfs.F_BFREE] * free_stat[statvfs.F_BSIZE]
         print(
@@ -740,12 +740,12 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         sfile_dict["/etc/add_modules"] = [
             "{} {}".format(mod_name, mod_option) for mod_name, mod_option in add_modules
         ]
-    for sfile_name, sfile_content in sfile_dict.iteritems():
+    for sfile_name, sfile_content in sfile_dict.items():
         file("{}/{}".format(temp_dir, sfile_name), "w").write("\n".join(sfile_content + [""]))
     # ldconfig call
-    ld_stat, _out = commands.getstatusoutput("chroot {} /sbin/ldconfig".format(temp_dir))
+    ld_stat, _out = subprocess.getstatusoutput("chroot {} /sbin/ldconfig".format(temp_dir))
     if ld_stat:
-        ld_stat, _out = commands.getstatusoutput("chroot {} /usr/sbin/ldconfig".format(temp_dir))
+        ld_stat, _out = subprocess.getstatusoutput("chroot {} /usr/sbin/ldconfig".format(temp_dir))
         if ld_stat:
             print("Error calling {{/usr}}/sbin/ldconfig: {}".format(_out))
             sev_dict["E"] += 1
@@ -769,10 +769,10 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
 
 
 def find_free_loopdevice():
-    _c_stat, c_out = commands.getstatusoutput("losetup -a")
+    _c_stat, c_out = subprocess.getstatusoutput("losetup -a")
     used_loops = [line.split(":", 1)[0] for line in c_out.split("\n")]
     lo_found = -1
-    for cur_lo in xrange(0, 8):
+    for cur_lo in range(0, 8):
         if "/dev/loop{:d}".format(cur_lo) not in used_loops:
             lo_found = cur_lo
             break
@@ -787,7 +787,7 @@ def get_system_bitcount(root_dir):
     if not os.path.isfile(init_file):
         print("'{}' is not the root of a valid system (/sbin/init not found), exiting...".format(root_dir))
         sys.exit(1)
-    stat, out = commands.getstatusoutput("file {}".format(init_file))
+    stat, out = subprocess.getstatusoutput("file {}".format(init_file))
     if stat:
         print("error determining the filetype of {} ({:d}): {}".format(init_file, stat, out))
         sys.exit(1)
@@ -1121,7 +1121,7 @@ class arg_parser(argparse.ArgumentParser):
                 sys.exit(0)
             _files_needed = set()
             _files_found = set()
-            _keys = sys.modules.keys()
+            _keys = list(sys.modules.keys())
             for _key in _keys:
                 _value = sys.modules[_key]
                 if _value and hasattr(_value, "__file__"):
@@ -1208,7 +1208,7 @@ def main_normal():
                 ", ".join(
                     [
                         "{} [{}]".format(
-                            unicode(cur_entry.effective_device),
+                            str(cur_entry.effective_device),
                             ", ".join(cur_entry.simple_ip_list)) for cur_entry in mother_list
                     ]
                 )
@@ -1371,7 +1371,7 @@ def main_normal():
                     pre_content = ""
                 depmod_call = "depmod -aeb {} {}".format(my_args.kernel_dir, kverdir)
                 print("Doing depmod_call '{}' ...".format(depmod_call))
-                c_stat, out = commands.getstatusoutput(depmod_call)
+                c_stat, out = subprocess.getstatusoutput(depmod_call)
                 if c_stat:
                     print(" - some error occured ({:d}): {}".format(c_stat, out))
                     sys.exit(1)
@@ -1390,7 +1390,7 @@ def main_normal():
         print("(re)creating {}".format(mod_bz2_file))
         if os.path.exists(mod_bz2_file):
             os.unlink(mod_bz2_file)
-        t_stat, t_out = commands.getstatusoutput("cd {} ; tar -cpjf modules.tar.bz2 lib".format(my_args.kernel_dir))
+        t_stat, t_out = subprocess.getstatusoutput("cd {} ; tar -cpjf modules.tar.bz2 lib".format(my_args.kernel_dir))
         print("... gave ({:d}) {}".format(t_stat, t_out))
         if t_stat:
             sys.exit(t_stat)
@@ -1484,7 +1484,7 @@ def main_normal():
         base_mods = [".".join(os.path.basename(x).split(".")[0:-1]) for x in all_mods]
         base_mods.sort()
         if my_kernel.module_list:
-            last_base_mods = map(lambda x: x.strip(), my_kernel.module_list.split(","))
+            last_base_mods = [x.strip() for x in my_kernel.module_list.split(",")]
         else:
             last_base_mods = []
         if last_base_mods == base_mods:
@@ -1519,10 +1519,10 @@ def main_normal():
     stage1_dir = tempfile.mkdtemp(".stage1_dir", "/%s/tmp/.rdc_" % (my_args.root_dir or "/"))
     stage2_dir = tempfile.mkdtemp(".stage2_dir", "/%s/tmp/.rdc_" % (my_args.root_dir or "/"))
     stat_out = []
-    stat_out += [("dd", commands.getstatusoutput("dd if=/dev/zero of=%s bs=1024 count=%d" % (stage1_lo_file, my_args.init_size)))]
-    stat_out += [("losetup", commands.getstatusoutput("losetup %s %s" % (loop_dev, stage1_lo_file)))]
-    stat_out += [("mkfs.ext2", commands.getstatusoutput("mkfs.ext2 -F -v -m 0 -b 1024 %s %d" % (stage1_lo_file, my_args.init_size)))]
-    stat_out += [("mount", commands.getstatusoutput("mount -o loop -t ext2 %s %s" % (stage1_lo_file, stage1_dir)))]
+    stat_out += [("dd", subprocess.getstatusoutput("dd if=/dev/zero of=%s bs=1024 count=%d" % (stage1_lo_file, my_args.init_size)))]
+    stat_out += [("losetup", subprocess.getstatusoutput("losetup %s %s" % (loop_dev, stage1_lo_file)))]
+    stat_out += [("mkfs.ext2", subprocess.getstatusoutput("mkfs.ext2 -F -v -m 0 -b 1024 %s %d" % (stage1_lo_file, my_args.init_size)))]
+    stat_out += [("mount", subprocess.getstatusoutput("mount -o loop -t ext2 %s %s" % (stage1_lo_file, stage1_dir)))]
     if len([err_name for name, (err_name, line) in stat_out if err_name]):
         print("Something went wrong during setup of stage1:")
         for name, (err_name, line) in stat_out:
@@ -1557,7 +1557,7 @@ def main_normal():
         if my_args.add_modules and stage in [1, 3]:
             gen_com = "%s --modules %s" % (gen_com, ",".join(["%s:%s" % (mod_name, mod_option) for mod_name, mod_option in my_args.add_modules]))
         print(gen_com)
-        c_stat, out = commands.getstatusoutput(gen_com)
+        c_stat, out = subprocess.getstatusoutput(gen_com)
         if my_args.verbose:
             print("\n".join([" - %s" % (x) for x in out.split("\n")]))
         act_stage_dir = [y.split()[1].strip() for y in [x.strip() for x in out.strip().split("\n")] if y.startswith("INITDIR")]
@@ -1573,7 +1573,7 @@ def main_normal():
             # stage1 stuff
             stage1_dest = os.path.join(stage_dirs[0], linuxrc_name)
             copy_stage_file(my_args.stage_source_dir, "stage1", stage1_dest)
-            os.chmod(stage1_dest, 0744)
+            os.chmod(stage1_dest, 0o744)
             os.chown(stage1_dest, 0, 0)
         # add kernel-modules to stage1
         for kmod_targ_dir in [stage_dirs[0]]:
@@ -1613,19 +1613,19 @@ def main_normal():
     stat_out = [
         (
             "mkfs.cramfs",
-            commands.getstatusoutput("mkfs.cramfs -n initrd_stage1 %s %s" % (stage1_dir, stage1_cramfs_file))
+            subprocess.getstatusoutput("mkfs.cramfs -n initrd_stage1 %s %s" % (stage1_dir, stage1_cramfs_file))
         ),
         (
             "cpio",
-            commands.getstatusoutput("cd %s ; find %s -printf \"%%P\\n\" | cpio -c -o > %s ; cd %s" % (stage1_dir, stage1_dir, stage1_cpio_file, act_dir))
+            subprocess.getstatusoutput("cd %s ; find %s -printf \"%%P\\n\" | cpio -c -o > %s ; cd %s" % (stage1_dir, stage1_dir, stage1_cpio_file, act_dir))
         ),
         (
             "umount",
-            commands.getstatusoutput("umount %s" % (stage1_dir))
+            subprocess.getstatusoutput("umount %s" % (stage1_dir))
         ),
         (
             "losetup",
-            commands.getstatusoutput("losetup -d %s" % (loop_dev))
+            subprocess.getstatusoutput("losetup -d %s" % (loop_dev))
         ),
     ]
     if [x for name, (x, y) in stat_out if x]:
@@ -1662,7 +1662,7 @@ def main_normal():
                 if os.path.isfile(file_name):
                     o_s2_size += os.stat(file_name)[stat.ST_SIZE]
         # create stage2
-        commands.getstatusoutput("tar -cpjf %s -C %s ." % (stage2_file, stage_targ_dirs[1]))
+        subprocess.getstatusoutput("tar -cpjf %s -C %s ." % (stage2_file, stage_targ_dirs[1]))
         n_s2_size = os.stat(stage2_file)[stat.ST_SIZE]
         e_time = time.time()
         print(

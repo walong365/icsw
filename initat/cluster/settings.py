@@ -22,7 +22,7 @@
 Django settings for ICSW
 """
 
-from __future__ import unicode_literals, print_function
+
 
 import base64
 import glob
@@ -169,7 +169,7 @@ if _cs.get("multiple.databases", False):
             )
         )
     ICSW_DATABASE_DICT = {
-        _key: _read_db_settings(_ps, _key) for _key in _ps.keys()
+        _key: _read_db_settings(_ps, _key) for _key in list(_ps.keys())
     }
 
 else:
@@ -195,7 +195,7 @@ DATABASES = {
 }
 
 # filter out empty settings
-ICSW_DATABASE_DICT = {key: value for key, value in ICSW_DATABASE_DICT.iteritems() if len(value)}
+ICSW_DATABASE_DICT = {key: value for key, value in ICSW_DATABASE_DICT.items() if len(value)}
 
 ICSW_ACTIVE_DATABASE_IDX = _db_idx
 
@@ -457,7 +457,7 @@ for sub_dir in os.listdir(dir_name):
                 INSTALLED_APPS.append(add_app)
 
 _show_apps = False
-for rem_app_key in [key for key in os.environ.keys() if key.startswith("INIT_REMOVE_APP_NAME")]:
+for rem_app_key in [key for key in list(os.environ.keys()) if key.startswith("INIT_REMOVE_APP_NAME")]:
     rem_app = os.environ[rem_app_key]
     _show_apps = True
     if rem_app.endswith("."):

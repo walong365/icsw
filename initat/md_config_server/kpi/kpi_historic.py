@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from __future__ import unicode_literals, print_function
+
 
 import collections
 import itertools
@@ -29,6 +29,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_base, \
     AlertList
+from functools import reduce
 
 
 # itertools recipe
@@ -36,7 +37,7 @@ def pairwise(iterable):
     """ s -> (s0,s1), (s1,s2), (s2, s3), ... """
     a, b = itertools.tee(iterable)
     next(b, None)
-    return itertools.izip(a, b)
+    return zip(a, b)
 
 
 class TimeLineUtils(list):
@@ -75,13 +76,13 @@ class TimeLineUtils(list):
 
         time_lines = {}
 
-        for key, entry in alert_list.last_before.iteritems():
+        for key, entry in alert_list.last_before.items():
             # sadly, last before has different format than regular alerts
             time_lines[key] = [
                 TimeLineEntry(date=start, state=(convert_state(entry['state']), entry['state_type']))
             ]
 
-        for key, service_alert_list in alert_list.alerts.iteritems():
+        for key, service_alert_list in alert_list.alerts.items():
             if key not in time_lines:
                 # couldn't find initial state, it has not existed at the time of start
                 tl = time_lines[key] = [
@@ -105,7 +106,7 @@ class TimeLineUtils(list):
                 last_alert = alert
 
         # add final entry
-        for tl in time_lines.itervalues():
+        for tl in time_lines.values():
             last_state = tl[-1].state
             tl.append(TimeLineEntry(date=end, state=last_state))
 
@@ -173,7 +174,7 @@ class TimeLineUtils(list):
         while any(time_lines):
             # find index of queue with chronological next event
             next_queue = min(
-                xrange(len(time_lines)),
+                range(len(time_lines)),
                 key=lambda x: time_lines[x][0].date if time_lines[x] else future_date
             )
 
@@ -194,12 +195,12 @@ class TimeLineUtils(list):
             time_span = entry2.date - entry1.date
             states_accumulator[entry1.state] += time_span.total_seconds()
 
-        total_time_span = sum(states_accumulator.itervalues())
+        total_time_span = sum(states_accumulator.values())
         if total_time_span == 0:
             # avoid div by 0
             return {}
         else:
-            return {k: v / total_time_span for k, v in states_accumulator.iteritems()}
+            return {k: v / total_time_span for k, v in states_accumulator.items()}
 
     @staticmethod
     def merge_state_types(time_line, soft_states_as_hard_states):
@@ -209,10 +210,10 @@ class TimeLineUtils(list):
         from initat.md_config_server.kpi.kpi_language import KpiResult
         accumulator = collections.defaultdict(lambda: 0)
         if soft_states_as_hard_states:
-            for k, v in time_line.iteritems():
+            for k, v in time_line.items():
                 accumulator[k[0]] += v
         else:
-            for k, v in time_line.iteritems():
+            for k, v in time_line.items():
                 # treat some soft states as different states (soft down isn't necessarily actually down)
                 if k[0] == KpiResult.critical and k[1] == mon_icinga_log_raw_base.STATE_TYPE_SOFT:
                     actual_state = KpiResult.warning
@@ -233,4 +234,4 @@ class TimeLineEntry(object):
         self.state = state
 
     def __repr__(self):
-        return u"TimeLineEntry({}, {})".format(self.date, self.state)
+        return "TimeLineEntry({}, {})".format(self.date, self.state)

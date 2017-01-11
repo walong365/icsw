@@ -19,7 +19,7 @@
 #
 """ simple database for the most common CPUs  """
 
-from __future__ import unicode_literals, print_function
+
 
 import base64
 import bz2
@@ -38,8 +38,8 @@ def getstatusoutput(cmd):
     if sys.version_info[0] == 3:
         return subprocess.getstatusoutput(cmd)  # @UndefinedVariable
     else:
-        import commands
-        return commands.getstatusoutput(cmd)
+        import subprocess
+        return subprocess.getstatusoutput(cmd)
 
 
 def get_cpu_basic_info():
@@ -69,7 +69,7 @@ class cpu_value(object):
 
     def __init__(self, in_str):
         self.add_value = ""
-        if type(in_str) in [int, long]:
+        if type(in_str) in [int, int]:
             self.v_type = "i"
             self.value = in_str
         else:
@@ -116,10 +116,10 @@ class cpu_info_part(object):
     def bump_num_key(self):
         # increase num_key
         num_key = self.num_key
-        if type(num_key) in [int, long]:
+        if type(num_key) in [int, int]:
             num_key = (num_key,)
         num_key = list(num_key)
-        if isinstance(num_key[-1], basestring):
+        if isinstance(num_key[-1], str):
             num_key.append(0)
         else:
             num_key[-1] += 1
@@ -129,7 +129,7 @@ class cpu_info_part(object):
         if line.count("---"):
             pass
         else:
-            if type(self.num_key) in [int, long]:
+            if type(self.num_key) in [int, int]:
                 in_key, in_value = [part.strip() for part in line.split(":", 1)]
                 in_key = int(in_key, 16)
             else:
@@ -149,15 +149,15 @@ class cpu_info_part(object):
         return key in self.__value_dict
 
     def keys(self):
-        return self.__value_dict.keys()
+        return list(self.__value_dict.keys())
 
     def values(self):
-        return self.__value_dict.values()
+        return list(self.__value_dict.values())
 
     def __repr__(self):
         return "cpu_info_part {} ({})".format(
             self.str_key,
-            logging_tools.get_plural("key", len(self.__value_dict.keys())))
+            logging_tools.get_plural("key", len(list(self.__value_dict.keys()))))
 
 
 class cpu_layout(object):
@@ -240,7 +240,7 @@ class share_map(object):
                                 "{:d}".format(core_num) for core_num in self.__cache_lut[c_num]
                             ]
                         )
-                    ) for c_num in xrange(self.num_caches)
+                    ) for c_num in range(self.num_caches)
                 ]
             )
         )
@@ -280,7 +280,7 @@ class cpu_info(object):
         return key in self.__v_dict
 
     def keys(self):
-        return self.__v_dict.keys()
+        return list(self.__v_dict.keys())
 
     def __getitem__(self, key):
         return self.__v_dict[key]
@@ -301,8 +301,8 @@ class cpu_info(object):
     def _set_cache_info(self, in_dict=None):
         if in_dict is not None:
             self.cache_info["share_dict"] = {}
-            self.cache_info["size"] = dict([(key, 0) for key in xrange(1, 4)])
-            for _c_index, c_stuff in in_dict.iteritems():
+            self.cache_info["size"] = dict([(key, 0) for key in range(1, 4)])
+            for _c_index, c_stuff in in_dict.items():
                 self.cache_info["size"][c_stuff["level"]] += c_stuff["size"]
                 if "shared_cpu_map" in c_stuff:
                     scm = c_stuff["shared_cpu_map"]
@@ -310,7 +310,7 @@ class cpu_info(object):
                         # hack, FIXME
                         scm = "1"
                     scm = int(scm.replace(",", ""), 16)
-                    core_list = set([idx for idx in xrange(256) if (1 << idx) & scm])
+                    core_list = set([idx for idx in range(256) if (1 << idx) & scm])
                     self.cache_info["share_dict"].setdefault(c_stuff["level"], set()).update(core_list)
         # pprint.pprint(self.cache_info)
 
@@ -329,7 +329,7 @@ class cpu_info(object):
         return "".join([self._get_size_str(self.cache_info["size"][cache_num]).replace(" ", "").replace("B", "") for cache_num in [1, 2, 3]])
 
     def get_cache_info_str(self):
-        if sum(self.cache_info["size"].values(), 0):
+        if sum(list(self.cache_info["size"].values()), 0):
             return ", ".join(
                 [
                     "L{:d}: {}{}".format(
@@ -355,7 +355,7 @@ class cpu_info(object):
         # get cache sizes
         self.cache_info["size"] = dict([(num, 0) for num in range(1, 4)])
         if 2 in in_dict:
-            for cache_key in in_dict[2].keys():
+            for cache_key in list(in_dict[2].keys()):
                 act_value = in_dict[2][cache_key].value
                 if act_value.startswith("L"):
                     cache_num = int(act_value[1])
@@ -456,7 +456,7 @@ class global_cpu_info(object):
             self.from_kernel_module = True
         self._check_proc_dict()
         self.__cpu_dict = {}
-        for core_idx in self.__proc_dict.keys():
+        for core_idx in list(self.__proc_dict.keys()):
             self.__cpu_dict[core_idx] = cpu_info(self.__proc_dict[core_idx])
         # helper flags for layouting
         self.__hyper_threading = False
@@ -470,11 +470,11 @@ class global_cpu_info(object):
         # dict core_num -> socket
         cs_dict = {}
         # find first valid info
-        valid_info = [value for value in proc_dict.itervalues() if value["online"]][0]
+        valid_info = [value for value in proc_dict.values() if value["online"]][0]
         if "cpu cores" in valid_info:
             self.__multi_core = True
             # multi-core info
-            for cpu_num, cpu_stuff in proc_dict.iteritems():
+            for cpu_num, cpu_stuff in proc_dict.items():
                 if cpu_stuff["online"]:
                     cs_dict[cpu_num] = cpu_stuff["physical_id"]
                     _num_cores, core_id, physical_id = (
@@ -485,14 +485,14 @@ class global_cpu_info(object):
                     phys_dict.setdefault(physical_id, {}).setdefault(core_id, []).append(cpu_num)
         elif valid_info.get("siblings", 1) > 1:
             # hyperthreading info
-            for cpu_num, cpu_stuff in proc_dict.iteritems():
+            for cpu_num, cpu_stuff in proc_dict.items():
                 if cpu_stuff["online"]:
                     cs_dict[cpu_num] = cpu_stuff["physical_id"]
                     physical_id = (cpu_stuff["physical_id"])
                     phys_dict.setdefault(physical_id, {}).setdefault(0, []).append(cpu_num)
         else:
             # nothing left, single core, single threaded
-            for cpu_num, cpu_stuff in proc_dict.iteritems():
+            for cpu_num, cpu_stuff in proc_dict.items():
                 if cpu_stuff["online"]:
                     cs_dict[cpu_num] = 0
                     phys_dict.setdefault(cpu_num, {}).setdefault(0, []).append(cpu_num)
@@ -503,31 +503,31 @@ class global_cpu_info(object):
         for core_num in sorted(self.__cpu_dict.keys()):
             core_stuff = self.__cpu_dict[core_num]
             if "share_dict" in core_stuff.cache_info:
-                for c_level, s_map in core_stuff.cache_info["share_dict"].iteritems():
+                for c_level, s_map in core_stuff.cache_info["share_dict"].items():
                     my_layout.place_core(core_num, c_level, s_map)
                     # share_maps.setdefault(c_level, share_map(c_level)).place_core(core_num, s_map)
             else:
                 # no share_dict, place by hand
                 # check for cache_info (in case of disabled cores)
                 if core_stuff.cache_info:
-                    for c_level, c_size in core_stuff.cache_info["size"].iteritems():
+                    for c_level, c_size in core_stuff.cache_info["size"].items():
                         if c_size:
                             if not self.__multi_core:
                                 if self.__hyper_threading:
                                     # 2 cores per l1, 2 cores per l2
-                                    for _sock_num, sock_stuff in phys_dict.iteritems():
+                                    for _sock_num, sock_stuff in phys_dict.items():
                                         if core_num in sock_stuff[0]:
                                             core_stuff.cache_info.setdefault("share_dict", {})[c_level] = set(sock_stuff[0])
                                             my_layout.place_core(core_num, c_level, sock_stuff[0])
                                 else:
-                                    for _sock_num, sock_stuff in phys_dict.iteritems():
+                                    for _sock_num, sock_stuff in phys_dict.items():
                                         if core_num in sock_stuff[0]:
                                             core_stuff.cache_info.setdefault("share_dict", {})[c_level] = set(sock_stuff[0])
                                             my_layout.place_core(core_num, c_level, sock_stuff[0])
                             else:
-                                if len(self.__cpu_dict.keys()) == 1:
+                                if len(list(self.__cpu_dict.keys())) == 1:
                                     # simple layout (only one core)
-                                    for _sock_num, sock_stuff in phys_dict.iteritems():
+                                    for _sock_num, sock_stuff in phys_dict.items():
                                         if core_num in sock_stuff[0]:
                                             core_stuff.cache_info.setdefault("share_dict", {})[c_level] = set(sock_stuff[0])
                                             my_layout.place_core(core_num, c_level, sock_stuff[0])
@@ -536,7 +536,7 @@ class global_cpu_info(object):
                                     #                                                                        str(self.__multi_core),
                                     #                                                                        str(self.__hyper_threading))
                                     # treat is as multi-socket single-core system
-                                    for _sock_num, sock_stuff in phys_dict.iteritems():
+                                    for _sock_num, sock_stuff in phys_dict.items():
                                         if core_num in sock_stuff[0]:
                                             core_stuff.cache_info.setdefault("share_dict", {})[c_level] = set(sock_stuff[0])
                                             my_layout.place_core(core_num, c_level, sock_stuff[0])
@@ -552,7 +552,7 @@ class global_cpu_info(object):
 
     def _check_proc_dict(self):
         # some sanity checks for proc_dict
-        for _key, value in self.__proc_dict.iteritems():
+        for _key, value in self.__proc_dict.items():
             if "online" not in value:
                 value["online"] = True
 
@@ -666,7 +666,7 @@ class global_cpu_info(object):
         return cpu_dict
 
     def cpu_idxs(self):
-        return self.__cpu_dict.keys()
+        return list(self.__cpu_dict.keys())
 
     def __getitem__(self, key):
         return self.__cpu_dict[key]
@@ -686,11 +686,11 @@ class global_cpu_info(object):
 
     def num_sockets(self):
         # return number of cpu_sockets
-        return len(set([cpu["socket_num"] for cpu in self.__cpu_dict.itervalues() if cpu["online"]]))
+        return len(set([cpu["socket_num"] for cpu in self.__cpu_dict.values() if cpu["online"]]))
 
     def num_cores(self):
         # return number of cpu_cores
-        return len(self.__cpu_dict.keys())
+        return len(list(self.__cpu_dict.keys()))
 
     def cpu_cores(self):
         # return cpu_cores

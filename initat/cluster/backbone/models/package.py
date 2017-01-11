@@ -21,7 +21,7 @@
 #
 """ package definitions for ICSW """
 
-from __future__ import unicode_literals, print_function
+
 
 import time
 
@@ -100,7 +100,7 @@ class package_repo(models.Model):
 
     def get_xml(self):
         return E.package_repo(
-            unicode(self),
+            str(self),
             pk="{:d}".format(self.pk),
             key="pr__{:d}".format(self.pk),
             password=self.password,
@@ -267,7 +267,7 @@ class package(models.Model):
 
     def get_xml(self):
         return E.package(
-            unicode(self),
+            str(self),
             pk="{:d}".format(self.pk),
             key="pack__{:d}".format(self.pk),
             name=self.name,
@@ -281,9 +281,9 @@ class package(models.Model):
 
     def __unicode__(self):
         if self.always_latest:
-            return u"{}-LATEST".format(self.name)
+            return "{}-LATEST".format(self.name)
         else:
-            return u"{}-{}".format(self.name, self.version)
+            return "{}-{}".format(self.name, self.version)
 
     class CSW_Meta:
         permissions = (
@@ -297,7 +297,7 @@ class package(models.Model):
             return ""
 
     class Meta:
-        db_table = u'package'
+        db_table = 'package'
         unique_together = (
             ("name", "version", "arch", "kind", "target_repo",),
         )

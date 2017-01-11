@@ -21,7 +21,7 @@
 #
 """ classes for handling external command """
 
-from __future__ import unicode_literals, print_function
+
 
 import subprocess
 import time

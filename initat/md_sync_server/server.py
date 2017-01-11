@@ -182,7 +182,7 @@ class server_process(
                 add_obj.append(mv_entry.build_xml(drop_com.builder))
             drop_com["vector_loadsensor"] = add_obj
             drop_com["vector_loadsensor"].attrib["type"] = "vector"
-            send_str = unicode(drop_com)
+            send_str = str(drop_com)
             self.log("sending {:d} bytes to vector_socket".format(len(send_str)))
             self.vector_socket.send_unicode(send_str)
         else:
@@ -193,7 +193,7 @@ class server_process(
 
     def read_config_store(self):
         self.config_store = config_store.ConfigStore(CS_NAME, log_com=self.log, access_mode=config_store.AccessModeEnum.LOCAL)
-        for _key, _default in DEFAULT_PROC_DICT.iteritems():
+        for _key, _default in DEFAULT_PROC_DICT.items():
             self.config_store[_key] = self.config_store.get(_key, _default)
         global_config.add_config_entries(
             [
@@ -221,7 +221,7 @@ class server_process(
     def register_remote(self, remote_ip, remote_uuid, remote_port):
         if remote_uuid not in self.__slaves:
             rs = RemoteServer(remote_uuid, remote_ip, remote_port)
-            self.log("connecting to {}".format(unicode(rs)))
+            self.log("connecting to {}".format(str(rs)))
             self.main_socket.connect(rs.conn_str)
             self.__slaves[remote_uuid] = rs
 
@@ -243,18 +243,18 @@ class server_process(
     def send_command(self, full_uuid, srv_com):
         try:
             self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
-            self.main_socket.send_unicode(unicode(srv_com))
+            self.main_socket.send_unicode(str(srv_com))
         except:
             self.log(
                 "cannot send {:d} bytes to '{}': {}".format(
-                    len(unicode(srv_com)),
+                    len(str(srv_com)),
                     full_uuid,
                     process_tools.get_except_info(),
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
             if full_uuid in self.__slaves:
-                self.log("target is {}".format(unicode(self.__slaves[full_uuid])))
+                self.log("target is {}".format(str(self.__slaves[full_uuid])))
         else:
             self.log("sent {:d} bytes to {}".format(len(srv_com), full_uuid))
 
@@ -348,7 +348,7 @@ class server_process(
                 raise
             else:
                 setattr(self, "{}_socket".format(short_sock_name), cur_socket)
-                os.chmod(file_name, 0777)
+                os.chmod(file_name, 0o777)
                 cur_socket.setsockopt(zmq.LINGER, 0)
                 cur_socket.setsockopt(zmq.SNDHWM, hwm_size)
                 cur_socket.setsockopt(zmq.RCVHWM, hwm_size)
@@ -367,7 +367,7 @@ class server_process(
         return "process flags: {}".format(
             ", ".join(
                 [
-                    "{}={}".format(_key, self.config_store[_key]) for _key in DEFAULT_PROC_DICT.iterkeys()
+                    "{}={}".format(_key, self.config_store[_key]) for _key in DEFAULT_PROC_DICT.keys()
                 ]
             )
         )
@@ -375,7 +375,7 @@ class server_process(
     @RemoteCall()
     def mon_process_handling(self, srv_com, **kwargs):
         _forwarded = srv_com.get("forwarded", False)
-        for _key, _default in DEFAULT_PROC_DICT.iteritems():
+        for _key, _default in DEFAULT_PROC_DICT.items():
             if _key in srv_com:
                 self.config_store[_key] = srv_com["*{}".format(_key)]
         self.log(self._get_flag_info())

@@ -17,7 +17,7 @@
 #
 """ checks for Megaraid RAID controllers """
 
-from __future__ import print_function,  unicode_literals
+
 
 import base64
 import bz2
@@ -162,7 +162,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
 
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
-            ctrl_list = self._dict.keys()
+            ctrl_list = list(self._dict.keys())
         return [("/bin/true", ctrl_id, "init") for ctrl_id in ctrl_list] + \
                [("{} -AdpAllInfo -a{:d} -noLog".format(self._check_exec, ctrl_id), ctrl_id, "adp") for ctrl_id in ctrl_list] + \
                [("{} -LdPdInfo   -a{:d} -noLog".format(self._check_exec, ctrl_id), ctrl_id, "ld") for ctrl_id in ctrl_list] + \
@@ -214,7 +214,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
             # ignore unicode errors, see srv_command definition
             # this is not very clever but always better than discarding the complete check
             ccs.srv_com.ignore_unicode_errors = True
-            for ctrl_id, ctrl_stuff in self._dict.iteritems():
+            for ctrl_id, ctrl_stuff in self._dict.items():
                 ccs.srv_com["result:ctrl_{:d}".format(ctrl_id)] = ctrl_stuff
             return
         elif run_type == "init":
@@ -507,11 +507,11 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     return ["status"]
 
         def _prune(in_dict):
-            return {_key: _prune(_value) if type(_value) is dict else _value for _key, _value in in_dict.iteritems() if _value}
+            return {_key: _prune(_value) if type(_value) is dict else _value for _key, _value in in_dict.items() if _value}
 
         def reorder_dict(in_dict):
             _result = {
-                "c{:02d}".format(_idx): _interpret_dict("ctrl", _value) for _idx, _value in in_dict.iteritems()
+                "c{:02d}".format(_idx): _interpret_dict("ctrl", _value) for _idx, _value in in_dict.items()
             }
             # prune twice to remove empty subdicts
             _result = _prune(_prune(_result))
@@ -519,7 +519,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
 
         def emit_keys(in_dict, level=0):
             if type(in_dict) == dict:
-                _dk_l = set(in_dict.iterkeys()) - {"lines", "_checks"}
+                _dk_l = set(in_dict.keys()) - {"lines", "_checks"}
                 r_list = sum(
                     [
                         [
@@ -533,7 +533,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     r_list.append("")
                 elif not level:
                     # add controller keys at top level
-                    r_list.extend(in_dict.keys())
+                    r_list.extend(list(in_dict.keys()))
                 return r_list
             else:
                 return [""]
@@ -550,9 +550,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 "bbus": ("b", "bbu"),
             }
             r_dict = {}
-            for _key, _t in map_dict.iteritems():
+            for _key, _t in map_dict.items():
                 r_dict.update(
-                    {"{}{:02d}".format(_t[0], _idx): _interpret_dict(_t[1], _value) for _idx, _value in in_dict.get(_key, {}).iteritems() if type(_idx) == int}
+                    {"{}{:02d}".format(_t[0], _idx): _interpret_dict(_t[1], _value) for _idx, _value in in_dict.get(_key, {}).items() if type(_idx) == int}
                 )
             if in_dict.get("lines", []):
                 r_dict["lines"] = in_dict["lines"]
@@ -663,11 +663,11 @@ class ctrl_type_megaraid_sas(ctrl_type):
             return logging_tools.struct_to_string(logging_tools.list_to_struct(in_list)[0])
 
         # rewrite bbu info
-        for _c_id, _c_dict in ctrl_dict.iteritems():
+        for _c_id, _c_dict in ctrl_dict.items():
             if "main" in _c_dict.get("bbu_keys", {}):
                 _c_dict["bbus"] = {
                     0: {
-                        "lines": [(_key, _value) for _key, _value in _c_dict["bbu_keys"]["main"].iteritems()]
+                        "lines": [(_key, _value) for _key, _value in _c_dict["bbu_keys"]["main"].items()]
                     }
                 }
                 del _c_dict["bbu_keys"]
@@ -678,7 +678,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                         "lines": [
                             (line[0].lower().replace(" ", "_").replace("virtual_disk", "virtual_drive"), line[1]) for line in value
                         ]
-                    } for key, value in _c_dict["logical_lines"].iteritems()
+                    } for key, value in _c_dict["logical_lines"].items()
                 }
                 del _c_dict["logical_lines"]
         # print cur_ns
@@ -805,7 +805,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 # passive lut
                 _pl = {_info: (_ret_state, _result) for _info, _ret_state, _result in _passive_dict["list"]}
                 # rewrite the passive dict
-                for _key, _struct in shorten_dict.iteritems():
+                for _key, _struct in shorten_dict.items():
                     # pprint.pprint(_struct)
                     # local state list
                     _lss = [list(_pl[_info]) + [_info] for _info in _struct["infos"]]
@@ -821,7 +821,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 ascii_chunk = ""
             # print _ret_list, _ok_dict
             if _ok_dict:
-                _num_ok = sum([len(_val) for _val in _ok_dict.itervalues()])
+                _num_ok = sum([len(_val) for _val in _ok_dict.values()])
                 if _num_ok == 1 and single_key:
                     pass
                 else:
@@ -830,7 +830,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                             logging_tools.get_plural("OK check", _num_ok),
                             ", ".join(
                                 [
-                                    logging_tools.get_plural(_expand_key(_key), len(_val)) for _key, _val in _ok_dict.iteritems()
+                                    logging_tools.get_plural(_expand_key(_key), len(_val)) for _key, _val in _ok_dict.items()
                                 ]
                             )
                         )

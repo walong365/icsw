@@ -177,8 +177,8 @@ class usv_mon_base(MonCheckDefinition):
 
     def _rewrite_result(self, scheme):
         _val_dict = {}
-        for _key, _value in scheme.snmp.iteritems():
-            for _sk, _sv in _value.iteritems():
+        for _key, _value in scheme.snmp.items():
+            for _sk, _sv in _value.items():
                 _val_dict[tuple(list(_key)[-1:] + list(_sk))] = _sv
         return _val_dict
 

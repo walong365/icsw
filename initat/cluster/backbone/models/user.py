@@ -21,7 +21,7 @@
 #
 """ NOCTUA / CORUVS models, user part """
 
-from __future__ import unicode_literals, print_function
+
 
 import base64
 import crypt
@@ -122,7 +122,7 @@ class RouteTrace(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"RouteTrace, session {} ({:d}) from {} to {}".format(
+        return "RouteTrace, session {} ({:d}) from {} to {}".format(
             self.session_id,
             self.user_id,
             self.from_name,
@@ -136,7 +136,7 @@ class icswAuthCache(object):
         # auth_obj is a user or a group
         self.auth_obj = auth_obj
         self.model_name = self.auth_obj._meta.model_name
-        self.cache_key = u"auth_{}_{:d}".format(
+        self.cache_key = "auth_{}_{:d}".format(
             auth_obj._meta.object_name,
             auth_obj.pk,
         )
@@ -171,7 +171,7 @@ class icswAuthCache(object):
         }
         # dict, content label -> list of perms
         self.__model_perm_dict = {}
-        for _key, _value in self.__perm_dict.iteritems():
+        for _key, _value in self.__perm_dict.items():
             self.__model_perm_dict.setdefault(model_key(_key), {})[_key] = _value
         # pprint.pprint(self.__model_perm_dict)
         # pprint.pprint(self.__perm_dict)
@@ -277,7 +277,7 @@ class icswAuthCache(object):
             return set(
                 apps.get_model(
                     app_label,
-                    self.__model_perm_dict[code_key].values()[0].content_type.model_class().__name__
+                    list(self.__model_perm_dict[code_key].values())[0].content_type.model_class().__name__
                 ).objects.all().values_list("pk", flat=True)
             )
         elif code_key in self.__model_obj_perms:
@@ -290,7 +290,7 @@ class icswAuthCache(object):
         if obj:
             obj_ct = ContentType.objects.get_for_model(obj)
             # which permissions are valid for this object ?
-            obj_perms = set([key for key, value in self.__perm_dict.iteritems() if value.content_type == obj_ct])
+            obj_perms = set([key for key, value in self.__perm_dict.items() if value.content_type == obj_ct])
         else:
             # copy
             obj_perms = set(self.__perm_dict.keys())
@@ -299,38 +299,38 @@ class icswAuthCache(object):
             return {key: AC_FULL for key in obj_perms}
         else:
             # which permissions are globaly set ?
-            global_perms = {key: value for key, value in self.__perms.iteritems() if key in obj_perms}
+            global_perms = {key: value for key, value in self.__perms.items() if key in obj_perms}
             # obj_perms = {key: self.__perms[key] for key in obj_perms.iterkeys()}
             if obj:
                 # local permissions
-                local_perms = {key: max(obj_list.values()) for key, obj_list in self.__obj_perms.iteritems() if key in obj_perms and obj.pk in obj_list}
+                local_perms = {key: max(obj_list.values()) for key, obj_list in self.__obj_perms.items() if key in obj_perms and obj.pk in obj_list}
             else:
-                local_perms = {key: max(obj_list.values()) for key, obj_list in self.__obj_perms.iteritems() if key in obj_perms}
+                local_perms = {key: max(obj_list.values()) for key, obj_list in self.__obj_perms.items() if key in obj_perms}
             # merge to result permissions
             result_perms = {key: max(global_perms.get(key, -1), local_perms.get(key, -1)) for key in set(global_perms.keys()) | set(local_perms.keys())}
             # only use values with at least level 0
-            result_perms = {_key: _value for _key, _value in result_perms.iteritems() if _value >= 0}
+            result_perms = {_key: _value for _key, _value in result_perms.items() if _value >= 0}
             return result_perms
 
     def get_object_access_levels(self, obj, is_superuser):
         obj_type = obj._meta.model_name
         # returns a dict with all access levels for the given object
         obj_perms = [
-            key for key, value in self.__perm_dict.iteritems() if value.content_type.model_class().__name__ == obj_type
+            key for key, value in self.__perm_dict.items() if value.content_type.model_class().__name__ == obj_type
         ]
         if is_superuser:
             ac_dict = {key: AC_FULL for key in obj_perms}
         else:
             ac_dict = {key: self.__obj_perms.get(key, {}).get(obj.pk, self.__perms.get(key, -1)) for key in obj_perms}
             # filter values
-            ac_dict = {key: value for key, value in ac_dict.iteritems() if value >= 0}
+            ac_dict = {key: value for key, value in ac_dict.items() if value >= 0}
             if obj_type == "device":
                 # for devices we assume that the minimum access level is 0 (pre-filtered by the access_to_devicegroup feature)
                 self._fill_dg_lut(obj)
                 # get permissions dict for meta device
                 meta_dict = {key: self.__obj_perms.get(key, {}).get(self.__dg_lut[obj.pk], self.__perms.get(key, -1)) for key in obj_perms}
                 # copy to device permdict
-                for key, value in meta_dict.iteritems():
+                for key, value in meta_dict.items():
                     # only use values with at least level 0
                     if value >= 0 or key in ac_dict:
                         ac_dict[key] = max(ac_dict.get(key, 0), value)
@@ -389,7 +389,7 @@ class csw_permission(models.Model):
         return "G/O" if self.valid_for_object_level else "G"
 
     def __unicode__(self):
-        return u"{} | {} | {} | {}".format(
+        return "{} | {} | {} | {}".format(
             self.content_type.app_label or "backbone",
             self.content_type.model,
             self.name,
@@ -413,7 +413,7 @@ class csw_object_permission(models.Model):
             obj = model_class.objects.get(pk=self.object_pk)
         except model_class.DoesNotExist:
             obj = "deleted object (pk: {})".format(self.object_pk)
-        return u"{} on {}".format(unicode(self.csw_permission), unicode(obj))
+        return "{} on {}".format(str(self.csw_permission), str(obj))
 
     class Meta:
         verbose_name = "Object permission"
@@ -475,9 +475,9 @@ class user_permission(models.Model):
         verbose_name = "Global permissions of users"
 
     def __unicode__(self):
-        return u"Permission {} for user {}".format(
-            unicode(self.csw_permission),
-            unicode(self.user),
+        return "Permission {} for user {}".format(
+            str(self.csw_permission),
+            str(self.user),
         )
 
 
@@ -506,9 +506,9 @@ class RolePermission(models.Model):
         verbose_name = "Global permissions of Role"
 
     def __unicode__(self):
-        return u"Permission {} for role {}".format(
-            unicode(self.csw_permission),
-            unicode(self.role),
+        return "Permission {} for role {}".format(
+            str(self.csw_permission),
+            str(self.role),
         )
 
 
@@ -537,9 +537,9 @@ class RoleObjectPermission(models.Model):
         verbose_name = "Global Object permissions of Role"
 
     def __unicode__(self):
-        return u"Object permission {} for role {}".format(
-            unicode(self.csw_object_permission),
-            unicode(self.role),
+        return "Object permission {} for role {}".format(
+            str(self.csw_object_permission),
+            str(self.role),
         )
 
 
@@ -565,9 +565,9 @@ class user_object_permission(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"Permission {} for user {}".format(
-            unicode(self.csw_object_permission),
-            unicode(self.user),
+        return "Permission {} for user {}".format(
+            str(self.csw_object_permission),
+            str(self.user),
         )
 
     class Meta:
@@ -590,7 +590,7 @@ def user_object_permission_delete(sender, **kwargs):
 
 def get_label_codename(perm):
     app_label, codename = (None, None)
-    if isinstance(perm, basestring):
+    if isinstance(perm, str):
         if perm.count(".") == 2:
             app_label, content_name, codename = perm.split(".")
         elif perm.count(".") == 1:
@@ -610,7 +610,7 @@ def get_label_codename(perm):
             perm.csw_permission.codename
         )
     else:
-        raise ImproperlyConfigured("Unknown perm '{}'".format(unicode(perm)))
+        raise ImproperlyConfigured("Unknown perm '{}'".format(str(perm)))
     return (app_label, content_name, codename)
 
 
@@ -875,7 +875,7 @@ class user(models.Model):
 
     def __setattr__(self, key, value):
         # catch clearing of export entry via empty ("" or '') key
-        if key == "export" and isinstance(value, basestring):
+        if key == "export" and isinstance(value, str):
             value = None
         super(user, self).__setattr__(key, value)
 
@@ -949,7 +949,7 @@ class user(models.Model):
         else:
             r_val = get_all_object_perms(self, obj)
             if ask_parent:
-                for key, value in get_all_object_perms(self.group, obj).iteritems():
+                for key, value in get_all_object_perms(self.group, obj).items():
                     r_val[key] = max(value, r_val.get(key, 0))
         return r_val
 
@@ -1027,24 +1027,24 @@ class user(models.Model):
         ]
 
     class Meta:
-        db_table = u'user'
+        db_table = 'user'
         ordering = ("login", "group__groupname")
         verbose_name = "User"
 
     def get_info(self):
-        return unicode(self)
+        return str(self)
 
     def __unicode__(self):
         _add_fields = [
             _entry for _entry in [
-                unicode(self.first_name) or "",
-                unicode(self.last_name) or "",
-                "[{}]".format("{:d}".format(self.pk) if type(self.pk) in [int, long] else "???"),
+                str(self.first_name) or "",
+                str(self.last_name) or "",
+                "[{}]".format("{:d}".format(self.pk) if type(self.pk) in [int, int] else "???"),
             ] if _entry
         ]
-        return u"{}{}".format(
+        return "{}{}".format(
             self.login,
-            u" ({})".format(
+            " ({})".format(
                 " ".join(_add_fields)
             ) if _add_fields else "",
         )
@@ -1097,7 +1097,7 @@ def user_pre_save(sender, **kwargs):
             cur_inst.nt_password = smbpasswd.nthash(passwd)
             pw_gen_1 = config_store.ConfigStore(GEN_CS_NAME, quiet=True)["password.hash.function"]
             if pw_gen_1 == "CRYPT":
-                salt = "".join(random.choice(string.ascii_uppercase + string.digits) for _x in xrange(4))
+                salt = "".join(random.choice(string.ascii_uppercase + string.digits) for _x in range(4))
                 cur_pw = "{}:{}".format(pw_gen_1, crypt.crypt(passwd, salt))
                 cur_inst.password = cur_pw
                 cur_inst.password_ssha = ""
@@ -1207,12 +1207,12 @@ class group(models.Model):
         fk_ignore_list = ["group_quota_setting"]
 
     class Meta:
-        db_table = u'ggroup'
+        db_table = 'ggroup'
         ordering = ("groupname",)
-        verbose_name = u"Group"
+        verbose_name = "Group"
 
     def __unicode__(self):
-        return u"{} (gid={:d})".format(
+        return "{} (gid={:d})".format(
             self.groupname,
             self.gid)
 
@@ -1267,7 +1267,7 @@ class user_device_login(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = u'user_device_login'
+        db_table = 'user_device_login'
 
 
 class login_history(models.Model):
@@ -1319,9 +1319,9 @@ class user_variable(models.Model):
             self.var_type = "j"
         else:
             cur_val = self.value
-            if isinstance(cur_val, basestring):
+            if isinstance(cur_val, str):
                 self.var_type = "s"
-            elif type(cur_val) in [int, long]:
+            elif type(cur_val) in [int, int]:
                 self.var_type = "i"
                 self.value = "{:d}".format(self.value)
             elif type(cur_val) in [bool]:

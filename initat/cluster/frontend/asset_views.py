@@ -20,7 +20,7 @@
 
 """ asset views """
 
-from __future__ import print_function, unicode_literals
+
 
 import base64
 import csv
@@ -473,7 +473,7 @@ class DeviceStaticAssetViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
     def create_asset(self, request):
         _count = request.data.get("count", 1)
-        for _iter in xrange(_count):
+        for _iter in range(_count):
             new_asset = StaticAssetSerializer(data=request.data)
             if new_asset.is_valid():
                 asset = new_asset.save()
@@ -516,7 +516,7 @@ class device_asset_post(View):
         # import pprint
         # pprint.pprint(_lut)
         _field_list = StaticAssetFieldValue.objects.filter(
-            Q(pk__in=_lut.keys())
+            Q(pk__in=list(_lut.keys()))
         ).select_related(
             "static_asset_template_field"
         )

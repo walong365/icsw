@@ -21,7 +21,7 @@
 #
 """ device views """
 
-from __future__ import unicode_literals, print_function
+
 
 import datetime
 import json
@@ -93,7 +93,7 @@ class change_devices(View):
             }
             # build change_dict
             c_dict = {
-                key[7:]: c_dict.get(key[7:], def_dict.get(key[7:], None)) for key in c_dict.iterkeys() if key.startswith("change_") and c_dict[key]
+                key[7:]: c_dict.get(key[7:], def_dict.get(key[7:], None)) for key in c_dict.keys() if key.startswith("change_") and c_dict[key]
             }
             # resolve foreign keys
             res_c_dict = {
@@ -105,19 +105,19 @@ class change_devices(View):
                     "monitor_server": device,
                 }[key].objects.get(
                     Q(pk=value)
-                ) if type(value) == int else value for key, value in c_dict.iteritems()
+                ) if type(value) == int else value for key, value in c_dict.items()
             }
             logger.info("change_dict has {}".format(logging_tools.get_plural("key", len(res_c_dict))))
             for key in sorted(res_c_dict):
                 if key == "root_passwd":
                     logger.info(" {}: {}".format(key, "****"))
                 else:
-                    logger.info(" {}: {}".format(key, unicode(res_c_dict.get(key))))
+                    logger.info(" {}: {}".format(key, str(res_c_dict.get(key))))
             dev_changes = 0
             changes_json = []
             for cur_dev in device.objects.filter(Q(pk__in=pk_list)):
                 changed = False
-                for c_key, c_value in res_c_dict.iteritems():
+                for c_key, c_value in res_c_dict.items():
                     if getattr(cur_dev, c_key) != c_value:
                         if c_key == "root_passwd":
                             c_value = cur_dev.crypt(c_value)
@@ -179,7 +179,7 @@ class manual_connection(View):
             re_dict["source"],
             re_dict["target"]))
         # # (hash) is our magic sign for \d
-        for key in re_dict.keys():
+        for key in list(re_dict.keys()):
             val = re_dict[key]
             if val.count("#"):
                 parts = val.split("#")
@@ -249,7 +249,7 @@ class scan_device_network(View):
         _json_dev["scan_address"] = _json_dev["manual_address"]
         _dev = device.objects.get(Q(pk=_json_dev["device"]))
         _sm = _json_dev["scan_mode"]
-        logger.info("scanning network settings of device {} via {}".format(unicode(_dev.full_name), _sm))
+        logger.info("scanning network settings of device {} via {}".format(str(_dev.full_name), _sm))
         if _sm == "hm":
             srv_com = server_command.srv_command(command="scan_network_info")
             _dev_node = srv_com.builder("device")
@@ -578,7 +578,7 @@ class EnrichDevices(View):
         _req = json.loads(request.POST["enrich_request"])
         # pprint.pprint(_req)
         result = {}
-        for en_key, pk_list in _req.iteritems():
+        for en_key, pk_list in _req.items():
             # iterate over enrichment info
             result[en_key] = _my_en_helper.create(en_key, pk_list)
         # pprint.pprint(result)
@@ -631,18 +631,18 @@ class create_device(permission_required_mixin, View):
                 )
             except:
                 request.xml_response.error(
-                    u"cannot create new device group: {}".format(
+                    "cannot create new device group: {}".format(
                         process_tools.get_except_info()
                     ),
                     logger=logger
                 )
                 cur_dg = None
             else:
-                request.xml_response.info(u"created new device group '{}'".format(unicode(cur_dg)), logger=logger)
+                request.xml_response.info("created new device group '{}'".format(str(cur_dg)), logger=logger)
         else:
             if cur_dg.cluster_device_group:
                 request.xml_response.error(
-                    u"no devices allowed in system (cluster) group",
+                    "no devices allowed in system (cluster) group",
                     logger=logger
                 )
                 cur_dg = None
@@ -681,7 +681,7 @@ class create_device(permission_required_mixin, View):
                     )
                 except:
                     request.xml_response.error(
-                        u"cannot create new device: {}".format(
+                        "cannot create new device: {}".format(
                             process_tools.get_except_info()
                         ),
                         logger=logger
@@ -690,7 +690,7 @@ class create_device(permission_required_mixin, View):
                 else:
                     request.xml_response["device_pk"] = cur_dev.idx
             else:
-                request.xml_response.warn(u"device {} already exists".format(unicode(cur_dev)), logger=logger)
+                request.xml_response.warn("device {} already exists".format(str(cur_dev)), logger=logger)
                 cur_dev = None
 
             if cur_dev is not None:
@@ -724,11 +724,11 @@ class create_device(permission_required_mixin, View):
                     try:
                         cur_ip.save()
                     except:
-                        request.xml_response.error(u"cannot create IP: {}".format(process_tools.get_except_info()), logger=logger)
+                        request.xml_response.error("cannot create IP: {}".format(process_tools.get_except_info()), logger=logger)
                         _create_ok = False
         if cur_dev is not None:
             if _create_ok:
-                request.xml_response.info(u"created new device '{}'".format(unicode(cur_dev)), logger=logger)
+                request.xml_response.info("created new device '{}'".format(str(cur_dev)), logger=logger)
             else:
                 # creation not ok, deleting device
                 cur_dev.delete()
@@ -749,7 +749,7 @@ class DeviceVariableViewSet(viewsets.ViewSet):
                             "{}: {}".format(
                                 _key,
                                 ", ".join(_value),
-                            ) for _key, _value in new_obj.errors.iteritems()
+                            ) for _key, _value in new_obj.errors.items()
                         ]
                     )
                 )
@@ -804,7 +804,7 @@ class DeviceVariableScopeViewSet(viewsets.ViewSet):
                             "{}: {}".format(
                                 _key,
                                 ", ".join(_value),
-                            ) for _key, _value in new_scope.errors.iteritems()
+                            ) for _key, _value in new_scope.errors.items()
                             ]
                     )
                 )
@@ -838,7 +838,7 @@ class DeviceVariableScopeViewSet(viewsets.ViewSet):
                             "{}: {}".format(
                                 _key,
                                 ", ".join(_value),
-                            ) for _key, _value in _cur_ser.errors.iteritems()
+                            ) for _key, _value in _cur_ser.errors.items()
                         ]
                     )
                 )
@@ -881,7 +881,7 @@ class DeviceVariableScopeViewSet(viewsets.ViewSet):
                             "{}: {}".format(
                                 _key,
                                 ", ".join(_value),
-                            ) for _key, _value in new_obj.errors.iteritems()
+                            ) for _key, _value in new_obj.errors.items()
                         ]
                     )
                 )
@@ -1284,7 +1284,7 @@ class SystemTask(object):
         return "SystemTask {}".format(self.name)
 
     def __repr__(self):
-        return unicode(self)
+        return str(self)
 
     def get_dict(self, request, ignore_dict):
         _dict = {
@@ -1495,7 +1495,7 @@ class DeviceLogEntryCount(View):
     def post(self, request):
         device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
 
-        device_log_entries = DeviceLogEntry.objects.filter(Q(device__in=device_pks)).values()
+        device_log_entries = list(DeviceLogEntry.objects.filter(Q(device__in=device_pks)).values())
 
         pk_count_dict = {}
         for device_pk in device_pks:

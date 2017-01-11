@@ -110,7 +110,7 @@ class drbd_status_command(hm_classes.hm_command):
                 # pprint.pprint(state_dict)
                 ret_state = max(dev_states)
                 return ret_state, "{}; {}".format(
-                    ", ".join([logging_tools.get_plural(key, len(value)) for key, value in state_dict.iteritems()]),
+                    ", ".join([logging_tools.get_plural(key, len(value)) for key, value in state_dict.items()]),
                     ", ".join(ret_strs) if ret_strs else "everything ok"
                 )
             else:

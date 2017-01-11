@@ -19,7 +19,7 @@
 #
 """ database definitions for monitoring """
 
-from __future__ import unicode_literals, print_function
+
 
 import enum
 from django.db import models
