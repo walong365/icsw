@@ -28,7 +28,7 @@ import zmq
 from django.db.models import Q
 from lxml import etree
 
-from initat.cluster.backbone import db_tools, factories
+from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import config_catalog, icswEggConsumer
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster_server.capabilities import base
@@ -141,14 +141,20 @@ class CapabilityProcess(threading_tools.process_obj):
         _total = 0
         _total_ghost = 0
         for _csr in icswEggConsumer.objects.all():
+            _service = icswServiceEnum[_csr.config_service_enum.enum_name]
             my_vector.append(
                 hm_classes.mvect_entry(
-                    "icsw.ova.{}{}.{}".format(
-                        "ghost." if _csr.ghost else "",
+                    "icsw.ova.{}.{}.{}.{}".format(
+                        "ghost" if _csr.ghost else "cosume",
                         _csr.content_type.model,
                         _csr.action,
+                        _service.name,
                     ),
-                    info="Ova consumed by {} on {}".format(_csr.action, _csr.content_type.model),
+                    info="Ova consumed by {}@{} on {}".format(
+                        _csr.action,
+                        _service.name,
+                        _csr.content_type.model,
+                    ),
                     default=0,
                     value=_csr.consumed,
                     factor=1,
@@ -159,30 +165,28 @@ class CapabilityProcess(threading_tools.process_obj):
             _total_ghost += _csr.consumed
             if not _csr.ghost:
                 _total += _csr.consumed
-        if _total:
-            my_vector.append(
-                hm_classes.mvect_entry(
-                    "icsw.ova.overall",
-                    info="Ova consumed by all actions on all models",
-                    default=0,
-                    value=_total,
-                    factor=1,
-                    base=1,
-                    valid_until=cur_time + 3600,
-                ).build_xml(_bldr)
-            )
-        if _total_ghost:
-            my_vector.append(
-                hm_classes.mvect_entry(
-                    "icsw.ova.overall.ghost",
-                    info="Ova consumed by all actions on all models (ghost)",
-                    default=0,
-                    value=_total_ghost,
-                    factor=1,
-                    base=1,
-                    valid_until=cur_time + 3600,
-                ).build_xml(_bldr)
-            )
+        my_vector.append(
+            hm_classes.mvect_entry(
+                "icsw.ova.overall.total",
+                info="Ova consumed by all actions on all models",
+                default=0,
+                value=_total,
+                factor=1,
+                base=1,
+                valid_until=cur_time + 3600,
+            ).build_xml(_bldr)
+        )
+        my_vector.append(
+            hm_classes.mvect_entry(
+                "icsw.ova.overall.ghost",
+                info="Ova consumed by all actions on all models (ghost)",
+                default=0,
+                value=_total_ghost,
+                factor=1,
+                base=1,
+                valid_until=cur_time + 3600,
+            ).build_xml(_bldr)
+        )
         drop_com["vector_ova"] = my_vector
         drop_com["vector_ova"].attrib["type"] = "vector"
 
