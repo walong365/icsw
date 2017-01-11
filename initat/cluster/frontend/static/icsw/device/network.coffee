@@ -1353,10 +1353,82 @@ angular.module(
         controller: "icswNetworkListCtrl"
     }
 ]).controller("icswNetworkListCtrl", [
-    "$scope",
+    "$scope", "$compile", "$templateCache", "$q", "icswComplexModalService", "icswConfigTreeService",
+    "icswDeviceTreeService", "icswDeviceTreeHelperService", "icswUserService", "icswSimpleAjaxCall", "ICSW_URLS"
 (
-    $scope,
+    $scope, $compile, $templateCache, $q, icswComplexModalService, icswConfigTreeService,
+    icswDeviceTreeService, icswDeviceTreeHelperService, icswUserService, icswSimpleAjaxCall, ICSW_URLS
 ) ->
+    $scope.perform_host_discovery_scan = (network_obj) ->
+        $q.all(
+            [
+                icswDeviceTreeService.load($scope.$id)
+                icswConfigTreeService.load($scope.$id)
+                icswUserService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                device_tree = data[0]
+                config_tree = data[1]
+                user_tree = data[2]
+
+                device_tree.enrich_devices(
+                    icswDeviceTreeHelperService.create(device_tree, device_tree.all_list)
+                    ["network_info", "com_info"]
+                ).then(
+                     (done) ->
+                            sub_scope = $scope.$new(true)
+
+                            sub_scope.nmap_scan_devices = []
+                            sub_scope.edit_obj = {}
+                            sub_scope.edit_obj.$$scan_device = undefined
+
+                            for config in config_tree.list
+                                if config.name == "nmap-scan-device"
+                                    for obj in config.device_config_set
+                                        sub_scope.nmap_scan_devices.push(device_tree.all_lut[obj.device])
+
+                            icswComplexModalService(
+                                {
+                                    message: $compile($templateCache.get("performscan.form"))(sub_scope)
+                                    title: "Scan Settings"
+                                    css_class: "modal-wide modal-form"
+                                    ok_label: "Scan Now"
+                                    closable: true
+                                    ok_callback: (modal) ->
+                                        d = $q.defer()
+                                        icswSimpleAjaxCall(
+                                            {
+                                                url: ICSW_URLS.DISCOVERY_CREATE_SCHEDULE_ITEM
+                                                data:
+                                                    model_name: "network"
+                                                    object_id: network_obj.idx
+                                                    schedule_handler: "network_scan_schedule_handler"
+                                                    schedule_handler_data: "" + sub_scope.edit_obj.$$scan_device
+                                                    user_id: user_tree.user.idx
+                                                dataType: "json"
+                                            }
+                                        ).then(
+                                            (result) ->
+                                                d.resolve("ok")
+                                        )
+                                        return d.promise
+                                    cancel_callback: (modal) ->
+                                        d = $q.defer()
+                                        d.resolve("cancel")
+                                        return d.promise
+                                }
+                            ).then(
+                                (fin) ->
+                                    console.log "finish"
+                                    sub_scope.$destroy()
+                            )
+                )
+
+        )
+
+
+
     $scope.show_column = {}
 ]).service('icswNetworkListService',
 [
@@ -1421,6 +1493,18 @@ angular.module(
 
         return parseInt((dots[0] * 16777216) + (dots[1] * 65536) + (dots[2] * 256) + (dots[3]))
 
+    salt_nmap_scan = (nmap_scan) ->
+        nmap_scan.$$created = moment(nmap_scan.date).format("YYYY-MM-DD HH:mm:ss")
+
+        if nmap_scan.devices_found == null
+            nmap_scan.devices_found = "N/A"
+
+        if nmap_scan.devices_scanned == null
+            nmap_scan.devices_scanned = "N/A"
+
+        if nmap_scan.runtime == null
+            nmap_scan.runtime = "N/A"
+
     salt_nmap_device = (device, ip_to_device_lut) ->
         device.$$mac = "N/A"
         if device.mac != null
@@ -1457,8 +1541,9 @@ angular.module(
     device_tree = undefined
     config_tree = undefined
     dispatcher_links = undefined
-    device_list = []
-    nmap_scans = {}
+    nmap_scan_devices = []
+    nmap_scan_to_network_lut = {}
+    nmap_scan_lut = {}
     nmap_scans_websocket = undefined
 
     return {
@@ -1509,34 +1594,39 @@ angular.module(
                     )
 
                     for network in nw_tree.nw_list
-                        nmap_scans[network.idx] = []
+                        nmap_scan_to_network_lut[network.idx] = []
 
                     for nmap_scan in data[7]
-                        nmap_scan.$$created = moment(nmap_scan.date).format("YYYY-MM-DD HH:mm:ss")
-                        nmap_scans[nmap_scan.network].push(nmap_scan)
+                        salt_nmap_scan(nmap_scan)
+                        nmap_scan_to_network_lut[nmap_scan.network].push(nmap_scan)
+                        nmap_scan_lut[nmap_scan.idx] = nmap_scan
 
                     # add devices that are defined as "nmap-scan-device"
                     for config in config_tree.list
                         if config.name == "nmap-scan-device"
                             for obj in config.device_config_set
-                                device_list.push(device_tree.all_lut[obj.device])
+                                nmap_scan_devices.push(device_tree.all_lut[obj.device])
 
                     # also add devices that are already linked as a nmap-scan-device
                     for dispatch_link in dispatcher_links
                         if dispatch_link.schedule_handler == "network_scan_schedule_handler"
                             device_id = parseInt(dispatch_link.schedule_handler_data)
                             device = device_tree.all_lut[device_id]
-                            if device != undefined and !(device in device_list)
-                                device_list.push(device)
+                            if device != undefined and !(device in nmap_scan_devices)
+                                nmap_scan_devices.push(device)
 
                     nmap_scans_websocket = icswWebSocketService.register_ws("nmap_scans")
                     nmap_scans_websocket.onmessage = (data) ->
                         nmap_scan = JSON.parse(data.data)
-                        nmap_scan.$$created = moment(nmap_scan.date).format("YYYY-MM-DD HH:mm:ss")
+                        salt_nmap_scan(nmap_scan)
 
                         $timeout(
                             () ->
-                                nmap_scans[nmap_scan.network].push(nmap_scan)
+                                if nmap_scan_lut[nmap_scan.idx] == undefined
+                                    nmap_scan_to_network_lut[nmap_scan.network].push(nmap_scan)
+                                    nmap_scan_lut[nmap_scan.idx] = nmap_scan
+                                else
+                                    _.extend(nmap_scan_lut[nmap_scan.idx], nmap_scan)
                             0
                         )
 
@@ -1584,7 +1674,7 @@ angular.module(
             scope.edit_obj = obj_or_parent
             sub_scope = scope.$new(false)
             sub_scope.dispatcher_tree = dispatcher_tree
-            sub_scope.device_list = device_list
+            sub_scope.nmap_scan_devices = nmap_scan_devices
 
             if scope.edit_obj.$$dispatchers == undefined
                 scope.edit_obj.$$dispatchers = []
@@ -1721,7 +1811,7 @@ angular.module(
                         network_display.iplist = iplist
                 )
 
-        close_tab : (to_be_closed_tab) ->
+        close_tab: (to_be_closed_tab) ->
             $timeout(
                 () ->
                     tabs_tmp = []
@@ -1736,7 +1826,7 @@ angular.module(
                 0
             )
 
-        create_new_detail_view_tab : (obj) ->
+        create_new_detail_view_tab: (obj) ->
             new_network_display = {}
 
             new_network_display.active_network = obj
@@ -1759,7 +1849,7 @@ angular.module(
                     tab = {
                         heading: new_network_display.active_network.identifier
                         network_display: new_network_display
-                        nmap_scans: nmap_scans[obj.idx]
+                        nmap_scans: nmap_scan_to_network_lut[obj.idx]
                         sub_tabs: []
                         selected_row_a: undefined
                         selected_row_b: undefined
@@ -2184,6 +2274,9 @@ angular.module(
             }
 
             tab.sub_tabs.push(sub_tab)
+
+        display_nmap_scan_error_messsage: (nmap_scan) ->
+            toaster.pop("error", "", nmap_scan.error_string)
 
         # range functions
         autorange_set : (edit_obj) ->

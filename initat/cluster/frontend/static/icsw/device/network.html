@@ -583,11 +583,20 @@
                                     <td class="text-center">{{ obj.devices_scanned }}</td>
                                     <td class="text-center">{{ obj.runtime }}</td>
                                     <td class="text-center">
-                                        <icsw-tools-button
+                                        <icsw-tools-button ng-show="obj.in_progress == false && obj.error_string == null"
                                             type="create"
                                             size="xs"
                                             ng-click="struct.icsw_network_list_service.create_new_host_discovery_detail_sub_tab(tab, obj.idx)"
                                             value="Show Details"
+                                        ></icsw-tools-button>
+                                        <div ng-show="obj.in_progress == true">
+                                            In Progress...
+                                        </div>
+                                        <icsw-tools-button ng-show="obj.in_progress == false && obj.error_string != null"
+                                            type="create"
+                                            size="xs"
+                                            ng-click="struct.icsw_network_list_service.display_nmap_scan_error_messsage(obj)"
+                                            value="Show Error"
                                         ></icsw-tools-button>
                                     </td>
                                 </tr>
@@ -599,127 +608,140 @@
                         <span>Scan: {{ sub_tab.nmap_scan.index }}</span>
                         <icsw-tools-button size="xs" type="close" value="" ng-click="tab.close_sub_tab(sub_tab)"></icsw-tools-button>
                     </uib-tab-heading>
-                    <h3>{{ sub_tab.devices.length }} Devices found in {{ sub_tab.nmap_scan.runtime }} seconds ({{ sub_tab.nmap_scan.devices_scanned }} IPs scanned on {{ sub_tab.nmap_scan.scan_date }})
-                    </h3>
-                    <table st-table="entries_displayed" st-safe-src="sub_tab.display_devices" class="table table-condensed table-hover" style="width:auto;">
-                        <thead>
-                            <tr>
-                                <td colspan="99">
-                                    <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Filter Actions:</td>
-                                <td colspan="99">
-                                    <div class="btn-group btn-group-xs">
-                                        <input type="button" value="All Devices" ng-class="sub_tab.all_devices_filter_class" ng-click="sub_tab.show_all_devices_filter()"></input>
-                                        <input type="button" value="Linked Only" ng-class="sub_tab.linked_only_filter_class" ng-click="sub_tab.show_linked_devices_only_filter()"></input>
-                                        <input type="button" value="Unlinked Only" ng-class="sub_tab.unlinked_only_filter_class" ng-click="sub_tab.show_unlinked_devices_only_filter()"></input>
-                                        <input type="button" value="New Devices (last scan)" ng-class="sub_tab.new_devices_last_scan_class" ng-click="sub_tab.show_new_devices_since_last_scan()"></input>
-                                        <input type="button" value="New Devices (Alltime)" ng-class="sub_tab.new_devices_alltime_class" ng-click="sub_tab.show_new_devices_alltime()"></input>
-                                        <input type="button" value="Ignored Devices" ng-class="sub_tab.ignored_devices_class" ng-click="sub_tab.show_ignored_devices()"></input>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    Global Actions:
-                                </td>
-                                <td colspan="99">
-                                    <button type="button" ng-click="sub_tab.handle_selection()" ng-disabled="sub_tab.selected_devices == 0" class="btn btn-success btn-xs">{{ sub_tab.ignore_text }} ({{ sub_tab.selected_devices }} Devices Selected)</button>
-                                    <button type="button" ng-click="sub_tab.bulk_create()" ng-disabled="sub_tab.selected_devices == 0" class="btn btn-success btn-xs">Bulk Create {{ sub_tab.selected_devices }} Devices (Interactive)</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    Selector Actions:
-                                </td>
-                                <td colspan="99">
-                                    <button type="button" ng-click="sub_tab.select_all_nmap_devices()" class="btn btn-success btn-xs">Select All</button>
-                                    <button type="button" ng-click="sub_tab.unselect_all_nmap_devices()" class="btn btn-success btn-xs">Unselect All</button>
-                                    <button type="button" ng-click="sub_tab.select_all_linked_nmap_devices()" class="btn btn-success btn-xs">Select All Linked</button>
-                                    <button type="button" ng-click="sub_tab.select_all_unlinked_nmap_devices()" class="btn btn-success btn-xs">Select All Unlinked</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th st-sort="$$first_seen_timestamp" class="text-center">First Seen</th>
-                                <th class="text-center">Selection</th>
-                                <th st-sort="$$hostname_sort_hint" class="text-center">Hostname</th>
-                                <th st-sort="$$ip_sort_hint" st-sort-default="true" class="text-center">IP</th>
-                                <th st-sort="mac" class="text-center">MAC</th>
-                                <th class="text-center">Linked Device</th>
-                                <th class="text-center">Action</th>
-                            </tr>
-                            <tr>
-                                <th>
-                                    <input st-search="$$first_seen_nmap_scan_date" placeholder="filter by date" class="input-sm form-control" type="search"/>
-                                </th>
-                                <th></th>
-                                <th>
-                                    <input st-search="$$hostname" placeholder="filter by hostname" class="input-sm form-control" type="search"/>
-                                </th>
-                                <th>
-                                    <input st-search="ip" placeholder="filter by ip" class="input-sm form-control" type="search"/>
-                                </th>
-                                <th>
-                                    <input st-search="$$mac" placeholder="filter by mac" class="input-sm form-control" type="search"/>
-                                </th>
-                                <th>
-                                    <input st-search="linked_devices" placeholder="filter by device name" class="input-sm form-control" type="search"/>
-                                </th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr ng-repeat="obj in entries_displayed">
-                                <td class="vertical-align text-center"><button type="button" ng-disabled="sub_tab.nmap_scan.index == obj.first_seen_nmap_scan_idx || obj.first_seen_nmap_scan_idx == null" ng-click="struct.icsw_network_list_service.create_new_host_discovery_detail_sub_tab(tab, obj.first_seen_nmap_scan_idx)" class="btn btn-success btn-xs">{{ obj.$$first_seen_nmap_scan_date }}</button></td>
-                                <td class="vertical-align text-center">
-                                    <button type="button" class="btn btn-xs" ng-class="obj.$$selected && 'btn-success' || 'btn-default'" ng-click="sub_tab.select_nmap_scan_device(obj)" value="sel">
-                                        <span class="glyphicon" ng-class="obj.$$selected && 'glyphicon-ok' || 'glyphicon-minus'"></span>
-                                    </button>
-                                </td>
-                                <td class="vertical-align text-center">{{ obj.$$hostname }}</td>
-                                <td class="vertical-align text-center">{{ obj.ip }}</td>
-                                <td class="vertical-align text-center"><pre>{{ obj.$$mac }}</pre></td>
-                                <td class="vertical-align text-center"><div ng-if="obj.linked_devices.length == 0">N/A</div><button ng-repeat="device in obj.linked_devices" type="button" class="btn btn-xs btn-success" ng-click="sub_tab.show_device($event, device)">{{ device.full_name }}</button></td>
-                                <td class="vertical-align text-center">
-                                    <icsw-tools-button
-                                        type="create"
-                                        size="xs"
-                                        ng-click="struct.icsw_network_list_service.create_new_create_device_sub_tab(tab, obj)"
-                                        value="Create Device"
-                                    ></icsw-tools-button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <h3>Matrix</h3>
-                    <table class="table" style="width:auto;">
-                        <tr>
-                            <td>White</td>
-                            <td>Down/Unknown</td>
-                        </tr>
-                        <tr>
-                            <td class="alert-success">Green</td>
-                            <td>UP and Linked</td>
-                        </tr>
-                        <tr>
-                            <td class="alert-danger">Red</td>
-                            <td>UP and Unlinked</td>
-                        </tr>
-                        <tr>
-                            <td class="alert-warning">Yellow</td>
-                            <td>Ignored</td>
-                        </tr>
-                    </table>
+                    <uib-tabset>
+                        <uib-tab>
+                            <uib-tab-heading>
+                                <span>Table View</span>
+                            </uib-tab-heading>
 
-                    <table class="table" style="border: 1px solid black;border-collapse: collapse;">
-                        <tbody>
-                            <tr ng-repeat="matrix_row in sub_tab.nmap_scan.matrix" style="border: 1px solid black;border-collapse: collapse;">
-                                <td ng-repeat="row_info in matrix_row track by $index" ng-class="row_info[1]" style="border: 1px solid black;border-collapse: collapse;">{{ row_info[0] }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                            <h3>{{ sub_tab.devices.length }} Devices found in {{ sub_tab.nmap_scan.runtime }} seconds ({{ sub_tab.nmap_scan.devices_scanned }} IPs scanned on {{ sub_tab.nmap_scan.scan_date }})
+                            </h3>
+                            <table st-table="entries_displayed" st-safe-src="sub_tab.display_devices" class="table table-condensed table-hover" style="width:auto;">
+                                <thead>
+                                    <tr>
+                                        <td colspan="99">
+                                            <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Filter Actions:</td>
+                                        <td colspan="99">
+                                            <div class="btn-group btn-group-xs">
+                                                <input type="button" value="All Devices" ng-class="sub_tab.all_devices_filter_class" ng-click="sub_tab.show_all_devices_filter()"></input>
+                                                <input type="button" value="Linked Only" ng-class="sub_tab.linked_only_filter_class" ng-click="sub_tab.show_linked_devices_only_filter()"></input>
+                                                <input type="button" value="Unlinked Only" ng-class="sub_tab.unlinked_only_filter_class" ng-click="sub_tab.show_unlinked_devices_only_filter()"></input>
+                                                <input type="button" value="New Devices (last scan)" ng-class="sub_tab.new_devices_last_scan_class" ng-click="sub_tab.show_new_devices_since_last_scan()"></input>
+                                                <input type="button" value="New Devices (Alltime)" ng-class="sub_tab.new_devices_alltime_class" ng-click="sub_tab.show_new_devices_alltime()"></input>
+                                                <input type="button" value="Ignored Devices" ng-class="sub_tab.ignored_devices_class" ng-click="sub_tab.show_ignored_devices()"></input>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            Global Actions:
+                                        </td>
+                                        <td colspan="99">
+                                            <button type="button" ng-click="sub_tab.handle_selection()" ng-disabled="sub_tab.selected_devices == 0" class="btn btn-success btn-xs">{{ sub_tab.ignore_text }} ({{ sub_tab.selected_devices }} Devices Selected)</button>
+                                            <button type="button" ng-click="sub_tab.bulk_create()" ng-disabled="sub_tab.selected_devices == 0" class="btn btn-success btn-xs">Bulk Create {{ sub_tab.selected_devices }} Devices (Interactive)</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            Selector Actions:
+                                        </td>
+                                        <td colspan="99">
+                                            <button type="button" ng-click="sub_tab.select_all_nmap_devices()" class="btn btn-success btn-xs">Select All</button>
+                                            <button type="button" ng-click="sub_tab.unselect_all_nmap_devices()" class="btn btn-success btn-xs">Unselect All</button>
+                                            <button type="button" ng-click="sub_tab.select_all_linked_nmap_devices()" class="btn btn-success btn-xs">Select All Linked</button>
+                                            <button type="button" ng-click="sub_tab.select_all_unlinked_nmap_devices()" class="btn btn-success btn-xs">Select All Unlinked</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th st-sort="$$first_seen_timestamp" class="text-center">First Seen</th>
+                                        <th class="text-center">Selection</th>
+                                        <th st-sort="$$hostname_sort_hint" class="text-center">Hostname</th>
+                                        <th st-sort="$$ip_sort_hint" st-sort-default="true" class="text-center">IP</th>
+                                        <th st-sort="mac" class="text-center">MAC</th>
+                                        <th class="text-center">Linked Device</th>
+                                        <th class="text-center">Action</th>
+                                    </tr>
+                                    <tr>
+                                        <th>
+                                            <input st-search="$$first_seen_nmap_scan_date" placeholder="filter by date" class="input-sm form-control" type="search"/>
+                                        </th>
+                                        <th></th>
+                                        <th>
+                                            <input st-search="$$hostname" placeholder="filter by hostname" class="input-sm form-control" type="search"/>
+                                        </th>
+                                        <th>
+                                            <input st-search="ip" placeholder="filter by ip" class="input-sm form-control" type="search"/>
+                                        </th>
+                                        <th>
+                                            <input st-search="$$mac" placeholder="filter by mac" class="input-sm form-control" type="search"/>
+                                        </th>
+                                        <th>
+                                            <input st-search="linked_devices" placeholder="filter by device name" class="input-sm form-control" type="search"/>
+                                        </th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="obj in entries_displayed">
+                                        <td class="vertical-align text-center"><button type="button" ng-disabled="sub_tab.nmap_scan.index == obj.first_seen_nmap_scan_idx || obj.first_seen_nmap_scan_idx == null" ng-click="struct.icsw_network_list_service.create_new_host_discovery_detail_sub_tab(tab, obj.first_seen_nmap_scan_idx)" class="btn btn-success btn-xs">{{ obj.$$first_seen_nmap_scan_date }}</button></td>
+                                        <td class="vertical-align text-center">
+                                            <button type="button" class="btn btn-xs" ng-class="obj.$$selected && 'btn-success' || 'btn-default'" ng-click="sub_tab.select_nmap_scan_device(obj)" value="sel">
+                                                <span class="glyphicon" ng-class="obj.$$selected && 'glyphicon-ok' || 'glyphicon-minus'"></span>
+                                            </button>
+                                        </td>
+                                        <td class="vertical-align text-center">{{ obj.$$hostname }}</td>
+                                        <td class="vertical-align text-center">{{ obj.ip }}</td>
+                                        <td class="vertical-align text-center"><pre>{{ obj.$$mac }}</pre></td>
+                                        <td class="vertical-align text-center"><div ng-if="obj.linked_devices.length == 0">N/A</div><button ng-repeat="device in obj.linked_devices" type="button" class="btn btn-xs btn-success" ng-click="sub_tab.show_device($event, device)">{{ device.full_name }}</button></td>
+                                        <td class="vertical-align text-center">
+                                            <icsw-tools-button
+                                                type="create"
+                                                size="xs"
+                                                ng-click="struct.icsw_network_list_service.create_new_create_device_sub_tab(tab, obj)"
+                                                value="Create Device"
+                                            ></icsw-tools-button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </uib-tab>
+                        <uib-tab>
+                            <uib-tab-heading>
+                                <span>Matrix View</span>
+                            </uib-tab-heading>
+                            <h3>Matrix</h3>
+                            <table class="table" style="width:auto;">
+                                <tr>
+                                    <td>White</td>
+                                    <td>Down/Unknown</td>
+                                </tr>
+                                <tr>
+                                    <td class="alert-success">Green</td>
+                                    <td>UP and Linked</td>
+                                </tr>
+                                <tr>
+                                    <td class="alert-danger">Red</td>
+                                    <td>UP and Unlinked</td>
+                                </tr>
+                                <tr>
+                                    <td class="alert-warning">Yellow</td>
+                                    <td>Ignored</td>
+                                </tr>
+                            </table>
+
+                            <table class="table" style="border: 1px solid black;border-collapse: collapse;">
+                                <tbody>
+                                    <tr ng-repeat="matrix_row in sub_tab.nmap_scan.matrix" style="border: 1px solid black;border-collapse: collapse;">
+                                        <td ng-repeat="row_info in matrix_row track by $index" ng-class="row_info[1]" style="border: 1px solid black;border-collapse: collapse;">{{ row_info[0] }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </uib-tab>
+                    </uib-tabset>
                 </uib-tab>
                 <uib-tab ng-repeat="sub_tab in tab.sub_tabs" ng-if="sub_tab.sub_tab_type == 1">
                     <uib-tab-heading>
@@ -860,7 +882,7 @@
                     <th st-sort="master_network">Master</th>
                     <th ng-show="show_column.prefDTN">Preferred DTN</th>
                     <th st-sort="network_device_type">Devtype(s)</th>
-                    <th colspan="3" class="text-center">Actions</th>
+                    <th colspan="4" class="text-center">Actions</th>
                 </tr>
             </thead>
 
@@ -921,6 +943,14 @@
                             size="xs"
                             ng-click="config_service.create_new_detail_view_tab(obj)"
                             value="Show Details"
+                        ></icsw-tools-button>
+                    </td>
+                    <td>
+                        <icsw-tools-button
+                            type="create"
+                            size="xs"
+                            ng-click="perform_host_discovery_scan(obj)"
+                            value="Perform Scan"
                         ></icsw-tools-button>
                     </td>
                 </tr>
@@ -1280,6 +1310,26 @@
     </form>
 </script>
 
+<script type="text/ng-template" id="performscan.form">
+    <div ng-if="nmap_scan_devices.length > 0" class="form-group">
+        <label class="control-label col-sm-3 requiredField icsw-formlabel">
+            Scan Device
+        </label>
+        <div class="controls col-sm-7">
+            <ui-select ng-model="edit_obj.$$scan_device" class="maxwidth500">
+                <ui-select-match class="ui-select-match" placeholder="Select device to perform scan on">
+                    {{ $select.selected.full_name }}
+                </ui-select-match>
+                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in nmap_scan_devices | props_filter:{full_name:$select.search}">
+                    <div ng-bind-html="value.full_name | highlight: $select.search"></div>
+                </ui-select-choices>
+            </ui-select>
+        </div>
+    </div>
+    <div ng-if="nmap_scan_devices.length == 0">No nmap-scan-device(s) configured!</div>
+</script>
+
+
 <script type="text/ng-template" id="network.form">
     <form class="form-horizontal" name="form_data">
         <uib-tabset>
@@ -1458,7 +1508,7 @@
             </uib-tab>
             <uib-tab heading="Host Discovery">
                 <legend>Scan Settings</legend>
-                <div ng-if="device_list.length > 0" class="form-group">
+                <div ng-if="nmap_scan_devices.length > 0" class="form-group">
                     <label class="control-label col-sm-3 requiredField icsw-formlabel">
                         Dispatcher(s)
                     </label>
@@ -1473,7 +1523,7 @@
                         </ui-select>
                     </div>
                 </div>
-                <div ng-if="device_list.length > 0" class="form-group">
+                <div ng-if="nmap_scan_devices.length > 0" class="form-group">
                     <label class="control-label col-sm-3 requiredField icsw-formlabel">
                         Scan Device
                     </label>
@@ -1482,13 +1532,13 @@
                             <ui-select-match class="ui-select-match" placeholder="Select device to perform scan on">
                                 {{ $select.selected.full_name }}
                             </ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device_list | props_filter:{full_name:$select.search}">
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in nmap_scan_devices | props_filter:{full_name:$select.search}">
                                 <div ng-bind-html="value.full_name | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
                     </div>
                 </div>
-                <div ng-if="device_list.length == 0">No nmap-scan-device(s) configured!</div>
+                <div ng-if="nmap_scan_devices.length == 0">No nmap-scan-device(s) configured!</div>
             </uib-tab>
         </uib-tabset>
     </form>
