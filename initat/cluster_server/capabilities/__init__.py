@@ -145,7 +145,7 @@ class CapabilityProcess(threading_tools.process_obj):
             my_vector.append(
                 hm_classes.mvect_entry(
                     "icsw.ova.{}.{}.{}.{}".format(
-                        "ghost" if _csr.ghost else "cosume",
+                        "ghost" if _csr.ghost else "consume",
                         _csr.content_type.model,
                         _csr.action,
                         _service.name,
