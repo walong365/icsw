@@ -126,7 +126,7 @@
             ng-click="create_device($event, group)"
         ></icsw-tools-button>
     </td>
-</script> 
+</script>
 
 <script type="text/ng-template" id="icsw.device.tree.row">
     <td>
@@ -613,6 +613,24 @@
                                 <label>
                                     <icsw-tools-yes-no flag="edit_obj.enabled"></icsw-tools-yes-no>
                                     Enabled
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6"/>
+            </div>
+        </fieldset>
+        <fieldset ng-show="!edit_obj.cluster_device_group">
+            <legend>Edit Flags</legend>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-10">
+                                <label>
+                                    <icsw-tools-yes-no flag="edit_flags.multi"></icsw-tools-yes-no>
+                                    Create many groups
                                 </label>
                             </div>
                         </div>

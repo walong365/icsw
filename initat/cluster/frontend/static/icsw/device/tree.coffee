@@ -326,7 +326,10 @@ angular.module(
                             if is_group
                                 $scope.struct.device_tree.create_device_group(sub_scope.edit_obj).then(
                                     (ok) ->
-                                        d.resolve("device_group created")
+                                        if sub_scope.edit_flags.multi
+                                            d.reject("device created, continue")
+                                        else
+                                            d.resolve("device_group created")
                                     (notok) ->
                                         d.reject("device_group not created")
                                 )
