@@ -343,6 +343,8 @@ class NmapScanDiffer(View):
                 scan_id = scan_id - 1
                 try:
                     old_nmap_scan = NmapScan.objects.get(network=nmap_scan.network, idx=scan_id)
+                    if old_nmap_scan.in_progress:
+                        continue
                     break
                 except NmapScan.DoesNotExist:
                     pass
@@ -361,7 +363,8 @@ class NmapScanDiffer(View):
 
             nmap_scan = NmapScan.objects.get(idx=scan_id)
 
-            old_nmap_scans = NmapScan.objects.filter(network=nmap_scan.network, idx__lt=scan_id)
+            old_nmap_scans = NmapScan.objects.filter(network=nmap_scan.network, idx__lt=scan_id).\
+                exclude(in_progress=True)
             current_devices = nmap_scan.get_nmap_devices()
 
             old_device_list = []
@@ -413,18 +416,32 @@ class NmapScanDiffer(View):
 class HandleNmapScanDevice(View):
     @method_decorator(login_required)
     def post(self, request):
-        mac_list = request.POST.getlist("mac_list[]")
+        mac_list = set(request.POST.getlist("mac_list[]"))
         nmap_scan_idx = int(request.POST.get("nmap_scan_idx"))
 
         if bool(int(request.POST.get("ignore"))):
             for mac in mac_list:
-                nsid = NmapScanIgnoredDevice(mac=mac)
-                nsid.save()
+                try:
+                    NmapScanIgnoredDevice.objects.get(mac=mac)
+                except NmapScanIgnoredDevice.DoesNotExist:
+                    nsid = NmapScanIgnoredDevice(mac=mac)
+                    nsid.save()
         else:
             for mac in mac_list:
                 nsid = NmapScanIgnoredDevice.objects.get(mac=mac)
                 nsid.delete()
 
         nmap_scan = NmapScan.objects.get(idx=nmap_scan_idx)
+        nmap_scan.reset_devices_ignored()
+        nmap_scan.save()
 
         return HttpResponse(json.dumps(nmap_scan.matrix))
+
+class NmapScanDeleter(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        idx_list = [int(value) for value in request.POST.getlist("idx_list[]")]
+
+        deleted, _ = NmapScan.objects.filter(idx__in=idx_list).delete()
+
+        return HttpResponse(json.dumps({'deleted': deleted}))

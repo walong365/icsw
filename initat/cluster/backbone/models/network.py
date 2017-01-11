@@ -1146,6 +1146,8 @@ class NmapScan(models.Model):
 
     devices_scanned = models.IntegerField(null=True)
 
+    devices_ignored = models.IntegerField(null=True)
+
     error_string = models.TextField(null=True)
 
     in_progress = models.BooleanField(default=True)
@@ -1168,6 +1170,11 @@ class NmapScan(models.Model):
         self.runtime = runtime
         self.devices_found = devices_found
         self.devices_scanned = devices_scanned
+
+        self.reset_devices_ignored()
+
+    def reset_devices_ignored(self):
+        self.devices_ignored = len([_device for _device in self.get_nmap_devices() if _device.ignored])
 
     @classmethod
     def create(cls, network=network):

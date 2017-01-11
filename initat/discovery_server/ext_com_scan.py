@@ -1055,17 +1055,21 @@ class Dispatcher(object):
         )
 
     def network_scan_schedule_handler_callback(self, callback_dict, result):
-        nmap_scan = NmapScan.objects.get(idx=callback_dict['nmap_scan_id'])
+        try:
+            nmap_scan = NmapScan.objects.get(idx=callback_dict['nmap_scan_id'])
 
-        _raw_result, _status = result.get_result()
+            _raw_result, _status = result.get_result()
 
-        nmap_scan.in_progress = False
-        if _status == 0:
-            nmap_scan.initialize(raw_result=_raw_result)
-        else:
-            nmap_scan.error_string = _raw_result
+            nmap_scan.in_progress = False
+            if _status == 0:
+                nmap_scan.initialize(raw_result=_raw_result)
+            else:
+                nmap_scan.error_string = _raw_result
 
-        nmap_scan.save()
+            nmap_scan.save()
+        except NmapScan.DoesNotExist:
+            # Happens if "in progress" nmap scan gets deleted via webinterface, simply discard return value and continue
+            pass
 
     def handle_hm_result(self, run_index, srv_result):
         if run_index in HostMonitoringCommand.host_monitoring_commands:

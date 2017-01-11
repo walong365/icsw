@@ -283,6 +283,7 @@ network_patterns = [
     url("^get_free_ip$", network_views.get_free_ip.as_view(), name="get_free_ip"),
     url("^rescan_networks$", network_views.rescan_networks.as_view(), name="rescan_networks"),
     url("^nmap_scan_data_loader$", network_views.NmapScanDataLoader.as_view(), name="nmap_scan_data_loader"),
+    url("^nmap_scan_deleter$", network_views.NmapScanDeleter.as_view(), name="nmap_scan_deleter"),
     url("^nmap_scan_diff$", network_views.NmapScanDiffer.as_view(), name="nmap_scan_diff"),
     url("^handle_nmap_scan_device$", network_views.HandleNmapScanDevice.as_view(), name="handle_nmap_scan_device"),
 ]
