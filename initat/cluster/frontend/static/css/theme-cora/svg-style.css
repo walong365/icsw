@@ -37,6 +37,7 @@
     stroke: #ffffff;
     stroke-width: 1px;
 }
+.svg-box-deactivated { fill: #bbbbbb; stroke: #aaaaaa;}
 .svg-box-content {
     fill: #777777;
 }
