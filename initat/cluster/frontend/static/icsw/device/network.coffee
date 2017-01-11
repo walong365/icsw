@@ -1498,6 +1498,11 @@ angular.module(
 
         if nmap_scan.devices_found == null
             nmap_scan.devices_found = "N/A"
+        else
+            nmap_scan.devices_found = nmap_scan.devices_found - nmap_scan.devices_ignored
+
+        if nmap_scan.devices_ignored == null
+            nmap_scan.devices_ignored = "N/A"
 
         if nmap_scan.devices_scanned == null
             nmap_scan.devices_scanned = "N/A"
@@ -1622,6 +1627,9 @@ angular.module(
 
                         $timeout(
                             () ->
+                                if nmap_scan_to_network_lut[nmap_scan.network] == undefined
+                                    nmap_scan_to_network_lut[nmap_scan.network] = []
+
                                 if nmap_scan_lut[nmap_scan.idx] == undefined
                                     nmap_scan_to_network_lut[nmap_scan.network].push(nmap_scan)
                                     nmap_scan_lut[nmap_scan.idx] = nmap_scan
@@ -1846,15 +1854,17 @@ angular.module(
                         entry.device_full_name = devices[nd.device].full_name
                     new_network_display.iplist = iplist
 
+                    if nmap_scan_to_network_lut[obj.idx] == undefined
+                        nmap_scan_to_network_lut[obj.idx] = []
+
                     tab = {
                         heading: new_network_display.active_network.identifier
                         network_display: new_network_display
                         nmap_scans: nmap_scan_to_network_lut[obj.idx]
                         sub_tabs: []
-                        selected_row_a: undefined
-                        selected_row_b: undefined
                         show_difference_text: "Show Difference (select two scans)"
                         show_difference_disabled: true
+                        selected_nmap_scans: 0
                     }
 
                     tab.close_sub_tab = (to_be_closed_tab) ->
@@ -1872,43 +1882,85 @@ angular.module(
                             0
                         )
 
-                    tab.select_row = (row) ->
-                        if row.$$selected == undefined
-                            row.$$selected = true
+                    tab.select_nmap_scan = (nmap_scan) ->
+                        if nmap_scan.$$selected == undefined
+                            nmap_scan.$$selected = true
                         else
-                            row.$$selected = !row.$$selected
+                            nmap_scan.$$selected = !nmap_scan.$$selected
 
-                        if row.$$selected == true
-                            if tab.selected_row_a == undefined
-                                tab.selected_row_a = row
-                            else if tab.selected_row_b == undefined
-                                tab.selected_row_b = row
-                            else
-                                tab.selected_row_a.$$selected = false
-                                tab.selected_row_a = tab.selected_row_b
-                                tab.selected_row_b = row
+                        if nmap_scan.$$selected == true
+                            tab.selected_nmap_scans += 1
                         else
-                            if row == tab.selected_row_a
-                                tab.selected_row_a = tab.selected_row_b
-                                tab.selected_row_b = undefined
-                            else
-                                tab.selected_row_b = undefined
+                            tab.selected_nmap_scans -= 1
 
-                        selected = 0
-                        for row in tab.nmap_scans
-                            if row.$$selected == true
-                                selected += 1
-
-                        if selected == 2
+                        if tab.selected_nmap_scans == 2
                             tab.show_difference_text = "Show Difference"
                             tab.show_difference_disabled = false
                         else
                             tab.show_difference_text = "Show Difference (select two scans)"
                             tab.show_difference_disabled = true
 
+                    tab.delete_selected_nmap_scans = () ->
+                        nmap_scan_deletion_idx_list = []
+                        for nmap_scan in tab.nmap_scans
+                            if nmap_scan.$$selected == true
+                                nmap_scan_deletion_idx_list.push(nmap_scan.idx)
+
+                        blockUI.start("Please wait...")
+                        icswSimpleAjaxCall(
+                            {
+                                url: ICSW_URLS.NETWORK_NMAP_SCAN_DELETER
+                                data:
+                                    idx_list: nmap_scan_deletion_idx_list
+                                dataType: "json"
+                            }
+                        ).then(
+                            (data) ->
+                                new_nmap_scan_list = []
+                                for nmap_scan in tab.nmap_scans
+                                    if !(nmap_scan.idx in nmap_scan_deletion_idx_list)
+                                        new_nmap_scan_list.push(nmap_scan)
+
+                                console.log(new_nmap_scan_list)
+
+                                tab.nmap_scans.length = 0
+                                for nmap_scan in new_nmap_scan_list
+                                    tab.nmap_scans.push(nmap_scan)
+
+                                tab.selected_nmap_scans -= nmap_scan_deletion_idx_list.length
+
+                                blockUI.stop()
+                                toaster.pop("success", "", data.deleted + " Object(s) deleted.")
+                        )
+
+
+                    tab.select_all_nmap_scans = () ->
+                        tab.selected_nmap_scans = 0
+                        for nmap_scan in tab.nmap_scans
+                            nmap_scan.$$selected = true
+                            tab.selected_nmap_scans += 1
+
+                    tab.unselect_all_nmap_scans = () ->
+                        tab.selected_nmap_scans = 0
+                        for nmap_scan in tab.nmap_scans
+                            nmap_scan.$$selected = false
+
+                    tab.inverse_select = () ->
+                        tab.selected_nmap_scans = 0
+                        for nmap_scan in tab.nmap_scans
+                            if nmap_scan.$$selected == undefined
+                                nmap_scan.$$selected = false
+                            nmap_scan.$$selected = !nmap_scan.$$selected
+
                     tab.open_difference_sub_tab = () ->
-                        scan_id_1 = tab.selected_row_a.idx
-                        scan_id_2 = tab.selected_row_b.idx
+                        scan_id_1 = undefined
+                        scan_id_2 = undefined
+                        for nmap_scan in tab.nmap_scans
+                            if nmap_scan.$$selected == true && scan_id_1 == undefined
+                                scan_id_1 = nmap_scan.idx
+                            else if nmap_scan.$$selected == true && scan_id_2 == undefined
+                                scan_id_2 = nmap_scan.idx
+                                break
 
                         if scan_id_1 > scan_id_2
                             scan_id_old = scan_id_2
@@ -1926,8 +1978,8 @@ angular.module(
                             {
                                 url: ICSW_URLS.NETWORK_NMAP_SCAN_DIFF
                                 data:
-                                    scan_id_1: tab.selected_row_a.idx
-                                    scan_id_2: tab.selected_row_b.idx
+                                    scan_id_1: scan_id_1
+                                    scan_id_2: scan_id_2
                                 dataType: "json"
                             }
                         ).then((data) ->

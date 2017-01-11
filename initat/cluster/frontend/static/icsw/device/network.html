@@ -551,7 +551,7 @@
                         <span>Host Discovery Scans</span>
                     </uib-tab-heading>
                         <h3>{{ tab.nmap_scans.length }} Host Discovery Scans</h3>
-                        <button type="button" ng-click="tab.open_difference_sub_tab()" class="btn btn-success btn-xs" ng-disabled="tab.show_difference_disabled">{{ tab.show_difference_text }}</button>
+
                         <table st-table="entries_displayed" st-safe-src="tab.nmap_scans" class="table table-condensed table-hover" style="width:auto;">
                             <thead>
                                 <tr>
@@ -560,10 +560,30 @@
                                     </td>
                                 </tr>
                                 <tr>
+                                    <td>
+                                        Actions:
+                                    </td>
+                                    <td colspan="99">
+                                        <button type="button" ng-click="tab.open_difference_sub_tab()" class="btn btn-success btn-xs" ng-disabled="tab.show_difference_disabled">{{ tab.show_difference_text }}</button>
+                                        <button type="button" ng-click="tab.delete_selected_nmap_scans()" class="btn btn-danger btn-xs" ng-disabled="tab.selected_nmap_scans == 0">Delete Selection ({{ tab.selected_nmap_scans }} Selected)</button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        Selector Actions:
+                                    </td>
+                                    <td colspan="99">
+                                        <button type="button" ng-click="tab.select_all_nmap_scans()" class="btn btn-success btn-xs">Select All</button>
+                                        <button type="button" ng-click="tab.unselect_all_nmap_scans()" class="btn btn-success btn-xs">Unselect All</button>
+                                        <button type="button" ng-click="tab.inverse_select()" class="btn btn-success btn-xs">Inverse Selection</button>
+                                    </td>
+                                </tr>
+                                <tr>
                                     <th st-sort="date" st-sort-default="reverse" class="text-center">Scan Time</th>
                                     <th class="text-center">Selection</th>
                                     <th st-sort="idx" class="text-center">Scan ID</th>
                                     <th st-sort="devices_found" class="text-center">Devices Found</th>
+                                    <th st-sort="devices_ignored" class="text-center">Devices Ignored</th>
                                     <th st-sort="devices_scanned" class="text-center">Devices Scanned</th>
                                     <th class="text-center">Runtime</th>
                                     <th class="text-center">Action</th>
@@ -574,12 +594,13 @@
                                     <td class="text-center">{{ obj.$$created }}</td>
 
                                     <td class="text-center">
-                                        <button type="button" class="btn btn-xs" ng-class="obj.$$selected && 'btn-success' || 'btn-default'" ng-click="tab.select_row(obj)" value="sel">
+                                        <button type="button" class="btn btn-xs" ng-class="obj.$$selected && 'btn-success' || 'btn-default'" ng-click="tab.select_nmap_scan(obj)" value="sel">
                                             <span class="glyphicon" ng-class="obj.$$selected && 'glyphicon-ok' || 'glyphicon-minus'"></span>
                                         </button>
                                     </td>
                                     <td class="text-center">{{ obj.idx }}</td>
                                     <td class="text-center">{{ obj.devices_found }}</td>
+                                    <td class="text-center">{{ obj.devices_ignored }}</td>
                                     <td class="text-center">{{ obj.devices_scanned }}</td>
                                     <td class="text-center">{{ obj.runtime }}</td>
                                     <td class="text-center">
@@ -608,6 +629,7 @@
                         <span>Scan: {{ sub_tab.nmap_scan.index }}</span>
                         <icsw-tools-button size="xs" type="close" value="" ng-click="tab.close_sub_tab(sub_tab)"></icsw-tools-button>
                     </uib-tab-heading>
+                    <br/>
                     <uib-tabset>
                         <uib-tab>
                             <uib-tab-heading>
@@ -1325,6 +1347,9 @@
                 </ui-select-choices>
             </ui-select>
         </div>
+        <br/>
+        <br/>
+        <br/>
     </div>
     <div ng-if="nmap_scan_devices.length == 0">No nmap-scan-device(s) configured!</div>
 </script>
