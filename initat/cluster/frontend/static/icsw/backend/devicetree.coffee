@@ -942,6 +942,8 @@ angular.module(
             # do not set group here to prevent circular dependencies in serializer
             # entry.group_object = @group_lut[entry.device_group]
             _group = @group_lut[device.device_group]
+            if _group.devices == undefined
+                _group.devices = []
             if device.idx not in _group.devices
                 _group.devices.push(device.idx)
             device.$$group = _group
