@@ -858,7 +858,7 @@
                     <th st-sort="master_network">Master</th>
                     <th ng-show="show_column.prefDTN">Preferred DTN</th>
                     <th st-sort="network_device_type">Devtype(s)</th>
-                    <th colspan="3" class="text-center">Actions</th>
+                    <th colspan="4" class="text-center">Actions</th>
                 </tr>
             </thead>
 
@@ -919,6 +919,14 @@
                             size="xs"
                             ng-click="config_service.create_new_detail_view_tab(obj)"
                             value="Show Details"
+                        ></icsw-tools-button>
+                    </td>
+                    <td>
+                        <icsw-tools-button
+                            type="create"
+                            size="xs"
+                            ng-click="perform_host_discovery_scan(obj)"
+                            value="Perform Scan"
                         ></icsw-tools-button>
                     </td>
                 </tr>
@@ -1278,6 +1286,26 @@
     </form>
 </script>
 
+<script type="text/ng-template" id="performscan.form">
+    <div ng-if="nmap_scan_devices.length > 0" class="form-group">
+        <label class="control-label col-sm-3 requiredField icsw-formlabel">
+            Scan Device
+        </label>
+        <div class="controls col-sm-7">
+            <ui-select ng-model="edit_obj.$$scan_device" class="maxwidth500">
+                <ui-select-match class="ui-select-match" placeholder="Select device to perform scan on">
+                    {{ $select.selected.full_name }}
+                </ui-select-match>
+                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in nmap_scan_devices | props_filter:{full_name:$select.search}">
+                    <div ng-bind-html="value.full_name | highlight: $select.search"></div>
+                </ui-select-choices>
+            </ui-select>
+        </div>
+    </div>
+    <div ng-if="nmap_scan_devices.length == 0">No nmap-scan-device(s) configured!</div>
+</script>
+
+
 <script type="text/ng-template" id="network.form">
     <form class="form-horizontal" name="form_data">
         <uib-tabset>
@@ -1456,7 +1484,7 @@
             </uib-tab>
             <uib-tab heading="Host Discovery">
                 <legend>Scan Settings</legend>
-                <div ng-if="device_list.length > 0" class="form-group">
+                <div ng-if="nmap_scan_devices.length > 0" class="form-group">
                     <label class="control-label col-sm-3 requiredField icsw-formlabel">
                         Dispatcher(s)
                     </label>
@@ -1471,7 +1499,7 @@
                         </ui-select>
                     </div>
                 </div>
-                <div ng-if="device_list.length > 0" class="form-group">
+                <div ng-if="nmap_scan_devices.length > 0" class="form-group">
                     <label class="control-label col-sm-3 requiredField icsw-formlabel">
                         Scan Device
                     </label>
@@ -1480,13 +1508,13 @@
                             <ui-select-match class="ui-select-match" placeholder="Select device to perform scan on">
                                 {{ $select.selected.full_name }}
                             </ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device_list | props_filter:{full_name:$select.search}">
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in nmap_scan_devices | props_filter:{full_name:$select.search}">
                                 <div ng-bind-html="value.full_name | highlight: $select.search"></div>
                             </ui-select-choices>
                         </ui-select>
                     </div>
                 </div>
-                <div ng-if="device_list.length == 0">No nmap-scan-device(s) configured!</div>
+                <div ng-if="nmap_scan_devices.length == 0">No nmap-scan-device(s) configured!</div>
             </uib-tab>
         </uib-tabset>
     </form>

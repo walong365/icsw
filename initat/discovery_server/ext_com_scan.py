@@ -1037,8 +1037,11 @@ class Dispatcher(object):
         conn_str = "tcp://{}:{:d}".format(target_device.target_ip, self.__hm_port)
         new_srv_com = server_command.srv_command(command="nmap_scan", network=network_str)
 
+        new_nmap_scan = NmapScan.create(network=_network)
+
         callback_dict = {
-            "network_id": _network.idx
+            "network_id": _network.idx,
+            "nmap_scan_id": new_nmap_scan.idx
         }
 
         #timeout for nmap scans needs to be very large, scanning can take a very long time

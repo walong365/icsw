@@ -1138,16 +1138,15 @@ class NmapScan(models.Model):
 
     network = models.ForeignKey("backbone.network")
 
-    raw_result = models.TextField()
+    raw_result = models.TextField(null=True)
 
-    runtime = models.FloatField()
+    runtime = models.FloatField(null=True)
 
-    devices_found = models.IntegerField()
+    devices_found = models.IntegerField(null=True)
 
-    devices_scanned = models.IntegerField()
+    devices_scanned = models.IntegerField(null=True)
 
-    @classmethod
-    def create(cls, network=network, raw_result=raw_result):
+    def initialize(self, raw_result=raw_result):
         parser = etree.XMLParser(encoding='utf-8')
 
         root = etree.fromstring(raw_result.encode('utf-8'), parser=parser)
@@ -1161,9 +1160,14 @@ class NmapScan(models.Model):
         devices_found = int(hosts_element.attrib["up"])
         devices_scanned = int(hosts_element.attrib["total"])
 
-        return cls(network=network, raw_result=raw_result, runtime=runtime, devices_found=devices_found,
-                   devices_scanned=devices_scanned)
+        self.raw_result = raw_result
+        self.runtime = runtime
+        self.devices_found = devices_found
+        self.devices_scanned = devices_scanned
 
+    @classmethod
+    def create(cls, network=network):
+        return cls(network=network)
 
     def get_nmap_devices(self):
         parser = etree.XMLParser(encoding='utf-8')
