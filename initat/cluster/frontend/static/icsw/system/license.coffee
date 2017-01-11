@@ -174,18 +174,6 @@ angular.module(
                 else
                     return "Cluster #{cluster_id}"
     }
-]).directive("icswSystemOvaDisplay",
-[
-    "$templateCache", "$q",
-(
-    $templateCache, $q,
-) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.system.ova.display")
-        controller: "icswOvaDisplayCtrl"
-        replace: true
-    }
 ]).service("icswReactOvaDisplayFactory",
 [
     "$q", "$timeout", "icswSystemOvaCounterService", "$state", "ICSW_URLS",
@@ -367,6 +355,7 @@ angular.module(
                 _user_setting = data[0]
                 local_setting = _user_setting.get_default()
                 _user_setting.set_custom_size(local_setting, 1024, 400)
+                _user_setting.hide_empty = false
                 _dt = data[1]
                 base_setting = new icswRRDGraphBasicSetting()
                 base_setting.draw_on_init = true
@@ -375,7 +364,7 @@ angular.module(
                 base_setting.display_tree_switch = false
                 base_setting.ordering = "AVERAGE"
                 base_setting.auto_select_keys = [
-                    "compound.icsw.ova"
+                    "compound.icsw.ova.consume"
                 ]
                 $scope.struct.local_setting = local_setting
                 $scope.struct.base_setting = base_setting

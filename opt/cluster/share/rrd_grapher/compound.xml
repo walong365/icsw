@@ -49,7 +49,7 @@
             <key match="^mem\.icsw\..*\.total$" required="1" color="rdgy11" draw_type="AREA1STACK"></key>
         </key_list>
     </compound>
-    <compound key="compound.icsw.ova.total" info="Ova overview">
+    <compound key="compound.icsw.ova.consume" info="Ova overview">
         <key_list>
             <key match="^icsw\.ova\.consume\..*$" nomatch="^icsw\.ova\.(ghost|overall).*$" required="1" color="spectral8" draw_type="AREA1STACK"></key>
         </key_list>
