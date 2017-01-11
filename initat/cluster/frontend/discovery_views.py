@@ -33,7 +33,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from pymongo.errors import PyMongoError
 
-from initat.cluster.backbone.models import device, DispatcherLink, DispatcherSetting, user
+from initat.cluster.backbone.models import device, DispatcherLink, DispatcherSetting, user, ScheduleItem
 from initat.cluster.backbone.serializers import DispatcherLinkSerializer
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.tools.mongodb import MongoDbConnector
@@ -575,3 +575,26 @@ class DispatcherLinkSyncer(View):
             links_created.append(new_link.idx)
 
         return HttpResponse(json.dumps([links_deleted, links_created]))
+
+class ScheduleItemCreator(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        model_name = request.POST.get("model_name")
+        object_id = request.POST.get("object_id")
+        schedule_handler = request.POST.get("schedule_handler")
+        schedule_handler_data = request.POST.get("schedule_handler_data")
+        user_id = request.POST.get("user_id")
+
+        user_obj = user.objects.get(idx=int(user_id))
+
+        new_schedule_item = ScheduleItem(model_name=model_name,
+            object_id=int(object_id),
+            run_now=True,
+            schedule_handler=schedule_handler,
+            schedule_handler_data=schedule_handler_data,
+            user=user_obj
+        )
+
+        new_schedule_item.save()
+
+        return HttpResponse(json.dumps(0))

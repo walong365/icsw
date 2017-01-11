@@ -1146,6 +1146,10 @@ class NmapScan(models.Model):
 
     devices_scanned = models.IntegerField(null=True)
 
+    error_string = models.TextField(null=True)
+
+    in_progress = models.BooleanField(default=True)
+
     def initialize(self, raw_result=raw_result):
         parser = etree.XMLParser(encoding='utf-8')
 

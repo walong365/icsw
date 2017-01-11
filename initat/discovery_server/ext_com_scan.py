@@ -829,7 +829,7 @@ class Dispatcher(object):
                     _pending += 1
 
         for schedule_item in ScheduleItem.objects.all():
-            if schedule_item.planned_date < _now:
+            if schedule_item.run_now or schedule_item.planned_date < _now:
                 schedule_handler_function = getattr(self, schedule_item.schedule_handler)
                 schedule_handler_function(schedule_item)
                 schedule_item.delete()
@@ -1038,9 +1038,9 @@ class Dispatcher(object):
         new_srv_com = server_command.srv_command(command="nmap_scan", network=network_str)
 
         new_nmap_scan = NmapScan.create(network=_network)
+        new_nmap_scan.save()
 
         callback_dict = {
-            "network_id": _network.idx,
             "nmap_scan_id": new_nmap_scan.idx
         }
 
@@ -1055,13 +1055,17 @@ class Dispatcher(object):
         )
 
     def network_scan_schedule_handler_callback(self, callback_dict, result):
-        _network = network.objects.get(idx=callback_dict['network_id'])
+        nmap_scan = NmapScan.objects.get(idx=callback_dict['nmap_scan_id'])
 
         _raw_result, _status = result.get_result()
 
+        nmap_scan.in_progress = False
         if _status == 0:
-            new_nmap_scan = NmapScan.create(network=_network, raw_result=_raw_result)
-            new_nmap_scan.save()
+            nmap_scan.initialize(raw_result=_raw_result)
+        else:
+            nmap_scan.error_string = _raw_result
+
+        nmap_scan.save()
 
     def handle_hm_result(self, run_index, srv_result):
         if run_index in HostMonitoringCommand.host_monitoring_commands:
