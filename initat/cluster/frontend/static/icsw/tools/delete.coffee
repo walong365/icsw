@@ -143,6 +143,9 @@ angular.module(
                 return false
 
         get_deletables_complex: (del_obj) =>
+            # create smaller to_delete object
+            smaller_obj = {}
+
             delete_strategies = []
             # collect data from gui
             for entry in del_obj.list
@@ -150,9 +153,13 @@ angular.module(
                 for key in ['field_name', 'model', 'selected_action']
                     strat[key] = entry[key]
                 delete_strategies.push(strat)
-            del_obj.delete_strategies = delete_strategies
+
+            for key, value of del_obj
+                if key not in ["entries_displayed", "list"]
+                    smaller_obj[key] = value
+            smaller_obj.delete_strategies = delete_strategies
             delete @related_objects[del_obj.pk]
-            return [del_obj]
+            return [smaller_obj]
 
         get_deletables_simple: () =>
             del_list = (entry for entry in @deletable_objects when entry.delete)
@@ -210,9 +217,11 @@ angular.module(
                 title: "Delete"
                 closable: true
                 show_callback: (modal) =>
+                    blockUI.stop()
                     child_scope.modal = modal
                 hidden_callback: (modal) =>
                     child_scope.$destroy()
+
             }
         )
 
@@ -227,7 +236,6 @@ angular.module(
         ).then(
             (xml) ->
                 del_struct.feed_xml(xml)
-                blockUI.stop()
                 show_delete_dialog(del_struct)
             (xml) ->
                 blockUI.stop()

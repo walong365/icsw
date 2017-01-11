@@ -79,7 +79,10 @@
                                 <th>Action</th>
                             </tr>
 
-                            <tr ng-repeat-start="entry in ref_obj.entries_displayed">
+                            <tr
+                                ng-repeat-start="entry in ref_obj.entries_displayed"
+                                ng-class="{'bg-warning': !entry.selected_action}"
+                            >
                                 <td>
                                     {{ entry.related_model_verbose_name }}
                                 </td>

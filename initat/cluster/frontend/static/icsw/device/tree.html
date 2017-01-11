@@ -10,29 +10,32 @@
             <form class="form-inline">
                 <div class="form-group">
                     <label class="control-label">Group/Device:</label>
-                    <select class="form-control input-sm" ng-model="filter_settings.dg_filter">
-                        <option value="b">All</option>
-                        <option value="f">Devices</option>
-                        <option value="t">Group</option>
-                    </select>
+                    <icsw-tools-tri-button
+                        icsw-state="filter_settings.dg_filter"
+                        icsw-callback="update_filter('dg_filter', value)"
+                        icsw-state-list="Devices All Group"
+                        icsw-css-list="btn-success btn-default btn-success"
+                    ></icsw-tools-tri-button>
                 </div>
                 &nbsp;
                 <div class="form-group">
                     <label class="control-label">Selected:</label>
-                    <select class="form-control input-sm" ng-model="filter_settings.sel_filter">
-                        <option value="b">All</option>
-                        <option value="t">Selected</option>
-                        <option value="f">Unselected</option>
-                    </select>
+                    <icsw-tools-tri-button
+                        icsw-state="filter_settings.sel_filter"
+                        icsw-callback="update_filter('sel_filter', value)"
+                        icsw-state-list="Unselected All Selected"
+                        icsw-css-list="btn-success btn-default btn-success"
+                    ></icsw-tools-tri-button>
                 </div>
                 &nbsp;
                 <div class="form-group">
                     <label class="control-label">Enabled:</label>
-                    <select class="form-control input-sm" ng-model="filter_settings.en_filter">
-                        <option value="b">All</option>
-                        <option value="t">Enabled</option>
-                        <option value="f">Disabled</option>
-                    </select>
+                    <icsw-tools-tri-button
+                        icsw-state="filter_settings.en_filter"
+                        icsw-callback="update_filter('en_filter', value)"
+                        icsw-state-list="Disabled All Enabled"
+                        icsw-css-list="btn-success btn-default btn-success"
+                    ></icsw-tools-tri-button>
                 </div>
                 &nbsp;
                 <div class="form-group">

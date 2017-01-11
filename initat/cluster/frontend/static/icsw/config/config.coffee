@@ -272,7 +272,8 @@ config_module = angular.module(
             $scope.struct.filter_settings.name = true
         _update_filter_settings()
 
-    $scope.change_boolean_filters = () ->
+    $scope.change_boolean_filters = (attr, value) ->
+        $scope.struct[attr] = value
         _update_filter_settings()
 
     _update_filter_settings()

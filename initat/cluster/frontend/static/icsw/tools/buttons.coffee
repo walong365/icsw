@@ -247,6 +247,8 @@ angular.module(
     template: ["$templateCache", ($templateCache) -> return $templateCache.get("icsw.tools.tri.button")]
     controller: "icswToolsTriButtonCtrl as ctrl"
     bindings:
+        state_list: "@icswStateList"
+        css_list: "@icswCssList"
         state: "<icswState"
         callback: "&icswCallback"
         size: "@icswSize"
@@ -259,31 +261,30 @@ angular.module(
 ) ->
     new_state = () =>
         new_val = @state
+        if @state_list
+            _state_list = @state_list.split(" ")
+        else
+            _state_list = ["not set", "ignore", "set"]
+        if @css_list
+            _css_list = @css_list.split(" ")
+        else
+            _css_list = ["btn-success", "btn-warning", "btn-danger"]
         _size = @size | "sm"
         # state, 1: set, 0: ignore, -1:
-        if new_val == 1
-            @css_class = "btn btn-success #{_size}"
-            @button_value = "set"
-        else if new_val == 0
-            @css_class = "btn btn-warning #{_size}"
-            @button_value = "ignore"
-        else if new_val == -1
-            @css_class = "btn btn-danger #{_size}"
-            @button_value = "not set"
+        @button_value = _state_list[new_val + 1]
+        @css_class = "btn #{_css_list[new_val + 1]} #{_size}"
         if @callback?
-            $timeout(
-                () =>
-                    @callback(new_val)
-                0
-            )
+            @callback({value: new_val})
 
     @$onInit = () =>
         new_state()
 
-    @$onChanges = (changes) ->
-        # console.log "C", changes
+    @$onChanges = (changes) =>
+        if "state" of changes and changes.state.currentValue?
+            @state = changes.state.currentValue
+            new_state()
 
-    @toggle_state = ($event) ->
+    @toggle_state = ($event) =>
         @state++
         if @state == 2
             @state = -1

@@ -185,8 +185,16 @@
                                         </div>
                                     </div>
                                     <div class="col-sm-2">
-                                        Service: <icsw-tools-tri-button icsw-state="struct.with_service" icsw-callback="change_boolean_filters"></icsw-tools-tri-button>
-                                        Server: <icsw-tools-tri-button icsw-state="struct.with_server" icsw-callback="change_boolean_filters"></icsw-tools-tri-button>
+                                        Service:
+                                        <icsw-tools-tri-button
+                                            icsw-state="struct.with_service"
+                                            icsw-callback="change_boolean_filters('with_service', value)"
+                                        ></icsw-tools-tri-button>
+                                        Server:
+                                        <icsw-tools-tri-button
+                                            icsw-state="struct.with_server"
+                                            icsw-callback="change_boolean_filters('with_server', value)"
+                                        ></icsw-tools-tri-button>
                                     </div>
                                     <div
                                         icsw-tools-pagination

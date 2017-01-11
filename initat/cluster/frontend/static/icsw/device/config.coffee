@@ -597,7 +597,9 @@ angular.module(
         $scope.struct.only_selected = !$scope.struct.only_selected
         $scope.new_filter_set($scope.struct.name_filter, true)
 
-    $scope.settings_changed = () ->
+    $scope.settings_changed = (attr, value) ->
+        if attr?
+            $scope.struct[attr] = value
         if $scope.struct.helper?
             $scope.new_filter_set($scope.struct.name_filter, true)
 

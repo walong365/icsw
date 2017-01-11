@@ -517,31 +517,40 @@ angular.module(
         templateUrl: "icsw.device.tree.filters"
         link: (scope, element, attrs) ->
             scope.filter_settings = {
-                dg_filter: "b"
-                en_filter: "b"
-                sel_filter: "b"
+                dg_filter: 0
+                en_filter: 0
+                sel_filter: 0
                 mon_filter: "i"
                 boot_filter: "i"
             }
 
-            filter_changed = () ->
-                aft_dict = {
-                    b: [true, false]
-                    f: [false]
-                    t: [true]
-                }
+            scope.update_filter = (f_name, value) ->
+                scope.filter_settings[f_name] = value
+                #console.log "nv=", f_type, new_val
+                #scope.filter_settings.sel_filter = new_val
+                filter_changed()
 
+            resolve_int = (val) ->
+                if val == 1
+                    return [true]
+                else if val == -1
+                    return [false]
+                else
+                    # for 0 or undefined
+                    return [true, false]
+
+            filter_changed = () ->
                 try
                     str_re = new RegExp(scope.filter_settings.str_filter, "gi")
                 catch
                     str_re = new RegExp("^$", "gi")
 
                 # meta device selection list
-                md_list = aft_dict[scope.filter_settings.dg_filter]
+                md_list = resolve_int(scope.filter_settings.dg_filter)
                 # enabled selection list
-                en_list = aft_dict[scope.filter_settings.en_filter]
+                en_list = resolve_int(scope.filter_settings.en_filter)
                 # selected list
-                sel_list = aft_dict[scope.filter_settings.sel_filter]
+                sel_list = resolve_int(scope.filter_settings.sel_filter)
 
                 devtree = icswDeviceTreeService.current()
                 act_sel = icswActiveSelectionService.get_selection()
