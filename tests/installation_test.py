@@ -185,7 +185,7 @@ def basic_availability_test(host, test_system_name):
             )
             driver.maximize_window()
 
-            driver.log_in('admin', 'abc123')
+            driver.log_in('admin', 'abc123', delay=60)
             title = driver.title
         except Exception as e:
             exception = e

@@ -67,11 +67,13 @@ class Webdriver(webdriver.Remote):
         return WebDriverWait(self, self.timeout).until(find_toast_)
 
     def get_(self, url):
-        return self.get('{}#!{}'.format(self.base_url, url))
+        tmp = self.get('{}#!{}'.format(self.base_url, url))
+        time.sleep(2.5)
+        return tmp
 
-    def log_in(self, user, password):
+    def log_in(self, user, password, delay=1):
         self.get(self.base_url)
-        time.sleep(60)
+        time.sleep(delay)
         self.find_element_by_name('username').send_keys(user)
         self.find_element_by_name('password').send_keys(password)
         self.find_element_by_name('button').click()
