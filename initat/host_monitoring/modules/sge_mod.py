@@ -33,7 +33,7 @@ class _general(hm_classes.hm_module):
             ("SGE_CELL", "/etc/sge_cell")
         ]:
             if os.path.isfile(v_src):
-                sge_dict[v_name] = file(v_src, "r").read().strip()
+                sge_dict[v_name] = open(v_src, "r").read().strip()
                 os.environ[v_name] = sge_dict[v_name]
         if set(sge_dict.keys()) == set(["SGE_ROOT", "SGE_CELL"]):
             sge_dict["SGE_ARCH"] = subprocess.getoutput(os.path.join(sge_dict["SGE_ROOT"], "util", "arch")).strip()

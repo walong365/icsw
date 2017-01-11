@@ -129,7 +129,7 @@ def show_database_calls(*args, **kwargs):
             _runtime,
             _path
         )
-        file("database_calls", "a").write(_line)
+        open("database_calls", "a").write(_line)
     else:
         output("django.db.connection not loaded in backbone.middleware.py")
 

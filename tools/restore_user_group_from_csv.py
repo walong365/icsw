@@ -12,8 +12,8 @@ import csv
 
 
 def main():
-    c_group = csv.DictReader(file("group.csv", "r"))
-    c_user = csv.DictReader(file("user.csv", "r"))
+    c_group = csv.DictReader(open("group.csv", "r"))
+    c_user = csv.DictReader(open("user.csv", "r"))
     g_dict, u_dict = (
         {
             _g.groupname: _g for _g in group.objects.all()

@@ -31,8 +31,8 @@ from initat.cluster.backbone.models.functions import memoize_with_expiry
 
 
 __all__ = [
-    b"ICSWVersion",
-    b"VERSION_NAME_LIST",
+    "ICSWVersion",
+    "VERSION_NAME_LIST",
 ]
 
 

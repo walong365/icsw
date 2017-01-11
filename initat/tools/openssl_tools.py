@@ -68,7 +68,7 @@ class OpenSSLConfig(object):
         _part = ""
         self._parts.append(_part)
         _lines = self._pdicts.setdefault(_part, OrderedDict())
-        for _line in file(name, "r"):
+        for _line in open(name, "r"):
             _line = _line.split("#")[0].strip()
             if not _line:
                 continue
@@ -94,7 +94,7 @@ class OpenSSLConfig(object):
                 _form_str = "{{:{:d}s}} = {{}}".format(max_key_len)
                 for key, value in self._pdicts[_part].items():
                     _lines.append(_form_str.format(key, value))
-        file(name, "w").write("\n".join(_lines))
+        open(name, "w").write("\n".join(_lines))
 
     def keys(self):
         return list(self._pdicts.keys())
@@ -138,7 +138,7 @@ class OpenSSLConfig(object):
 class CAIndex(OrderedDict):
     def __init__(self, f_name):
         OrderedDict.__init__(self)
-        for _line in file(f_name, "r").read().split("\n"):
+        for _line in open(f_name, "r").read().split("\n"):
             if _line.strip():
                 _vals = _line.split("\t")
                 self[_vals[3]] = {
@@ -155,7 +155,7 @@ class CAIndex(OrderedDict):
                 # _rev.set
                 # print _rev
         # _cert = crypto.load_certificate(crypto.FILETYPE_PEM,
-        # file("/opt/cluster/share/openssl/CAs/testca/newcerts/FE54503631DF0F4B.pem", "r").read())
+        # open("/opt/cluster/share/openssl/CAs/testca/newcerts/FE54503631DF0F4B.pem", "r").read())
         # print _cert.get_issuer().der()
         # _cert.get_issuer().CN = "x.y"
         # print _cert.get_issuer().get_components()
@@ -260,7 +260,7 @@ class CA(object):
         os.mkdir(self.ca_dir)
         for _dirs in ["certs", "crl", "newcerts", "private", "keys", "reqs"]:
             os.mkdir(os.path.join(self.ca_dir, _dirs))
-        file(os.path.join(self.ca_dir, "index.txt"), "w").close()
+        open(os.path.join(self.ca_dir, "index.txt"), "w").close()
         self._create_ssl_config()
         self.ca_ok = False
         _success, _out = self.call_openssl(
@@ -382,7 +382,7 @@ class CA(object):
             )
             if _success:
                 # empty file
-                file(_ext_file, "w").close()
+                open(_ext_file, "w").close()
                 if "device" in kwargs:
                     _dev = kwargs["device"]
                     _add_list = [
@@ -391,7 +391,7 @@ class CA(object):
                         "IP:{}".format(_ip) for _ip in _dev.all_ips() if _ip
                     ]
                     if _add_list:
-                        file(_ext_file, "w").write("subjectAltName={}".format(",".join(_add_list)))
+                        open(_ext_file, "w").write("subjectAltName={}".format(",".join(_add_list)))
                 _success, _out = self.call_openssl(
                     "ca",
                     "-batch", "-policy", "policy_anything",
@@ -409,23 +409,23 @@ class CA(object):
                     _serial = "{:x}".format(
                         crypto.load_certificate(
                             crypto.FILETYPE_PEM,
-                            file(os.path.join(_cert_temp, "cert.pem"), "r").read()
+                            open(os.path.join(_cert_temp, "cert.pem"), "r").read()
                         ).get_serial_number()
                     ).upper()
                     for src_file, dst_dir in [("key.pem", "keys"), ("req.pem", "reqs")]:
-                        file(
+                        open(
                             os.path.join(
                                 self.ca_dir,
                                 dst_dir,
                                 "{}.pem".format(_serial)
                             ),
                             "w"
-                        ).write(file(os.path.join(_cert_temp, src_file), "r").read())
+                        ).write(open(os.path.join(_cert_temp, src_file), "r").read())
                     # create target file
-                    _tf = file(file_name, "w")
+                    _tf = open(file_name, "w")
                     for _fn in ["key.pem", "cert.pem"]:
-                        # print "**", _fn, file(os.path.join(_cert_temp, _fn), "r").read()
-                        _tf.write(file(os.path.join(_cert_temp, _fn), "r").read())
+                        # print "**", _fn, open(os.path.join(_cert_temp, _fn), "r").read()
+                        _tf.write(open(os.path.join(_cert_temp, _fn), "r").read())
                     _tf.close()
         shutil.rmtree(_cert_temp)
         return run_ok

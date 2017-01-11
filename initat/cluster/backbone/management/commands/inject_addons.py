@@ -44,7 +44,7 @@ class ConfigRelax(object):
         _inst = InstanceXML(quiet=True)
         all_instances = sum([_inst.xpath(".//config-enums/config-enum/text()") for _inst in _inst.get_all_instances()], [])
         all_perms = [_perm.perm_name for _perm in csw_permission.objects.all()] + ["$$CHECK_FOR_SUPERUSER"]
-        _content = file(
+        _content = open(
             "{}/config_relax.xml".format(os.path.join(settings.FILE_ROOT, "config")),
             "r",
         ).read()
@@ -210,7 +210,7 @@ class FileModify(object):
             _full_path = os.path.join(settings.FILE_ROOT, _file)
             if os.path.isfile(_full_path):
                 _src_xml = etree.fromstring(
-                    file(_full_path, "r").read()
+                    open(_full_path, "r").read()
                 )
                 try:
                     _my_relax.validate(_src_xml)
@@ -315,7 +315,7 @@ class FileModify(object):
                     elif marker_type == "HTML":
                         for _html in _v_dict["ICSW_ADDITIONAL_HTML"]:
                             _injected += 1
-                            new_content.append(file(_html, "r").read())
+                            new_content.append(open(_html, "r").read())
                     elif marker_type == "MENU":
                         menu_paths = [
                              ("frontend", os.path.join("config", "config.xml"))

@@ -137,7 +137,7 @@ class server_thread_pool(threading_tools.thread_pool):
             if self.__loc_config["SYNC_GLOBAL"]:
                 self._sync()
             self.log("Saving result to %s" % (self.__loc_config["RESULT_FILE"]))
-            file(self.__loc_config["RESULT_FILE"], "w").write(server_command.sys_to_net(self.__act_run_dict))
+            open(self.__loc_config["RESULT_FILE"], "w").write(server_command.sys_to_net(self.__act_run_dict))
             if self.__act_run == self.__num_runs:
                 self.log("all runs finished, exiting")
                 self._int_error("all runs finished")

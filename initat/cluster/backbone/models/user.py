@@ -21,8 +21,6 @@
 #
 """ NOCTUA / CORUVS models, user part """
 
-
-
 import base64
 import crypt
 import datetime
@@ -30,7 +28,7 @@ import hashlib
 import inspect
 import os
 import random
-import smbpasswd
+# import smbpasswd
 import string
 
 from enum import Enum
@@ -54,36 +52,36 @@ from initat.constants import GEN_CS_NAME
 from initat.tools import config_store
 
 __all__ = [
-    b"csw_permission",
-    b"csw_object_permission",
-    b"user",
-    b"group",
-    b"Role",
-    b"RolePermission",
-    b"RoleObjectPermission",
-    b"user_device_login",
-    b"user_variable",
-    b"group_permission",
-    b"group_object_permission",
-    b"user_permission",
-    b"user_object_permission",
-    b"user_quota_setting",
-    b"group_quota_setting",
-    b"AC_MASK_READ",
-    b"AC_MASK_MODIFY",
-    b"AC_MASK_DELETE",
-    b"AC_MASK_CREATE",
-    b"AC_MASK_DICT",
-    b"user_scan_run",
-    b"user_scan_result",
-    b"virtual_desktop_protocol",
-    b"virtual_desktop_user_setting",
-    b"window_manager",
-    b"login_history",
-    b"UserLogEntry",
-    b"RouteTrace",
+    "csw_permission",
+    "csw_object_permission",
+    "user",
+    "group",
+    "Role",
+    "RolePermission",
+    "RoleObjectPermission",
+    "user_device_login",
+    "user_variable",
+    "group_permission",
+    "group_object_permission",
+    "user_permission",
+    "user_object_permission",
+    "user_quota_setting",
+    "group_quota_setting",
+    "AC_MASK_READ",
+    "AC_MASK_MODIFY",
+    "AC_MASK_DELETE",
+    "AC_MASK_CREATE",
+    "AC_MASK_DICT",
+    "user_scan_run",
+    "user_scan_result",
+    "virtual_desktop_protocol",
+    "virtual_desktop_user_setting",
+    "window_manager",
+    "login_history",
+    "UserLogEntry",
+    "RouteTrace",
     # special var names
-    b"SPECIAL_USER_VAR_NAMES",
+    "SPECIAL_USER_VAR_NAMES",
 ]
 
 

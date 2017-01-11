@@ -237,7 +237,7 @@ class mail(object):
                 maintype, subtype = ctype.split("/", 1)
                 if maintype == "image":
                     try:
-                        self.msg.attach(email.MIMEImage.MIMEImage(file(obj, "rb").read()))
+                        self.msg.attach(email.MIMEImage.MIMEImage(open(obj, "rb").read()))
                     except:
                         msgs.append(
                             "error reading image file '{}' : {}".format(
@@ -248,7 +248,7 @@ class mail(object):
                 else:
                     try:
                         new_msg = email.MIMEBase.MIMEBase(maintype, subtype)
-                        new_msg.set_payload(file(obj, "rb").read())
+                        new_msg.set_payload(open(obj, "rb").read())
                         email.Encoders.encode_base64(new_msg)
                         new_msg.add_header("Content-Disposition", "attachment", filename=os.path.basename(obj))
                         self.msg.attach(new_msg)
@@ -276,7 +276,7 @@ def expand_html_body(body_str, **args):
                     abs_path = rel_path.replace(args["media_path"], args["media_root"])
                     if os.path.exists(abs_path):
                         new_lines.append("<style>")
-                        new_lines.extend(file(abs_path, "r").read().split("\n"))
+                        new_lines.extend(open(abs_path, "r").read().split("\n"))
                         new_lines.append("</style>")
         else:
             new_lines.append(line)

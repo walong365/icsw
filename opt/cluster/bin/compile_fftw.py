@@ -140,7 +140,7 @@ class my_opt_parser(optparse.OptionParser):
             raise ValueError("Compiler settings %s unknown" % (self.options.fcompiler))
     def _read_fftw_versions(self):
         if os.path.isfile(FFTW_VERSION_FILE):
-            version_lines = [line.strip().split() for line in file(FFTW_VERSION_FILE, "r").read().split("\n") if line.strip()]
+            version_lines = [line.strip().split() for line in open(FFTW_VERSION_FILE, "r").read().split("\n") if line.strip()]
             self.version_dict = dict([(key, value) for key, value in version_lines])
             vers_dict = dict([(tuple([part.isdigit() and int(part) or part for part in key.split(".")]), key) for key in list(self.version_dict.keys())])
             vers_keys = sorted(vers_dict.keys())
@@ -255,7 +255,7 @@ class fftw_builder(object):
         if self.parser.options.include_log:
             readme_lines.extend(["Compile logs:"] + \
                                 sum([self.log_dict[key].split("\n") + [sep_str] for key in list(self.log_dict.keys())], []))
-        file("%s/%s" % (self.tempdir, info_name), "w").write("\n".join(readme_lines))
+        open("%s/%s" % (self.tempdir, info_name), "w").write("\n".join(readme_lines))
         package_name, package_version, package_release = (self.parser.package_name,
                                                           self.parser.options.fftw_version,
                                                           self.parser.options.release)

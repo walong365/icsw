@@ -47,9 +47,9 @@ if __name__ == "__main__":
     print("debugging")
     _sas = ctrl_type_megaraid_sas(dummy_mod(), None)
     srv_com = server_command.srv_command(command="result")
-    _sas.process(dummy_ccs(srv_com, "ld", file(sys.argv[1], "r").read() + file(sys.argv[2], "r").read() + file(sys.argv[3], "r").read()))
-    # _sas.process(dummy_ccs(srv_com, "bbu", file(sys.argv[2], "r").read()))
-    # _sas.process(dummy_ccs(srv_com, "enc", file(sys.argv[3], "r").read()))
+    _sas.process(dummy_ccs(srv_com, "ld", open(sys.argv[1], "r").read() + open(sys.argv[2], "r").read() + open(sys.argv[3], "r").read()))
+    # _sas.process(dummy_ccs(srv_com, "bbu", open(sys.argv[2], "r").read()))
+    # _sas.process(dummy_ccs(srv_com, "enc", open(sys.argv[3], "r").read()))
     _sas.process(dummy_ccs(srv_com, "done", ""))
 
     # print srv_com.pretty_print()

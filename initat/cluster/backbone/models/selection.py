@@ -28,7 +28,7 @@ from django.db.models import Q
 
 
 __all__ = [
-    b"DeviceSelection",
+    "DeviceSelection",
 ]
 
 

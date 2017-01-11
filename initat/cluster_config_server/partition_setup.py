@@ -161,7 +161,7 @@ class partition_setup(object):
     def create_part_files(self, pinfo_dir):
         if self.fspart_dict:
             for pn, pp in self.fspart_dict.items():
-                file("%s/%sparts" % (pinfo_dir, pn), "w").write("\n".join(pp + [""]))
+                open("%s/%sparts" % (pinfo_dir, pn), "w").write("\n".join(pp + [""]))
             for file_name, content in [
                 ("rootpart", self.root_part),
                 ("rootparttype", self.root_part_type),
@@ -169,4 +169,4 @@ class partition_setup(object):
                 ("sfdisk", "\n".join(self.sfdisk)),
                 ("parted", "\n".join(self.parted))
             ]:
-                file(os.path.join(pinfo_dir, file_name), "w").write("{}\n".format(content))
+                open(os.path.join(pinfo_dir, file_name), "w").write("{}\n".format(content))

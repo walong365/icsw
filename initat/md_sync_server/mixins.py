@@ -40,7 +40,7 @@ class VersionCheckMixin(object):
             try:
                 _content = {
                     _key.strip(): _value.strip().replace("\"", "") for _key, _value in [
-                        _line.split("=") for _line in file(
+                        _line.split("=") for _line in open(
                             _info_file,
                             "r"
                         ).read().split("\n") if _line.count("=")

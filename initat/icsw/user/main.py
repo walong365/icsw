@@ -163,7 +163,7 @@ def do_export(cur_opts, log_com):
         indent=4,
     )
     if cur_opts.export:
-        file(cur_opts.export, "wb").write(_exp)
+        open(cur_opts.export, "wb").write(_exp)
         print("exported dump to {}".format(cur_opts.export))
     else:
         print(_exp)
@@ -175,7 +175,7 @@ def do_import(cur_opts, log_com):
     from django.db.models import Q
     if not os.path.exists(cur_opts.export):
         print("import file '{}' not found".format(cur_opts.export))
-    _imp = json.loads(file(cur_opts.export, "r").read())
+    _imp = json.loads(open(cur_opts.export, "r").read())
     if "version" in _imp:
         pass
     else:

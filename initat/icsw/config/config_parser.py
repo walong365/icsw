@@ -51,7 +51,7 @@ class Parser(object):
             )
 
     def _add_show_parser(self, child_parser):
-        parser = child_parser.add_parser("show", help="show config file(s) for NOCTUA / CORVUS")
+        parser = child_parser.add_parser("show", help="show config open(s) for NOCTUA / CORVUS")
         parser.set_defaults(childcom="show")
         parser.add_argument(
             "-s", dest="full_strip", default=False, action="store_true", help="strip all empty lines from file [%(default)s]"

@@ -493,7 +493,7 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
             for _file in [_entry for _entry in _files if _entry.startswith("agg") and _entry.endswith(".xml")]:
                 _file = os.path.join(_dir, _file)
                 try:
-                    cur_xml = etree.fromstring(file(_file, "rb").read())
+                    cur_xml = etree.fromstring(open(_file, "rb").read())
                 except:
                     self.log(
                         "error interpreting aggregate file {}: {}".format(

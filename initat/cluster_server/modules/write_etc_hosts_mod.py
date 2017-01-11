@@ -251,7 +251,7 @@ class write_etc_hosts(cs_base_class.icswCSServerCom):
         )
         # write known_hosts_file
         if os.path.isdir(os.path.dirname(SSH_KNOWN_HOSTS_FILENAME)):
-            skh_f = file(SSH_KNOWN_HOSTS_FILENAME, "w")
+            skh_f = open(SSH_KNOWN_HOSTS_FILENAME, "w")
             for ssh_key_node in sorted(rsa_key_dict.keys()):
                 skh_f.write(
                     "{} {}\n".format(

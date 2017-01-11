@@ -67,7 +67,7 @@ def get_sge_environment(log_com=None):
         if _key.upper() not in os.environ:
             _file = os.path.join("/etc", _key)
             if os.path.isfile(_file):
-                _sge_dict[_key.upper()] = file(_file, "r").read().strip()
+                _sge_dict[_key.upper()] = open(_file, "r").read().strip()
             else:
                 _log(log_com, "Error, no {} environment variable set or defined in {}".format(_key.upper(), _file))
         else:
@@ -424,9 +424,9 @@ def handle_license_policy(base_dir, flag=None):
         # flag is given, write
         # - 1 to file if rms-server sets the complex_values of the global execution host or
         # - 0 if the system relies on the loadsensor
-        file(_hlp_fn, "w").write("1" if flag else "0")
+        open(_hlp_fn, "w").write("1" if flag else "0")
     else:
-        flag = True if int(file(_hlp_fn, "r").read().strip()) else False
+        flag = True if int(open(_hlp_fn, "r").read().strip()) else False
     return flag
 
 
@@ -447,7 +447,7 @@ class LicenseTextFile(object):
                 raise IOError("file '{}' does not exist".format(self.__name))
         else:
             self.__read = True
-            self._lines = file(self.__name, "r").read().split("\n")
+            self._lines = open(self.__name, "r").read().split("\n")
         if self.__opts.get("strip_empty", True):
             self._lines = [_entry for _entry in self._lines if _entry.strip()]
         if self.__opts.get("strip_hash", True):
@@ -455,7 +455,7 @@ class LicenseTextFile(object):
 
     def write(self, content, mode="w"):
         if type(content) == dict:
-            file(self.__name, mode).write(
+            open(self.__name, mode).write(
                 "\n".join(
                     [
                         "{}={}".format(key, value) for key, value in content.items()
@@ -463,9 +463,9 @@ class LicenseTextFile(object):
                 )
             )
         elif isinstance(content, str):
-            file(self.__name, mode).write(content)
+            open(self.__name, mode).write(content)
         else:
-            file(self.__name, mode).write("\n".join(content + [""]))
+            open(self.__name, mode).write("\n".join(content + [""]))
 
     @property
     def lines(self):
@@ -580,7 +580,7 @@ def parse_license_lines(lines, act_site, **kwargs):
                 else:
                     new_dict[new_lic.name] = new_lic
         try:
-            file(get_site_license_file_name(BASE_DIR, act_site), "w").write(
+            open(get_site_license_file_name(BASE_DIR, act_site), "w").write(
                 etree.tostring(
                     build_license_xml(
                         act_site,
@@ -689,10 +689,10 @@ class LicenseServer(object):
         _port, _address = in_str.split("@")
         if _address.startswith("/"):
             # address is a file
-            _address = file(_address, "r").read().strip().split()[0]
+            _address = open(_address, "r").read().strip().split()[0]
         if _port.startswith("/"):
             # port is a file
-            _port = file(_port, "r").read().strip().split()[0]
+            _port = open(_port, "r").read().strip().split()[0]
         self.port = int(_port)
         self.address = _address
 

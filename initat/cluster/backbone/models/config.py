@@ -34,15 +34,15 @@ from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import check_integer, check_empty_string
 
 __all__ = [
-    b"config_catalog",
-    b"config",
-    b"ConfigServiceEnum",
-    b"config_str",
-    b"config_int",
-    b"config_blob",
-    b"config_bool",
-    b"config_script",
-    b"device_config",
+    "config_catalog",
+    "config",
+    "ConfigServiceEnum",
+    "config_str",
+    "config_int",
+    "config_blob",
+    "config_bool",
+    "config_script",
+    "device_config",
 ]
 
 

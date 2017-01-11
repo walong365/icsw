@@ -32,7 +32,7 @@ lmutil - Copyright (c) 1989-2014 Flexera Software LLC. All Rights Reserved.
 Flexible License Manager status on Tue 12/20/2016 10:39
 
 License server status: 1055@lwnsv42022
-    License file(s) on lwnsv42022: C:\Program Files\ANSYS Inc\Shared Files\Licensing\license_files\nsyslmd.lic:
+    License open(s) on lwnsv42022: C:\Program Files\ANSYS Inc\Shared Files\Licensing\license_files\nsyslmd.lic:
 
 lwnsv42022: license server UP (MASTER) v11.13.1
 
@@ -110,7 +110,7 @@ lmutil - Copyright (c) 1989-2014 Flexera Software LLC. All Rights Reserved.
 Flexible License Manager status on Tue 12/20/2016 10:40
 
 License server status: 1055@MCRSVTBLIC
-    License file(s) on MCRSVTBLIC: C:\Program Files\ANSYS Inc\Shared Files\Licensing\license_files\nsyslmd.lic:
+    License open(s) on MCRSVTBLIC: C:\Program Files\ANSYS Inc\Shared Files\Licensing\license_files\nsyslmd.lic:
 
 MCRSVTBLIC: license server UP (MASTER) v11.12.1
 

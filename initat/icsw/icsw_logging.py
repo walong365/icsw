@@ -120,8 +120,8 @@ class GLog(object):
             what = what[5:]
         else:
             _debug = False
-        file(self._names[io_type], "a").write(self.transform(io_type, what))
-        file(self._names["unified"], "a").write(self.transform("unified", what))
+        open(self._names[io_type], "a").write(self.transform(io_type, what))
+        open(self._names["unified"], "a").write(self.transform("unified", what))
         if not _debug:
             if self._last_was_debug[io_type] and what in ["\n"]:
                 pass

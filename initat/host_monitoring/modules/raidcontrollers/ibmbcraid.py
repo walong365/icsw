@@ -90,7 +90,7 @@ class ctrl_type_ibmbcraid(ctrl_type):
                 )
             else:
                 # content of s_file is already marshalled
-                ccs.srv_com["result:ctrl_{}".format(ctrl_id)] = base64.b64encode(file(s_file, "r").read())
+                ccs.srv_com["result:ctrl_{}".format(ctrl_id)] = base64.b64encode(open(s_file, "r").read())
         else:
             ccs.srv_com.set_result(
                 "no controller information found for {} (file {})".format(ctrl_id, s_file),

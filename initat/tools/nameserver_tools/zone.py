@@ -280,11 +280,11 @@ class Zone(object):
                         _key,
                     )
                 ).strip()
-            file(_res_name, "w").write(json.dumps(_res_dict))
+            open(_res_name, "w").write(json.dumps(_res_dict))
         key_dict = {}
-        for _key, _value in json.loads(file(_res_name, "r").read()).items():
+        for _key, _value in json.loads(open(_res_name, "r").read()).items():
             for _t in ["key", "private"]:
-                _content = file(os.path.join(_key_dir, "{}.{}".format(_value, _t)), "r").read()
+                _content = open(os.path.join(_key_dir, "{}.{}".format(_value, _t)), "r").read()
                 key_dict.setdefault(_key, {})[_t] = {
                     "content": _content,
                     # not correct for private
@@ -467,7 +467,7 @@ class Zone(object):
                             # do not write empty zones
                             continue
                         num_files += 1
-                        file(
+                        open(
                             os.path.join(
                                 _zone_dir,
                                 zone.zone_file_name(private)
@@ -478,7 +478,7 @@ class Zone(object):
                         )
                         # uid, gid = pwd.getpwnam("named")[2:4]
                         # os.chown(dest_file, uid, gid)
-            file(os.path.join(_conf_dir, "{}_zones".format(_btype)), "w").write("\n".join(_z_content))
+            open(os.path.join(_conf_dir, "{}_zones".format(_btype)), "w").write("\n".join(_z_content))
             num_files += 1
         print("Wrote {}.".format(logging_tools.get_plural("file", num_files)))
 

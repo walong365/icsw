@@ -76,7 +76,7 @@ class dependency_handler(object):
     def find_module_by_modalias(self, alias_list, **kwargs):
         dep_file = self.get_dep_file_name(ftype="alias")
         resolv_dict = {key: [] for key in alias_list}
-        for line in file(dep_file, "r").readlines():
+        for line in open(dep_file, "r").readlines():
             _parts = line.strip().split()
             if len(_parts) > 2 and _parts[0] == "alias" and _parts[1].startswith("pci:"):
                 try:
@@ -112,7 +112,7 @@ class dependency_handler(object):
                     matches_found.add(f_name)
         dep_file = self.get_dep_file_name()
         if dep_file:
-            dep_lines = [line.replace("\t", " ").strip() for line in file(dep_file, "r").read().split("\n") if line.strip()]
+            dep_lines = [line.replace("\t", " ").strip() for line in open(dep_file, "r").read().split("\n") if line.strip()]
             dep_lines2 = []
             add_next_line = False
             for dep_line in dep_lines:

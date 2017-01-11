@@ -115,7 +115,7 @@ class my_opt_parser(optparse.OptionParser):
 
     def _read_libgoto_versions(self):
         if os.path.isfile(LIBGOTO_VERSION_FILE):
-            version_lines = [line.strip().split() for line in file(LIBGOTO_VERSION_FILE, "r").read().split("\n") if line.strip()]
+            version_lines = [line.strip().split() for line in open(LIBGOTO_VERSION_FILE, "r").read().split("\n") if line.strip()]
             self.version_dict = dict([(key, value) for key, value in version_lines])
             vers_dict = dict([(tuple([part.isdigit() and int(part) or part for part in key.split(".")]), key) for key in list(self.version_dict.keys())])
             vers_keys = sorted(vers_dict.keys())
@@ -303,7 +303,7 @@ class goto_builder(object):
             success = False
         else:
             print("Modifying Makefile.rule")
-            rule_lines = [line for line in file(self.orig_rulefile_name, "r").read().split("\n") if line.rstrip() and not line.lstrip().startswith("#")]
+            rule_lines = [line for line in open(self.orig_rulefile_name, "r").read().split("\n") if line.rstrip() and not line.lstrip().startswith("#")]
             parser_options = self.parser.options
             pre_new_rules = [("C_COMPILER", parser_options.ccompiler),
                              ("F_COMPILER", parser_options.fcompiler),
@@ -322,7 +322,7 @@ class goto_builder(object):
             ] + rule_lines + [
                 "%-12s += %s" % (name, value) for name, value in post_new_rules
             ] + [""]
-            file(self.orig_rulefile_name, "w").write("\n".join(rule_lines))
+            open(self.orig_rulefile_name, "w").write("\n".join(rule_lines))
             success = True
         return success
 
@@ -398,7 +398,7 @@ class goto_builder(object):
                 ] + sum([["%s:" % (key)] + self.log_dict[key].split("\n") + [sep_str] for key in list(self.log_dict.keys())], []))
         libgoto_static_file_name, libgoto_dynamic_file_name = ("%s/GotoBLAS/libgoto.a" % (self.tempdir),
                                                                "/dynamic_not_found")
-        file("%s/info" % (self.tempdir), "w").write("\n".join(readme_lines))
+        open("%s/info" % (self.tempdir), "w").write("\n".join(readme_lines))
         for ent in os.listdir("%s/GotoBLAS" % (self.tempdir)):
             if ent.endswith(".so"):
                 libgoto_dynamic_file_name = "%s/GotoBLAS/%s" % (self.tempdir, ent)
@@ -406,7 +406,7 @@ class goto_builder(object):
                                                           self.parser.options.goto_version,
                                                           self.parser.options.release)
         # copy libgoto.a
-        file("%s.static" % (libgoto_static_file_name), "w").write(file(libgoto_static_file_name, "r").read())
+        open("%s.static" % (libgoto_static_file_name), "w").write(open(libgoto_static_file_name, "r").read())
         new_p = rpm_build_tools.build_package()
         if self.parser.options.arch:
             new_p["arch"] = self.parser.options.arch

@@ -207,8 +207,8 @@ class RMSJob(object):
                 "exec {} $*".format(src_file),
                 "",
             ]
-        file(dst_file, "w").write("\n".join(df_lines))
-        file(var_file, "w").write("#!/bin/bash\n")
+        open(dst_file, "w").write("\n".join(df_lines))
+        open(var_file, "w").write("#!/bin/bash\n")
         self.write_file("wrapper_script", df_lines)
         os.chmod(dst_file, 0o755)
         os.chmod(var_file, 0o755)
@@ -258,7 +258,7 @@ class RMSJob(object):
             )
         )
         try:
-            file(var_file, "a").write("export {}={}\n".format(key, value))
+            open(var_file, "a").write("export {}={}\n".format(key, value))
         except:
             self.log(
                 "error writing to {}: {}".format(
@@ -344,7 +344,7 @@ class RMSJob(object):
         )
         if isinstance(content, str) and content.startswith("/"):
             # content is a filename
-            content = file(content, "r").read().split("\n")
+            content = open(content, "r").read().split("\n")
         if isinstance(content, str):
             content = content.split("\n")
         log_str = "content '{}', {}:".format(
@@ -374,7 +374,7 @@ class RMSJob(object):
         if "SGE_JOB_SPOOL_DIR" in self.__env_dict:
             self.__env_int_dict = {
                 key: value for key, value in [
-                    line.split("=", 1) for line in file(
+                    line.split("=", 1) for line in open(
                         os.path.join(
                             self.__env_dict["SGE_JOB_SPOOL_DIR"],
                             "config"
@@ -393,7 +393,7 @@ class RMSJob(object):
         ]:
             if os.path.isfile(src_file):
                 try:
-                    act_val = file(src_file, "r").read().split()[0]
+                    act_val = open(src_file, "r").read().split()[0]
                 except:
                     self.log(
                         "cannot read {} from {}: {}".format(
@@ -438,7 +438,7 @@ class RMSJob(object):
                 self.script_is_special = True
             else:
                 try:
-                    lines = [line.strip() for line in file(script_file, "r").read().split("\n")]
+                    lines = [line.strip() for line in open(script_file, "r").read().split("\n")]
                 except:
                     self.log(
                         "cannot read scriptfile '{}' ({})".format(
@@ -781,7 +781,7 @@ class RMSJob(object):
             usage_file = os.path.join(jsd, "usage")
             if os.path.isfile(usage_file):
                 try:
-                    ufl = dict([[part.strip() for part in line.strip().split("=", 1)] for line in file(usage_file, "r").read().split("\n") if line.count("=")])
+                    ufl = dict([[part.strip() for part in line.strip().split("=", 1)] for line in open(usage_file, "r").read().split("\n") if line.count("=")])
                 except:
                     self.log(
                         "error reading usage_file {}: {}".format(
@@ -950,7 +950,7 @@ class RMSJob(object):
         if os.path.isfile(orig_file):
             try:
                 node_list = [
-                    line.strip() for line in file(orig_file, "r").readlines() if line.strip()
+                    line.strip() for line in open(orig_file, "r").readlines() if line.strip()
                 ]
             except:
                 self.log(
@@ -1150,7 +1150,7 @@ class RMSJob(object):
                 _job_dict[_key.lower()] = _value
                 if isinstance(_value, str) and _value.startswith("/") and os.path.isfile(_value):
                     _content += 1
-                    _job_dict["{}_content".format(_key.lower())] = file(_value, "r").read()
+                    _job_dict["{}_content".format(_key.lower())] = open(_value, "r").read()
         srv_com["config"] = _job_dict
         self.log("added {:d} config keys to srv_com ({:d} content)".format(_added, _content))
         # add all keys from global_config
@@ -1472,7 +1472,7 @@ class ProcessPool(threading_tools.process_pool):
             ("SGE_CELL", "/etc/sge_cell")
         ]:
             if os.path.isfile(v_src):
-                v_val = file(v_src, "r").read().strip()
+                v_val = open(v_src, "r").read().strip()
                 self.log("Setting environment-variable '{}' to {}".format(v_name, v_val))
             else:
                 self.log(

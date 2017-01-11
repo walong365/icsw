@@ -22,8 +22,6 @@
 #
 """ return version information """
 
-
-
 import hashlib
 import os
 
@@ -39,7 +37,7 @@ def get_models_version():
         for _file in [_entry for _entry in _flist if _entry.endswith(".py")]:
             _fp = os.path.join(_sdir, _file)
             if os.path.exists(_fp):
-                my_md5.update(file(_fp, "r").read())
+                my_md5.update(open(_fp, "r").read().encode("utf-8"))
     return my_md5.hexdigest()
 
 

@@ -38,9 +38,9 @@ from initat.tools import server_command
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    b"background_job",
-    b"background_job_run",
-    b"BackgroundJobState",
+    "background_job",
+    "background_job_run",
+    "BackgroundJobState",
 ]
 
 

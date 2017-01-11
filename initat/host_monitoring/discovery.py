@@ -205,7 +205,7 @@ class ZMQDiscovery(object):
                     _log("error interpreting key {}".format(key))
         else:
             if os.path.isfile(MAPPING_FILE_IDS):
-                map_content = file(MAPPING_FILE_IDS, "r").read()
+                map_content = open(MAPPING_FILE_IDS, "r").read()
                 if map_content.startswith("<"):
                     # new format
                     mapping_xml = etree.fromstring(map_content)  # @UndefinedVariable

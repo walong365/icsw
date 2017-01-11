@@ -82,7 +82,7 @@ class mountinfo_command(hm_classes.hm_command):
         self.parser.add_argument("--filesys", type=str, default="ext4")
 
     def __call__(self, srv_com, cur_ns):
-        _mounts = [_line.strip().split() for _line in file("/proc/mounts", "r").read().split("\n") if _line.strip()]
+        _mounts = [_line.strip().split() for _line in open("/proc/mounts", "r").read().split("\n") if _line.strip()]
         srv_com["mounts"] = process_tools.compress_struct(_mounts)
 
     def interpret(self, srv_com, cur_ns):

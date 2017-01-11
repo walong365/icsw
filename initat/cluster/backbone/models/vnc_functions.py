@@ -36,17 +36,16 @@
 #
 
 
-
 import pdb
 import sys
 from struct import pack, unpack
 
 
 __all__ = [
-    b"ForkedPdb",
-    b"desfunc",
-    b"deskey",
-    b"get_vnc_enc",
+    "ForkedPdb",
+    "desfunc",
+    "deskey",
+    "get_vnc_enc",
 ]
 
 
@@ -386,7 +385,7 @@ class ForkedPdb(pdb.Pdb):
     def interaction(self, *args, **kwargs):
         _stdin = sys.stdin
         try:
-            sys.stdin = file('/dev/stdin')
+            sys.stdin = open('/dev/stdin')
             pdb.Pdb.interaction(self, *args, **kwargs)
         finally:
             sys.stdin = _stdin

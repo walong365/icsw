@@ -36,48 +36,48 @@ from initat.cluster.backbone.models.functions import check_empty_string, check_i
 from initat.tools import logging_tools
 
 __all__ = [
-    b"mon_host_cluster",
-    b"mon_service_cluster",
-    b"host_check_command",
-    b"mon_check_command",
-    b"mon_contact",
-    b"mon_notification",
-    b"mon_contactgroup",
-    b"mon_device_templ",
-    b"mon_device_esc_templ",
-    b"mon_host_dependency_templ",
-    b"mon_host_dependency",
-    b"mon_service_dependency_templ",
-    b"mon_service_dependency",
-    b"mon_ext_host",
-    b"mon_period",
-    b"mon_service_templ",
-    b"mon_service_esc_templ",
+    "mon_host_cluster",
+    "mon_service_cluster",
+    "host_check_command",
+    "mon_check_command",
+    "mon_contact",
+    "mon_notification",
+    "mon_contactgroup",
+    "mon_device_templ",
+    "mon_device_esc_templ",
+    "mon_host_dependency_templ",
+    "mon_host_dependency",
+    "mon_service_dependency_templ",
+    "mon_service_dependency",
+    "mon_ext_host",
+    "mon_period",
+    "mon_service_templ",
+    "mon_service_esc_templ",
 
     # distribution models
 
-    b"mon_dist_master",
-    b"mon_dist_slave",
-    b"monitoring_hint",
-    b"mon_check_command_special",
+    "mon_dist_master",
+    "mon_dist_slave",
+    "monitoring_hint",
+    "mon_check_command_special",
 
     # trace
 
-    b"MonHostTrace",  # monitoring trace for speedup
-    b"MonHostTraceGeneration",   # monitoring trace generation
+    "MonHostTrace",  # monitoring trace for speedup
+    "MonHostTraceGeneration",   # monitoring trace generation
 
     # unreachable info
 
-    b"mon_build_unreachable",  # track unreachable devices
-    b"parse_commandline",  # commandline parsing
-    b"SpecialGroupsEnum",
+    "mon_build_unreachable",  # track unreachable devices
+    "parse_commandline",  # commandline parsing
+    "SpecialGroupsEnum",
 
     # syslog check object
 
-    b"SyslogCheck",
+    "SyslogCheck",
 
     # display pipes
-    b"MonDisplayPipeSpec",
+    "MonDisplayPipeSpec",
 ]
 
 

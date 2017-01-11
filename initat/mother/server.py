@@ -407,7 +407,7 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
         # fix rights
         os.chmod(_scan_file, 0o755)
         slcn = "/etc/rsyslog.d/mother.conf"
-        file(slcn, "w").write("\n".join(rsyslog_lines))
+        open(slcn, "w").write("\n".join(rsyslog_lines))
         self._restart_syslog()
 
     def _disable_rsyslog(self):
@@ -441,7 +441,7 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
                 (
                     "LDLINUX.E64",
                     configfile.blob_c_var(
-                        file(os.path.join(syslinux_dir, "efi64", "com32", "elflink", "ldlinux", "ldlinux.e64"), "rb").read(),
+                        open(os.path.join(syslinux_dir, "efi64", "com32", "elflink", "ldlinux", "ldlinux.e64"), "rb").read(),
                         source="filesystem"
                     )
                 ),
@@ -455,14 +455,14 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
                 (
                     "MEMDISK",
                     configfile.blob_c_var(
-                        file(os.path.join(syslinux_dir, "bios", "memdisk", "memdisk"), "rb").read(),
+                        open(os.path.join(syslinux_dir, "bios", "memdisk", "memdisk"), "rb").read(),
                         source="filesystem"
                     )
                 ),
                 (
                     "LDLINUX.C32",
                     configfile.blob_c_var(
-                        file(os.path.join(syslinux_dir, "bios", "com32", "elflink", "ldlinux", "ldlinux.c32"), "rb").read(),
+                        open(os.path.join(syslinux_dir, "bios", "com32", "elflink", "ldlinux", "ldlinux.c32"), "rb").read(),
                         source="filesystem"
                     )
                 ),

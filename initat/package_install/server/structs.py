@@ -291,7 +291,7 @@ class RepoTypeDebDebian(RepoType):
     def rescan_repos(self, srv_com):
         def _read_file(f_name):
             return [
-                line.strip() for line in file(f_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")
+                line.strip() for line in open(f_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")
             ]
         self.log("debian scan")
         _src_list_dir = "/etc/apt"
@@ -645,7 +645,7 @@ class Client(object):
             _create = True
             _cs = config_store.ConfigStore(CLIENT_CS_NAME, log_com=Client.srv_process.log, read=False, prefix="client")
             if os.path.exists(OLD_CONFIG_NAME):
-                _xml = etree.fromstring(file(OLD_CONFIG_NAME, "r").read())
+                _xml = etree.fromstring(open(OLD_CONFIG_NAME, "r").read())
                 for _idx, _entry in enumerate(_xml.findall(".//package_client")):
                     _cs["{:d}".format(_idx)] = {
                         "name": _entry.attrib["name"],

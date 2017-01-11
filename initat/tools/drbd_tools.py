@@ -73,7 +73,7 @@ class drbd_config(object):
             (
                 " ".join(
                     [
-                        line.strip() for line in file(_entry, "r").read().split("\n") if not line.lstrip().startswith("#")
+                        line.strip() for line in open(_entry, "r").read().split("\n") if not line.lstrip().startswith("#")
                     ]
                 )
             ).strip() for _entry in _c_files
@@ -142,7 +142,7 @@ class drbd_config(object):
     def _parse_status(self):
         if os.path.isfile(self.__status_name):
             self.__config_dict["status_present"] = True
-            stat_lines = [line.strip().split() for line in file(self.__status_name, "r").read().split("\n") if line.strip()]
+            stat_lines = [line.strip().split() for line in open(self.__status_name, "r").read().split("\n") if line.strip()]
             act_device = None
             for line in stat_lines:
                 if line[0].endswith(":") and line[0][:-1].isdigit():

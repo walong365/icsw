@@ -32,7 +32,7 @@ class ServiceHelper(object):
         self._check_for_systemd()
 
     def _check_for_systemd(self):
-        if file("/proc/1/cmdline", "r").read().count("system"):
+        if open("/proc/1/cmdline", "r").read().count("system"):
             self._method = "s"
             self._service_command = self._service_command_s
             self._systemctl = process_tools.find_file("systemctl")

@@ -132,7 +132,7 @@ class resize_process(threading_tools.process_obj, server_mixins.OperationalError
                     _rrd = rrd_tools.RRD(f_name, log_com=self.log, build_rras=False, verbose=self.__verbose)
                 except:
                     # check if file is not an rrd file
-                    _content = file(f_name, "rb").read()
+                    _content = open(f_name, "rb").read()
                     if f_name.endswith(".rrd") and _content[:3] != "RRD":
                         self.log("file {} has no RRD header, trying to remove it".format(f_name), logging_tools.LOG_LEVEL_ERROR)
                         try:
@@ -226,7 +226,7 @@ class resize_process(threading_tools.process_obj, server_mixins.OperationalError
             self.log("to")
             self.log("  {}".format(", ".join(["{} ({:d})".format(_name, _new_popcount[_name]) for _name in sorted(list(_new_names))])))
             try:
-                file(f_name, "wb").write(_rrd.content())
+                open(f_name, "wb").write(_rrd.content())
             except:
                 self.log(
                     "error writing RRA to {}: {}".format(f_name, process_tools.get_except_info()),

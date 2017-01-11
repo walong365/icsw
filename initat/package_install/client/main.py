@@ -51,7 +51,7 @@ def main():
     ps_file_name = "/etc/packageserver"
     if not os.path.isfile(ps_file_name):
         try:
-            file(ps_file_name, "w").write("localhost\n")
+            open(ps_file_name, "w").write("localhost\n")
         except:
             print(("error writing to {}: {}".format(ps_file_name, process_tools.get_except_info())))
             ret_code = 5
@@ -60,7 +60,7 @@ def main():
     try:
         global_config.add_config_entries(
             [
-                ("PACKAGE_SERVER", configfile.str_c_var(file(ps_file_name, "r").read().strip().split("\n")[0].strip())),
+                ("PACKAGE_SERVER", configfile.str_c_var(open(ps_file_name, "r").read().strip().split("\n")[0].strip())),
                 ("VERSION", configfile.str_c_var(VERSION_STRING)),
             ]
         )

@@ -141,7 +141,7 @@ def main():
                         try:
                             match_dict = dict(
                                 [
-                                    parse_line(line) for line in file(match_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")
+                                    parse_line(line) for line in open(match_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")
                                 ]
                             )
                         except:

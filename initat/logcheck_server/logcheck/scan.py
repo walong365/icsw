@@ -95,7 +95,7 @@ class LogCheckFile(object):
         self.file_dict = other.file_dict
 
     def read(self):
-        self.content = file(self.path, "r").read()
+        self.content = open(self.path, "r").read()
         self.xml = etree.fromstring(self.content)
         self.valid = self.scanner.relax.validate(self.xml)
         if self.valid:

@@ -24,8 +24,6 @@ for password-types we need to add some encryption / message digest code via {alg
 
 """
 
-
-
 import grp
 import os
 import stat
@@ -38,9 +36,9 @@ from initat.constants import CONFIG_STORE_ROOT
 from initat.tools import process_tools, logging_tools
 
 __all__ = [
-    b"ConfigVar",
-    b"ConfigStore",
-    b"AccessModeEnum",
+    "ConfigVar",
+    "ConfigStore",
+    "AccessModeEnum",
 ]
 
 CS_NG = """
@@ -234,7 +232,7 @@ class ConfigStore(object):
         _exists = False
         if os.path.exists(ConfigStore.build_path(name)):
             try:
-                file(ConfigStore.build_path(name), "r").read(1)
+                open(ConfigStore.build_path(name), "r").read(1)
             except:
                 pass
             else:
@@ -276,7 +274,7 @@ class ConfigStore(object):
             self.tree_valid = False
             try:
                 _stat = os.stat(_read_name)
-                _tree = etree.fromstring(file(_read_name, "r").read())
+                _tree = etree.fromstring(open(_read_name, "r").read().encode("ascii"))
                 self.__uid, self.__gid, self.__mode = (
                     _stat[stat.ST_UID],
                     _stat[stat.ST_GID],
@@ -406,7 +404,7 @@ class ConfigStore(object):
             if access_mode is not None:
                 self.__access_mode = access_mode
             try:
-                file(self.file_name, "w").write(etree.tostring(self._generate(), pretty_print=True, xml_declaration=True))
+                open(self.file_name, "w").write(etree.tostring(self._generate(), pretty_print=True, xml_declaration=True))
             except:
                 self.log(
                     "cannot write tree to {}: {}".format(

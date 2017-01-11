@@ -21,8 +21,6 @@
 #
 """ database definitions for RMS """
 
-
-
 import datetime
 import time
 from enum import Enum
@@ -36,35 +34,35 @@ from initat.cluster.backbone.models.functions import cluster_timezone, duration 
 from initat.tools import logging_tools
 
 __all__ = [
-    b"rms_job",
-    b"rms_job_run",
-    b"rms_pe_info",
-    b"rms_project",
-    b"rms_department",
-    b"rms_user",
-    b"rms_queue",
-    b"rms_pe",
-    b"rms_accounting_run",
-    b"rms_accounting_record",
-    b"ext_license_site",
-    b"ext_license",
-    b"ext_license_version",
-    b"ext_license_vendor",
-    b"ext_license_user",
-    b"ext_license_client",
-    b"ext_license_client_version",
-    b"ext_license_check",
-    b"ext_license_state",
-    b"ext_license_version_state",
-    b"ext_license_usage",
-    b"ext_license_check_coarse",
-    b"ext_license_version_state_coarse",
-    b"ext_license_state_coarse",
-    b"ext_license_usage_coarse",
-    b"RMSJobVariable",
-    b"RMSJobVariableAction",
-    b"RMSJobVariableActionRun",
-    b"RMSAggregationLevelEnum",
+    "rms_job",
+    "rms_job_run",
+    "rms_pe_info",
+    "rms_project",
+    "rms_department",
+    "rms_user",
+    "rms_queue",
+    "rms_pe",
+    "rms_accounting_run",
+    "rms_accounting_record",
+    "ext_license_site",
+    "ext_license",
+    "ext_license_version",
+    "ext_license_vendor",
+    "ext_license_user",
+    "ext_license_client",
+    "ext_license_client_version",
+    "ext_license_check",
+    "ext_license_state",
+    "ext_license_version_state",
+    "ext_license_usage",
+    "ext_license_check_coarse",
+    "ext_license_version_state_coarse",
+    "ext_license_state_coarse",
+    "ext_license_usage_coarse",
+    "RMSJobVariable",
+    "RMSJobVariableAction",
+    "RMSJobVariableActionRun",
+    "RMSAggregationLevelEnum",
 ]
 
 

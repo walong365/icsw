@@ -21,8 +21,6 @@
 #
 """ model definitions, partitions """
 
-
-
 import re
 
 from django.core.exceptions import ValidationError
@@ -34,14 +32,14 @@ from initat.cluster.backbone.models.functions import check_integer
 from initat.tools import logging_tools
 
 __all__ = [
-    b"partition_fs",
-    b"sys_partition",
-    b"lvm_lv",
-    b"lvm_vg",
-    b"LogicalDisc",
-    b"partition",
-    b"partition_disc",
-    b"partition_table",
+    "partition_fs",
+    "sys_partition",
+    "lvm_lv",
+    "lvm_vg",
+    "LogicalDisc",
+    "partition",
+    "partition_disc",
+    "partition_table",
 ]
 
 

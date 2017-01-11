@@ -383,7 +383,7 @@ class setup_ldap_server(cs_base_class.icswCSServerCom, ldap_mixin):
                         "olcRootPW: {}".format(root_hash),
                         "",
                     ]
-                    file("/tmp/x", "w").write("\n".join(c_list))
+                    open("/tmp/x", "w").write("\n".join(c_list))
                     print("\n".join(c_list))
                     print(par_dict)
                     print(root_hash, cmd_stat)

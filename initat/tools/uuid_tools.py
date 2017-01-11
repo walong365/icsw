@@ -37,7 +37,7 @@ def get_uuid(renew=False):
     OLD_UUID_NAME = "/etc/sysconfig/cluster/.cluster_device_uuid"
     if not config_store.ConfigStore.exists(DATASTORE_NAME):
         if os.path.isfile(OLD_UUID_NAME):
-            uuid_content = file(OLD_UUID_NAME, "r").read().strip()
+            uuid_content = open(OLD_UUID_NAME, "r").read().strip()
             try:
                 the_uuid = uuid.UUID(uuid_content)
             except ValueError:
@@ -71,12 +71,12 @@ def get_uuid(renew=False):
     if not os.path.exists(NEW_UUID_NAME):
         _write = True
     else:
-        old_uuid = file(NEW_UUID_NAME, "r").read().strip()
+        old_uuid = open(NEW_UUID_NAME, "r").read().strip()
         if old_uuid != the_uuid.get_urn():
             _write = True
     if _write:
         try:
-            file(NEW_UUID_NAME, "w").write("{}\n".format(the_uuid.get_urn()))
+            open(NEW_UUID_NAME, "w").write("{}\n".format(the_uuid.get_urn()))
         except IOError:
             pass
     return the_uuid

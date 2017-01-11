@@ -583,7 +583,7 @@ class SimpleService(Service):
                 pid_file_name = os.path.join("/", "var", "run", pid_file_name)
             if os.path.isfile(pid_file_name):
                 try:
-                    act_pid = int(file(pid_file_name, "r").read().strip())
+                    act_pid = int(open(pid_file_name, "r").read().strip())
                 except:
                     pass
                 else:
@@ -612,7 +612,7 @@ class PIDService(Service):
         if os.path.isfile(pid_file_name):
             start_time = os.stat(pid_file_name)[stat.ST_CTIME]
             # print("*", start_time, pid_file_name)
-            act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
+            act_pids = [int(line.strip()) for line in open(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
             act_state, num_started, num_found = self._check_processes(act_pids, act_proc_dict)
             unique_pids = set(act_pids)
             diff_dict = {}

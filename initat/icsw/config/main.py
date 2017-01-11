@@ -188,7 +188,7 @@ def show_command(options):
         obj_name = "{}_object".format(_obj_name)
         try:
             f_stat = os.stat(f_name)
-            content = file(f_name).read()
+            content = open(f_name).read()
         except:
             print(
                 "error reading file '{}': {}".format(

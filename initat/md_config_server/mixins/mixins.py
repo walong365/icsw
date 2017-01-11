@@ -312,7 +312,7 @@ class NagVisMixin(object):
         self.log("creating maps for {}".format(logging_tools.get_plural("device group", len(dev_groups))))
         for dev_group in dev_groups:
             map_name = os.path.join(nagvis_map_dir, "{}.cfg".format(dev_group.name.replace(" ", "_")))
-            file(map_name, "w").write(
+            open(map_name, "w").write(
                 "\n".join(
                     [
                         "define global {",
@@ -598,7 +598,7 @@ class NagVisMixin(object):
             # clear SALT
             config_php = os.path.join(global_config["NAGVIS_DIR"], "share", "server", "core", "defines", "global.php")
             if os.path.exists(config_php):
-                lines = file(config_php, "r").read().split("\n")
+                lines = open(config_php, "r").read().split("\n")
                 new_lines, save = ([], False)
                 for cur_line in lines:
                     if cur_line.lower().count("auth_password_salt") and len(cur_line) > 60:
@@ -608,7 +608,7 @@ class NagVisMixin(object):
                     new_lines.append(cur_line)
                 if save:
                     self.log("saving {}".format(config_php))
-                    file(config_php, "w").write("\n".join(new_lines))
+                    open(config_php, "w").write("\n".join(new_lines))
             else:
                 self.log("config.php '{}' does not exist".format(config_php), logging_tools.LOG_LEVEL_ERROR)
         else:

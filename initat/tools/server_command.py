@@ -136,8 +136,8 @@ def add_namespace(in_str):
 
 
 class srv_command(object):
+    # __slots__ = ("__builder", "__tree", "srvc_open", "ignore_unicode_errors")
     srvc_open = 0
-    __slots__ = ["__builder", "__tree", "srvc_open", "ignore_unicode_errors"]
 
     def __init__(self, **kwargs):
         # init tree with None so that __del__ always succeeds

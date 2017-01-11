@@ -116,7 +116,7 @@ class file_object(new_config_object):
         if kwargs.get("from_image", False):
             s_dir = kwargs["dev_dict"]["image"].get("source", None)
             if s_dir:
-                s_content = file("%s/%s" % (s_dir, destination), "r").read()
+                s_content = open("%s/%s" % (s_dir, destination), "r").read()
                 self += s_content.split("\n")
 
     def set_config(self, ref_config):
@@ -125,7 +125,7 @@ class file_object(new_config_object):
         self.gid = ref_config.gid
 
     def write_object(self, t_file):
-        file(t_file, "w").write("".join(self.content))
+        open(t_file, "w").write("".join(self.content))
         return "%d %d %s %s" % (
             self.uid,
             self.gid,
@@ -199,7 +199,7 @@ class copy_object(new_config_object):
         self.set_gid(ref_config.get_gid())
 
     def write_object(self, t_file):
-        file(t_file, "w").write("".join(self.content))
+        open(t_file, "w").write("".join(self.content))
         os.chmod(t_file, 0o644)
         return "%d %d %s %s" % (
             self.uid,

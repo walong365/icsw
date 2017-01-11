@@ -351,7 +351,7 @@ class ServerProcess(threading_tools.process_pool):
         for targ_dir in self.__dir_list:
             t_file = os.path.join(temp_dir, targ_dir)
             s_dir = os.path.join(self.__system_dir, targ_dir)
-            file(t_file, "w").close()
+            open(t_file, "w").close()
             os.chmod(t_file, os.stat(s_dir)[stat.ST_MODE])
             os.chown(t_file, os.stat(s_dir)[stat.ST_UID], os.stat(s_dir)[stat.ST_GID])
         self._call(

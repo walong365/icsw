@@ -374,7 +374,7 @@ class certificate_status_command(hm_classes.hm_command):
             conf_files = [file_name for file_name in os.listdir(OPENVPN_DIR) if file_name.endswith(".conf")]
             for conf_file in conf_files:
                 file_name = os.path.join(OPENVPN_DIR, conf_file)
-                lines = file(file_name, "r").read().split("\n")
+                lines = open(file_name, "r").read().split("\n")
                 is_inline = False
                 inline_pems = {}
                 for line in lines:
@@ -399,7 +399,7 @@ class certificate_status_command(hm_classes.hm_command):
                 for key, value in inline_pems.items():
                     if key not in ["key"]:
                         full_name = os.path.join(temp_dir, "{}_{}.pem".format(conf_file.replace(".conf", ""), key))
-                        file(full_name, "w").write("\n".join(inline_pems[key]))
+                        open(full_name, "w").write("\n".join(inline_pems[key]))
                         pem_files.append(("{}@{}".format(key, conf_file), full_name))
                 # pprint.pprint(inline_pems)
             for dir_name, _dir_list, file_list in os.walk(OPENVPN_DIR):

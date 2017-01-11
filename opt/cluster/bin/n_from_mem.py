@@ -49,7 +49,7 @@ def main():
             key: [
                 int(sub_val) if sub_val.isdigit() else sub_val for sub_val in value.strip().split()
             ] for key, value in [
-                line.split(":") for line in file("/proc/meminfo", "r").read().lower().split("\n") if line.count(":")
+                line.split(":") for line in open("/proc/meminfo", "r").read().lower().split("\n") if line.count(":")
             ]
         }
         for key, value in mem_dict.items():
@@ -68,7 +68,7 @@ def main():
             options.memory *= -1024
     # not used right now
     # if options.cores == 0:
-    #    options.cores = len([True for line in file("/proc/cpuinfo", "r").read().split("\n") if line.lower().startswith("processor")])
+    #    options.cores = len([True for line in open("/proc/cpuinfo", "r").read().split("\n") if line.lower().startswith("processor")])
     mem_tot_rel, mem_tot_abs = (
         options.memory * (1. - options.reserve_relative / 100.),
         options.memory - 1024 * 1024 * options.reserve_absolute

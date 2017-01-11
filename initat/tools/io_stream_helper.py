@@ -86,7 +86,7 @@ class icswIOStream(object):
                 stat_lines = [
                     (
                         entry.split() + ["", ""]
-                    )[0:2] for entry in file("/proc/{:d}/status".format(pid), "r").read().split("\n")
+                    )[0:2] for entry in open("/proc/{:d}/status".format(pid), "r").read().split("\n")
                 ]
             except:
                 pass

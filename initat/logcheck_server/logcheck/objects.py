@@ -226,7 +226,7 @@ class FileSize(object):
         ]
 
     def feed(self, size, first=False):
-        _file = file(self.in_file.f_name, "r")
+        _file = open(self.in_file.f_name, "r")
         _num_slices = len(self.slices)
         _size = self.slices[_num_slices - 1].offset
         _start_line = self.slices[_num_slices - 1].tot_lines
@@ -309,7 +309,7 @@ class InotifyFile(object):
         # self.cache_valid = False
         # if self.stat is not None:
         #    prev_size = self.stat[stat.ST_SIZE]
-        #    _handle = file(self.f_name, "r")
+        #    _handle = open(self.f_name, "r")
         #    # _handle.seek(prev_size)
         #    # print _handle.read()
         self.stat = os.stat(self.f_name)

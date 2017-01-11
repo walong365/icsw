@@ -144,7 +144,7 @@ def main(options):
             os.unlink(err_file_name)
         sys.exit(c_stat)
     try:
-        err_lines = [line.strip() for line in file(err_file_name, "r").read().split("\n") if line.count("from pid")]
+        err_lines = [line.strip() for line in open(err_file_name, "r").read().split("\n") if line.count("from pid")]
     except IOError:
         print(
             "Cannot read '{}': {}".format(

@@ -118,7 +118,7 @@ if _cs.get("missing.timezone.is.critical", True):
 
 SECRET_KEY = _cs["django.secret.key"]
 # create a somehow shorter key
-SECRET_KEY_SHORT = base64.b64encode(SECRET_KEY)[0:10]
+SECRET_KEY_SHORT = base64.b64encode(SECRET_KEY.encode("utf-8"))[0:10]
 ICSW_GOOGLE_MAPS_KEY = _cs["google.maps.key"]
 
 _c_key = hashlib.new("md5")
@@ -213,8 +213,8 @@ if _db_idx in ICSW_DATABASE_DICT:
     ]:
         if src_key in _database_dict:
             if _add_to_cache_key:
-                _c_key.update(src_key)
-                _c_key.update(_database_dict[src_key])
+                _c_key.update(src_key.encode("utf-8"))
+                _c_key.update(_database_dict[src_key].encode("utf-8"))
             DATABASES["default"][dst_key] = _database_dict[src_key]
         elif _default:
             DATABASES["default"][dst_key] = _default
@@ -421,7 +421,7 @@ for sub_dir in os.listdir(dir_name):
                 icsw_meta = os.path.join(full_path, "ICSW.meta.xml")
                 if os.path.exists(icsw_meta):
                     try:
-                        _tree = etree.fromstring(file(icsw_meta, "r").read())
+                        _tree = etree.fromstring(open(icsw_meta, "r").read().encode("ascii"))
                     except:
                         raise
                     else:

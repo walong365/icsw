@@ -349,7 +349,7 @@ def get_server():
     else:
         for f_name in ["/etc/sge_relayer", "/etc/sge_server"]:
             if os.path.isfile(f_name):
-                srv_name = file(f_name, "r").read().split()[0]
+                srv_name = open(f_name, "r").read().split()[0]
                 break
     return srv_name
 

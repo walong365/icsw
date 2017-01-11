@@ -52,7 +52,7 @@ class write_rsyncd_config(cs_base_class.icswCSServerCom):
         # aer_post_lines
         ae_post_lines = []
         try:
-            in_lines = file("/etc/rsyncd.conf", "r").read().split("\n")
+            in_lines = open("/etc/rsyncd.conf", "r").read().split("\n")
         except:
             pass
         else:
@@ -73,7 +73,7 @@ class write_rsyncd_config(cs_base_class.icswCSServerCom):
                 com_re = re.compile("^\s*(?P<key>\S+)\s*=\s*(?P<value>.*)$")
                 op_mode = "dl"
                 def_lines, im_dict = ([], {})
-                for line in [x.strip() for x in file(rsyncd_cf_name, "r").read().split("\n") if x.strip()]:
+                for line in [x.strip() for x in open(rsyncd_cf_name, "r").read().split("\n") if x.strip()]:
                     im_match = im_re.match(line)
                     if im_match:
                         image_name = im_match.group("image_name")
@@ -141,7 +141,7 @@ class write_rsyncd_config(cs_base_class.icswCSServerCom):
                          ae_post_lines +
                          ["### AER-END-POST insert post-rsyncd.conf lines above", ""])
         try:
-            file(rsyncd_cf_name, "w").write("\n".join(def_lines))
+            open(rsyncd_cf_name, "w").write("\n".join(def_lines))
         except IOError:
             ret_state, ret_str = (server_command.SRV_REPLY_STATE_ERROR, "error creating %s" % (rsyncd_cf_name))
         else:

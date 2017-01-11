@@ -610,7 +610,7 @@ class SGEInfo(object):
             )
         # debug trees
         # if self.__counter < 3:
-        #    file("/tmp/rms_tree_{:d}".format(self.__counter), "w").write(
+        #    open("/tmp/rms_tree_{:d}".format(self.__counter), "w").write(
         # etree.tostring(self.__tree, pretty_print=True))
         # print self.__counter
         # s_time = time.time()
@@ -631,7 +631,7 @@ class SGEInfo(object):
                     self.__sge_dict[key_name] = os.environ[key_name]
                 else:
                     try:
-                        self.__sge_dict[key_name] = file(file_name, "r").read().split()[0]
+                        self.__sge_dict[key_name] = open(file_name, "r").read().split()[0]
                     except:
                         self.log(
                             "cannot read {}: {}".format(

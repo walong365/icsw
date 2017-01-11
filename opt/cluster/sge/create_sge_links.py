@@ -40,7 +40,7 @@ def read_base_config():
             print("File {} not found".format(file_name))
             files_ok = False
         else:
-            var_value = file(file_name, "r").read().split("\n")[0].strip()
+            var_value = open(file_name, "r").read().split("\n")[0].strip()
             var_dict[var_name] = var_value
             os.environ[var_name] = var_value
     if not files_ok:
@@ -70,7 +70,7 @@ def remove_py_files(var_dict):
 def copy_files(var_dict, src_name, dst_dir):
     file_name = os.path.join(var_dict["SGE_DIST_DIR"], src_name)
     if os.path.isfile(file_name):
-        sge_files = file(file_name, "r").read().split("\n")[0].split()
+        sge_files = open(file_name, "r").read().split("\n")[0].split()
         for file_name in sge_files:
             shutil.copy2(
                 os.path.join(var_dict["SGE_DIST_DIR"], file_name),
@@ -142,7 +142,7 @@ setenv SGE_ARCH %{SGE_ARCH}
         while sge_template.count(_vss):
             sge_template = sge_template.replace(_vss, var)
     mod_file = os.path.join(MOD_DIR, "sge")
-    file(mod_file, "w").write(sge_template)
+    open(mod_file, "w").write(sge_template)
     print("created the module file {}".format(mod_file))
 
 

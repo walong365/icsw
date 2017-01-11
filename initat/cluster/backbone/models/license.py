@@ -45,20 +45,20 @@ from initat.tools.bgnotify.create import propagate_channel_object
 from .license_xml import ICSW_XML_NS, ICSW_XML_NS_NAME, ICSW_XML_NS_MAP, LIC_FILE_RELAX_NG_DEFINITION
 
 __all__ = [
-    b"LicenseState",
-    b"License",
-    b"LicenseEnum",
-    b"LicenseParameterTypeEnum",
-    b"ICSW_XML_NS",
-    b"ICSW_XML_NS_MAP",
-    b"ICSW_XML_NS_NAME",
-    b"LIC_FILE_RELAX_NG_DEFINITION",
-    b"icswEggCradle",
-    b"icswEggEvaluationDef",
-    b"icswEggBasket",
-    b"icswEggConsumer",
-    b"icswEggRequest",
-    b"LICENSE_USAGE_GRACE_PERIOD",
+    "LicenseState",
+    "License",
+    "LicenseEnum",
+    "LicenseParameterTypeEnum",
+    "ICSW_XML_NS",
+    "ICSW_XML_NS_MAP",
+    "ICSW_XML_NS_NAME",
+    "LIC_FILE_RELAX_NG_DEFINITION",
+    "icswEggCradle",
+    "icswEggEvaluationDef",
+    "icswEggBasket",
+    "icswEggConsumer",
+    "icswEggRequest",
+    "LICENSE_USAGE_GRACE_PERIOD",
 ]
 
 logger = logging.getLogger("cluster.icsw_license")

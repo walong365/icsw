@@ -235,7 +235,7 @@ class write_yp_config(cs_base_class.icswCSServerCom):
         ext_keys["auto.master"] = auto_master
         nis_name = par_dict["domainname"]
         # parse /etc/services for the services.byname and services.byservicename maps
-        array = [line.strip() for line in file("/etc/services", "r").read().split("\n") if not re.match("^(#.*|\s*)$", line)]
+        array = [line.strip() for line in open("/etc/services", "r").read().split("\n") if not re.match("^(#.*|\s*)$", line)]
         sbn = []
         sbs = []
         for service in array:

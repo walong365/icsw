@@ -128,7 +128,7 @@ class Route(object):
 def main():
     routes = []
     _found = False
-    for _line in file(f_path, "r"):
+    for _line in open(f_path, "r"):
         _line = _line.rstrip()
         if _line.lstrip().startswith("\"ICSW_MENU_JSON\", {"):
             _found = True

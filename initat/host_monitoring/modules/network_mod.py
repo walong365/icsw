@@ -168,7 +168,7 @@ class FCEntry(object):
     def parse_stats(self, cur_time):
         _res = {}
         for entry in self.keys:
-            _content = file(os.path.join(self.__stat_dir, entry), "r").read().strip()
+            _content = open(os.path.join(self.__stat_dir, entry), "r").read().strip()
             if _content.startswith("0x"):
                 _value = int(_content, 16)
             else:
@@ -406,7 +406,7 @@ class _general(hm_classes.hm_module):
         _current_if = set(
             [
                 _val.strip() for _val in [
-                    line.split(":")[0] for line in file("/proc/net/dev", "r").read().split("\n") if not line.count("|")
+                    line.split(":")[0] for line in open("/proc/net/dev", "r").read().split("\n") if not line.count("|")
                 ] if _val.strip() and not self.__argus_ignore.match(_val.strip())
             ]
         )
@@ -414,7 +414,7 @@ class _general(hm_classes.hm_module):
         if self._check_free_space():
             for new_if in _new_if:
                 _operstate = "/sys/class/net/{}/operstate".format(new_if)
-                if os.path.isfile(_operstate) and file(_operstate, "r").read().strip() not in ["down"]:
+                if os.path.isfile(_operstate) and open(_operstate, "r").read().strip() not in ["down"]:
                     self.__argus_map[new_if] = ArgusProcess(self, new_if, self.__argus_path)
                     self.__argus_interfaces.add(new_if)
         _failed = set()
@@ -475,7 +475,7 @@ class _general(hm_classes.hm_module):
         ns_info = {}
         for _file in ["/proc/net/netstat", "/proc/net/snmp"]:
             if os.path.exists(_file):
-                _lines = file(_file, "r").readlines()
+                _lines = open(_file, "r").readlines()
                 loc_dict = {}
                 for _line in _lines:
                     _head, _rest = _line.strip().split(":", 1)
@@ -562,7 +562,7 @@ class _general(hm_classes.hm_module):
         for _type in ["tcp", "udp"]:
             _filename = "/proc/net/{}".format(_type)
             try:
-                _lines = len(file(_filename, "r").readlines()) - 1
+                _lines = len(open(_filename, "r").readlines()) - 1
             except:
                 self.log("error reading {}: {}".format(_filename, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 _lines = 0
@@ -657,7 +657,7 @@ class _general(hm_classes.hm_module):
             for key in ["address", "addr_len", "features", "flags", "mtu"]:
                 _f_name = os.path.join(loc_dir, key)
                 if os.path.exists(_f_name):
-                    value = file(_f_name, "r").read().strip()
+                    value = open(_f_name, "r").read().strip()
                     if value.isdigit():
                         b_dict[ent][key] = int(value)
                     elif value.startswith("0x"):
@@ -833,7 +833,7 @@ class NetDevice(object):
                 # get address from sys to evaluate ib-port
                 addr_file = "/sys/class/net/{}/address".format(self.name)
                 if os.path.isfile(addr_file):
-                    ib_addr = file(addr_file, "r").read().strip().replace(":", "").lower()[-8:]
+                    ib_addr = open(addr_file, "r").read().strip().replace(":", "").lower()[-8:]
                     for ref_spec, struct in res_dict.items():
                         gid_list = struct.get("gid", "")
                         if type(gid_list) != list:
@@ -905,7 +905,7 @@ class NetDevice(object):
             # add bonding info if present
             try:
                 result.append(
-                    srv_com.builder("bond_info", file("/proc/net/bonding/{}".format(self.name), "r").read())
+                    srv_com.builder("bond_info", open("/proc/net/bonding/{}".format(self.name), "r").read())
                 )
             except:
                 pass
@@ -916,7 +916,7 @@ class NetSpeed(object):
     def __init__(self, ethtool_path, ibv_devinfo_path):
         self.ethtool_path = ethtool_path
         self.ibv_devinfo_path = ibv_devinfo_path
-        cur_head = sum([part.split() for part in file("/proc/net/dev", "r").readlines()[1].strip().split("|")], [])
+        cur_head = sum([part.split() for part in open("/proc/net/dev", "r").readlines()[1].strip().split("|")], [])
         if len(cur_head) == 17:
             self.nd_mapping = [
                 "rx", None, "rxerr", "rxdrop", None, None, None, None,
@@ -972,7 +972,7 @@ class NetSpeed(object):
             try:
                 line_list = [
                     (dev_name.strip(), dev_stats) for dev_name, dev_stats in [
-                        line.split(":", 1) for line in file("/proc/net/dev", "r").read().split("\n") if line.count(":")
+                        line.split(":", 1) for line in open("/proc/net/dev", "r").read().split("\n") if line.count(":")
                     ]
                 ]
             except:

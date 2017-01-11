@@ -70,7 +70,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                 logger.log("Found coretemp sensor with base-path '%s'" % (coretemp))
                 act_dict = {}
                 for f_name in [y for y in os.listdir(coretemp) if [True for pf in ["input", "label"] if y.endswith(pf)]]:
-                    act_dict[f_name] = file("%s/%s" % (coretemp, f_name), "r").read().strip().lower().replace(" ", "")
+                    act_dict[f_name] = open("%s/%s" % (coretemp, f_name), "r").read().strip().lower().replace(" ", "")
                 if len(list(act_dict.keys())) == 2:
                     sens_name = act_dict["temp1_label"]
                     sensor_found_list.append((sens_name, "%s/%s" % (coretemp, "temp1_input")))
@@ -150,7 +150,7 @@ class my_modclass(hm_classes.hm_fileinfo):
         if os.path.isfile(self.__sfile_name):
             self.sens_dict = {}
             logger.info("reading sensor_file %s" % (self.__sfile_name))
-            arg = file(self.__sfile_name, "r").readline().strip()
+            arg = open(self.__sfile_name, "r").readline().strip()
             for sens in arg.split(":"):
                 sss = sens.split(",")
                 if len(sss) != 4:
@@ -298,7 +298,7 @@ def sensor_int(mod_info):
         if stuff["port"] in mod_info.targ_dict:
             try:
                 src = mod_info.targ_dict[stuff["port"]]
-                slc = file(src, "r").read().split()
+                slc = open(src, "r").read().split()
                 if src.startswith("/proc"):
                     val = float(slc[-1])
                 else:

@@ -61,14 +61,14 @@ class Colorizer(object):
     def _read_files(self):
         _ct_file = os.path.join(self._gc_base, "color_tables.xml")
         _cr_file = os.path.join(self._gc_base, "color_rules.xml")
-        self.colortables = etree.fromstring(file(_ct_file, "r").read())
+        self.colortables = etree.fromstring(open(_ct_file, "r").read())
         self.color_tables = {}
         for c_table in self.colortables.findall(".//colortable[@name]"):
             self.color_tables[c_table.get("name")] = [
                 "#{:s}".format(color.get("rgb")) for color in c_table if self._check_color(color)
             ]
         self.log("read colortables from {}".format(_ct_file))
-        self.color_rules = etree.fromstring(file(_cr_file, "r").read())  # @UndefinedVariable
+        self.color_rules = etree.fromstring(open(_cr_file, "r").read())  # @UndefinedVariable
         self.log("read colorrules from {}".format(_cr_file))
         self.match_re_keys = [
             (

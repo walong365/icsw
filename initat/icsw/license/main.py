@@ -194,7 +194,7 @@ def install_license_file(opts):
     if not os.path.exists(opts.licensefile):
         print("Licensefile {} not readable".format(opts.licensefile))
         sys.exit(0)
-    _install_license(file(opts.licensefile, "r").read())
+    _install_license(open(opts.licensefile, "r").read())
 
 
 def register_cluster(opts):

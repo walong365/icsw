@@ -40,9 +40,9 @@ from initat.cluster.backbone.models.functions import check_empty_string, \
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    b"device_variable",
-    b"device_variable_scope",
-    b"dvs_allowed_name",
+    "device_variable",
+    "device_variable_scope",
+    "dvs_allowed_name",
 ]
 
 

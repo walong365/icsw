@@ -414,7 +414,7 @@ class RRD(dict):
         self.__rras_built = False
         self.__build_rras = kwargs.get("build_rras", False)
         self.log_com = kwargs.get("log_com", None)
-        first_bytes = file(self.file_name, "rb").read(8)
+        first_bytes = open(self.file_name, "rb").read(8)
         _verbose = kwargs.get("verbose", False)
         if first_bytes[0:3] == "RRD":
             if _verbose:
@@ -756,7 +756,7 @@ class RRD(dict):
                     "-r"
                 ]
                 _stat = subprocess.call(args)
-                _content = file(_rrdfile.name, "rb").read()
+                _content = open(_rrdfile.name, "rb").read()
                 os.unlink(_xmlfile.name)
                 os.unlink(_rrdfile.name)
         return _content

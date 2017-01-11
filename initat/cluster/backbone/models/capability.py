@@ -25,10 +25,10 @@ import enum
 from django.db import models
 
 __all__ = [
-    b"snmp_scheme_vendor",
-    b"snmp_scheme",
-    b"snmp_scheme_tl_oid",
-    b"ComCapability",
+    "snmp_scheme_vendor",
+    "snmp_scheme",
+    "snmp_scheme_tl_oid",
+    "ComCapability",
 ]
 
 

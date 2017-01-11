@@ -156,7 +156,7 @@ def main():
                     break
     dst_file = rrd_file("%s/%s" % (rra_dir, src_file))
     dst_file._parse(None)
-    new_fh = file(dst_file_name, "w")
+    new_fh = open(dst_file_name, "w")
     dst_file._repair(sum_dat, new_fh)
     new_fh.close()
     t_com = "/opt/rrdtool/bin/rrdtool restore %s %s" % (dst_file_name, dst_file_rrd_name)

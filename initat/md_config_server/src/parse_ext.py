@@ -27,7 +27,7 @@ from bs4 import BeautifulSoup
 
 
 def main():
-    _f = BeautifulSoup(file("extcommands2.html", "r").read(), "html.parser")
+    _f = BeautifulSoup(open("extcommands2.html", "r").read(), "html.parser")
     _dict = {}
     # print(_f)
     for entry in _f.find_all("span", class_="bold"):

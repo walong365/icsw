@@ -53,7 +53,7 @@ class ExternalProcess(object):
         for _name, _cf in self.__create_files.items():
             if not os.path.isfile(_name):
                 try:
-                    file(_name, "w").close()
+                    open(_name, "w").close()
                 except:
                     self.log(
                         "error creating file {}: {}".format(
@@ -151,7 +151,7 @@ class ProcessControl(object):
         _pid_present = os.path.isfile(self.__pid_file_name)
         if _pid_present:
             try:
-                _pid = file(self.__pid_file_name, "r").read().strip()
+                _pid = open(self.__pid_file_name, "r").read().strip()
                 if len(_pid):
                     _pid = int(_pid.split()[0])
                     try:

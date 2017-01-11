@@ -100,7 +100,7 @@ class file_object(object):
     def open_it(self):
         if os.path.isfile(self.__name):
             try:
-                self.__fd = file(self.__name, "r")
+                self.__fd = open(self.__name, "r")
             except:
                 self.__fd = None
             else:

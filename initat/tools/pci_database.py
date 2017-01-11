@@ -88,7 +88,7 @@ def get_actual_pci_struct(vdict=None, cdict=None):
         vdict, cdict = get_pci_dicts()
     pdict = {}
     try:
-        tlines = file("/proc/bus/pci/devices", "r").readlines()
+        tlines = open("/proc/bus/pci/devices", "r").readlines()
     except:
         pass
     else:
@@ -106,7 +106,7 @@ def get_actual_pci_struct(vdict=None, cdict=None):
                 fname = "/proc/bus/pci/{:02x}/{:02x}.{:x}".format(bus, bdev0, bdev1)
                 pcdomain = int("0000", 16)
                 try:
-                    fbytes = file(fname, "r").read(64)
+                    fbytes = open(fname, "r").read(64)
                 except:
                     pclass = "0"
                     subclass = "0"

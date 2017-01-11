@@ -614,7 +614,7 @@ class SyncConfig(object):
                         _take = True
                     if _take:
                         self.__file_dict[full_w_path] = FileInfo(full_w_path, self.config_version_send)
-                        _content = file(full_r_path, "r").read()
+                        _content = open(full_r_path, "r").read()
                         _size_data += len(_content)
                         _num_files += 1
                         if _send_size + len(_content) > MAX_SEND_SIZE:
@@ -712,7 +712,7 @@ class SyncConfig(object):
                         self.log("created directory {}".format(t_dir))
                 if os.path.exists(t_dir):
                     try:
-                        file(t_file, "w").write(content)
+                        open(t_file, "w").write(content)
                         # we no longer chown because we are not running as root
                     except:
                         self.log(

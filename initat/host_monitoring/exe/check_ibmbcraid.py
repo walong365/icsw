@@ -161,7 +161,7 @@ def main():
     # pprint.pprint(ctrl_command.target_dict)
     # total runtime
     # print ctrl_command.run_time
-    file(options.target, "w").write(marshal.dumps(CtrlCommand.target_dict))
+    open(options.target, "w").write(marshal.dumps(CtrlCommand.target_dict))
 
 
 if __name__ == "__main__":

@@ -69,7 +69,7 @@ def main():
             VERS_DIR,
             "{}_versions".format(_sys)
         )
-        file(_vers_file, "w").write(
+        open(_vers_file, "w").write(
             "\n".join(
                 [
                     "{} {}".format(_vers, _entry) for _vers, _entry in _entries
@@ -79,7 +79,7 @@ def main():
         print(("content of version file {}:".format(_vers_file)))
         for _vers, _entry in _entries:
             print(("    {} -> {}".format(_vers, _entry)))
-    file(os.path.join(VERS_DIR, "versions.xml"), "w").write(etree.tostring(xml, pretty_print=True))
+    open(os.path.join(VERS_DIR, "versions.xml"), "w").write(etree.tostring(xml, pretty_print=True))
 
 if __name__ == "__main__":
     main()

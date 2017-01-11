@@ -50,11 +50,11 @@ class TargetFile(object):
 class Outcar(TargetFile):
     def __init__(self, f_name):
         res = E.vasp_info(E.timing())
-        res.append(E.incar(file("INCAR", "r").read()))
+        res.append(E.incar(open("INCAR", "r").read()))
         loop_nodes = E.loop()
         loopp_nodes = E.loopplus()
         res.find("timing").extend([loop_nodes, loopp_nodes])
-        for line_num, line in enumerate(file(f_name, "r").read().split("\n")):
+        for line_num, line in enumerate(open(f_name, "r").read().split("\n")):
             s_line = line.strip()
             s_parts = s_line.split()
             if not line_num:
@@ -70,16 +70,16 @@ class Outcar(TargetFile):
                     loopp_nodes.append(E.timing(cpu=line[21:29].strip(), real=line[40:].strip()))
         t_name = self.get_file_name("vasp_info")
         print("saving to {}".format(t_name))
-        file(t_name, "w").write(etree.tostring(res, pretty_print=True))
+        open(t_name, "w").write(etree.tostring(res, pretty_print=True))
 
 
 class VASPRun(TargetFile):
     def __init__(self, f_name):
-        src_xml = etree.fromstring(file(f_name, "r").read())
+        src_xml = etree.fromstring(open(f_name, "r").read())
         self._transform(src_xml)
         t_name = self.get_file_name("vasp_run")
         print("saving to {}".format(t_name))
-        file(t_name, "w").write(etree.tostring(src_xml, pretty_print=True))
+        open(t_name, "w").write(etree.tostring(src_xml, pretty_print=True))
 
     def _transform(self, in_xml):
         split_to_xyz = {"v", "r"}

@@ -49,7 +49,7 @@ class DummyFile(object):
         self._existed = os.path.exists(self.__file_name)
         print("File {} is {}".format(self.__file_name, "present" if self._existed else "not present"))
         if not self._existed:
-            file(self.__file_name, "w").write(self.__content)
+            open(self.__file_name, "w").write(self.__content)
 
     def restore(self):
         if not self._existed:

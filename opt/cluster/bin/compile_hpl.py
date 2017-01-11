@@ -273,7 +273,7 @@ class my_opt_parser(optparse.OptionParser):
 
     def _read_hpl_versions(self):
         if os.path.isfile(HPL_VERSION_FILE):
-            version_lines = [line.strip().split() for line in file(HPL_VERSION_FILE, "r").read().split("\n") if line.strip()]
+            version_lines = [line.strip().split() for line in open(HPL_VERSION_FILE, "r").read().split("\n") if line.strip()]
             self.version_dict = dict([(key, value) for key, value in version_lines])
             vers_dict = dict([(tuple([part.isdigit() and int(part) or part for part in key.split(".")]), key) for key in list(self.version_dict.keys())])
             vers_keys = sorted(vers_dict.keys())
@@ -420,7 +420,7 @@ class hpl_builder(object):
                 ("RANLIB", "echo")
             ]
         )
-        file(mfile, "w").write("\n".join(["%-12s = %s" % (key, value) for key, value in make_list] + [""]))
+        open(mfile, "w").write("\n".join(["%-12s = %s" % (key, value) for key, value in make_list] + [""]))
 
     def _compile_it(self):
         act_dir = os.getcwd()
@@ -501,7 +501,7 @@ class hpl_builder(object):
                     []
                 )
             )
-        file("%s/%s" % (self.tempdir_2, info_name), "w").write("\n".join(readme_lines))
+        open("%s/%s" % (self.tempdir_2, info_name), "w").write("\n".join(readme_lines))
         package_name, package_version, package_release = (self.parser.package_name,
                                                           self.parser.options.hpl_version,
                                                           "1")
@@ -515,14 +515,14 @@ class hpl_builder(object):
             print("Cannot find %s" % (xhpl_file_name))
             success = False
         else:
-            file("%s/xhpl" % (self.tempdir_2), "wb").write(file(xhpl_file_name, "rb").read())
-            file("%s/Make.%s" % (self.tempdir_2, self.parser.package_name), "wb").write(
-                file(
+            open("%s/xhpl" % (self.tempdir_2), "wb").write(open(xhpl_file_name, "rb").read())
+            open("%s/Make.%s" % (self.tempdir_2, self.parser.package_name), "wb").write(
+                open(
                     os.path.join(self._hpl_dir, "Make.{}".format(self.cpu_arch)),
                     "rb"
                 ).read()
             )
-            file("%s/HPL.dat" % (self.tempdir_2), "wb").write(file("%s/HPL.dat" % (hpl_base_dir), "rb").read())
+            open("%s/HPL.dat" % (self.tempdir_2), "wb").write(open("%s/HPL.dat" % (hpl_base_dir), "rb").read())
             os.chmod("%s/xhpl" % (self.tempdir_2), 0o775)
             dummy_args = argparse.Namespace(
                 name=package_name,

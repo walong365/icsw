@@ -101,7 +101,7 @@ class scan_container(object):
 def main():
     f_name = sys.argv[1]
     new_c = scan_container()
-    for line in file(f_name, "r").readlines():
+    for line in open(f_name, "r").readlines():
         new_c.feed(line.strip())
     pprint.pprint(new_c.connection_dict)
 

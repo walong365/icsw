@@ -41,7 +41,7 @@ CONTEXT_KEY = "__ctx__"
 
 
 def debug(msg):
-    file("/tmp/.icsw_log_debug", "a").write(
+    open("/tmp/.icsw_log_debug", "a").write(
         "[{}/{:d}] {}\n".format(
             time.ctime(),
             os.getpid(),

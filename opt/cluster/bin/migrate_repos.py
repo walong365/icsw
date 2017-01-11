@@ -63,7 +63,7 @@ class Repo(dict):
             target_pf = "-2.0"
         else:
             target_pf = ""
-        self.content = file(self.name, "r").read().split("\n")
+        self.content = open(self.name, "r").read().split("\n")
         self._to_dict()
         if "baseurl" not in self:
             print("no baseurl in repo {}, ingoring".format(self.name))
@@ -116,7 +116,7 @@ class Repo(dict):
         content = ["[{}]".format(c_dict["name"])]
         for key, value in c_dict.items():
             content.append("{}={}".format(key, value))
-        file(f_name, "w").write("\n".join(content + [""]))
+        open(f_name, "w").write("\n".join(content + [""]))
 
 
 def main():

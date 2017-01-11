@@ -238,7 +238,7 @@ class check_mount_command(hm_classes.hm_command):
             )
         else:
             path_name = cur_ns.arguments[0]
-            _dict = {_entry[1]: _entry for _entry in [_line.strip().split() for _line in file("/etc/mtab", "r").readlines() if _line.strip()]}
+            _dict = {_entry[1]: _entry for _entry in [_line.strip().split() for _line in open("/etc/mtab", "r").readlines() if _line.strip()]}
             if path_name in _dict:
                 srv_com["mpinfo"] = _dict[path_name]
             else:

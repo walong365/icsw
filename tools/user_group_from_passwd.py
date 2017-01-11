@@ -68,9 +68,9 @@ class SysUser(object):
 
 
 def main():
-    _groups = [SysGroup(_entry.split(":")) for _entry in file("/etc/group", "r").read().split("\n") if _entry.split()]
+    _groups = [SysGroup(_entry.split(":")) for _entry in open("/etc/group", "r").read().split("\n") if _entry.split()]
     _group_dict = {_g.gid: _g for _g in _groups}
-    _users = [SysUser(_entry.split(":")) for _entry in file("/etc/passwd", "r").read().split("\n") if _entry.split()]
+    _users = [SysUser(_entry.split(":")) for _entry in open("/etc/passwd", "r").read().split("\n") if _entry.split()]
     ap = argparse.ArgumentParser()
     _hel = home_export_list()
     if not _hel.exp_dict:

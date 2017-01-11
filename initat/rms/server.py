@@ -55,7 +55,7 @@ class ServerProcess(
             ("SGE_CELL", "/etc/sge_cell", "default")
         ]:
             if os.path.isfile(v_src):
-                sge_dict[v_name] = file(v_src, "r").read().strip()
+                sge_dict[v_name] = open(v_src, "r").read().strip()
             else:
                 _all_ok = False
                 sge_dict[v_name] = ""

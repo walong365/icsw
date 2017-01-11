@@ -150,7 +150,7 @@ class package_parser(argparse.ArgumentParser):
             _scr_name = "{}_script".format(_scr_name)
             if getattr(opts, _scr_name):
                 try:
-                    setattr(opts, _scr_name, file(getattr(opts, _scr_name), "r").read())
+                    setattr(opts, _scr_name, open(getattr(opts, _scr_name), "r").read())
                 except:
                     print(
                         "error handling {} : {}".format(
@@ -365,7 +365,7 @@ class build_package(object):
             # spec_contents.extend(["%%dir \"%s\"" % (act_dir) for act_dir in dest_dirs])
         for _src_dir, dest_dir in content.get_types("d"):
             spec_contents.append("%dir {}".format(dest_dir))
-        file(self.spec_file_name, "wb").write("\n".join(spec_contents + [""]))
+        open(self.spec_file_name, "wb").write("\n".join(spec_contents + [""]))
         # spec_file.close()
 
     def _str_rep(self, in_str):

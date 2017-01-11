@@ -51,7 +51,7 @@ class RelaxNG(object):
         if self.name not in RelaxNG.cache:
             RelaxNG.cache[self.name] = etree.RelaxNG(
                 etree.fromstring(
-                    file(
+                    open(
                         os.path.join(
                             start_dir,
                             "relax.d",
@@ -65,7 +65,7 @@ class RelaxNG(object):
 
     def validate(self, content, in_xml):
         md5 = hashlib.new("md5")
-        md5.update(content)
+        md5.update(content.encode("ascii"))
         md5 = md5.hexdigest()
         if md5 in IGNORE_MD5S:
             # ignore certain files

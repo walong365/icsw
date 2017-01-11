@@ -22,7 +22,6 @@
 """ graph models for NOCTUA, CORVUS and NESTOR """
 
 
-
 from django.db import models
 from django.db.models import signals, Q
 from django.dispatch import receiver
@@ -33,21 +32,21 @@ from initat.cluster.backbone.models.functions import db_limit_1
 
 
 __all__ = [
-    b"MachineVector",
-    b"MVStructEntry",
-    b"MVValueEntry",
-    b"SensorAction",
-    b"SensorThreshold",
-    b"SensorThresholdAction",
-    b"GraphSetting",
-    b"GraphScaleModeEnum",
-    b"GraphLegendModeEnum",
-    b"GraphForecastModeEnum",
-    b"GraphCFEnum",
-    b"GraphSettingSize",
-    b"GraphSettingTimeshift",
-    b"GraphSettingForecast",
-    b"GraphTimeFrame",
+    "MachineVector",
+    "MVStructEntry",
+    "MVValueEntry",
+    "SensorAction",
+    "SensorThreshold",
+    "SensorThresholdAction",
+    "GraphSetting",
+    "GraphScaleModeEnum",
+    "GraphLegendModeEnum",
+    "GraphForecastModeEnum",
+    "GraphCFEnum",
+    "GraphSettingSize",
+    "GraphSettingTimeshift",
+    "GraphSettingForecast",
+    "GraphTimeFrame",
 ]
 
 

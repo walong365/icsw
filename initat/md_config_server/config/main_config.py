@@ -538,7 +538,7 @@ class MainConfig(dict, NagVisMixin):
         self.log("creating http_users.cfg file")
         # create htpasswd
         http_file = os.path.join(self.__w_dir_dict["etc"], "http_users.cfg")
-        file(http_file, "w").write(
+        open(http_file, "w").write(
             "\n".join(
                 [
                     "{}:{{SSHA}}{}".format(

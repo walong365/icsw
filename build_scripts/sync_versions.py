@@ -30,7 +30,7 @@ def main():
     args = parser.parse()
     if args.increase_release_on_build:
         print(("specfile is at {}".format(args.specfile)))
-        _lines = file(args.specfile).read().split("\n")
+        _lines = open(args.specfile).read().split("\n")
         _new_lines = []
         _modified = 0
         _version, _release = (None, None)
@@ -50,7 +50,7 @@ def main():
             _new_lines.append(_line)
         if _modified:
             print(("Modified {:d} line(s), rewriting specfile".format(_modified)))
-            file(args.specfile, "w").write("\n".join(_new_lines))
+            open(args.specfile, "w").write("\n".join(_new_lines))
     else:
         print("rebuild run, not modify specfile")
     sys.exit(0)

@@ -128,7 +128,7 @@ class hpl_file(hpl_result):
 
     def add_file(self, file_name):
         self.__file_names.append(file_name)
-        self.__lines = file(file_name, "r").read().split("\n")
+        self.__lines = open(file_name, "r").read().split("\n")
         self._get_node_name()
         for line in self.__lines:
             self._feed_line(line, file_name=self.__file_names[-1])

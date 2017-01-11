@@ -123,9 +123,9 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
                         ps_id_file_name,
                     )
                 )
-                file(ps_id_file_name, "w").write(_server_id)
+                open(ps_id_file_name, "w").write(_server_id)
         if os.path.exists(ps_id_file_name):
-            self.__package_server_id = file(ps_id_file_name, "r").read().strip()
+            self.__package_server_id = open(ps_id_file_name, "r").read().strip()
             return True
         else:
             return False

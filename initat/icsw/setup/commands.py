@@ -260,7 +260,7 @@ def init_webfrontend(opts):
                         _target,
                     )
                 )
-                file(_target, "w").write(_output)
+                open(_target, "w").write(_output)
     for _what, _command, _target in [
         ("modify app.js", "inject_addons --srcfile /srv/www/init.at/icsw/app.js --modify --with-addons=yes", None),
         ("modify main.html", "inject_addons --srcfile /srv/www/init.at/icsw/main.html --modify --with-addons=yes", None),
@@ -273,7 +273,7 @@ def init_webfrontend(opts):
     _RELOAD_FLAG = "/opt/cluster/etc/uwsgi/reload/webfrontend.touch"
     if os.path.exists("/opt/cluster/etc/uwsgi/reload"):
         print("touching reload flag {}".format(_RELOAD_FLAG))
-        file(_RELOAD_FLAG, "w").write("")
+        open(_RELOAD_FLAG, "w").write("")
     else:
         print("no uwsgi reload-dir found, please (re)start uwsgi-init via")
         print("")
@@ -435,7 +435,7 @@ def check_for_pre17(opts):
             new_lines = []
             _add = True
             _removed, _kept = (0, 0)
-            for _line_num, _line in enumerate(file(_path, "r").readlines(), 1):
+            for _line_num, _line in enumerate(open(_path, "r").readlines(), 1):
                 _line = _line.rstrip()
                 empty_line = True if not _line.strip() else False
                 _ser_line = _line.strip().startswith("class") and (_line.count("serializers.ModelSerializer") or _line.strip().endswith("serializer):"))
@@ -462,7 +462,7 @@ def check_for_pre17(opts):
                     _removed += 1
             print("file {}: removed {:d}, kept {:d}".format(_path, _removed, _kept))
             print("")
-            file(_path, "w").write("\n".join(new_lines))
+            open(_path, "w").write("\n".join(new_lines))
         if not _files_found:
             print("no .py-files found in {}, exit...".format(MODELS_DIR))
             sys.exit(-1)
@@ -474,7 +474,7 @@ def check_for_pre17(opts):
                 _num = int(_entry[0:4])
                 _path = os.path.join(_mig_dir, _entry)
                 if _num >= 799:
-                    _mig_save_dict[_path] = file(_path, "r").read()
+                    _mig_save_dict[_path] = open(_path, "r").read()
                     print("    storing file {} for later restore".format(_path))
                 print("    removing file {}".format(_path))
                 os.unlink(_path)
@@ -487,7 +487,7 @@ def check_for_pre17(opts):
             os.rename(os.path.join(BACKBONE_DIR, ".{}".format(_dir)), os.path.join(BACKBONE_DIR, _dir))
         # restore migation files
         for _key, _value in _mig_save_dict.items():
-            file(_key, "w").write(_value)
+            open(_key, "w").write(_value)
 
 
 def alarm(msg):

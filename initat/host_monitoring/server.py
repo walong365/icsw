@@ -190,7 +190,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             ksm_dir = "/sys/kernel/mm/ksm/"
             if os.path.isdir(ksm_dir):
                 try:
-                    file(os.path.join(ksm_dir, "run"), "w").write("1\n")
+                    open(os.path.join(ksm_dir, "run"), "w").write("1\n")
                 except:
                     self.log(
                         "error enabling KSM: {}".format(
@@ -220,7 +220,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             huge_dir = "/sys/kernel/mm/hugepages/"
             mem_total = int(
                 [
-                    line for line in file("/proc/meminfo", "r").read().lower().split("\n") if line.startswith("memtotal")
+                    line for line in open("/proc/meminfo", "r").read().lower().split("\n") if line.startswith("memtotal")
                 ][0].split()[1]
             ) * 1024
             mem_to_map = mem_total * self.CC.CS["hm.hugepage.percentage"] / 100
@@ -261,7 +261,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                             if num_pages:
                                 pages_file = os.path.join(full_subdir, "nr_hugepages")
                                 try:
-                                    cur_pages = int(file(pages_file, "r").read().strip())
+                                    cur_pages = int(open(pages_file, "r").read().strip())
                                 except:
                                     self.log(
                                         "cannot read pages from {}: {}".format(
@@ -280,7 +280,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                                         )
                                     else:
                                         try:
-                                            file(pages_file, "w").write("{:d}\n".format(num_pages))
+                                            open(pages_file, "w").write("{:d}\n".format(num_pages))
                                         except:
                                             self.log(
                                                 "cannot write {:d} to {}: {}".format(
@@ -310,7 +310,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 cur_value = int(open(f_path, "r").read().strip())
                 if cur_value < sys_value:
                     try:
-                        file(f_path, "w").write("%d" % (sys_value))
+                        open(f_path, "w").write("%d" % (sys_value))
                     except:
                         self.log(
                             "cannot change value of {} from {:d} to {:d}: {}".format(
@@ -352,7 +352,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                         cur_el.attrib["bind_address"]: (
                             cur_el.text, True if "virtual" in cur_el.attrib else False
                         ) for cur_el in etree.fromstring(
-                            file(zmq_id_name, "r").read()
+                            open(zmq_id_name, "r").read()
                         ).xpath(".//zmq_id[@bind_address]", smart_strings=False)
                     }
                 except:

@@ -347,7 +347,7 @@ class HMFileWatcher(object):
 
     def _check_content(self, f_name):
         try:
-            new_content = file(f_name, "r").read()
+            new_content = open(f_name, "r").read()
         except:
             self.log(
                 "error reading file {}: {}".format(

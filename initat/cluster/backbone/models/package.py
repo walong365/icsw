@@ -35,12 +35,12 @@ from lxml.builder import E
 from initat.cluster.backbone.models.functions import check_empty_string
 
 __all__ = [
-    b"package_repo",
-    b"package_search",
-    b"package_search_result",
-    b"package",
-    b"package_device_connection",
-    b"package_service",
+    "package_repo",
+    "package_search",
+    "package_search_result",
+    "package",
+    "package_device_connection",
+    "package_service",
 ]
 
 

@@ -184,14 +184,14 @@ class write_nameserver_config(cs_base_class.icswCSServerCom):
         CS_FILENAME = "/tmp/.cs_serial"
         if os.path.isfile(CS_FILENAME):
             try:
-                last_serial = int(file(CS_FILENAME, "r").read().strip())
+                last_serial = int(open(CS_FILENAME, "r").read().strip())
             except:
                 pass
             else:
                 while cur_serial <= last_serial:
                     cur_serial += 1
         try:
-            file(CS_FILENAME, "w").write("%d" % (cur_serial))
+            open(CS_FILENAME, "w").write("%d" % (cur_serial))
         except:
             pass
         for cur_dtn in all_dtns:
@@ -449,8 +449,8 @@ class write_nameserver_config(cs_base_class.icswCSServerCom):
                 os.chown(file_name, named_uid, named_gid)
         cfile = "/etc/rndc.conf"
         ncname = "/etc/named.conf"
-        file(ncname, "w").write("\n".join(ncf_lines + [""]))
-        file(cfile, "w").write("\n".join(cf_lines + [""]))
+        open(ncname, "w").write("\n".join(ncf_lines + [""]))
+        open(cfile, "w").write("\n".join(cf_lines + [""]))
         os.chmod(cfile, 0o600)
         os.chmod(ncname, 0o600)
         os.chown(ncname, named_uid, named_gid)

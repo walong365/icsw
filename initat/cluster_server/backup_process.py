@@ -131,7 +131,7 @@ class BackupProcess(threading_tools.process_obj):
         opts = _ap.parse_args(_args)
         buf_com.handle(**vars(opts))
         buf_com.stdout.close()
-        file("{}.bz2".format(full_path), "wb").write(bz2.compress(file(full_path, "r").read()))
+        open("{}.bz2".format(full_path), "wb").write(bz2.compress(open(full_path, "r").read()))
         os.unlink(full_path)
 
     def _database_backup(self, bu_dir):
@@ -190,10 +190,10 @@ class BackupProcess(threading_tools.process_obj):
                         if _pgpass:
                             _pgpassfile = "/root/.pgpass"
                             if os.path.exists(_pgpassfile):
-                                _passcontent = file(_pgpassfile, "r").read()
+                                _passcontent = open(_pgpassfile, "r").read()
                             else:
                                 _passcontent = None
-                            file(_pgpassfile, "w").write("{HOST}:*:{NAME}:{USER}:{PASSWORD}\n".format(**_def_db))
+                            open(_pgpassfile, "w").write("{HOST}:*:{NAME}:{USER}:{PASSWORD}\n".format(**_def_db))
                             os.chmod(_pgpassfile, 0o600)
                         try:
                             _output = subprocess.check_output(cmdline.split(), stderr=subprocess.PIPE)
@@ -216,7 +216,7 @@ class BackupProcess(threading_tools.process_obj):
                             )
                         if _pgpass:
                             if _passcontent:
-                                file(_pgpassfile, "w").write(_passcontent)
+                                open(_pgpassfile, "w").write(_passcontent)
                                 os.chmod(_pgpassfile, 0o600)
                             else:
                                 os.unlink(_pgpassfile)

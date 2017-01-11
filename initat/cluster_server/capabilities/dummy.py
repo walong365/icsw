@@ -33,7 +33,7 @@ class dummy_stuff(BackgroundBase):
         self.load_value = hm_classes.mvect_entry("sys.load1", info="test entry", default=0.0)
 
     def _call(self, cur_time, builder):
-        self.load_value.update(float(file("/proc/loadavg", "r").read().split()[0]))
+        self.load_value.update(float(open("/proc/loadavg", "r").read().split()[0]))
         self.load_value.valid_until = time.time() + 10
         my_vector = builder("values")
         my_vector.append(self.load_value.build_xml(builder))

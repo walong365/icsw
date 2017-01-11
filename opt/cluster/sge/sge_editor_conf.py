@@ -29,7 +29,7 @@ from initat.tools import logging_tools
 
 def main():
     fname = sys.argv[1]
-    c_lines = [_line.strip() for _line in file(fname, "r").read().splitlines()]
+    c_lines = [_line.strip() for _line in open(fname, "r").read().splitlines()]
     a_lines = []
     cont_line, act_line = (False, "")
     for line in c_lines:
@@ -50,7 +50,7 @@ def main():
         new_keys = dict(
             [
                 _line.split(None, 1) for _line in [
-                    _entry.strip() for _entry in file("/tmp/.qconf_config", "r").read().splitlines()
+                    _entry.strip() for _entry in open("/tmp/.qconf_config", "r").read().splitlines()
                 ]
             ]
         )
@@ -83,7 +83,7 @@ def main():
                     ", ".join(k_change) or "none",
                 )
             ))
-            file(fname, "w").write("\n".join(["{} {}".format(key, str(content[key])) for key in sorted(content.keys())] + [""]))
+            open(fname, "w").write("\n".join(["{} {}".format(key, str(content[key])) for key in sorted(content.keys())] + [""]))
         try:
             os.unlink("/tmp/.qconf_config")
         except:

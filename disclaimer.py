@@ -229,7 +229,7 @@ class disclaimer_handler(object):
         )
         self.log("result is {:d}".format(_result))
         # rewind
-        self.dst_mail = file(_src_mail, "r").read()
+        self.dst_mail = open(_src_mail, "r").read()
         self.log("size of mail after processing is {}".format(logging_tools.get_size_str(len(self.dst_mail))))
         # os.unlink(_tmpfile.name)
 

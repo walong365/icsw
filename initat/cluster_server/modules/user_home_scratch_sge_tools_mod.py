@@ -206,8 +206,8 @@ class create_sge_user(cs_base_class.icswCSServerCom):
         f_str += " %s" % (str(fshare))
         user = cur_inst.option_dict["username"]
         try:
-            sge_root = file("/etc/sge_root", "r").readline().strip()
-            sge_cell = file("/etc/sge_cell", "r").readline().strip()
+            sge_root = open("/etc/sge_root", "r").readline().strip()
+            sge_cell = open("/etc/sge_cell", "r").readline().strip()
             _sge_stat, sge_arch = subprocess.getstatusoutput("/%s/util/arch" % (sge_root))
         except:
             cur_inst.srv_com["result"].attrib.update({
@@ -220,7 +220,7 @@ class create_sge_user(cs_base_class.icswCSServerCom):
             else:
                 sge60 = 1
             tmp_name = tempfile.mktemp("sge")
-            tf = file(tmp_name, "w")
+            tf = open(tmp_name, "w")
             tf.write("\n".join(["name %s" % (user), "oticket 0", "fshare %s" % (str(fshare)), "default_project defaultproject", ""]))
             if sge60:
                 tf.write("delete_time 0\n")
@@ -250,8 +250,8 @@ class delete_sge_user(cs_base_class.icswCSServerCom):
     def _call(self, cur_inst):
         user = cur_inst.option_dict["username"]
         try:
-            sge_root = file("/etc/sge_root", "r").readline().strip()
-            sge_cell = file("/etc/sge_cell", "r").readline().strip()
+            sge_root = open("/etc/sge_root", "r").readline().strip()
+            sge_cell = open("/etc/sge_cell", "r").readline().strip()
             _sge_stat, sge_arch = subprocess.getstatusoutput("/%s/util/arch" % (sge_root))
         except:
             cur_inst.srv_com["result"].attrib.update({
@@ -283,8 +283,8 @@ class rename_sge_user(cs_base_class.icswCSServerCom):
         user, old_user = (cur_inst.option_dict["username"],
                           cur_inst.option_dict["old_username"])
         try:
-            sge_root = file("/etc/sge_root", "r").readline().strip()
-            sge_cell = file("/etc/sge_cell", "r").readline().strip()
+            sge_root = open("/etc/sge_root", "r").readline().strip()
+            sge_cell = open("/etc/sge_cell", "r").readline().strip()
             _sge_stat, sge_arch = subprocess.getstatusoutput("/%s/util/arch" % (sge_root))
         except:
             cur_inst.srv_com.set_result(
@@ -306,7 +306,7 @@ class rename_sge_user(cs_base_class.icswCSServerCom):
                 }
                 user_dict["name"] = user
                 tmp_name = tempfile.mktemp("sge")
-                file(tmp_name, "w").write("\n".join(["%s %s" % (k, v) for k, v in user_dict.items()]))
+                open(tmp_name, "w").write("\n".join(["%s %s" % (k, v) for k, v in user_dict.items()]))
                 os.environ["SGE_ROOT"] = sge_root
                 os.environ["SGE_CELL"] = sge_cell
                 subprocess.getstatusoutput("/%s/bin/%s/qconf -duser %s" % (sge_root, sge_arch, old_user))

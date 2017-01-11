@@ -1159,7 +1159,7 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
         _excess = False
         _pids = [self.pid] + [value.pid for value in self.processes.values()]
         try:
-            usage = [sum([int(_val) for _val in file("/proc/{:d}/stat".format(_pid), "r").read().split()[13:15]], 0) for _pid in _pids]
+            usage = [sum([int(_val) for _val in open("/proc/{:d}/stat".format(_pid), "r").read().split()[13:15]], 0) for _pid in _pids]
         except:
             # some problems, ignore
             pass

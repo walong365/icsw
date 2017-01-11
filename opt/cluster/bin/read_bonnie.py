@@ -194,7 +194,7 @@ def main():
         print("File %s does not exist" % (file_name))
         sys.exit(2)
     try:
-        file_struct = server_command.net_to_sys(file(file_name, "r").read())
+        file_struct = server_command.net_to_sys(open(file_name, "r").read())
     except:
         print("Error reading file %s: %s" % (file_name,
                                              process_tools.get_except_info()))

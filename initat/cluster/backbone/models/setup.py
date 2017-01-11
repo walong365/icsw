@@ -34,16 +34,16 @@ from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.tools import logging_tools, process_tools
 
 __all__ = [
-    b"architecture",
-    b"image",
-    b"kernel",
-    b"initrd_build",
-    b"kernel_build",
-    b"kernel_local_info",
-    b"kernel_log",
-    b"KernelDeviceHistory",
-    b"ImageDeviceHistory",
-    b"PopulateRamdiskCmdLine",
+    "architecture",
+    "image",
+    "kernel",
+    "initrd_build",
+    "kernel_build",
+    "kernel_local_info",
+    "kernel_log",
+    "KernelDeviceHistory",
+    "ImageDeviceHistory",
+    "PopulateRamdiskCmdLine",
 ]
 
 

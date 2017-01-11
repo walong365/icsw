@@ -45,18 +45,18 @@ from initat.tools import ipvx_tools, logging_tools, process_tools, config_store
 from initat.tools.bgnotify.create import propagate_channel_object
 
 __all__ = [
-    b"network",
-    b"network_type",
-    b"net_ip",
-    b"network_device_type",
-    b"netdevice",
-    b"netdevice_speed",
-    b"peer_information",
-    b"snmp_network_type",
-    b"NetDeviceDesiredStateEnum",
-    b"NetDeviceSNMPMonOptions",
-    b"NmapScan",
-    b"NmapScanIgnoredDevice"
+    "network",
+    "network_type",
+    "net_ip",
+    "network_device_type",
+    "netdevice",
+    "netdevice_speed",
+    "peer_information",
+    "snmp_network_type",
+    "NetDeviceDesiredStateEnum",
+    "NetDeviceSNMPMonOptions",
+    "NmapScan",
+    "NmapScanIgnoredDevice"
 ]
 
 logger = logging.getLogger(__name__)

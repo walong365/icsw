@@ -288,9 +288,9 @@ def get_zmq_ipc_name(name, **kwargs):
     else:
 
         # debug code
-        # file("/tmp/frame_info", "a").write("---------\n")
+        # open("/tmp/frame_info", "a").write("---------\n")
         # for _frame in inspect.getouterframes(inspect.currentframe()):
-        #     file("/tmp/frame_info", "a").write(os.path.basename(_frame[1]) + "\n")
+        #     open("/tmp/frame_info", "a").write(os.path.basename(_frame[1]) + "\n")
 
         outest_frame = inspect.getouterframes(inspect.currentframe())[-1]
         s_name = os.path.basename(outest_frame[1])
@@ -1409,7 +1409,7 @@ def fetch_sysinfo(root_dir="/"):
         for _fname in ["etc/issue", "etc/redhat-release", "etc/fedora-release"]:
             _full = os.path.join(root_dir, _fname)
             if os.path.isfile(_full):
-                isl.extend([_line.strip().lower() for _line in file(_full, "r").read().split("\n")])
+                isl.extend([_line.strip().lower() for _line in open(_full, "r").read().split("\n")])
     except:
         log_lines.append(
             (

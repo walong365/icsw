@@ -55,7 +55,7 @@ class license_object(object):
         self.__target_user, self.__target_group = (t_user, t_group)
 
     def _read_license(self):
-        self.__lic_lines = [x.strip() for x in file(self.__full_name, "r").read().split("\n")]
+        self.__lic_lines = [x.strip() for x in open(self.__full_name, "r").read().split("\n")]
         line_num = 0
         for lic_line in self.__lic_lines:
             line_num += 1
@@ -129,7 +129,7 @@ class license_object(object):
                 self["STDOUT_LOG"]),
             ""
         ]
-        file(self["START_SCRIPT"], "w").write("\n".join(start_lines))
+        open(self["START_SCRIPT"], "w").write("\n".join(start_lines))
         os.chmod(self["START_SCRIPT"], 0o550)
 
     def get_pid(self):

@@ -223,7 +223,7 @@ class DHCPConfigMixin(object):
             if not _target_file:
                 self.log("no DHCP config file found", logging_tools.LOG_LEVEL_ERROR)
             else:
-                file(_target_file, "w").write("\n".join(dhcpd_c))
+                open(_target_file, "w").write("\n".join(dhcpd_c))
                 self.log("wrote DHCP config to {}".format(_target_file))
                 for _srv_name in self.srv_helper.find_services(".*dhcpd.*"):
                     self.srv_helper.service_command(_srv_name, "restart")

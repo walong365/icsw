@@ -35,16 +35,16 @@ from initat.tools import server_command
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    b"BaseAssetPackage",
-    b"sizeof_fmt",
-    b"get_packages_for_ar",
-    b"ASSET_DATETIMEFORMAT",
-    b"AssetType",
-    b"ScanType",
-    b"RunStatus",
-    b"BatchStatus",
-    b"RunResult",
-    b"PackageTypeEnum",
+    "BaseAssetPackage",
+    "sizeof_fmt",
+    "get_packages_for_ar",
+    "ASSET_DATETIMEFORMAT",
+    "AssetType",
+    "ScanType",
+    "RunStatus",
+    "BatchStatus",
+    "RunResult",
+    "PackageTypeEnum",
 ]
 
 ########################################################################################################################

@@ -63,7 +63,7 @@ class AffinityStruct(object):
         ]:
             if os.path.isfile(src_file):
                 try:
-                    act_val = file(src_file, "r").read().split()[0]
+                    act_val = open(src_file, "r").read().split()[0]
                 except:
                     self.log(
                         "cannot read {} from {}: {}".format(

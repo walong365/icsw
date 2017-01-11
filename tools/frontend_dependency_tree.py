@@ -276,7 +276,7 @@ def main(args):
 if __name__ == "__main__":
     DP_LOC = os.path.expanduser("~/.icsw_static_path")
     if os.path.exists(DP_LOC):
-        _def_path = file(DP_LOC, "r").read().strip()
+        _def_path = open(DP_LOC, "r").read().strip()
     else:
         _def_path = "."
     parser = argparse.ArgumentParser(description="Directive Mapper")

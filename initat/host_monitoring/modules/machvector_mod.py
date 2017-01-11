@@ -217,7 +217,7 @@ class MachineVector(object):
             if os.path.isfile(_conf_name):
                 # migrate old config
                 try:
-                    xml_struct = etree.fromstring(file(_conf_name, "r").read())
+                    xml_struct = etree.fromstring(open(_conf_name, "r").read())
                 except:
                     self.log(
                         "cannot read {}: {}".format(

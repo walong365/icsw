@@ -388,8 +388,8 @@ def do_ssh(conf):
             if c_stat:
                 print("error generating: {}".format(c_out))
             else:
-                found_keys_dict[privfn] = file(sshkn, "rb").read()
-                found_keys_dict[pubfn] = file(sshpn, "rb").read()
+                found_keys_dict[privfn] = open(sshkn, "rb").read()
+                found_keys_dict[pubfn] = open(sshpn, "rb").read()
             try:
                 os.unlink(sshkn)
                 os.unlink(sshpn)

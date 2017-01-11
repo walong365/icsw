@@ -27,7 +27,7 @@ def main():
     f_name, new_f_name = sys.argv[1:3]
     bu_file = "%s/%s_%s" % (TMP_DIR, os.path.basename(f_name), time.ctime().replace(" ", "_").replace("__", "_"))
     print("Backup of %s is %s" % (f_name, bu_file))
-    file(bu_file, "w").write(file(f_name, "r").read())
+    open(bu_file, "w").write(open(f_name, "r").read())
     # refs in form YYYYMMDDHHMM
     start_repair, end_repair = (parse_ref(sys.argv[3]), parse_ref(sys.argv[4]))
     print(start_repair, end_repair)
@@ -92,7 +92,7 @@ def main():
             if start_repair <= act_date and act_date <= end_repair:
                 rep_dates[(int(vals[5]), act_date)] = (float(vals[8]), float(vals[10]))
     # create new file
-    new_file = file("%s.xml" % (new_f_name), "w")
+    new_file = open("%s.xml" % (new_f_name), "w")
     in_db, db_idx = (False, 0)
     for line in dump_lines:
         if line.lstrip().startswith("<database>"):

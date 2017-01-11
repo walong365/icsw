@@ -110,7 +110,7 @@ def migrate_db_cf():
         _cs = config_store.ConfigStore(DB_ACCESS_CS_NAME, access_mode=config_store.AccessModeEnum.LOCAL)
         sql_dict = {
             key.split("_")[1]: value for key, value in [
-                line.strip().split("=", 1) for line in file(DB_FILE, "r").read().split(
+                line.strip().split("=", 1) for line in open(DB_FILE, "r").read().split(
                     "\n"
                 ) if line.count("=") and line.count("_") and not line.count("NAGIOS")
             ]

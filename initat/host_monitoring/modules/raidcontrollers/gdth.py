@@ -65,7 +65,7 @@ class ctrl_type_gdth(ctrl_type):
         ctrl_file = "/proc/scsi/gdth/%s" % (ctrl_id)
         last_log_line, last_log_time = ("", None)
         act_time = datetime.datetime(*time.localtime()[0:6])
-        lines = [line.rstrip() for line in file(ctrl_file, "r").read().split("\n")]
+        lines = [line.rstrip() for line in open(ctrl_file, "r").read().split("\n")]
         act_mode = "?"
         pd_dict, ld_dict, ad_dict, hd_dict = ({}, {}, {}, {})
         for line in lines:

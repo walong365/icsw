@@ -233,7 +233,7 @@ class GeneratedTree(GeneralTreeNode):
                 else:
                     _lines.append("{:d} {}".format(num_dict[eff_type], add_line))
         for _key, _lines in _line_dict.items():
-            file(config_dict[_key], "w").write("\n".join(_lines + [""]))
+            open(config_dict[_key], "w").write("\n".join(_lines + [""]))
         cur_c.log("wrote {}".format(logging_tools.get_plural("file", len(_line_dict))))
         # print cur_c.node_dir, dir(cur_c)
         # print cur_bc.conf_dict["net"]

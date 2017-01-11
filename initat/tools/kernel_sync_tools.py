@@ -84,7 +84,7 @@ class KernelHelper(object):
                 try:
                     conf_lines = [
                         _part for _part in [
-                            _line.strip() for _line in file(self.__config_path, "r").read().split("\n") if _line.strip()
+                            _line.strip() for _line in open(self.__config_path, "r").read().split("\n") if _line.strip()
                         ] if not _part.strip().startswith("#")
                     ]
                 except:
@@ -192,10 +192,10 @@ class KernelHelper(object):
                             os.path.basename(md5_file)
                         ),
                     )
-                    self.__option_dict[md5_name] = (hashlib.md5(file(src_file, "r").read())).hexdigest()
-                    file(md5_file, "w").write(self.__option_dict[md5_name])
+                    self.__option_dict[md5_name] = (hashlib.md5(open(src_file, "r").read())).hexdigest()
+                    open(md5_file, "w").write(self.__option_dict[md5_name])
                 else:
-                    self.__option_dict[md5_name] = file(md5_file, "r").read()
+                    self.__option_dict[md5_name] = open(md5_file, "r").read()
 
     def move_old_initrd(self):
         if os.path.isfile(self.__initrd_paths["old"]):
@@ -328,7 +328,7 @@ class KernelHelper(object):
                     setup_ok, do_umount = (True, False)
                     if present_key in ["lo", "cramfs"]:
                         try:
-                            file(tfile_name, "w").write(gzip.open(check_path, "r").read())
+                            open(tfile_name, "w").write(gzip.open(check_path, "r").read())
                         except:
                             self.log(
                                 "error reading {}: {}".format(
@@ -486,7 +486,7 @@ class KernelHelper(object):
             try:
                 comment = " ".join(
                     [
-                        _part.strip() for _part in file(comment_file, "r").read().split("\n")
+                        _part.strip() for _part in open(comment_file, "r").read().split("\n")
                     ]
                 )
             except:
@@ -514,7 +514,7 @@ class KernelHelper(object):
             try:
                 version_dict = {
                     _part.split("=", 1)[0]: _part.split("=", 1)[1] for _part in [
-                        _line.strip() for _line in file(version_file, "r").read().split("\n") if _line.count("=")
+                        _line.strip() for _line in open(version_file, "r").read().split("\n") if _line.count("=")
                     ]
                 }
             except:

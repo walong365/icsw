@@ -36,14 +36,14 @@ from .functions import check_integer
 
 
 __all__ = [
-    b"DispatcherSettingSchedule",
-    b"DispatcherSettingScheduleEnum",
-    b"DispatcherSetting",
-    b"DispatchSetting",
-    b"DiscoverySource",
-    b"ScanHistory",
-    b"ScheduleItem",
-    b"DispatcherLink"
+    "DispatcherSettingSchedule",
+    "DispatcherSettingScheduleEnum",
+    "DispatcherSetting",
+    "DispatchSetting",
+    "DiscoverySource",
+    "ScanHistory",
+    "ScheduleItem",
+    "DispatcherLink"
 ]
 
 

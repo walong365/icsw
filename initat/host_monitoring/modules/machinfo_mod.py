@@ -200,7 +200,7 @@ class _general(hm_classes.hm_module):
                     tmp_file.name
                 )
             )
-            _res = server_command.compress(file(tmp_file.name, "r").read())
+            _res = server_command.compress(open(tmp_file.name, "r").read())
         return _res
 
     def _rescan_valid_disk_stuff(self):
@@ -442,7 +442,7 @@ class _general(hm_classes.hm_module):
         stat_dict["cpu"] = psutil.cpu_times()
         if mvect.cs["detailed_cpu_statistics"]:
             _proc_id = None
-            for _line in file("/proc/cpuinfo", "r").read().split("\n"):
+            for _line in open("/proc/cpuinfo", "r").read().split("\n"):
                 _line = _line.strip()
                 if _line.lower().startswith("processor"):
                     _proc_id = int(_line.strip().split()[-1])
@@ -510,7 +510,7 @@ class _general(hm_classes.hm_module):
                 _slave_dict = {}
                 for _entry in os.listdir(_BS):
                     _path = os.path.join(_BS, _entry)
-                    if not int(file("{}/removable".format(_path), "r").read()):
+                    if not int(open("{}/removable".format(_path), "r").read()):
                         # partition list, not needed right now
                         _part_list = []
                         for _s_entry in os.listdir(_path):
@@ -573,7 +573,7 @@ class _general(hm_classes.hm_module):
                             )
                             mounted_lvms[mount_dev] = "{}-{:d}".format(self.valid_major_nums[lv_k_major][0].split("-")[0], lv_k_minor)
                 if os.path.isfile(EXTRA_BLOCK_DEVS):
-                    extra_block_devs = [entry.strip() for entry in file(EXTRA_BLOCK_DEVS, "r").read().split("\n") if entry.strip()]
+                    extra_block_devs = [entry.strip() for entry in open(EXTRA_BLOCK_DEVS, "r").read().split("\n") if entry.strip()]
                 else:
                     extra_block_devs = []
                 # problem: Multipath devices are not always recognized
@@ -593,7 +593,7 @@ class _general(hm_classes.hm_module):
                         bname = os.path.basename(dl)
                         if dl.startswith("cciss"):
                             bname = "cciss!{}".format(bname)
-                        cur_bs = int(file("/sys/block/{}/queue/hw_sector_size".format(bname), "r").read().strip())
+                        cur_bs = int(open("/sys/block/{}/queue/hw_sector_size".format(bname), "r").read().strip())
                     except:
                         self.log(
                             "cannot get bs of {}, removing it from list: {}".format(
@@ -737,7 +737,7 @@ class _general(hm_classes.hm_module):
                 mvect.register_entry("nfs.rpc.badclnt", 0., "RPC bad clnt", "1/s")
             nfs_dict = {
                 parts[0]: self._interpret_nfsstat_line(*parts) for parts in [
-                    line.split() for line in file(nfs_file, "r").read().split("\n")
+                    line.split() for line in open(nfs_file, "r").read().split("\n")
                 ] if len(parts)
             }
             if self.last_nfsstat_time:
@@ -1940,7 +1940,7 @@ class ksminfo_command(hm_classes.hm_command):
         ksm_dir = "/sys/kernel/mm/ksm"
         if os.path.isdir(ksm_dir):
             srv_com["ksm"] = {
-                entry: file(os.path.join(ksm_dir, entry), "r").read().strip() for entry in os.listdir(ksm_dir)
+                entry: open(os.path.join(ksm_dir, entry), "r").read().strip() for entry in os.listdir(ksm_dir)
             }
         else:
             srv_com["ksm"] = "not found"
@@ -1979,7 +1979,7 @@ class hugepageinfo_command(hm_classes.hm_command):
         if os.path.isdir(hpage_dir):
             srv_com["hpages"] = {
                 entry: {
-                    sub_entry: file(os.path.join(hpage_dir, entry, sub_entry), "r").read().strip() for sub_entry in os.listdir(os.path.join(hpage_dir, entry))
+                    sub_entry: open(os.path.join(hpage_dir, entry, sub_entry), "r").read().strip() for sub_entry in os.listdir(os.path.join(hpage_dir, entry))
                 } for entry in os.listdir(hpage_dir)
             }
         else:
@@ -2018,9 +2018,9 @@ class thugepageinfo_command(hm_classes.hm_command):
         hpage_dir = "/sys/kernel/mm/transparent_hugepage"
         if os.path.isdir(hpage_dir):
             sub_dirs = ["khugepaged"]
-            srv_com["thpagef"] = {entry: file(os.path.join(hpage_dir, entry), "r").read().strip() for entry in os.listdir(hpage_dir) if entry not in sub_dirs}
+            srv_com["thpagef"] = {entry: open(os.path.join(hpage_dir, entry), "r").read().strip() for entry in os.listdir(hpage_dir) if entry not in sub_dirs}
             srv_com["thpaged"] = {
-                entry: file(os.path.join(hpage_dir, sub_dirs[0], entry), "r").read().strip() for entry in os.listdir(os.path.join(hpage_dir, sub_dirs[0]))
+                entry: open(os.path.join(hpage_dir, sub_dirs[0], entry), "r").read().strip() for entry in os.listdir(os.path.join(hpage_dir, sub_dirs[0]))
             }
         else:
             srv_com["thpagef"] = "not found"
@@ -2109,7 +2109,7 @@ class pciinfo_command(hm_classes.hm_command):
 
 class cpuflags_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        srv_com["proclines"] = server_command.compress(file("/proc/cpuinfo", "r").read())
+        srv_com["proclines"] = server_command.compress(open("/proc/cpuinfo", "r").read())
 
     def interpret(self, srv_com, cur_ns):
         flag_dict = {}
@@ -2367,7 +2367,7 @@ class partinfo_command(hm_classes.hm_command):
 
 class mdstat_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        srv_com["mdstat"] = server_command.compress(file("/proc/mdstat", "r").read())
+        srv_com["mdstat"] = server_command.compress(open("/proc/mdstat", "r").read())
 
     def interpret(self, srv_com, cur_ns):
         lines = server_command.decompress(srv_com["mdstat"].text).split("\n")
@@ -2440,14 +2440,14 @@ class cpufreq_info_command(hm_classes.hm_command):
                         _cpu_num = _cpu[3:]
                         _online = os.path.join(_cpu_dir, "online")
                         if os.path.exists(_online):
-                            _is_online = True if int(file(_online, "r").read().strip()) else False
+                            _is_online = True if int(open(_online, "r").read().strip()) else False
                         else:
                             _is_online = True
                         if _is_online:
                             _freq_dir = os.path.join(_cpu_dir, "cpufreq")
                             if os.path.isdir(_freq_dir):
                                 _res_dict[_cpu_num] = {
-                                    _f_name: file(
+                                    _f_name: open(
                                         os.path.join(
                                             _freq_dir,
                                             _f_name
@@ -2588,7 +2588,7 @@ class dmiinfo_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         with tempfile.NamedTemporaryFile() as tmp_file:
-            file(tmp_file.name, "w").write(server_command.decompress(srv_com["dmi_dump"].text))
+            open(tmp_file.name, "w").write(server_command.decompress(srv_com["dmi_dump"].text))
             _dmi_stat, dmi_result = subprocess.getstatusoutput("{} --from-dump {}".format(self.module.dmi_bin, tmp_file.name))
             _xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(dmi_result.split("\n")))
             # sys.exit(0)

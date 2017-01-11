@@ -314,7 +314,7 @@ class my_opt_parser(argparse.ArgumentParser):
 
     def _read_mpi_versions(self):
         if os.path.isfile(self.MPI_VERSION_FILE):
-            version_lines = [line.strip().split() for line in file(self.MPI_VERSION_FILE, "r").read().split("\n") if line.strip()]
+            version_lines = [line.strip().split() for line in open(self.MPI_VERSION_FILE, "r").read().split("\n") if line.strip()]
             self.version_dict = dict([(key, value) for key, value in version_lines])
             vers_dict = dict([(tuple([part.isdigit() and int(part) or part for part in key.split(".")]), key) for key in list(self.version_dict.keys())])
             vers_keys = sorted(vers_dict.keys())
@@ -472,7 +472,7 @@ class mpi_builder(object):
         targ_dir = "{}{}".format(self.tempdir, self.parser.options.module_dir)
         if not os.path.isdir(targ_dir):
             os.makedirs(targ_dir)
-        file(os.path.join(targ_dir, self.modulefile_name), "w").write("\n".join(mod_lines))
+        open(os.path.join(targ_dir, self.modulefile_name), "w").write("\n".join(mod_lines))
 
     def _create_mpi_selector_file(self):
         self.mpi_selector_sh_name = "%s.sh" % (self.parser.package_name)
@@ -531,8 +531,8 @@ class mpi_builder(object):
         targ_dir = "%s/%s" % (self.tempdir, self.mpi_selector_dir)
         if not os.path.isdir(targ_dir):
             os.makedirs(targ_dir)
-        file("%s/%s" % (targ_dir, self.mpi_selector_sh_name), "w").write("\n".join(sh_lines))
-        file("%s/%s" % (targ_dir, self.mpi_selector_csh_name), "w").write("\n".join(csh_lines))
+        open("%s/%s" % (targ_dir, self.mpi_selector_sh_name), "w").write("\n".join(sh_lines))
+        open("%s/%s" % (targ_dir, self.mpi_selector_csh_name), "w").write("\n".join(csh_lines))
 
     def package_it(self):
         print("Packaging ...")
@@ -553,7 +553,7 @@ class mpi_builder(object):
             readme_lines.extend(
                 ["Compile logs:"] + sum([self.log_dict[key].split("\n") + [sep_str] for key in list(self.log_dict.keys())], [])
             )
-        file("%s/%s" % (self.tempdir, info_name), "w").write("\n".join(readme_lines))
+        open("%s/%s" % (self.tempdir, info_name), "w").write("\n".join(readme_lines))
         package_name, package_version, package_release = (
             self.parser.package_name,
             self.parser.options.mpi_version,
@@ -584,7 +584,7 @@ class mpi_builder(object):
                 except:
                     pass
             # generate empty hosts file
-            file("%s/etc/openmpi-default-hostfile" % (self.parser.mpi_dir), "w").write("")
+            open("%s/etc/openmpi-default-hostfile" % (self.parser.mpi_dir), "w").write("")
             # generate link
             mca_local_file = "/etc/openmpi-mca-params.conf"
             os.symlink(mca_local_file, "%s/etc/openmpi-mca-params.conf" % (self.parser.mpi_dir))

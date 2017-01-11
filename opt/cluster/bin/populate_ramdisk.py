@@ -671,7 +671,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         ]
     }
     if os.path.isfile(pci_f_name):
-        sfile_dict["/usr/share/pci.ids"] = file(pci_f_name, "r").read().split("\n")
+        sfile_dict["/usr/share/pci.ids"] = open(pci_f_name, "r").read().split("\n")
     sfile_dict["/etc/xinetd.conf"] = {
         1: [
             "defaults",
@@ -741,7 +741,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             "{} {}".format(mod_name, mod_option) for mod_name, mod_option in add_modules
         ]
     for sfile_name, sfile_content in sfile_dict.items():
-        file("{}/{}".format(temp_dir, sfile_name), "w").write("\n".join(sfile_content + [""]))
+        open("{}/{}".format(temp_dir, sfile_name), "w").write("\n".join(sfile_content + [""]))
     # ldconfig call
     ld_stat, _out = subprocess.getstatusoutput("chroot {} /sbin/ldconfig".format(temp_dir))
     if ld_stat:
@@ -946,7 +946,7 @@ def main_copy():
         # print("\nCopying local firmware {} -> {}".format(firm_dir_local, t_firm_dir))
         # shutil.copytree(firm_dir_local, t_firm_dir)
         print("\nGenerating dummy initrd_lo.gz")
-        file(os.path.join(target_dir, "initrd_lo.gz"), "w").close()
+        open(os.path.join(target_dir, "initrd_lo.gz"), "w").close()
         # print build_lt, source_lt
         if build_lt:
             os.symlink(build_lt, os.path.join(lib_dir, "build"))
@@ -1152,11 +1152,11 @@ class arg_parser(argparse.ArgumentParser):
 
 def copy_stage_file(src_dir, stage_name, stage_dest):
     src_file = os.path.join(src_dir, stage_name)
-    content = file(src_file, "r").read()
+    content = open(src_file, "r").read()
     if os.path.isfile("/usr/bin/bash") and os.path.islink("/bin"):
         # rewrite shebang
         content = "\n".join(["#!/usr/bin/bash"] + content.split("\n")[1:])
-    file(stage_dest, "w").write(content)
+    open(stage_dest, "w").write(content)
 
 
 def main_normal():
@@ -1313,7 +1313,7 @@ def main_normal():
     if os.path.isfile(os.path.join(my_args.kernel_dir, ".config")):
         conf_lines = [
             y for y in [
-                x.strip() for x in file(os.path.join(my_args.kernel_dir, ".config"), "r").read().split("\n") if x.strip()
+                x.strip() for x in open(os.path.join(my_args.kernel_dir, ".config"), "r").read().split("\n") if x.strip()
             ] if not y.strip().startswith("#")
         ]
         conf_dict = dict([x.split("=", 1) for x in conf_lines])
@@ -1366,7 +1366,7 @@ def main_normal():
                 # content of modules.dep
                 mdep_file = os.path.join(lib_dir, "modules.dep")
                 if os.path.isfile(mdep_file):
-                    pre_content = file(mdep_file, "r").read()
+                    pre_content = open(mdep_file, "r").read()
                 else:
                     pre_content = ""
                 depmod_call = "depmod -aeb {} {}".format(my_args.kernel_dir, kverdir)
@@ -1376,7 +1376,7 @@ def main_normal():
                     print(" - some error occured ({:d}): {}".format(c_stat, out))
                     sys.exit(1)
                 if os.path.isfile(mdep_file):
-                    post_content = file(mdep_file, "r").read()
+                    post_content = open(mdep_file, "r").read()
                     if pre_content != post_content:
                         mod_bz2_present = False
                         print("modules.dep file '{}' has changed, rebuilding {}".format(mdep_file, mod_bz2_file))
@@ -1642,7 +1642,7 @@ def main_normal():
             s_time = time.time()
             o_s1_size = os.stat(s1_file)[stat.ST_SIZE]
             # zip stage1
-            gzip.GzipFile("%s.gz" % (s1_file), "wb", 1).write(file(s1_file, "rb").read())
+            gzip.GzipFile("%s.gz" % (s1_file), "wb", 1).write(open(s1_file, "rb").read())
             os.unlink(s1_file)
             s1_file = "%s.gz" % (s1_file)
             n_s1_size = os.stat(s1_file)[stat.ST_SIZE]

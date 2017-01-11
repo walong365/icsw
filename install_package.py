@@ -42,7 +42,7 @@ def main():
     ps_file = "/etc/packageserver"
     if os.path.isfile(ps_file):
         try:
-            package_server = file(ps_file, "r").read().split("\n")[0].strip()
+            package_server = open(ps_file, "r").read().split("\n")[0].strip()
         except:
             package_server = "localhost"
         else:

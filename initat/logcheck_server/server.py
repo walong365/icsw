@@ -208,7 +208,7 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, s
         ]
         self._slcn = "/etc/rsyslog.d/logcheck_server.conf"
         self.log("writing rsyslog-config to {}".format(self._slcn))
-        file(self._slcn, "w").write("\n".join(rsyslog_lines))
+        open(self._slcn, "w").write("\n".join(rsyslog_lines))
         self._restart_syslog()
 
     def _disable_rsyslog(self):

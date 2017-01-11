@@ -162,7 +162,7 @@ class download_rrd(View):
             act_resp["Content-disposition"] = "attachment; filename=graph.png"
             act_resp["Content-Transfer-Encoding"] = "binary"
             # print dir(act_resp)
-            act_resp.write(file(_path, "rb").read())
+            act_resp.write(open(_path, "rb").read())
             # print len(act_resp.content)
         else:
             # hm, working ... ?

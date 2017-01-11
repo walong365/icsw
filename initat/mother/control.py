@@ -1390,7 +1390,7 @@ class NodeControlProcess(threading_tools.process_obj, server_mixins.EggConsumeMi
             t_file = os.path.join(global_config["ETHERBOOT_DIR"], rel_name)
             if key_name in global_config:
                 try:
-                    file(t_file, "wb").write(global_config[key_name])
+                    open(t_file, "wb").write(global_config[key_name])
                 except:
                     self.log("cannot create {}: {}".format(t_file, process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
                 else:
@@ -1422,7 +1422,7 @@ class NodeControlProcess(threading_tools.process_obj, server_mixins.EggConsumeMi
             if entry.startswith("memtest"):
                 t_path = os.path.join(_iso_dir, entry)
                 self.log("copy from {} to {}".format(_path, t_path))
-                file(t_path, "wb").write(file(_path, "rb").read())
+                open(t_path, "wb").write(open(_path, "rb").read())
 
     def update_router_object(self):
         cur_time = time.time()

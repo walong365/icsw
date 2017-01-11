@@ -43,16 +43,16 @@ from initat.cluster.backbone.models.functions import check_empty_string, check_n
 from initat.tools import process_tools
 
 __all__ = [
-    b"domain_name_tree",
-    b"valid_domain_re",
-    b"domain_tree_node",
-    b"category_tree",
-    b"category",
-    b"TREE_SUBTYPES",
-    b"TOP_MONITORING_CATEGORY",
-    b"location_gfx",
-    b"device_mon_location",
-    b"DomainTypeEnum",
+    "domain_name_tree",
+    "valid_domain_re",
+    "domain_tree_node",
+    "category_tree",
+    "category",
+    "TREE_SUBTYPES",
+    "TOP_MONITORING_CATEGORY",
+    "location_gfx",
+    "device_mon_location",
+    "DomainTypeEnum",
 ]
 
 # top monitoring category
@@ -722,7 +722,7 @@ class location_gfx(models.Model):
         if _content is None:
             _entry = os.path.join(settings.ICSW_WEBCACHE, "lgfx", self.uuid)
             if os.path.isfile(_entry):
-                _img = Image.open(file(_entry, "rb"))
+                _img = Image.open(open(_entry, "rb"))
                 _img.thumbnail((24, 24))
                 _content = io.StringIO()
                 _img.save(_content, format="JPEG")
@@ -737,7 +737,7 @@ class location_gfx(models.Model):
     def get_image(self):
         _entry = self.image_file_name
         if os.path.isfile(_entry):
-            return file(_entry, "rb").read()
+            return open(_entry, "rb").read()
         else:
             return location_gfx.default_image()
 
@@ -755,8 +755,8 @@ class location_gfx(models.Model):
 
     def _read_image(self):
         # returns an _img object and stores for undo
-        _img = Image.open(file(self.image_file_name, "rb"))
-        _img.save(file(self.image_file_name_last, "wb"), format="PNG")
+        _img = Image.open(open(self.image_file_name, "rb"))
+        _img.save(open(self.image_file_name_last, "wb"), format="PNG")
         return _img
 
     def resize(self, factor):
@@ -787,12 +787,12 @@ class location_gfx(models.Model):
 
     def restore_original_image(self):
         if os.path.exists(self.image_file_name_orig):
-            _img = Image.open(file(self.image_file_name_orig, "rb"))
+            _img = Image.open(open(self.image_file_name_orig, "rb"))
             self.store_graphic(_img, self.content_type, self.image_name)
 
     def undo_last_step(self):
         if os.path.exists(self.image_file_name_last):
-            _img = Image.open(file(self.image_file_name_last, "rb"))
+            _img = Image.open(open(self.image_file_name_last, "rb"))
             self.store_graphic(_img, self.content_type, self.image_name)
 
     @property
@@ -825,10 +825,10 @@ class location_gfx(models.Model):
         _gfx_dir = os.path.dirname(_entry)
         if not os.path.isdir(_gfx_dir):
             os.mkdir(_gfx_dir)
-        img.save(file(_entry, "wb"), format="PNG")
+        img.save(open(_entry, "wb"), format="PNG")
         if self.changes == 1:
             # first change, store original image
-            img.save(file(self.image_file_name_orig, "wb"), format="PNG")
+            img.save(open(self.image_file_name_orig, "wb"), format="PNG")
         self.image_name = file_name
         self.width = img.size[0]
         self.height = img.size[1]

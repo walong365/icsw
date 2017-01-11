@@ -118,7 +118,7 @@ class HostMonitoringMixin(object):
 
     def _interpret_dmiinfo(self, dmi_dump):
         with tempfile.NamedTemporaryFile() as tmp_file:
-            file(tmp_file.name, "w").write(dmi_dump)
+            open(tmp_file.name, "w").write(dmi_dump)
             _dmi_stat, dmi_result = subprocess.getstatusoutput(
                 "{} --from-dump {}".format(
                     process_tools.find_file("dmidecode"),

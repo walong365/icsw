@@ -35,7 +35,7 @@ def _parse_environ(opts):
         ("/etc/sge_server", "server_address"),
     ]:
         if not getattr(opts, _target) and os.path.exists(_src_file):
-            setattr(opts, _target, file(_src_file, "r").read().strip())
+            setattr(opts, _target, open(_src_file, "r").read().strip())
     if not opts.job_id:
         if "JOB_ID" in os.environ:
             opts.job_id = os.environ["JOB_ID"]

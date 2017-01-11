@@ -408,7 +408,7 @@ class DebianInstallProcess(InstallProcess):
 
     def _read_file(self, f_name):
         return [
-            line.strip() for line in file(f_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")
+            line.strip() for line in open(f_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")
         ]
 
     def build_command(self, cur_pdc):
@@ -479,7 +479,7 @@ class DebianInstallProcess(InstallProcess):
                 else:
                     self.log("removed {}".format(old_f_name))
             f_name = "/etc/apt/sources.list"
-            file(f_name, "w").write("\n".join(new_repo_list + [""]))
+            open(f_name, "w").write("\n".join(new_repo_list + [""]))
             self.log("created {}".format(f_name))
             self._clear_cache()
 
@@ -638,7 +638,7 @@ class YumInstallProcess(InstallProcess):
         )
         # _new_repo_names = in_repos.xpath(".//package_repo/@alias")
         _new_repo_names = in_repos.xpath(".//alias/text()")
-        old_repo_dict = {f_name: file(os.path.join(repo_dir, "{}.repo".format(f_name)), "r").read() for f_name in cur_repo_names}
+        old_repo_dict = {f_name: open(os.path.join(repo_dir, "{}.repo".format(f_name)), "r").read() for f_name in cur_repo_names}
         new_repo_dict = {in_repo.findtext("name").replace("/", "_"): get_repo_str("yum", in_repo) for in_repo in in_repos}
         rewrite_repos = False
         if any([old_repo_dict[name] != new_repo_dict[name] for name in set(cur_repo_names) & set(new_repo_dict.keys())]):
@@ -661,7 +661,7 @@ class YumInstallProcess(InstallProcess):
             for new_r_name in new_repo_dict.keys():
                 f_name = os.path.join(repo_dir, "{}.repo".format(new_r_name))
                 try:
-                    file(f_name, "w").write(new_repo_dict[new_r_name])
+                    open(f_name, "w").write(new_repo_dict[new_r_name])
                 except:
                     self.log("cannot create {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 else:
@@ -775,7 +775,7 @@ class ZypperInstallProcess(InstallProcess):
             repo_dir))
         # _new_repo_names = in_repos.xpath(".//package_repo/@alias")
         _new_repo_names = in_repos.xpath(".//alias/text()")
-        old_repo_dict = {f_name: file(os.path.join(repo_dir, "{}.repo".format(f_name)), "r").read() for f_name in cur_repo_names}
+        old_repo_dict = {f_name: open(os.path.join(repo_dir, "{}.repo".format(f_name)), "r").read() for f_name in cur_repo_names}
         new_repo_dict = {in_repo.findtext("alias"): get_repo_str("zypper", in_repo) for in_repo in in_repos}
         rewrite_repos = False
         if any([old_repo_dict[name] != new_repo_dict[name] for name in set(cur_repo_names) & set(new_repo_dict.keys())]):
@@ -798,7 +798,7 @@ class ZypperInstallProcess(InstallProcess):
             for new_r_name in new_repo_dict.keys():
                 f_name = os.path.join(repo_dir, "{}.repo".format(new_r_name))
                 try:
-                    file(f_name, "w").write(new_repo_dict[new_r_name])
+                    open(f_name, "w").write(new_repo_dict[new_r_name])
                 except:
                     self.log("cannot create {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 else:
