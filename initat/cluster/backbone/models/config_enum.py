@@ -35,7 +35,7 @@ class AppEnum(Enum):
         "enables node provisioning features",
         msi_block_name="cluster-config-server",
         egg_actions=[
-            EggAction("configure", "device"),
+            EggAction("configure", "device", ghost=True),
         ]
     )
     cluster_server = icswServiceEnumBase(
@@ -61,7 +61,7 @@ class AppEnum(Enum):
         egg_actions=[
             EggAction("dashboard", "device", timeframe=60, ghost=True),
             EggAction("history", "device", timeframe=60, ghost=True),
-            EggAction("monconfig", "device", ghost=True),
+            EggAction("monconfig", "device", ghost=False),
         ]
     )
     discovery_server = icswServiceEnumBase(

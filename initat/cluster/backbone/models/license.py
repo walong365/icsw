@@ -405,6 +405,11 @@ class icswEggCradle(models.Model):
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
+    def consume(self, consumer, to_consume):
+        self.available_ghost -= to_consume
+        if not consumer.ghost:
+            self.available -= to_consume
+
     def calc(self):
         _avail = 0
         _installed = 0
@@ -684,9 +689,9 @@ class icswEggConsumer(models.Model):
     def get_all_consumed(self):
         _ws = self.icsweggrequest_set.filter(
             Q(is_lock=False) & Q(valid=True)
-        ).values_list("weight", flat=True)
+        ).values_list("weight", "mult")
         if _ws.count():
-            _sum = sum(_ws)
+            _sum = sum([_v[0] * _v[1] for _v in _ws])
             if _sum != self.consumed:
                 self.consumed = _sum
                 self.save(update_fields=["consumed"])
@@ -710,35 +715,40 @@ class icswEggConsumer(models.Model):
             # if request.valid is True, check the target weight
             _target_weight = self.multiplier * request.mult
             if not request.valid:
+                # request was not valid, consume the target weight
                 _to_consume = _target_weight
             else:
+                # request was valid, consume the target weight minus the current allocated weight
                 _to_consume = _target_weight - request.weight
             if _to_consume:
                 # something to consume, resolve egg_cradle
                 _avail = self.egg_cradle.available
-            else:
-                _avail = 1
-            if _avail > _to_consume:
-                if _to_consume:
-                    # nothing to consume (request was already fullfilled)
-                    self.egg_cradle.available -= _to_consume
-                    self.consumed += _to_consume
-                    self.save(update_fields=["consumed"])
-                    self.egg_cradle.save(update_fields=["available"])
-                if self.timeframe_secs:
-                    request.valid_until = cluster_timezone.localize(
-                        datetime.datetime.now() + datetime.timedelta(seconds=self.timeframe_secs)
-                    )
+                if _avail > _to_consume:
+                    if _to_consume:
+                        # nothing to consume (request was already fullfilled)
+                        self.egg_cradle.consume(self, _to_consume)
+                        self.consumed += _to_consume
+                        self.save(update_fields=["consumed"])
+                        self.egg_cradle.save(update_fields=["available", "available_ghost"])
+                    if self.timeframe_secs:
+                        request.valid_until = cluster_timezone.localize(
+                            datetime.datetime.now() + datetime.timedelta(seconds=self.timeframe_secs)
+                        )
+                    else:
+                        request.valid_until = None
+                    request.valid = True
                 else:
-                    request.valid_until = None
-                request.valid = True
+                    request.valid = False
             else:
-                request.valid = False
+                # nothing to consume, request is valid
+                request.valid = True
             request.weight = _target_weight
         request.save(update_fields=["weight", "valid", "valid_until"])
         return request.valid
 
     def get_info_line(self):
+        _consumers = self.get_num_consumers()
+        _consumed = self.get_all_consumed()
         return [
             logging_tools.form_entry(self.action, header="action"),
             logging_tools.form_entry(unicode(self.config_service_enum), header="ConfigService"),
@@ -749,8 +759,9 @@ class icswEggConsumer(models.Model):
                 logging_tools.get_diff_time_str(self.timeframe_secs) if self.timeframe_secs else "---",
                 header="timeframe",
             ),
-            logging_tools.form_entry_right(self.get_num_consumers(), header="entries"),
-            logging_tools.form_entry_right(self.get_all_consumed(), header="consumed"),
+            logging_tools.form_entry_right(_consumers, header="entries"),
+            logging_tools.form_entry_right(_consumed, header="consumed"),
+            logging_tools.form_entry_right("{:.2f}".format(float(_consumed) / float(_consumers)) if _consumers else "-", header="mean"),
         ]
 
     def __unicode__(self):
