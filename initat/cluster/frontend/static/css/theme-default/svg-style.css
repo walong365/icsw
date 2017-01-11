@@ -19,19 +19,12 @@
 
 .svg-sh-type { fill: #8888ff ; }
 .svg-filter-text {
-    /* text-anchor: middle;
-    alignment-baseline: middle;
-    paint-order: stroke; */
     font-size: 10px;
     fill: #000000;
     pointer-events: none;
-    /* stroke: #000000;
-    stroke-width: 1px;
-    */
 }
 .svg-filter-head-text {
     text-anchor: middle;
-    /* alignment-baseline: middle; */
     paint-order: stroke;
     fill: #000000;
     stroke: #ffffff;

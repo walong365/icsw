@@ -15,22 +15,15 @@
 .svg-srv-notmonitored { fill: #aaaaaa; }
 .svg-srv-pending { fill: #ccccff; }
 .svg-srv-unselected { fill: #dddddd; }
+.svg-srv-omitted { fill: #dddddd ; }
 
 .svg-sh-type { fill: #8888ff ; }
 .svg-filter-text {
-    /*text-anchor: middle;
-    alignment-baseline: middle;
-    paint-order: stroke;*/
     font-size: 12px;
     fill: #444444;
     pointer-events: none;
-    /*stroke: #000000;
-    stroke-width: 1px;
-    */
 }
 .svg-filter-head-text {
-    /*
-    alignment-baseline: middle;*/
     paint-order: stroke;
     font-size: 14px;
     fill: #777777;
@@ -68,9 +61,40 @@
 .svg-stroke { stroke: #aaaaaa; stroke-width: 0.5; }
 .pie-segment { stroke-width: 0.5; stroke-miterlimit: 2; stroke: #fff; }
 .svg-sel { opacity: 0.7; }
-.svg-clicked {
+.svg-clicked-outer {
+    stroke-width: 3px !important;
+    stroke: #555555;
+    fill: #ffffff;
+    opacity: 0.3;
+    pointer-events: none;
+}
+.svg-clicked-inner {
     stroke-width: 2px !important;
     stroke: #ffffff;
+    fill: none;
+    pointer-events: none;
+}
+.svg-hovered-outer {
+    stroke-width: 4px !important;
+    stroke-dasharray: 5, 5;
+    stroke: #555555;
+    fill: none;
+    pointer-events: none;
+    animation: dash 2s linear;
+}
+.svg-hovered-inner {
+    stroke-width: 0px !important;
+    stroke: #555555;
+    fill: #ffffff;
+    opacity: 0.2;
+    pointer-events: none;
+    animation: dash 2s linear;
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: 20;
+    }
 }
 
 .svg-d3link { stroke: #888888; stroke-width: 2px; opacity: 1; }
