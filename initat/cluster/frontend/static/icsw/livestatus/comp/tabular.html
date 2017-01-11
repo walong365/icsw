@@ -42,8 +42,12 @@
             </tr>
             <tr>
                 <td colspan="99">
-                    <icsw-tools-show-hide-columns icsw-callback="columns_changed" columns="State DevFlags DevCats StateType Description MonFlags MonCats Output" create-show-column="true">
-                    </icsw-tools-show-hide-columns>
+                    <icsw-tools-show-hide-columns
+                        icsw-callback="columns_changed"
+                        columns="State DevFlags DevCats StateType Description MonFlags MonCats Output"
+                        columns-from-settings="columns_from_settings"
+                        columns-target="show_column"
+                    ></icsw-tools-show-hide-columns>
                 </td>
             </tr>
             <tr>
@@ -187,7 +191,12 @@
             </tr>
             <tr>
                 <td colspan="99">
-                    <icsw-tools-show-hide-columns icsw-callback="columns_changed" columns="Services DevCats State StateType Flags Output" create-show-column="true"></icsw-tools-show-hide-columns>
+                    <icsw-tools-show-hide-columns
+                        icsw-callback="columns_changed"
+                        columns="Services DevCats State StateType Flags Output"
+                        columns-from-settings="columns_from_settings"
+                        columns-target="show_column"
+                    ></icsw-tools-show-hide-columns>
                 </td>
             </tr>
             <tr>

@@ -27,12 +27,6 @@ import argparse
 from initat.tools import logging_tools, process_tools, net_tools, server_command
 
 
-def parse_list(in_list):
-    print(in_list)
-    second_d = in_list.index(":", in_list.index(":") + 1) + 5
-    return process_tools.net_to_sys(in_list[second_d:])
-
-
 def main():
     my_parser = argparse.ArgumentParser()
     my_parser.add_argument("-d", dest="detail", default=False, action="store_true", help="detailed mode [%(default)s]")
@@ -68,8 +62,10 @@ def main():
     keys_2.sort()
     missing_in_1 = [x for x in keys_2 if x not in keys_1]
     missing_in_2 = [x for x in keys_1 if x not in keys_2]
-    for missing_in, host, _dir in [(missing_in_1, host_1, dir_1),
-                                   (missing_in_2, host_2, dir_2)]:
+    for missing_in, host, _dir in [
+        (missing_in_1, host_1, dir_1),
+        (missing_in_2, host_2, dir_2),
+    ]:
         if missing_in:
             print(
                 "{} missing on {} (dir {}):".format(

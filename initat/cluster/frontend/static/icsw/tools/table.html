@@ -62,3 +62,19 @@
         </span>
     </span>
 </script>
+
+<script type="text/ng-template" id="icsw.tools.table.show_hide">
+    <div>
+        Show/Hide Columns:
+        <div class="btn-group btn-group-xs">
+            <input
+                type="button"
+                ng-repeat="entry in struct.cur_columns"
+                ng-attr-title="show/hide columns {{entry}}" ng-value="entry"
+                ng-class="struct.show_column[entry] && 'btn btn-success' || 'btn btn-default'"
+                ng-click="toggle_column($event, entry)"
+            ></input>
+        </div>
+    </div>
+</script>
+

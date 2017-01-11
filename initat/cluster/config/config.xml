@@ -725,6 +725,7 @@
                 <menuEntry icon="fa-info" name="Server Information" routeName="main.serverinfo"/>
                 <menuEntry icon="fa-key" name="License" routeName="main.syslicenseoverview"/>
                 <menuEntry icon="fa-cubes" name="Setup Progress" routeName="main.setupprogress"/>
+                <menuEntry icon="fa-list-alt" name="Event Logs" routeName="main.eventlog"/>
             </routeSubGroup>
         </menuHeader>
         <menuHeader name="HPC" icon="fa-cloud" side="left">

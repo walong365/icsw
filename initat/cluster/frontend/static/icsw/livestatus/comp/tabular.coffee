@@ -307,12 +307,13 @@ angular.module(
 [
     "$scope", "DeviceOverviewService", "$q", "icswSimpleAjaxCall", "ICSW_URLS",
     "ICSW_SIGNALS", "icswComplexModalService", "$templateCache", "$compile", "blockUI",
-    "icswIcingaCmdTools", "$rootScope", "$timeout",
+    "icswIcingaCmdTools", "$rootScope",
 (
     $scope, DeviceOverviewService, $q, icswSimpleAjaxCall, ICSW_URLS,
     ICSW_SIGNALS, icswComplexModalService, $templateCache, $compile, $blockUI,
-    icswIcingaCmdTools, $rootScope, $timeout,
+    icswIcingaCmdTools, $rootScope,
 ) ->
+    $scope.show_column = {}
     $scope.struct = {
         # monitoring data
         monitoring_data: undefined
@@ -394,7 +395,7 @@ angular.module(
                 # console.log $scope.struct.settings["pag"]
             # console.log "ns", $scope.struct.settings
             if "columns" of $scope.struct.settings
-                $scope.columns_from_settings = $scope.struct.settings["columns"]
+                $scope.columns_from_settings = $scope.struct.settings.columns
         notifier.promise.then(
             (resolve) ->
             (rejected) ->

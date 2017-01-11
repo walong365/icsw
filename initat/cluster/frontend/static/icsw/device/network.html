@@ -46,7 +46,7 @@
             <icsw-tools-show-hide-columns
                 ng-show="struct.devices.length"
                 columns="idx port ips peers bridge bond mac devtype mtu speed penalty flags status desired"
-                create-show-column="true"
+                columns-target="show_column"
             >
             </icsw-tools-show-hide-columns>
             <table
@@ -100,7 +100,7 @@
                 {{ struct.local_helper_obj.net_ip_list.length }} IP Addresses
             </uib-accordion-heading>
             <table
-                ng-show="struct.devices.length"
+                ng-show="struct.devices.length && struct.local_helper_obj.net_ip_list.length"
                 class="table table-condensed table-hover table-striped"
                 style="width:auto;"
             >
@@ -841,8 +841,10 @@
                         <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
                              possible-items-by-page="10,20,50,100,200,500,1000">
                         </div>
-                        <icsw-tools-show-hide-columns columns="network gateway autorange prefDTN" create-show-column="true">
-                        </icsw-tools-show-hide-columns>
+                        <icsw-tools-show-hide-columns
+                            columns="network gateway autorange prefDTN"
+                            columns-target="show_column"
+                        ></icsw-tools-show-hide-columns>
                     </td>
                 </tr>
                 <tr>
