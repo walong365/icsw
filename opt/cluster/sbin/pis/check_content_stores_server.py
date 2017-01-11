@@ -22,13 +22,16 @@
 
 """ transform local_settings, uuid and db.cf to config_store(s) """
 
-import os
-import sys
-import stat
+from __future__ import print_function, unicode_literals
 
-from initat.tools import config_store, logging_tools
-from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME
+import os
+import stat
+import sys
+
 from django.utils.crypto import get_random_string
+
+from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME
+from initat.tools import config_store, logging_tools
 
 LS_OLD_FILE = "/etc/sysconfig/cluster/local_settings.py"
 AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"

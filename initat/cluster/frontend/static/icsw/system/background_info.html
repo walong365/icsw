@@ -4,15 +4,15 @@
 
 <script type="text/ng-template" id="icsw.system.background.job.info.table">
     <div class="container-fluid">
-        <icsw-tools-rest-table-new target-list="bi_lines" config-service="icswSystemBackgroundInfoListService">
+        <div uib-alert class="alert-warning" ng-show="!struct.data_loaded">Fetching data from server ...</div>
+        <div ng-if="struct.data_loaded">
+            <h3>Background Job Information ({{ struct.jobs.length }} fetched)</h3>
             <table
                 st-table="bi_lines_displayed"
-                st-safe-src="bi_lines"
-                icsw-tools-table-leak-filtered="filtered"
+                st-safe-src="struct.jobs"
                 class="table table-hover table-condensed table-striped"
                 style="width:100%;"
             >
-                <h3>Background Job Inforomation<!-- {{ bi_lines.length }} -->, {{ filtered.length }} shown</h3>
                 <thead>
                     <tr>
                         <td colspan="99">
@@ -26,24 +26,58 @@
                         </td>
                     </tr>
                     <tr>
+                        <td colspan="99">
+                            <icsw-tools-show-hide-columns
+                                columns="xml created user state initiator commands objects results cause valid_until"
+                                columns-target="show_column"
+                            ></icsw-tools-show-hide-columns>
+                        </td>
+                    </tr>
+                    <tr>
                         <th>Command</th>
                         <th>Result</th>
-                        <th>XML</th>
-                        <th>Created</th>
-                        <th>User</th>
-                        <th>State</th>
-                        <th>Initiator</th>
-                        <th>Commands</th>
-                        <th>Objects</th>
-                        <th>Results</th>
-                        <th>Cause</th>
-                        <th>Valid Until</th>
+                        <th ng-show="show_column.xml">XML</th>
+                        <th ng-show="show_column.created">Created</th>
+                        <th ng-show="show_column.user" st-sort="user_name">User</th>
+                        <th ng-show="show_column.state" st-sort="state">State</th>
+                        <th ng-show="show_column.initiator" st-sort="initiator_name">Initiator</th>
+                        <th ng-show="show_column.commands" st-sort="num_servers">Commands</th>
+                        <th ng-show="show_column.objects" st-sort="num_objects">Objects</th>
+                        <th ng-show="show_column.results">Results</th>
+                        <th ng-show="show_column.cause" st-sort="cause">Cause</th>
+                        <th ng-show="show_column.valid_until">Valid Until</th>
                     </tr>
                 </thead>
-                <tbody ng-repeat="line in bi_lines_displayed">
-                    <tr icsw-system-background-job-line line="line"></tr>
+                <tbody>
+                    <tr
+                        icsw-system-background-job-line
+                        ng-repeat="line in bi_lines_displayed">
+                    </tr>
                 </tbody>
             </table>
-        </icsw-tools-rest-table-new>
+        </div>
     </div>
+</script>
+
+<script type="text/ng-template" id="icsw.system.background.job.info.line">
+    <td>
+        <strong>{{ line.command }}</strong>
+    </td>
+    <td>
+        {{ line.$$srv_reply_str }}
+    </td>
+    <td ng-show="show_column.xml" title="{{ line.command_xml }}">{{ line.$$command }}</td>
+    <td ng-show="show_column.created">{{ line.$$date }}</td>
+    <td ng-show="show_column.user">{{ line.user_name }}</td>
+    <td ng-show="show_column.state" class="text-center" ng-class="line.$$state_class">{{ line.state }}</td>
+    <td ng-show="show_column.initiator">{{ line.initiator_name }}</td>
+    <td class="text-center" ng-show="show_column.commands">{{ line.num_servers || '-' }}</td>
+    <td class="text-center" ng-show="show_column.objects">{{ line.num_objects || '-' }}</td>
+    <td ng-show="show_column.results">
+        <span ng-repeat="entry in line.$$details" ng-class="entry.$$span_class" title="{{ entry.$$title }}">
+            {{ entry.state }}
+        </span>
+    </td>
+    <td ng-show="show_column.cause">{{ line.cause }}</td>
+    <td ng-show="show_column.valid_until">{{ line.$$valid_until }}</td>
 </script>

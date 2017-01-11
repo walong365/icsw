@@ -161,8 +161,7 @@ class MonAllCommands(MonFileContainer):
         md_vers = global_config["MD_VERSION_STRING"]
         md_type = global_config["MD_TYPE"]
         send_mail_prog = os.path.join(
-            CLUSTER_DIR,
-            "bin",
+            CLUSTER_SBIN,
             "icsw --nodb user --mode mail"
         )
         send_sms_prog = os.path.join(
@@ -189,7 +188,23 @@ class MonAllCommands(MonFileContainer):
                 command_line="/usr/bin/true",
             )
         )
+        _rewrite_dict = {
+            "$INIT_MONITOR_INFO$": "$ICSW_MONITOR_INFO$",
+            "$INIT_CLUSTER_NAME$": "$ICSW_CLUSTER_NAME$",
+        }
         for cur_not in mon_notification.objects.filter(Q(enabled=True)):
+            _updated = False
+            for attr in ["subject", "content"]:
+                _old = getattr(cur_not, attr)
+                _new = _old
+                for key, value in _rewrite_dict.iteritems():
+                    _new = _new.replace(key, value)
+                if _new != _old:
+                    setattr(cur_not, attr, _new)
+                    _updated = True
+            if _updated:
+                self.log("rewrote notification")
+                cur_not.save()
             if cur_not.channel == "mail":
                 command_line = r"{} -f '{}' -s '{}' -t $CONTACTEMAIL$ --message '{}'".format(
                     send_mail_prog,

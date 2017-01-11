@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2016 Andreas Lang-Nevyjel
+# Copyright (C) 2016-2017 Andreas Lang-Nevyjel
 #
 # this file is part of icsw-client
 #
@@ -21,6 +21,8 @@
 #
 
 """ check values in client content stores """
+
+from __future__ import print_function, unicode_literals
 
 import os
 
