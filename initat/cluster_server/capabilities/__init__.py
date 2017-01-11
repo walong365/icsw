@@ -135,35 +135,39 @@ class CapabilityProcess(threading_tools.process_obj):
                         self.log("capability {} is disabled".format(cap_name))
 
     def add_ova_statistics(self, cur_time, drop_com):
+        def _vector_entry(v_type, csr):
+            # build local vector entry
+            service = icswServiceEnum[csr.config_service_enum.enum_name]
+            return hm_classes.mvect_entry(
+                "icsw.ova.{}.{}.{}.{}".format(
+                    v_type,
+                    csr.content_type.model,
+                    csr.action,
+                    service.name,
+                ),
+                info="Ova consumed by {}@{} on {} ({})".format(
+                    csr.action,
+                    service.name,
+                    csr.content_type.model,
+                    v_type,
+                ),
+                default=0,
+                value=csr.consumed,
+                factor=1,
+                base=1,
+                valid_until=cur_time + 3600,
+            ).build_xml(_bldr)
+
         _bldr = drop_com.builder
         # print "*", cur_time, drop_com, _bldr
         my_vector = _bldr("values")
         _total = 0
         _total_ghost = 0
-        for _csr in icswEggConsumer.objects.all():
-            _service = icswServiceEnum[_csr.config_service_enum.enum_name]
-            my_vector.append(
-                hm_classes.mvect_entry(
-                    "icsw.ova.{}.{}.{}.{}".format(
-                        "ghost" if _csr.ghost else "consume",
-                        _csr.content_type.model,
-                        _csr.action,
-                        _service.name,
-                    ),
-                    info="Ova consumed by {}@{} on {}".format(
-                        _csr.action,
-                        _service.name,
-                        _csr.content_type.model,
-                    ),
-                    default=0,
-                    value=_csr.consumed,
-                    factor=1,
-                    base=1,
-                    valid_until=cur_time + 3600,
-                ).build_xml(_bldr)
-            )
+        for _csr in icswEggConsumer.objects.all().select_related("config_service_enum"):
+            my_vector.append(_vector_entry("ghost", _csr))
             _total_ghost += _csr.consumed
             if not _csr.ghost:
+                my_vector.append(_vector_entry("consume", _csr))
                 _total += _csr.consumed
         my_vector.append(
             hm_classes.mvect_entry(

@@ -64,7 +64,8 @@ function icsw_cleanup() {
     rm -f ${DJANGO_PY}/utils/*.py{c,o}
     [ -d /var/log/cluster/sockets ] && rm -rf /var/log/cluster/sockets
     [ -d /tmp/.icsw_zmq ] && rm -rf /tmp/.icsw_zmq
-    [ -d /usr/local/sbin/modules ] && rm -rf /usr/local/sbin/modules
+    # removed, dangerous ...
+    # [ -d /usr/local/sbin/modules ] && rm -rf /usr/local/sbin/modules
     PY_FILES="host-monitoring limits hm_classes ipc_comtools"
     for file in $PY_FILES ; do
         rm -f ${ICSW_SBIN}/$file.py{c,o}
