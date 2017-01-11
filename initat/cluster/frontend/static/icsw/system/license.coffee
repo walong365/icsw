@@ -355,7 +355,7 @@ angular.module(
                 _user_setting = data[0]
                 local_setting = _user_setting.get_default()
                 _user_setting.set_custom_size(local_setting, 1024, 400)
-                _user_setting.hide_empty = false
+                local_setting.hide_empty = false
                 _dt = data[1]
                 base_setting = new icswRRDGraphBasicSetting()
                 base_setting.draw_on_init = true
