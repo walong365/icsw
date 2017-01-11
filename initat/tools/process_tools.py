@@ -308,7 +308,7 @@ def get_zmq_ipc_name(name, **kwargs):
         _root_base = os.path.dirname(root_dir)
         if not os.path.isdir(_root_base):
             os.mkdir(_root_base)
-            os.chmod(_root_base, 01777)
+            os.chmod(_root_base, 0o01777)
         atexit.register(remove_zmq_dirs, root_dir)
     else:
         if ALLOW_MULTIPLE_INSTANCES and not ctri:
