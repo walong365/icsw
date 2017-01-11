@@ -30,10 +30,11 @@ from initat.cluster.backbone import routing
 from initat.cluster.backbone.models import device, device_group, mon_check_command, user, \
     mon_host_cluster, mon_service_cluster, MonHostTrace, mon_host_dependency, mon_service_dependency, \
     MonHostTraceGeneration, mon_check_command_special, netdevice
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.var_cache import VarCache
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.sink import SNMPSink
-from initat.tools import logging_tools, process_tools
+from initat.tools import logging_tools, process_tools, server_mixins
 from .global_config import global_config
 from ..config import SimpleCounter, MonFileContainer
 
@@ -149,11 +150,15 @@ class BuildCache(object):
         # stores various cached objects
         # routing handling
         if router_obj is None:
-            # slave
+            # slave, no consumer
+            self.consumer = None
             self.routing_fingerprint = routing_fingerprint
             # must exist
             self.__trace_gen = MonHostTraceGeneration.objects.get(Q(fingerprint=self.routing_fingerprint))
         else:
+            # master, install the egg consumer
+            self.consumer = server_mixins.EggConsumeObject(log_com)
+            self.consumer.init({"SERVICE_ENUM_NAME": icswServiceEnum.monitor_server.name})
             self.routing_fingerprint = router_obj.fingerprint
             # get generation
             try:
@@ -293,6 +298,10 @@ class BuildCache(object):
                 logging_tools.get_diff_time_str(e_time - s_time)
             )
         )
+
+    def close(self):
+        if self.consumer:
+            self.consumer.close()
 
     def set_global_config(self, gc, cur_dmap, hdep_from_topo):
         # set global config and other global values
