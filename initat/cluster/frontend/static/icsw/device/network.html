@@ -552,7 +552,7 @@
                     </uib-tab-heading>
                         <h3>{{ tab.nmap_scans.length }} Host Discovery Scans</h3>
 
-                        <table st-table="entries_displayed" st-safe-src="tab.nmap_scans" class="table table-condensed table-hover" style="width:auto;">
+                        <table st-table="nmap_scans_displayed" st-safe-src="tab.nmap_scans" class="table table-condensed table-hover" style="width:auto;">
                             <thead>
                                 <tr>
                                     <td colspan="99">
@@ -590,7 +590,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr ng-repeat="obj in entries_displayed">
+                                <tr ng-repeat="obj in nmap_scans_displayed">
                                     <td class="text-center">{{ obj.$$created }}</td>
 
                                     <td class="text-center">
@@ -638,7 +638,7 @@
 
                             <h3>{{ sub_tab.devices.length }} Devices found in {{ sub_tab.nmap_scan.runtime }} seconds ({{ sub_tab.nmap_scan.devices_scanned }} IPs scanned on {{ sub_tab.nmap_scan.scan_date }})
                             </h3>
-                            <table st-table="entries_displayed" st-safe-src="sub_tab.display_devices" class="table table-condensed table-hover" style="width:auto;">
+                            <table st-table="nmap_devices_displayed" st-safe-src="sub_tab.display_devices" class="table table-condensed table-hover" style="width:auto;">
                                 <thead>
                                     <tr>
                                         <td colspan="99">
@@ -708,7 +708,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr ng-repeat="obj in entries_displayed">
+                                    <tr ng-repeat="obj in nmap_devices_displayed">
                                         <td class="vertical-align text-center"><button type="button" ng-disabled="sub_tab.nmap_scan.index == obj.first_seen_nmap_scan_idx || obj.first_seen_nmap_scan_idx == null" ng-click="struct.icsw_network_list_service.create_new_host_discovery_detail_sub_tab(tab, obj.first_seen_nmap_scan_idx)" class="btn btn-success btn-xs">{{ obj.$$first_seen_nmap_scan_date }}</button></td>
                                         <td class="vertical-align text-center">
                                             <button type="button" class="btn btn-xs" ng-class="obj.$$selected && 'btn-success' || 'btn-default'" ng-click="sub_tab.select_nmap_scan_device(obj)" value="sel">

@@ -2067,9 +2067,9 @@ angular.module(
                         scan_date: moment(data.date).format("YYYY-MM-DD HH:mm:ss")
                         matrix: data.matrix
                     }
-                    ignored_devices: (device for device in data.devices when device.ignored)
-                    devices: (device for device in data.devices when !device.ignored)
-                    display_devices: (device for device in data.devices when !device.ignored)
+                    ignored_devices: []
+                    devices: []
+                    display_devices: []
                     selected_devices: 0
 
                     linked_devices_button_value: "All Devices"
@@ -2086,6 +2086,13 @@ angular.module(
                     ignored_devices_class: unselected_button_class
                     ignore_text: "Ignore Selection"
                 }
+
+                for nmap_device in data.devices
+                    if nmap_device.ignored == true
+                        sub_tab.ignored_devices.push(nmap_device)
+                    else
+                        sub_tab.devices.push(nmap_device)
+                        sub_tab.display_devices.push(nmap_device)
 
                 reset_selection = () ->
                     sub_tab.selected_devices = 0
@@ -2272,6 +2279,8 @@ angular.module(
                         }
                     ).then((data) ->
                         sub_tab.display_devices = (device for device in sub_tab.display_devices when !(device in handled_devices))
+                        for device in sub_tab.display_devices
+                            device.$$selected = false
 
                         for device in handled_devices
                             if ignore_mode == 0

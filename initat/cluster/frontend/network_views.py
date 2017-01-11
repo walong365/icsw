@@ -338,24 +338,22 @@ class NmapScanDiffer(View):
 
             nmap_scan = NmapScan.objects.get(idx=scan_id)
 
-            old_nmap_scan = None
-            while scan_id >= 0:
-                scan_id = scan_id - 1
-                try:
-                    old_nmap_scan = NmapScan.objects.get(network=nmap_scan.network, idx=scan_id)
-                    if old_nmap_scan.in_progress:
-                        continue
-                    break
-                except NmapScan.DoesNotExist:
-                    pass
+            old_nmap_scan = NmapScan.objects.filter(network=nmap_scan.network, idx__lt=scan_id, in_progress=False).\
+                order_by("-idx")
 
-            old_devices = old_nmap_scan.get_nmap_devices()
-            current_devices = nmap_scan.get_nmap_devices()
+            if old_nmap_scan:
+                old_nmap_scan = old_nmap_scan[0]
+
             new_devices = []
 
-            for device in current_devices:
-                if device not in old_devices:
-                    new_devices.append(device.get_dict())
+            if old_nmap_scan:
+                old_devices = old_nmap_scan.get_nmap_devices()
+                current_devices = nmap_scan.get_nmap_devices()
+
+
+                for device in current_devices:
+                    if device not in old_devices:
+                        new_devices.append(device.get_dict())
 
             return HttpResponse(json.dumps(new_devices))
         elif "all_time" in request.POST:
@@ -363,8 +361,7 @@ class NmapScanDiffer(View):
 
             nmap_scan = NmapScan.objects.get(idx=scan_id)
 
-            old_nmap_scans = NmapScan.objects.filter(network=nmap_scan.network, idx__lt=scan_id).\
-                exclude(in_progress=True)
+            old_nmap_scans = NmapScan.objects.filter(network=nmap_scan.network, idx__lt=scan_id, in_progress=False)
             current_devices = nmap_scan.get_nmap_devices()
 
             old_device_list = []
