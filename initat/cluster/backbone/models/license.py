@@ -708,7 +708,7 @@ class icswEggConsumer(models.Model):
             # consum from egg_consumer
             # if request.valid is False, try to consume it
             # if request.valid is True, check the target weight
-            _target_weight = self.multiplier
+            _target_weight = self.multiplier * request.mult
             if not request.valid:
                 _to_consume = _target_weight
             else:
@@ -785,6 +785,8 @@ class icswEggRequest(models.Model):
     egg_consumer = models.ForeignKey(icswEggConsumer)
     # object id, may be None
     object_id = models.IntegerField(null=True)
+    # local multiplicator
+    mult = models.IntegerField(default=1)
     # effective number of eggs
     weight = models.IntegerField(default=0)
     # lock, is a lock (no eggs should be consumed, always returns false)

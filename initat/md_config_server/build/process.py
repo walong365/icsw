@@ -1032,12 +1032,16 @@ class BuildProcess(
                         used_checks = set()
                         # print "*", conf_names
                         # print gbc.get_vars(host)
+                        _num_checks = 0
                         for conf_name in conf_names:
+                            _num_checks += 1
                             self.add_host_config(
                                 gbc, hbc,
                                 conf_name, used_checks,
                                 act_def_serv,
                             )
+                        if gbc.consumer and _num_checks:
+                            gbc.consumer.consume("monconfig", host.pk, _num_checks)
                         # add cluster checks
                         mhc_checks = gbc.get_cluster("hc", host.pk)
                         if len(mhc_checks):

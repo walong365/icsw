@@ -906,7 +906,7 @@ angular.module(
             super("icswLivestatusTopologySelector", true, true)
             @set_template(
                 '<icsw-device-topology-selector icsw-connect-element="con_element"></icsw-device-topology-selector>'
-                "TopologySelector"
+                "Topology Selector"
                 3
                 1
             )

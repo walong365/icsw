@@ -71,11 +71,89 @@ angular.module(
             return resolve()
     }
 
+]).service("icswWidgetImage",
+[
+    "ICSW_URLS",
+(
+    ICSW_URLS
+) ->
+    img_lut = {
+        icswLivestatusSelDevices: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_data-selection.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/data-selection.svg"
+        }
+        icswLivestatusDataSource: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_data-source.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/data-source.svg"
+        }
+        icswLivestatusMonCategoryFilter: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_monitoring-category-filter.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/monitoring-category-filter.jpg"
+        }
+        icswLivestatusDeviceCategoryFilter: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_device-category-filter.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/device-category-filter.jpg"
+        }
+        icswLivestatusMonCategoryFilterBurst: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_monitoring-category-filter-burst.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/monitoring-category-filter-burst.svg"
+        }
+        icswLivestatusDeviceCategoryFilterBurst: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_device-category-filter-burst.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/device-category-filter-burst.svg"
+        }
+        icswLivestatusFullBurst: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_burst.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/burst.svg"
+        }
+        icswLivestatusFilterService: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_basefilter.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/basefilter.svg"
+        }
+        icswLivestatusTopologySelector: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_network-topology-filter.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/network-topology-filter.jpg"
+        }
+        icswLivestatusNetworkTopology: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_network-topology.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/network-topology.jpg"
+        }
+        icswLivestatusLocationMap: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_location-images.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/location-images.jpg"
+        }
+        icswLivestatusGeoLocationDisplay: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_geolocation.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/geolocation.jpg"
+        }
+        icswLivestatusMonTabularDisplay: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_service-tabular.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/service-tabular.jpg"
+        }
+        icswLivestatusDeviceTabularDisplay: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_device-tabular.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/device-tabular.jpg"
+        }
+        icswLivestatusInfoDisplay: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_quickinfo.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/quickinfo.svg"
+        }
+        empty: {
+            icon: "#{ICSW_URLS.STATIC_URL}/icon_quickinfo.svg"
+            img: "#{ICSW_URLS.STATIC_URL}/quickinfo.svg"
+        }
+    }
+    getimage: (name) ->
+        if name of img_lut
+            return img_lut[name]
+        else
+            return img_lut["empty"]
+
 ]).service("icswMonLivestatusPipeBase",
 [
-    "$q", "$rootScope", "icswLivestatusLayoutHelpers",
+    "$q", "$rootScope", "icswLivestatusLayoutHelpers", "icswWidgetImage",
 (
-    $q, $rootScope, icswLivestatusLayoutHelpers,
+    $q, $rootScope, icswLivestatusLayoutHelpers, icswWidgetImage
 ) ->
     class icswMonLivestatusPipeBase
         # use __dp_ as prefix for quasi-private attributes
@@ -95,6 +173,7 @@ angular.module(
                 @__dp_childs = []
             # for internal data
             @show_content = true
+            #@get_image()
             if @is_receiver
                 if @is_emitter
                     # filter
@@ -105,6 +184,7 @@ angular.module(
             else
                 # emitter
                 @$$type = "E"
+            @$$imgdata = icswWidgetImage.getimage(@name)
             # for frontend / content
             @$$show_content = true
             # for frontend / header
@@ -138,6 +218,10 @@ angular.module(
         get_layout_name: () =>
             if @__dp_has_template
                 return @$$dp_title
+            else if @name == "icswLivestatusDataSource"
+                return "Data Source"
+            else if @name == "icswLivestatusSelDevices"
+                return "Device Selection"
             else
                 return @name
 
@@ -783,9 +867,9 @@ angular.module(
 [
     "$q", "icswLivestatusLayoutHelpers",
 (
-    $q, icswLivestatusLayoutHelpers,
+    $q, icswLivestatusLayoutHelpers
 ) ->
-    {h3, div, span, svg, g, rect, circle, path, title, text, h4, h3, button} = React.DOM
+    {h3, div, span, svg, g, rect, circle, path, title, text, h4, h3, button, ellipse, image, img} = React.DOM
     return React.createClass(
         displayName: "icswLivestatusClusterDendrogramReact"
         propTypes: {
@@ -839,23 +923,35 @@ angular.module(
                         }
                         _el.get_layout_title()
                     )
-                    circle(
+                    ellipse(
                         {
                             key: "el"
-                            r: 35
+                            rx: 80
+                            ry: 35
                             className: "svg-ls-cd-node"
                             style: {fill: _color, strokeDasharray: _dasharray}
                         }
                     )
-                    text(
-                        {
-                            key: "text"
-                            textAnchor: "middle"
-                            fontSize: "30px"
-                            alignmentBaseline: "middle"
-                        }
-                        "#{_el.$$type}"
-                    )
+                    if _el.$$imgdata.icon
+                        image(
+                            {
+                            x: -60
+                            y: -22
+                            key: "symbol"
+                            width: 110
+                            xlinkHref: _el.$$imgdata.icon
+                            }
+                        )
+                    else
+                        text(
+                            {
+                                key: "text"
+                                textAnchor: "middle"
+                                fontSize: "30px"
+                                alignmentBaseline: "middle"
+                            }
+                            "#{_el.$$type}"
+                        )
                 )
 
             get_path = (node) =>
@@ -887,7 +983,7 @@ angular.module(
                     # height: "100%"  # height
                     preserveAspectRatio: "xMidYMid meet"
                     # viewBox: "-#{_border} -#{_border} #{@props.width + _border} #{@props.height + _border}"
-                    viewBox: "-50 50 1100 900"
+                    viewBox: "-90 50 1200 900"
                 }
                 g(
                     {
@@ -904,22 +1000,38 @@ angular.module(
             an = @state.active_node
             fn = @state.focus_node
             _an_rows = []
+
             if an
-                _an_rows.push(
-                    div(
-                        {
-                            key: "name"
-                            className: "col-md-12"
-                        }
-                        an.data.node.get_layout_name()
+                if an.data.node.is_emitter and editable
+                    _an_rows.push(
+                        div(
+                            {
+                                key: "createb"
+                                style: {
+                                    float: "left"
+                                    margin: "0 0 5px 15px"
+                                }
+                            }
+                            button(
+                                {
+                                    key: "crateb"
+                                    className: "btn btn-xs btn-success"
+                                    onClick: (event) =>
+                                        icswLivestatusLayoutHelpers.create_node(event, an.data)
+                                }
+                                "Append Element"
+                            )
+                        )
                     )
-                )
                 if an.data.node.is_deletable() and editable
                     _an_rows.push(
                         div(
                             {
                                 key: "delb"
-                                className: "col-md-12"
+                                style: {
+                                    float: "left"
+                                    margin: "0 0 5px 15px"
+                                }
                             }
                             button(
                                 {
@@ -931,60 +1043,92 @@ angular.module(
                                                 @setState({focus_node: null, active_node: null})
                                         )
                                 }
-                                "Delete"
+                                "Delete Element"
                             )
                         )
                     )
-                if an.data.node.is_emitter and editable
+                _an_rows.push(
+                    div(
+                        {
+                            key: "name"
+                            className: "col-md-12"
+                        }
+                        an.data.node.get_layout_name()
+                    )
+                )
+                if an.data.node.$$imgdata.img
                     _an_rows.push(
                         div(
                             {
-                                key: "createb"
+                                key: "divimg"
                                 className: "col-md-12"
                             }
-                            button(
+                            img(
                                 {
-                                    key: "crateb"
-                                    className: "btn btn-xs btn-success"
-                                    onClick: (event) =>
-                                        icswLivestatusLayoutHelpers.create_node(event, an.data)
+                                    key: "animg"
+                                    src: an.data.node.$$imgdata.img
+                                    width: 200
                                 }
-                                "Create"
                             )
                         )
                     )
-            _an_div = div(
-                {
-                    key: "active"
-                    className: "container-fluid"
-                }
-                h3(
+
+            if an
+                _an_div = div(
                     {
-                        key: "head"
+                        key: "active"
+                        className: "container-fluid"
                     }
-                    "Active Node"
+                    h3(
+                        {
+                            key: "head"
+                        }
+                        "Active Node"
+                    )
+                    div(
+                        {
+                            key: "rows"
+                            className: "row"
+                        }
+                        _an_rows
+                    )
                 )
-                div(
+            else _an_div = ""
+            if fn
+                _fn_div = div(
                     {
-                        key: "rows"
-                        className: "row"
+                        key: "focus"
+                        className: "container-fluid"
+                        style: {
+                            minHeight: 200
+                            maxHeight: 200
+                        }
                     }
-                    _an_rows
+                    h3(
+                        {
+                            key: "head"
+                            style: { marginTop: 0 }
+                        }
+                        "Focus Node"
+                    )
+                    if fn then fn.data.node.get_layout_name() else ""
+                    if fn and fn.data.node.$$imgdata.img
+                        div(
+                            {
+                                key: "divimg"
+                                className: ""
+                            }
+                            img(
+                                {
+                                    key: "fnimg"
+                                    src: fn.data.node.$$imgdata.img
+                                    width: 200
+                                }
+                            )
+                        )
+                    else ""
                 )
-            )
-            _fn_div = div(
-                {
-                    key: "focus"
-                    className: "container-fluid"
-                }
-                h3(
-                    {
-                        key: "head"
-                    }
-                    "Focus Node"
-                )
-                if fn then fn.data.node.get_layout_name() else ""
-            )
+            else _fn_div = ""
             _ctrl = div(
                 {
                     key: "ctrl"

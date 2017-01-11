@@ -19,10 +19,16 @@ icsw-login-page .container-fluid .well{
 /**** Loginpage end ****/
 /**** Fancytree start ****/
 ul.fancytree-container {
-    background-color: #404040;
+    background-color: transparent;
+    border: none;
+}
+span.fancytree-title > span.label {
+    margin: 0 3px 0 3px;
+    padding: 2px 4px 1px 4px;
 }
 span.fancytree-title {
     color: #ffffff;
+    margin-left: 0;
 }
 .fancytree-expander {
     color: #ffffff;

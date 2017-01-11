@@ -338,23 +338,22 @@ angular.module(
                         {
                             key: "activerect"
                             x: @props.offset_x - 10
-                            y: @props.offset_y - 18
-                            width: 20
-                            height: 20
+                            y: @props.offset_y - 16
+                            width: 17
+                            height: 17
                             rx: 2
                             ry: 2
-                            className: "svg-box"
-                            style: {fill: if @props.enabled then "#ffffff" else "#888888"}
+                            className: if @props.enabled then "svg-box" else  "svg-box svg-box-deactivated"
                         }
                     )
                     text(
                         {
                             key: "linktexta"
-                            x: @props.offset_x
-                            y: @props.offset_y - 1
+                            x: @props.offset_x - 1
+                            y: @props.offset_y - 2
                             fontFamily: "fontAwesome"
                             className: "cursorpointer svg-box-content"
-                            fontSize: "20px"
+                            fontSize: "15px"
                             # alignmentBaseline: "middle"  # bad for browser/ os compat
                             textAnchor: "middle"
                             pointerEvents: "painted"
@@ -617,7 +616,7 @@ angular.module(
                                                 object_name: "host"
                                                 enabled: _lf.passive_host_results
                                                 update_filter: _update_filter
-                                                offset_x: -70
+                                                offset_x: -73
                                                 offset_y: 0
                                             }
                                         )
@@ -628,7 +627,7 @@ angular.module(
                                                 object_name: "service"
                                                 enabled: _lf.active_service_results
                                                 update_filter: _update_filter
-                                                offset_x: 70
+                                                offset_x: 73
                                                 offset_y: 0
                                             }
                                         )

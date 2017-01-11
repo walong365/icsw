@@ -66,6 +66,9 @@ class EggConsumeObject(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__parent.log("[EC] {}".format(what), log_level)
 
+    def close(self):
+        pass
+
     def init(self, global_config):
         from django.db.models import Q
         from initat.cluster.backbone.models import icswEggConsumer
@@ -97,7 +100,8 @@ class EggConsumeObject(object):
         else:
             return value
 
-    def consume(self, action, obj_def):
+    def consume(self, action, obj_def, mult=1):
+        # mult gives a multiplicator for the actual egg consumption, important for monitoring creation
         from django.db.models import Q
         from initat.cluster.backbone.models import icswEggRequest
         if type(obj_def) == list:
@@ -135,6 +139,7 @@ class EggConsumeObject(object):
                         )
                         # print len(_cur_reqs)
                         _cur_req = _cur_reqs[0]
+                    _cur_req.mult = mult
                     _allowed = _con.consume(_cur_req)
                     if not _allowed:
                         self.log(

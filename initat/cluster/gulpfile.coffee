@@ -446,6 +446,7 @@ gulp.task("deploy-images", () ->
         [   
             "frontend/static/images/*.jpg"
             "frontend/static/images/symbols/*.svg"
+            "frontend/static/images/widgets/*"
             "frontend/static/images/product/*.png"
             "frontend/static/css/*.gif"
         ]
