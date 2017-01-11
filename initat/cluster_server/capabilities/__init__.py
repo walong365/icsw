@@ -139,10 +139,15 @@ class CapabilityProcess(threading_tools.process_obj):
         # print "*", cur_time, drop_com, _bldr
         my_vector = _bldr("values")
         _total = 0
+        _total_ghost = 0
         for _csr in icswEggConsumer.objects.all():
             my_vector.append(
                 hm_classes.mvect_entry(
-                    "icsw.ova.{}.{}".format(_csr.content_type.model, _csr.action),
+                    "icsw.ova.{}{}.{}".format(
+                        "ghost." if _csr.ghost else "",
+                        _csr.content_type.model,
+                        _csr.action,
+                    ),
                     info="Ova consumed by {} on {}".format(_csr.action, _csr.content_type.model),
                     default=0,
                     value=_csr.consumed,
@@ -151,7 +156,9 @@ class CapabilityProcess(threading_tools.process_obj):
                     valid_until=cur_time + 3600,
                 ).build_xml(_bldr)
             )
-            _total += _csr.consumed
+            _total_ghost += _csr.consumed
+            if not _csr.ghost:
+                _total += _csr.consumed
         if _total:
             my_vector.append(
                 hm_classes.mvect_entry(
@@ -159,6 +166,18 @@ class CapabilityProcess(threading_tools.process_obj):
                     info="Ova consumed by all actions on all models",
                     default=0,
                     value=_total,
+                    factor=1,
+                    base=1,
+                    valid_until=cur_time + 3600,
+                ).build_xml(_bldr)
+            )
+        if _total_ghost:
+            my_vector.append(
+                hm_classes.mvect_entry(
+                    "icsw.ova.overall.ghost",
+                    info="Ova consumed by all actions on all models (ghost)",
+                    default=0,
+                    value=_total_ghost,
                     factor=1,
                     base=1,
                     valid_until=cur_time + 3600,

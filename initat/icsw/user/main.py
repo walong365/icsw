@@ -122,7 +122,7 @@ def do_mail(cur_opts, log_com):
 
 def do_list(cur_opts, log_com):
     users = get_users(cur_opts, log_com)
-    out_list = logging_tools.new_form_list()
+    out_list = logging_tools.NewFormList()
     for _user in users:
         out_list.append(
             [
@@ -359,7 +359,7 @@ def do_info(cur_opts, log_com):
                     )
                 )
         if cur_opts.show_vars:
-            out_list = logging_tools.new_form_list()
+            out_list = logging_tools.NewFormList()
             for _var in _user.user_variable_set.all().order_by("name"):
                 out_list.append(
                     [

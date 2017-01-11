@@ -80,7 +80,7 @@ def scan_for_images(opt_ns):
 def list_images(opt_ns):
     images = image.objects.all().order_by("name")
     print("{} defined:".format(logging_tools.get_plural("image", len(images))))
-    _list = logging_tools.new_form_list()
+    _list = logging_tools.NewFormList()
     for _image in images:
         _list.append(
             [

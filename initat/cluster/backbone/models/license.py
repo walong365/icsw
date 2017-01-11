@@ -394,6 +394,8 @@ class icswEggCradle(models.Model):
     installed = models.IntegerField(default=0)
     # how many eggs are currently available (must be smaller or equal to the installed eggs)
     available = models.IntegerField(default=0)
+    # how many eggs are currently available when ghosted ova or also taken into account
+    available_ghost = models.IntegerField(default=0)
     # grace days, defaults to 14 days
     grace_days = models.IntegerField(default=14)
     # start of grace period
@@ -410,16 +412,22 @@ class icswEggCradle(models.Model):
             if _basket:
                 _avail += _basket.eggs
                 _installed += _basket.eggs
+        _avail_ghost = _avail
         for _cons in self.icsweggconsumer_set.all():
-            _avail -= _cons.get_all_consumed()
+            _consumed = _cons.get_all_consumed()
+            _avail_ghost -= _consumed
+            if not _cons.ghost:
+                _avail -= _consumed
         self.available = _avail
+        self.available_ghost = _avail_ghost
         self.installed = _installed
-        self.save(update_fields=["available", "installed"])
+        self.save(update_fields=["available", "available_ghost", "installed"])
 
     def __unicode__(self):
-        return "EggCradle, {:d} installed, {:d} available".format(
+        return "EggCradle, {:d} installed, {:d} available ({:d} ghost)".format(
             self.installed,
             self.available,
+            self.available_ghost,
         )
 
 
@@ -504,7 +512,7 @@ class icswEggBasket(models.Model):
             logging_tools.form_entry(self.dummy, header="Dummy"),
             logging_tools.form_entry(unicode(self.valid_from), header="valid from"),
             logging_tools.form_entry(unicode(self.valid_to), header="valdi to"),
-            logging_tools.form_entry_center(self.is_valid, header="valid"),
+            logging_tools.form_entry_center("yes" if self.is_valid else "no", header="valid"),
             logging_tools.form_entry_right(self.eggs, header="eggs"),
         ]
 
@@ -604,9 +612,14 @@ class icswEggEvaluationDef(models.Model):
                     content_type=_entry["action"].content_type,
                     action=_entry["action"].action,
                     config_service_enum=_entry["db_enum"],
+                    ghost=_entry["action"].ghost,
                     valid=False,
                 )
             else:
+                # update
+                if _cur_consum.ghost != _entry["action"].ghost:
+                    _cur_consum.ghost = _entry["action"].ghost
+                    _cur_consum.valid = False
                 # print(_entry["action"].content_type)
                 if _cur_consum.egg_evaluation_def.idx != self.idx:
                     _cur_consum.valid = False
@@ -655,6 +668,8 @@ class icswEggConsumer(models.Model):
     multiplier = models.IntegerField(default=1)
     # dynamic multiplier ?
     dynamic_multiplier = models.BooleanField(default=False)
+    # ghost (will be counted but not taken for usage)
+    ghost = models.BooleanField(default=False)
     # valid, parameters have not changed (after installing a new XML file)
     valid = models.BooleanField(default=False)
     # timeframe in seconds
@@ -668,7 +683,7 @@ class icswEggConsumer(models.Model):
 
     def get_all_consumed(self):
         _ws = self.icsweggrequest_set.filter(
-            Q(is_lock=False) & (Q(valid=True))
+            Q(is_lock=False) & Q(valid=True)
         ).values_list("weight", flat=True)
         if _ws.count():
             _sum = sum(_ws)
@@ -728,6 +743,7 @@ class icswEggConsumer(models.Model):
             logging_tools.form_entry(self.action, header="action"),
             logging_tools.form_entry(unicode(self.config_service_enum), header="ConfigService"),
             logging_tools.form_entry_right(self.multiplier, header="Weight"),
+            logging_tools.form_entry_center("yes" if self.ghost else "no", header="Ghost"),
             logging_tools.form_entry_center(unicode(self.content_type), header="ContentType"),
             logging_tools.form_entry_right(
                 logging_tools.get_diff_time_str(self.timeframe_secs) if self.timeframe_secs else "---",

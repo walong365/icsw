@@ -610,7 +610,7 @@ class proclist_command(hm_classes.hm_command):
         ret_a = ["found {} matching {}".format(
             logging_tools.get_plural("process", len(pids)),
             name_re.pattern)]
-        form_list = logging_tools.new_form_list()
+        form_list = logging_tools.NewFormList()
         if tree_view:
             for act_pid in pids:
                 result[act_pid]["childs"] = [pid for pid in pids if result[pid]["ppid"] == int(act_pid)]

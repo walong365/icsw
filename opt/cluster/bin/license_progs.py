@@ -69,7 +69,7 @@ def _lic_show(opts, act_conf):
     ).check()
     elo.read()
     elo.feed_xml_result(_xml)
-    out_list = logging_tools.new_form_list()
+    out_list = logging_tools.NewFormList()
     for _t_type in ["simple", "complex"]:
         for _name in sorted(elo.licenses.keys()):
             _lic = elo.licenses[_name]

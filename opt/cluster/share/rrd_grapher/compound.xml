@@ -49,9 +49,14 @@
             <key match="^mem\.icsw\..*\.total$" required="1" color="rdgy11" draw_type="AREA1STACK"></key>
         </key_list>
     </compound>
-    <compound key="compound.icsw.ova" info="Ova overview">
+    <compound key="compound.icsw.ova.total" info="Ova overview">
         <key_list>
-            <key match="^icsw\.ova\..*\..*$" required="1" color="spectral8" draw_type="AREA1STACK"></key>
+            <key match="^icsw\.ova\..*\..*$" nomatch="^icsw\.ova\.(ghost|overall).*$" required="1" color="spectral8" draw_type="AREA1STACK"></key>
+        </key_list>
+    </compound>
+    <compound key="compound.icsw.ova.ghost" info="Ova overview (ghost)">
+        <key_list>
+            <key match="^icsw\.ova\.ghost\..*\..*$" nomatch="^icsw\.ova\.overall.*$" required="1" color="spectral8" draw_type="AREA1STACK"></key>
         </key_list>
     </compound>
     <compound key="compound.net.snmp_{key}" info="SNMP info for {ti}" order_key="key">

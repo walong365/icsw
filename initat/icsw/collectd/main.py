@@ -230,7 +230,7 @@ class KeyListCom(BaseCom):
         for key in _sorted_uuids:
             value = v_dict[key]
             print("{:30s} ({}) : last updated {}".format(value[1], key, time.ctime(value[0])))
-        out_f = logging_tools.new_form_list()
+        out_f = logging_tools.NewFormList()
         # pprint.pprint(k_dict)
         max_num_keys = 0
         _list = []
@@ -269,7 +269,7 @@ class KeyListCom(BaseCom):
         h_list = srv_com.xpath(".//host_list", smart_strings=False)
         if len(h_list):
             h_list = h_list[0]
-            out_f = logging_tools.new_form_list()
+            out_f = logging_tools.NewFormList()
             print("got result for {}:".format(logging_tools.get_plural("host", int(h_list.attrib["entries"]))))
             max_num_keys = 0
             _list = []

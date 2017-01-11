@@ -2142,7 +2142,7 @@ class cpuinfo_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         ret_state, pre_str = (limits.mon_STATE_OK, "OK")
         header_errors = []
-        out_list = logging_tools.new_form_list()
+        out_list = logging_tools.NewFormList()
         try:
             cpu_info = cpu_database.global_cpu_info(xml=srv_com.tree, parse=True)
         except:
@@ -2278,7 +2278,7 @@ class partinfo_command(hm_classes.hm_command):
                 logging_tools.get_plural("special mount", len(all_sys))
             )
         ]
-        to_list = logging_tools.new_form_list()
+        to_list = logging_tools.NewFormList()
         # to_list.set_format_string(2, pre_string="(", post_string=")")
         # to_list.set_format_string(3, left="", post_string=" MB,")
         ret_f.append("Partition overview")
@@ -2344,7 +2344,7 @@ class partinfo_command(hm_classes.hm_command):
                 )
         ret_f.extend(str(to_list).split("\n"))
         ret_f.append("System partition overview")
-        to_list = logging_tools.new_form_list()
+        to_list = logging_tools.NewFormList()
         for disk in all_sys:
             sys_stuff = sys_dict[disk]
             if type(sys_stuff) == dict:

@@ -67,7 +67,7 @@ def show_hm_help(options):
         print("\n")
     if not options.args or not to_show:
         # show module overview
-        out_list = logging_tools.new_form_list()
+        out_list = logging_tools.NewFormList()
         for _idx, mod in enumerate(modules.module_list):
             c_names = [name for name in valid_names if modules.command_dict[name].module == mod]
             local_valid_names = []
@@ -107,7 +107,7 @@ def show_cs_help(options):
         )
     )
     if to_show:
-        out_list = logging_tools.new_form_list()
+        out_list = logging_tools.NewFormList()
         for _idx, com_name in enumerate(com_names, 1):
             com = initat.cluster_server.modules.command_dict[com_name]
             out_list.append(

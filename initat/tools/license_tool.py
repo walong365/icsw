@@ -77,7 +77,7 @@ def main():
                 )
             )
     elif opts.mode == "list":
-        out_form = logging_tools.new_form_list()
+        out_form = logging_tools.NewFormList()
         for cur_lic in xml_res.findall(".//license"):
             out_form.append(
                 [

@@ -42,8 +42,8 @@ class AppEnum(Enum):
         "cluster-server",
         "sets device as a cluster-server (DB access)",
         egg_actions=[
-            EggAction("allegro", "user", weight=100, timeframe=160),
-            EggAction("vdesktop", "user", weight=20),
+            EggAction("allegro", "user", weight=100, timeframe=160, ghost=True),
+            EggAction("vdesktop", "user", weight=20, ghost=True),
         ]
     )
     mother_server = icswServiceEnumBase(
@@ -51,7 +51,7 @@ class AppEnum(Enum):
         "enables basic nodeboot via PXE functionalities",
         msi_block_name="mother",
         egg_actions=[
-            EggAction("handle", "device"),
+            EggAction("handle", "device", ghost=True),
         ]
     )
     monitor_server = icswServiceEnumBase(
@@ -59,16 +59,17 @@ class AppEnum(Enum):
         "sets device as the monitor master server",
         msi_block_name="md-config-server",
         egg_actions=[
-            EggAction("dashboard", "device", timeframe=60),
-            EggAction("history", "device", timeframe=60),
+            EggAction("dashboard", "device", timeframe=60, ghost=True),
+            EggAction("history", "device", timeframe=60, ghost=True),
+            EggAction("monconfig", "device", ghost=True),
         ]
     )
     discovery_server = icswServiceEnumBase(
         "discovery-server",
         "enables network discovery and inventory",
         egg_actions=[
-            EggAction("discover", "device"),
-            EggAction("asset", "device", timeframe=60),
+            EggAction("discover", "device", ghost=True),
+            EggAction("asset", "device", timeframe=60, ghost=True),
         ]
     )
     logcheck_server = icswServiceEnumBase(
@@ -79,7 +80,7 @@ class AppEnum(Enum):
         "package-server",
         "enables packge-server functionalities (RPM/deb distribution)",
         egg_actions=[
-            EggAction("handle", "device"),
+            EggAction("handle", "device", ghost=True),
         ]
     )
     collectd_server = icswServiceEnumBase(
@@ -87,14 +88,14 @@ class AppEnum(Enum):
         "Collect MachineVectors from remote machines and store them",
         msi_block_name="collectd",
         egg_actions=[
-            EggAction("graph", "device"),
+            EggAction("graph", "device", ghost=True),
         ]
     )
     rms_server = icswServiceEnumBase(
         "rms-server",
         "device hosts the RMS-server (Jobsystem)",
         egg_actions=[
-            EggAction("handle", "device"),
+            EggAction("handle", "device", ghost=True),
         ]
     )
     grapher_server = icswServiceEnumBase(
@@ -102,7 +103,7 @@ class AppEnum(Enum):
         "Draw graphs, frontend to collectd",
         msi_block_name="rrd-grapher",
         egg_actions=[
-            EggAction("graph", "device", timeframe=14),
+            EggAction("graph", "device", timeframe=500, ghost=True),
         ]
     )
     image_server = icswServiceEnumBase(
@@ -148,12 +149,12 @@ class AppEnum(Enum):
     bind_server = icswServiceEnumBase(
         "bind-server",
         "Configure a bind9 Server (Nameservice)",
-        root_service=False
+        root_service=False,
     )
     nmap_scan_device = icswServiceEnumBase(
         "nmap-scan-device",
         "Configure device to allow performing of nmap scans",
-        root_service=False
+        root_service=False,
     )
 
 register_service_enum(AppEnum, "backbone")

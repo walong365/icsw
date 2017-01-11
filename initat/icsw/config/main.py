@@ -48,7 +48,7 @@ def _service_enum_show_command(options):
     _c_dict = {entry.enum_name: entry for entry in ConfigServiceEnum.objects.all()}
     print("")
     print("ServiceEnums defined: {:d}".format(len(icswServiceEnum)))
-    _list = logging_tools.new_form_list()
+    _list = logging_tools.NewFormList()
     for entry in icswServiceEnum:
         if entry.name not in _c_dict:
             if options.sync and (entry.value.server_service or entry.value.relayer_service):
@@ -139,7 +139,7 @@ def _domain_enum_show_command(options):
     from initat.cluster.backbone.models import DomainTypeEnum
     print("")
     print("DomainEnums defined: {:d}".format(len(icswDomainEnum)))
-    _list = logging_tools.new_form_list()
+    _list = logging_tools.NewFormList()
     _c_dict = {entry.enum_name: entry for entry in DomainTypeEnum.objects.all()}
     for entry in icswDomainEnum:
         if entry.name not in _c_dict:

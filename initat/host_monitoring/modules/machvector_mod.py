@@ -96,7 +96,7 @@ class get_mvector_command(hm_classes.hm_command):
                     logging_tools.get_plural("key", len(used_keys)),
                 )
             ]
-            out_list = logging_tools.new_form_list()
+            out_list = logging_tools.NewFormList()
             max_num_keys = 0
             _list = []
             for mv_num, mv_key in enumerate(vector_keys):

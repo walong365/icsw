@@ -527,7 +527,7 @@ class form_entry_center(form_entry):
         form_entry.__init__(self, content, left=False, center=True, **kwargs)
 
 
-class new_form_list(object):
+class NewFormList(object):
     def __init__(self, **kwargs):
         self.__content = []
         self.__header_dict = {}
@@ -993,3 +993,5 @@ def get_logger(*args, **kwargs):
     from .logging_net import get_logger
     return get_logger(*args, **kwargs)
 
+# compatibility definitions
+new_form_list = NewFormList

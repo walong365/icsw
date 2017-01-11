@@ -99,7 +99,7 @@ def main(opts):
             "device"
         ).order_by("-date")
         print("{} found:".format(logging_tools.get_plural("Log entry", all_logs.count())))
-        new_entry = logging_tools.new_form_list()
+        new_entry = logging_tools.NewFormList()
         for cur_dl in all_logs:
             new_entry.append(
                 [

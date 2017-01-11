@@ -361,7 +361,7 @@ class server_process(server_mixins.ICSWBasePool):
                 elif scheme in self.__gen_schemes:
                     act_handler, s_type = (self.__gen_schemes[scheme], "G")
                 elif scheme == "list_schemes":
-                    _out_list = logging_tools.new_form_list()
+                    _out_list = logging_tools.NewFormList()
                     for _s_name in sorted(self.__local_schemes):
                         try:
                             _scheme = self.__local_schemes[_s_name](dummy_init=True, options="")

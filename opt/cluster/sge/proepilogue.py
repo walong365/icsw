@@ -449,7 +449,7 @@ class RMSJob(object):
                     )
                 else:
                     if global_config["CALLER_NAME"] == "prologue":
-                        s_list = logging_tools.new_form_list()
+                        s_list = logging_tools.NewFormList()
                     else:
                         s_list = None
                     num_lines, num_sge, num_init = (len(lines), 0, 0)
@@ -700,7 +700,7 @@ class RMSJob(object):
         )
 
     def _log_environments(self):
-        out_list = logging_tools.new_form_list()
+        out_list = logging_tools.NewFormList()
         for key in sorted(self.__env_dict.keys()):
             out_list.append(
                 [
@@ -712,7 +712,7 @@ class RMSJob(object):
             self.write_file(u"env_{}".format(global_config["CALLER_NAME"]), str(out_list).split("\n"))
         except:
             self.log("error creating env_ file: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-        out_list = logging_tools.new_form_list()
+        out_list = logging_tools.NewFormList()
         for key in sorted(self.__env_int_dict.keys()):
             out_list.append(
                 [
@@ -823,7 +823,7 @@ class RMSJob(object):
         if res_used:
             self._print("Resources used:")
             log_res = []
-            out_list = logging_tools.new_form_list()
+            out_list = logging_tools.NewFormList()
             for key, value in [(key, res_used[key]) for key in sorted(res_used.keys())]:
                 ext_str = ""
                 if key == "exit_status":
@@ -902,7 +902,7 @@ class RMSJob(object):
         if r_dict:
             res_keys = sorted(r_dict.keys())
             self.log("{} defined".format(logging_tools.get_plural("limit", len(res_keys))))
-            res_list = logging_tools.new_form_list()
+            res_list = logging_tools.NewFormList()
             for key in res_keys:
                 val = r_dict[key]
                 if isinstance(val, basestring):

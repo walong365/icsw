@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2016-2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -34,7 +34,7 @@ __all__ = [
 
 
 class EggAction(object):
-    def __init__(self, action, content_type, weight=1, timeframe=0):
+    def __init__(self, action, content_type, weight=1, timeframe=0, ghost=False):
         # timeframe is in days
         self.action = action
         if isinstance(content_type, basestring):
@@ -52,6 +52,7 @@ class EggAction(object):
         self.content_type = content_type
         self.weight = weight
         self.timeframe_secs = 24 * 3600 * timeframe
+        self.ghost = ghost
 
     def __unicode__(self):
         return u"{} {}".format(self.action, unicode(self.content_type))

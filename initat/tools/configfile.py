@@ -681,7 +681,7 @@ class Configuration(object):
     def get_config_info(self):
         gk = sorted(self.keys())
         if gk:
-            f_obj = logging_tools.new_form_list()
+            f_obj = logging_tools.NewFormList()
             for key in gk:
                 if self.get_type(key) in ["a", "d"]:
                     pv = self.pretty_print(key)

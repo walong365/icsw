@@ -54,13 +54,13 @@ def ova_show(opts):
     print("System cradle info: {}".format(unicode(_sys_c)))
     print("")
     print("Baskets defined: {:d}".format(icswEggBasket.objects.all().count()))
-    _out_list = logging_tools.new_form_list()
+    _out_list = logging_tools.NewFormList()
     for _basket in icswEggBasket.objects.all():
         _out_list.append(_basket.get_info_line())
     print(unicode(_out_list))
     print("")
     print("Consumers defined: {:d}".format(_sys_c.icsweggconsumer_set.all().count()))
-    _out_list = logging_tools.new_form_list()
+    _out_list = logging_tools.NewFormList()
     for _cons in _sys_c.icsweggconsumer_set.all():
         _out_list.append(_cons.get_info_line())
     print(unicode(_out_list))

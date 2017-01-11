@@ -223,7 +223,7 @@ def main(options):
     print("Found {}".format(logging_tools.get_plural("error record", len(errs_found))))
     if options.overview:
         if errs_found:
-            out_list = logging_tools.new_form_list()
+            out_list = logging_tools.NewFormList()
             for err in errs_found:
                 out_list.append(err.get_form_parts())
             print(unicode(out_list))
@@ -233,7 +233,7 @@ def main(options):
             uid_dict.setdefault(err.uid, []).append(err)
         all_uids = uid_dict.keys()
         all_uids.sort()
-        out_list = logging_tools.new_form_list()
+        out_list = logging_tools.NewFormList()
         for uid in all_uids:
             uid_stuff = uid_dict[uid]
             diff_sources = []

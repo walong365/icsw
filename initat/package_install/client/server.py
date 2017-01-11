@@ -91,7 +91,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             if r_dict:
                 res_keys = sorted(r_dict.keys())
                 self.log("{} defined".format(logging_tools.get_plural("limit", len(res_keys))))
-                res_list = logging_tools.new_form_list()
+                res_list = logging_tools.NewFormList()
                 for key in res_keys:
                     val = r_dict[key]
                     if isinstance(val, basestring):

@@ -53,7 +53,7 @@ def sjs(s_info, opt_dict):
     ret_list = [time.ctime()]
     s_info.build_luts()
     # running jobs
-    r_out_list = logging_tools.new_form_list()
+    r_out_list = logging_tools.NewFormList()
     left_justified = {"id", "task", "nodelist"}
     run_list = sge_tools.build_running_list(s_info, opt_dict)
     for run_job in run_list:
@@ -70,7 +70,7 @@ def sjs(s_info, opt_dict):
     if r_out_list:
         ret_list.append(str(r_out_list))
     # waiting jobs
-    w_out_list = logging_tools.new_form_list()
+    w_out_list = logging_tools.NewFormList()
     left_justified = {"id", "task", "depends"}
     wait_list = sge_tools.build_waiting_list(s_info, opt_dict)
     for wait_job in wait_list:
@@ -113,7 +113,7 @@ def sns(s_info, opt_dict):
         "slots_reserved": "sr",
         "slots_total": "st",
     }
-    out_list = logging_tools.new_form_list()
+    out_list = logging_tools.NewFormList()
     for cur_node in node_list:
         out_list.append(
             [

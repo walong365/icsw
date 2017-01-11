@@ -361,7 +361,7 @@ class ServiceContainer(object):
             }
         else:
             lic_dict = None
-        out_bl = logging_tools.new_form_list()
+        out_bl = logging_tools.NewFormList()
         types = sorted(list(set(res_xml.xpath(".//instance/@runs_on", start_strings=False))))
         _list = sum(
             [

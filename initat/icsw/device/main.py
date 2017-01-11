@@ -183,7 +183,7 @@ def device_syslog(opt_ns, cur_dev, j_logs):
             else:
                 print("no rate info found")
                 print(_rates)
-            _out_lines = logging_tools.new_form_list()
+            _out_lines = logging_tools.NewFormList()
             for _entry in process_tools.decompress_struct(_lines.text):
                 _out_lines.append(
                     [

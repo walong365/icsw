@@ -66,7 +66,7 @@ class Command(BaseCommand):
     def show(self, **opions):
 
         present_perms = self._get_perms()
-        out_list = logging_tools.new_form_list()
+        out_list = logging_tools.NewFormList()
         for perm in present_perms:
             out_list.append(
                 [

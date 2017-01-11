@@ -187,7 +187,7 @@ class write_etc_hosts(cs_base_class.icswCSServerCom):
         pen_list = sorted(loc_dict.keys())
         out_file = []
         for pen_value in pen_list:
-            act_out_list = logging_tools.new_form_list()
+            act_out_list = logging_tools.NewFormList()
             for entry in sorted(loc_dict[pen_value]):
                 act_out_list.append([logging_tools.form_entry(entry[0])] + [logging_tools.form_entry(cur_e) for cur_e in entry[1:]])
             host_lines = str(act_out_list).split("\n")

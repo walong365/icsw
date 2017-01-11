@@ -1035,7 +1035,7 @@ def main_local():
 
 
 def do_show_kernels(dev_assoc):
-    out_list = logging_tools.new_form_list(none_string="---")
+    out_list = logging_tools.NewFormList(none_string="---")
     if dev_assoc:
         all_kernels = kernel.objects.prefetch_related("new_kernel", "new_kernel__bootnetdevice").all().order_by("name")
         for cur_k in all_kernels:

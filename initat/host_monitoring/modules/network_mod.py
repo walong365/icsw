@@ -1702,7 +1702,7 @@ class network_info_command(hm_classes.hm_command):
         bridge_dict = srv_com["bridges"]
         net_dict = srv_com["networks"]
         net_names = sorted(net_dict.keys())
-        out_list = logging_tools.new_form_list()
+        out_list = logging_tools.NewFormList()
         # collect flags
         all_flags = set()
         for net_name in net_names:

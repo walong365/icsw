@@ -207,7 +207,7 @@ class rpmlist_command(hm_classes.hm_command):
         r_dict = server_command.decompress(srv_com["pkg_list"].text, pickle=True)
         root_dir = srv_com["root_dir"].text
         in_format = srv_com["format"].text
-        out_f = logging_tools.new_form_list()
+        out_f = logging_tools.NewFormList()
         keys = sorted(r_dict.keys())
         header_line = "{} found, system is {} (root is {})".format(
             logging_tools.get_plural("package", len(keys)),

@@ -266,7 +266,7 @@ class ipmi_sensor_command(hm_classes.hm_command):
             else:
                 # list mode
                 keys = s_list.xpath(".//@key", smart_strings=False)
-                out_list = logging_tools.new_form_list()
+                out_list = logging_tools.NewFormList()
                 for key in keys:
                     el = s_list.xpath("*[@key='{}']".format(key), smart_strings=False)[0]
                     v_list = [

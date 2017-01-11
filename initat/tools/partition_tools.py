@@ -360,7 +360,7 @@ class lvm_struct(object):
                 logging_tools.get_plural("VG", len(ret_info)),
                 "; ".join(ret_info))
         else:
-            ret_info = logging_tools.new_form_list()
+            ret_info = logging_tools.NewFormList()
             for vg_name in vg_names:
                 ret_info.append([
                     logging_tools.form_entry("VG", header="type"),

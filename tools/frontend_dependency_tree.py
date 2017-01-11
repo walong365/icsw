@@ -244,7 +244,7 @@ def main(args):
             _list = sorted(_list, key=attrgetter("name"))
         if args.order_by == "toplevel":
             _list = sorted(_list, key=attrgetter("top_level_dir"))
-        out_list = logging_tools.new_form_list()
+        out_list = logging_tools.NewFormList()
 
         files_referenced = {}
         for _def in _list:
