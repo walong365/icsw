@@ -217,7 +217,7 @@ def get_socket(context, r_type, **kwargs):
     # DEALER from grapher/server.py
     if r_type in ["ROUTER", "DEALER"]:
         if type(kwargs["identity"]) is str:
-            _sock.setsockopt_string(zmq.IDENTITY, kwargs["identity"])
+            _sock.setsockopt(zmq.IDENTITY, kwargs["identity"])
         else:
             _sock.setsockopt(zmq.IDENTITY, kwargs["identity"])
     if r_type in ["ROUTER"]:
@@ -672,7 +672,7 @@ class MSIBlock(object):
             E.start_time("{:d}".format(int(self.__start_time))),
             pid_list,
         )
-        file_content = etree.tostring(xml_struct, pretty_print=True, encoding=str)
+        file_content = etree.tostring(xml_struct, pretty_print=True, encoding="utf-8")
         path_name = self.path_name(self.__name)
         try:
             open(path_name, "w").write(file_content)

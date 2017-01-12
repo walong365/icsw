@@ -21,8 +21,6 @@
 #
 """ classes for multiprocessing (using multiprocessing) """
 
-
-
 try:
     import multiprocessing
 except NotImplementedError:
@@ -1241,7 +1239,7 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
 
     def _add_com_socket(self):
         zmq_socket = self.zmq_context.socket(zmq.ROUTER)
-        zmq_socket.setsockopt_string(zmq.IDENTITY, "main")
+        zmq_socket.setsockopt(zmq.IDENTITY, "main")
         zmq_socket.setsockopt(zmq.IMMEDIATE, True)
         zmq_socket.setsockopt(zmq.ROUTER_MANDATORY, True)
         process_tools.bind_zmq_socket(zmq_socket, self.queue_name)

@@ -22,8 +22,6 @@
 
 """ logging server, central logging facility, server-part """
 
-
-
 import grp
 import logging
 import os
