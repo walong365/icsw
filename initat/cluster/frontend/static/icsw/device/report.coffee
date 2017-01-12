@@ -293,6 +293,7 @@ device_report_module = angular.module(
             )
 
     $scope.new_devsel = (devs) ->
+        blockUI.start("Loading Data...")
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
@@ -345,6 +346,7 @@ device_report_module = angular.module(
                         idx_list.push(dev.idx)
 
                 initialize_buttons()
+                blockUI.stop()
         )
         
     $scope.get_tr_class = (obj) ->

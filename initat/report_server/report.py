@@ -2911,7 +2911,7 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
             row.append(asset_package.name)
             row.append(package_version.version)
             row.append(package_version.release)
-            row.append(package_version.size)
+            row.append(package_install_info.size)
             row.append(package_install_info.install_time)
             row.append(PackageTypeEnum(package_version.asset_package.package_type).name)
 

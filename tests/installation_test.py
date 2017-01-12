@@ -7,6 +7,9 @@ import paramiko
 import socket
 import sys
 import argparse
+
+import check_for_new_packages
+
 try:
     import configparser
 except ImportError:
@@ -35,6 +38,9 @@ RESET_PW_SCRIPT = "from initat.cluster.backbone.models import user;" \
 
 
 def install_icsw_base_system(host, username, password, package_manager, machine_name):
+    package_dict = check_for_new_packages.check_for_new_packages()
+    icsw_version, _ = package_dict[machine_name]
+
     # try to connect via ssh
     sys.stdout.write("Trying to connect via ssh ... ")
     sys.stdout.flush()
@@ -54,34 +60,51 @@ def install_icsw_base_system(host, username, password, package_manager, machine_
 
     setup_command = ""
     refresh_command = ""
+    icsw_server_version_command = ""
+    icsw_client_version_command = ""
+    expected_icsw_server_string = ""
+    expected_icsw_client_string = ""
     if package_manager == "zypper":
         refresh_command = "zypper --non-interactive --no-gpg-checks ref"
-        # icsw_server_version_command = "zypper info icsw-server"
-        # icsw_client_version_command = "zypper info icsw-client"
+        icsw_server_version_command = "zypper info icsw-server"
+        expected_icsw_server_string = "3.0-{}".format(icsw_version)
+        icsw_client_version_command = "zypper info icsw-client"
+        expected_icsw_client_string = "3.0-{}".format(icsw_version)
         setup_command = "zypper --non-interactive --no-gpg-checks in icsw-server icsw-client nginx-init"
     elif package_manager == "apt-get":
         refresh_command = "apt-get update"
-        # icsw_server_version_command = "apt-cache madison icsw-server"
-        # icsw_client_version_command = "apt-cache madison icsw-client"
+        icsw_server_version_command = "apt-cache madison icsw-server"
+        expected_icsw_server_string = "3.0-{}".format(icsw_version)
+        icsw_client_version_command = "apt-cache madison icsw-client"
+        expected_icsw_client_string = "3.0-{}".format(icsw_version)
         setup_command = "apt-get -y --force-yes install icsw-server icsw-client nginx-init"
     elif package_manager == "yum":
         refresh_command = "yum clean all"
-        # icsw_server_version_command = "yum info icsw-server"
-        # icsw_client_version_command = "yum info icsw-client"
+        icsw_server_version_command = "yum info icsw-server"
+        expected_icsw_server_string = "{}".format(icsw_version)
+        icsw_client_version_command = "yum info icsw-client"
+        expected_icsw_client_string = "{}".format(icsw_version)
         setup_command = "yum -t -y --nogpgcheck install icsw-server icsw-client nginx-init"
 
     commands = [
-        ("Refreshing package manager ... ", refresh_command),
-        ("Installing icsw-server and icsw-client ... ", setup_command),
-        ("Performing icsw setup ... ", "/opt/cluster/sbin/icsw setup --ignore-existing --engine psql --port 5432"),
-        ("Resetting admin password ... ", '/opt/cluster/sbin/clustermanage.py shell -c "{}"'.format(RESET_PW_SCRIPT)),
-        ("Enabling uwsgi-init ... ", "/opt/cluster/sbin/icsw service enable uwsgi-init"),
-        ("Enabling nginx ... ", "/opt/cluster/sbin/icsw service enable nginx"),
-        ("Restarting icsw services ... ",  "/opt/cluster/sbin/icsw service restart")
+        ("Refreshing package manager ... ", refresh_command, None),
+        ("Checking if icsw-server-3.0-{} is available ... ".format(icsw_version), icsw_server_version_command,
+         expected_icsw_server_string),
+        ("Checking if icsw-client-3.0-{} is available ... ".format(icsw_version), icsw_client_version_command,
+         expected_icsw_client_string),
+        ("Installing icsw-server and icsw-client ... ", setup_command, None),
+        ("Performing icsw setup ... ", "/opt/cluster/sbin/icsw setup --ignore-existing --engine psql --port 5432",
+         None),
+        ("Resetting admin password ... ", '/opt/cluster/sbin/clustermanage.py shell -c "{}"'.format(RESET_PW_SCRIPT),
+         None),
+        ("Enabling uwsgi-init ... ", "/opt/cluster/sbin/icsw service enable uwsgi-init", None),
+        ("Enabling nginx ... ", "/opt/cluster/sbin/icsw service enable nginx", None),
+        ("Setting role to noctua  ... ", "/opt/cluster/sbin/icsw config role noctua", None),
+        ("Restarting icsw services ... ",  "/opt/cluster/sbin/icsw service restart", None)
     ]
 
     with open("{}.log".format(machine_name), "a", 0) as log_file:
-        for status_msg, command in commands:
+        for status_msg, command, expected_string in commands:
             sys.stdout.write(status_msg)
             sys.stdout.flush()
 
@@ -89,12 +112,21 @@ def install_icsw_base_system(host, username, password, package_manager, machine_
             ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(command)
             log_file.write("*** Command executed: {}\n".format(command))
 
+            expected_string_found = True
+            if expected_string:
+                expected_string_found = False
+
             while True:
                 try:
                     output = next(ssh_stdout)
+                    if expected_string and expected_string in output:
+                        expected_string_found = True
                     log_file.write(output)
                 except StopIteration:
                     break
+
+            if not expected_string_found:
+                raise Exception("Expected string {} not found in output".format(expected_string))
 
             end_time = datetime.datetime.now()
 
