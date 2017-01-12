@@ -1,4 +1,4 @@
-#!/usr/bin/python-init -Otu
+#!/usr/bin/python3-init -Otu
 
 import sys
 sys.path.append(".")

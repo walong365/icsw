@@ -1,4 +1,4 @@
-#!/usr/bin/python-init -Otu
+#!/usr/bin/python3-init -Otu
 #
 # Copyright (c) 2007,2008,2009 Andreas Lang-Nevyjel, init.at
 #

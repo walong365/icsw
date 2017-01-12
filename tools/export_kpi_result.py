@@ -1,4 +1,4 @@
-#!/usr/bin/python-init
+#!/usr/bin/python3-init
 
 """
 Auxiliary script to export kpi results to csv.

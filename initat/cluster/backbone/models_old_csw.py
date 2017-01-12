@@ -1,4 +1,4 @@
-#!/usr/bin/python-init
+#!/usr/bin/python3-init
 """
  original database setup, optimized from inspectdb
  only use for the initial migration

@@ -1,4 +1,4 @@
-#!/usr/bin/python-init
+#!/usr/bin/python3-init
 
 from django.core.exceptions import ValidationError
 from django.db import models

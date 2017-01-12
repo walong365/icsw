@@ -1,4 +1,4 @@
-#!/usr/bin/python-init -Otu
+#!/usr/bin/python3-init -Otu
 # add to GridEngine config by adding
 # -jsv /opt/sge/3rd_paryt/test_jsv_log_deny.py to sge_request
 

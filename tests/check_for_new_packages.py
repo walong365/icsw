@@ -1,4 +1,4 @@
-#!/usr/bin/python-init -Ot
+#!/usr/bin/python3-init -Ot
 
 import urllib.request, urllib.error, urllib.parse
 import pickle

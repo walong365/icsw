@@ -1,4 +1,4 @@
-#!/usr/bin/python-init -Otu
+#!/usr/bin/python3-init -Otu
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2014-2017 Andreas Lang-Nevyjel
