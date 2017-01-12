@@ -241,7 +241,7 @@ class MainProcess(ICSWBasePoolClient):
                     server_command.SRV_REPLY_STATE_ERROR
                 )
             try:
-                zmq_sock.send_unicode(src_id, zmq.SNDMORE | zmq.NOBLOCK)
+                zmq_sock.send(src_id, zmq.SNDMORE | zmq.NOBLOCK)
                 zmq_sock.send_unicode(str(srv_com), zmq.NOBLOCK)
             except:
                 self.log(

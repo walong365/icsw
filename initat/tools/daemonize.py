@@ -31,7 +31,6 @@ import sys
 
 import daemon
 
-
 #  do NOT put initat imports here (otherwise path manipulations below will not work)
 
 

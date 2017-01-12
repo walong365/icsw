@@ -200,7 +200,7 @@ def call_command(act_command, log_com, close_fds=False, log_stdout=True):
         (_stderr, "stderr", logging_tools.LOG_LEVEL_ERROR)
     ]:
         if _val.strip():
-            _lines = _val.split("\n")
+            _lines = _val.decode("utf-8").split("\n")
             log_com("{} has {} ({})".format(_name, logging_tools.get_plural("byte", len(_val)), logging_tools.get_plural("line", len(_lines))))
             if log_stdout:
                 for _line_num, _line in enumerate(_lines):

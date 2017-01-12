@@ -20,10 +20,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+"""
+email tools for ICSW, to be refactored ...
+"""
 
-
-import email  # @UnusedImport
-import email.mime  # @UnusedImport
+import email
+import email.mime
 import mimetypes
 import os
 import smtplib
@@ -33,10 +35,11 @@ import sys
 from initat.tools import logging_tools, process_tools
 
 try:
-    import email.MIMEMultipart
-    import email.MIMEImage
-    import email.MIMEText
-    import email.MIMEMessage  # @UnusedImport
+    import email.mime.base
+    import email.mime.multipart
+    import email.mime.image
+    import email.mime.text
+    import email.mime.message
 except ImportError:
     # not present for python3
     pass
@@ -208,14 +211,14 @@ class mail(object):
                 new_text.append("\n".join(lines))
             if not isinstance(new_text[0], str):
                 new_text = [str(new_text[0], "utf-8")]
-            self.msg = email.MIMEText.MIMEText(new_text[0].encode("utf-8"), "html", "utf-8")
+            self.msg = email.mime.text.MIMEText(new_text[0].encode("utf-8"), "html", "utf-8")
             self.msg.set_charset("utf-8")
         else:
-            self.msg = email.MIMEMultipart.MIMEMultipart("utf-8")
+            self.msg = email.mime.multipart.MIMEMultipart("utf-8")
             self.msg.preamble = "This is a multi-part message in MIME-format."
             self.msg.attach(
-                email.MIMEText.MIMEText(
-                    "\n".join([line.encode("utf-8") for line in self.text] + [""]),
+                email.mime.text.MIMEText(
+                    "\n".join([line for line in self.text] + [""]),
                     "plain",
                     "utf-8"
                 )
@@ -237,7 +240,7 @@ class mail(object):
                 maintype, subtype = ctype.split("/", 1)
                 if maintype == "image":
                     try:
-                        self.msg.attach(email.MIMEImage.MIMEImage(open(obj, "rb").read()))
+                        self.msg.attach(email.mime.image.MIMEImage(open(obj, "rb").read()))
                     except:
                         msgs.append(
                             "error reading image file '{}' : {}".format(
@@ -247,7 +250,7 @@ class mail(object):
                         )
                 else:
                     try:
-                        new_msg = email.MIMEBase.MIMEBase(maintype, subtype)
+                        new_msg = email.mime.base.MIMEBase(maintype, subtype)
                         new_msg.set_payload(open(obj, "rb").read())
                         email.Encoders.encode_base64(new_msg)
                         new_msg.add_header("Content-Disposition", "attachment", filename=os.path.basename(obj))
