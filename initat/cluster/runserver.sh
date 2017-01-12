@@ -42,7 +42,7 @@ export ICSW_DEBUG_SOFTWARE=1
 
 echo "Starting daphne, worker and server ..."
 
-/opt/python-init/bin/daphne asgi:channel_layer -v 0 --bind 0.0.0.0 --port 8084 &
+/opt/cluster/bin/daphne asgi:channel_layer -v 0 --bind 0.0.0.0 --port 8084 &
 ./manage.py runworker -v 1 --only-channels=websocket.* &
 ./manage.py runserver --noworker --noasgi --traceback ${EXTRA_OPTIONS} 0.0.0.0:8081 &
 

@@ -22,8 +22,6 @@
 Django settings for ICSW
 """
 
-
-
 import base64
 import glob
 import hashlib
@@ -83,11 +81,12 @@ _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True, access_mode=config_store
 _vers = config_store.ConfigStore(VERSION_CS_NAME, quiet=True)
 _DEF_NAMES = ["database", "software", "models"]
 ICSW_VERSION_DICT = {
-    _name: _vers[_name] for _name in _DEF_NAMES
+    _name: _vers.get(_name, "???") for _name in _DEF_NAMES
 }
-ICSW_DATABASE_VERSION = _vers["database"]
-ICSW_SOFTWARE_VERSION = _vers["software"]
-ICSW_MODELS_VERSION = _vers["models"]
+
+ICSW_DATABASE_VERSION = ICSW_VERSION_DICT["database"]
+ICSW_SOFTWARE_VERSION = ICSW_VERSION_DICT["software"]
+ICSW_MODELS_VERSION = ICSW_VERSION_DICT["models"]
 
 ICSW_DEBUG = process_tools.get_machine_name() in ["eddie", "lemmy"]
 
