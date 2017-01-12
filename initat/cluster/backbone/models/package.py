@@ -88,7 +88,7 @@ class package_repo(models.Model):
     )
     # service = models.CharField(max_length=128, default="")
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     @property
@@ -181,7 +181,7 @@ class package_search(models.Model):
     last_search = models.DateTimeField(null=True, auto_now_add=True)
     created = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.search_string
 
     class CSW_Meta:
@@ -279,7 +279,7 @@ class package(models.Model):
             always_latest="{:d}".format(1 if self.always_latest else 0),
         )
 
-    def __unicode__(self):
+    def __str__(self):
         if self.always_latest:
             return "{}-LATEST".format(self.name)
         else:

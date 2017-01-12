@@ -33,7 +33,7 @@ __all__ = [
 
 
 class domain_tree_node_serializer(serializers.ModelSerializer):
-    tree_info = serializers.CharField(source="__unicode__", read_only=True)
+    tree_info = serializers.CharField(source="__str__", read_only=True)
 
     class Meta:
         fields = "__all__"

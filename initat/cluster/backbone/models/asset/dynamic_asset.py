@@ -83,7 +83,7 @@ class AssetHWMemoryEntry(models.Model):
     capacity = models.BigIntegerField(null=True)
     created = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "BankLabel:{}|FormFactor:{}|MemoryType:{}|Manufacturer:{}|Capacity:{}".format(
             self.banklabel,
             self.formfactor,
@@ -105,7 +105,7 @@ class AssetHWCPUEntry(models.Model):
     numberofcores = models.IntegerField(null=True)
     created = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "Name:{}|Cores:{}".format(self.name, self.numberofcores)
 
 
@@ -114,7 +114,7 @@ class AssetHWGPUEntry(models.Model):
     name = models.TextField(null=True)
     created = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "Name:{}".format(self.name)
 
 
@@ -125,7 +125,7 @@ class AssetHWDisplayEntry(models.Model):
     ypixels = models.IntegerField(null=True)
     manufacturer = models.TextField(null=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "Name:{}|xpixels:{}|ypixels:{}|manufacturer:{}".format(
             self.name,
             self.xpixels,
@@ -142,7 +142,7 @@ class AssetHWNetworkDevice(models.Model):
     speed = models.BigIntegerField(null=True)
     mac_address = models.TextField(null=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "Name:{}|Manufacturer:{}|Product Name:{}|Speed:{}|MAC:{}".format(
                 self.device_name,
                 self.manufacturer,
@@ -229,7 +229,7 @@ class AssetHardwareEntry(models.Model):
     parent = models.ForeignKey("backbone.AssetHardwareEntry", null=True)
     created = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "AssetHardwareEntry {}".format(self.type)
 
     class Meta:
@@ -246,7 +246,7 @@ class AssetLicenseEntry(models.Model):
     asset_run = models.ForeignKey("backbone.AssetRun")
     created = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "{} [license_key:{}]".format(self.name, self.license_key)
 
     class Meta:
@@ -275,7 +275,7 @@ class AssetUpdateEntry(models.Model):
     # new version (for RPMs)
     new_version = models.CharField(default="", max_length=64)
 
-    def __unicode__(self):
+    def __str__(self):
         return "AssetUpdate name={}".format(self.name)
 
     class Meta:
@@ -292,7 +292,7 @@ class AssetProcessEntry(models.Model):
     name = models.CharField(default="", max_length=255)
     created = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "AssetProcess pid={:d}".format(self.pid)
 
     class Meta:
@@ -321,7 +321,7 @@ class AssetPCIEntry(models.Model):
     vendorname = models.CharField(default="", max_length=255)
     created = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "AssetPCIEntry {:04x}:{:02x}:{:02x}.{:x} {}".format(
             self.domain,
             self.bus,
@@ -342,7 +342,7 @@ class AssetDMIHead(models.Model):
     size = models.IntegerField(default=0)
     created = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "AssetDMIHead"
 
 
@@ -360,7 +360,7 @@ class AssetDMIHandle(models.Model):
     length = models.IntegerField(default=0)
     created = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "AssetDMIHandle {:d}: {}".format(
             self.handle,
             self.header,
@@ -381,7 +381,7 @@ class AssetDMIValue(models.Model):
     value = models.TextField(default="")
     created = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "AssetDMIValue {}".format(
             self.key,
         )
@@ -1061,7 +1061,7 @@ class AssetBatch(models.Model):
     def __repr__(self):
         return str(self)
 
-    def __unicode__(self):
+    def __str__(self):
         return "AssetBatch for device '{}'".format(
             str(self.device)
         )

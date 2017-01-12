@@ -124,7 +124,7 @@ class Kpi(models.Model):
             raise RuntimeError("get_historic_data() called for kpi with no defined time range.")
         return start, end
 
-    def __unicode__(self):
+    def __str__(self):
         return "KPI {}".format(self.name)
 
     class Meta:
@@ -150,7 +150,7 @@ class DataSourceTuple(models.Model):
             self.monitoring_category,
         )
 
-    __unicode__ = __repr__  # useful for force_text
+    __str__ = __repr__  # useful for force_text
 
     class Meta:
         abstract = True
@@ -168,7 +168,7 @@ class KpiDataSourceTuple(DataSourceTuple):
             self.monitoring_category,
         )
 
-    __unicode__ = __repr__  # useful for force_text
+    __str__ = __repr__  # useful for force_text
 
     class Meta:
         verbose_name = "KPI data sources"

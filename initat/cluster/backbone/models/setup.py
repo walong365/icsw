@@ -56,7 +56,7 @@ class architecture(models.Model):
         db_table = 'architecture'
         verbose_name = "Architecture"
 
-    def __unicode__(self):
+    def __str__(self):
         return self.architecture
 
 
@@ -188,7 +188,7 @@ class image(models.Model):
         else:
             xml_wrapper.error("image already exists", logger)
 
-    def __unicode__(self):
+    def __str__(self):
         return "Image {} ({}, arch={})".format(self.name, self.full_version, str(self.architecture))
 
     class Meta:
@@ -273,7 +273,7 @@ class kernel(models.Model):
     def full_version(self):
         return "{:d}.{:d}".format(self.version, self.release)
 
-    def __unicode__(self):
+    def __str__(self):
         return "Kernel {} (is {}, {})".format(self.display_name, self.name, self.full_version)
 
     class CSW_Meta:

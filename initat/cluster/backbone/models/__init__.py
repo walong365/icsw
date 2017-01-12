@@ -297,7 +297,7 @@ class status(models.Model):
     def info_string(self):
         return str(self)
 
-    def __unicode__(self):
+    def __str__(self):
         # print ".", self.status
         return "{} ({}){}".format(
             self.status,
@@ -346,7 +346,7 @@ class ConfigTreeNode(models.Model):
     def get_type_str(self):
         return "dir" if self.is_dir else ("link" if self.is_link else "file")
 
-    def __unicode__(self):
+    def __str__(self):
         return "ConfigTreNode, {}".format(self.get_type_str())
 
 
@@ -395,7 +395,7 @@ class quota_capable_blockdevice(models.Model):
     size = models.BigIntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "qcb {} ({})".format(self.block_device_path, self.mount_path)
 
 

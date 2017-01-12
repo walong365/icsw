@@ -119,7 +119,7 @@ class RouteTrace(models.Model):
     to_name = models.CharField(max_length=64)
     created = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "RouteTrace, session {} ({:d}) from {} to {}".format(
             self.session_id,
             self.user_id,
@@ -386,7 +386,7 @@ class csw_permission(models.Model):
     def scope(self):
         return "G/O" if self.valid_for_object_level else "G"
 
-    def __unicode__(self):
+    def __str__(self):
         return "{} | {} | {} | {}".format(
             self.content_type.app_label or "backbone",
             self.content_type.model,
@@ -405,7 +405,7 @@ class csw_object_permission(models.Model):
     csw_permission = models.ForeignKey(csw_permission)
     object_pk = models.IntegerField(default=0)
 
-    def __unicode__(self):
+    def __str__(self):
         model_class = self.csw_permission.content_type.model_class()
         try:
             obj = model_class.objects.get(pk=self.object_pk)
@@ -472,7 +472,7 @@ class user_permission(models.Model):
     class Meta:
         verbose_name = "Global permissions of users"
 
-    def __unicode__(self):
+    def __str__(self):
         return "Permission {} for user {}".format(
             str(self.csw_permission),
             str(self.user),
@@ -503,7 +503,7 @@ class RolePermission(models.Model):
     class Meta:
         verbose_name = "Global permissions of Role"
 
-    def __unicode__(self):
+    def __str__(self):
         return "Permission {} for role {}".format(
             str(self.csw_permission),
             str(self.role),
@@ -534,7 +534,7 @@ class RoleObjectPermission(models.Model):
     class Meta:
         verbose_name = "Global Object permissions of Role"
 
-    def __unicode__(self):
+    def __str__(self):
         return "Object permission {} for role {}".format(
             str(self.csw_object_permission),
             str(self.role),
@@ -562,7 +562,7 @@ class user_object_permission(models.Model):
     level = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "Permission {} for user {}".format(
             str(self.csw_object_permission),
             str(self.user),
@@ -1032,7 +1032,7 @@ class user(models.Model):
     def get_info(self):
         return str(self)
 
-    def __unicode__(self):
+    def __str__(self):
         _add_fields = [
             _entry for _entry in [
                 str(self.first_name) or "",
@@ -1209,7 +1209,7 @@ class group(models.Model):
         ordering = ("groupname",)
         verbose_name = "Group"
 
-    def __unicode__(self):
+    def __str__(self):
         return "{} (gid={:d})".format(
             self.groupname,
             self.gid)
@@ -1354,7 +1354,7 @@ class user_variable(models.Model):
         )
         _new_var.save()
 
-    def __unicode__(self):
+    def __str__(self):
         return "UserVar {} type {}, {}, {}".format(
             self.name,
             self.var_type,
@@ -1611,7 +1611,7 @@ class Role(models.Model):
     object_perms = models.ManyToManyField(csw_object_permission, related_name="role_perms", blank=True, through=RoleObjectPermission)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     class Meta:

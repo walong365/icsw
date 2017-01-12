@@ -60,7 +60,7 @@ class DeviceSelection(models.Model):
             []
         )
 
-    def __unicode__(self):
+    def __str__(self):
         return "Selection '{}' for user {}".format(
             self.name,
             str(self.user),

@@ -204,7 +204,7 @@ class domain_tree_node(models.Model):
             []
         )
 
-    def __unicode__(self):
+    def __str__(self):
         if self.depth:
             return self.full_name
             # if self.depth > 2:
@@ -529,7 +529,7 @@ class category(models.Model):
             []
         )
 
-    def __unicode__(self):
+    def __str__(self):
         return "{}".format(self.full_name if self.depth else "[TLN]")
 
     @property

@@ -332,7 +332,7 @@ class License(models.Model):
     file_name = models.CharField(max_length=512)
     license_file = models.TextField()  # contains the exact file content of the respective license files
 
-    def __unicode__(self):
+    def __str__(self):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
         return LicenseFileReader(self.license_file, self.file_name).license_info
 
@@ -426,7 +426,7 @@ class icswEggCradle(models.Model):
         self.installed = _installed
         self.save(update_fields=["available", "available_ghost", "installed"])
 
-    def __unicode__(self):
+    def __str__(self):
         return "EggCradle, {:d} installed, {:d} available ({:d} ghost)".format(
             self.installed,
             self.available,
@@ -519,7 +519,7 @@ class icswEggBasket(models.Model):
             logging_tools.form_entry_right(self.eggs, header="eggs"),
         ]
 
-    def __unicode__(self):
+    def __str__(self):
         return "EggBasket (valid={})".format(self.is_valid)
 
 
@@ -640,7 +640,7 @@ class icswEggEvaluationDef(models.Model):
     class Meta:
         abstract = False
 
-    def __unicode__(self):
+    def __str__(self):
         return "EggEvaluationDef (dummy={}, active={})".format(
             self.dummy,
             self.active,
@@ -764,7 +764,7 @@ class icswEggConsumer(models.Model):
             logging_tools.form_entry_right("{:.2f}".format(float(_consumed) / float(_consumers)) if _consumers else "-", header="mean"),
         ]
 
-    def __unicode__(self):
+    def __str__(self):
         return "EggConsumer {}@{} -> {} per {}".format(
             self.action,
             self.config_service_enum.name,

@@ -326,7 +326,7 @@ class ConfigTreeStruct(object):
         else:
             return "empty"
 
-    def __unicode__(self):
+    def __str__(self):
         return "\n".join(
             [
                 "{}{} ({:d}, {:d}), {}".format(

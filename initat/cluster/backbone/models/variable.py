@@ -106,7 +106,7 @@ class device_variable_scope(models.Model):
     default_scope = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "device_variable_scope '{}'".format(
             self.name,
         )
@@ -142,7 +142,7 @@ class dvs_allowed_name(models.Model):
     description = models.TextField(default="", blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "Allowed for scope {}: '{}', forced_type='{}', group='{}'".format(
             self.device_variable_scope.name,
             self.name,
@@ -256,7 +256,7 @@ class device_variable(models.Model):
                 setattr(self, "val_{}".format(_long), None)
     value = property(get_value, set_value)
 
-    def __unicode__(self):
+    def __str__(self):
         return "{}[{}] = {}".format(
             self.name,
             self.var_type,

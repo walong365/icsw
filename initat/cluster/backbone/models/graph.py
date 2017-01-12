@@ -80,7 +80,7 @@ class MachineVector(models.Model):
     dir_name = models.CharField(max_length=128, default="")
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "MachineVector for device {}".format(str(self.device))
 
 
@@ -112,7 +112,7 @@ class MVStructEntry(models.Model):
     # was init_time
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "MVStructEntry ({}, {}{}), file is {}".format(
             self.se_type,
             self.key,
@@ -156,7 +156,7 @@ class MVValueEntry(models.Model):
     # sane_name is also ignored because this is handled by collectd to generate filesystem-safe filenames ('/' -> '_sl_')
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "MVValueEntry ({}{}, '{}'), '{}' b/f={:d}/{:d} ({})".format(
             self.key or "NONE",
             ", name={}@{:d}".format(self.name, self.rra_idx) if (self.name or self.rra_idx) else "",
@@ -256,7 +256,7 @@ class SensorAction(models.Model):
                 )
             ]
 
-    def __unicode__(self):
+    def __str__(self):
         return "SensorAction {}".format(self.name)
 
 
@@ -281,7 +281,7 @@ class SensorThreshold(models.Model):
     device_selection = models.ForeignKey("backbone.DeviceSelection", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "SensorThreshold '{}' [{}@{:.4f}({}), {}@{:.4f}({})] for {}".format(
             self.name,
             str(self.lower_sensor_action),
@@ -392,7 +392,7 @@ class GraphSettingTimeshift(models.Model):
     seconds = models.IntegerField(default=0, unique=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "GraphSettingTimeshift {}".format(self.name)
 
 
@@ -408,7 +408,7 @@ class GraphSettingForecast(models.Model):
     )
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "GraphSettingForecast {}".format(self.name)
 
 
@@ -463,7 +463,7 @@ class GraphSetting(models.Model):
         if not db_limit_1():
             unique_together = [("user", "name")]
 
-    def __unicode__(self):
+    def __str__(self):
         return "GraphSetting '{}'".format(self.name)
 
 
@@ -493,7 +493,7 @@ class GraphTimeFrame(models.Model):
     timeframe_offset = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "GraphTimeFrame '{}'".format(self.name)
 
     class Meta:

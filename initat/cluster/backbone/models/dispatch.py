@@ -88,7 +88,7 @@ class DispatcherSettingSchedule(models.Model):
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "Schedule {}".format(self.name)
 
 

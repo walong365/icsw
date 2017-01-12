@@ -40,7 +40,7 @@ class snmp_scheme_vendor(models.Model):
     company_info = models.CharField(max_length=256, default="")
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "snmp_scheme_vendor {}".format(self.name)
 
 
@@ -66,7 +66,7 @@ class snmp_scheme(models.Model):
     priority = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "snmp_scheme {}".format(self.name)
 
     @property

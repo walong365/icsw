@@ -77,7 +77,7 @@ class RouterObject(object):
     def add_nodes(self):
         self.nx.add_nodes_from(list(self.nd_dict.keys()))
         for _key in sorted(self.nd_dict.keys()):
-            self.fp.update("n{:d}".format(_key))
+            self.fp.update("n{:d}".format(_key).encode("utf-8"))
 
     def create_trace_generation(self):
         # create new MonHostTrace Generation
@@ -91,7 +91,7 @@ class RouterObject(object):
         for node_pair, penalty in self.simple_peer_dict.items():
             src_node, dst_node = node_pair
             self.nx.add_edge(src_node, dst_node, weight=penalty)
-            self.fp.update("e{:d},{:d},{:d}".format(src_node, dst_node, penalty))
+            self.fp.update("e{:d},{:d},{:d}".format(src_node, dst_node, penalty).encode("utf-8"))
 
     @property
     def latest_update(self):

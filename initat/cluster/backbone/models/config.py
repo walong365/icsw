@@ -75,7 +75,7 @@ class config_catalog(models.Model):
         )
         return def_cc
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     class Meta:
@@ -122,7 +122,7 @@ class ConfigServiceEnum(models.Model):
         if _changed:
             self.save()
 
-    def __unicode__(self):
+    def __str__(self):
         return "ConfigServerEnum {}".format(self.name)
 
 
@@ -143,7 +143,7 @@ class config(models.Model):
     # categories for this config
     categories = models.ManyToManyField("backbone.category", blank=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     def show_variables(self, log_com, detail=False):
@@ -292,7 +292,7 @@ class config_str(models.Model):
     def get_object_type(self):
         return "str"
 
-    def __unicode__(self):
+    def __str__(self):
         return self.value or ""
 
     class Meta:
@@ -361,7 +361,7 @@ class config_bool(models.Model):
     def get_object_type(self):
         return "bool"
 
-    def __unicode__(self):
+    def __str__(self):
         return "True" if self.value else "False"
 
     class Meta:
@@ -406,7 +406,7 @@ class config_int(models.Model):
     def get_object_type(self):
         return "int"
 
-    def __unicode__(self):
+    def __str__(self):
         if isinstance(self.value, str):
             self.value = int(self.value)
         return "{:d}".format(self.value or 0)

@@ -149,7 +149,7 @@ class MonHostTrace(models.Model):
     def match(self, traces):
         return self.traces == MonHostTrace.dump_trace(traces)
 
-    def __unicode__(self):
+    def __str__(self):
         return "MHT for {}".format(str(self.device))
 
 
@@ -239,7 +239,7 @@ class mon_host_cluster(models.Model):
     user_editable = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     class Meta:
@@ -272,7 +272,7 @@ class mon_service_cluster(models.Model):
     user_editable = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     class Meta:
@@ -297,7 +297,7 @@ class host_check_command(models.Model):
     command_line = models.CharField(max_length=128, unique=True, blank=False, null=False)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "hcc_{}".format(self.name)
 
 
@@ -325,7 +325,7 @@ class mon_check_command_special(models.Model):
         verbose_name = "Special check command"
         ordering = ("group", "name",)
 
-    def __unicode__(self):
+    def __str__(self):
         return "mccs_{}".format(self.name)
 
 
@@ -481,10 +481,10 @@ class mon_check_command(models.Model):
             "mon_icinga_log_raw_service_downtime_data",
         ]
 
-    def __unicode__(self):
+    def __str__(self):
         return "mcc_{}".format(self.name)
 
-    __repr__ = __unicode__
+    __repr__ = __str__
 
 
 @receiver(signals.pre_save, sender=mon_check_command)
@@ -539,7 +539,7 @@ class mon_contact(models.Model):
             self.user.last_name,
         )
 
-    def __unicode__(self):
+    def __str__(self):
         return str(self.user)
 
     class Meta:
@@ -575,7 +575,7 @@ class mon_notification(models.Model):
     enabled = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "{} ({} via {})".format(
             self.name,
             self.not_type,
@@ -611,7 +611,7 @@ class mon_contactgroup(models.Model):
     service_templates = models.ManyToManyField("backbone.mon_service_templ", blank=True)
     service_esc_templates = models.ManyToManyField("backbone.mon_service_esc_templ", blank=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     class Meta:
@@ -659,7 +659,7 @@ class mon_device_templ(models.Model):
     freshness_threshold = models.IntegerField(default=60)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     class Meta:
@@ -699,7 +699,7 @@ class mon_device_esc_templ(models.Model):
     nplanned_downtime = models.BooleanField(default=False, verbose_name="Notify on planned downtime")
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 
@@ -753,7 +753,7 @@ class mon_host_dependency_templ(models.Model):
             ]
         ) or "n"
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     class Meta:
@@ -841,7 +841,7 @@ class mon_service_dependency_templ(models.Model):
             ]
         ) or "n"
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     class Meta:
@@ -916,7 +916,7 @@ class mon_ext_host(models.Model):
     statusmap_image = models.CharField(max_length=192, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     def data_image_field(self):
@@ -941,7 +941,7 @@ class mon_period(models.Model):
     sat_range = models.CharField(max_length=48, blank=True, db_column="satrange")
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     class Meta:
@@ -1006,7 +1006,7 @@ class mon_service_templ(models.Model):
     freshness_threshold = models.IntegerField(default=60)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     class Meta:
@@ -1050,7 +1050,7 @@ class mon_service_esc_templ(models.Model):
     nplanned_downtime = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 
@@ -1204,7 +1204,7 @@ class monitoring_hint(models.Model):
             ] if getattr(self, "{}_{}_source".format(key, v_type)) != "n"
         ]
 
-    def __unicode__(self):
+    def __str__(self):
         return "{} ({}) for {}, ds {}, persistent {}".format(
             self.m_type,
             self.key,

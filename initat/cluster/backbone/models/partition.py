@@ -61,7 +61,7 @@ class partition_fs(models.Model):
     def need_mountpoint(self):
         return True if self.hexid in ["83"] else False
 
-    def __unicode__(self):
+    def __str__(self):
         return self.descr
 
     class CSW_Meta:
@@ -281,7 +281,7 @@ class partition_disc(models.Model):
         ordering = ("priority", "disc",)
         verbose_name = "Partition: Disc"
 
-    def __unicode__(self):
+    def __str__(self):
         return self.disc
 
 
@@ -392,7 +392,7 @@ class partition_table(models.Model):
             self.save()
         return prob_list
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     class Meta:

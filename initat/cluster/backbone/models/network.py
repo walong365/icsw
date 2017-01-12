@@ -118,7 +118,7 @@ class network_device_type(models.Model):
         new_ndt.save()
         return new_ndt
 
-    def __unicode__(self):
+    def __str__(self):
         return "{} ({} [{:d}])".format(
             self.identifier,
             self.description,
@@ -181,7 +181,7 @@ class network_type(models.Model):
     class Meta:
         db_table = 'network_type'
 
-    def __unicode__(self):
+    def __str__(self):
         return "{} ({})".format(
             self.description,
             self.identifier
@@ -313,7 +313,7 @@ class network(models.Model):
     def info_string(self):
         return str(self)
 
-    def __unicode__(self):
+    def __str__(self):
         return "{} ({}/{}, {})".format(
             self.identifier,
             self.network,
@@ -465,7 +465,7 @@ class net_ip(models.Model):
     def get_hex_ip(self):
         return "".join(["%02X" % (int(part)) for part in self.ip.split(".")])
 
-    def __unicode__(self):
+    def __str__(self):
         return self.ip
 
     @property
@@ -781,7 +781,7 @@ class netdevice(models.Model):
     def ethtool_string(self):
         return ",".join(["FIXME", "ethool_string()"])
 
-    def __unicode__(self):
+    def __str__(self):
         return self.devname
 
 
@@ -929,7 +929,7 @@ class netdevice_speed(models.Model):
                 speed_dict[_entry.speed_bps] = _entry
         return speed_dict
 
-    def __unicode__(self):
+    def __str__(self):
         if self.speed_bps:
             _s_str, lut_idx = ("", 0)
             cur_s = self.speed_bps
@@ -987,7 +987,7 @@ class NetworkPeer(models.Model):
     peer_type = models.ForeignKey("backbone.NetworkPeerType")
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return u"{} [{:d}] {}".format(
             self.source_netdevice.devname,
             self.penalty,
@@ -1008,7 +1008,7 @@ class peer_information(models.Model):
     info = models.CharField(default="", max_length=256, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "{} [{:d}] {}".format(
             self.s_netdevice.devname,
             self.penalty,

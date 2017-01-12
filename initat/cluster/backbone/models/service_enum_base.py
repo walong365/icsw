@@ -54,7 +54,7 @@ class EggAction(object):
         self.timeframe_secs = 24 * 3600 * timeframe
         self.ghost = ghost
 
-    def __unicode__(self):
+    def __str__(self):
         return "{} {}".format(self.action, str(self.content_type))
 
 

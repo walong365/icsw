@@ -1280,7 +1280,7 @@ class SystemTask(object):
         self.points = points
         SystemTask.add_task(self)
 
-    def __unicode__(self):
+    def __str__(self):
         return "SystemTask {}".format(self.name)
 
     def __repr__(self):

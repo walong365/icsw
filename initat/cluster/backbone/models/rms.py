@@ -73,7 +73,7 @@ class rms_project(models.Model):
     # fshare = models.FloatField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 
@@ -84,7 +84,7 @@ class rms_department(models.Model):
     # fshare = models.FloatField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
 
@@ -93,7 +93,7 @@ class rms_queue(models.Model):
     name = models.CharField(unique=True, max_length=255)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "queue {}".format(self.name)
 
 
@@ -102,7 +102,7 @@ class rms_pe(models.Model):
     name = models.CharField(unique=True, max_length=255)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "pe {}".format(self.name)
 
 
@@ -117,7 +117,7 @@ class rms_user(models.Model):
     default_project = models.ForeignKey("backbone.rms_project", null=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "rms_user {}".format(self.name)
 
 
@@ -409,7 +409,7 @@ class rms_job(models.Model):
             _latest_run.save(update_fields=["end_time_py"])
         return _latest_run
 
-    def __unicode__(self):
+    def __str__(self):
         return "job {}".format(self.full_id)
 
 
@@ -461,7 +461,7 @@ class rms_job_run(models.Model):
     def get_rms_job_variables(self):
         return self.rmsjobvariable_set.all()
 
-    def __unicode__(self):
+    def __str__(self):
         return "run for {} in {}".format(
             str(self.rms_job),
             str(self.rms_queue),
@@ -525,10 +525,10 @@ class ext_license(ext_license_base):
     name = models.CharField(max_length=128, unique=True)
     ext_license_site = models.ForeignKey("backbone.ext_license_site")
 
-    def __unicode__(self):
+    def __str__(self):
         return "ExternalLicense(name={})".format(self.name)
 
-    __repr__ = __unicode__
+    __repr__ = __str__
 
     class CSW_Meta:
         fk_ignore_list = [
@@ -738,7 +738,7 @@ class RMSJobVariable(models.Model):
     def var_type(self):
         return self.get_parsed_type_display()
 
-    def __unicode__(self):
+    def __str__(self):
         return "RMSJobVariable '{}'".format(self.name)
 
     class Meta:

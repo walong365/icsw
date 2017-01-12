@@ -133,7 +133,7 @@ class HardwareFingerPrint(models.Model):
     def deserialize(in_str):
         return server_command.decompress(in_str, json=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "HFP for {} ({})".format(
             str(self.device),
             self.fingerprint,
@@ -418,7 +418,7 @@ class device(models.Model):
             device=self,
         )
 
-    def __unicode__(self):
+    def __str__(self):
         return "{}{}".format(
             self.name,
             " ({})".format(self.comment) if self.comment else ""
@@ -643,7 +643,7 @@ class DeviceScanLock(models.Model):
         # close current lock and return a list of (what, level) lines
         return [("closed {}".format(str(self)), logging_tools.LOG_LEVEL_OK)]
 
-    def __unicode__(self):
+    def __str__(self):
         return "DSL {}".format(self.uuid)
 
 
@@ -691,7 +691,7 @@ class DeviceClass(models.Model):
     create_user = models.ForeignKey("backbone.user", null=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         if self.system_class:
             if self.default_system_class:
                 _ci = "*SYS"
@@ -726,7 +726,7 @@ class cd_connection(models.Model):
     parameter_i4 = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "{} (via {}) {}".format(
             str(self.parent),
             self.connection_info,
@@ -810,7 +810,7 @@ class device_group(models.Model):
             ("access_device_group", "Access to Device Group", True),
         )
 
-    def __unicode__(self):
+    def __str__(self):
         return "{}{}{}".format(
             self.name,
             " ({})".format(self.description) if self.description else "",
@@ -867,7 +867,7 @@ class LogLevel(models.Model):
     name = models.CharField(max_length=32, unique=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "{} ({:d})".format(self.name, self.level)
 
 
@@ -920,7 +920,7 @@ class LogSource(models.Model):
             cur_source = sources[0]
         return cur_source
 
-    def __unicode__(self):
+    def __str__(self):
         return "{} ({})".format(
             self.identifier,
             self.description)
@@ -978,7 +978,7 @@ class DeviceLogEntry(models.Model):
         )
         return cur_log
 
-    def __unicode__(self):
+    def __str__(self):
         return "{} ({}, {}:{:d}, {})".format(
             self.text,
             self.source.identifier,

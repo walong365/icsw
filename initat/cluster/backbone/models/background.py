@@ -113,7 +113,7 @@ class background_job(models.Model):
     # result, is server_REPLY
     result = models.IntegerField(default=server_command.SRV_REPLY_STATE_UNSET)
 
-    def __unicode__(self):
+    def __str__(self):
         return "background_job {:d}".format(self.idx)
 
     def initiator_name(self):
