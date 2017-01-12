@@ -33,25 +33,25 @@ __all__ = [
 
     # config stores
 
-    b"GEN_CS_NAME",
-    b"DB_ACCESS_CS_NAME",
-    b"VERSION_CS_NAME",
+    "GEN_CS_NAME",
+    "DB_ACCESS_CS_NAME",
+    "VERSION_CS_NAME",
 
     # directories
 
-    b"ICSW_ROOT",
-    b"CLUSTER_DIR",
-    b"CONFIG_STORE_ROOT",
-    b"USER_EXTENSION_ROOT",
-    b"LOG_ROOT",
-    b"MON_DAEMON_INFO_FILE",
-    b"PY_LIBDIR_SHORT",
-    b"SITE_PACKAGES_BASE",
+    "ICSW_ROOT",
+    "CLUSTER_DIR",
+    "CONFIG_STORE_ROOT",
+    "USER_EXTENSION_ROOT",
+    "LOG_ROOT",
+    "MON_DAEMON_INFO_FILE",
+    "PY_LIBDIR_SHORT",
+    "SITE_PACKAGES_BASE",
 
-    b"INITAT_BASE",
-    b"INITAT_BASE_DEBUG",
+    "INITAT_BASE",
+    "INITAT_BASE_DEBUG",
     #
-    b"META_SERVER_DIR",
+    "META_SERVER_DIR",
 ]
 
 GEN_CS_NAME = "icsw.general"
@@ -67,7 +67,7 @@ PY_LIBDIR_SHORT = "python{}".format(_PY_VERSION)
 
 # cluster dir
 _cluster_dir = os.path.join("/", "opt", "cluster")
-_icsw_root = os.path.join("/", "opt", "python-init", "lib", PY_LIBDIR_SHORT, "site-packages")
+_icsw_root = os.path.join("/", "opt", "cluster", "lib", PY_LIBDIR_SHORT, "site-packages")
 
 _os_vars = {"ICSW_CLUSTER_DIR", "ICSW_ROOT"}
 
