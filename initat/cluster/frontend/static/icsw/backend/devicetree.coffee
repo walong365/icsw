@@ -650,6 +650,8 @@ angular.module(
                 # network type
                 if net_dev.snmp_network_type
                     net_dev.$$type_string = _net.nw_snmp_type_lut[net_dev.snmp_network_type].if_label
+                else if net_dev.$$type_string = _net.nw_device_type_lut[net_dev.network_device_type] == undefined
+                    net_dev.$$type_string = "unknown"
                 else
                     net_dev.$$type_string = _net.nw_device_type_lut[net_dev.network_device_type].info_string
 

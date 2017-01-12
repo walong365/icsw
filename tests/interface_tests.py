@@ -97,7 +97,6 @@ class TestIcsw(unittest.TestCase):
         modal = self.get_modal()
         self.fill_form({'name': device_group_name})
         self.click_button('Create')
-        self.click_button('Cancel')
         self.driver.wait_staleness_of(modal)
         self.assert_toast('created new device_group')
 
@@ -467,6 +466,7 @@ class TestIcsw(unittest.TestCase):
                 ).click()
 
     def fill_form(self, values, base_element=None, edit_object='edit_obj'):
+        time.sleep(1)
         if not base_element:
             base_element = self.driver
         for (key, value) in values.items():

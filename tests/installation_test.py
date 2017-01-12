@@ -77,6 +77,7 @@ def install_icsw_base_system(host, username, password, package_manager, machine_
         ("Resetting admin password ... ", '/opt/cluster/sbin/clustermanage.py shell -c "{}"'.format(RESET_PW_SCRIPT)),
         ("Enabling uwsgi-init ... ", "/opt/cluster/sbin/icsw service enable uwsgi-init"),
         ("Enabling nginx ... ", "/opt/cluster/sbin/icsw service enable nginx"),
+        ("Setting role to noctua  ... ", "/opt/cluster/sbin/icsw config role noctua"),
         ("Restarting icsw services ... ",  "/opt/cluster/sbin/icsw service restart")
     ]
 

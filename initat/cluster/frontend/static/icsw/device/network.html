@@ -709,7 +709,7 @@
                                 </thead>
                                 <tbody>
                                     <tr ng-repeat="obj in nmap_devices_displayed">
-                                        <td class="vertical-align text-center"><button type="button" ng-disabled="sub_tab.nmap_scan.index == obj.first_seen_nmap_scan_idx || obj.first_seen_nmap_scan_idx == null" ng-click="struct.icsw_network_list_service.create_new_host_discovery_detail_sub_tab(tab, obj.first_seen_nmap_scan_idx)" class="btn btn-success btn-xs">{{ obj.$$first_seen_nmap_scan_date }}</button></td>
+                                        <td class="vertical-align text-center"><button type="button" ng-disabled="sub_tab.nmap_scan.index == obj.first_seen_nmap_scan_idx || obj.first_seen_nmap_scan_idx == null" ng-click="struct.icsw_network_list_service.create_new_host_discovery_detail_sub_tab(tab, obj.first_seen_nmap_scan_idx)" class="btn btn-primary btn-xs">{{ obj.$$first_seen_nmap_scan_date }}</button></td>
                                         <td class="vertical-align text-center">
                                             <button type="button" class="btn btn-xs" ng-class="obj.$$selected && 'btn-success' || 'btn-default'" ng-click="sub_tab.select_nmap_scan_device(obj)" value="sel">
                                                 <span class="glyphicon" ng-class="obj.$$selected && 'glyphicon-ok' || 'glyphicon-minus'"></span>
