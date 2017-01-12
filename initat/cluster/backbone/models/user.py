@@ -28,22 +28,19 @@ import hashlib
 import inspect
 import os
 import random
-# import smbpasswd
 import string
-
-from enum import Enum
 
 import django.core.serializers
 from django.apps import apps
-from django.utils import timezone
-from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
+from django.utils import timezone
 from django.utils.encoding import force_text
+from enum import Enum
 
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer, \
     get_vnc_enc

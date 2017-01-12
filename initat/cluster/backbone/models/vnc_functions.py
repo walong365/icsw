@@ -86,7 +86,7 @@ pc2 = [
 
 
 def deskey(key, decrypt):      # Thanks to James Gillogly & Phil Karn!
-    key = unpack('8B', key)
+    key = unpack('8B', key.encode("ascii"))
 
     pc1m = [0] * 56
     pcr = [0] * 56
@@ -298,25 +298,25 @@ SP8 = [
 
 
 def desfunc(block, keys):
-    (leftt, right) = unpack('>II', block)
+    (left, right) = unpack('>II', block.encode("ascii"))
   
-    work = ((leftt >> 4) ^ right) & 0x0f0f0f0f
+    work = ((left >> 4) ^ right) & 0x0f0f0f0f
     right ^= work
-    leftt ^= (work << 4)
-    work = ((leftt >> 16) ^ right) & 0x0000ffff
+    left ^= (work << 4)
+    work = ((left >> 16) ^ right) & 0x0000ffff
     right ^= work
-    leftt ^= (work << 16)
-    work = ((right >> 2) ^ leftt) & 0x33333333
-    leftt ^= work
+    left ^= (work << 16)
+    work = ((right >> 2) ^ left) & 0x33333333
+    left ^= work
     right ^= (work << 2)
-    work = ((right >> 8) ^ leftt) & 0x00ff00ff
-    leftt ^= work
+    work = ((right >> 8) ^ left) & 0x00ff00ff
+    left ^= work
     right ^= (work << 8)
     right = ((right << 1) | ((right >> 31) & 1)) & 0xffffffff
-    work = (leftt ^ right) & 0xaaaaaaaa
-    leftt ^= work
+    work = (left ^ right) & 0xaaaaaaaa
+    left ^= work
     right ^= work
-    leftt = ((leftt << 1) | ((leftt >> 31) & 1)) & 0xffffffff
+    left = ((left << 1) | ((left >> 31) & 1)) & 0xffffffff
 
     for i in range(0, 32, 4):
         work = (right << 28) | (right >> 4)
@@ -330,14 +330,14 @@ def desfunc(block, keys):
         fval |= SP6[(work >> 8) & 0x3f]
         fval |= SP4[(work >> 16) & 0x3f]
         fval |= SP2[(work >> 24) & 0x3f]
-        leftt ^= fval
-        work = (leftt << 28) | (leftt >> 4)
+        left ^= fval
+        work = (left << 28) | (left >> 4)
         work ^= keys[i + 2]
         fval = SP7[work & 0x3f]
         fval |= SP5[(work >> 8) & 0x3f]
         fval |= SP3[(work >> 16) & 0x3f]
         fval |= SP1[(work >> 24) & 0x3f]
-        work = leftt ^ keys[i + 3]
+        work = left ^ keys[i + 3]
         fval |= SP8[work & 0x3f]
         fval |= SP6[(work >> 8) & 0x3f]
         fval |= SP4[(work >> 16) & 0x3f]
@@ -345,26 +345,26 @@ def desfunc(block, keys):
         right ^= fval
 
     right = (right << 31) | (right >> 1)
-    work = (leftt ^ right) & 0xaaaaaaaa
-    leftt ^= work
+    work = (left ^ right) & 0xaaaaaaaa
+    left ^= work
     right ^= work
-    leftt = (leftt << 31) | (leftt >> 1)
-    work = ((leftt >> 8) ^ right) & 0x00ff00ff
+    left = (left << 31) | (left >> 1)
+    work = ((left >> 8) ^ right) & 0x00ff00ff
     right ^= work
-    leftt ^= (work << 8)
-    work = ((leftt >> 2) ^ right) & 0x33333333
+    left ^= (work << 8)
+    work = ((left >> 2) ^ right) & 0x33333333
     right ^= work
-    leftt ^= (work << 2)
-    work = ((right >> 16) ^ leftt) & 0x0000ffff
-    leftt ^= work
+    left ^= (work << 2)
+    work = ((right >> 16) ^ left) & 0x0000ffff
+    left ^= work
     right ^= (work << 16)
-    work = ((right >> 4) ^ leftt) & 0x0f0f0f0f
-    leftt ^= work
+    work = ((right >> 4) ^ left) & 0x0f0f0f0f
+    left ^= work
     right ^= (work << 4)
 
-    leftt &= 0xffffffff
+    left &= 0xffffffff
     right &= 0xffffffff
-    return pack('>II', right, leftt)
+    return pack('>II', right, left)
 
 
 def get_vnc_enc(password):
@@ -373,7 +373,7 @@ def get_vnc_enc(password):
     ekey = deskey(strkey, False)
 
     ctext = desfunc(passpadd, ekey)
-    return ctext.encode('hex')
+    return ctext.hex()
 
 
 class ForkedPdb(pdb.Pdb):
