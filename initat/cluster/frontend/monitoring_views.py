@@ -22,8 +22,6 @@
 
 """ monitoring views """
 
-
-
 import base64
 import datetime
 import json

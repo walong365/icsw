@@ -122,6 +122,7 @@
     <instance
         name="uwsgi-init"
         check_type="simple"
+        sum-subprocesses="1"
         pid_file_name="uwsgi-init.pid"
         any_threads_ok="1"
         runs_on="system"

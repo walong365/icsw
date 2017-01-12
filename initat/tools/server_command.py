@@ -107,7 +107,11 @@ def compress(in_str, **kwargs):
         in_str = pickle.dumps(in_str)
     elif kwargs.get("json", False):
         in_str = json.dumps(in_str)
-    return base64.b64encode(bz2.compress(in_str))
+    # print("*", in_str)
+    # print("*", str.encode(in_str))
+    # print("*", bz2.compress(str.encode(in_str)))
+    # print("*", base64.b64encode(bz2.compress(str.encode(in_str))))
+    return base64.b64encode(bz2.compress(str.encode(in_str)))
 
 
 def decompress(in_str, **kwargs):
@@ -148,6 +152,8 @@ class srv_command(object):
         if "source" in kwargs:
             if isinstance(kwargs["source"], str):
                 self.__tree = etree.fromstring(kwargs["source"])
+            elif isinstance(kwargs["source"], bytes):
+                self.__tree = etree.fromstring(kwargs["source"].decode("utf-8"))
             else:
                 self.__tree = kwargs["source"]
         else:
@@ -497,7 +503,7 @@ class srv_command(object):
     def pretty_print(self):
         return etree.tostring(self.__tree, encoding=str, pretty_print=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return etree.tostring(self.__tree, encoding=str)
 
     def tostring(self, **kwargs):

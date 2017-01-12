@@ -21,8 +21,6 @@
 #
 """ license file reader """
 
-
-
 import base64
 import datetime
 import glob
@@ -465,6 +463,7 @@ class LicenseFileReader(object):
             else:
                 # only use certs which are currently valid
                 now = datetime.datetime.now(tz=pytz.timezone(TIME_ZONE))
+                # print("*", str(cert.get_not_before())
                 if cert.get_not_before().get_datetime() <= now <= cert.get_not_after().get_datetime():
                     evp_verify_pkey = M2Crypto.EVP.PKey()
                     evp_verify_pkey.assign_rsa(cert.get_pubkey().get_rsa())

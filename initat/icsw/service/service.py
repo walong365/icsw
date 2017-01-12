@@ -21,12 +21,11 @@
 
 """ container for service checks """
 
-
-
 import netifaces
 import os
 import signal
 import stat
+import psutil
 import subprocess
 
 from lxml.builder import E
@@ -370,9 +369,23 @@ class Service(object):
                 )
             )
 
-    def _add_pids(self, result, act_pids, main_pid=None, msi_block=None):
+    def _add_pids(self, result, act_pids, act_proc_dict, main_pid=None, msi_block=None):
         # print "+", main_pid
         if act_pids:
+            mem_pids = set([pid for pid in act_pids])
+            if int(self.attrib["sum-subprocesses"]):
+                _added = True
+                while _added:
+                    _added = False
+                    for _key, _value in act_proc_dict.items():
+                        if _key not in mem_pids:
+                            try:
+                                _ppid = _value.ppid()
+                                if _ppid in mem_pids:
+                                    mem_pids.add(_key)
+                                    _added = True
+                            except (FileNotFoundError, psutil.NoSuchProcess):
+                                pass
             result.append(
                 E.pids(
                     *[
@@ -384,8 +397,9 @@ class Service(object):
                     ]
                 )
             )
+
             mem_dict = {
-                cur_pid: process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids)
+                cur_pid: process_tools.get_mem_info(cur_pid) for cur_pid in mem_pids
             }
             _mem_info = E.memory_info(
                 "{:d}".format(
@@ -587,7 +601,7 @@ class SimpleService(Service):
                 except:
                     pass
                 else:
-                    self._add_pids(result, [act_pid])
+                    self._add_pids(result, [act_pid], act_proc_dict)
 
     def _start(self):
         self._handle_service_rc("start")
@@ -638,7 +652,7 @@ class PIDService(Service):
                     )
                 ),
             )
-            self._add_pids(result, act_pids)
+            self._add_pids(result, act_pids, act_proc_dict)
         else:
             self._add_non_running(result)
 
@@ -688,7 +702,7 @@ class MetaService(Service):
                 ),
             )
             # print act_pids, ms_block.pids
-            self._add_pids(result, act_pids, main_pid=ms_block.get_main_pid(), msi_block=ms_block)
+            self._add_pids(result, act_pids, act_proc_dict, main_pid=ms_block.get_main_pid(), msi_block=ms_block)
         else:
             self._add_non_running(result, check_init_script=False)
 

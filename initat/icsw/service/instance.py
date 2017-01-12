@@ -313,6 +313,7 @@ class InstanceXML(object):
             for key, def_value in [
                 ("runs_on", "server"),
                 ("any-processes-ok", "0"),
+                ("sum-subprocesses", "0"),
                 ("pid_file_name", "{}.pid".format(name)),
                 ("init_script_name", name),
                 ("startstop", "1"),

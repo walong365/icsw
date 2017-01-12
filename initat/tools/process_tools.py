@@ -19,8 +19,6 @@
 #
 """ various tools to handle processes and stuff """
 
-
-
 import atexit
 import base64
 import bz2
@@ -44,6 +42,7 @@ import traceback
 
 import six
 from lxml import etree
+from lxml.builder import E
 
 from initat.tools import logging_tools
 
@@ -58,7 +57,6 @@ if os.path.exists("/proc/stat"):
         psutil = None
 else:
     psutil = None
-from lxml.builder import E
 
 RUN_DIR = "/var/run"
 
@@ -93,11 +91,7 @@ def decompress_struct(b64_str, version=2):
 
 
 def getstatusoutput(cmd):
-    if sys.version_info[0] == 3:
-        return subprocess.getstatusoutput(cmd)  # @UndefinedVariable
-    else:
-        import subprocess
-        return subprocess.getstatusoutput(cmd)
+    return subprocess.getstatusoutput(cmd)
 
 
 # net to sys and reverse functions
@@ -417,6 +411,7 @@ def get_mem_info(pid=0, **kwargs):
     for cur_pid in pid:
         try:
             _proc = psutil.Process(cur_pid)
+            # print(_proc.name())
             # only count RSS (resident set size)
             # ps_list.append(_proc.memory_info()[0])
             _mi = _proc.memory_info_ex()

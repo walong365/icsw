@@ -550,7 +550,7 @@ class NewFormList(object):
         [self.append(_line) for _line in add_list]
 
     def __str__(self):
-        return str(self)
+        return self.__unicode__()
 
     def get_da_map(self):
         return self.__da_map
@@ -591,7 +591,7 @@ class NewFormList(object):
                     row_lens = [
                         max(old_len, new_len) for old_len, new_len in zip(
                             row_lens[:line_rows - 1],
-                            line_lens[:line_rows - 1]
+                            line_lens[:line_rows - 1],
                         )
                     ] + row_lens[line_rows - 1:]
             else:

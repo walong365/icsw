@@ -26,6 +26,9 @@
                 </attribute>
             </optional>
             <optional>
+                <attribute name="sum-subprocesses"/>
+            </optional>
+            <optional>
                 <attribute name="uuid-postfix"/>
             </optional>
             <!-- deprecated -->
