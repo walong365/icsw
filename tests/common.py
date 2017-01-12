@@ -4,6 +4,8 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import StaleElementReferenceException
 from lxml.html import soupparser
 from PIL import Image
@@ -132,7 +134,9 @@ class Webdriver(webdriver.Remote):
             )
         e.send_keys(expression)
         time.sleep(3)
-        self.find_element_by_xpath('//button[@class="close"]').click()
+        action = ActionChains(self)
+        action.send_keys(Keys.ESCAPE)
+        action.perform()
 
     def get_toasts(self):
         elements = self.find_elements_by_xpath(self.XPATH_TOAST_CONTAINER)
