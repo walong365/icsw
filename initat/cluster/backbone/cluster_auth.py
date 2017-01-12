@@ -23,8 +23,6 @@
 authentication backend
 """
 
-
-
 import base64
 import crypt
 import hashlib
@@ -57,21 +55,24 @@ class db_backend(object):
                 pw_hash, db_password = ("", cur_pw)
             if pw_hash in ["SHA1"]:
                 new_h = hashlib.new(pw_hash)
-                new_h.update(password)
-                if base64.b64encode(new_h.digest()) == db_password:
+                new_h.update(password.encode("ascii"))
+                if base64.b64encode(new_h.digest()) == db_password.encode("ascii"):
                     # match
                     return cur_user
                 else:
-                    logger.warn("password mismatch for %s" % (username))
+                    logger.warn("password mismatch for '{}'".format(username))
             elif pw_hash in ["CRYPT"]:
                 if crypt.crypt(password, db_password) == db_password:
                     return cur_user
                 else:
-                    logger.warn("password mismatch for %s" % (username))
+                    logger.warn("password mismatch for '{}'".format(username))
             else:
-                logger.error("unknown password hash '%s' for %s" % (
-                    pw_hash,
-                    username))
+                logger.error(
+                    "unknown password hash '{}' for user '{}'".format(
+                        pw_hash,
+                        username,
+                    )
+                )
                 return None
 
     def get_user(self, user_id):

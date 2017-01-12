@@ -19,8 +19,6 @@
 #
 """ inject addons in already compiled main.html """
 
-
-
 import codecs
 import json
 import os
@@ -122,7 +120,7 @@ class FileModify(object):
                                 )
                         for _key, _value in _new_dict.items():
                             _xml.attrib[_key] = _value
-                        line = etree.tostring(_xml, method="html")
+                        line = etree.tostring(_xml, method="html", encoding="unicode")
                 if line.lower().count("<body>"):
                     _body_found = True
             new_content.append(line)

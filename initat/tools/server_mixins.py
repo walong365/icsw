@@ -536,7 +536,7 @@ class NetworkBindMixin(object):
         bind_to_localhost = kwargs.get("bind_to_localhost", False)
         _sock_type = kwargs.get("socket_type", "ROUTER")
         if "client_type" in kwargs:
-            uuid = uuid_tools.get_uuid().get_urn()
+            uuid = uuid_tools.get_uuid().urn
             if not uuid.startswith("urn"):
                 uuid = "urn:uuid:{}".format(uuid)
             self.bind_id = "{}:{}:".format(

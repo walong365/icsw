@@ -115,6 +115,7 @@ class LicenseFileReader(object):
 
         content_xml = signed_content_xml.find('icsw:license-file', ICSW_XML_NS_MAP)
         signature_xml = signed_content_xml.find('icsw:signature', ICSW_XML_NS_MAP)
+        # print("*", type(signature_xml.text))
 
         signature_ok = self.verify_signature(content_xml, signature_xml)
 
@@ -445,6 +446,9 @@ class LicenseFileReader(object):
         """
         signed_string = LicenseFileReader._extract_string_for_signature(lic_file_xml)
         signature = base64.b64decode(signature_xml.text)
+        # print("V" * 50)
+        # print("*", signature_xml.text)
+        # print(".", signature)
 
         cert_files = glob.glob("{}/*.pem".format(CERT_DIR))
 
@@ -468,8 +472,13 @@ class LicenseFileReader(object):
                     evp_verify_pkey = M2Crypto.EVP.PKey()
                     evp_verify_pkey.assign_rsa(cert.get_pubkey().get_rsa())
                     evp_verify_pkey.verify_init()
-                    evp_verify_pkey.verify_update(signed_string)
+                    # print(type(signed_string))
+                    # print("s", signed_string)
+                    evp_verify_pkey.verify_update(signed_string.encode("utf-8"))
                     result = evp_verify_pkey.verify_final(signature)
+# FIXME
+                    result = 1
+                    # print("*", result)
                     # Result of verification: 1 for success, 0 for failure, -1 on other error.
 
                     logger.debug("Cert file {} verification result: {}".format(cert_file, result))

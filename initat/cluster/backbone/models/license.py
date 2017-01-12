@@ -23,8 +23,6 @@
 
 """ database definitions for license / ova management """
 
-
-
 import collections
 import datetime
 import logging
@@ -532,6 +530,8 @@ def icsw_egg_basket_pre_save(sender, **kwargs):
         if not _inst.license_id and not _inst.dummy:
             raise ValidationError("EggBasket without license needs the dummy flag set")
         _now = django.utils.timezone.now()
+        if isinstance(_inst.valid_from, datetime.date) and not isinstance(_inst.valid_from, datetime.datetime):
+            _now = _now.date()
         _inst.valid = _inst.valid_from <= _now and _now <= _inst.valid_to
 
 

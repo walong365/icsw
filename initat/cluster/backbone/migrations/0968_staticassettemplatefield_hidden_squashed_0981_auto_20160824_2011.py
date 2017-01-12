@@ -213,21 +213,21 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='role',
             name='object_perms',
-            field=models.ManyToManyField(blank=True, related_name='role_perms', through='backbone.RoleObjectPermission', to=b'backbone.csw_object_permission'),
+            field=models.ManyToManyField(blank=True, related_name='role_perms', through='backbone.RoleObjectPermission', to='backbone.csw_object_permission'),
         ),
         migrations.AddField(
             model_name='role',
             name='perms',
-            field=models.ManyToManyField(blank=True, related_name='role_perms', through='backbone.RolePermission', to=b'backbone.csw_permission'),
+            field=models.ManyToManyField(blank=True, related_name='role_perms', through='backbone.RolePermission', to='backbone.csw_permission'),
         ),
         migrations.AddField(
             model_name='group',
             name='roles',
-            field=models.ManyToManyField(blank=True, related_name='role_groups', to=b'backbone.Role'),
+            field=models.ManyToManyField(blank=True, related_name='role_groups', to='backbone.Role'),
         ),
         migrations.AddField(
             model_name='user',
             name='roles',
-            field=models.ManyToManyField(blank=True, related_name='role_users', to=b'backbone.Role'),
+            field=models.ManyToManyField(blank=True, related_name='role_users', to='backbone.Role'),
         ),
     ]

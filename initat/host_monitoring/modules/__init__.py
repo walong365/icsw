@@ -17,16 +17,15 @@
 #
 """ load all defined commands """
 
-
-
 import os
 import inspect
+import importlib
 
 from initat.tools import process_tools
 from initat.host_monitoring.hm_classes import hm_command
 
 __all__ = [
-    str(cur_entry) for cur_entry in [
+    cur_entry for cur_entry in [
         entry.split(".")[0] for entry in os.listdir(
             os.path.dirname(__file__)
         ) if entry.endswith(".py")
@@ -40,7 +39,7 @@ IMPORT_ERRORS = []
 _new_hm_list = []
 for mod_name in __all__:
     try:
-        new_mod = __import__(mod_name, globals(), locals())
+        new_mod = importlib.import_module("initat.host_monitoring.modules.{}".format(mod_name))
         if hasattr(new_mod, "_general"):
             new_hm_mod = new_mod._general(mod_name, new_mod)
             if new_hm_mod.enabled:
@@ -50,9 +49,9 @@ for mod_name in __all__:
         for log_line in exc_info.log_lines:
             IMPORT_ERRORS.append((mod_name, "import", log_line))
 
-_new_hm_list.sort(reverse=True)
+_new_hm_list.sort(reverse=True, key=lambda x: x[0])
 
-for _pri, new_hm_mod in sorted(_new_hm_list, reverse=True):
+for _pri, new_hm_mod in sorted(_new_hm_list, key=lambda x: x[0], reverse=True):
     new_mod = new_hm_mod.obj
     module_list.append(new_hm_mod)
     loc_coms = [

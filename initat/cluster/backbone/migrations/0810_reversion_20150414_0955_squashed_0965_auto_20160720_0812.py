@@ -1021,7 +1021,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='device',
             name='com_capability_list',
-            field=models.ManyToManyField(to=b'backbone.ComCapability'),
+            field=models.ManyToManyField(to='backbone.ComCapability'),
         ),
         migrations.RunPython(
             code=migrate_ipmi_flag,
@@ -1145,9 +1145,9 @@ class Migration(migrations.Migration):
                 ('idx', models.AutoField(primary_key=True, serialize=False)),
                 ('name', models.CharField(default=b'', max_length=64)),
                 ('date', models.DateTimeField(auto_now_add=True)),
-                ('categories', models.ManyToManyField(to=b'backbone.category')),
-                ('device_groups', models.ManyToManyField(to=b'backbone.device_group')),
-                ('devices', models.ManyToManyField(to=b'backbone.device')),
+                ('categories', models.ManyToManyField(to='backbone.category')),
+                ('device_groups', models.ManyToManyField(to='backbone.device_group')),
+                ('devices', models.ManyToManyField(to='backbone.device')),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],
         ),
@@ -1419,7 +1419,7 @@ class Migration(migrations.Migration):
                 ('viewed_via_webfrontend', models.BooleanField(default=False)),
                 ('text', models.CharField(default=b'', max_length=765)),
                 ('date', models.DateTimeField(auto_now_add=True)),
-                ('devices', models.ManyToManyField(to=b'backbone.device')),
+                ('devices', models.ManyToManyField(to='backbone.device')),
                 ('level', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='backbone.LogLevel')),
                 ('source', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='backbone.LogSource')),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
@@ -1692,7 +1692,7 @@ class Migration(migrations.Migration):
                 ('content', models.TextField(blank=True, default=b'')),
                 ('binary', models.BooleanField(default=False)),
                 ('date', models.DateTimeField(auto_now_add=True)),
-                ('config', models.ManyToManyField(to=b'backbone.config')),
+                ('config', models.ManyToManyField(to='backbone.config')),
                 ('config_tree_node', models.OneToOneField(default=None, null=True, on_delete=django.db.models.deletion.CASCADE, to='backbone.ConfigTreeNode')),
                 ('device', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='backbone.device')),
             ],
@@ -1835,12 +1835,12 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='config',
             name='categories',
-            field=models.ManyToManyField(blank=True, to=b'backbone.category'),
+            field=models.ManyToManyField(blank=True, to='backbone.category'),
         ),
         migrations.AlterField(
             model_name='network',
             name='network_device_type',
-            field=models.ManyToManyField(blank=True, to=b'backbone.network_device_type'),
+            field=models.ManyToManyField(blank=True, to='backbone.network_device_type'),
         ),
         migrations.AddField(
             model_name='monitoring_hint',
@@ -1877,17 +1877,17 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='deviceselection',
             name='categories',
-            field=models.ManyToManyField(blank=True, to=b'backbone.category'),
+            field=models.ManyToManyField(blank=True, to='backbone.category'),
         ),
         migrations.AlterField(
             model_name='deviceselection',
             name='device_groups',
-            field=models.ManyToManyField(blank=True, to=b'backbone.device_group'),
+            field=models.ManyToManyField(blank=True, to='backbone.device_group'),
         ),
         migrations.AlterField(
             model_name='deviceselection',
             name='devices',
-            field=models.ManyToManyField(blank=True, to=b'backbone.device'),
+            field=models.ManyToManyField(blank=True, to='backbone.device'),
         ),
         migrations.CreateModel(
             name='AssetBatch',
@@ -1930,7 +1930,7 @@ class Migration(migrations.Migration):
                 ('run_type', models.IntegerField(choices=[(1, b'PACKAGE'), (2, b'HARDWARE'), (3, b'LICENSE'), (4, b'UPDATE'), (5, b'SOFTWARE_VERSION'),
                                                           (6, b'PROCESS'), (7, b'PENDING_UPDATE')], null=True)),
                 ('scan_type', models.IntegerField(choices=[(1, b'HM'), (2, b'NRPE')], null=True)),
-                ('packages', models.ManyToManyField(to=b'backbone.AssetPackageVersion')),
+                ('packages', models.ManyToManyField(to='backbone.AssetPackageVersion')),
                 ('run_duration', models.IntegerField(default=0)),
                 ('batch_index', models.IntegerField(default=0)),
             ],
@@ -2013,7 +2013,7 @@ class Migration(migrations.Migration):
                 ('sched_start_week', models.IntegerField(default=None, null=True)),
                 ('sched_start_month', models.IntegerField(default=None, null=True)),
                 ('date', models.DateTimeField(auto_now_add=True)),
-                ('com_capabilities', models.ManyToManyField(blank=True, to=b'backbone.ComCapability')),
+                ('com_capabilities', models.ManyToManyField(blank=True, to='backbone.ComCapability')),
             ],
         ),
         migrations.CreateModel(
@@ -2527,7 +2527,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='device',
             name='categories',
-            field=models.ManyToManyField(blank=True, to=b'backbone.category'),
+            field=models.ManyToManyField(blank=True, to='backbone.category'),
         ),
         migrations.AlterField(
             model_name='device',
@@ -2537,12 +2537,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='assetrun',
             name='cpus',
-            field=models.ManyToManyField(to=b'backbone.AssetHWCPUEntry'),
+            field=models.ManyToManyField(to='backbone.AssetHWCPUEntry'),
         ),
         migrations.AddField(
             model_name='assetrun',
             name='memory_modules',
-            field=models.ManyToManyField(to=b'backbone.AssetHWMemoryEntry'),
+            field=models.ManyToManyField(to='backbone.AssetHWMemoryEntry'),
         ),
         migrations.AddField(
             model_name='assetrun',
@@ -2597,22 +2597,22 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='assetrun',
             name='displays',
-            field=models.ManyToManyField(to=b'backbone.AssetHWDisplayEntry'),
+            field=models.ManyToManyField(to='backbone.AssetHWDisplayEntry'),
         ),
         migrations.AddField(
             model_name='assetrun',
             name='gpus',
-            field=models.ManyToManyField(to=b'backbone.AssetHWGPUEntry'),
+            field=models.ManyToManyField(to='backbone.AssetHWGPUEntry'),
         ),
         migrations.AddField(
             model_name='assetrun',
             name='hdds',
-            field=models.ManyToManyField(to=b'backbone.AssetHWHDDEntry'),
+            field=models.ManyToManyField(to='backbone.AssetHWHDDEntry'),
         ),
         migrations.AddField(
             model_name='assetrun',
             name='partitions',
-            field=models.ManyToManyField(to=b'backbone.AssetHWLogicalEntry'),
+            field=models.ManyToManyField(to='backbone.AssetHWLogicalEntry'),
         ),
         migrations.AddField(
             model_name='assetrun',

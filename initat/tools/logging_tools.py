@@ -888,12 +888,15 @@ class logfile(logging.handlers.BaseRotatingHandler):
                 act_z = gzip.open(gz_file_name, "wb", 4)
         except:
             exc_info = sys.exc_info()
-            my_syslog("error opening {}: {} ({})".format(
-                gz_file_name,
-                str(exc_info[0]),
-                str(exc_info[1])))
+            my_syslog(
+                "error opening {}: {} ({})".format(
+                    gz_file_name,
+                    str(exc_info[0]),
+                    str(exc_info[1]),
+                )
+            )
         else:
-            act_z.write(open(self.baseFilename, "r").read())
+            act_z.write(open(self.baseFilename, "r").read().encode("utf-8"))
             act_z.close()
             os.chmod(gz_file_name, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP)
             self.stream.close()

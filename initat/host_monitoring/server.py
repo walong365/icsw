@@ -22,8 +22,6 @@
 
 """ host-monitoring, with 0MQ and direct socket support, server code """
 
-
-
 import io
 import argparse
 import difflib
@@ -343,7 +341,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
 
     def _init_network_sockets(self):
         zmq_id_name = "/etc/sysconfig/host-monitoring.d/0mq_id"
-        my_0mq_id = uuid_tools.get_uuid().get_urn()
+        my_0mq_id = uuid_tools.get_uuid().urn
         if not config_store.ConfigStore.exists(ZMQ_ID_MAP_STORE):
             create_0mq_cs = True
             if os.path.exists(zmq_id_name):
@@ -480,7 +478,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 wait_iter += 1
             cur_socket = self.zmq_context.socket(sock_type)
             if zmq_id:
-                cur_socket.setsockopt_string(zmq.IDENTITY, zmq_id)  # @UndefinedVariable
+                cur_socket.setsockopt_string(zmq.IDENTITY, zmq_id)
             try:
                 process_tools.bind_zmq_socket(cur_socket, sock_name)
                 # client.bind("tcp://*:8888")
@@ -524,7 +522,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             bind_0mq_id, is_virtual = self.zmq_id_dict[bind_ip]
             client = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
             client.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
-            client.setsockopt(zmq.IDENTITY, bind_0mq_id)  # @UndefinedVariable
+            client.setsockopt_string(zmq.IDENTITY, bind_0mq_id)  # @UndefinedVariable
             client.setsockopt(zmq.SNDHWM, 16)  # @UndefinedVariable
             client.setsockopt(zmq.RCVHWM, 16)  # @UndefinedVariable
             client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)  # @UndefinedVariable
@@ -716,8 +714,8 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         if self.__debug:
             self.log(info_str, log_level)
         srv_com.update_source()
-        zmq_sock.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
-        zmq_sock.send_unicode(str(srv_com))
+        zmq_sock.send(src_id, zmq.SNDMORE)  # @UndefinedVariable
+        zmq_sock.send_string(str(srv_com))
         del srv_com
 
     def _check_delayed(self):

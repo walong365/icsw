@@ -318,7 +318,7 @@ class TimerBase(object):
             _diff = cur_to.next_time - cur_time
             if _diff <= 0:
                 prev_ids = [_obj.timer_id for _obj in self.__timer_list]
-                self._db_debug.start_call("timer {}".format(_obj.timer_id))
+                self._db_debug.start_call("timer {}".format(cur_to.timer_id))
                 cur_to()
                 self._db_debug.end_call()
                 # also remove if cur_to not in self.__timer_list (due to removal while processing cur_to() )
@@ -369,9 +369,9 @@ class TimerBase(object):
 class DBDebugBase(object):
     def __new__(cls, log_com):
         if ICSW_DEBUG_MODE:
-            return super(DBDebugBase, DBDebugEnabled).__new__(DBDebugEnabled, log_com)
+            return super(DBDebugBase, DBDebugEnabled).__new__(DBDebugEnabled)
         else:
-            return super(DBDebugBase, DBDebugDisabled).__new__(DBDebugDisabled, log_com)
+            return super(DBDebugBase, DBDebugDisabled).__new__(DBDebugDisabled)
 
 
 class DBDebugDisabled(DBDebugBase):
@@ -825,10 +825,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBas
         # print("context of {:d} is {}".format(os.getpid(), str(self.zmq_context)))
         com_socket = self.zmq_context.socket(zmq.ROUTER)
         # cast to str, no unicode allowed
-        if isinstance(self.name, str):
-            com_socket.setsockopt_string(zmq.IDENTITY, self.name)
-        else:
-            com_socket.setsockopt(zmq.IDENTITY, self.name)
+        com_socket.setsockopt_string(zmq.IDENTITY, self.name)
         com_socket.setsockopt(zmq.ROUTER_MANDATORY, True)
         com_socket.setsockopt(zmq.IMMEDIATE, True)
         self.register_poller(com_socket, zmq.POLLIN, self._handle_message)
@@ -854,7 +851,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBas
         cs_name = self.get_com_socket_name(self.name)
         zmq_socket = self.zmq_context.socket(zmq.ROUTER)
         if isinstance(self.name, str):
-            zmq_socket.setsockopt_string(zmq.IDENTITY, self.name)
+            zmq_socket.setsockopt(zmq.IDENTITY, self.name)
         else:
             zmq_socket.setsockopt(zmq.IDENTITY, self.name)
         zmq_socket.setsockopt(zmq.IMMEDIATE, True)
@@ -1239,7 +1236,7 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
 
     def _add_com_socket(self):
         zmq_socket = self.zmq_context.socket(zmq.ROUTER)
-        zmq_socket.setsockopt(zmq.IDENTITY, "main")
+        zmq_socket.setsockopt_string(zmq.IDENTITY, "main")
         zmq_socket.setsockopt(zmq.IMMEDIATE, True)
         zmq_socket.setsockopt(zmq.ROUTER_MANDATORY, True)
         process_tools.bind_zmq_socket(zmq_socket, self.queue_name)

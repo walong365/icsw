@@ -1,4 +1,4 @@
-#!/usr/bin/python-init -Ot
+#!/usr/bin/python3-init -Ot
 #
 # Copyright (C) 2015-2017 Andreas Lang-Nevyjel, init.at
 #
@@ -21,8 +21,6 @@
 #
 
 """ entry point for the icsw command for NOCTUA, CORVUS and NESTOR """
-
-
 
 import os
 import sys

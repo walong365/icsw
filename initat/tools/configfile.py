@@ -19,8 +19,6 @@
 #
 """ module for handling config files, now implemented using MemCache """
 
-
-
 import argparse
 import base64
 import bz2
@@ -240,7 +238,7 @@ class int_c_var(_conf_var):
         return int(val)
 
     def check_type(self, val):
-        return type(val) in [int, int]
+        return type(val) in [int]
 
 
 class float_c_var(_conf_var):
@@ -424,7 +422,7 @@ class MemCacheBasedDict(object):
                 self._read_full_dict()
 
     def _change_version(self):
-        self._version = uuid.uuid4().get_urn()
+        self._version = uuid.uuid4().urn
         # print os.getpid(), "CV ->", self._version
         self._set("version", self._version)
 

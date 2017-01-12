@@ -22,8 +22,6 @@
 
 """ model serializers for device """
 
-
-
 from rest_framework import serializers
 
 from initat.cluster.backbone.models import device, device_config, device_group, \
@@ -31,16 +29,16 @@ from initat.cluster.backbone.models import device, device_config, device_group, 
 
 
 __all__ = [
-    b"DeviceScanLockSerializer",
-    b"device_config_help_serializer",
-    b"device_group_serializer",
-    b"cd_connection_serializer",
-    b"cd_connection_serializer_boot",
-    b"device_serializer",
-    b"device_serializer_boot",
-    b"DeviceSNMPInfoSerializer",
-    b"DeviceClassSerializer",
-    b"DeviceLogEntrySerializer"
+    "DeviceScanLockSerializer",
+    "device_config_help_serializer",
+    "device_group_serializer",
+    "cd_connection_serializer",
+    "cd_connection_serializer_boot",
+    "device_serializer",
+    "device_serializer_boot",
+    "DeviceSNMPInfoSerializer",
+    "DeviceClassSerializer",
+    "DeviceLogEntrySerializer"
 ]
 
 

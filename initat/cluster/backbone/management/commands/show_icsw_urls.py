@@ -1,4 +1,4 @@
-#!/usr/bin/python-init -Otu
+#!/usr/bin/python3-init -Otu
 #
 # -*- coding: utf-8 -*-
 #
@@ -21,15 +21,12 @@
 #
 """ shows all URLS """
 
-
-
 import re
 
 from django.conf import settings
 from django.core.exceptions import ViewDoesNotExist
 from django.core.management.base import BaseCommand
 from django.core.urlresolvers import RegexURLPattern, RegexURLResolver, reverse
-from django.utils.translation import activate
 
 
 def _rewrite(name):
@@ -87,7 +84,7 @@ def get_urls():
 
     for settings_mod in settings_modules:
         try:
-            urlconf = __import__(settings_mod.ROOT_URLCONF, {}, {}, [b''])
+            urlconf = __import__(settings_mod.ROOT_URLCONF, {}, {}, [''])
         except Exception as e:
             import traceback
             traceback.print_exc()

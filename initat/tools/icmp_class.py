@@ -22,8 +22,6 @@
 
 """ A raw ICMP baseclass (icmp protocol), based on seafelt lib/icmp.py """
 
-
-
 import array
 import os
 import socket
@@ -40,7 +38,7 @@ def _octets_to_hex(octets):
 def _checksum(data):
     """ Calculate the 16-bit ones complement checksum of data """
     if len(data) % 2:
-        data += chr(0x0)
+        data += chr(0x0).encode("ascii")
     cur_sum = sum([word & 0xffff for word in array.array("h", data)])
     hi, lo = (cur_sum >> 16, cur_sum & 0xffff)
     cur_sum = hi + lo
@@ -96,8 +94,8 @@ class ip_packet(object):
             self.ttl,
             self.protocol,
             self.checksum,
-            self.src_addr,
-            self.dst_addr
+            self.src_addr.encode("ascii"),
+            self.dst_addr.encode("ascii"),
         )
         data += self.payload
         return data
@@ -163,11 +161,11 @@ class icmp_datagram(object):
         if unpack:
             self.unpack()
 
-    def calc_checksum(self, data=""):
+    def calc_checksum(self, data=b""):
         if not data:
             self.checksum = 0
             data = struct.pack(
-                b"!BBH{:d}s".format(
+                "!BBH{:d}s".format(
                     len(self.data)
                 ),
                 self.packet_type,
@@ -303,7 +301,7 @@ class icmp_protocol(object):  # protocol.AbstractDatagramProtocol):
         header = packet.payload[:4]
         data = packet.payload[4:]
         packet_type, code, checksum = struct.unpack(b"!BBH", header)
-        chkdata = struct.pack(b"!BBH{:d}s".format(len(data)), packet_type, code, 0, data)
+        chkdata = struct.pack("!BBH{:d}s".format(len(data)), packet_type, code, 0, data)
         chk = socket.htons(_checksum(chkdata))
         # init dgram
         if checksum != chk:

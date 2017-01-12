@@ -501,10 +501,10 @@ class srv_command(object):
             return int(_source[0].attrib.get("sendcounter", 0))
 
     def pretty_print(self):
-        return etree.tostring(self.__tree, encoding=str, pretty_print=True)
+        return etree.tostring(self.__tree, encoding="unicode", pretty_print=True)
 
     def __str__(self):
-        return etree.tostring(self.__tree, encoding=str)
+        return etree.tostring(self.__tree, encoding="unicode")
 
     def tostring(self, **kwargs):
         return etree.tostring(self.__tree, **kwargs)

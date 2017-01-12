@@ -27,11 +27,11 @@ from initat.cluster.backbone.models import DispatchSetting, DispatcherSetting, D
     DispatcherLink, ScheduleItem
 
 __all__ = [
-    b"DispatchSettingSerializer",
-    b"DispatcherSettingSerializer",
-    b"DispatcherSettingScheduleSerializer",
-    b"DispatcherLinkSerializer",
-    b"ScheduleItemSerializer",
+    "DispatchSettingSerializer",
+    "DispatcherSettingSerializer",
+    "DispatcherSettingScheduleSerializer",
+    "DispatcherLinkSerializer",
+    "ScheduleItemSerializer",
 ]
 
 

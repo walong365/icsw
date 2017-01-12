@@ -228,22 +228,22 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='assetbatch',
             name='cpus',
-            field=models.ManyToManyField(to=b'backbone.AssetHWCPUEntry'),
+            field=models.ManyToManyField(to='backbone.AssetHWCPUEntry'),
         ),
         migrations.AddField(
             model_name='assetbatch',
             name='displays',
-            field=models.ManyToManyField(to=b'backbone.AssetHWDisplayEntry'),
+            field=models.ManyToManyField(to='backbone.AssetHWDisplayEntry'),
         ),
         migrations.AddField(
             model_name='assetbatch',
             name='gpus',
-            field=models.ManyToManyField(to=b'backbone.AssetHWGPUEntry'),
+            field=models.ManyToManyField(to='backbone.AssetHWGPUEntry'),
         ),
         migrations.AddField(
             model_name='assetbatch',
             name='memory_modules',
-            field=models.ManyToManyField(to=b'backbone.AssetHWMemoryEntry'),
+            field=models.ManyToManyField(to='backbone.AssetHWMemoryEntry'),
         ),
         migrations.AlterField(
             model_name='assetrun',
@@ -269,7 +269,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='assetbatch',
             name='network_devices',
-            field=models.ManyToManyField(to=b'backbone.AssetHWNetworkDevice'),
+            field=models.ManyToManyField(to='backbone.AssetHWNetworkDevice'),
         ),
         migrations.CreateModel(
             name='ReportHistory',
@@ -308,7 +308,7 @@ class Migration(migrations.Migration):
                 ('size', models.BigIntegerField(null=True)),
                 ('free_space', models.BigIntegerField(null=True)),
                 ('partition_fs', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='backbone.partition_fs')),
-                ('partitions', models.ManyToManyField(to=b'backbone.partition')),
+                ('partitions', models.ManyToManyField(to='backbone.partition')),
             ],
         ),
         migrations.CreateModel(
@@ -376,12 +376,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='assetbatch',
             name='installed_updates',
-            field=models.ManyToManyField(related_name='assetbatch_installed_updates', to=b'backbone.AssetUpdateEntry'),
+            field=models.ManyToManyField(related_name='assetbatch_installed_updates', to='backbone.AssetUpdateEntry'),
         ),
         migrations.AddField(
             model_name='assetbatch',
             name='pending_updates',
-            field=models.ManyToManyField(related_name='assetbatch_pending_updates', to=b'backbone.AssetUpdateEntry'),
+            field=models.ManyToManyField(related_name='assetbatch_pending_updates', to='backbone.AssetUpdateEntry'),
         ),
         migrations.RemoveField(
             model_name='mon_dist_master',
@@ -763,6 +763,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='assetbatch',
             name='installed_packages',
-            field=models.ManyToManyField(to=b'backbone.AssetPackageVersionInstallInfo'),
+            field=models.ManyToManyField(to='backbone.AssetPackageVersionInstallInfo'),
         ),
     ]

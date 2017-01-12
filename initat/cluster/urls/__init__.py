@@ -20,9 +20,8 @@
 
 """ url importer """
 
-
-
 import os
+import importlib
 
 from django.conf import settings
 from django.conf.urls import include, url
@@ -44,7 +43,8 @@ if settings.ICSW_INCLUDE_URLS and not Z800_MIGRATION:
         if entry.endswith(".py"):
             _py_name = entry.split(".")[0]
             if _py_name not in _BLACKLIST:
-                new_mod = __import__(entry.split(".")[0], globals(), locals())
+                new_mod = importlib.import_module(".{}".format(entry.split(".")[0]), "initat.cluster.urls")
+                # new_mod = __import__(entry.split(".")[0], globals(), locals())
                 if hasattr(new_mod, "urlpatterns"):
                     urlpatterns.extend(new_mod.urlpatterns)
 

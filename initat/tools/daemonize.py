@@ -1,4 +1,4 @@
-#!/usr/bin/python-init -Otu
+#!/usr/bin/python3-init -Otu
 # Copyright (C) 2015-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-client
@@ -20,8 +20,6 @@
 #
 
 """ daemonizes a given server """
-
-
 
 import argparse
 import grp

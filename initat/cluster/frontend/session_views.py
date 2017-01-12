@@ -140,7 +140,7 @@ class SessionHelper(object):
         for _key in self.session_keys:
             _content = cache.get(_key)
             if _content is not None and _key != _c_key:
-                if _content["_auth_user_id"] == cur_user_id:
+                if "_auth_user_id" in _content and _content["_auth_user_id"] == cur_user_id:
                     if "latest_contact" in _content:
                         # check for stale session
                         _diff = (_now - _content["latest_contact"]).total_seconds()
@@ -196,7 +196,7 @@ def _login(request, _user_object, login_credentials=None):
     if login_credentials is not None:
         real_user_name, login_password, login_name = login_credentials
         request.session["login_name"] = login_name
-        request.session["password"] = base64.b64encode(login_password.decode("utf-8"))
+        request.session["password"] = base64.b64encode(login_password.encode("utf-8"))
     else:
         request.session["login_name"] = _user_object.login
 

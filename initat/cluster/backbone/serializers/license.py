@@ -33,8 +33,8 @@ from initat.cluster.backbone.models import icswEggCradle, icswEggBasket
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    b"icswEggBasketSerializer",
-    b"icswEggCradleSerializer",
+    "icswEggBasketSerializer",
+    "icswEggCradleSerializer",
 ]
 
 

@@ -18,8 +18,6 @@
 #
 """ uuid tools """
 
-
-
 import os
 import uuid
 
@@ -57,7 +55,7 @@ def get_uuid(renew=False):
         _create_cs = False
     if _create_cs:
         _cs = config_store.ConfigStore(DATASTORE_NAME, access_mode=config_store.AccessModeEnum.GLOBAL)
-        _cs["cluster.device.uuid"] = the_uuid.get_urn()
+        _cs["cluster.device.uuid"] = the_uuid.urn
         _cs.write()
     the_uuid = uuid.UUID(
         config_store.ConfigStore(
@@ -72,11 +70,11 @@ def get_uuid(renew=False):
         _write = True
     else:
         old_uuid = open(NEW_UUID_NAME, "r").read().strip()
-        if old_uuid != the_uuid.get_urn():
+        if old_uuid != the_uuid.urn:
             _write = True
     if _write:
         try:
-            open(NEW_UUID_NAME, "w").write("{}\n".format(the_uuid.get_urn()))
+            open(NEW_UUID_NAME, "w").write("{}\n".format(the_uuid.urn))
         except IOError:
             pass
     return the_uuid

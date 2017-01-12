@@ -22,8 +22,6 @@
 
 """ helper functions for the init.at clustersoftware """
 
-
-
 import memcache
 import time
 from django.conf import settings
@@ -193,11 +191,11 @@ class XMLWrapper(object):
             )
         )
 
-    def __unicode__(self):
+    def __str__(self):
         """
         :returns: the unicode representation of xml response
         """
-        return etree.tostring(self.build_response(), encoding=str)  # @UndefinedVariable
+        return etree.tostring(self.build_response(), encoding="unicode")
 
     def show(self, logger=None):
         def _log(what, log_level=logging_tools.LOG_LEVEL_OK):

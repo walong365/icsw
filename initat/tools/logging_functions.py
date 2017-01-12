@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2016 Andreas Lang-Nevyjel
+# Copyright (C) 2016-2017 Andreas Lang-Nevyjel
 #
 # this file is part of python-modules-base
 #
@@ -21,8 +21,6 @@
 #
 
 """ high-level helper functions for logging """
-
-
 
 import logging
 import os
@@ -49,7 +47,8 @@ def get_logger(cs, handle_name, logger_name):
         cs["log.format.date"],
     )
     logger.setLevel(logging.DEBUG)
-    full_name = full_name.encode("ascii", errors="replace")
+    # print(type(full_name))
+    full_name = full_name
     # create dirs
     _dir, _fname = os.path.split(full_name)
     if not os.path.isdir(_dir):
