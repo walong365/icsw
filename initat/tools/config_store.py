@@ -404,7 +404,14 @@ class ConfigStore(object):
             if access_mode is not None:
                 self.__access_mode = access_mode
             try:
-                open(self.file_name, "w").write(etree.tostring(self._generate(), pretty_print=True, xml_declaration=True))
+                open(self.file_name, "w").write(
+                    etree.tostring(
+                        self._generate(),
+                        pretty_print=True,
+                        xml_declaration=True,
+                        encoding="ascii",
+                    ).decode("utf-8")
+                )
             except:
                 self.log(
                     "cannot write tree to {}: {}".format(
