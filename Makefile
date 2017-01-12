@@ -24,7 +24,8 @@ LOCALSBIN=/usr/local/sbin
 META_DIR=/var/lib/meta-server
 MOTHER_DIR=${ICSW_SHARE}/mother
 NGINX_CONF=/etc/nginx/sites-enabled/localhost
-PYTHON_SITE=/opt/python-init/lib/python2.7/site-packages
+PYTHON2_SITE=/opt/python-init/lib/python2.7/site-packages
+PYTHON3_SITE=/opt/cluster/lib/python3.6/site-packages
 SCRIPTDIR=/usr/bin
 USRSBIN=/usr/sbin
 VARDIR=/var/lib/cluster/package-client
@@ -39,7 +40,8 @@ TARGET_SYS_LIST=snmp_relay cluster_config_server logcheck_server cluster_server 
 ###############################################################################
 INSTALL=install
 INSTALL_OPTS=-p
-PYTHON=python-init
+PYTHON2=python-init
+PYTHON3=python3-init
 LN=ln
 
 ###############################################################################
@@ -93,7 +95,8 @@ MEMTEST_VERSION=86+-5.01
 
 build:
 	${MAKE} -C c_programms
-	${PYTHON} ./setup.py build
+	${PYTHON2} ./setup.py build
+	${PYTHON3} ./setup.py build
 	mkdir syslinux ; \
 	cd syslinux ; \
 	tar -xzf ../syslinux-${VERSION_SYSLINUX}.tar.gz \
@@ -124,9 +127,12 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${STONITH_DIR}
 	${INSTALL} ${INSTALL_OPTS} ha-addons/ibmbcs ${DESTDIR}/${STONITH_DIR}
 	# Copy the main source code
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/config
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/graphs
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON3_SITE}/
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON3_SITE}/initat/cluster/config
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON3_SITE}/initat/cluster/graphs
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON2_SITE}/
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON2_SITE}/initat/cluster/config
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON2_SITE}/initat/cluster/graphs
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/etc/
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_ETC}/servers.d
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_ETC}/servers.d/relax.d
@@ -136,8 +142,10 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} opt/cluster/etc/cstores.d/*.xml ${DESTDIR}/${ICSW_ETC}/cstores.d
 	${INSTALL} ${INSTALL_OPTS} opt/cluster/etc/cstores.d/*.xml.sample ${DESTDIR}/${ICSW_ETC}/cstores.d
 	# setup.py
-	${PYTHON} ./setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BIN}
-	rm -f ${DESTDIR}/${PYTHON_SITE}/*.egg*
+	${PYTHON2} ./setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BIN}
+	${PYTHON3} ./setup.py install --root="${DESTDIR}" --install-scripts=${ICSW_BIN}
+	rm -f ${DESTDIR}/${PYTHON2_SITE}/*.egg*
+	rm -f ${DESTDIR}/${PYTHON3_SITE}/*.egg*
 	# status
 	${INSTALL} ${INSTALL_OPTS} configs/rc.status ${DESTDIR}/etc/rc.status_suse
 	# Makefiles
@@ -158,10 +166,12 @@ install: install_webcontent
 	done
 	# Create to ICSW_SBIN
 	${LN} -s ${ICSW_SBIN}/tls_verify.py ${DESTDIR}/${LOCALSBIN}/tls_verify.py
-	${LN} -s ${PYTHON_SITE}/initat/cluster/manage.py ${DESTDIR}/${ICSW_SBIN}/clustermanage.py
+	${LN} -s ${PYTHON3_SITE}/initat/cluster/manage.py ${DESTDIR}/${ICSW_SBIN}/clustermanage.py
  	# config.xml
-	${INSTALL} ${INSTALL_OPTS} initat/cluster/config/config.xml ${DESTDIR}/${PYTHON_SITE}/initat/cluster/config/config.xml
-	${INSTALL} ${INSTALL_OPTS} initat/cluster/config/config_relax.xml ${DESTDIR}/${PYTHON_SITE}/initat/cluster/config/config_relax.xml
+	${INSTALL} ${INSTALL_OPTS} initat/cluster/config/config.xml ${DESTDIR}/${PYTHON2_SITE}/initat/cluster/config/config.xml
+	${INSTALL} ${INSTALL_OPTS} initat/cluster/config/config_relax.xml ${DESTDIR}/${PYTHON2_SITE}/initat/cluster/config/config_relax.xml
+	${INSTALL} ${INSTALL_OPTS} initat/cluster/config/config.xml ${DESTDIR}/${PYTHON3_SITE}/initat/cluster/config/config.xml
+	${INSTALL} ${INSTALL_OPTS} initat/cluster/config/config_relax.xml ${DESTDIR}/${PYTHON3_SITE}/initat/cluster/config/config_relax.xml
 	# ICSW_BIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${INIT}
@@ -219,7 +229,8 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/opt/cluster/share/webcache/
 	${INSTALL} ${INSTALL_OPTS} cert/* ${DESTDIR}/opt/cluster/share/cert
 	# Various python files
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON2_SITE}
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON3_SITE}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PROFDIR}
 	cp -a cluster.schema ${DESTDIR}/opt/cluster/share
 	cp -a ${DESTDIR}/${ICSW_SGE}/batchsys.sh_client ${DESTDIR}/${PROFDIR}/batchsys.sh
@@ -246,13 +257,15 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} scripts/unregister_file_watch ${DESTDIR}/${SCRIPTDIR}
 	./init_proprietary.py ${DESTDIR}
 	# icsw
-	${LN} -s ${PYTHON_SITE}/initat/icsw/main.py ${DESTDIR}/${ICSW_SBIN}/icsw
+	${LN} -s ${PYTHON3_SITE}/initat/icsw/main.py ${DESTDIR}/${ICSW_SBIN}/icsw
 	# remove deprecated
-	rm -rf ${DESTDIR}/${PYTHON_SITE}/initat/host_monitoring/modules/deprecated
+	rm -rf ${DESTDIR}/${PYTHON3_SITE}/initat/host_monitoring/modules/deprecated
 	# remove pyc
-	find ${DESTDIR}/${PYTHON_SITE} -iname "*.pyc" -exec rm {} \;
+	find ${DESTDIR}/${PYTHON2_SITE} -iname "*.pyc" -exec rm {} \;
+	find ${DESTDIR}/${PYTHON3_SITE} -iname "*.pyc" -exec rm {} \;
 	# remove test_settings.py
-	rm -f ${DESTDIR}/${PYTHON_SITE}/initat/cluster/test_settings.py
+	rm -f ${DESTDIR}/${PYTHON2_SITE}/initat/cluster/test_settings.py
+	rm -f ${DESTDIR}/${PYTHON3_SITE}/initat/cluster/test_settings.py
 	# create version cstore
 	./tools/create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${ICSW_ETC}/cstores.d/icsw.sysversion_config.xml ; \
 
@@ -267,7 +280,8 @@ clean:
 	rm -f memdisk
 	rm -f memtest86+-5.01.iso
 	make -C c_programms clean
-	${PYTHON} ./setup.py clean
+	${PYTHON2} ./setup.py clean
+	${PYTHON3} ./setup.py clean
 	rm -rf build
 
 ###############################################################################
