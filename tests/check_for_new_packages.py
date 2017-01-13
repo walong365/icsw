@@ -26,7 +26,7 @@ def check_for_new_packages():
     current_release_dict = {}
 
     for distro_name, repo_uri in repos:
-        data = urllib.request.urlopen(repo_uri).read()
+        data = urllib.request.urlopen(repo_uri).read().decode()
 
         for line in data.split("\n"):
             match = PACKAGE_NAME_PATTERN.match(line)

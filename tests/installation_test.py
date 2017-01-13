@@ -1,4 +1,4 @@
-#!/usr/bin/python3-init -Ot
+#!/usr/bin/python3.4 -Ot
 
 import datetime
 import subprocess
@@ -103,14 +103,14 @@ def install_icsw_base_system(host, username, password, package_manager, machine_
         ("Restarting icsw services ... ",  "/opt/cluster/sbin/icsw service restart", None)
     ]
 
-    with open("{}.log".format(machine_name), "a", 0) as log_file:
+    with open("{}.log".format(machine_name), "ab", 0) as log_file:
         for status_msg, command, expected_string in commands:
             sys.stdout.write(status_msg)
             sys.stdout.flush()
 
             start_time = datetime.datetime.now()
             ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(command)
-            log_file.write("*** Command executed: {}\n".format(command))
+            log_file.write(str.encode("*** Command executed: {}\n".format(command)))
 
             expected_string_found = True
             if expected_string:
@@ -121,7 +121,7 @@ def install_icsw_base_system(host, username, password, package_manager, machine_
                     output = next(ssh_stdout)
                     if expected_string and expected_string in output:
                         expected_string_found = True
-                    log_file.write(output)
+                    log_file.write(str.encode(output))
                 except StopIteration:
                     break
 
@@ -131,7 +131,7 @@ def install_icsw_base_system(host, username, password, package_manager, machine_
             end_time = datetime.datetime.now()
 
             sys.stdout.write("done in ({})\n".format((end_time - start_time)))
-            log_file.write("*** Command ({}) execution took: {}\n".format(command, (end_time - start_time)))
+            log_file.write(str.encode("*** Command ({}) execution took: {}\n".format(command, (end_time - start_time))))
             sys.stdout.flush()
 
 
@@ -163,7 +163,7 @@ def reset_test_server(user, password, server_id, snapshot_id, machine_name):
 
     output_dict = {}
 
-    with open("{}.log".format(machine_name), "a", 0) as log_file:
+    with open("{}.log".format(machine_name), "ab", 0) as log_file:
         for status_msg, action_uri, method, check_output, output_save_identifier in commands:
             sys.stdout.write(status_msg)
             sys.stdout.flush()
@@ -179,11 +179,11 @@ def reset_test_server(user, password, server_id, snapshot_id, machine_name):
             start_time = datetime.datetime.now()
             while True:
                 output = subprocess.check_output(args)
-                log_file.write("*** Command executed: {}\n".format("".join(args)))
+                log_file.write(str.encode("*** Command executed: {}\n".format("".join(args))))
                 log_file.write(output)
 
                 if check_output:
-                    if check_output in output:
+                    if check_output in output.decode():
                         output_dict[output_save_identifier] = output
                         break
                     else:
@@ -193,7 +193,8 @@ def reset_test_server(user, password, server_id, snapshot_id, machine_name):
 
             end_time = datetime.datetime.now()
 
-            log_file.write("*** Command ({}) execution took: {}\n".format("".join(args), (end_time - start_time)))
+            log_file.write(str.encode("*** Command ({}) execution took: {}\n".format("".join(args),
+                                                                                     (end_time - start_time))))
             sys.stdout.write("done (execution took {})\n".format((end_time - start_time)))
             sys.stdout.flush()
 
