@@ -232,6 +232,9 @@ class ConfigStore(object):
         _exists = False
         if os.path.exists(ConfigStore.build_path(name)):
             try:
+                _stat = os.stat(ConfigStore.build_path(name))
+                if _stat[stat.ST_SIZE] == 0:
+                    raise Exception()
                 open(ConfigStore.build_path(name), "r").read(1)
             except:
                 pass

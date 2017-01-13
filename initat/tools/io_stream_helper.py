@@ -19,8 +19,6 @@
 #
 """ sends everything to the local logging-server """
 
-
-
 import atexit
 import os
 import pickle

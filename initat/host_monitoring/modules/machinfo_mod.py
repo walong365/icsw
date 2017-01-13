@@ -19,16 +19,12 @@
 #
 """ machine information """
 
-
-
-import subprocess
 import subprocess
 import itertools
 import json
 import os
 import platform
 import re
-import statvfs
 import sys
 import tempfile
 import time
@@ -349,10 +345,10 @@ class _general(hm_classes.hm_module):
                 except:
                     pass
                 else:
-                    fact = float(osres[statvfs.F_FRSIZE]) / (1024.)
+                    fact = float(osres.f_frsize) / 1024.
                     try:
-                        blocks, bfree, bavail = int(osres[statvfs.F_BLOCKS]), int(osres[statvfs.F_BFREE]), int(osres[statvfs.F_BAVAIL])
-                        inodes, ifree, iavail = int(osres[statvfs.F_FILES]), int(osres[statvfs.F_FFREE]), int(osres[statvfs.F_FAVAIL])
+                        blocks, bfree, bavail = int(osres.f_blocks), int(osres.f_bfree), int(osres.f_bavail)
+                        inodes, ifree, iavail = int(osres.f_files), int(osres.f_ffree), int(osres.f_favail)
                     except:
                         pass
                     else:

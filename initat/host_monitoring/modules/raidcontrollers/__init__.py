@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015,2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,6 +19,7 @@
 
 import os
 import inspect
+import importlib
 
 from initat.host_monitoring.hm_classes import hm_command
 from initat.host_monitoring.modules.raidcontrollers.base import ctrl_type
@@ -37,7 +38,7 @@ for mod_name in _mods:
     # no circular import
     if mod_name in ["base", "all"]:
         continue
-    new_mod = __import__(mod_name, globals(), locals())
+    new_mod = importlib.import_module("initat.host_monitoring.modules.raidcontrollers.{}".format(mod_name))
     for _name in dir(new_mod):
         _entry = getattr(new_mod, _name)
         if inspect.isclass(_entry):

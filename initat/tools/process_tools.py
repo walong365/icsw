@@ -78,7 +78,9 @@ def safe_unicode(obj):
 
 
 def compress_struct(input):
-    return base64.b64encode(bz2.compress(json.dumps(input)))
+    from initat.tools.server_command import compress
+    return compress(input, json=True)
+    # return base64.b64encode(bz2.compress(json.dumps(input)))
 
 
 def decompress_struct(b64_str, version=2):

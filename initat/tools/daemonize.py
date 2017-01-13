@@ -99,14 +99,20 @@ def main():
         detach_process=True,
         uid=uid,
         gid=gid,
-        gids=gids,
+        # gids=gids,
         # valid with python-daemonize-2.1.2
         # init_groups=False
     )
     if opts.nice:
         os.nice(opts.nice)
     if opts.daemonize:
-        _daemon_context.open()
+        try:
+            _daemon_context.open()
+        except:
+            # catastrophe
+            from initat.tools import logging_tools, process_tools
+            for _line in process_tools.exception_info().log_lines:
+                logging_tools.my_syslog(_line, logging_tools.LOG_LEVEL_ERROR)
     else:
         if gids:
             os.setgroups(gids)
@@ -115,7 +121,6 @@ def main():
             os.setuid(uid)
     if _mode == "python":
         os.environ["LC_LANG"] = "en_us.UTF_8"
-        os.environ["PYTHONIOENCODING"] = "utf_8"
         # python path
         if opts.debug:
             # set debug flag

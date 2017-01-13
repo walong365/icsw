@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Gregor Kaufmann, init.at
+# Copyright (C) 2016-2017 Gregor Kaufmann, init.at
 #
 # Send feedback to: <kaufmann@init.at>
 #
@@ -18,8 +18,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ report-server, report generation functions """
-
-
 
 import base64
 import datetime
@@ -87,7 +85,6 @@ if settings.DEBUG:
 else:
     _file_root = settings.ICSW_PROD_WEB_DIR
     NOCTUA_LOGO_PATH = os.path.join(settings.STATIC_ROOT, "noctua-flat-trans.png")
-
 
 # this makes problems when running package-knife builds on devices without installed icsw-server
 # package because DEBUG=False

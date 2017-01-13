@@ -159,7 +159,7 @@ class LogCache(object):
         self.lines.append(ll)
 
     def sort(self):
-        self.lines = [_b for _a, _b in sorted([(_l.dt, _l) for _l in self.lines])]
+        self.lines = [_b for _a, _b in sorted([(_l.dt, _l) for _l in self.lines], key=lambda x: x[0])]
 
     def prune(self):
         self.lines = self.lines[-self.opt_ns.n:]
