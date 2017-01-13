@@ -55,7 +55,7 @@ class LiveQuery(object):
             r_field.append("Columns: {}".format(" ".join(self._columns)))
         r_field.extend(self._filters)
         # print "\nQuery:\n" + "\n".join(r_field + ["", ""])
-        return "\n".join(r_field + ["", ""]).encode("utf-8")
+        return "\n".join(r_field + ["", ""])
 
     def columns(self, *args):
         if LiveSocket.livestatus_enum:
@@ -95,7 +95,8 @@ class LiveSocket(object):
             else:
                 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.connect(self.peer)
-            s.send(request)
+            # print(type(request), request)
+            s.send(request.encode("utf-8"))
             s.shutdown(socket.SHUT_WR)
             csv_lines = csv.DictReader(s.makefile(), columns, delimiter=';')
             _result = list(csv_lines)
@@ -116,14 +117,18 @@ class LiveSocket(object):
     def lookup_enum(cls, t_type, *keys):
         _enum = getattr(cls.livestatus_enum, t_type).value
         try:
-            _resolved = [getattr(_enum, _key).value["name"] for _key in keys]
+            _resolved = [
+                getattr(_enum, _key).value["name"] for _key in keys
+            ]
         except AttributeError:
-            raise AttributeError(
-                "Attribute '{}' not known in enum, possible values: {}".format(
-                    _key,
-                    ", ".join(sorted([_v.name for _v in list(_enum)])),
-                )
-            )
+            for _key in keys:
+                if not hasattr(_enum, _key):
+                    raise AttributeError(
+                        "Attribute '{}' not known in enum, possible values: {}".format(
+                            _key,
+                            ", ".join(sorted([_v.name for _v in list(_enum)])),
+                        )
+                    )
         return _resolved
 
     @classmethod
@@ -180,6 +185,7 @@ class LiveSocket(object):
         # init enum for livestatus queries
         s_time = time.time()
         _result = LiveSocket(log_com, sock_name).columns.call()
+        # print("*", _result)
         _enum_list = []
         _dict = {}
         for entry in _result:
@@ -214,6 +220,7 @@ class LiveSocket(object):
             )
             _enum_list.append((_table, table_enum))
             # print table_enum, len(table_enum), _enum_name_list
+        # print(_enum_list)
         cls.livestatus_enum = Enum(
             value="LivestatusEnum",
             names=_enum_list,

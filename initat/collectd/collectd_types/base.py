@@ -1,7 +1,7 @@
 #
 # this file is part of collectd-init
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2013-2015,2017 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,7 +20,7 @@
 #
 """ base definitions for collectd types """
 
-from lxml.builder import E  # @UnresolvedImports
+from lxml.builder import E
 
 
 class perfdata_value(object):
@@ -73,7 +73,7 @@ class PerfdataObject(object):
             # xml send info (may be None)
             _send_xml,
             # time
-            int(_xml.get("time")),
+            int(float(_xml.get("time"))),
             # report offset
             rsi,
             # list of variables
@@ -143,7 +143,7 @@ class value(object):
 
     def _set_value_int(self, value, cur_time):
         self.last_update = cur_time
-        self.value = int(value)
+        self.value = int(float(value))
 
     def _set_value_float(self, value, cur_time):
         self.last_update = cur_time

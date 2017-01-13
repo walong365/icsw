@@ -149,10 +149,10 @@ else
                 RESTART_SRV=1
                 RESTART_CAUSE="software updated"
             else
-                echo "Database is not valid and system is not slave, skipping restart"
+                echo "Database is not valid and system is not slave, skipping software restart"
             fi
         else
-            echo "icsw.general store not present and database not valid, skipping restart"
+            echo "icsw.general store not present and database not valid, skipping software restart"
         fi
     fi
 fi
