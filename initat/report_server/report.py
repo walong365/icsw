@@ -1179,16 +1179,15 @@ class PDFReportGenerator(ReportGenerator):
             time_str = ar.asset_batch.run_start_time.strftime(ASSET_DATETIMEFORMAT)
 
             if AssetType(ar.run_type) == AssetType.UPDATE:
-                data = row_collector.rows_dict[1:]
-                data = sorted(data, key=lambda k: k['update_status'])
-
                 heading = "System Updates"
 
                 report = DeviceReport(_device, report_settings, heading)
                 if not report.report_settings['installed_updates_selected']:
                     continue
-
                 root_report.add_child(report)
+
+                data = row_collector.rows_dict[1:]
+                data = sorted(data, key=lambda k: k['update_status'])
 
                 section_number = report.get_section_number()
 
@@ -1223,15 +1222,14 @@ class PDFReportGenerator(ReportGenerator):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.LICENSE:
-                data = row_collector.rows_dict[1:]
-
                 heading = "Active Licenses"
 
                 report = DeviceReport(_device, report_settings, heading)
                 if not report.report_settings['licenses_selected']:
                     continue
-
                 root_report.add_child(report)
+
+                data = row_collector.rows_dict[1:]
 
                 section_number = report.get_section_number()
 
@@ -1260,6 +1258,13 @@ class PDFReportGenerator(ReportGenerator):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.PACKAGE:
+                heading = "Installed Software"
+
+                report = DeviceReport(_device, report_settings, heading)
+                if not report.report_settings['packages_selected']:
+                    continue
+                root_report.add_child(report)
+
                 from initat.cluster.backbone.models import asset
 
                 try:
@@ -1268,13 +1273,7 @@ class PDFReportGenerator(ReportGenerator):
                     logger.info("PDF generation for packages failed, error was: {}".format(str(e)))
                     packages = []
 
-                heading = "Installed Software"
 
-                report = DeviceReport(_device, report_settings, heading)
-                if not report.report_settings['packages_selected']:
-                    continue
-
-                root_report.add_child(report)
 
                 section_number = report.get_section_number()
 
@@ -1316,16 +1315,15 @@ class PDFReportGenerator(ReportGenerator):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.PENDING_UPDATE:
-                if not report.report_settings['avail_updates_selected']:
-                    continue
-
-                data = row_collector.rows_dict[1:]
-                data = sorted(data, key=lambda k: k['update_name'])
-
                 heading = "Updates ready for install"
 
                 report = DeviceReport(_device, report_settings, heading)
+                if not report.report_settings['avail_updates_selected']:
+                    continue
                 root_report.add_child(report)
+
+                data = row_collector.rows_dict[1:]
+                data = sorted(data, key=lambda k: k['update_name'])
 
                 section_number = report.get_section_number()
 
@@ -1361,16 +1359,15 @@ class PDFReportGenerator(ReportGenerator):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.HARDWARE:
-                if not report.report_settings['lstopo_report_selected']:
-                    continue
-
-                data = row_collector.rows_dict[1:]
-                data = sorted(data, key=lambda k: k['hardware_depth'])
-
                 heading = "Lstopo Information"
 
                 report = DeviceReport(_device, report_settings, heading)
+                if not report.report_settings['lstopo_report_selected']:
+                    continue
                 root_report.add_child(report)
+
+                data = row_collector.rows_dict[1:]
+                data = sorted(data, key=lambda k: k['hardware_depth'])
 
                 section_number = report.get_section_number()
 
@@ -1401,16 +1398,15 @@ class PDFReportGenerator(ReportGenerator):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.PROCESS:
-                if not report.report_settings['process_report_selected']:
-                    continue
-
-                data = row_collector.rows_dict[1:]
-                data = sorted(data, key=lambda k: k['process_name'])
-
                 heading = "Process Information"
 
                 report = DeviceReport(_device, report_settings, heading)
+                if not report.report_settings['process_report_selected']:
+                    continue
                 root_report.add_child(report)
+
+                data = row_collector.rows_dict[1:]
+                data = sorted(data, key=lambda k: k['process_name'])
 
                 section_number = report.get_section_number()
 
@@ -1444,15 +1440,14 @@ class PDFReportGenerator(ReportGenerator):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.DMI:
-                if not report.report_settings['dmi_report_selected']:
-                    continue
-
                 heading = "Hardware Details"
 
-                data = row_collector.rows_dict[1:]
-
                 report = DeviceReport(_device, report_settings, heading)
+                if not report.report_settings['dmi_report_selected']:
+                    continue
                 root_report.add_child(report)
+
+                data = row_collector.rows_dict[1:]
 
                 section_number = report.get_section_number()
 
@@ -1487,15 +1482,14 @@ class PDFReportGenerator(ReportGenerator):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.PCI:
-                if not report.report_settings['pci_report_selected']:
-                    continue
-
-                data = row_collector.rows_dict[1:]
-
                 heading = "PCI Details"
 
                 report = DeviceReport(_device, report_settings, heading)
+                if not report.report_settings['pci_report_selected']:
+                    continue
                 root_report.add_child(report)
+
+                data = row_collector.rows_dict[1:]
 
                 section_number = report.get_section_number()
 
@@ -1538,11 +1532,13 @@ class PDFReportGenerator(ReportGenerator):
                 report.number_of_pages += rpt.pagenumber
 
             elif ar.run_type == AssetType.PRETTYWINHW or ar.run_type == AssetType.LSHW:
+                heading = "Hardware Report"
+
+                report = DeviceReport(_device, report_settings, heading)
                 if not report.report_settings['hardware_report_selected']:
                     continue
 
                 hardware_report_ar = ar
-                continue
 
             canvas.save()
             report.add_buffer_to_report(_buffer)

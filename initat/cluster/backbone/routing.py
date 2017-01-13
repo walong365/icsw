@@ -59,7 +59,7 @@ def get_type_from_config(c_name):
 
 def get_server_uuid(srv_type=None, uuid=None):
     if uuid is None:
-        uuid = uuid_tools.get_uuid().get_urn()
+        uuid = str(uuid_tools.get_uuid())
     if not uuid.startswith("urn"):
         uuid = "urn:uuid:{}".format(uuid)
     if srv_type is not None:
