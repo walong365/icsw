@@ -289,73 +289,80 @@ class ConfigStore(object):
                     logging_tools.LOG_LEVEL_ERROR,
                 )
             else:
-                _ng = etree.RelaxNG(etree.fromstring(CS_NG))
-                _valid = _ng.validate(_tree)
-                if _valid:
-                    self.tree_valid = True
-                    self.name = _tree.get("name", "")
-                    self.__access_mode_is_valid = False
+                if _stat[stat.ST_SIZE] == 0:
+                    self.log("ConfigStore at '{}' is empty, deleting...".format(_read_name))
                     try:
-                        self.__access_mode = getattr(AccessModeEnum, _tree.get("access-mode", "global").upper())
+                        os.unlink(_read_name)
                     except:
-                        self.__access_mode = AccessModeEnum.GLOBAL
-                    if self.__required_access_mode is not None and self.__required_access_mode != self.__access_mode:
-                        self.__access_mode = self.__required_access_mode
-                    # try to guess access mode
-                    _t_mode = ACCESS_MODE_DICT[self.__access_mode]["mode"]
-                    if (self.__mode & ~(_t_mode | stat.S_IFREG)) | _t_mode == _t_mode and self.__gid == self.idg_gid:
-                        self.__access_mode_is_ok = True
-                    else:
-                        self.__access_mode_is_ok = False
-                    _xml_prefix = _tree.get("prefix", "")
-                    _rewrite = False
-                    if (_xml_prefix or None) != self.prefix:
-                        if self.__fix_prefix_on_read:
-                            self.log(
-                                "prefix differs (self='{}', XML='{}'), rewriting file".format(
-                                    self.prefix,
-                                    _xml_prefix or None,
-                                ),
-                                logging_tools.LOG_LEVEL_ERROR,
-                            )
-                            _rewrite = True
+                        self.log("cannot delete, ignoring...", logging_tools.LOG_LEVEL_CRITICAL)
+                else:
+                    _ng = etree.RelaxNG(etree.fromstring(CS_NG))
+                    _valid = _ng.validate(_tree)
+                    if _valid:
+                        self.tree_valid = True
+                        self.name = _tree.get("name", "")
+                        self.__access_mode_is_valid = False
+                        try:
+                            self.__access_mode = getattr(AccessModeEnum, _tree.get("access-mode", "global").upper())
+                        except:
+                            self.__access_mode = AccessModeEnum.GLOBAL
+                        if self.__required_access_mode is not None and self.__required_access_mode != self.__access_mode:
+                            self.__access_mode = self.__required_access_mode
+                        # try to guess access mode
+                        _t_mode = ACCESS_MODE_DICT[self.__access_mode]["mode"]
+                        if (self.__mode & ~(_t_mode | stat.S_IFREG)) | _t_mode == _t_mode and self.__gid == self.idg_gid:
+                            self.__access_mode_is_ok = True
+                        else:
+                            self.__access_mode_is_ok = False
+                        _xml_prefix = _tree.get("prefix", "")
+                        _rewrite = False
+                        if (_xml_prefix or None) != self.prefix:
+                            if self.__fix_prefix_on_read:
+                                self.log(
+                                    "prefix differs (self='{}', XML='{}'), rewriting file".format(
+                                        self.prefix,
+                                        _xml_prefix or None,
+                                    ),
+                                    logging_tools.LOG_LEVEL_ERROR,
+                                )
+                                _rewrite = True
+                            else:
+                                self.prefix = _xml_prefix
                         else:
                             self.prefix = _xml_prefix
-                    else:
-                        self.prefix = _xml_prefix
-                    _found, _parsed = (0, 0)
-                    for _key in _tree.xpath(".//key", smart_strings=False):
-                        _found += 1
-                        try:
-                            _new_var = ConfigVar.interpret(_key)
-                        except:
-                            self.log(
-                                "error creating new var: {}".format(
-                                    process_tools.get_except_info(),
-                                ),
-                                logging_tools.LOG_LEVEL_ERROR,
+                        _found, _parsed = (0, 0)
+                        for _key in _tree.xpath(".//key", smart_strings=False):
+                            _found += 1
+                            try:
+                                _new_var = ConfigVar.interpret(_key)
+                            except:
+                                self.log(
+                                    "error creating new var: {}".format(
+                                        process_tools.get_except_info(),
+                                    ),
+                                    logging_tools.LOG_LEVEL_ERROR,
+                                )
+                            else:
+                                _parsed += 1
+                                self.vars[_new_var.name] = _new_var
+                        self.log(
+                            "added {} from {} (found {})".format(
+                                logging_tools.get_plural("variable", _parsed),
+                                _read_name,
+                                logging_tools.get_plural("key", _found),
                             )
-                        else:
-                            _parsed += 1
-                            self.vars[_new_var.name] = _new_var
-                    self.log(
-                        "added {} from {} (found {})".format(
-                            logging_tools.get_plural("variable", _parsed),
-                            _read_name,
-                            logging_tools.get_plural("key", _found),
                         )
-                    )
-                    if _rewrite:
-                        self.log("rewriting file", logging_tools.LOG_LEVEL_WARN)
-                        self.write()
-                else:
-                    self.log(
-                        "XML-tree from '{}' is invalid: {}".format(
-                            _read_name,
-                            str(_ng.error_log),
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR
-                    )
+                        if _rewrite:
+                            self.log("rewriting file", logging_tools.LOG_LEVEL_WARN)
+                            self.write()
+                    else:
+                        self.log(
+                            "XML-tree from '{}' is invalid: {}".format(
+                                _read_name,
+                                str(_ng.error_log),
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
         else:
             self.log(
                 "ConfigStore '{}' not found".format(
