@@ -81,7 +81,6 @@ class GetReportData(View):
     def post(self, request):
         data_b64 = ""
         report_type = "unknown"
-        report_id = None
 
         if "report_id" in request.POST:
             report_id = int(request.POST["report_id"])
@@ -89,7 +88,7 @@ class GetReportData(View):
             report_history = ReportHistory.objects.get(idx=report_id)
             report_type = report_history.type
             data = report_history.get_data()
-            data_b64 = base64.b64encode(data)
+            data_b64 = base64.b64encode(data).decode()
         else:
             report_id = 0
 
@@ -109,7 +108,7 @@ class GetReportData(View):
         report_history = ReportHistory.objects.get(idx=report_id)
         report_type = report_history.type
         data = report_history.get_data()
-        data_b64 = base64.b64encode(data)
+        data_b64 = base64.b64encode(data).decode()
 
         return HttpResponse(
             json.dumps(
@@ -239,12 +238,7 @@ class ReportDataAvailable(View):
     @method_decorator(login_required)
     def post(self, request):
         from initat.report_server.report import _select_assetruns_for_device
-        idx_list = []
-        for item in request.POST.iterlists():
-            key, _list = item
-            if key == "idx_list[]":
-                idx_list = _list
-                break
+        idx_list = request.POST.getlist("idx_list[]", [])
 
         assetbatch_id = request.POST.get("assetbatch_id", None)
         if assetbatch_id:

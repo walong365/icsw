@@ -963,7 +963,7 @@ class RemoteCallSignature(object):
         ).setdefault(
             self.msg_type,
             {}
-        )[self.__name__] = self
+        )[self.func_name] = self
         if self.id_filter:
             id_filter_dict[re.compile(self.id_filter)] = self
 
