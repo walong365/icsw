@@ -829,6 +829,76 @@
             </routeSubGroup>
         </menuHeader>
     </menu>
+    <menu layout="newstyle">
+        <menuHeader name="Device" icon="fa-question" side="left">
+            <routeSubGroup name="Control">
+                <menuEntry icon="fa-plus-circle" routeName="main.devicecreate" name="New"/>
+                <menuEntry icon="fa-tree" routeName="main.devtree" name="Tree"/>
+                <menuEntry icon="fa-bars" routeName="main.deviceinfo" name="Information"/>
+                <menuEntry icon="fa-sitemap" routeName="main.devicenetwork" name="Network"/>
+            </routeSubGroup>
+            <routeSubGroup name="Categories">
+                <menuEntry icon="fa-table" routeName="main.categorytree" name="Categories"/>
+                <menuEntry icon="fa-map-marker" routeName="main.monitorlocation" name="Location Service"/>
+                <menuEntry icon="fa-list-alt" routeName="main.domaintree" name="Domain Names"/>
+                <menuEntry icon="fa-map-marker" routeName="main.devlocation" name="Locations"/>
+            </routeSubGroup>
+            <routeSubGroup name="Properties">
+                <menuEntry icon="fa-check-square" routeName="main.devicesrvconfig" name="Assign System Service"/>
+                <menuEntry icon="fa-check-square-o" routeName="main.moncheckoverview" name="Checks"/>
+                <menuEntry icon="fa-check-square-o" routeName="main.configoverview" name="Configurations"/>
+                <menuEntry icon="fa-check-square" routeName="main.devicemonconfig" name="Checks"/>
+                <menuEntry icon="fa-check-square" routeName="main.deviceconfig" name="Configurations"/>
+                <menuEntry icon="fa-info" routeName="main.monitordynamic" name="Dynamic Monitoring"/>
+            </routeSubGroup>
+        </menuHeader>
+        <menuHeader name="Status" icon="fa-question" side="left">
+            <routeSubGroup name="Status">
+                <menuEntry icon="fa-dot-circle-o" routeName="main.livestatus" name="Liveview"/>
+                <menuEntry icon="fa-list" routeName="main.monitorov" name="Availability Overview"/>
+                <menuEntry icon="fa-pie-chart" routeName="main.statushistory" name="Availability Detail"/>
+                <menuEntry icon="fa-line-chart" routeName="main.graph" name="Graphs"/>
+                <menuEntry icon="fa-code-fork" routeName="main.kpievaluation" name="KPI"/>
+                <menuEntry icon="fa-book" routeName="main.report" name="Report History"/>
+            </routeSubGroup>
+        </menuHeader>
+        <menuHeader name="Asset" icon="fa-question" side="left">
+            <routeSubGroup name="Asset">
+                <menuEntry icon="fa-reorder" routeName="main.assetstaticoverview" name="Static"/>
+                <menuEntry icon="fa-diamond" routeName="main.assetdynamicoverview" name="Dynamic"/>
+            </routeSubGroup>
+        </menuHeader>
+        <menuHeader name="HPC" icon="fa-question" side="left">
+            <routeSubGroup name="HPC">
+                <menuEntry icon="fa-rocket" routeName="main.deployboot" name="Boot nodes"/>
+                <menuEntry icon="fa-database" routeName="main.partition" name="Partition overview"/>
+                <menuEntry icon="fa-linux" routeName="main.imagekernel" name="Images and Kernels"/>
+                <menuEntry icon="fa-plug" routeName="main.deviceconnection" name="Power Control"/>
+                <menuEntry icon="fa-download" routeName="main.packageinstall" name="Package install"/>
+                <menuEntry icon="fa-line-chart" routeName="main.licoverview" name="License Liveview"/>
+                <menuEntry icon="fa-table" routeName="main.rmsoverview" name="RMS Overview"/>
+                <menuEntry icon="fa-heartbeat" routeName="main.rmsoverview" name="Workbench"/>
+            </routeSubGroup>
+        </menuHeader>
+        <menuHeader name="$$USER_INFO" icon="fa-cog" side="right">
+            <routeSubGroup name="Preferences">
+                <menuEntry icon="fa-clock-o" routeName="main.schedasset" name="Schedule"/>
+                <menuEntry icon="fa-book" routeName="main.report" name="Report"/>
+                <menuEntry icon="fa-code-fork" routeName="main.kpisettings" name="KPI"/>
+                <menuEntry icon="fa-wrench" routeName="main.monitorbasics" name="Monitoring"/>
+                <menuEntry icon="fa-sitemap" routeName="main.devicenetwork" name="Network"/>
+                <menuEntry icon="fa-user" routeName="main.usertree" name="User, Groups and Roles"/>
+                <menuEntry icon="fa-info" routeName="main.serverinfo" name="Server Information"/>
+                <menuEntry icon="fa-key" routeName="main.syslicenseoverview" name="License"/>
+                <menuEntry icon="fa-cubes" routeName="main.setupprogress" name="Setup Progress"/>
+                <menuEntry icon="fa-list" routeName="main.backgroundinfo" name="Background Job Info"/>
+                <menuEntry icon="fa-history" routeName="main.history" name="Database History"/>
+                <menuEntry icon="fa-bars" routeName="main.statelist" name="Internal State List"/>
+                <menuEntry icon="fa-info" routeName="main.useraccount" name="Account Info"/>
+                <menuEntry icon="fa-sign-out" routeName="logout" name="Logout"/>
+            </routeSubGroup>
+        </menuHeader>
+    </menu>
     <tasks>
         <task name="Add device">
             <description>

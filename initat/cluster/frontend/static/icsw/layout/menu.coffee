@@ -158,6 +158,7 @@ menu_module = angular.module(
     MENU_LAYOUTS = [
         {short: "normal", name: "Optimized Menu Layout"}
         {short: "oldstyle", name: "Oldstyle Menu Layout"}
+        {short: "newstyle", name: "Newstyle Menu Layout"}
     ]
 
     _get_menu_help = () ->
