@@ -21,8 +21,6 @@
 #
 """ database connection tests """
 
-
-
 from initat.tools import process_tools
 
 

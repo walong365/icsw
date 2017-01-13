@@ -20,8 +20,6 @@
 #
 """ create version file for ICSW """
 
-
-
 import argparse
 import datetime
 import importlib

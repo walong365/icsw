@@ -21,8 +21,6 @@
 #
 """ database setup for NOCTUA / CORVUS / NESTOR """
 
-
-
 import fnmatch
 import grp
 import pwd

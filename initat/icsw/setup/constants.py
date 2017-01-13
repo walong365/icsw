@@ -21,27 +21,25 @@
 #
 """ database setup for NOCTUA / CORVUS / NESTOR """
 
-
-
 import importlib
 import os
 
 from initat.constants import LOG_ROOT, BACKBONE_DIR
 
 __all__ = [
-    b"CMIG_DIR",
-    b"MIGRATION_DIRS",
-    b"MIGRATIONS_DIR",
-    b"NEEDED_DIRS",
-    b"PRE_MODELS_DIR",
-    b"MODELS_DIR",
-    b"MODELS_DIR_SAVE",
-    b"Z800_MODELS_DIR",
-    b"DB_PRESENT",
-    b"DEFAULT_DATABASE",
-    b"DEFAULT_ENGINE",
-    b"AVAILABLE_DATABASES",
-    b"SYNC_APPS",
+    "CMIG_DIR",
+    "MIGRATION_DIRS",
+    "MIGRATIONS_DIR",
+    "NEEDED_DIRS",
+    "PRE_MODELS_DIR",
+    "MODELS_DIR",
+    "MODELS_DIR_SAVE",
+    "Z800_MODELS_DIR",
+    "DB_PRESENT",
+    "DEFAULT_DATABASE",
+    "DEFAULT_ENGINE",
+    "AVAILABLE_DATABASES",
+    "SYNC_APPS",
 ]
 
 #
