@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,10 +17,11 @@
 #
 """ load all notify background tasks """
 
-import os
+import importlib
 import inspect
-from .base import BGInotifyTask
+import os
 
+from .base import BGInotifyTask
 
 __all__ = ["BG_TASKS"]
 
@@ -31,7 +32,7 @@ _files = [_entry.split(".")[0] for _entry in os.listdir(_dir) if _entry.endswith
 
 tasks = []
 for mod_name in _files:
-    new_mod = __import__(mod_name, globals(), locals())
+    new_mod = importlib.import_module("initat.tools.bgnotify.tasks.{}".format(mod_name))
     for _key in dir(new_mod):
         _value = getattr(new_mod, _key)
         if _value != BGInotifyTask and inspect.isclass(_value) and issubclass(_value, BGInotifyTask):

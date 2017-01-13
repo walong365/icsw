@@ -19,8 +19,6 @@
 #
 """ config part of md-config-server """
 
-
-
 import time
 
 from initat.cluster.backbone.models import TOP_MONITORING_CATEGORY, parse_commandline
@@ -29,7 +27,7 @@ from initat.tools import logging_tools
 from .global_config import global_config
 
 __all__ = [
-    b"CheckCommand",
+    "CheckCommand",
 ]
 
 

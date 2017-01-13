@@ -21,8 +21,6 @@
 #
 """ show and follow cluster logs """
 
-
-
 import codecs
 import datetime
 import os

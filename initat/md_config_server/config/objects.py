@@ -20,8 +20,6 @@
 
 """ config part of md-config-server """
 
-
-
 import os
 
 from django.db.models import Q
@@ -38,15 +36,14 @@ from initat.tools import cluster_location, logging_tools
 from .global_config import global_config
 
 __all__ = [
-    b"MonAllHostDependencies",
-    b"MonAllTimePeriods",
-    b"MonAllServiceGroups",
-    b"MonAllCommands",
-    b"MonAllContacts",
-    b"MonAllContactGroups",
-    b"MonAllHostGroups",
+    "MonAllHostDependencies",
+    "MonAllTimePeriods",
+    "MonAllServiceGroups",
+    "MonAllCommands",
+    "MonAllContacts",
+    "MonAllContactGroups",
+    "MonAllHostGroups",
 ]
-
 
 CLUSTER_BIN = os.path.join(CLUSTER_DIR, "bin")
 CLUSTER_SBIN = os.path.join(CLUSTER_DIR, "sbin")

@@ -17,7 +17,4 @@
 #
 """ cluster-server, background inotify import script """
 
-
-
-
 from .create import create_bg_job

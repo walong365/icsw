@@ -19,8 +19,6 @@
 #
 """ build process for md-config-server """
 
-
-
 import os
 import time
 

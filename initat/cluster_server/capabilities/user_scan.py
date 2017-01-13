@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2012-2014,2017 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,13 +17,10 @@
 #
 """ cluster-server, user_scan capability """
 
-
-
 import os
 import stat
 import time
 
-import scandir
 from django.db.models import Q
 
 from initat.cluster.backbone.models import home_export_list, user, user_scan_result, user_scan_run
@@ -39,7 +36,7 @@ def sub_sum(_dict):
     return _size
 
 
-class sub_dir(dict):
+class ScanSubDir(dict):
     def __init__(self, full_name):
         self.size = 0
         # number of dirs
@@ -51,7 +48,7 @@ class sub_dir(dict):
 
     def add_sub_dir(self, key):
         if key not in self:
-            self[key] = sub_dir(os.path.join(self.full_name, key))
+            self[key] = ScanSubDir(os.path.join(self.full_name, key))
         return self[key]
 
     def total(self, attr):
@@ -127,35 +124,37 @@ class user_scan_stuff(BackgroundBase):
         _prev_runs = list(user_scan_run.objects.filter(Q(user=_scan_user)))
         new_run = user_scan_run.objects.create(user=_scan_user, running=True, scan_depth=_scan_user.scan_depth)
         new_run.save()
-        _size_dict = sub_dir(_home_dir)
+        _size_dict = ScanSubDir(_home_dir)
         _start_dir = _home_dir
         _top_depth = _start_dir.count("/")
         try:
             nfs_mounts, nfs_ignore = (set(), [])
             _last_dir = ""
-            for _main, _dirs, _files in scandir.walk(_start_dir):
-                if os.path.ismount(_main):
-                    nfs_mounts.add(_main)
-                    continue
-                elif any([_main.startswith(_nfs) for _nfs in nfs_mounts]):
-                    nfs_ignore.append(_main)
-                    continue
-                _last_dir = _main
-                _cur_depth = _main.count("/")
-                _parts = _main.split("/")
-                _max_depth = min(_top_depth + _scan_user.scan_depth, _cur_depth)
-                _key = "/".join(_parts[:_max_depth + 1])
-                # print _parts, _key
-                cur_dict = _size_dict
-                for _skey in _parts[_top_depth:_max_depth + 1]:
-                    cur_dict = cur_dict.add_sub_dir(_skey)
-                cur_dict.dirs += 1
-                for _file in _files:
-                    try:
-                        cur_dict.files += 1
-                        cur_dict.size += os.stat(os.path.join(_main, _file))[stat.ST_SIZE]
-                    except:
-                        pass
+            cur_settings = {"dict": _size_dict}
+            with os.scandir(_start_dir) as s_it:
+                for entry in s_it:
+                    if os.path.ismount(entry.path):
+                        nfs_mounts.add(entry.path)
+                    elif any([entry.path.startswith(_nfs) for _nfs in nfs_mounts]):
+                        nfs_ignore.append(entry.path)
+                        continue
+
+                    _last_entry = entry.path
+                    if entry.is_dir():
+                        _cur_depth = entry.path.count("/")
+                        _parts = entry.path.split("/")
+                        _max_depth = min(_top_depth + _scan_user.scan_depth, _cur_depth)
+                        _key = "/".join(_parts[:_max_depth + 1])
+                        # print _parts, _key
+                        cur_dict = _size_dict
+                        cur_settings["dict"] = _size_dict
+                        for _skey in _parts[_top_depth:_max_depth + 1]:
+                            cur_dict = cur_dict.add_sub_dir(_skey)
+                        cur_dict.dirs += 1
+                    else:
+                        dir_dict = cur_settings["dict"]
+                        dir_dict.files += 1
+                        dir_dict.size += entry.stat()[stat.ST_SIZE]
             if nfs_mounts:
                 self.log(
                     "ignored {} on {}".format(
@@ -165,9 +164,9 @@ class user_scan_stuff(BackgroundBase):
                 )
         except UnicodeDecodeError:
             self.log(
-                "UnicodeDecode: {}, _last_dir is '{}'".format(
+                "UnicodeDecode: {}, _last_entry is '{}'".format(
                     process_tools.get_except_info(),
-                    _last_dir,
+                    _last_entry,
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )

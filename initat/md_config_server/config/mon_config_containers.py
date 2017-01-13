@@ -25,8 +25,6 @@ MonFileContainer: holds one or more BaseConfigs (for a device for example)
 MonDirContainer: holds a directory of MonFileContainers
 """
 
-
-
 import codecs
 import hashlib
 import os
@@ -39,8 +37,8 @@ from .global_config import global_config
 from .mon_base_config import LogBufferMixin
 
 __all__ = [
-    b"MonFileContainer",
-    b"MonDirContainer",
+    "MonFileContainer",
+    "MonDirContainer",
 ]
 
 

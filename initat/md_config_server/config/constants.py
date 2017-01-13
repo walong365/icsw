@@ -19,10 +19,8 @@
 #
 """ constants for md-config-server """
 
-
-
 __all__ = [
-    b"MON_VAR_IP_NAME",
+    "MON_VAR_IP_NAME",
 ]
 
 MON_VAR_IP_NAME = "__$$ICSW$$__MON_VAR_IP"

@@ -165,9 +165,9 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
 
     def _check_uuid(self):
         self.log("uuid checking")
-        self.log(" - cluster_device_uuid is '{}'".format(uuid_tools.get_uuid().get_urn()))
+        self.log(" - cluster_device_uuid is '{}'".format(uuid_tools.get_uuid().urn))
         my_dev = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
-        file_uuid = uuid_tools.get_uuid().get_urn().split(":")[2]
+        file_uuid = uuid_tools.get_uuid().urn.split(":")[2]
         if file_uuid != my_dev.uuid:
             self.log(
                 "UUID differs from DB entry ({} [file] != {} [DB]), correcting DB entry".format(
@@ -388,7 +388,7 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
         self.__discovery_dict[discovery_id].close()
         del self.__discovery_dict[discovery_id]
         try:
-            if self.__connection_dict[conn_str] != uuid_tools.get_uuid().get_urn():
+            if self.__connection_dict[conn_str] != uuid_tools.get_uuid().urn:
                 self.main_socket.connect(conn_str)
             else:
                 self.log(

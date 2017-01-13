@@ -18,8 +18,6 @@
 
 """ ipc communication tools, now using 0MQ as communication layer """
 
-
-
 import os
 import time
 

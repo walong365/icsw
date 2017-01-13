@@ -17,16 +17,13 @@
 #
 """ tools for modifying LDAP servers """
 
-
-
 import subprocess
 import os
 import re
 import sys
 import time
 
-import ldap  # @UnresolvedImport @UnusedImport
-import ldap.modlist  # important, do not remove  @UnresolvedImport
+import ldap3
 import unidecode
 from django.db.models import Q
 

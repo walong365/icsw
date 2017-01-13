@@ -16,9 +16,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-
-
 import os
+import importlib
 
 from initat.cluster_server.modules import cs_base_class
 from initat.tools import process_tools
@@ -33,7 +32,7 @@ __all__ = [
 
 _new_hm_list = []
 for mod_name in __all__:
-    new_mod = __import__(mod_name, globals(), locals())
+    new_mod = importlib.import_module("initat.cluster_server.modules.{}".format(mod_name))
     _new_hm_list.extend(
         [
             cur_obj for cur_obj in [

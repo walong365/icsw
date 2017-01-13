@@ -19,8 +19,6 @@
 #
 """ build control structure for md-config-server """
 
-
-
 import time
 
 from django.db.models import Q

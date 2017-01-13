@@ -19,8 +19,6 @@
 #
 """ icinga and md-sync-/md-config-server constants """
 
-
-
 from enum import Enum
 
 

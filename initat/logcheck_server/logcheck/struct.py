@@ -27,7 +27,6 @@ import subprocess
 import time
 
 import pymongo
-import scandir
 
 from initat.cluster.backbone.models import device
 from initat.tools import logging_tools, process_tools, inotify_tools
@@ -488,7 +487,8 @@ class Machine(object):
             self.log("starting walk for rotate_logs() in {}".format(log_start_dir))
             # directories processed
             try:
-                for root_dir, sub_dirs, files in scandir.walk(str(log_start_dir)):
+                for root_dir, sub_dirs, files in os.scandir(log_start_dir):
+                    # FIXME, will not work for pyhton3
                     _res["dirs_found"] += 1
                     if root_dir.startswith(log_start_dir):
                         root_dir_p = [int(entry) for entry in root_dir[lsd_len:].split("/") if entry.isdigit()]

@@ -19,8 +19,6 @@
 #
 """ config part of md-config-server """
 
-
-
 import os
 import shutil
 
@@ -34,8 +32,8 @@ from .global_config import global_config
 from ..mixins import NagVisMixin
 
 __all__ = [
-    b"MainConfig",
-    b"MainConfigContainer",
+    "MainConfig",
+    "MainConfigContainer",
 ]
 
 

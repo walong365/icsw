@@ -19,8 +19,6 @@
 #
 """ syncer definition for md-config-server """
 
-
-
 import datetime
 import json
 import os
@@ -36,7 +34,7 @@ from initat.tools import config_tools, logging_tools, process_tools, server_comm
 from .global_config import global_config
 
 __all__ = [
-    b"SyncConfig",
+    "SyncConfig",
 ]
 
 

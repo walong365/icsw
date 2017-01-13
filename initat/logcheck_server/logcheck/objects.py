@@ -26,11 +26,6 @@ import os
 import stat
 import time
 
-import pymongo
-from pymongo.errors import PyMongoError
-
-import scandir
-
 from initat.tools import logging_tools, process_tools, inotify_tools
 from ..config import global_config
 
@@ -429,7 +424,8 @@ class InotifyRoot(object):
             self.log("added dir {} (watching: {:d})".format(in_dir, len(list(self._dir_dict.keys()))))
             if recursive:
                 try:
-                    for sub_dir, _dirs, _files in scandir.walk(str(in_dir)):
+                    # FIXME, will not work for python3
+                    for sub_dir, _dirs, _files in os.scandir.walk(str(in_dir)):
                         if sub_dir != in_dir:
                             self.register_dir(sub_dir, recursive=False)
                         _found_files = InotifyRoot.FILES_TO_SCAN & set(_files)

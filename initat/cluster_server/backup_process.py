@@ -17,8 +17,6 @@
 #
 """ cluster-server, backup process """
 
-
-
 import bz2
 import datetime
 import os
@@ -34,7 +32,7 @@ from initat.cluster_server.config import global_config
 from initat.tools import logging_tools, process_tools, threading_tools
 
 
-class dummy_file(file):
+class dummy_file(object):
     ending = None
 
 
