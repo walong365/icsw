@@ -20,7 +20,7 @@
 
 
 
-
+import binascii
 import os
 import re
 from collections import defaultdict, OrderedDict
@@ -284,7 +284,7 @@ def _parse_lsblk(dump):
 
 def _parse_edid(blob):
     def _bits(bytes):
-        bin_strs = ["{:08b}".format(ord(b)) for b in bytes]
+        bin_strs = ["{:08b}".format(b) for b in bytes]
         return ''.join(bin_strs)
 
     def _decode_edi(bits):
@@ -306,11 +306,12 @@ def _parse_edid(blob):
         for s in slices
     ]
     result['manufacturer'] = EDID_MANUFACTURER.get(''.join(manufacturer))
-    result['product'] = blob[10:12].encode('hex')
-    result['serial'] = blob[12:16].encode('hex')
-    result['week'] = ord(blob[16])
-    result['year'] = ord(blob[17]) + 1990
-    result['version'] = blob[18:19].encode('hex')
+    result['product'] = binascii.hexlify(blob[10:12]).decode('ascii')
+    result['serial'] = binascii.hexlify(blob[12:16]).decode('ascii')
+    result['week'] = blob[16]
+    result['year'] = blob[17] + 1990
+    result['version'] = binascii.hexlify(blob[18:19]).decode('ascii')
+
     return result
 
 
@@ -577,7 +578,8 @@ class Hardware(object):
                     else:
                         res[key] = [l for l in lines if l]
                 if 'EDID' in res:
-                    res['EDID'] = str.decode(''.join(res['EDID']), 'hex')
+                    hex_string = ''.join(res['EDID'])
+                    res['EDID'] = bytes.fromhex(hex_string)
                 return res
 
         virt_screen_re = re.compile(
@@ -591,7 +593,7 @@ class Hardware(object):
         )
         self._xrandr_dump = xrandr_dump
 
-        lines = xrandr_dump.split('\n')
+        lines = xrandr_dump.decode().split('\n')
         virt_screens = []
         for line in lines:
             m = virt_screen_re.match(line)

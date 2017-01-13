@@ -306,7 +306,6 @@ def rpmlist_int(rpm_root_dir, re_strs, is_debian):
                 "  dpkg-command is {}".format(rpm_com.strip())
             )
             stat, ipl = subprocess.getstatusoutput(rpm_com)
-            ipl = ipl.decode("utf-8")
             if not stat:
                 ret_dict = {}
                 lines = ipl.split("\n")
@@ -354,7 +353,6 @@ def rpmlist_int(rpm_root_dir, re_strs, is_debian):
         for rpm_com in rpm_coms:
             log_list.append("  rpm-command is {}".format(rpm_com.strip()))
             stat, ipl = subprocess.getstatusoutput(rpm_com)
-            ipl = ipl.decode("utf-8")
             num_tot, num_match = (0, 0)
             if not stat:
                 ret_dict = {}

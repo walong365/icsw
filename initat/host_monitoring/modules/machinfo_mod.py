@@ -182,21 +182,24 @@ class _general(hm_classes.hm_module):
             except OSError:
                 pass
             else:
-                res = dict(disk_usage.__dict__)
+                res = {}
+                res['total'] = disk_usage.total
+                res['used'] = disk_usage.used
+                res['free'] = disk_usage.free
+                res['percent'] = disk_usage.percent
                 res['mountpoint'] = partition.mountpoint
                 usages.append(res)
         return usages
 
     def _dmiinfo_int(self):
-        # _dmi_stat, _dmi_result = commands.getstatusoutput(self.dmi_bin)
         with tempfile.NamedTemporaryFile() as tmp_file:
-            _dmi_stat, _dmi_result = subprocess.getstatusoutput(
+            _, _ = subprocess.getstatusoutput(
                 "{} --dump-bin {}".format(
                     self.dmi_bin,
                     tmp_file.name
                 )
             )
-            _res = server_command.compress(open(tmp_file.name, "r").read())
+            _res = server_command.compress(open(tmp_file.name, "rb").read())
         return _res
 
     def _rescan_valid_disk_stuff(self):

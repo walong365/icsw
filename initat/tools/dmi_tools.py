@@ -197,7 +197,7 @@ def dmi_struct_to_xml(dmi_dict):
 def decompress_dmi_info(in_str):
     _dmi_bin = process_tools.find_file("dmidecode")
     with tempfile.NamedTemporaryFile() as tmp_file:
-        open(tmp_file.name, "w").write(server_command.decompress(in_str))
+        open(tmp_file.name, "wb").write(server_command.decompress(in_str))
         _dmi_stat, dmi_result = subprocess.getstatusoutput(
             "{} --from-dump {}".format(
                 _dmi_bin,

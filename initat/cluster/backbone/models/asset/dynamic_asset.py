@@ -817,7 +817,7 @@ class AssetRun(models.Model):
     def _generate_assets_process_hm(self, tree):
         blob = tree.xpath('ns0:process_tree', namespaces=tree.nsmap)[0]\
             .text
-        process_dict = ast.literal_eval(bz2.decompress(base64.b64decode(blob)))
+        process_dict = ast.literal_eval(bz2.decompress(base64.b64decode(blob)).decode())
         self._generate_assets_process(process_dict)
 
     def _generate_assets_process(self, process_dict):

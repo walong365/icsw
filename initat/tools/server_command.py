@@ -109,7 +109,11 @@ def compress(in_str, **kwargs):
     # print("*", str.encode(in_str))
     # print("*", bz2.compress(str.encode(in_str)))
     # print("*", base64.b64encode(bz2.compress(str.encode(in_str))))
-    return base64.b64encode(bz2.compress(str.encode(in_str)))
+
+    if type(in_str) is str:
+        return base64.b64encode(bz2.compress(str.encode(in_str)))
+    else:
+        return base64.b64encode(bz2.compress(in_str))
 
 
 def decompress(in_str, **kwargs):
