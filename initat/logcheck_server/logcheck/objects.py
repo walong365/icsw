@@ -165,7 +165,7 @@ class FileBatch(object):
     def __repr__(self):
         return str(self)
 
-    def __unicode__(self):
+    def __str__(self):
         return "Filebatch at {:d} ({:d} [{:d}] lines @{:d})".format(
             self.time,
             self.diff_lines,

@@ -700,7 +700,6 @@ class SGEInfo(object):
         if os.path.exists(base_com):
             s_time = time.time()
             c_stat, c_out = process_tools.getstatusoutput(command)
-            c_out = str(c_out, errors='replace')
             e_time = time.time()
             if c_stat and not _silent_error:
                 self.log(

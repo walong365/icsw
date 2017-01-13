@@ -56,7 +56,7 @@ class LogLine(object):
     def append_msg(self, msg):
         self.msg = "{}\n{}".format(self.msg, msg)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.__line_format.format(**self.__dict__)
 
     def __repr__(self):

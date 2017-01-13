@@ -21,8 +21,6 @@
 
 """ parser for icsw command """
 
-
-
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
@@ -97,7 +95,6 @@ class ICSWParser(object):
         try:
             _parser_module = importlib.import_module(SC_MAPPING[subcom], package="initat.icsw")
         except:
-            raise
             sub_parser = None
         else:
             try:

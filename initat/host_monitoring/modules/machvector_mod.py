@@ -19,8 +19,6 @@
 #
 """ machine vector base classes and support functions """
 
-
-
 import copy
 import json
 import os
