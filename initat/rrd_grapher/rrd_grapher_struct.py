@@ -19,8 +19,6 @@
 #
 """ data_store structure for rrd-grapher """
 
-
-
 import os
 import re
 
@@ -154,7 +152,7 @@ class CompoundEntry(object):
                         "unit": "",
                         "info": _info,
                         "key": "",
-                        "build_info": process_tools.compress_struct(_build_info),
+                        "build_info": process_tools.compress_struct(_build_info).decode("ascii"),
                         # "color": _xml.attrib["color"],
                         # "draw_type": _xml.get("draw_type", "LINE1"),
                         # "invert": _xml.get("invert", "0"),

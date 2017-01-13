@@ -19,8 +19,6 @@
 #
 """ usefull server mixins """
 
-
-
 import re
 import sys
 import time
@@ -703,7 +701,7 @@ class RemoteAsyncHelper(object):
     def register(self, rcs, src_id, srv_com, zmq_sock, msg_type):
         self.__async_id += 1
         srv_com["async_helper_id"] = self.__async_id
-        self.__lut[self.__async_id] = (rcs.__name__, src_id, zmq_sock, msg_type, time.time())
+        self.__lut[self.__async_id] = (rcs.func.__name__, src_id, zmq_sock, msg_type, time.time())
 
     def result(self, srv_com):
         if "async_helper_id" not in srv_com:
@@ -763,12 +761,6 @@ class RemoteCallMixin(object):
             #    print("r", in_data[-1])
             if not zmq_sock.getsockopt(zmq.RCVMORE):
                 break
-        #try:
-        #    _extra = zmq_sock.recv(zmq.NOBLOCK)
-        #except:
-        #    print("no")
-        #else:
-        #    print("got", _extra)
         com_type = "router" if len(in_data) == 2 else "pull"
         if com_type in self.remote_call_lut:
             if com_type == "router":
@@ -881,6 +873,12 @@ class RemoteCallMixin(object):
         if msg_type == RemoteCallMessageType.xml:
             # set source
             reply.update_source()
+        if isinstance(src_id, bytes):
+            src_id = src_id.decode("utf-8")
+            self.log(
+                "casting src_id to str ({})".format(src_id),
+                logging_tools.LOG_LEVEL_WARN,
+            )
         # send return
         _send_str = str(reply)
         try:
@@ -975,7 +973,7 @@ class RemoteCallSignature(object):
             return _result
         else:
             if self.target_process:
-                effective_target_func_name = self.target_process_func or self.__name__
+                effective_target_func_name = self.target_process_func or self.func.__name__
                 # print 'effective target name', effective_target_func_name
                 instance.send_to_process(self.target_process, effective_target_func_name, str(_result), src_id=src_id)
             else:

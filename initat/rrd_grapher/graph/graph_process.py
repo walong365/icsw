@@ -151,7 +151,7 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
             para_dict[key] = dateutil.parser.parse(para_dict[key])
         _raw = json.loads(para_dict["graph_setting"])
         # fake name
-        _raw["name"] = uuid.uuid4().get_urn()
+        _raw["name"] = uuid.uuid4().urn
         _setting = GraphSettingSerializerCustom(data=_raw)
 
         self._early_return_sent = False

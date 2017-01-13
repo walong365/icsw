@@ -19,8 +19,6 @@
 #
 """ server-part of rrd-grapher """
 
-
-
 import json
 import os
 import stat
