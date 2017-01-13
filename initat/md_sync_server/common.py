@@ -19,7 +19,6 @@
 #
 """ simple frontend to LiveStatus socket, also used by md-config-server (for KPI) """
 
-
 import csv
 import os.path
 import socket
@@ -50,13 +49,13 @@ class LiveQuery(object):
 
     def __str__(self):
         r_field = [
-            b"GET {}".format(self._resource)
+            "GET {}".format(self._resource)
         ]
         if self._columns:
-            r_field.append(b"Columns: {}".format(b" ".join(self._columns)))
+            r_field.append("Columns: {}".format(" ".join(self._columns)))
         r_field.extend(self._filters)
         # print "\nQuery:\n" + "\n".join(r_field + ["", ""])
-        return b"\n".join(r_field + [b"", b""])
+        return "\n".join(r_field + ["", ""]).encode("utf-8")
 
     def columns(self, *args):
         if LiveSocket.livestatus_enum:
@@ -70,11 +69,11 @@ class LiveQuery(object):
         if type(value) != list:
             value = [value]
         for entry in value:
-            self._filters.append(b"Filter: {} {} {}".format(key, op, entry))
+            self._filters.append("Filter: {} {} {}".format(key, op, entry))
         _nv = len(value)
         _val = count if count is not None else _nv
         if _val > 1:
-            self._filters.append(b"{}: {:d}".format(method.title(), _val))
+            self._filters.append("{}: {:d}".format(method.title(), _val))
         return self
 
 
@@ -98,7 +97,7 @@ class LiveSocket(object):
             s.connect(self.peer)
             s.send(request)
             s.shutdown(socket.SHUT_WR)
-            csv_lines = csv.DictReader(s.makefile(), columns, delimiter=b';')
+            csv_lines = csv.DictReader(s.makefile(), columns, delimiter=';')
             _result = list(csv_lines)
         except:
             self.log_com(

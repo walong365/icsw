@@ -16,9 +16,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" ipc communication tools, now using 0MQ as communication layer """
-
-
+"""
+ipc communication tools, now using 0MQ as communication layer
+"""
 
 import time
 
@@ -34,7 +34,7 @@ class IPCCommandHandler(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__parent.log("[ICH] {}".format(what), log_level)
 
-    def handle(self, data):
+    def handle(self, data: str):
         # for format see ccollclientzmq.c and csendsyncerzmq.c
         # ;<VERSION>;<ID_STR>;<HOST>;<PORT>;<TIMEOUT>;<RAW>;<ARG>;<ARG>;
         # for csendsyncerzmq:
@@ -70,7 +70,7 @@ class IPCCommandHandler(object):
                     cur_size, cur_str = com_part.split(";", 1)
                     cur_size = int(cur_size)
                     com_part = cur_str[cur_size + 1:]
-                    arg_list.append(cur_str[:cur_size].decode("utf-8"))
+                    arg_list.append(cur_str[:cur_size])
                 if com_part:
                     raise ValueError("not fully parsed ({})".format(com_part))
                 else:

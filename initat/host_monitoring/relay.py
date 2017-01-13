@@ -22,8 +22,6 @@
 
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
-
-
 import io
 import os
 import resource
@@ -452,10 +450,13 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         data = zmq_sock.recv()
         if zmq_sock.getsockopt(zmq.RCVMORE):
             src_id = data
-            data = zmq_sock.recv()
+            data = zmq_sock.recv_unicode()
         else:
             src_id = None
+        data = data.decode("ascii")
+        # print("*", type(data), data)
         xml_input = data.startswith("<")
+        # print(xml_input)
         if xml_input:
             srv_com = server_command.srv_command(source=data)
             srv_com["source_socket"] = src
