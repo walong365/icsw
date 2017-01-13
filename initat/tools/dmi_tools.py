@@ -176,11 +176,9 @@ def dmi_struct_to_xml(dmi_dict):
         if "error" in dmi_dict:
             _xml.attrib["error"] = dmi_dict["error"]
         if "values" in _hs:
-            _values = list(E.values())
-            _xml.append(_values)
             for _key, _value in _hs["values"].items():
                 if type(_value) == list:
-                    _values.append(
+                    _xml.append(
                         E.value(
                             *[
                                 E.single(_val) for _val in _value
@@ -189,7 +187,7 @@ def dmi_struct_to_xml(dmi_dict):
                         )
                     )
                 else:
-                    _values.append(
+                    _xml.append(
                         E.value(_value, key=_key)
                     )
         _handles.append(_xml)
