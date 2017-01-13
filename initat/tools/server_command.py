@@ -19,8 +19,6 @@
 #
 """ server command structure definitions """
 
-
-
 import base64
 import bz2
 import collections
@@ -354,22 +352,22 @@ class srv_command(object):
                     else:
                         raise
             cur_element.attrib["type"] = "str"
-        elif type(value) in [int, int]:
+        elif isinstance(value, int):
             cur_element.text = "{:d}".format(value)
             cur_element.attrib["type"] = "int"
-        elif type(value) in [float]:
+        elif isinstance(value, float):
             cur_element.text = "{:f}".format(value)
             cur_element.attrib["type"] = "float"
         elif value is None:
             cur_element.text = None
             cur_element.attrib["type"] = "none"
-        elif type(value) == datetime.date:
+        elif isinstance(value, datetime.date):
             cur_element.text = value.isoformat()
             cur_element.attrib["type"] = "date"
-        elif type(value) == datetime.datetime:
+        elif isinstance(value, datetime.datetime):
             cur_element.text = value.isoformat()
             cur_element.attrib["type"] = "datetime"
-        elif type(value) == bool:
+        elif isinstance(value, bool):
             cur_element.text = str(value)
             cur_element.attrib["type"] = "bool"
         elif type(value) in [dict, collections.OrderedDict]:
@@ -383,16 +381,19 @@ class srv_command(object):
                 else:
                     sub_el.attrib["dict_key"] = sub_key
                 cur_element.append(sub_el)
-        elif type(value) == list:
+        elif isinstance(value, list):
             cur_element.attrib["type"] = "list"
             for sub_value in value:
                 sub_el = self._element(sub_value)
                 cur_element.append(sub_el)
-        elif type(value) == tuple:
+        elif isinstance(value, tuple):
             cur_element.attrib["type"] = "tuple"
             for sub_value in value:
                 sub_el = self._element(sub_value)
                 cur_element.append(sub_el)
+        elif isinstance(value, bytes):
+            cur_element.attrib["type"] = "bytes"
+            cur_element.text = value.decode("utf-8")
         elif etree.iselement(value):
             cur_element = value
         else:

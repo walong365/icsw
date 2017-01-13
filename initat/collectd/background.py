@@ -21,8 +21,6 @@
 
 """ background job definitions for collectd-init """
 
-
-
 import time
 
 from lxml import etree
@@ -218,7 +216,7 @@ class SNMPJob(object):
                     for _log_line in process_tools.exception_info().log_lines:
                         self.log(_log_line, logging_tools.LOG_LEVEL_CRITICAL)
             # graphing
-            self.bg_proc.process_data_xml(mv_tree, len(etree.tostring(mv_tree)))  # @UndefinedVariable
+            self.bg_proc.process_data_xml(mv_tree, len(etree.tostring(mv_tree)))
 
     def check_for_timeout(self):
         diff_time = abs(time.time() - self.last_start)
@@ -344,7 +342,7 @@ class IPMIBuilder(object):
         pass
 
     def build(self, in_lines, **kwargs):
-        ipmi_dict = parse_ipmi(in_lines.split("\n"))
+        ipmi_dict = parse_ipmi(in_lines.decode("utf-8").split("\n"))
         _tree = E.machine_vector(
             simple="0",
             **kwargs
@@ -511,12 +509,12 @@ class BackgroundJob(object):
                         level=logging_tools.LOG_LEVEL_ERROR,
                         text="error running background job ({})".format(
                             logging_tools.get_plural(
-                                "line", len(stderr.strip().split("\n")),
+                                "line", len(stderr.decode("utf-8").strip().split("\n")),
                             )
                         )
                     )
                     self.log("error output follows, cmdline was '{}'".format(self.comline))
-                    for line_num, line in enumerate(stderr.strip().split("\n")):
+                    for line_num, line in enumerate(stderr.decode("utf-8").strip().split("\n")):
                         self.log("  {:3d} {}".format(line_num + 1, line), logging_tools.LOG_LEVEL_ERROR)
         else:
             if self.last_start is None or abs(int(time.time() - self.last_start)) >= self.run_every and not self.to_remove:

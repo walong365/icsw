@@ -20,6 +20,7 @@
 """ SNMP handler instances """
 
 import os
+import importlib
 
 _dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -27,5 +28,5 @@ _files = [_entry.split(".")[0] for _entry in os.listdir(_dir) if _entry.endswith
 
 handlers = []
 for mod_name in _files:
-    new_mod = __import__(mod_name, globals(), locals())
+    new_mod = importlib.import_module("initat.snmp.handler.instances.{}".format(mod_name))
     handlers.append(new_mod.handler)

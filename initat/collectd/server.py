@@ -20,8 +20,6 @@
 #
 """ collectd, server part """
 
-
-
 import datetime
 import os
 import re
@@ -643,11 +641,11 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         return self.__hosts[_dev.uuid]
 
     def _recv_data(self, in_sock):
-        in_data = in_sock.recv()
+        in_data = in_sock.recv_unicode()
         if self._still_active("received data"):
             # adopt tree format for faster handling in collectd loop
             try:
-                _xml = etree.fromstring(in_data)  # @UndefinedVariable
+                _xml = etree.fromstring(in_data)
             except etree.XMLSyntaxError:
                 self.log(
                     "cannot parse tree: {}, first 48 bytes: '{}'".format(
@@ -832,10 +830,10 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
 
     def do_rrdcc(self, host_info, cache_lines):
         # end rrd-cached communication
-        self.__rrdcached_socket.send("BATCH\n")
+        self.__rrdcached_socket.send(b"BATCH\n")
         for _line in cache_lines:
-            self.__rrdcached_socket.send("{}\n".format(_line))
-        self.__rrdcached_socket.send(".\n")
+            self.__rrdcached_socket.send("{}\n".format(_line).encode("utf-8"))
+        self.__rrdcached_socket.send(b".\n")
         _skip_lines = 0
         _read = True
         s_time = time.time()
@@ -900,8 +898,8 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
     def _check_cached_stats(self):
         if self.__rrdcached_socket:
             try:
-                self.__rrdcached_socket.send("STATS\n")
-                _lines = self.__rrdcached_socket.recv(16384).split("\n")
+                self.__rrdcached_socket.send(b"STATS\n")
+                _lines = self.__rrdcached_socket.recv(16384).decode("utf-8").split("\n")
             except IOError:
                 self.log("error communicating with rrdcached: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             else:

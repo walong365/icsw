@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2015,2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -649,7 +649,7 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
             simple="0"
         )
         try:
-            self.drop_socket.send_unicode(str(etree.tostring(_vector)))  # @UndefinedVariable
+            self.drop_socket.send_unicode(etree.tostring(_vector, encoding="unicode"))
         except:
             self.log(
                 "error sending vector: {}".format(

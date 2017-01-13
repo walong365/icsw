@@ -115,7 +115,7 @@ class CompoundEntry(object):
             # update dict with attribute dicts from the top-level node
             gd.update(
                 {
-                    _sk: _sv for _sk, _sv in ref_dict[key][0].items() if _sk in ["info", "ti"]
+                    _sk: _sv for _sk, _sv in ref_dict[_key][0].items() if _sk in ["info", "ti"]
                 }
             )
         # set default values
