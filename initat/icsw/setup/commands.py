@@ -125,6 +125,7 @@ def call_ext_programm(args, **kwargs):
     except subprocess.CalledProcessError as e:
         c_stat = e.returncode
         c_out = e.output
+    c_out = c_out.decode("utf-8")
 
     e_time = time.time()
     if c_stat == 256 and c_out.lower().count("nothing seems to have changed"):
