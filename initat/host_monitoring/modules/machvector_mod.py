@@ -83,7 +83,7 @@ class get_mvector_command(hm_classes.hm_command):
             re_list = []
         cur_vector = srv_com["data:machine_vector"]
         if cur_ns.raw:
-            return limits.mon_STATE_OK, etree.tostring(cur_vector)  # @UndefinedVariable
+            return limits.mon_STATE_OK, etree.tostring(cur_vector, encoding="unicode")
         else:
             vector_keys = sorted(srv_com.xpath(".//ns:mve/@name", start_el=cur_vector, smart_strings=False))
             used_keys = [key for key in vector_keys if any([cur_re.search(key) for cur_re in re_list]) or not re_list]
@@ -422,7 +422,7 @@ class MachineVector(object):
         try:
             # self.log("Sending machvector to {}:{}".format(t_host, t_port))
             if send_format == "xml":
-                self.__socket_dict[send_id].send_unicode(str(etree.tostring(send_vector)))  # @UndefinedVariable
+                self.__socket_dict[send_id].send_unicode(etree.tostring(send_vector, encoding="unicode"))
             else:
                 # print json.dumps(send_vector)
                 self.__socket_dict[send_id].send_unicode(json.dumps(send_vector))

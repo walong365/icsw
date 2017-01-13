@@ -669,7 +669,7 @@ class MSIBlock(object):
             E.start_time("{:d}".format(int(self.__start_time))),
             pid_list,
         )
-        file_content = etree.tostring(xml_struct, pretty_print=True, encoding="utf-8")
+        file_content = etree.tostring(xml_struct, pretty_print=True, encoding="unicode")
         path_name = self.path_name(self.__name)
         try:
             open(path_name, "w").write(file_content)

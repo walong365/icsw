@@ -21,8 +21,6 @@
 
 """ container for service checks """
 
-
-
 import os
 import time
 
