@@ -20,8 +20,6 @@
 
 """ rms-server, monitoring process """
 
-
-
 import os
 import re
 import time
@@ -392,7 +390,10 @@ class RMSMonProcess(threading_tools.process_obj):
                 ]
             )
             try:
-                self.collectd_socket.send_unicode(etree.tostring(mach_vect), zmq.DONTWAIT)
+                self.collectd_socket.send_unicode(
+                    etree.tostring(mach_vect, encoding="unicode"),
+                    zmq.DONTWAIT
+                )
             except:
                 self.log(
                     "error sending rms-slot info regarding {} to collectd: {}".format(

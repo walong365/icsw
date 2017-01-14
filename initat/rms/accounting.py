@@ -28,8 +28,6 @@ in the PE-config (so we get one line per PE-Slave), hence we use the
 
 """
 
-
-
 import datetime
 import os
 import time
