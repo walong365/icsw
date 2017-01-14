@@ -20,11 +20,8 @@
 """ various tools to handle processes and stuff """
 
 import atexit
-import base64
-import bz2
 import grp
 import inspect
-import json
 import marshal
 import os
 import pickle
@@ -44,9 +41,8 @@ import six
 from lxml import etree
 from lxml.builder import E
 
-from initat.tools import logging_tools
-
 from initat.constants import META_SERVER_DIR
+from initat.tools import logging_tools
 
 if os.path.exists("/proc/stat"):
     try:

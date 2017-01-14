@@ -505,7 +505,6 @@ class procstat_command(hm_classes.hm_command):
         result = hm_classes.net_to_sys(result[3:])
         shit_str = ""
         _ret_str, ret_state = ("OK", limits.mon_STATE_CRITICAL)
-        _copy_struct = result.get("struct", None)
         if parsed_coms.zombie:
             result["num_ok"] += result["num_fail"]
             result["num_fail"] = 0

@@ -219,7 +219,7 @@ class VM(APIObject, metaclass=XpathPropertyMeta):
     def deserialize(srv_com):
         _vms = E.vms()
         for _entry in srv_com.xpath(".//ns:vms")[0]:
-            _vms.append(etree.fromstring(server_command.decompress(_entry.text, json=True))
+            _vms.append(etree.fromstring(server_command.decompress(_entry.text, json=True)))
         return _vms
 
 
@@ -564,11 +564,33 @@ class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
         # print etree.tostring(sds)
         ret = ExtReturn()
         ret.feed_str(logging_tools.get_plural("Storagedomain", len(sds.findall(".//storage_domain"))))
-        ret.feed_str_state(*SimpleCounter(sds.xpath(".//external_status/state/text()"), ok=["ok"], prefix="State").result)
-        ret.feed_str_state(*SimpleCounter(sds.xpath(".//storage_domain/type/text()"), ok=["data", "export", "image", "iso"], prefix="Domain Type").result)
-        ret.feed_str_state(*SimpleCounter(sds.xpath(".//storage_domain/storage/type/text()"), ok=["glance", "iscsi", "nfs", "fcp"], prefix="Storage Type").result)
+        ret.feed_str_state(
+            *SimpleCounter(
+                sds.xpath(".//external_status/state/text()"),
+                ok=["ok"],
+                prefix="State"
+            ).result
+        )
+        ret.feed_str_state(
+            *SimpleCounter(
+                sds.xpath(".//storage_domain/type/text()"),
+                ok=["data", "export", "image", "iso"],
+                prefix="Domain Type"
+            ).result
+        )
+        ret.feed_str_state(
+            *SimpleCounter(
+                sds.xpath(".//storage_domain/storage/type/text()"),
+                ok=["glance", "iscsi", "nfs", "fcp"],
+                prefix="Storage Type"
+            ).result
+        )
         size_dict = {
-            _key: sum([int(_val) for _val in sds.xpath(".//storage_domain/{}/text()".format(_key))]) for _key in [
+            _key: sum(
+                [
+                    int(_val) for _val in sds.xpath(".//storage_domain/{}/text()".format(_key))
+                ]
+            ) for _key in [
                 "used",
                 "available",
                 "committed",
@@ -681,11 +703,33 @@ class ovirt_hosts_command(hm_classes.hm_command, OvirtBaseMixin):
         ret = ExtReturn()
         ret.feed_str(logging_tools.get_plural("Host", len(hosts.findall(".//host"))))
         ret.feed_str(logging_tools.reduce_list(hosts.xpath(".//host/name/text()")))
-        ret.feed_str_state(*SimpleCounter(hosts.xpath(".//host/status/state/text()"), ok=["up"], prefix="State").result)
-        ret.feed_str_state(*SimpleCounter(hosts.xpath(".//host/external_status/state/text()"), ok=["ok"], prefix="ExtStatus").result)
-        ret.feed_str_state(*SimpleCounter(hosts.xpath(".//host/type/text()"), ok=["rhel"], prefix="Type").result)
+        ret.feed_str_state(
+            *SimpleCounter(
+                hosts.xpath(".//host/status/state/text()"),
+                ok=["up"],
+                prefix="State"
+            ).result
+        )
+        ret.feed_str_state(
+            *SimpleCounter(
+                hosts.xpath(".//host/external_status/state/text()"),
+                ok=["ok"],
+                prefix="ExtStatus"
+            ).result
+        )
+        ret.feed_str_state(
+            *SimpleCounter(
+                hosts.xpath(".//host/type/text()"),
+                ok=["rhel"],
+                prefix="Type"
+            ).result
+        )
         count_dict = {
-            _key: sum([int(_val) for _val in hosts.xpath(".//host/summary/{}/text()".format(_key))]) for _key in [
+            _key: sum(
+                [
+                    int(_val) for _val in hosts.xpath(".//host/summary/{}/text()".format(_key))
+                ]
+            ) for _key in [
                 "active",
                 "migrating",
                 "total",
