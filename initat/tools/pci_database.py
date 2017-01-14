@@ -39,7 +39,7 @@ def get_pci_dicts(fname=None):
     for search_name in search_names:
         if os.path.isfile(search_name):
             with open(search_name, "r") as file_:
-                lines = file_.read().split('\n')
+                lines = file_.read().decode("utf-8").split('\n')
                 break
     classline = re.compile("^C (..)\s+(.*)$")
     subclassline = re.compile("^\t(..)\s+(.*)$")
