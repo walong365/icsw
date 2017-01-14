@@ -19,8 +19,6 @@
 #
 """ midleware layer for rrdtools """
 
-
-
 import os
 import re
 import rrdtool
@@ -249,8 +247,8 @@ class RRA(object):
                         "rows": num_rows,
                         "pdp": num_pdp,
                         "name": "{:d}-{:d}-{:d}".format(
-                            num_pdp,
-                            num_rows,
+                            int(num_pdp),
+                            int(num_rows),
                             step,
                         )
                     }
@@ -258,11 +256,15 @@ class RRA(object):
 
     def check_slot_mismatch(self, ignore_error):
         if self.pdp_per_row * self.step != self.stream_info[2]:
-            print("%s, reported step differs from expected vor rra %s (file %s): %d != %d" % (" +++ Warn" if ignore_error else " *** Error",
-                                                                                              self.name,
-                                                                                              self.src_file,
-                                                                                              self.pdp_per_row * self.step,
-                                                                                              self.stream_info[2]))
+            print(
+                "%s, reported step differs from expected vor rra %s (file %s): %d != %d" % (
+                    " +++ Warn" if ignore_error else " *** Error",
+                    self.name,
+                    self.src_file,
+                    self.pdp_per_row * self.step,
+                    self.stream_info[2]
+                )
+            )
             slot_ok = ignore_error
         else:
             slot_ok = True
@@ -773,9 +775,11 @@ class RRD(dict):
                     self["rra_dict"][rra_key].show_info()
                 ))
         else:
-            print((
-                "{}: {}".format(
-                    logging_tools.get_plural("RRA", len(self["rra_list"])),
-                    ", ".join(sorted(self["rra_list"]))
+            print(
+                (
+                    "{}: {}".format(
+                        logging_tools.get_plural("RRA", len(self["rra_list"])),
+                        ", ".join(sorted(self["rra_list"]))
+                    )
                 )
-            ))
+            )

@@ -22,6 +22,7 @@
 
 import inspect
 import os
+import importlib
 
 from initat.tools import process_tools
 
@@ -42,7 +43,7 @@ for mod_name in _mods:
     if mod_name in ["base"]:
         continue
     try:
-        new_mod = __import__(mod_name, globals(), locals())
+        new_mod = importlib.import_module("initat.collectd.collectd_types.{}".format(mod_name))
     except:
         exc_info = process_tools.exception_info()
         IMPORT_ERRORS.extend(exc_info.log_lines)

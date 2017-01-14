@@ -22,6 +22,7 @@
 
 import datetime
 import os
+import psutil
 import re
 import socket
 import time
@@ -305,6 +306,10 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                 self.log("stopped rrd_cached process")
         elif not self.__rrdcached_running and _target_state:
             _log()
+            # check for stale pid file
+            if os.path.exists(RRD_CACHED_PID):
+                self.log("removing (stale) PID {}".format(RRD_CACHED_PID))
+                os.unlink(RRD_CACHED_PID)
             self.log("starting rrd_cached process")
             self.__rrd_com.run()
             _result = self.__rrd_com.finished()
@@ -316,6 +321,33 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
 
     def _open_rrdcached_socket(self):
         self._close_rrdcached_socket()
+        # check if rrdcached is running
+        if self.__rrdcached_running:
+            try:
+                _pid = open(RRD_CACHED_PID, "r").read().strip()
+                _proc = psutil.Process(pid=int(_pid))
+            except:
+                self.log(
+                    "RRDCached-Process is not running ... ?: {}".format(
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                self.__rrdcached_running = False
+            else:
+                T_NAME = "rrdcached"
+                if _proc.name() != T_NAME:
+                    self.log(
+                        "Process {:d} has the wrong name ({} != {}), trying to restart".format(
+                            _pid,
+                            T_NAME,
+                            _proc.name(),
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                    self.__rrdcached_running = False
+        if not self.__rrdcached_running:
+            self._check_rrd_cached_state()
         try:
             self.__rrdcached_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.__rrdcached_socket.connect(global_config["RRD_CACHED_SOCKET"])
@@ -775,7 +807,13 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             if cur_time <= self.__last_sent[h_tuple]:
                 diff_time = self.__last_sent[h_tuple] + 1 - cur_time
                 cur_time += diff_time
-                self.log("correcting time for {} (+{:d}s to {:d})".format(str(h_tuple), diff_time, int(cur_time)))
+                self.log(
+                    "correcting time for {} (+{:d}s to {:d})".format(
+                        str(h_tuple),
+                        diff_time,
+                        int(cur_time)
+                    )
+                )
         self.__last_sent[h_tuple] = cur_time
         return self.__last_sent[h_tuple]
 
@@ -815,7 +853,13 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                     try:
                         _tf = _host_info.target_file(name)
                     except ValueError:
-                        self.log("cannot get target file name for {}: {}".format(name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "cannot get target file name for {}: {}".format(
+                                name,
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                     else:
                         if _tf:
                             cache_lines.append(
@@ -829,69 +873,84 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                 self.do_rrdcc(_host_info, cache_lines)
 
     def do_rrdcc(self, host_info, cache_lines):
-        # end rrd-cached communication
-        self.__rrdcached_socket.send(b"BATCH\n")
-        for _line in cache_lines:
-            self.__rrdcached_socket.send("{}\n".format(_line).encode("utf-8"))
-        self.__rrdcached_socket.send(b".\n")
-        _skip_lines = 0
-        _read = True
-        s_time = time.time()
-        _content = ""
-        _errcount = 0
         _com_error = False
-        while _read:
-            if settings.DEBUG:
-                self.log("read...")
-            try:
-                _content = "{}{}".format(_content, self.__rrdcached_socket.recv(4096))
-            except IOError:
-                _com_error = True
-                self.log("error communicating with rrdcached, forcing reopening", logging_tools.LOG_LEVEL_ERROR)
-                _read = False
-            else:
+        # end rrd-cached communication
+        try:
+            _num_sent = self.__rrdcached_socket.send(b"BATCH\n")
+        except BrokenPipeError:
+            self.log(
+                "error communicating with rrd-cached: {}".format(
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            _com_error = True
+        else:
+            for _line in cache_lines:
+                _num_sent += self.__rrdcached_socket.send(("{}\n".format(_line)).encode("utf-8"))
+            _num_sent += self.__rrdcached_socket.send(b".\n")
+            _skip_lines = 0
+            _read = True
+            s_time = time.time()
+            _content = ""
+            _errcount = 0
+            while _read:
                 if settings.DEBUG:
-                    self.log("...done, content has {:d} bytes".format(len(_content)))
-                if _content.endswith("\n"):
-                    for _line in _content.split("\n"):
-                        if not _line.strip():
-                            # empty line
-                            continue
-                        if _skip_lines:
-                            _skip_lines -= 1
-                            _idx = int(_line.split()[0])
-                            self.log(
-                                "error: {} for {}".format(
-                                    _line,
-                                    cache_lines[_idx - 1]
-                                ),
-                                logging_tools.LOG_LEVEL_ERROR
-                            )
-                            if not _skip_lines:
-                                _read = False
-                        else:
-                            if _line.startswith("0 Go"):
-                                # ignore first line
-                                pass
-                            elif _line.endswith("errors"):
-                                _errcount = int(_line.split()[0])
-                                _skip_lines = _errcount
-                                if _errcount:
-                                    self.log(
-                                        "errors from RRDcached for {}: {:d}".format(
-                                            host_info.name,
-                                            _errcount,
-                                        ),
-                                        logging_tools.LOG_LEVEL_ERROR
-                                    )
-                                else:
+                    self.log("send {:d} bytes, reading from rrdcached socket...".format(_num_sent))
+                try:
+                    _content = "{}{}".format(_content, self.__rrdcached_socket.recv(4096).decode("utf-8"))
+                except IOError:
+                    _com_error = True
+                    self.log(
+                        "error communicating with rrdcached ({}), forcing reopening".format(
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                    _read = False
+                else:
+                    if settings.DEBUG:
+                        self.log("...done, content has {:d} bytes".format(len(_content)))
+                    if _content.endswith("\n"):
+                        for _line in _content.split("\n"):
+                            if not _line.strip():
+                                # empty line
+                                continue
+                            if _skip_lines:
+                                _skip_lines -= 1
+                                _idx = int(_line.split()[0])
+                                self.log(
+                                    "error: {} for {}".format(
+                                        _line,
+                                        cache_lines[_idx - 1]
+                                    ),
+                                    logging_tools.LOG_LEVEL_ERROR
+                                )
+                                if not _skip_lines:
                                     _read = False
                             else:
-                                self.log("unparsed line: '{}'".format(_line), logging_tools.LOG_LEVEL_WARN)
-                    _content = ""
-        e_time = time.time()
-        if _errcount:
-            self.log("parsing took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
+                                if _line.startswith("0 Go"):
+                                    # ignore first line
+                                    pass
+                                elif _line.endswith("errors"):
+                                    _errcount = int(_line.split()[0])
+                                    _skip_lines = _errcount
+                                    if _errcount:
+                                        self.log(
+                                            "errors from RRDcached for {}: {:d}".format(
+                                                host_info.name,
+                                                _errcount,
+                                            ),
+                                            logging_tools.LOG_LEVEL_ERROR
+                                        )
+                                    else:
+                                        _read = False
+                                else:
+                                    self.log("unparsed line: '{}'".format(_line), logging_tools.LOG_LEVEL_WARN)
+                        _content = ""
+            e_time = time.time()
+            if _errcount:
+                self.log("parsing took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
         if _com_error:
             self._open_rrdcached_socket()
 

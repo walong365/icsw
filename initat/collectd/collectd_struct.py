@@ -184,8 +184,8 @@ class FileCreator(object):
                         "RRA:{}:{:.1f}:{:d}:{:d}".format(
                             _cf,
                             0.1,
-                            _value["pdp"],
-                            _value["rows"],
+                            int(_value["pdp"]),
+                            int(_value["rows"]),
                         )
                     )
         return _rv

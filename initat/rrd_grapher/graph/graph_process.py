@@ -19,8 +19,6 @@
 #
 """ grapher part of rrd-grapher service """
 
-
-
 import json
 import select
 import socket
@@ -113,8 +111,13 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
                         ".",
                         "",
                     ]
-                    self.__rrdcached_socket.send("\n".join(_lines))
-                    _read, _write, _exc = select.select([self.__rrdcached_socket.fileno()], [], [], 5000)
+                    self.__rrdcached_socket.send(("\n".join(_lines)).encode("utf-8"))
+                    _read, _write, _exc = select.select(
+                        [
+                            self.__rrdcached_socket.fileno()
+                        ], [], [],
+                        5000
+                    )
                     _e_time = time.time()
                     if not _read:
                         self.log("read list is empty after {}".format(logging_tools.get_diff_time_str(_e_time - _s_time)), logging_tools.LOG_LEVEL_ERROR)
