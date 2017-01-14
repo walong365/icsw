@@ -1,6 +1,6 @@
 #!/usr/bin/python3-init -Ot
 #
-# Copyright (C) 2016 Gregor Kaufmann
+# Copyright (C) 2016-2017 Gregor Kaufmann
 #
 #
 # Send feedback to: <g,kaufmann@init.at>

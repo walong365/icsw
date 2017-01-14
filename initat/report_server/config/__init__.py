@@ -1,4 +1,4 @@
-# Copyright (C) 2016 init.at
+# Copyright (C) 2016-2017 init.at
 #
 # this file is part of report-server
 #

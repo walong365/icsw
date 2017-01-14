@@ -1,4 +1,4 @@
-# Copyright (C) 2016 Gregor Kaufmann, Andreas Lang-Nevyjel
+# Copyright (C) 2016-2017 Gregor Kaufmann, Andreas Lang-Nevyjel
 #
 # Send feedback to: <g.kaufmann@init.at>, <lang-nevyjel@init.at>
 #

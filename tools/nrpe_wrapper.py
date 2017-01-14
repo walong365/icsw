@@ -1,6 +1,6 @@
 #!/usr/bin/python3-init -Ot
 #
-# Copyright (C) 2016 Gregor Kaufmann, init.at
+# Copyright (C) 2016-2017 Gregor Kaufmann, init.at
 #
 # this file is part of icsw-server
 #

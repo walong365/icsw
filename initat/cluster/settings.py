@@ -407,7 +407,7 @@ AUTHENTICATION_BACKENDS = (
 ICSW_ADDON_APPS = []
 # add everything below cluster
 dir_name = os.path.dirname(__file__)
-ICSW_PRODUCTION_MODE = dir_name.startswith("/opt/python")
+ICSW_PRODUCTION_MODE = dir_name.startswith("/opt/cluster")
 ICSW_SERVICE_ENUM_LIST = []
 
 for sub_dir in os.listdir(dir_name):

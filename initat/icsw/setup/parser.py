@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2016-2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-client
 #

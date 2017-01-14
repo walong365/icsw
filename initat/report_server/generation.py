@@ -1,4 +1,4 @@
-# Copyright (C) 2016 init.at
+# Copyright (C) 2016-2017 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
