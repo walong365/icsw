@@ -75,8 +75,8 @@ class _conf_var(object):
 
     def serialize(self):
         if self.descr in ["Blob"]:
-            _val = base64.b64encode(bz2.compress(self.value))
-            _def_val = base64.b64encode(bz2.compress(self.__default_val))
+            _val = base64.b64encode(bz2.compress(self.value)).decode("ascii")
+            _def_val = base64.b64encode(bz2.compress(self.__default_val)).decode("ascii")
         else:
             _val = self.value
             _def_val = self.__default_val
@@ -274,6 +274,7 @@ class str_c_var(_conf_var):
 
 
 class blob_c_var(_conf_var):
+    # holds bytestrings
     descr = "Blob"
     short_type = "B"
     long_type = "blob"
@@ -285,7 +286,7 @@ class blob_c_var(_conf_var):
         return str(val)
 
     def check_type(self, val):
-        return isinstance(val, str)
+        return isinstance(val, bytes)
 
     def pretty_print(self):
         return "blob with len {:d}".format(len(self.act_val))

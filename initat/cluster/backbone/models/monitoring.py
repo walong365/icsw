@@ -1146,7 +1146,7 @@ class monitoring_hint(models.Model):
         self.save()
 
     def update_limits(self, m_value, limit_dict):
-        if isinstance(m_vlaue, int):
+        if isinstance(m_value, int):
             v_type = "int"
         else:
             v_type = "float"

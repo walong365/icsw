@@ -18,8 +18,6 @@
 #
 """ handle service reload / restarts """
 
-
-
 import re
 
 from initat.tools import logging_tools, process_tools
@@ -94,7 +92,10 @@ class ServiceHelper(object):
                     self.__services[_key] = _value
 
     def _call_command(self, com_str):
-        return process_tools.call_command(com_str, self.log, close_fds=True, log_stdout=False)
+        _stat, _out, _err = process_tools.call_command(com_str, self.log, close_fds=True, log_stdout=False)
+        _out = _out.decode("utf-8")
+        _err = _err.decode("utf-8")
+        return _stat, _out, _err
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[SH{}] {}".format(self._method, what), log_level)

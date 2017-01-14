@@ -582,7 +582,7 @@ class HMInotifyProcess(threading_tools.process_obj):
         if targ_str not in self.__target_dict:
             send_socket = self.zmq_context.socket(zmq.DEALER)
             send_socket.setsockopt(zmq.LINGER, 0)
-            send_socket.setsockopt(zmq.IDENTITY, "{}_csin".format(uuid_tools.get_uuid().get_urn()))
+            send_socket.setsockopt(zmq.IDENTITY, "{}_csin".format(uuid_tools.get_uuid().urn))
             send_socket.connect(targ_str)
             send_socket.setsockopt(zmq.SNDHWM, 16)
             send_socket.setsockopt(zmq.RCVHWM, 16)

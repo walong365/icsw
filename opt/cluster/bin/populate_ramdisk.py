@@ -1411,7 +1411,7 @@ def main_normal():
     loop_dev = "/dev/loop{:d}".format(free_lo_dev)
     # read uuid
     my_uuid = uuid_tools.get_uuid()
-    print("cluster_device_uuid is {}".format(my_uuid.get_urn()))
+    print("cluster_device_uuid is {}".format(my_uuid.urn))
     print(
         "Kernel directory is '{}', initsize is {:s}".format(
             my_args.kernel_dir,

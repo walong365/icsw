@@ -132,9 +132,9 @@ class get_uuid(cs_base_class.icswCSServerCom):
         show_execution_time = False
 
     def _call(self, cur_inst):
-        cur_inst.srv_com["uuid"] = uuid_tools.get_uuid().get_urn()
+        cur_inst.srv_com["uuid"] = uuid_tools.get_uuid().urn
         cur_inst.srv_com.set_result(
-            "uuid is {}".format(uuid_tools.get_uuid().get_urn()),
+            "uuid is {}".format(uuid_tools.get_uuid().urn),
         )
 
 

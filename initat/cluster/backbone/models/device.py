@@ -281,7 +281,7 @@ class device(models.Model):
             server=server_obj,
             config=config_obj,
             active=True,
-            uuid=uuid.uuid4().get_urn(),
+            uuid=uuid.uuid4().urn,
             description="lock for '{}'".format(str(lock_type)),
         )
         new_lock.save()

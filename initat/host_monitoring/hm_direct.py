@@ -22,8 +22,6 @@
 
 """ host-monitoring for 0MQ >=  4.x.y, direct socket part """
 
-
-
 import re
 import select
 import socket
@@ -322,7 +320,7 @@ class TCPCon(object):
 
     def _send(self, sock):
         try:
-            self.socket.send(self._send_str(self.srv_com))
+            self.socket.send(self._send_str(self.srv_com).encode("utf-8"))
         except:
             _err_str = "error sending TCP: {}".format(process_tools.get_except_info())
             self.log(_err_str, logging_tools.LOG_LEVEL_ERROR)

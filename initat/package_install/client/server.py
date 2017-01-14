@@ -134,7 +134,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         check_sock = process_tools.get_socket(
             self.zmq_context,
             "DEALER",
-            identity="{}:ptest:".format(uuid_tools.get_uuid().get_urn()),
+            identity="{}:ptest:".format(uuid_tools.get_uuid().urn),
         )
         check_sock.connect(self.srv_conn_str)
         self.log("fetch srv_id socket, connected to {}".format(self.srv_conn_str))

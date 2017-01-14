@@ -92,7 +92,7 @@ class new_config_object(object):
     def bin_append(self, in_bytes):
         # force binary
         self.binary = True
-        if isinstance(in_bytes, array.array)
+        if isinstance(in_bytes, array.array):
             self.content.append(in_bytes.tostring())
         else:
             self.content.append(in_bytes)

@@ -1489,7 +1489,7 @@ class status_command(hm_classes.hm_command):
 
 class get_uuid_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        srv_com["uuid"] = uuid_tools.get_uuid().get_urn()
+        srv_com["uuid"] = uuid_tools.get_uuid().urn
 
     def interpret(self, srv_com, cur_ns):
         try:
@@ -1766,8 +1766,8 @@ class uptime_command(hm_classes.hm_command):
         up_m = up_m - 60 * (up_d * 24 + up_h)
         return limits.mon_STATE_OK, "up for {}, {:d}:{:02d}".format(
             logging_tools.get_plural("day", up_d),
-            up_h,
-            up_m
+            int(up_h),
+            int(up_m),
         )
 
     def interpret_old(self, result, parsed_coms):

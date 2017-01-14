@@ -101,7 +101,7 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
         self._check_status_entries()
         self.register_func("contact_hoststatus", self._contact_hoststatus)
         my_uuid = uuid_tools.get_uuid()
-        self.log("cluster_device_uuid is '{}'".format(my_uuid.get_urn()))
+        self.log("cluster_device_uuid is '{}'".format(my_uuid.urn))
         if self._init_network_sockets():
             self.add_process(initat.mother.kernel.KernelSyncProcess("kernel"), start=True)
             self.add_process(initat.mother.command.ExternalCommandProcess("command"), start=True)

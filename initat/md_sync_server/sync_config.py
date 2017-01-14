@@ -19,8 +19,6 @@
 #
 """ syncer definition for md-sync-server """
 
-
-
 import base64
 import bz2
 import json
@@ -454,7 +452,9 @@ class SyncConfig(object):
                 ) for _uid, _gid, _path, _size, _content in _send_list
             ]
         )
-        srv_com["bulk"] = base64.b64encode(bz2.compress("".join([_parts[-1] for _parts in _send_list])))
+        srv_com["bulk"] = server_command.compress(
+            "".join([_parts[-1].encode("utf-8") for _parts in _send_list])
+        )
         return srv_com
 
     def _show_pending_info(self, dist_master):

@@ -173,7 +173,7 @@ class MainProcess(ICSWBasePool):
         _fwd_string = self.CC.CS["log.forward.address"].strip()
         self.__only_forward = self.CC.CS["log.forward.exclusive"]
         if _fwd_string:
-            _forward = process_tools.get_socket("PUSH", identity=uuid_tools.get_uuid().get_urn())
+            _forward = process_tools.get_socket("PUSH", identity=uuid_tools.get_uuid().urn)
             self.log("connecting forward socket to {}".format(_fwd_string))
             try:
                 _forward.connect(_fwd_string)

@@ -1203,7 +1203,9 @@ class BuildProcess(
             host.full_name[:48],
             "*" if len(host.name) > 48 else " ",
             "a" if hbc.host_is_actively_checked else "p",
-            "{:3d}".format(gbc.cur_dmap[host.pk]) if gbc.cur_dmap.get(host.pk) >= 0 else "---",
+            "{:3d}".format(
+                gbc.cur_dmap[host.pk]
+            ) if gbc.cur_dmap.get(host.pk, -1) >= 0 else "---",
         )
         self.flush_hbc_logs(hbc, glob_log_str)
         hbc.store_to_db()
