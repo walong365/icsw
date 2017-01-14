@@ -154,7 +154,7 @@ class subprocess_struct(object):
         self.srv_com = srv_com
         self.command = srv_com["command"].text
         self.command_line = com_line
-        self.multi_command = type(self.command_line) == list
+        self.multi_command = isinstance(command_line, list)
         self.com_num = 0
         self.popen = None
         self.srv_process = None
@@ -174,7 +174,7 @@ class subprocess_struct(object):
         if self.multi_command:
             if self.command_line:
                 cur_cl = self.command_line[self.com_num]
-                if type(cur_cl) == tuple:
+                if isinstance(cur_cl, tuple):
                     # in case of tuple
                     run_info["comline"] = cur_cl[0]
                 else:
@@ -284,7 +284,7 @@ class hm_module(object):
         self.base_init()
 
     def add_command(self, com_name, call_obj):
-        if type(call_obj) == type:
+        if isinstance(call_obj, type):
             if com_name.endswith("_command"):
                 com_name = com_name[:-8]
             new_co = call_obj(com_name)

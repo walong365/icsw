@@ -218,7 +218,7 @@ class rpmlist_command(hm_classes.hm_command):
             if in_format == "rpm":
                 for key in keys:
                     for value in r_dict[key]:
-                        if type(value) is tuple:
+                        if isinstance(value, tuple):
                             if len(value) == 4:
                                 ver, rel, arch, summary = value
                                 size = 0

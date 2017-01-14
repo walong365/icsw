@@ -1034,7 +1034,9 @@ class user(models.Model):
             _entry for _entry in [
                 str(self.first_name) or "",
                 str(self.last_name) or "",
-                "[{}]".format("{:d}".format(self.pk) if type(self.pk) in [int, int] else "???"),
+                "[{}]".format(
+                    "{:d}".format(self.pk) if isinstance(self.pk, int) else "???"
+                ),
             ] if _entry
         ]
         return "{}{}".format(
@@ -1316,10 +1318,10 @@ class user_variable(models.Model):
             cur_val = self.value
             if isinstance(cur_val, str):
                 self.var_type = "s"
-            elif type(cur_val) in [int, int]:
+            elif isinstance(cur_val, int):
                 self.var_type = "i"
                 self.value = "{:d}".format(self.value)
-            elif type(cur_val) in [bool]:
+            elif isinstance(cur_val, bool):
                 self.var_type = "b"
                 self.value = "1" if cur_val else "0"
             elif cur_val is None:

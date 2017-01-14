@@ -502,7 +502,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     return ["status"]
 
         def _prune(in_dict):
-            return {_key: _prune(_value) if type(_value) is dict else _value for _key, _value in in_dict.items() if _value}
+            return {_key: _prune(_value) if isinstance(_value, dict) else _value for _key, _value in in_dict.items() if _value}
 
         def reorder_dict(in_dict):
             _result = {
@@ -513,7 +513,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
             return _result
 
         def emit_keys(in_dict, level=0):
-            if type(in_dict) == dict:
+            if isinstance(in_dict, dict):
                 _dk_l = set(in_dict.keys()) - {"lines", "_checks"}
                 r_list = sum(
                     [
@@ -547,7 +547,15 @@ class ctrl_type_megaraid_sas(ctrl_type):
             r_dict = {}
             for _key, _t in map_dict.items():
                 r_dict.update(
-                    {"{}{:02d}".format(_t[0], _idx): _interpret_dict(_t[1], _value) for _idx, _value in in_dict.get(_key, {}).items() if type(_idx) == int}
+                    {
+                        "{}{:02d}".format(
+                            _t[0],
+                            _idx
+                        ): _interpret_dict(
+                            _t[1],
+                            _value
+                        ) for _idx, _value in in_dict.get(_key, {}).items() if isinstance(_idx, int)
+                    }
                 )
             if in_dict.get("lines", []):
                 r_dict["lines"] = in_dict["lines"]

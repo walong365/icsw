@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2015,2017 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -16,8 +16,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ tools for openssl """
-
-
 
 import subprocess
 import datetime
@@ -113,7 +111,7 @@ class OpenSSLConfig(object):
 
     def set(self, part, key, value=None):
         part = part or ""
-        if type(key) == list:
+        if isinstance(key, list):
             kv_list = key
         else:
             kv_list = [(key, value)]

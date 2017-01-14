@@ -32,7 +32,7 @@ class ResultNode(object):
             _val = kwargs.get(inst_name, [])
             if _val is None:
                 _val = []
-            elif type(_val) != list:
+            elif not isinstance(_val, list):
                 _val = [_val]
             setattr(self, _target, _val)
 
@@ -46,7 +46,7 @@ class ResultNode(object):
         self._add_val("error", in_val)
 
     def _add_val(self, v_type, in_val):
-        if type(in_val) != list:
+        if not isinstance(in_val, list):
             in_val = [in_val]
         _l_name = "{}_list".format(v_type)
         setattr(self, _l_name, getattr(self, _l_name) + in_val)
@@ -222,9 +222,9 @@ class simple_snmp_oid(object):
     def __init__(self, *oid, **kwargs):
         self.optional = False
         self._target_value = kwargs.get("target_value", None)
-        if type(oid[0]) in [tuple, list] and len(oid) == 1:
+        if (isinstance(oid[0], tuple) or isinstance(oid[0], list)) and len(oid) == 1:
             oid = oid[0]
-        if type(oid) == tuple and len(oid) == 1 and isinstance(oid[0], str):
+        if isinstance(oid, tuple) and len(oid) == 1 and isinstance(oid[0], str):
             oid = oid[0]
         # store oid in tuple-form
         if isinstance(oid, str):
@@ -232,7 +232,7 @@ class simple_snmp_oid(object):
         else:
             self._oid = oid
         self._oid_len = len(self._oid)
-        self._str_oid = ".".join(["{:d}".format(i_val) if type(i_val) in [int, int] else i_val for i_val in self._oid])
+        self._str_oid = ".".join(["{:d}".format(i_val) if isinstance(i_val, int) else i_val for i_val in self._oid])
 
     def has_max_oid(self):
         return False
@@ -259,7 +259,7 @@ class simple_snmp_oid(object):
         if self._target_value is not None:
             if isinstance(self._target_value, str):
                 return p_mod.OctetString(self._target_value)
-            elif type(self._target_value) in [int, int]:
+            elif isinstance(self._target_value, int):
                 return p_mod.Integer(self._target_value)
             else:
                 return p_mod.Null("")

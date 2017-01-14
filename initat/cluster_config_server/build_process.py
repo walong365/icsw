@@ -37,7 +37,7 @@ from initat.tools import config_tools, logging_tools, threading_tools
 def pretty_print(name, obj, offset):
     lines = []
     off_str = " " * offset
-    if type(obj) == dict:
+    if isinstance(obj, dict):
         if name:
             head_str = "%s%s(D):" % (off_str, name)
             lines.append(head_str)
@@ -57,7 +57,7 @@ def pretty_print(name, obj, offset):
                 len(head_str)
             )
             )
-    elif type(obj) in [list, tuple]:
+    elif isinstance(obj, list) or isinstance(obj, tuple):
         head_str = "{}{}(L {:d}):".format(off_str, name, len(obj))
         lines.append(head_str)
         idx = 0
@@ -69,7 +69,7 @@ def pretty_print(name, obj, offset):
             lines.append("{}{}(S): {}".format(off_str, name, obj))
         else:
             lines.append("{}{}(S): (empty string)".format(off_str, name))
-    elif type(obj) in [type(2), type(2)]:
+    elif isinstance(obj, int):
         lines.append("{}{}(I): {:d}".format(off_str, name, obj))
     else:
         lines.append("{}{}(?): {}".format(off_str, name, str(obj)))
@@ -85,7 +85,7 @@ class network_tree(dict):
             # idx_list, self and slaves
             cur_net.idx_list = [cur_net.pk]
         for net_pk, cur_net in self.items():
-            if type(net_pk) in [int, int]:
+            if isinstance(net_pk, int):
                 if cur_net.network_type.identifier == "s":
                     if cur_net.master_network_id in self and self[cur_net.master_network_id].network_type.identifier == "p":
                         self[cur_net.master_network_id].idx_list.append(net_pk)
@@ -246,11 +246,11 @@ class build_process(threading_tools.process_obj):
     def _to_unicode(self, value):
         if isinstance(value, str):
             value = "'{}'".format(str(value))
-        elif type(value) in [int, int]:
+        elif isinstance(value, int):
             value = "{:d}".format(value)
-        elif type(value) in [list]:
+        elif isinstance(value, list):
             value = "{{LIST}} [{}]".format(", ".join([self._to_unicode(s_value) for s_value in value]))
-        elif type(value) in [dict]:
+        elif isinstance(value, dict):
             value = "{{DICT}} {}".format(str(value))
         else:
             value = "{{CLASS {}}} '{}'".format(

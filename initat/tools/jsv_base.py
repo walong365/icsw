@@ -19,8 +19,6 @@
 #
 """ SGE Job submission verifier """
 
-
-
 import os
 import re
 import sys
@@ -248,7 +246,7 @@ class JSVBase(object):
     # def sub_is_param(self, param, var):
     #    if self.has_param(param):
     #        _v = self.get_param(param)
-    #        if type(_v) is dict:
+    #        if isinstance(_v, dict):
     #            return var in _v
     #    return False
 

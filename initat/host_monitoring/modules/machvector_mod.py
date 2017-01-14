@@ -688,7 +688,7 @@ def pretty_print2(value):
     else:
         act_v, p_str = (value["v"], "")
         unit = "???"
-    if type(act_v) in [type(0), type(0)]:
+    if isinstance(act_v, int):
         val = "{:<10d}   ".format(int(act_v))
     else:
         val = "{:13.2f}".format(float(act_v))

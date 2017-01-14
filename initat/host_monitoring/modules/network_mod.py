@@ -836,7 +836,7 @@ class NetDevice(object):
                     ib_addr = open(addr_file, "r").read().strip().replace(":", "").lower()[-8:]
                     for ref_spec, struct in res_dict.items():
                         gid_list = struct.get("gid", "")
-                        if type(gid_list) != list:
+                        if not isinstance(gid_list, list):
                             gid_list = [gid_list]
                         gid_list = [entry.replace(":", "").lower()[-8:] for entry in gid_list]
                         if ib_addr in gid_list:
@@ -1740,7 +1740,7 @@ class network_info_command(hm_classes.hm_command):
             out_list.append(_line)
             for link_key in sorted(net_stuff["links"]):
                 link_stuff = net_stuff["links"][link_key]
-                if type(link_stuff[0]) == bool:
+                if isinstance(link_stuff[0], bool):
                     link_str = ""
                 else:
                     link_str = " ".join(link_stuff)

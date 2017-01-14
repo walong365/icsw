@@ -105,7 +105,7 @@ class mail(object):
     def append_text(self, what=None):
         if isinstance(what, str):
             self.text.append(what)
-        elif type(what) == list:
+        elif isinstance(what, list):
             self.text.extend(what)
         elif what is None:
             self.text.append("root@localhost")
@@ -191,7 +191,7 @@ class mail(object):
             server.quit()
         if isinstance(err_str, str):
             ret_f.append(err_str)
-        elif type(err_str) == list:
+        elif isinstance(err_str, list):
             ret_f.extend(err_str)
         return stat, ret_f
 

@@ -22,8 +22,6 @@
 
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
-
-
 import argparse
 import time
 
@@ -518,7 +516,7 @@ class HostMessage(object):
             _src_socket = self.srv_com["*source_socket"]
         else:
             _src_socket = None
-        if type(result) == tuple:
+        if isinstance(result, tuple):
             # tuple result from interpret
             if not self.xml_input:
                 ret_str = "%d\0%s" % (

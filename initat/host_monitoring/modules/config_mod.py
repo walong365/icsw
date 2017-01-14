@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015,2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -95,7 +95,7 @@ class check_file_command(hm_classes.hm_command):
     def _interpret(self, f_dict, cur_ns):
         ret_state = limits.mon_STATE_OK
         file_stat = f_dict["stat"]
-        if type(file_stat) == dict:
+        if isinstance(file_stat, dict):
             file_size = file_stat["st_size"]
             file_mtime = file_stat["st_mtime"]
         else:

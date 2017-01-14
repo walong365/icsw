@@ -93,7 +93,7 @@ class SNMPHandler(object):
 
     def reorganize(self, in_dict):
         def _shorten_key(_key):
-            if type(_key) is tuple and len(_key) == 1:
+            if isinstance(_key, tuple) and len(_key) == 1:
                 return _key[0]
             else:
                 return _key
@@ -102,7 +102,7 @@ class SNMPHandler(object):
             if len(dwt) == 1 and list(dwt.keys()) in [[(0,)], [0]]:
                 return list(dwt.values())[0]
             # input: dict with tuples as keys
-            if all(type(_skey) is tuple for _skey in dwt.keys()):
+            if all(isinstance(_skey, tuple) for _skey in dwt.keys()):
                 if min([len(_key) for _key in dwt.keys()]) > 1:
                     first_keys = set([_key[0] for _key in dwt.keys()])
                     return {

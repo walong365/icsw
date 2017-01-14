@@ -17,8 +17,6 @@
 #
 """ writes the dhcpd.conf in /etc """
 
-
-
 import os
 import time
 
@@ -41,7 +39,7 @@ class DHCPNetwork(object):
         DHCPConfigMixin.addon_dict = addon_dict
 
     def _feed(self, lines):
-        if type(lines) != list:
+        if not isinstance(lines, list):
             lines = [lines]
         self.content.extend(lines)
 

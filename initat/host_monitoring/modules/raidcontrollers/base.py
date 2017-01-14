@@ -17,8 +17,6 @@
 #
 """ raid controller base structures and helper functions """
 
-
-
 import subprocess
 import os
 import time
@@ -126,14 +124,14 @@ class ctrl_type(object):
         self.update_ctrl(ctrl_ids)
 
     def get_exec_name(self):
-        if type(self.Meta.exec_name) is list:
+        if isinstance(self.Meta.exec_name, list):
             return ", ".join(self.Meta.exec_name)
         else:
             return self.Meta.exec_name
 
     def check_for_exec(self):
         if self._check_exec is None:
-            if type(self.Meta.exec_name) is list:
+            if isinstance(self.Meta.exec_name, list):
                 _cns = self.Meta.exec_name
             else:
                 _cns = [self.Meta.exec_name]

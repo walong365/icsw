@@ -48,7 +48,7 @@ class cups_status_command(hm_classes.hm_command):
         return self._interpret(hm_classes.net_to_sys(result[3:]), parsed_coms)
 
     def _interpret(self, print_dict, parsed_coms):
-        if type(print_dict) is dict:
+        if isinstance(print_dict, dict):
             multi_printer = True
         else:
             multi_printer = False

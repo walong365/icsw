@@ -17,8 +17,6 @@
 #
 """ cluster-server, background base object """
 
-
-
 from initat.cluster_server.config import global_config
 from initat.tools import logging_tools, mail_tools
 
@@ -55,7 +53,7 @@ class BackgroundBase(object):
             add_obj = self._call(cur_time, drop_com.builder)
             if add_obj is not None:
                 # todo: handle case when a drop XML and machine vectors are returned
-                if type(add_obj) is list:
+                if isinstance(add_obj, list):
                     # machine vectors
                     mach_vectors.extend(add_obj)
                 else:

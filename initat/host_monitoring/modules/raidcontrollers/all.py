@@ -17,8 +17,6 @@
 #
 """ raid controller, container for all controllers """
 
-
-
 from initat.tools import logging_tools
 
 from initat.host_monitoring.modules.raidcontrollers import CTRL_DICT
@@ -43,7 +41,7 @@ class AllRAIDCtrl(object):
     def update(c_type, ctrl_ids=[]):
         if c_type is None:
             c_type = list(AllRAIDCtrl._all_types.keys())
-        elif type(c_type) != list:
+        elif not isinstance(c_type, list):
             c_type = [c_type]
         for cur_type in c_type:
             AllRAIDCtrl._all_types[cur_type]._update(ctrl_ids)

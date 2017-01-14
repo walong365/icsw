@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014,2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,7 +21,7 @@
 
 
 def oid_to_str(oid):
-    if type(oid) == tuple:
+    if isinstance(oid, tuple):
         oid = ".".join(["{:d}".format(_p) for _p in oid])
     return oid
 
@@ -75,14 +75,14 @@ def flatten_dict(in_dict):
             in_dict = list(in_dict.values())[0]
         _r_dict = {}
         for _key, _value in in_dict.items():
-            if type(_value) == dict:
+            if isinstance(_value, dict):
                 _changed = True
-                if type(_key) in [int, int]:
+                if isinstance(_key, int):
                     _key = [_key]
                 else:
                     _key = list(_key)
                 for _s_key, _s_value in _value.items():
-                    if type(_s_key) in [int, int]:
+                    if isinstance(_s_key, int):
                         _s_key = _key + [_s_key]
                     else:
                         _s_key = _key + list(_s_key)

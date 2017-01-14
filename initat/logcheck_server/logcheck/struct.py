@@ -281,14 +281,14 @@ class Machine(object):
 
     @staticmethod
     def has_device(key):
-        if type(key) in [int, int]:
+        if isinstance(key, int):
             return key in Machine.devpk_dict
         else:
             return key in Machine.devname_dict
 
     @staticmethod
     def get_device(key):
-        if type(key) in [int, int]:
+        if isinstance(key, int):
             return Machine.devpk_dict[key]
         else:
             return Machine.devname_dict[key]

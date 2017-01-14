@@ -71,7 +71,7 @@ def safe_unicode(obj):
     else:
         if type(obj) not in (six.text_type, six.binary_type):
             obj = six.text_type(obj)
-        if type(obj) is six.text_type:
+        if isinstance(obj, six.text_type):
             return obj
         else:
             return obj.decode(errors='ignore')
@@ -142,7 +142,7 @@ def get_except_info(exc_info=None, **kwargs):
     if exc_name in ["ValidationError"]:
         # special handling of Django ValidationErrors
         _result = []
-        if type(_exc_list) is dict:
+        if isinstance(_exc_list, dict):
             _result = [
                 "{}: {}".format(_key, ", ".join(_values)) for _key, _values in _exc_list.items()
             ]
@@ -404,7 +404,7 @@ if psutil is not None:
 def get_mem_info(pid=0, **kwargs):
     if not pid:
         pid = os.getpid()
-    if type(pid) not in [list, set]:
+    if not (isinstance(pid, list) or isinstance(pid, set)):
         pid = [pid]
     ps_list = []
     for cur_pid in pid:
@@ -889,7 +889,7 @@ def append_pids(name, pid=None, mode="a"):
     if pid is None:
         actp = [os.getpid()]
     else:
-        if type(pid) in [int, int]:
+        if isinstance(pid, int):
             actp = [pid]
         elif isinstance(pid, str):
             actp = [int(pid)]
@@ -946,7 +946,7 @@ def remove_pids(name, pid=None):
     if pid is None:
         actp = [os.getpid()]
     else:
-        if type(pid) in [int, int]:
+        if isinstance(pid, int):
             actp = [pid]
         elif isinstance(pid, str):
             actp = [int(pid)]
@@ -1002,7 +1002,7 @@ def delete_pid(name):
 
 def get_uid_from_name(user):
     try:
-        if type(user) in [int, int]:
+        if isinstance(user, int):
             uid_stuff = pwd.getpwuid(user)
         else:
             uid_stuff = pwd.getpwnam(user)
@@ -1015,7 +1015,7 @@ def get_uid_from_name(user):
 
 def get_gid_from_name(group):
     try:
-        if type(group) in [int, int]:
+        if isinstance(group, int):
             gid_stuff = grp.getgrgid(group)
         else:
             gid_stuff = grp.getgrnam(group)
@@ -1032,7 +1032,7 @@ def change_user_group_path(path, user, group, **kwargs):
     else:
         log_com = logging_tools.my_syslog
     try:
-        if type(user) in [int, int]:
+        if isinstance(user, int):
             uid_stuff = pwd.getpwuid(user)
         else:
             uid_stuff = pwd.getpwnam(user)
@@ -1041,7 +1041,7 @@ def change_user_group_path(path, user, group, **kwargs):
         new_uid, new_uid_name = (0, "root")
         log_com("Cannot find user '{}', using {} ({:d})".format(user, new_uid_name, new_uid))
     try:
-        if type(group) in [int, int]:
+        if isinstance(group, int):
             gid_stuff = grp.getgrgid(group)
         else:
             gid_stuff = grp.getgrnam(group)
@@ -1167,7 +1167,7 @@ def kill_running_processes(p_name=None, **kwargs):
     log_lines = []
     exclude_pids = kwargs.get("exclude", [])
     kill_sig = kwargs.get("kill_signal", 9)
-    if type(exclude_pids) != list:
+    if not isinstance(exclude_pids, list):
         exclude_pids = [exclude_pids]
     if p_name is None:
         my_proc = psutil.Process(my_pid)

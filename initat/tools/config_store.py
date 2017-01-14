@@ -110,9 +110,9 @@ class ConfigVar(object):
     def __init__(self, name, val, descr=""):
         self.name = name
         self.value = val
-        if type(self.value) in [int, int]:
+        if isinstance(self.value, int):
             self._type = "int"
-        elif type(self.value) is bool:
+        elif isinstance(self.value, bool):
             self._type = "bool"
         else:
             self._type = "str"
@@ -556,9 +556,9 @@ class ConfigStore(object):
         _adds = []
         for _src, _dst in mapping:
             _val = self[_src]
-            if type(_val) in [int, int]:
+            if isinstance(_val, int):
                 _obj = configfile.int_c_var
-            elif type(_val) == bool:
+            elif isinstance(_val, bool):
                 _obj = configfile.bool_c_var
             else:
                 _obj = configfile.str_c_var

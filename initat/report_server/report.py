@@ -3100,7 +3100,7 @@ def postprocess_workbook(workbook):
 
                 current_max = max_str_lengths_per_column[col_idx]
                 next_max = current_max
-                if type(cell.value) == str:
+                if isinstance(cell.value, str):
                     components = cell.value.split("\n")
                     next_max = max([len(line) for line in components])
                     height_needed = max(len(components), height_needed)

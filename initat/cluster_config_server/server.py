@@ -320,7 +320,7 @@ class server_process(server_mixins.ICSWBasePool):
                             parent_value.append(E.var(value=s_value, key=key_parts[1]))
                     cur_dev.append(new_tl)
                 else:
-                    if type(value) in [int, int]:
+                    if isinstance(value, int):
                         cur_dev.attrib[key] = "%d" % (value)
                     else:
                         cur_dev.attrib[key] = value

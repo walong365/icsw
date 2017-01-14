@@ -90,7 +90,7 @@ class XMLWrapper(object):
         :param value: the value of the new item
         """
         if key in self.val_dict:
-            if type(self.val_dict[key]) != list:
+            if not isinstance(self.val_dict[key], list):
                 self.val_dict[key] = [self.val_dict[key]]
             self.val_dict[key].append(value)
         else:
@@ -123,7 +123,7 @@ class XMLWrapper(object):
             return True
 
     def _get_value_xml(self, key, value):
-        if type(value) == list:
+        if isinstance(value, list):
             ret_val = E.value_list(
                 **{
                     "name": key,
@@ -155,8 +155,16 @@ class XMLWrapper(object):
         builds the xml response
         """
         num_errors, num_warnings = (
-            len([True for log_lev, _log_str in self.log_buffer if log_lev == logging_tools.LOG_LEVEL_ERROR]),
-            len([True for log_lev, _log_str in self.log_buffer if log_lev == logging_tools.LOG_LEVEL_WARN])
+            len(
+                [
+                    True for log_lev, _log_str in self.log_buffer if log_lev == logging_tools.LOG_LEVEL_ERROR
+                ]
+            ),
+            len(
+                [
+                    True for log_lev, _log_str in self.log_buffer if log_lev == logging_tools.LOG_LEVEL_WARN
+                ]
+            )
         )
         return E.response(
             E.header(

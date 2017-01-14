@@ -135,7 +135,7 @@ class ldap_mixin(object):
         if self.dryrun:
             return True, ""
         for key, value in in_dict.items():
-            if type(value) == list:
+            if isinstance(value, list):
                 in_dict[key] = [sub_val.encode("utf-8") for sub_val in value]
         try:
             ld.add_s(dn, ldap.modlist.addModlist(in_dict))
@@ -172,7 +172,7 @@ class ldap_mixin(object):
             return True, ""
         new_list = []
         for val_0, val_1, val_list in change_list:
-            if type(val_list) == list:
+            if isinstance(val_list, list):
                 val_list = [sub_val.encode("utf-8") for sub_val in val_list]
             new_list.append((val_0, val_1, val_list))
         try:

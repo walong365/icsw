@@ -22,8 +22,6 @@
 
 """ config views """
 
-
-
 import io
 import copy
 import datetime
@@ -538,7 +536,7 @@ class get_cached_uploads(View):
         _act_keys = []
         for _key in cache.get("ICSW_UPLOAD_LIST", []):
             _cur_val = cache.get(_key, None)
-            if _cur_val and type(_cur_val) == dict:
+            if _cur_val and isinstance(_cur_val, dict):
                 if all([_entry.get("_taken", False) for _entry in _cur_val["list"]]):
                     remove_cached_upload(_cur_val)
                 else:

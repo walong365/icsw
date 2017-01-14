@@ -110,7 +110,7 @@ def compress(in_str, **kwargs):
     # print("*", bz2.compress(str.encode(in_str)))
     # print("*", base64.b64encode(bz2.compress(str.encode(in_str))))
 
-    if type(in_str) is str:
+    if isinstance(in_str, str):
         return base64.b64encode(bz2.compress(str.encode(in_str)))
     else:
         return base64.b64encode(bz2.compress(in_str))
@@ -200,7 +200,7 @@ class srv_command(object):
             return self.__builder
         elif tag_name == "":
             tag_name = "__empty__"
-        if type(tag_name) == int:
+        if isinstance(tag_name, int):
             tag_name = "__int__{:d}".format(tag_name)
         elif tag_name is None:
             tag_name = "__none__"
@@ -319,9 +319,9 @@ class srv_command(object):
             raise KeyError("key {} not found in srv_command".format(key))
 
     def _to_unicode(self, value):
-        if type(value) == bool:
+        if isinstance(value, bool):
             return "True" if value else "False", "bool"
-        elif type(value) in [int, int]:
+        elif isinstance(value, int):
             return ("{:d}".format(value), "int")
         else:
             return (value, "str")
@@ -374,11 +374,11 @@ class srv_command(object):
         elif isinstance(value, bool):
             cur_element.text = str(value)
             cur_element.attrib["type"] = "bool"
-        elif type(value) in [dict, collections.OrderedDict]:
+        elif isinstance(value, dict) or isinstance(value, collections.OrderedDict):
             cur_element.attrib["type"] = "dict"
             for sub_key, sub_value in value.items():
                 sub_el = self._element(sub_value, self.builder(sub_key))
-                if type(sub_key) in [int, int]:
+                if isinstance(sub_key, int):
                     sub_el.attrib["dict_key"] = "__int__{:d}".format(sub_key)
                 elif sub_key is None:
                     sub_el.attrib["dict_key"] = "__none__"

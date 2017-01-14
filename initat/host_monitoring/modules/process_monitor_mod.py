@@ -18,8 +18,6 @@
 
 """ process monitor """
 
-
-
 import subprocess
 import os
 import re
@@ -413,7 +411,7 @@ class procstat_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         result = srv_com["process_tree"]
         # pprint.pprint(result)
-        if type(result) == dict:
+        if isinstance(result, dict):
             # old version, gives a dict
             _form = 0
         else:

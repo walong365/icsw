@@ -23,8 +23,6 @@
 #
 """ pro/epilogue script for SGE """
 
-
-
 import sys
 
 # clean sys.path, remove all paths not starting with /opt
@@ -39,25 +37,10 @@ import pwd
 import socket
 import stat
 import time
-try:
-    from initat.tools import threading_tools, configfile, logging_tools, net_tools, \
-        process_tools, server_command
-    try:
-        from initat.icsw.service.instance import InstanceXML
-        HM_PORT = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
-    except:
-        HM_PORT = 2001
-    NEW_CODE = True
-except ImportError:
-    # for running on nodes
-    import threading_tools
-    import configfile
-    import net_tools
-    import process_tools
-    import server_command
-    import logging_tools
-    NEW_CODE = False
-    HM_PORT = 2001
+from initat.tools import threading_tools, configfile, logging_tools, net_tools, \
+    process_tools, server_command
+from initat.icsw.service.instance import InstanceXML
+HM_PORT = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
 
 
 SEP_LEN = 70
@@ -907,7 +890,7 @@ class RMSJob(object):
                 val = r_dict[key]
                 if isinstance(val, str):
                     info_str = val
-                elif type(val) == tuple:
+                elif isinstance(val, tuple):
                     info_str = "{:8d} (hard), {:8d} (soft)".format(val[0], val[1])
                 else:
                     info_str = "None (error?)"
@@ -1527,14 +1510,11 @@ class ProcessPool(threading_tools.process_pool):
         self.__log_template.close()
 
 
-if NEW_CODE:
-    try:
-        global_config = configfile.get_global_config(process_tools.get_programm_name(), single_process_mode=True)
-    except:
-        # for old code
-        global_config = configfile.get_global_config(process_tools.get_programm_name(), single_process=True)
-else:
-    global_config = configfile.get_global_config(process_tools.get_programm_name())
+try:
+    global_config = configfile.get_global_config(process_tools.get_programm_name(), single_process_mode=True)
+except:
+    # for old code
+    global_config = configfile.get_global_config(process_tools.get_programm_name(), single_process=True)
 
 
 def zmq_main_code():

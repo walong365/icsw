@@ -36,7 +36,7 @@ import daemon
 
 def get_gid_from_name(group):
     try:
-        if type(group) in [int, int]:
+        if isinstance(group, int):
             gid_stuff = grp.getgrgid(group)
         else:
             gid_stuff = grp.getgrnam(group)
@@ -50,7 +50,7 @@ def get_gid_from_name(group):
 
 def get_uid_from_name(user):
     try:
-        if type(user) in [int, int]:
+        if isinstance(user, int):
             uid_stuff = pwd.getpwuid(user)
         else:
             uid_stuff = pwd.getpwnam(user)

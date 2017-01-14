@@ -196,7 +196,7 @@ class _conf_var(object):
         except ValueError:
             raise ValueError("Value Error for value {}".format(str(val)))
         else:
-            if type(r_val) in {tuple, list}:
+            if isinstance(r_val, tuple) or isinstance(r_val, list):
                 _c_val = set(r_val)
             else:
                 _c_val = set([r_val])
@@ -238,7 +238,7 @@ class int_c_var(_conf_var):
         return int(val)
 
     def check_type(self, val):
-        return type(val) in [int]
+        return isinstance(val, int)
 
 
 class float_c_var(_conf_var):
@@ -254,7 +254,7 @@ class float_c_var(_conf_var):
         return float(val)
 
     def check_type(self, val):
-        return type(val) == float
+        return isinstance(val, float)
 
 
 class str_c_var(_conf_var):
@@ -285,7 +285,7 @@ class blob_c_var(_conf_var):
         return str(val)
 
     def check_type(self, val):
-        return type(val) == str
+        return isinstance(val, str)
 
     def pretty_print(self):
         return "blob with len {:d}".format(len(self.act_val))
@@ -309,7 +309,7 @@ class bool_c_var(_conf_var):
             return bool(val)
 
     def check_type(self, val):
-        return type(val) == bool
+        return isinstance(val, bool)
 
     def pretty_print(self):
         return "True" if self.act_val else "False"
@@ -325,7 +325,7 @@ class array_c_var(_conf_var):
         _conf_var.__init__(self, def_val, **kwargs)
 
     def check_type(self, val):
-        return type(val) in [list, str]
+        return isinstance(val, list) or isinstance(val, str)
 
 
 class dict_c_var(_conf_var):
@@ -337,7 +337,7 @@ class dict_c_var(_conf_var):
         _conf_var.__init__(self, def_val, **kwargs)
 
     def check_type(self, val):
-        return type(val) == dict
+        return isinstance(val, dict)
 
 
 class datetime_c_var(_conf_var):
@@ -631,7 +631,7 @@ class Configuration(object):
         return self.__c_dict[key]
 
     def add_config_entries(self, entries, **kwargs):
-        if type(entries) == dict:
+        if isinstance(entries, dict):
             entries = sorted([(key, value) for key, value in entries.items()])
         self.__c_dict.update_mode = True
         for key, value in entries:
@@ -666,7 +666,7 @@ class Configuration(object):
 
     def __setitem__(self, key, value):
         if key in self.__c_dict:
-            if type(value) == tuple:
+            if isinstance(value, tuple):
                 value, source = value
             else:
                 source = None

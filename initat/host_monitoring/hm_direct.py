@@ -164,6 +164,8 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
                         self.send_echo(value["host"])
                     except:
                         value["error_list"].append(process_tools.get_except_info())
+                        for l in process_tools.exception_info().log_lines:
+                            print("l", l)
                         self.log(
                             "error sending to {}: {}".format(
                                 value["host"],
@@ -211,7 +213,12 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
         else:
             if from_reply:
                 # should only happen for delayed pings or pings with error
-                self.log("got delayed ping reply ({})".format(key), logging_tools.LOG_LEVEL_WARN)
+                self.log(
+                    "got delayed ping reply ({})".format(
+                        key
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
         # pprint.pprint(self.__work_dict)
 
     def received(self, sock):

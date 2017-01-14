@@ -21,8 +21,6 @@
 #
 """ model definitions, configuration """
 
-
-
 import logging
 
 from django.apps import apps
@@ -374,17 +372,22 @@ def config_bool_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         check_empty_string(cur_inst, "name")
-        all_var_names = list(cur_inst.config.config_str_set.all().values_list("name", flat=True)) + \
-            list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
-            list(cur_inst.config.config_bool_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
-            list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
+        all_var_names = list(
+            cur_inst.config.config_str_set.all().values_list("name", flat=True)
+        ) + list(
+            cur_inst.config.config_int_set.all().values_list("name", flat=True)
+        ) + list(
+            cur_inst.config.config_bool_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)
+        ) + list(
+            cur_inst.config.config_blob_set.all().values_list("name", flat=True)
+        )
         if cur_inst.name in all_var_names:
             raise ValidationError("name '{}' already used".format(cur_inst.name))
         try:
-            if type(cur_inst.value) == bool:
+            if isinstance(cur_inst.value, bool):
                 pass
             else:
-                if type(cur_inst.value) in [int, int]:
+                if isinstance(cur_inst.value, int):
                     cur_inst.value = True if cur_inst.value else False
                 else:
                     cur_inst.value = True if (cur_inst.value or "").lower() in ["1", "true", "yes"] else False

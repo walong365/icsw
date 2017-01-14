@@ -167,7 +167,7 @@ class icmp_datagram(object):
             data = struct.pack(
                 "!BBH{:d}s".format(
                     len(self.data)
-                ),
+                ).encode("ascii"),
                 self.packet_type,
                 self.code,
                 self.checksum,
@@ -180,9 +180,9 @@ class icmp_datagram(object):
     def packed(self):
         self.calc_checksum()
         return struct.pack(
-            b"!BBH{:d}s".format(
+            "!BBH{:d}s".format(
                 len(self.data)
-            ),
+            ).encode("ascii"),
             self.packet_type,
             self.code,
             socket.htons(self.checksum),
@@ -211,12 +211,12 @@ class icmp_echo(icmp_datagram):
             icmp_datagram.__init__(self, code, checksum, data, unpack)
         else:
             payload = struct.pack(
-                b"!hh{:d}s".format(
+                "!hh{:d}s".format(
                     len(data)
-                ),
+                ).encode("ascii"),
                 self.ident,
                 self.seqno,
-                str(data)
+                data.encode("ascii")
             )
             icmp_datagram.__init__(self, code, checksum, payload, unpack)
 
@@ -301,7 +301,15 @@ class icmp_protocol(object):  # protocol.AbstractDatagramProtocol):
         header = packet.payload[:4]
         data = packet.payload[4:]
         packet_type, code, checksum = struct.unpack(b"!BBH", header)
-        chkdata = struct.pack("!BBH{:d}s".format(len(data)), packet_type, code, 0, data)
+        chkdata = struct.pack(
+            "!BBH{:d}s".format(
+                len(data)
+            ),
+            packet_type,
+            code,
+            0,
+            data
+        )
         chk = socket.htons(_checksum(chkdata))
         # init dgram
         if checksum != chk:

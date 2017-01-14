@@ -866,7 +866,7 @@ class IcingaLogReader(threading_tools.process_obj):
 
     def _parse_service_alert(self, cur_line):
         '''
-        :return (int, int, str, str, str)
+        :return (int, str, str, str)
         '''
         # format is:
         # host;service;(OK|WARNING|UNKNOWN|CRITICAL);(SOFT|HARD);???;msg

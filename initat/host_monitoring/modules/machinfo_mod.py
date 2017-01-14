@@ -1347,7 +1347,11 @@ class df_command(hm_classes.hm_command):
                             loc_dict[s_key] = 0
                         loc_dict[s_key] += mult * s_value
                 for res_key in ["used", "total"]:
-                    btrfs_result[res_key] = sum([value[res_key] for value in btrfs_result.values() if type(value) == dict])
+                    btrfs_result[res_key] = sum(
+                        [
+                            value[res_key] for value in btrfs_result.values() if isinstance(value, dict)
+                        ]
+                    )
                 # report used data as total system + total metadata + used data
                 result["used"] = (
                     btrfs_result["system"]["total"] +
@@ -1946,9 +1950,11 @@ class ksminfo_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         ksm_info = srv_com["ksm"]
-        if type(ksm_info) == dict:
+        if isinstance(ksm_info, dict):
             page_size = 4096
-            ksm_info = {key: int(value) * page_size if value.isdigit() else value for key, value in ksm_info.items()}
+            ksm_info = {
+                key: int(value) * page_size if value.isdigit() else value for key, value in ksm_info.items()
+            }
             info_field = [
                 "{} shared".format(
                     logging_tools.get_size_str(ksm_info["pages_shared"], strip_spaces=True)
@@ -1986,7 +1992,7 @@ class hugepageinfo_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         hpage_info = srv_com["hpages"]
-        if type(hpage_info) == dict:
+        if isinstance(hpage_info, dict):
             ret_state = limits.mon_STATE_OK
             info_field = []
             for page_dir, page_dict in hpage_info.items():
@@ -2028,7 +2034,7 @@ class thugepageinfo_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         thpage_f_info = srv_com["thpagef"]
         thpage_d_info = srv_com["thpaged"]
-        if type(thpage_f_info) == dict:
+        if isinstance(thpage_f_info, dict):
             enable_state = [entry[1:-1] for entry in thpage_f_info["enabled"].strip().split() if entry.startswith("[")][0]
             defrag_state = [entry[1:-1] for entry in thpage_f_info["defrag"].strip().split() if entry.startswith("[")][0]
             if enable_state in ["always", "madvise"]:
@@ -2262,7 +2268,7 @@ class partinfo_command(hm_classes.hm_command):
         else:
             sys_dict = srv_com["sys_dict"]
             for _key, _value in sys_dict.items():
-                if type(_value) == list and len(_value) == 1:
+                if isinstance(_value, list) and len(_value) == 1:
                     _value = _value[0]
                     sys_dict[_key] = _value
                 # rewrite dict
@@ -2322,7 +2328,7 @@ class partinfo_command(hm_classes.hm_command):
                     mount_info = ""
                 lut_info = part_stuff.get("lut", None)
                 if lut_info:
-                    if type(lut_info) == dict:
+                    if isinstance(lut_info, dict):
                         # old version
                         lut_keys = sorted(lut_info.keys())
                         lut_str = "; ".join(["%s: %s" % (lut_key, ",".join(sorted(lut_info[lut_key]))) for lut_key in lut_keys])
@@ -2346,7 +2352,7 @@ class partinfo_command(hm_classes.hm_command):
         to_list = logging_tools.NewFormList()
         for disk in all_sys:
             sys_stuff = sys_dict[disk]
-            if type(sys_stuff) == dict:
+            if isinstance(sys_stuff, dict):
                 sys_stuff = [sys_stuff]
             for s_stuff in sys_stuff:
                 to_list.append(
@@ -2627,88 +2633,6 @@ class dmiinfo_command(hm_classes.hm_command):
                         )
                 _out_f.append("")
             return limits.mon_STATE_OK, "\n".join(_out_f)
-            if False:
-                # old parser code
-                dec_lines = []
-                for line in dmi_result.split("\n"):
-                    n_level = 0
-                    while line.startswith("\t"):
-                        n_level += 1
-                        line = line[1:]
-                    line = line.strip()
-                    dec_lines.append((n_level, line))
-                dmi_struct = {
-                    "info": [],
-                    "handles": []
-                }
-                # info
-                while True:
-                    if dec_lines[0][1].lower().startswith("handle"):
-                        break
-                    n_level, line = dec_lines.pop(0)
-                    if not line:
-                        break
-                    else:
-                        dmi_struct["info"].append(line)
-                # handles
-                while True:
-                    n_level, h_info = dec_lines.pop(0)
-                    if h_info.lower().startswith("invalid"):
-                        break
-                    if len(h_info.split(",")) < 3:
-                        h_info = "{}, {}".format(h_info, dec_lines.pop(0)[1])
-                    top_level, info_str = dec_lines.pop(0)
-                    h_info_spl = [part.strip().split() for part in h_info.split(",")]
-                    handle_dict = {
-                        "info": info_str,
-                        "handle": int(h_info_spl[0][1], 16),
-                        "dmi_type": int(h_info_spl[1][2]),
-                        "length": int(h_info_spl[2][0]),
-                        "content": {}
-                    }
-                    while True:
-                        n_level, line = dec_lines.pop(0)
-                        if n_level == top_level + 1:
-                            try:
-                                key, value = line.split(":", 1)
-                            except:
-                                self.log(
-                                    "error decoding dmi-line {}: {}".format(
-                                        line,
-                                        process_tools.get_except_info()
-                                    ),
-                                    logging_tools.LOG_LEVEL_ERROR
-                                )
-                            else:
-                                handle_dict["content"][key.strip()] = value.strip()
-                        elif n_level == top_level + 2:
-                            if key and type(handle_dict["content"][key]) != list:
-                                handle_dict["content"][key] = []
-                            handle_dict["content"][key].append(line)
-                        else:
-                            while line.strip():
-                                n_level, line = dec_lines.pop(0)
-                            break
-                    dmi_struct["handles"].append(handle_dict)
-                    if handle_dict["dmi_type"] == 127:
-                        break
-                # pprint.pprint(dmi_struct)
-                out_f = dmi_struct["info"]
-                for handle in dmi_struct["handles"]:
-                    out_f.extend(
-                        [
-                            "",
-                            handle["info"]
-                        ]
-                    )
-                    for c_key in sorted(handle["content"].keys()):
-                        c_value = handle["content"][c_key]
-                        if type(c_value) == list:
-                            out_f.append("    {}:".format(c_key))
-                            for sub_value in c_value:
-                                out_f.append("        {}".format(sub_value))
-                        else:
-                            out_f.append("    {}: {}".format(c_key, c_value))
 
 
 # helper routines

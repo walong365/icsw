@@ -17,8 +17,6 @@
 #
 """ SNMP process container """
 
-
-
 import os
 import time
 
@@ -29,7 +27,7 @@ from .config import DEFAULT_RETURN_NAME
 from .process import SNMPProcess
 
 __all__ = [
-    b"SNMPProcessContainer",
+    "SNMPProcessContainer",
 ]
 
 
@@ -97,7 +95,7 @@ class SNMPProcessContainer(object):
 
     def create_ipc_socket(self, zmq_context, socket_addr, socket_name=DEFAULT_RETURN_NAME):
         self._socket = zmq_context.socket(zmq.ROUTER)
-        if type(socket_name) is str:
+        if isinstance(socket_name, str):
             self._socket.setsockopt_string(zmq.IDENTITY, socket_name)
         else:
             self._socket.setsockopt(zmq.IDENTITY, socket_name)

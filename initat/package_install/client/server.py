@@ -96,7 +96,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
                     val = r_dict[key]
                     if isinstance(val, str):
                         info_str = val
-                    elif type(val) is tuple:
+                    elif isinstance(val, tuple):
                         info_str = "{:8d} (hard), {:8d} (soft)".format(*val)
                     else:
                         info_str = "None (error?)"

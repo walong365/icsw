@@ -87,13 +87,13 @@ class EggConsumeObject(object):
         self.__latest_error = time.time() - 1000
 
     def _get_pk_from_object(self, obj_def):
-        if type(obj_def) in [int, int]:
+        if isinstance(obj_def, int):
             return obj_def
         else:
             return obj_def.idx
 
     def get_result_struct(self, obj_def, value):
-        if type(obj_def) == list:
+        if isinstance(obj_def, list):
             return [value for _entry in obj_def]
         else:
             return value
@@ -102,7 +102,7 @@ class EggConsumeObject(object):
         # mult gives a multiplicator for the actual egg consumption, important for monitoring creation
         from django.db.models import Q
         from initat.cluster.backbone.models import icswEggRequest
-        if type(obj_def) == list:
+        if isinstance(obj_def, list):
             obj_def_list = obj_def
         else:
             obj_def_list = [obj_def]
@@ -150,7 +150,7 @@ class EggConsumeObject(object):
                         )
                     self._cache.set(action, _pk, _allowed)
                 _result.append(_allowed)
-            if type(obj_def) != list:
+            if not isinstance(obj_def, list):
                 _result = _result[0]
         else:
             _cur_time = time.time()

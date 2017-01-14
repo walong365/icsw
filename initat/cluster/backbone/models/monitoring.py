@@ -19,8 +19,6 @@
 #
 """ database definitions for monitoring """
 
-
-
 import json
 import re
 
@@ -1148,7 +1146,7 @@ class monitoring_hint(models.Model):
         self.save()
 
     def update_limits(self, m_value, limit_dict):
-        if type(m_value) in [int, int]:
+        if isinstance(m_vlaue, int):
             v_type = "int"
         else:
             v_type = "float"
@@ -1177,7 +1175,7 @@ class monitoring_hint(models.Model):
                 return _val
 
     def set_value(self, value):
-        if type(value) in [int, int]:
+        if isinstance(value, int):
             v_type = "int"
         elif isinstance(value, str):
             v_type = "str"

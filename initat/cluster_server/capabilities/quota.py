@@ -19,8 +19,6 @@
 #
 """ cluster-server, quota handling """
 
-
-
 import subprocess
 import grp
 import pwd
@@ -148,7 +146,7 @@ class quota_line(object):
         ]:
             for _key in ["used", "soft", "hard", "gracetime"]:
                 _val = _dict[_key]
-                if type(_val) in [int, int] and _key not in ["gracetime"]:
+                if isinstance(_val, int) and _key not in ["gracetime"]:
                     _val *= _fact
                 _f_key = "{}_{}".format(_pf, _key)
                 setattr(cur_qs, _f_key, _val)

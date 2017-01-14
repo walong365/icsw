@@ -17,8 +17,6 @@
 #
 """ handles process affinity """
 
-
-
 import subprocess
 import os
 
@@ -36,8 +34,8 @@ CPU_MASKS = {1 << cpu_num: cpu_num for cpu_num in range(MAX_CORES)}
 def find_file(file_name, s_path=None):
     if not s_path:
         s_path = []
-    elif type(s_path) != list:
-            s_path = [s_path]
+    elif not isinstance(s_path, list):
+        s_path = [s_path]
     s_path.extend(
         [
             "/opt/cluster/sbin", "/opt/cluster/bin", "/bin", "/usr/bin", "/sbin", "/usr/sbin"

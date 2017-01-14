@@ -162,7 +162,7 @@ def call_ext_programm(args, **kwargs):
 @SetupLogger
 def _input(in_str, default, **kwargs):
     _choices = kwargs.get("choices", [])
-    is_int = type(default) in [int, int]
+    is_int = isinstance(default, int)
     if is_int:
         _choice_str = ", ".join(["{:d}".format(_val) for _val in sorted(_choices)])
         _def_str = "{:d}".format(default)

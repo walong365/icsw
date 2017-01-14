@@ -21,8 +21,6 @@
 #
 """ device views """
 
-
-
 import datetime
 import json
 import logging
@@ -105,7 +103,7 @@ class change_devices(View):
                     "monitor_server": device,
                 }[key].objects.get(
                     Q(pk=value)
-                ) if type(value) == int else value for key, value in c_dict.items()
+                ) if isinstance(value, int) else value for key, value in c_dict.items()
             }
             logger.info("change_dict has {}".format(logging_tools.get_plural("key", len(res_c_dict))))
             for key in sorted(res_c_dict):

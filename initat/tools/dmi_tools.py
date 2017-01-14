@@ -18,8 +18,6 @@
 
 """ parse dmidecode output """
 
-
-
 import subprocess
 import re
 import tempfile
@@ -99,7 +97,7 @@ def parse_dmi_output(lines):
                 _line = lines.pop(0)
                 if _line.startswith("\t\t"):
                     # add to previous _key
-                    if type(_dict[_key]) != list:
+                    if not isinstance(_dict[_key], list):
                         _dict[_key] = [_dict[_key]]
                     _dict[_key].append(_line.strip())
                 else:
@@ -177,7 +175,7 @@ def dmi_struct_to_xml(dmi_dict):
             _xml.attrib["error"] = dmi_dict["error"]
         if "values" in _hs:
             for _key, _value in _hs["values"].items():
-                if type(_value) == list:
+                if isinstance(_value, list):
                     _xml.append(
                         E.value(
                             *[

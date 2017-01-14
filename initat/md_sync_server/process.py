@@ -195,7 +195,7 @@ class ProcessControl(object):
 
     def write_external_cmd_file(self, lines):
         if self.check_state() and self.__external_cmd_file and os.path.exists(self.__external_cmd_file):
-            if type(lines) != list:
+            if not isinstance(lines, list):
                 lines = [lines]
             try:
                 codecs.open(self.__external_cmd_file, "w", "utf-8").write("\n".join(lines + [""]))

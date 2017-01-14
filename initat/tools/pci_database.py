@@ -18,8 +18,6 @@
 
 """ interpret PCI layout """
 
-
-
 import os
 import re
 import struct
@@ -165,7 +163,7 @@ def pci_struct_to_xml(pci_dict):
                     _func = sub_struct(_slot, "func", _func_id)
                     _func_s = pci_dict[_dom_id][_bus_id][_slot_id][_func_id]
                     for _key, _value in _func_s.items():
-                        if type(_value) in [int, int]:
+                        if isinstance(_value, int):
                             _value = "{:d}".format(_value)
                         _func.attrib[_key] = _value
     return _main

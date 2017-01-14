@@ -107,7 +107,7 @@ def safe_unicode(obj):
     """
     if type(obj) not in (six.text_type, six.binary_type):
         obj = six.text_type(obj)
-    if type(obj) is six.text_type:
+    if isinstance(obj, six.text_type):
         return obj
     else:
         return obj.decode(errors='ignore')
@@ -532,7 +532,7 @@ class PollerBase(object):
         # print "**", in_list, zmq.POLLIN, zmq.POLLOUT, select.POLLIN, select.POLLOUT
         # self.__waiting = len(in_list)
         for sock, c_type in in_list:
-            if self.debug_zmq and type(sock) not in [int, int]:
+            if self.debug_zmq and not isinstance(sock, int):
                 sock = self.fd_lookup[sock]
             if sock in self._socket_lut:
                 sock = self._socket_lut[sock]
@@ -898,7 +898,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBas
         self.__func_options[f_str] = kwargs
 
     def add_ignore_func(self, f_str):
-        if type(f_str) != list:
+        if not isinstance(f_str, list):
             f_str = [f_str]
         self.__ignore_funcs.extend(f_str)
 
@@ -1254,7 +1254,7 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
         )
 
     def add_ignore_func(self, f_str):
-        if type(f_str) != list:
+        if not isinstance(f_str, list):
             f_str = [f_str]
         self.__ignore_funcs.extend(f_str)
 
@@ -1501,7 +1501,7 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
 
     def _show_recv_messages(self, mes_list):
         for mes in mes_list:
-            if type(mes) == tuple:
+            if isinstance(mes, tuple):
                 mes, _in_stuff = mes
                 self.log("SRM: received message {} (with options)".format(mes))
             else:

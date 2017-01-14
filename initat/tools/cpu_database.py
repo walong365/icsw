@@ -19,8 +19,6 @@
 #
 """ simple database for the most common CPUs  """
 
-
-
 import base64
 import bz2
 import marshal
@@ -69,7 +67,7 @@ class cpu_value(object):
 
     def __init__(self, in_str):
         self.add_value = ""
-        if type(in_str) in [int, int]:
+        if isinstance(in_str, int):
             self.v_type = "i"
             self.value = in_str
         else:
@@ -116,7 +114,7 @@ class cpu_info_part(object):
     def bump_num_key(self):
         # increase num_key
         num_key = self.num_key
-        if type(num_key) in [int, int]:
+        if isinstance(num_key, int):
             num_key = (num_key,)
         num_key = list(num_key)
         if isinstance(num_key[-1], str):
@@ -129,7 +127,7 @@ class cpu_info_part(object):
         if line.count("---"):
             pass
         else:
-            if type(self.num_key) in [int, int]:
+            if isinstance(self.num_key, int):
                 in_key, in_value = [part.strip() for part in line.split(":", 1)]
                 in_key = int(in_key, 16)
             else:

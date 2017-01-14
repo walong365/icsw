@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014, 2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2014,2016-2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -119,7 +119,7 @@ class LicenseProcess(threading_tools.process_obj):
             [
                 "{}={}".format(
                     _key,
-                    str(_value) if (isinstance(_value, str) or type(_value) in [int, int]) else str(_value.pk)
+                    str(_value) if (isinstance(_value, str) or isinstance(_value, int)) else str(_value.pk)
                 ) for _key, _value in kwargs.items()
             ]
         )

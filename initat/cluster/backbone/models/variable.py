@@ -21,8 +21,6 @@
 #
 """ models for NOCTUA and CORVUS, device variable definition file """
 
-
-
 import datetime
 import json
 import logging
@@ -218,10 +216,10 @@ class device_variable(models.Model):
         )
 
     def set_value(self, value):
-        if type(value) == datetime.datetime:
+        if isinstance(value, datetime.datetime):
             self.var_type = "d"
             self.val_date = cluster_timezone.localize(value)
-        elif type(value) in [int, int] or (isinstance(value, str) and value.isdigit()):
+        elif isinstance(value, int) or (isinstance(value, str) and value.isdigit()):
             self.var_type = "i"
             self.val_int = int(value)
         elif isinstance(value, bool):

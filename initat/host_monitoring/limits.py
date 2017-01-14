@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2010-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2010-2015,2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,8 +17,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-
-
 
 from initat.tools import logging_tools
 
@@ -178,14 +176,14 @@ class limits(object):
     def check_ceiling(self, val):
         # interpret values as upper limits (for example temperatures)
         ret_code, state = (mon_STATE_OK, "OK")
-        if type(val) == float:
+        if isinstance(val, float):
             if self.crit_val_f is not None:
                 if val >= self.crit_val_f:
                     ret_code, state = (mon_STATE_CRITICAL, "Critical")
             if (self.warn_val_f is not None) and ret_code == mon_STATE_OK:
                 if val >= self.warn_val_f:
                     ret_code, state = (mon_STATE_WARNING, "Warning")
-        elif type(val) in [int, int]:
+        elif isinstance(val, int):
             if self.crit_val is not None:
                 if val >= self.crit_val:
                     ret_code, state = (mon_STATE_CRITICAL, "Critical")
@@ -199,14 +197,14 @@ class limits(object):
     def check_floor(self, val):
         # interpret values as lower limits (for example RPMs for fans)
         ret_code, state = (mon_STATE_OK, "OK")
-        if type(val) == float:
+        if isinstance(val, float):
             if self.crit_val_f is not None:
                 if val <= self.crit_val_f:
                     ret_code, state = (mon_STATE_CRITICAL, "Critical")
             if (self.warn_val_f is not None) and ret_code == mon_STATE_OK:
                 if val <= self.warn_val_f:
                     ret_code, state = (mon_STATE_WARNING, "Warning")
-        elif type(val) in [int, int]:
+        elif isinstance(val, int):
             if self.crit_val is not None:
                 if val <= self.crit_val:
                     ret_code, state = (mon_STATE_CRITICAL, "Critical")

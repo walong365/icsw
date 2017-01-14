@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2015,2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -80,19 +80,19 @@ class new_config_object(object):
     def __iadd__(self, line):
         if isinstance(line, str):
             self.content.append("%s\n" % (line))
-        elif type(line) == list:
+        elif isinstance(line, list):
             self.content.extend(["%s\n" % (s_line) for s_line in line])
-        elif type(line) == dict:
+        elif isinstance(line, dict):
             for key, value in line.items():
                 self.content.append("%s='%s'\n" % (key, value))
-        elif type(line) == type(array.array("b")):
+        elif isinstance(line, array.array):
             self.content.append(line.tostring())
         return self
 
     def bin_append(self, in_bytes):
         # force binary
         self.binary = True
-        if type(in_bytes) == type(array.array("b")):
+        if isinstance(in_bytes, array.array)
             self.content.append(in_bytes.tostring())
         else:
             self.content.append(in_bytes)

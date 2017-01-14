@@ -19,8 +19,6 @@
 monitor ovirt instances, also used from md-config-server
 """
 
-
-
 import copy
 
 import requests

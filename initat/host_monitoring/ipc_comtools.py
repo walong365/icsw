@@ -129,7 +129,7 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
     srv_com["arg_list"] = " ".join(args)
     # add additional keys
     for key, value in kwargs.items():
-        srv_com[key] = "{:d}".format(value) if type(value) in [int, int] else value
+        srv_com[key] = "{:d}".format(value) if isinstance(value, int) else value
     s_time = time.time()
     client_send.send_unicode(str(srv_com))
     client_send.close()

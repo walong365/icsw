@@ -71,7 +71,7 @@ class CtrlCommand(object):
         return in_list
 
     def _interpret(self, in_value):
-        if type(in_value) is dict:
+        if isinstance(in_value, dict):
             for key, value in in_value.items():
                 if isinstance(value, str):
                     if value.isdigit() and "%d" % (int(value)) == value:

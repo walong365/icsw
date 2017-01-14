@@ -319,7 +319,7 @@ class DynConfigProcess(threading_tools.process_obj):
 
     def _check_status_ipmi(self, _val, cur_hint):
         _ret = limits.mon_STATE_OK
-        if type(_val) in [int, int]:
+        if isinstance(_val, int):
             form_str = "{:d}"
         else:
             form_str = "{:.2f}"

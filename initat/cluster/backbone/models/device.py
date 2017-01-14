@@ -928,7 +928,7 @@ class LogSource(models.Model):
 
 @lru_cache()
 def log_source_lookup(identifier, device=None):
-    if type(identifier) in [int, int]:
+    if isinstance(identifier, int):
         return LogSource.objects.get(Q(pk=identifier))
     elif device is not None:
         return LogSource.objects.get(Q(identifier=identifier) & Q(device=device))
@@ -966,7 +966,7 @@ class DeviceLogEntry(models.Model):
         level = kwargs.get("level")
         if level is None:
             level = log_level_lookup("o")
-        elif isinstance(level, str) or type(level) in [int, int]:
+        elif isinstance(level, str) or isinstance(level, int):
             level = log_level_lookup(level)
 
         cur_log = DeviceLogEntry.objects.create(

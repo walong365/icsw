@@ -21,8 +21,6 @@
 #
 """ Model definitions for domain related objects """
 
-
-
 import io
 import os
 import re
@@ -143,7 +141,7 @@ class domain_name_tree(object):
         return self._root_node.get_sorted_pks()
 
     def __getitem__(self, key):
-        if type(key) in [int, int]:
+        if isinstance(key, int):
             return self.__node_dict[key]
 
     def keys(self):
@@ -418,13 +416,13 @@ class category_tree(object):
         return self._root_node.get_sorted_pks()
 
     def __contains__(self, key):
-        if type(key) in [int, int]:
+        if isinstance(key, int):
             return key in self.__node_dict
         else:
             return key in self.__category_lut
 
     def __getitem__(self, key):
-        if type(key) in [int, int]:
+        if isinstance(key, int):
             return self.__node_dict[key]
 
     def keys(self):

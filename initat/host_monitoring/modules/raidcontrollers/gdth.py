@@ -140,7 +140,7 @@ class ctrl_type_gdth(ctrl_type):
         if list(ctrl_dict.keys())[0].startswith("ctrl_"):
             ctrl_dict = list(ctrl_dict.values())[0]
         pd_list, ld_list, ad_list, hd_list = (ctrl_dict["pd"], ctrl_dict["ld"], ctrl_dict["ad"], ctrl_dict["hd"])
-        if type(pd_list) == dict:
+        if isinstance(pd_list, dict):
             # rewrite dict to list
             pd_list = [pd_list[key] for key in sorted(pd_list.keys())]
             ld_list = [ld_list[key] for key in sorted(ld_list.keys())]

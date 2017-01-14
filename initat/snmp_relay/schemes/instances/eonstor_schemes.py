@@ -17,8 +17,6 @@
 #
 """ eonstor schemes for SNMP relayer """
 
-
-
 from initat.host_monitoring import limits
 from initat.snmp.snmp_struct import snmp_oid
 from initat.tools import logging_tools, process_tools
@@ -174,16 +172,18 @@ class eonstor_ld(eonstor_object):
             7: "RAID 6"
         }.get(op_mode, "NOT DEFINED")
         op_mode_extra_bits = int(in_dict[5]) - op_mode
-        if type(in_dict[3]) == str and in_dict[3].lower().startswith("0x"):
+        if isinstance(in_dict[3], str) and in_dict[3].lower().startswith("0x"):
             ld_size = int(in_dict[3][2:], 16) * 512
             vers_str = "id %s" % (in_dict[2])
         else:
             ld_size = (2 ** int(in_dict[4])) * (int(in_dict[3]))
             vers_str = "id %d" % (int(in_dict[2]))
-        drv_total, drv_online, drv_spare, drv_failed = (int(in_dict[8]),
-                                                        int(in_dict[9]),
-                                                        int(in_dict[10]),
-                                                        int(in_dict[11]))
+        drv_total, drv_online, drv_spare, drv_failed = (
+            int(in_dict[8]),
+            int(in_dict[9]),
+            int(in_dict[10]),
+            int(in_dict[11]),
+        )
         if drv_failed:
             self.set_error("%s failed" % (logging_tools.get_plural("drive", drv_failed)))
         drv_info = "%d total, %d online%s" % (drv_total,

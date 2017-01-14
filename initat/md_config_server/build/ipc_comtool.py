@@ -122,7 +122,7 @@ class IPCClientHandler(threading_tools.PollerBase):
         )
         # add additional keys
         # for key, value in dc_action.kwargs.iteritems():
-        #    srv_com[key] = "{:d}".format(value) if type(value) in [int, long] else value
+        #    srv_com[key] = "{:d}".format(value) if isinstance(value, int) else value
         dc_action.log(
             "calling server '{}' for {}, command is '{}', {}, {}".format(
                 dc_action.srv_enum.name,

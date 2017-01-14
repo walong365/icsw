@@ -19,8 +19,6 @@
 #
 """ supermicro special """
 
-
-
 from argparse import Namespace
 
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
@@ -42,7 +40,7 @@ class special_supermicro(SpecialBase):
         _hints = []
         for m_key in sorted(r_dict):
             _struct = r_dict[m_key]
-            for e_key in sorted([_key for _key in _struct.keys() if type(_key) in [int]]):
+            for e_key in sorted([_key for _key in _struct.keys() if isinstance(_key, int)]):
                 _hints.append(
                     monitoring_hint(
                         key="{}.{:d}".format(m_key, e_key),
@@ -112,7 +110,7 @@ class special_supermicro_passive(SpecialBase):
         ]
         for m_key in sorted(r_dict):
             _struct = r_dict[m_key]
-            for e_key in sorted([_key for _key in _struct.keys() if type(_key) in [int]]):
+            for e_key in sorted([_key for _key in _struct.keys() if isinstance(_key, int)]):
                 _hints.append(
                     monitoring_hint(
                         key="{}.{:d}".format(m_key, e_key),

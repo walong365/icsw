@@ -21,8 +21,6 @@
 #
 """ kernel related parts of mother """
 
-
-
 import os
 import time
 
@@ -73,7 +71,7 @@ class KernelSyncProcess(threading_tools.process_obj):
         }.items():
             if key in srv_com:
                 cur_val = srv_com[key].text
-                if type(def_value) == bool:
+                if isinstance(def_value, bool):
                     cur_val = True if int(cur_val) else False
             else:
                 cur_val = def_value

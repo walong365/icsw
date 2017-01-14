@@ -575,7 +575,7 @@ class openvpn_status_command(hm_classes.hm_command):
             # iterate over instances
             if inst_name in res_dict:
                 # instance found
-                if type(res_dict[inst_name]) is tuple:
+                if isinstance(res_dict[inst_name], tuple):
                     # old kind of result
                     inst_ok, inst_str, clients = res_dict[inst_name]
                     i_type, vpn_device, _p_ip = (

@@ -66,7 +66,7 @@ class LiveQuery(object):
         return self
 
     def filter(self, key, op, value, method="or", count=None):
-        if type(value) != list:
+        if not isinstance(value, list):
             value = [value]
         for entry in value:
             self._filters.append("Filter: {} {} {}".format(key, op, entry))
@@ -95,7 +95,6 @@ class LiveSocket(object):
             else:
                 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             s.connect(self.peer)
-            # print(type(request), request)
             s.send(request.encode("utf-8"))
             s.shutdown(socket.SHUT_WR)
             csv_lines = csv.DictReader(s.makefile(), columns, delimiter=';')

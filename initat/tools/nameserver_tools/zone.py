@@ -19,8 +19,6 @@
 #
 """ generates zonefiles for nsX.init.at """
 
-
-
 import subprocess
 import json
 import os
@@ -592,7 +590,7 @@ class Zone(object):
                     )
                 print("{}".format(logging_tools.get_plural("remote command", len(_cmd_list))))
                 for _cmd in _cmd_list:
-                    if type(_cmd) is tuple:
+                    if isinstance(_cmd, tuple):
                         # copy
                         if len(_cmd) == 3:
                             _opts = _cmd[2]

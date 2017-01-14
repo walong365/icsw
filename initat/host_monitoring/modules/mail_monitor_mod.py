@@ -512,7 +512,7 @@ class mailq_command(hm_classes.hm_command):
             srv_com.set_result("no mailq command defined", server_command.SRV_REPLY_STATE_ERROR)
 
     def interpret(self, srv_com, cur_ns):
-        if type(srv_com) in [int, int]:
+        if isinstance(srv_com, int):
             mail_dict = {"total": srv_com, "queued": srv_com}
         elif "mail_dict" in srv_com:
             mail_dict = srv_com["mail_dict"][0]

@@ -1,8 +1,7 @@
 #!/usr/bin/python2.4
 
-
-
-"""Diff Match and Patch
+"""
+Diff Match and Patch
 
 Copyright 2006 Google Inc.
 http://code.google.com/p/google-diff-match-patch/
@@ -1174,7 +1173,7 @@ class diff_match_patch:
         Raises:
           ValueError: If invalid input.
         """
-        if type(delta) == str:
+        if isinstance(delta, str):
             # Deltas should be composed of a subset of ascii chars, Unicode not
             # required.  If this encode raises UnicodeEncodeError, delta is invalid.
             delta = delta.encode("ascii")
@@ -1807,7 +1806,7 @@ class diff_match_patch:
         Raises:
           ValueError: If invalid input.
         """
-        if type(textline) == str:
+        if isinstance(textline, str):
             # Patches should be composed of a subset of ascii chars, Unicode not
             # required.  If this encode raises UnicodeEncodeError, patch is invalid.
             textline = textline.encode("ascii")

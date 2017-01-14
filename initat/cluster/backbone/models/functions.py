@@ -21,8 +21,6 @@
 #
 """ helper functions for ICSW models """
 
-
-
 import collections
 import datetime
 import time
@@ -469,7 +467,7 @@ class duration(object):
 
     @classmethod
     def get_shorter_duration(cls, duration_type):
-        if type(duration_type) == int:
+        if isinstance(duration_type, int):
             duration_type = cls.get_class(duration_type)
 
         shorter_duration = duration_type.get_shorter_duration()

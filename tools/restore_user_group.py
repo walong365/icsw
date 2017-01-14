@@ -1,6 +1,6 @@
 #!/usr/bin/python3-init -Otu
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2014,2017 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -26,12 +26,13 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
+import codecs
+import sys
+
 from django.db.models import Q
 from initat.cluster.backbone.models import group, user
-from lxml import etree  # @UnresolvedImport
-import codecs
+from lxml import etree
 from initat.tools import logging_tools
-import sys
 
 OBJ_DICT = {
     "user": user,
@@ -114,17 +115,19 @@ def main():
                     db_obj.group = group_lut[src_dict["ggroup"]]
                 db_obj.save()
             else:
-                print(("{} with {}='{}' already exists".format(
-                    c_type,
-                    prim_field,
-                    prim_value)
-                ))
+                print(
+                    ("{} with {}='{}' already exists".format(
+                        c_type,
+                        prim_field,
+                        prim_value)
+                    )
+                )
                 if c_type == "user":
                     if db_obj.export_id == 0:
                         db_obj.export = None
 
             for copy_id in copy_fields:
-                if type(copy_id) == tuple:
+                if isinstance(copy_id, tuple):
                     src_key, dst_key = (copy_id[0], copy_id[1])
                 else:
                     src_key, dst_key = (copy_id, copy_id)

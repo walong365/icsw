@@ -711,7 +711,7 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
                 _list = []
                 for m_key in sorted(r_dict):
                     _struct = r_dict[m_key]
-                    for e_key in sorted([_key for _key in _struct.keys() if type(_key) in [int]]):
+                    for e_key in sorted([_key for _key in _struct.keys() if isinstance(_key, int)]):
                         _handle = getattr(self, "_handle_{}".format(m_key))
                         _state, _result = _handle(r_dict[m_key][e_key], obj_type=m_key)
                         _list.append(

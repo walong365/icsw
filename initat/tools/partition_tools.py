@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2014,2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -16,8 +16,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ tools for handling partition tables (LVM and UUID / label stuff) """
-
-
 
 import subprocess
 import os
@@ -50,7 +48,7 @@ class lvm_object(dict):
         self.lv_type = lv_type
         self.__ignore_list = ["percent"]
         self.__int_keys = ["major", "minor", "kernel_major", "kernel_minor", "used", "max_pv", "max_lv", "stripes", "free"]
-        if type(in_dict) == dict:
+        if isinstance(in_dict, dict):
             for key, value in in_dict.items():
                 self[key] = value
         else:
@@ -87,7 +85,7 @@ class lvm_object(dict):
         for key, value in src_obj.items():
             if isinstance(value, str):
                 r_dict[key] = value
-            elif type(value) in [int, int]:
+            elif isinstance(value, int):
                 r_dict[key] = "{:d}".format(value)
         return r_dict
 
@@ -98,7 +96,9 @@ class lvm_object(dict):
                 "--- name {}, type {} --- ".format(self["name"], self.lv_type)
             ] + [
                 "{:<20s}: ({}) {}".format(key, str(type(value)), str(value)) for key, value in self.items()
-            ] + ["}"]
+            ] + [
+                "}"
+            ]
         )
 
 

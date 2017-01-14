@@ -24,8 +24,6 @@
 
 """ tools for handling of external license servers """
 
-
-
 import datetime
 import os
 import re
@@ -454,7 +452,7 @@ class LicenseTextFile(object):
             self._lines = [_entry for _entry in self._lines if not _entry.strip().startswith("#")]
 
     def write(self, content, mode="w"):
-        if type(content) == dict:
+        if isinstance(content, dict):
             open(self.__name, mode).write(
                 "\n".join(
                     [
@@ -746,7 +744,11 @@ class LicenseFile(object):
     def __unicode__(self):
         return "LicenseFile with {} ({})".format(
             logging_tools.get_plural("server", self.num_servers),
-            ", ".join([str(_srv) for _srv in self.server_list])
+            ", ".join(
+                [
+                    str(_srv) for _srv in self.server_list
+                ]
+            )
         )
 
 

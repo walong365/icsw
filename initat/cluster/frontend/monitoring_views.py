@@ -329,7 +329,7 @@ class get_mon_vars(View):
         for _mc in mon_check_commands:
             _mon_info, _log_lines = parse_commandline(_mc.command_line)
             for _key, _value in _mon_info["default_values"].items():
-                if type(_value) == tuple:
+                if isinstance(value, tuple):
                     res_list.append(
                         (
                             _mc.name,
@@ -345,7 +345,7 @@ class get_mon_vars(View):
         for _mc in mon_special_check_commands:
             _mon_info, _log_lines = parse_commandline(_mc.command_line)
             for _key, _value in _mon_info["default_values"].items():
-                if type(_value) == tuple:
+                if isinstance(_value, tuple):
                     _checks = _mc.mon_check_command_set.all()
                     if len(_checks) == 1:
                         res_list.append(

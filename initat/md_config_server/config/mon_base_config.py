@@ -79,7 +79,7 @@ class MonBaseConfig(dict):
 
     def __setitem__(self, key, value):
         _cur_v = self.setdefault(key, [])
-        if type(value) != list:
+        if not isinstance(value, list):
             value = [value]
         if self._flat_values:
             _cur_v.extend([_v for _v in value if _v not in _cur_v])
@@ -225,7 +225,13 @@ class StructuredContentEmitter(object):
         # print self.obj_type, _key, in_list
         if in_list:
             # check for unique types
-            if len(set([type(_val) for _val in in_list])) != 1:
+            if len(
+                set(
+                    [
+                        type(_val) for _val in in_list
+                    ]
+                )
+            ) != 1:
                 raise ValueError(
                     "values in list {} for key {} have different types".format(
                         str(in_list),
@@ -234,7 +240,7 @@ class StructuredContentEmitter(object):
                 )
             else:
                 _first_val = in_list[0]
-                if type(_first_val) in [int, int]:
+                if isinstance(_first_val, int):
                     _ts = "int"
                     _vs = ",".join(["{:d}".format(_val) for _val in in_list])
                 else:
@@ -273,9 +279,9 @@ class FlatContentEmitter(object):
                 # for headers
                 c_lines.append(key)
             else:
-                if type(value) == list:
+                if isinstance(value, list):
                     pass
-                elif type(value) in [int, int]:
+                elif isinstance(value, int):
                     value = ["{:d}".format(value)]
                 else:
                     value = [value]

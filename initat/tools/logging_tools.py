@@ -21,8 +21,6 @@
 #
 """ logging tools, base code """
 
-
-
 import bz2
 import datetime
 import gzip
@@ -109,7 +107,7 @@ def only_printable(in_str):
 
 
 def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
-    if type(num) in [list, set]:
+    if isinstance(num, list) or isinstance(num, set):
         r_num = len(num)
     else:
         r_num = num
@@ -184,10 +182,10 @@ def interpret_size_str(in_str, **kwargs):
 
 
 def get_diff_time_str(diff_secs, **kwargs):
-    if type(diff_secs) == datetime.timedelta:
+    if isinstance(diff_secs, datetime.timedelta):
         diff_secs = diff_secs.total_seconds()
     abs_diffs = abs(diff_secs)
-    is_int = type(abs_diffs) in [int, int]
+    is_int = isinstance(abs_diffs, int)
     _long = kwargs.get("long", True)
     _secs = {
         True: "seconds",
@@ -366,7 +364,7 @@ class form_list(object):
         self.raw_mode = raw_mode
 
     def add_line(self, l_p):
-        if type(l_p) in [int, int]:
+        if isinstance(l_p, int):
             l_p = str(l_p)
         if isinstance(l_p, str):
             l_p = [l_p]
@@ -388,7 +386,7 @@ class form_list(object):
         self.act_row_idx = act_row_idx
 
     def set_header_string(self, row_idx, header):
-        if type(header) == list:
+        if isinstance(header, list):
             for idx in range(len(header)):
                 self.header_dict[row_idx + idx] = header[idx]
         else:
@@ -726,7 +724,7 @@ def compress_num_list(ql, excl_list=[]):
             return "{:d}/{:d}".format(s_idx, e_idx)
         else:
             return "{:d}-{:d}".format(s_idx, e_idx)
-    if type(ql) == list:
+    if isinstance(ql, list):
         ql.sort()
     nc_a = []
     s_num = None
@@ -755,7 +753,7 @@ def my_syslog(out_str, log_lev=LOG_LEVEL_OK, out=False):
     else:
         log_type = syslog.LOG_INFO | syslog.LOG_USER
     try:
-        if type(out_str) == str:
+        if isinstance(out_str, str):
             syslog.syslog(log_type, str(out_str))
         else:
             syslog.syslog(log_type, out_str.encode("utf-8"))
@@ -765,7 +763,7 @@ def my_syslog(out_str, log_lev=LOG_LEVEL_OK, out=False):
             str(exc_info[0]),
             str(exc_info[1]),
         )
-        if type(out_str) == str:
+        if isinstance(out_str, str):
             syslog.syslog(
                 syslog.LOG_ERR | syslog.LOG_USER,
                 "error logging unicode ({}, len {:d}, log_type {:d})".format(

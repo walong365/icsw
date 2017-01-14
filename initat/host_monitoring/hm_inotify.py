@@ -22,9 +22,6 @@
 
 """ host-monitoring, inotify process """
 
-
-
-
 import fnmatch
 import os
 import stat
@@ -501,7 +498,15 @@ class HMInotifyProcess(threading_tools.process_obj):
             "got '{}', {}: {}".format(
                 in_com,
                 logging_tools.get_plural("argument", len(args)),
-                ", ".join(["{}='{}' ({})".format(key, value, type(value)) for key, value in args.items()])
+                ", ".join(
+                    [
+                        "{}='{}' ({})".format(
+                            key,
+                            value,
+                            type(value)
+                        ) for key, value in args.items()
+                    ]
+                )
             )
         )
         args = {key.replace("-", "_"): value for key, value in args.items()}

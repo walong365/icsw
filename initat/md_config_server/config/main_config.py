@@ -583,7 +583,6 @@ class MainConfig(dict, NagVisMixin):
         self.log("done")
 
     def __setitem__(self, key, value):
-        # print "SI", key, type(value)
         super(MainConfig, self).__setitem__(key, value)
         _main_cfg_name = global_config["MAIN_CONFIG_NAME"]
         new_file_keys, new_dir_keys, new_resource_keys = ([], [], [])

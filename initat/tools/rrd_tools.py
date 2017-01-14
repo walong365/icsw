@@ -37,7 +37,7 @@ WS_RE = re.compile("^(?P<slot_num>\d+)\s*(?P<slot_type>\S+?)s*\s+for\s+(?P<total
 def _format_value(in_value):
     if in_value is None:
         return "NaN"
-    elif type(in_value) in [int, int]:
+    elif isinstance(in_value, int):
         return "{:d}".format(in_value)
     else:
         return "{:.10e}".format(in_value)

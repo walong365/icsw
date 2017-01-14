@@ -19,8 +19,6 @@
 #
 """ structures and functions for the grapher part of rrd-grapher service """
 
-
-
 import math
 import os
 import time
@@ -43,7 +41,9 @@ class GraphVar(object):
         self.mvs_entry = mvs_entry
         self.mvv_entry = mvv_entry
         if self.mvv_entry and self.mvv_entry.pk:
-            self.thresholds = list(self.mvv_entry.sensorthreshold_set.all().prefetch_related("sensorthresholdaction_set"))
+            self.thresholds = list(
+                self.mvv_entry.sensorthreshold_set.all().prefetch_related("sensorthresholdaction_set")
+            )
         else:
             self.thresholds = []
         # graph key (load.1)
@@ -624,9 +624,12 @@ class GraphTarget(object):
     def result_dict(self):
         if self.__result_dict is None:
             self.__result_dict = {
-                key: "{:d}".format(value) if type(value) in [
-                    int, int
-                ] else FLOAT_FMT.format(value) for key, value in self.draw_result.items() if not key.startswith("print[")
+                key: "{:d}".format(value) if isinstance(
+                    value,
+                    int
+                ) else FLOAT_FMT.format(
+                    value
+                ) for key, value in self.draw_result.items() if not key.startswith("print[")
             }
         return self.__result_dict
 

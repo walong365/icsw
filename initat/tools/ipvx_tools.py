@@ -19,15 +19,12 @@
 """ handles ipv4 addresses """
 
 
-
-
-
 class ipv4(object):
     def __init__(self, in_value):
         if isinstance(in_value, ipv4):
             in_value = str(in_value)
         # cast tuple to list
-        if type(in_value) in [int, int]:
+        if isinstance(in_value, int):
             in_value = list(in_value)
         if isinstance(in_value, str):
             # value is a string
@@ -44,8 +41,8 @@ class ipv4(object):
                 # print "+",in_value, self.parts, self.inv_parts, "*<br>"
             else:
                 raise ValueError("error parsing IP address '{}'".format(in_value))
-        elif type(in_value) == list:
-            if type(in_value[0]) in [type(0), type(0)]:
+        elif isinstance(in_value, list):
+            if isinstance(in_value[0], int):
                 # value is a list of integer
                 self.parts = [val for val in in_value]
             else:

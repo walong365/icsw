@@ -22,8 +22,6 @@
 
 """ meta-server, ServiceState code """
 
-
-
 import subprocess
 import os
 import sqlite3
@@ -87,7 +85,7 @@ class ServiceActionState(object):
         for _key in ServiceActionState.keys:
             if _key in kwargs:
                 _val = kwargs[_key]
-                self._vals[_key] = _val if type(_val) is list else [_val]
+                self._vals[_key] = _val if isinstance(_val, list) else [_val]
         self._action = kwargs["action"]
         ServiceActionState.add_state(self)
 

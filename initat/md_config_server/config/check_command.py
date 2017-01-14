@@ -97,7 +97,7 @@ class CheckCommand(object):
             value = arg_temp[arg_name]
             if arg_name in self.__default_values and not value:
                 dv_value = self.__default_values[arg_name]
-                if type(dv_value) == tuple:
+                if isinstance(dv_value, tuple):
                     # var_name and default_value
                     var_name = self.__default_values[arg_name][0]
                     if var_name in dev_variables:
@@ -107,7 +107,7 @@ class CheckCommand(object):
                 else:
                     # only default_value
                     value = self.__default_values[arg_name]
-            if type(value) in [int, int]:
+            if isinstance(value, int):
                 out_list.append("{:d}".format(value))
             else:
                 out_list.append(value)

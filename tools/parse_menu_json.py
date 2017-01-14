@@ -110,7 +110,7 @@ class Route(object):
                 _xml.attrib["{}_bool".format(_t_key)] = "yes" if _dict[_key] else "no"
             else:
                 _val = _dict[_key]
-                if type(_val) in [int, int]:
+                if isinstance(_val, int):
                     _xml.attrib["{}_int".format(_t_key)] = "{:d}".format(_val)
                 else:
                     _xml.attrib["{}_str".format(_t_key)] = _val

@@ -21,8 +21,6 @@
 #
 """ logging tools, network related """
 
-
-
 import inspect
 import logging
 import logging.handlers
@@ -68,7 +66,7 @@ def get_logger(name, destination, **kwargs):
         # only initiate once
         act_logger.handler_strings = []
     act_logger.setLevel(kwargs.get("base_log_level", logging.DEBUG))
-    if type(destination) != list:
+    if not isinstance(destination, list):
         destination = [destination]
     # hack to make destination unique with respect to pid
     destination = [(cur_pid, cur_dest) for cur_dest in destination]

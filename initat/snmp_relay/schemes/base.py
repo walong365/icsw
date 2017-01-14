@@ -17,8 +17,6 @@
 #
 """ base objects for SNMP schemes for SNMP relayer """
 
-
-
 import argparse
 import io
 import sys
@@ -311,7 +309,11 @@ class SNMPRelayScheme(object):
 
     def _simplify_keys(self, in_dict):
         # changes all keys from (x,) to x
-        return {key[0] if (type(key) == tuple and len(key) == 1) else key: value for key, value in in_dict.items()}
+        return {
+            key[0] if (
+                isinstance(key, tuple) and len(key) == 1
+            ) else key: value for key, value in in_dict.items()
+        }
 
     def _check_for_missing_keys(self, in_dict, needed_keys):
         if not needed_keys < set(in_dict.keys()):
@@ -331,7 +333,7 @@ class SNMPRelayScheme(object):
 
     # @requests.setter
     def set_requests(self, in_value):
-        if type(in_value) is list:
+        if isinstance(in_value, list):
             self.__req_list.extend(in_value)
         else:
             self.__req_list.append(in_value)
@@ -344,7 +346,7 @@ class SNMPRelayScheme(object):
 
     @snmp.setter
     def snmp(self, in_value):
-        if type(in_value) is dict:
+        if isinstance(in_value, dict):
             self.__received |= set(in_value.keys())
             # set complete dict
             self.snmp_dict = in_value

@@ -74,7 +74,7 @@ class build_client(object):
             setattr(self, key, kwargs[key])
         for force_int in ["pk", "run_idx"]:
             if hasattr(self, force_int):
-                setattr(self, force_int, int(getattr(self, force_int)))
+                setattr(self, force_int(getattr(self, force_int)))
         self.log_kwargs(only_new=True)
 
     def log_kwargs(self, info_str="", only_new=True):

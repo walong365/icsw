@@ -468,7 +468,7 @@ class rms_job_run(models.Model):
         )
 
     def _set_is_value(self, attr_name, value):
-        if type(value) in [int, int]:
+        if isinstance(value, int):
             setattr(self, attr_name, value)
             setattr(self, "{}_str".format(attr_name), "")
         else:

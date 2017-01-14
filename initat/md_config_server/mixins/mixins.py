@@ -19,8 +19,6 @@
 #
 """ mixins providing various functions for build process / md-config-server """
 
-
-
 import configparser
 import base64
 import binascii
@@ -275,9 +273,9 @@ class NagVisMixin(object):
             map_h.write("define global {\n")
             for key in sorted(map_dict.keys()):
                 value = map_dict[key]
-                if type(value) == bool:
+                if isinstance(value, bool):
                     value = "1" if value else "0"
-                elif type(value) in [int, int]:
+                elif isinstance(value, int):
                     value = "%d" % (value)
                 map_h.write("    {}={}\n".format(key, value))
             map_h.write("}\n")

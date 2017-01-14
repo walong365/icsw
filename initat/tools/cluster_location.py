@@ -19,8 +19,6 @@
 #
 """ module for checking current server status and extracting routes to other server """
 
-
-
 import array
 import datetime
 import netifaces
@@ -98,7 +96,7 @@ def read_config_from_db(g_config, sql_info, init_list=[]):
 
 class db_device_variable(object):
     def __init__(self, cur_dev, var_name, **kwargs):
-        if type(cur_dev) in [int, int]:
+        if isinstance(cur_dev, int):
             try:
                 self.__device = device.objects.get(Q(pk=cur_dev))
             except device.DoesNotExist:
@@ -114,8 +112,10 @@ class db_device_variable(object):
             self.__var_value = None
         else:
             self.__act_dv = act_dv
-            self.set_stuff(var_type=act_dv.var_type,
-                           description=act_dv.description)
+            self.set_stuff(
+                var_type=act_dv.var_type,
+                description=act_dv.description,
+            )
             self.set_value(getattr(act_dv, "val_%s" % (self.__var_type_name)), type_ok=True)
         self.set_stuff(**kwargs)
         if "value" in kwargs:
@@ -161,7 +161,7 @@ class db_device_variable(object):
         if not type_ok:
             if isinstance(value, str):
                 v_type = "s"
-            elif isinstance(value, int) or isinstance(value, int):
+            elif isinstance(value, int):
                 v_type = "i"
             elif isinstance(value, datetime.datetime):
                 v_type = "d"

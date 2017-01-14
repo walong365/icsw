@@ -19,8 +19,6 @@
 #
 """ package server, base structures """
 
-
-
 import subprocess
 import datetime
 import os
@@ -529,7 +527,7 @@ class SubprocessStruct(object):
             self.Meta.verbose = kwargs["verbose"]
         self.srv_com = srv_com
         self.command_line = com_line
-        self.multi_command = type(self.command_line) == list
+        self.multi_command = isinstance(self.command_line, list)
         self.com_num = 0
         self.popen = None
         self.pre_cb_func = kwargs.get("pre_cb_func", None)
@@ -546,7 +544,7 @@ class SubprocessStruct(object):
         if self.multi_command:
             if self.command_line:
                 cur_cl, add_stuff = self.command_line[self.com_num]
-                if type(cur_cl) == tuple:
+                if isinstance(cur_cl, tuple):
                     # in case of tuple
                     run_info["comline"] = cur_cl[0]
                 else:

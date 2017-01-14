@@ -434,7 +434,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
 
     def _get_snmp_hosts(self, _router):
         def _cast_snmp_version(_vers):
-            if type(_vers) in [int, int]:
+            if isinstance(_vers, int):
                 return _vers
             elif _vers.isdigit():
                 return int(_vers)
