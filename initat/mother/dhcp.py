@@ -351,7 +351,7 @@ class DHCPSyncer(object):
         )
 
     def omshell_done(self, om_sc):
-        cur_out = om_sc.read()
+        cur_out = om_sc.read().decode("utf-8")
         error_re = re.compile("^.*can't (?P<what>.*) object: (?P<why>.*)$")
         key_value_re = re.compile("^(?P<key>\S+)\s*=\s*(?P<value>.+)$")
         lines = cur_out.split("\n")

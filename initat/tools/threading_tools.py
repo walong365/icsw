@@ -850,10 +850,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBas
     def add_com_socket(self):
         cs_name = self.get_com_socket_name(self.name)
         zmq_socket = self.zmq_context.socket(zmq.ROUTER)
-        if isinstance(self.name, str):
-            zmq_socket.setsockopt(zmq.IDENTITY, self.name)
-        else:
-            zmq_socket.setsockopt(zmq.IDENTITY, self.name)
+        zmq_socket.setsockopt_string(zmq.IDENTITY, self.name)
         zmq_socket.setsockopt(zmq.IMMEDIATE, True)
         zmq_socket.setsockopt(zmq.ROUTER_MANDATORY, True)
         process_tools.bind_zmq_socket(zmq_socket, cs_name)

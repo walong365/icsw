@@ -782,9 +782,11 @@ class RemoteCallMixin(object):
             # set com_name to None
             com_name = None
             if self.remote_call_id_filter_dict and src_id is not None:
-                _match = [_value for _key, _value in self.remote_call_id_filter_dict.items() if _key.match(src_id)]
+                _match = [
+                    _value for _key, _value in self.remote_call_id_filter_dict.items() if _key.match(src_id.decode("utf-8"))
+                ]
                 if _match:
-                    com_name = _match[0].__name__
+                    com_name = _match[0].func.__name__
             if com_name is None:
                 # com name still none, parse data
                 if msg_type == RemoteCallMessageType.flat:

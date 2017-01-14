@@ -327,7 +327,7 @@ class ExternalCommandProcess(threading_tools.process_obj):
 
     def sc_finished(self, sc_com):
         # output
-        _lines = sc_com.read().split("\n")
+        _lines = sc_com.read().decode("utf-8").split("\n")
         self.log("simple command done ({})".format(logging_tools.get_plural("line", len(_lines))))
         for _line in _lines:
             self.log("   - {}".format(_line))
