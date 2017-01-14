@@ -27,7 +27,7 @@ function kill_it() {
 if [ "${1}" == "start" ] ; then
     echo "Starting daphne and workers"
     kill_it
-    /opt/python-init/bin/daphne initat.cluster.asgi:channel_layer --port 8085 --bind 0.0.0.0 --access-log=/var/log/icsw/daphne/daphne_access.log &
+    /opt/cluster/bin/daphne initat.cluster.asgi:channel_layer --port 8085 --bind 0.0.0.0 --access-log=/var/log/icsw/daphne/daphne_access.log &
     /opt/cluster/sbin/clustermanage.py runworker --only-channels=websocket.* --threads=4 &
     echo "done"
 else
