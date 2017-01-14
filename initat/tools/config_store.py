@@ -110,10 +110,10 @@ class ConfigVar(object):
     def __init__(self, name, val, descr=""):
         self.name = name
         self.value = val
-        if isinstance(self.value, int):
-            self._type = "int"
-        elif isinstance(self.value, bool):
+        if isinstance(self.value, bool):
             self._type = "bool"
+        elif isinstance(self.value, int):
+            self._type = "int"
         else:
             self._type = "str"
         self.description = descr
@@ -148,7 +148,6 @@ class ConfigVar(object):
     def get_element(self):
         if self._type == "int":
             _val = "{:d}".format(self.value)
-            _type = "int"
         elif self._type == "bool":
             _val = "True" if self.value else "False"
         else:
@@ -205,7 +204,6 @@ class ConfigStore(object):
                 self.write()
 
     def set_prefix(self, prefix, index):
-        print(self.prefix)
         if self.prefix:
             raise ValueError("prefix already set ({})".format(self.prefix))
         vars = {_key: _value.get_value() for _key, _value in self.vars.items()}
