@@ -19,8 +19,6 @@
 #
 """ tools for the SGE """
 
-
-
 import argparse
 import copy
 import datetime
@@ -383,9 +381,9 @@ class SGEInfo(object):
                     ext_xml.append(
                         getattr(E, _std_type)(os.path.join(cur_pwd, "{}.{}{}".format(job_name, _short, job_id)))
                     )
-            self.set_cache(job_key, etree.tostring(ext_xml))  # @UndefinedVariable
+            self.set_cache(job_key, etree.tostring(ext_xml))
         else:
-            ext_xml = etree.fromstring(_cache)  # @UndefinedVariable
+            ext_xml = etree.fromstring(_cache)
         self.__run_job_dict[job_id] = ext_xml
 
     def add_wait_job_info(self, job_id, qstat_com):
@@ -403,9 +401,9 @@ class SGEInfo(object):
             if _exec_time_el is not None and int(_exec_time_el.text):
                 _exec_time = datetime.datetime.fromtimestamp(int(_exec_time_el.text))
                 ext_xml.append(E.execution_time(str(int(_exec_time_el.text))))
-            self.set_cache(job_key, etree.tostring(ext_xml))  # @UndefinedVariable
+            self.set_cache(job_key, etree.tostring(ext_xml))
         else:
-            ext_xml = etree.fromstring(_cache)  # @UndefinedVariable
+            ext_xml = etree.fromstring(_cache)
         self.__wait_job_dict[job_id] = ext_xml
 
     def get_run_job_info(self, job_id):
@@ -543,7 +541,7 @@ class SGEInfo(object):
                 srv_com["needed_dicts"] = list(server_update)
                 # print srv_com.pretty_print()
                 my_poller = zmq.Poller()
-                my_poller.register(client, zmq.POLLIN)  # @UndefinedVariable
+                my_poller.register(client, zmq.POLLIN)
                 client.send_unicode(str(srv_com))
                 _sc = True
             else:
@@ -577,7 +575,7 @@ class SGEInfo(object):
                     pass
                 else:
                     if "sge" in srv_reply:
-                        self.__tree = etree.fromstring(etree.tostring(srv_reply["sge"][0]))  # @UndefinedVariable
+                        self.__tree = etree.fromstring(etree.tostring(srv_reply["sge"][0]))
                         # valid return
                     dicts_to_update -= server_update
             e_time = time.time()
@@ -592,7 +590,7 @@ class SGEInfo(object):
         if self.__verbose:
             self.log(
                 "before merge: tree size {:d}, memory usage {}".format(
-                    len(etree.tostring(self.__tree)),  # @UndefinedVariable
+                    len(etree.tostring(self.__tree)),
                     logging_tools.get_size_str(process_tools.get_mem_info()),
                 )
             )
@@ -604,7 +602,7 @@ class SGEInfo(object):
         if self.__verbose:
             self.log(
                 "after merge : tree size {:d}, memory usage {}".format(
-                    len(etree.tostring(self.__tree)),  # @UndefinedVariable
+                    len(etree.tostring(self.__tree)),
                     logging_tools.get_size_str(process_tools.get_mem_info()),
                 )
             )
@@ -615,7 +613,7 @@ class SGEInfo(object):
         # print self.__counter
         # s_time = time.time()
         # hm, fixes the memory issue but not very beautifull ...
-        self.__tree = etree.fromstring(etree.tostring(self.__tree))  # @UndefinedVariable
+        self.__tree = etree.fromstring(etree.tostring(self.__tree))
         # print etree.tostring(self.__tree, pretty_print=True)
         # e_time = time.time()
         # print e_time - s_time
@@ -925,7 +923,7 @@ class SGEInfo(object):
         if _c_stat:
             all_jobs = E.call_error(c_out, stat="{:d}".format(_c_stat))
         else:
-            all_jobs = etree.fromstring(c_out)  # @UndefinedVariable
+            all_jobs = etree.fromstring(c_out)
         all_jobs.tag = "qstat"
         # modify job_ids
         for cur_job in all_jobs.findall(".//job_list"):

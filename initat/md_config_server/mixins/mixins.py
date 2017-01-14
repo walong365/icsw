@@ -39,9 +39,9 @@ from ..config.global_config import global_config
 from functools import reduce
 
 __all__ = [
-    b"ImageMapMixin",
-    b"DistanceMapMixin",
-    b"NagVisMixin",
+    "ImageMapMixin",
+    "DistanceMapMixin",
+    "NagVisMixin",
 ]
 
 
@@ -679,7 +679,7 @@ class NagVisMixin(object):
             devg_lut = {}
             for cur_dev in nagvis_rds:
                 devg_lut.setdefault(cur_dev.device_group.pk, []).append(cur_dev.full_name)
-            for cur_u in user.objects.filter(Q(active=True) & Q(mon_contact__pk__gt=0)).prefetch_related("allowed_device_groups"):  # @UndefinedVariable
+            for cur_u in user.objects.filter(Q(active=True) & Q(mon_contact__pk__gt=0)).prefetch_related("allowed_device_groups"):
                 # check for admin
                 if cur_u.has_perm("backbone.device.all_devices"):
                     target_role = "admins"

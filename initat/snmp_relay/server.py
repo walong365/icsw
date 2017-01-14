@@ -17,8 +17,6 @@
 #
 """ SNMP relayer, server part """
 
-
-
 import difflib
 import os
 import socket
@@ -108,7 +106,7 @@ class server_process(server_mixins.ICSWBasePool):
         )
 
         _snmp_sock = self.spc.create_ipc_socket(self.zmq_context, IPC_SOCK_SNMP)
-        self.register_poller(_snmp_sock, zmq.POLLIN, self.spc.handle_with_socket)  # @UndefinedVariable
+        self.register_poller(_snmp_sock, zmq.POLLIN, self.spc.handle_with_socket)
         # pending schemes
         self.__pending_schemes = {}
         self.spc.check()
@@ -139,8 +137,8 @@ class server_process(server_mixins.ICSWBasePool):
     def _init_ipc_sockets(self):
         self.__num_messages = 0
         sock_list = [
-            ("receiver", zmq.PULL, 2),  # @UndefinedVariable
-            ("sender", zmq.PUB, 1024),  # @UndefinedVariable
+            ("receiver", zmq.PULL, 2),
+            ("sender", zmq.PUB, 1024),
         ]
         [setattr(self, "{}_socket".format(short_sock_name), None) for short_sock_name, _a0, _b0 in sock_list]
         for short_sock_name, sock_type, hwm_size in sock_list:
@@ -179,15 +177,15 @@ class server_process(server_mixins.ICSWBasePool):
             else:
                 setattr(self, "{}_socket".format(short_sock_name), cur_socket)
                 os.chmod(file_name, 0o777)
-                self.receiver_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
-                self.receiver_socket.setsockopt(zmq.RCVHWM, hwm_size)  # @UndefinedVariable
-                self.receiver_socket.setsockopt(zmq.SNDHWM, hwm_size)  # @UndefinedVariable
-                if sock_type == zmq.PULL:  # @UndefinedVariable
-                    self.register_poller(cur_socket, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
+                self.receiver_socket.setsockopt(zmq.LINGER, 0)
+                self.receiver_socket.setsockopt(zmq.RCVHWM, hwm_size)
+                self.receiver_socket.setsockopt(zmq.SNDHWM, hwm_size)
+                if sock_type == zmq.PULL:
+                    self.register_poller(cur_socket, zmq.POLLIN, self._recv_command)
 
     def _close_ipc_sockets(self):
         if self.receiver_socket is not None:
-            self.unregister_poller(self.receiver_socket, zmq.POLLIN)  # @UndefinedVariable
+            self.unregister_poller(self.receiver_socket, zmq.POLLIN)
             self.receiver_socket.close()
         if self.sender_socket is not None:
             self.sender_socket.close()
@@ -285,7 +283,7 @@ class server_process(server_mixins.ICSWBasePool):
 
     def _recv_command(self, zmq_sock):
         body = zmq_sock.recv()
-        if zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
+        if zmq_sock.getsockopt(zmq.RCVMORE):
             _src_id = body
             body = zmq_sock.recv()
         parameter_ok = False
@@ -474,7 +472,7 @@ class server_process(server_mixins.ICSWBasePool):
             )
         self._check_ret_dict(envelope)
         try:
-            self.sender_socket.send(envelope, zmq.SNDMORE)  # @UndefinedVariable
+            self.sender_socket.send(envelope, zmq.SNDMORE)
         except TypeError:
             self.sender_socket.send_string(envelope, zmq.SNDMORE)
 
@@ -482,7 +480,7 @@ class server_process(server_mixins.ICSWBasePool):
 
     def _send_return_xml(self, scheme):
         self._check_ret_dict(scheme.envelope)
-        self.sender_socket.send(scheme.envelope, zmq.SNDMORE)  # @UndefinedVariable
+        self.sender_socket.send(scheme.envelope, zmq.SNDMORE)
         self.sender_socket.send_unicode(str(scheme.srv_com))
 
     def _check_ret_dict(self, env_str):

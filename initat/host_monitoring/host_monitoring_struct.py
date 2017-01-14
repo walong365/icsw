@@ -232,7 +232,7 @@ class HostConnection(object):
             immediate=True,
         )
         HostConnection.zmq_socket = new_sock
-        HostConnection.relayer_process.register_poller(new_sock, zmq.POLLIN, HostConnection.get_result)  # @UndefinedVariable
+        HostConnection.relayer_process.register_poller(new_sock, zmq.POLLIN, HostConnection.get_result)
 
     @staticmethod
     def has_hc_0mq(conn_str, target_id="ms", **kwargs):
@@ -340,8 +340,8 @@ class HostConnection(object):
                 else:
                     send_str = str(host_mes.srv_com)
                     try:
-                        HostConnection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT | zmq.SNDMORE)  # @UndefinedVariable
-                        HostConnection.zmq_socket.send_unicode(send_str, zmq.DONTWAIT)  # @UndefinedVariable
+                        HostConnection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT | zmq.SNDMORE)
+                        HostConnection.zmq_socket.send_unicode(send_str, zmq.DONTWAIT)
                     except:
                         self.return_error(
                             host_mes,
@@ -370,7 +370,7 @@ class HostConnection(object):
                 _send_sock = HostConnection.relayer_process.network_socket
         else:
             _send_sock = HostConnection.relayer_process.sender_socket
-        _send_sock.send_unicode(host_mes.src_id, zmq.SNDMORE)  # @UndefinedVariable
+        _send_sock.send_unicode(host_mes.src_id, zmq.SNDMORE)
         _send_sock.send_unicode(_result)
         del self.messages[host_mes.src_id]
         del HostConnection.message_lut[host_mes.src_id]

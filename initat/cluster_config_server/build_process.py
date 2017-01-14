@@ -78,7 +78,7 @@ def pretty_print(name, obj, offset):
 
 class network_tree(dict):
     def __init__(self):
-        all_nets = network.objects.all().select_related("network_type", "master_network")  # @UndefinedVariable
+        all_nets = network.objects.all().select_related("network_type", "master_network")
         for cur_net in all_nets:
             self[cur_net.pk] = cur_net
             self.setdefault(cur_net.network_type.identifier, {})[cur_net.pk] = cur_net

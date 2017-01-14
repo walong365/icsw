@@ -109,7 +109,7 @@ class icinga_log_aggregator(object):
                     next_last_service_alert_cache = None
                     while do_loop:
                         next_end_time = duration_type.get_end_time_for_start(next_start_time)
-                        last_read_obj = mon_icinga_log_last_read.objects.get_last_read()  # @UndefinedVariable
+                        last_read_obj = mon_icinga_log_last_read.objects.get_last_read()
                         if last_read_obj and next_end_time < datetime.datetime.fromtimestamp(
                             last_read_obj.timestamp,
                             cluster_timezone

@@ -580,16 +580,16 @@ class HMInotifyProcess(threading_tools.process_obj):
     def send_to_server(self, target_server, target_port, srv_com):
         targ_str = "tcp://{}:{:d}".format(target_server, target_port)
         if targ_str not in self.__target_dict:
-            send_socket = self.zmq_context.socket(zmq.DEALER)  # @UndefinedVariable
-            send_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
-            send_socket.setsockopt(zmq.IDENTITY, "{}_csin".format(uuid_tools.get_uuid().get_urn()))  # @UndefinedVariable
+            send_socket = self.zmq_context.socket(zmq.DEALER)
+            send_socket.setsockopt(zmq.LINGER, 0)
+            send_socket.setsockopt(zmq.IDENTITY, "{}_csin".format(uuid_tools.get_uuid().get_urn()))
             send_socket.connect(targ_str)
-            send_socket.setsockopt(zmq.SNDHWM, 16)  # @UndefinedVariable
-            send_socket.setsockopt(zmq.RCVHWM, 16)  # @UndefinedVariable
-            send_socket.setsockopt(zmq.RECONNECT_IVL_MAX, 500)  # @UndefinedVariable
-            send_socket.setsockopt(zmq.RECONNECT_IVL, 200)  # @UndefinedVariable
-            send_socket.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
-            send_socket.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
+            send_socket.setsockopt(zmq.SNDHWM, 16)
+            send_socket.setsockopt(zmq.RCVHWM, 16)
+            send_socket.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
+            send_socket.setsockopt(zmq.RECONNECT_IVL, 200)
+            send_socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
+            send_socket.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
             self.log("init connection to {}".format(targ_str))
             self.__target_dict[targ_str] = send_socket
         self.__target_dict[targ_str].send_unicode(str(srv_com))

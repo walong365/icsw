@@ -218,7 +218,7 @@ class InstallProcess(threading_tools.process_obj):
         hc_sc.terminate()
         if cur_out.startswith("<?xml") and hc_sc.command_stage == "main":
             try:
-                xml_out = etree.fromstring(cur_out)  # @UndefinedVariable
+                xml_out = etree.fromstring(cur_out)
             except:
                 self.log(
                     "error parsing XML string ({:d} bytes, first 100: '{}'): {}".format(

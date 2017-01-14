@@ -299,11 +299,11 @@ class SNMPBatch(object):
                         next_headers.append((act_h, max_h))
                         next_names.append(name)
                         name = name[len(act_h):]
-                        if isinstance(value, pyasn1.type.univ.Integer):  # @UndefinedVariable
+                        if isinstance(value, pyasn1.type.univ.Integer):
                             self.snmp = (tuple(act_h), tuple(name), int(value))
                         # elif isinstance(value, pyasn1.type.univ.Real):
                         #    self.snmp = (tuple(act_h), tuple(name), float(value))
-                        elif isinstance(value, pyasn1.type.univ.ObjectIdentifier):  # @UndefinedVariable
+                        elif isinstance(value, pyasn1.type.univ.ObjectIdentifier):
                             self.snmp = (tuple(act_h), tuple(name), tuple(value))
                         elif value == noSuchInstance:
                             pass

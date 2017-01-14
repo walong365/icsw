@@ -21,8 +21,6 @@
 #
 """ migrates from network-based names to domain-base names """
 
-
-
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 
@@ -95,7 +93,7 @@ def main():
     else:
         print("Migrating to domain_tree_node system")
         net_tree = DTNode()
-        for cur_net in network.objects.all():  # @UndefinedVariable
+        for cur_net in network.objects.all():
             _dns_node = net_tree.feed_name(cur_net.name, cur_net)
         net_tree.create_db_entries()
     cur_dnt = domain_name_tree()
@@ -117,7 +115,7 @@ def main():
             cur_node.save()
     # read network dict
     net_dict = {}
-    for nw_obj in network.objects.all():  # @UndefinedVariable
+    for nw_obj in network.objects.all():
         net_dict[nw_obj.pk] = nw_obj
         try:
             nw_obj.dns_node = domain_tree_node.objects.get(Q(full_name=nw_obj.name))

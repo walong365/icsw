@@ -19,8 +19,6 @@
 #
 """ discovery-server, server part """
 
-
-
 import zmq
 from django.db.models import Q
 
@@ -138,7 +136,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         )
 
         _snmp_sock = self.spc.create_ipc_socket(self.zmq_context, IPC_SOCK_SNMP)
-        self.register_poller(_snmp_sock, zmq.POLLIN, self.spc.handle_with_socket)  # @UndefinedVariable
+        self.register_poller(_snmp_sock, zmq.POLLIN, self.spc.handle_with_socket)
         self.spc.check()
 
     def process_start(self, src_process, src_pid):

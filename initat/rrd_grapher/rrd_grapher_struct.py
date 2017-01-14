@@ -207,7 +207,7 @@ class CompoundTree(object):
     def __init__(self, log_com):
         self.__compounds = []
         self.__log_com = log_com
-        _ng = etree.RelaxNG(etree.fromstring(COMPOUND_NG))  # @UndefinedVariable
+        _ng = etree.RelaxNG(etree.fromstring(COMPOUND_NG))
         compound_xml = E.compounds()
         _comp_dir = global_config["COMPOUND_DIR"]
         for _dir, _dirs, _files in os.walk(_comp_dir):

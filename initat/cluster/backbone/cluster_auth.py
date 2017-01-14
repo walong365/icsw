@@ -38,13 +38,13 @@ logger = logging.getLogger("cluster.auth")
 class db_backend(object):
     def authenticate(self, username=None, password=None):
         try:
-            cur_user = user.objects.get(Q(login=username))  # @UndefinedVariable
-        except user.DoesNotExist:  # @UndefinedVariable
+            cur_user = user.objects.get(Q(login=username))
+        except user.DoesNotExist:
             logger.error("user '{}' not found".format(username))
             return None
         else:
             if password is "AUTO_LOGIN" and cur_user.login_count == 0 and sum(
-                user.objects.all().values_list("login_count", flat=True)  # @UndefinedVariable
+                user.objects.all().values_list("login_count", flat=True)
             ) == 0:
                 return cur_user
             # check password
@@ -77,6 +77,6 @@ class db_backend(object):
 
     def get_user(self, user_id):
         try:
-            return user.objects.get(Q(pk=user_id))  # @UndefinedVariable
-        except user.DoesNotExist:  # @UndefinedVariable
+            return user.objects.get(Q(pk=user_id))
+        except user.DoesNotExist:
             return None

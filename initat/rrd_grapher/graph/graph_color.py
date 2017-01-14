@@ -19,8 +19,6 @@
 #
 """ color structures for the grapher part of rrd-grapher service """
 
-
-
 import os
 import re
 
@@ -68,7 +66,7 @@ class Colorizer(object):
                 "#{:s}".format(color.get("rgb")) for color in c_table if self._check_color(color)
             ]
         self.log("read colortables from {}".format(_ct_file))
-        self.color_rules = etree.fromstring(open(_cr_file, "r").read())  # @UndefinedVariable
+        self.color_rules = etree.fromstring(open(_cr_file, "r").read())
         self.log("read colorrules from {}".format(_cr_file))
         self.match_re_keys = [
             (

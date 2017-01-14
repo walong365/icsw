@@ -21,8 +21,6 @@
 #
 """ mother daemon """
 
-
-
 import os
 
 import zmq
@@ -213,7 +211,7 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
         # print "done"
         zmq_id = "{}:hoststatus:".format(zmq_id)
         try:
-            self.main_socket.send_unicode(zmq_id, zmq.SNDMORE)  # @UndefinedVariable
+            self.main_socket.send_unicode(zmq_id, zmq.SNDMORE)
             self.main_socket.send_unicode(str(com_str))
         except:
             self._log_con_error(zmq_id, dst_addr, process_tools.get_except_info())
@@ -353,7 +351,7 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
                 self.log("found no /etc/exports file, creating new one ...")
                 act_exports = {}
             valid_nt_ids = ["p", "b"]
-            valid_nets = network.objects.filter(Q(network_type__identifier__in=valid_nt_ids))  # @UndefinedVariable
+            valid_nets = network.objects.filter(Q(network_type__identifier__in=valid_nt_ids))
             exp_dict = {
                 "etherboot": "ro",
                 "kernels": "ro",
@@ -399,7 +397,7 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
         rsyslog_lines = [
             "$ModLoad omprog",
             "$RepeatedMsgReduction off",
-            "$actionomprogbinary {}".format(_scan_file),  # @UndefinedVariable
+            "$actionomprogbinary {}".format(_scan_file),
             "",
             "if $programname contains_i 'dhcp' then :omprog:",
             "",

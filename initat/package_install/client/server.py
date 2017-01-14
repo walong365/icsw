@@ -141,7 +141,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         check_sock.send_unicode(str(server_command.srv_command(command="get_0mq_id")))
         _timeout = 10
         my_poller = zmq.Poller()
-        my_poller.register(check_sock, zmq.POLLIN)  # @UndefinedVariable
+        my_poller.register(check_sock, zmq.POLLIN)
         s_time = time.time()
         _last_log = time.time()
         while True:

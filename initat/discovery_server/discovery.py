@@ -21,8 +21,6 @@
 discovery-server, discovery part
 """
 
-
-
 import copy
 import time
 

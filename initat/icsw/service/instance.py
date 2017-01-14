@@ -21,8 +21,6 @@
 
 """ instance definition for services """
 
-
-
 import hashlib
 import os
 
@@ -137,7 +135,7 @@ class InstanceXML(object):
                 try:
                     _content = open(os.path.join(_dir, entry), "r").read()
                     _content_dict[entry] = _content
-                    _tree_dict[entry] = etree.fromstring(_content)  # @UndefinedVariable
+                    _tree_dict[entry] = etree.fromstring(_content)
                 except:
                     self.log(
                         "cannot read entry '{}' from {}: {}".format(

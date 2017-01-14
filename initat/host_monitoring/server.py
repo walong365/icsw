@@ -451,9 +451,9 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         self.zmq_id_dict = zmq_id_dict
         self._bind_external()
         sock_list = [
-            ("ipc", "vector", zmq.PULL, 512, None, ""),  # @UndefinedVariable
-            ("ipc", "command", zmq.PULL, 512, self._recv_ext_command, ""),  # @UndefinedVariable
-            ("ipc", "result", zmq.ROUTER, 512, None, process_tools.zmq_identity_str("host_monitor"))  # @UndefinedVariable
+            ("ipc", "vector", zmq.PULL, 512, None, ""),
+            ("ipc", "command", zmq.PULL, 512, self._recv_ext_command, ""),
+            ("ipc", "result", zmq.ROUTER, 512, None, process_tools.zmq_identity_str("host_monitor"))
         ]
         for _sock_proto, short_sock_name, sock_type, hwm_size, dst_func, zmq_id in sock_list:
             sock_name = process_tools.get_zmq_ipc_name(short_sock_name, s_name="collserver")
@@ -495,11 +495,11 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 setattr(self, "{}_socket".format(short_sock_name), cur_socket)
                 _backlog_size = self.CC.CS["hm.socket.backlog.size"]
                 os.chmod(file_name, 0o777)
-                cur_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
-                cur_socket.setsockopt(zmq.SNDHWM, hwm_size)  # @UndefinedVariable
-                cur_socket.setsockopt(zmq.RCVHWM, hwm_size)  # @UndefinedVariable
+                cur_socket.setsockopt(zmq.LINGER, 0)
+                cur_socket.setsockopt(zmq.SNDHWM, hwm_size)
+                cur_socket.setsockopt(zmq.RCVHWM, hwm_size)
                 if dst_func:
-                    self.register_poller(cur_socket, zmq.POLLIN, dst_func)  # @UndefinedVariable
+                    self.register_poller(cur_socket, zmq.POLLIN, dst_func)
 
     def _unbind_external(self):
         # experimental code, not used right now
@@ -520,15 +520,15 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         self.socket_list = []
         for bind_ip in sorted(self.zmq_id_dict.keys()):
             bind_0mq_id, is_virtual = self.zmq_id_dict[bind_ip]
-            client = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
-            client.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
-            client.setsockopt_string(zmq.IDENTITY, bind_0mq_id)  # @UndefinedVariable
-            client.setsockopt(zmq.SNDHWM, 16)  # @UndefinedVariable
-            client.setsockopt(zmq.RCVHWM, 16)  # @UndefinedVariable
-            client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)  # @UndefinedVariable
-            client.setsockopt(zmq.RECONNECT_IVL, 200)  # @UndefinedVariable
-            client.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
-            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
+            client = self.zmq_context.socket(zmq.ROUTER)
+            client.setsockopt(zmq.LINGER, 0)
+            client.setsockopt_string(zmq.IDENTITY, bind_0mq_id)
+            client.setsockopt(zmq.SNDHWM, 16)
+            client.setsockopt(zmq.RCVHWM, 16)
+            client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
+            client.setsockopt(zmq.RECONNECT_IVL, 200)
+            client.setsockopt(zmq.TCP_KEEPALIVE, 1)
+            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
             _conn_str = "tcp://{}:{:d}".format(
                 bind_ip,
                 global_config["COMMAND_PORT"]
@@ -714,7 +714,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         if self.__debug:
             self.log(info_str, log_level)
         srv_com.update_source()
-        zmq_sock.send(src_id, zmq.SNDMORE)  # @UndefinedVariable
+        zmq_sock.send(src_id, zmq.SNDMORE)
         zmq_sock.send_string(str(srv_com))
         del srv_com
 

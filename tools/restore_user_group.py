@@ -46,7 +46,7 @@ def main():
         sys.exit(-1)
     _xml = {}
     for xml_type, name in zip(["group", "user"], sys.argv[1:3]):
-        _xml[xml_type] = etree.fromstring(codecs.open(name, "r", "utf-8").read())  # @UndefinedVariable
+        _xml[xml_type] = etree.fromstring(codecs.open(name, "r", "utf-8").read())
         print((
             "read {} from {}, found {}".format(
                 xml_type,

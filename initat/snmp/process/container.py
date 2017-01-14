@@ -269,7 +269,7 @@ class SNMPProcessContainer(object):
         while True:
             _iter += 1
             try:
-                self._socket.send_unicode(target, zmq.SNDMORE)  # @UndefinedVariable
+                self._socket.send_unicode(target, zmq.SNDMORE)
                 self._socket.send_pyobj(
                     {
                         "pid": self.pid,

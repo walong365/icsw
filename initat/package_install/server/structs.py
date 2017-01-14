@@ -383,7 +383,7 @@ class RepoTypeRpmZypper(RepoType):
 
     def repo_scan_result(self, s_struct):
         self.log("got repo scan result")
-        repo_xml = etree.fromstring(s_struct.read())  # @UndefinedVariable
+        repo_xml = etree.fromstring(s_struct.read())
         new_repos = []
         found_repos = []
         old_repos = set(package_repo.objects.all().values_list("name", flat=True))
@@ -473,7 +473,7 @@ class RepoTypeRpmZypper(RepoType):
         self.master_process._reload_searches()
 
     def search_result(self, s_struct):
-        res_xml = etree.fromstring(s_struct.read())  # @UndefinedVariable
+        res_xml = etree.fromstring(s_struct.read())
         cur_search = s_struct.run_info["stuff"]
         cur_search.current_state = "done"
         cur_search.results = len(res_xml.xpath(".//solvable", smart_strings=False))
@@ -843,7 +843,7 @@ class Client(object):
         if self.__client_gen == 1:
             # new generation
             _pre_del_xml = etree.fromstring(XMLRenderer().render(package_device_connection_wp_serializer(pre_delete_list, many=True).data))
-            resp = etree.fromstring(XMLRenderer().render(package_device_connection_wp_serializer(send_list, many=True).data))  # @UndefinedVariable
+            resp = etree.fromstring(XMLRenderer().render(package_device_connection_wp_serializer(send_list, many=True).data))
             for _entry in resp:
                 _entry.append(E.pre_delete("False"))
             if len(_pre_del_xml):
@@ -869,7 +869,7 @@ class Client(object):
             )
         )
         if self.__client_gen == 1:
-            resp = etree.fromstring(XMLRenderer().render(package_repo_serializer(send_ok, many=True).data))  # @UndefinedVariable
+            resp = etree.fromstring(XMLRenderer().render(package_repo_serializer(send_ok, many=True).data))
         else:
             resp = srv_com.builder(
                 "repos",
@@ -890,7 +890,7 @@ class Client(object):
             else:
                 cur_pdc.response_type = pdc_xml.attrib["response_type"]
                 self.log("got package_info for {} (type is {})".format(str(cur_pdc.package), cur_pdc.response_type))
-                cur_pdc.response_str = etree.tostring(info_xml)  # @UndefinedVariable
+                cur_pdc.response_str = etree.tostring(info_xml)
                 # print cur_pdc.response_str
                 cur_pdc.interpret_response()
                 cur_pdc.save(

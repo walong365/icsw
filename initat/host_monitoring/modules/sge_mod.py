@@ -66,7 +66,7 @@ class sge_queue_status_command(hm_classes.hm_command):
                 )
             else:
                 try:
-                    cur_xml = etree.fromstring(cur_out)  # @UndefinedVariable
+                    cur_xml = etree.fromstring(cur_out)
                 except:
                     srv_com.set_result("error building xml: {}".format(process_tools.get_except_info()), server_command.SRV_REPLY_STATE_ERROR)
                 else:

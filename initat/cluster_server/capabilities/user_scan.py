@@ -104,7 +104,7 @@ class user_scan_stuff(BackgroundBase):
         _scanned_ok, _scanned_error = (0, 0)
         for _key, _value in _hel.exp_dict.items():
             if _value["entry"].device.pk == self.sql_info.effective_device.pk:
-                for _scan_user in user.objects.filter(Q(export=_value["entry"]) & Q(scan_user_home=True)):  # @UndefinedVariable
+                for _scan_user in user.objects.filter(Q(export=_value["entry"]) & Q(scan_user_home=True)):
                     _h_dir = os.path.join(_value["createdir"], _scan_user.home or _scan_user.login)
                     if os.path.isdir(_h_dir):
                         s_time = time.time()

@@ -34,7 +34,7 @@ from initat.tools import logging_tools, server_command
 # copy from process_tools
 def getstatusoutput(cmd):
     if sys.version_info[0] == 3:
-        return subprocess.getstatusoutput(cmd)  # @UndefinedVariable
+        return subprocess.getstatusoutput(cmd)
     else:
         import subprocess
         return subprocess.getstatusoutput(cmd)

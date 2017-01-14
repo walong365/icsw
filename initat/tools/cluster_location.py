@@ -290,7 +290,7 @@ class DeviceRecognition(object):
         self.ip_lut = {}
         self.ip_r_lut = {}
         if self_ips:
-            _do = device.objects  # @UndefinedVariable
+            _do = device.objects
             # get IPs
             self.device_dict = {
                 cur_dev.pk: cur_dev for cur_dev in _do.filter(

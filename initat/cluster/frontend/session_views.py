@@ -22,8 +22,6 @@
 
 """ basic session views """
 
-
-
 import base64
 import datetime
 import json
@@ -71,8 +69,8 @@ class get_csrf_token(View):
 def _get_login_hints():
     # show login hints ?
     _hints, _valid = ([], True)
-    if user.objects.all().count() < 3:  # @UndefinedVariable
-        for _user in user.objects.all().order_by("login"):  # @UndefinedVariable
+    if user.objects.all().count() < 3:
+        for _user in user.objects.all().order_by("login"):
             user_name = _user.login
             _user_valid = False
             for ck_pwd in [user_name, "{}{}".format(user_name, user_name)]:
@@ -175,8 +173,8 @@ class session_logout(View):
 
 def _failed_login(request, user_name):
     try:
-        _user = user.objects.get(Q(login=user_name))  # @UndefinedVariable
-    except user.DoesNotExist:  # @UndefinedVariable
+        _user = user.objects.get(Q(login=user_name))
+    except user.DoesNotExist:
         pass
     else:
         login_history.login_attempt(_user, request, False)
@@ -365,7 +363,7 @@ class session_login(View):
     @classmethod
     def get_real_user_name(cls, username):
         """Resolve aliases"""
-        _all_users = user.objects.all()  # @UndefinedVariable
+        _all_users = user.objects.all()
         all_aliases = [
             (
                 login_name,

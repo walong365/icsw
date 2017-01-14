@@ -436,7 +436,7 @@ class MainConfig(dict, NagVisMixin):
             ("high_host", 20.0)
         ]:
             main_cfg["{}_flap_threshold".format(th_descr)] = th
-        _uo = user.objects  # @UndefinedVariable
+        _uo = user.objects
         admin_list = list(
             [
                 cur_u.login for cur_u in _uo.filter(

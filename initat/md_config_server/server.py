@@ -19,8 +19,6 @@
 #
 """ server process for md-config-server """
 
-
-
 import time
 
 import zmq
@@ -356,7 +354,7 @@ class ServerProcess(
     def send_command(self, full_uuid, srv_com):
         _srv_com = str(srv_com)
         try:
-            self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
+            self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)
             self.main_socket.send_unicode(_srv_com)
         except:
             self.log(

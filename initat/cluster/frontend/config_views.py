@@ -480,7 +480,7 @@ class upload_config(View):
         _data = io.StringIO(request.FILES["config"].read())
         if _data.getvalue().startswith("<configuration>"):
             # old value
-            _tree = etree.fromstring(_data.getvalue())  # @UndefinedVariable
+            _tree = etree.fromstring(_data.getvalue())
             new_tree = E.root()
             for _config in _tree.findall(".//config"):
                 c_el = interpret_xml("list-item", _config, {})
@@ -499,7 +499,7 @@ class upload_config(View):
                     if sub_el.tag == "config_script":
                         sub_el.attrib["description"] = "config script"
                     t_list.append(interpret_xml("list-item", sub_el, mapping))
-            _data = io.StringIO(etree.tostring(new_tree, pretty_print=False))  # @UndefinedVariable
+            _data = io.StringIO(etree.tostring(new_tree, pretty_print=False))
             # print etree.tostring(new_tree, pretty_print=True)
             # sys.exit(-1)
             # print etree.tostring(_tree, pretty_print=True)
@@ -598,7 +598,7 @@ class handle_cached_config(View):
         added = 0
         sub_added = 0
         try:
-            _exists = config.objects.get(Q(name=conf["name"]) & Q(config_catalog=ccat))  # @UndefinedVariable
+            _exists = config.objects.get(Q(name=conf["name"]) & Q(config_catalog=ccat))
         except config.DoesNotExist:
             _take = True
         else:
@@ -715,7 +715,7 @@ class copy_mon(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        _config = config.objects.get(Q(pk=_post["config"]))  # @UndefinedVariable
+        _config = config.objects.get(Q(pk=_post["config"]))
         mon_source = mon_check_command.objects.get(Q(pk=_post["mon"]))
         name_re = re.compile("^(?P<pre>.*)_(?P<idx>\d+)$")
         if name_re.match(mon_source.name):

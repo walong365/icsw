@@ -21,8 +21,6 @@
 #
 """ external commands (dhcp, ipmi, SNMP) parts of mother """
 
-
-
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
@@ -59,7 +57,7 @@ class HardControlCommand(object):
         else:
             _mode = None
         command = xml_struct.get("command")
-        self.user = user.objects.get(Q(pk=user_id)) if user_id else None  # @UndefinedVariable
+        self.user = user.objects.get(Q(pk=user_id)) if user_id else None
         self.log(
             "got command {} for {} (target: {}), mode is {}".format(
                 command,

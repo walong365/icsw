@@ -22,8 +22,6 @@
 #
 """ ask license server and return an XML-represenation of license situation """
 
-
-
 import argparse
 import sys
 
@@ -52,7 +50,7 @@ def main():
     xml_res = my_lc.check()
     ret_code = 0
     if opts.mode == "xml":
-        print(etree.tostring(xml_res, pretty_print=True))  # @UndefinedVariable
+        print(etree.tostring(xml_res, pretty_print=True))
     elif opts.mode == "check":
         glob_dict = {}
         for cur_lic in xml_res.findall(".//license"):

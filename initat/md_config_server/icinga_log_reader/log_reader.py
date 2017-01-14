@@ -143,7 +143,7 @@ class IcingaLogReader(threading_tools.process_obj):
         self._warnings = defaultdict(lambda: 0)
 
         # check where we last have read for log rotation
-        last_read = mon_icinga_log_last_read.objects.get_last_read()  # @UndefinedVariable
+        last_read = mon_icinga_log_last_read.objects.get_last_read()
         if last_read:
             self.log("last icinga read until: {}".format(self._parse_timestamp(last_read.timestamp)))
         else:
@@ -435,7 +435,7 @@ class IcingaLogReader(threading_tools.process_obj):
 
     def _update_last_read(self, position, timestamp):
         """Keep track of which data was read. May be called with older timestamp (will be discarded)."""
-        last_read = mon_icinga_log_last_read.objects.get_last_read()  # @UndefinedVariable
+        last_read = mon_icinga_log_last_read.objects.get_last_read()
         if last_read:
             if last_read.timestamp > timestamp:
                 return last_read  # tried to update with older timestamp

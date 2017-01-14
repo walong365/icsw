@@ -472,13 +472,13 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
         self.__log_template.close()
 
     def init_sockets(self):
-        t_sock = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
-        t_sock.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
-        t_sock.setsockopt(zmq.SNDHWM, 16)  # @UndefinedVariable
-        t_sock.setsockopt(zmq.BACKLOG, 4)  # @UndefinedVariable
-        t_sock.setsockopt(zmq.SNDTIMEO, 1000)  # @UndefinedVariable
-        t_sock.setsockopt(zmq.RECONNECT_IVL, 1000)  # @UndefinedVariable
-        t_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 30000)  # @UndefinedVariable
+        t_sock = self.zmq_context.socket(zmq.PUSH)
+        t_sock.setsockopt(zmq.LINGER, 0)
+        t_sock.setsockopt(zmq.SNDHWM, 16)
+        t_sock.setsockopt(zmq.BACKLOG, 4)
+        t_sock.setsockopt(zmq.SNDTIMEO, 1000)
+        t_sock.setsockopt(zmq.RECONNECT_IVL, 1000)
+        t_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 30000)
         conn_str = "tcp://localhost:8002"
         t_sock.connect(conn_str)
         self.log("connected drop socket to {}".format(conn_str))
@@ -486,7 +486,7 @@ class aggregate_process(threading_tools.process_obj, server_mixins.OperationalEr
 
     def init_ag_xml(self):
         # validator
-        _ng = etree.RelaxNG(etree.fromstring(AGGREGATE_NG))  # @UndefinedVariable
+        _ng = etree.RelaxNG(etree.fromstring(AGGREGATE_NG))
         _ag_dir = global_config["AGGREGATE_DIR"]
         tls = AGTopLevelStruct(self.log)
         for _dir, _dirs, _files in os.walk(_ag_dir):

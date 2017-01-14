@@ -21,8 +21,6 @@
 #
 """ network middleware """
 
-
-
 import argparse
 import operator
 import os
@@ -32,10 +30,10 @@ import zmq
 from initat.tools import process_tools, server_command, logging_tools
 
 __all__ = [
-    b"ZMQConnection",
-    b"zmq_connection",
-    b"SendCommand",
-    b"SendCommandDefaults",
+    "ZMQConnection",
+    "zmq_connection",
+    "SendCommand",
+    "SendCommandDefaults",
 ]
 
 
@@ -203,7 +201,7 @@ class ZMQConnection(object):
         return in_bytes
 
     def __receive(self, sock):
-        sock_fd = sock.getsockopt(zmq.FD)  # @UndefinedVariable
+        sock_fd = sock.getsockopt(zmq.FD)
         self.__results[sock_fd] = sock.recv()
         self._close_socket(sock_fd)
 
@@ -394,7 +392,7 @@ class SendCommand(object):
         r_client = self.send_sock if not self.recv_sock else self.recv_sock
         if r_client.poll(self.args.timeout * 1000):
             recv_str = r_client.recv()
-            if r_client.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
+            if r_client.getsockopt(zmq.RCVMORE):
                 recv_id = recv_str
                 recv_str = r_client.recv()
             else:

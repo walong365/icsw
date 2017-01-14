@@ -242,7 +242,7 @@ class server_process(
 
     def send_command(self, full_uuid, srv_com):
         try:
-            self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
+            self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)
             self.main_socket.send_unicode(str(srv_com))
         except:
             self.log(

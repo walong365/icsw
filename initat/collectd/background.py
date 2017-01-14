@@ -494,7 +494,7 @@ class BackgroundJob(object):
                                 text="reading from IPMI got no sensor results",
                             )
                         # graphing
-                        BackgroundJob.bg_proc.process_data_xml(_tree, len(etree.tostring(_tree)))  # @UndefinedVariable
+                        BackgroundJob.bg_proc.process_data_xml(_tree, len(etree.tostring(_tree)))
                         # monitoring
                         BackgroundJob.bg_proc.send_to_remote_server(
                             icswServiceEnum.monitor_server,

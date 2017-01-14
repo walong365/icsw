@@ -209,14 +209,14 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             raise
         else:
             self.log("bound to {} (id {})".format(bind_str, self.bind_id))
-            self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
+            self.register_poller(client, zmq.POLLIN, self._recv_command)
             self.com_socket = client
-            # self.md_target = self.zmq_context.socket(zmq.DEALER)  # @UndefinedVariable
+            # self.md_target = self.zmq_context.socket(zmq.DEALER)
             # receiver socket
-            self.receiver = self.zmq_context.socket(zmq.PULL)  # @UndefinedVariable
+            self.receiver = self.zmq_context.socket(zmq.PULL)
             listener_url = "tcp://*:{:d}".format(global_config["RECEIVE_PORT"])
             self.receiver.bind(listener_url)
-            self.register_poller(self.receiver, zmq.POLLIN, self._recv_data)  # @UndefinedVariable
+            self.register_poller(self.receiver, zmq.POLLIN, self._recv_data)
 
     def _init_rrd_cached(self):
         self.log("init rrd cached process")
@@ -511,14 +511,14 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
         self.log("init send of {:d} bytes to {}".format(len(srv_com), full_uuid))
-        self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
+        self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)
         self.com_socket.send_unicode(srv_com)
 
     def _recv_command(self, zmq_sock):
         in_data = []
         while True:
             in_data.append(zmq_sock.recv())
-            if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
+            if not zmq_sock.getsockopt(zmq.RCVMORE):
                 break
         if self._still_active("received XML data"):
             if len(in_data) == 2:
@@ -554,7 +554,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                         )
                     if _send_result:
                         try:
-                            zmq_sock.send_unicode(in_uuid, zmq.SNDMORE)  # @UndefinedVariable
+                            zmq_sock.send_unicode(in_uuid, zmq.SNDMORE)
                             zmq_sock.send_unicode(str(in_com))
                         except:
                             self.log(
@@ -992,7 +992,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                                             name="rrd.operations.{}".format(_key),
                                         ),
                                     )
-                            self.process_data_xml(_tree, len(etree.tostring(_tree)))  # @UndefinedVariable
+                            self.process_data_xml(_tree, len(etree.tostring(_tree)))
                         self.__cached_stats, self.__cached_time = (_dict, cur_time)
                 if _dict is None:
                     self.log("error parsing stats {}".format("; ".join(_lines)), logging_tools.LOG_LEVEL_ERROR)

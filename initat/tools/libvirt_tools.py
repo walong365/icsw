@@ -16,8 +16,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-
-
 import os
 import time
 
@@ -166,7 +164,7 @@ class virt_instance(object):
                 self.inst_id
             )
         )
-        self.xml_desc = etree.fromstring(self.dom_handle.XMLDesc(0))  # @UndefinedVariable
+        self.xml_desc = etree.fromstring(self.dom_handle.XMLDesc(0))
         self.memory = int(self.xml_desc.xpath(".//currentMemory", smart_strings=False)[0].text) * 1024
         self.vcpus = int(self.xml_desc.xpath(".//vcpu", smart_strings=False)[0].text)
         self.log(

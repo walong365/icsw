@@ -286,7 +286,7 @@ class domain_status_command(hm_classes.hm_command):
         ret_state, out_f = (limits.mon_STATE_OK, [])
         if cur_ns and cur_ns.arguments:
             if "desc" in dom_dict and dom_dict["desc"]:
-                xml_doc = etree.fromstring(dom_dict["desc"])  # @UndefinedVariable
+                xml_doc = etree.fromstring(dom_dict["desc"])
                 # print etree.tostring(xml_doc, pretty_print=True)
                 out_f.append(
                     "{}, memory {}, {}, {}, VNC port is {:d}".format(

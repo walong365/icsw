@@ -21,8 +21,6 @@
 #
 """ node control related parts of mother """
 
-
-
 import os
 import re
 import select
@@ -274,7 +272,7 @@ class Host(object):
     @staticmethod
     def ping(srv_com):
         if "user_id" in srv_com:
-            log_user = user.objects.get(Q(pk=srv_com["user_id"].text))  # @UndefinedVariable
+            log_user = user.objects.get(Q(pk=srv_com["user_id"].text))
         else:
             log_user = None
         # send ping(s) to all valid IPs of then selected devices

@@ -289,8 +289,8 @@ class TCPCon(object):
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 262144)
             # self.socket.setsockopt(socket.SOCK_STREAM, socket.SO_KEEPALIVE, 1)
-            self.__process.register_socket(self.socket, zmq.POLLOUT, self._send)  # @UndefinedVariable
-            self.__process.register_socket(self.socket, zmq.POLLERR, self._error)  # @UndefinedVariable
+            self.__process.register_socket(self.socket, zmq.POLLOUT, self._send)
+            self.__process.register_socket(self.socket, zmq.POLLERR, self._error)
             self.__registered = True
             try:
                 self.socket.connect((self._host, self._port))

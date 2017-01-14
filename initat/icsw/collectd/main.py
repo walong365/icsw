@@ -18,8 +18,6 @@
 #
 """ connect to a given collectd-server and fetch some data """
 
-
-
 import json
 import re
 import sys
@@ -89,7 +87,7 @@ class BaseCom(object):
         r_client = client
         if r_client.poll(self.options.timeout * 1000):
             recv_str = r_client.recv()
-            if r_client.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
+            if r_client.getsockopt(zmq.RCVMORE):
                 recv_id = recv_str
                 recv_str = r_client.recv()
             else:

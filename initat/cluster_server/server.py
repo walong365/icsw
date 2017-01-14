@@ -17,8 +17,6 @@
 #
 """ cluster-server, server process """
 
-
-
 import datetime
 import time
 
@@ -228,12 +226,12 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
         data = []
         while True:
             data.append(zmq_sock.recv())
-            if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
+            if not zmq_sock.getsockopt(zmq.RCVMORE):
                 break
         if len(data) == 2:
             srv_com = server_command.srv_command(source=data[1])
             if self._process_command(srv_com):
-                zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
+                zmq_sock.send_unicode(data[0], zmq.SNDMORE)
                 zmq_sock.send_unicode(str(srv_com))
         else:
             self.log(
@@ -384,7 +382,7 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
         )
         self.__connection_dict[conn_str] = t_0mq_id
         self.log("closing discovery socket for {}".format(conn_str))
-        self.unregister_poller(self.__discovery_dict[discovery_id], zmq.POLLIN)  # @UndefinedVariable
+        self.unregister_poller(self.__discovery_dict[discovery_id], zmq.POLLIN)
         self.__discovery_dict[discovery_id].close()
         del self.__discovery_dict[discovery_id]
         try:

@@ -175,7 +175,7 @@ class quota_stuff(BackgroundBase):
 
     def _resolve_uids(self, uid_list):
         if uid_list:
-            for db_rec in user.objects.filter(Q(uid__in=uid_list)):  # @UndefinedVariable
+            for db_rec in user.objects.filter(Q(uid__in=uid_list)):
                 if db_rec.uid in self.__user_dict:
                     # check for new settings
                     for key, value in [

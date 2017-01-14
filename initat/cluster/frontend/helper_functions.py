@@ -135,7 +135,7 @@ class XMLWrapper(object):
                 ret_val.append(self._get_value_xml(key, sub_val))
         else:
             ret_val = E.value(
-                value if isinstance(value, etree._Element) else str(value),  # @UndefinedVariable
+                value if isinstance(value, etree._Element) else str(value),
                 ** {
                     "name": key,
                     "type": {
@@ -144,7 +144,7 @@ class XMLWrapper(object):
                         str: "string",
                         str: "string",
                         float: "float",
-                        etree._Element: "xml",  # @UndefinedVariable
+                        etree._Element: "xml",
                     }.get(type(value), "unknown")
                 }
             )

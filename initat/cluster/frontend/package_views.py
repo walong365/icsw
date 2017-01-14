@@ -22,8 +22,6 @@
 
 """ package views """
 
-
-
 import logging
 import json
 
@@ -130,8 +128,8 @@ class unuse_package(View):
     def post(self, request):
         _post = request.POST
         try:
-            cur_p = package.objects.get(Q(pk=_post["pk"]))  # @UndefinedVariable
-        except package.DoesNotExist:  # @UndefinedVariable
+            cur_p = package.objects.get(Q(pk=_post["pk"]))
+        except package.DoesNotExist:
             request.xml_response.error("package not found", logger)
         else:
             num_ref = get_related_models(cur_p)
@@ -158,7 +156,8 @@ class add_package(View):
             except package_device_connection.DoesNotExist:
                 new_pdc = package_device_connection(
                     device=device.objects.get(Q(pk=dev_pk)),
-                    package=package.objects.get(Q(pk=pack_pk)))  # @UndefinedVariable
+                    package=package.objects.get(Q(pk=pack_pk))
+                )
                 new_pdc.save()
                 new_pdcs.append(new_pdc)
                 num_ok += 1
