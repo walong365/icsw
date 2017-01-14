@@ -28,7 +28,7 @@ from lxml.builder import E
 
 from initat.cluster.backbone.models import MachineVector, MVStructEntry
 from initat.rrd_grapher.config import global_config
-from initat.tools import logging_tools, process_tools
+from initat.tools import logging_tools, process_tools, server_command
 
 
 class CompoundEntry(object):
@@ -152,7 +152,7 @@ class CompoundEntry(object):
                         "unit": "",
                         "info": _info,
                         "key": "",
-                        "build_info": process_tools.compress_struct(_build_info).decode("ascii"),
+                        "build_info": server_command.compress(_build_info, json=True).decode("ascii"),
                         # "color": _xml.attrib["color"],
                         # "draw_type": _xml.get("draw_type", "LINE1"),
                         # "invert": _xml.get("invert", "0"),

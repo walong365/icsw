@@ -19,8 +19,6 @@
 #
 """ system related information """
 
-
-
 import subprocess
 
 from initat.host_monitoring import hm_classes, limits
@@ -43,7 +41,7 @@ class lsmodinfo_command(hm_classes.hm_command):
             srv_com.set_result("error getting module list", server_command.SRV_REPLY_STATE_ERROR)
         else:
             _lines = _out.split("\n")[1:]
-            srv_com["modules"] = process_tools.compress_struct(
+            srv_com["modules"] = server_command.compress(
                 [
                     (
                         _part[0],
@@ -51,11 +49,12 @@ class lsmodinfo_command(hm_classes.hm_command):
                         int(_part[2]),
                         [] if len(_part) == 3 else _part[3].split(",")
                     ) for _part in [_line.strip().split() for _line in _lines]
-                ]
+                ],
+                json=True
             )
 
     def interpret(self, srv_com, cur_ns):
-        modules = process_tools.decompress_struct(srv_com["*modules"])
+        modules = server_command.decompress(srv_com["*modules"],json=True)
         if cur_ns.required:
             _required = set(cur_ns.required.split(","))
             _found = set([_part[0] for _part in modules])
@@ -83,10 +82,10 @@ class mountinfo_command(hm_classes.hm_command):
 
     def __call__(self, srv_com, cur_ns):
         _mounts = [_line.strip().split() for _line in open("/proc/mounts", "r").read().split("\n") if _line.strip()]
-        srv_com["mounts"] = process_tools.compress_struct(_mounts)
+        srv_com["mounts"] = server_command.compress(_mounts, json=True)
 
     def interpret(self, srv_com, cur_ns):
-        _mounts = process_tools.decompress_struct(srv_com["*mounts"])
+        _mounts = server_command.decompress(srv_com["*mounts"], json=True)
         _mount = [_entry for _entry in _mounts if _entry[1] == cur_ns.mountpoint]
         if len(_mount):
             _mount = _mount[0]

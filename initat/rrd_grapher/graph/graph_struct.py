@@ -30,7 +30,7 @@ from lxml.builder import E
 
 from initat.cluster.backbone.models import cluster_timezone, MachineVector, \
     MVValueEntry, GraphLegendModeEnum
-from initat.tools import logging_tools, process_tools
+from initat.tools import logging_tools, process_tools, server_command
 from .base_functions import FLOAT_FMT, full_graph_key, rrd_escape
 
 
@@ -762,7 +762,7 @@ class DataSource(object):
                 _key = (_req["struct_key"], _req["value_key"])
                 _full_key = full_graph_key(_key)
                 _build_infos = [
-                    process_tools.decompress_struct(_entry) for _entry in _req["build_info"] if _entry
+                    server_command.decompress(_entry, json=True) for _entry in _req["build_info"] if _entry
                 ]
                 _compound_dict[_key] = []
                 for _build_info in _build_infos:

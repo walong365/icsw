@@ -401,7 +401,7 @@ class procstat_command(hm_classes.hm_command):
             if not t_dict and cur_ns.arguments[0] == "cron":
                 t_dict = {key: value for key, value in _p_dict.items() if value["name"] in ["crond"]}
             _p_dict = t_dict
-        srv_com["process_tree"] = process_tools.compress_struct(_p_dict)
+        srv_com["process_tree"] = server_command.compress(_p_dict, json=True)
         srv_com["process_tree"].attrib["format"] = "2"
         # print len(srv_com["process_tree"].text)
         # e_time = time.time()
@@ -417,7 +417,10 @@ class procstat_command(hm_classes.hm_command):
         else:
             try:
                 _form = int(result.get("format", "1"))
-                result = process_tools.decompress_struct(result.text, version=_form)
+                if _form == 1:
+                    result = server_command.decompress(result.text, marshal=True)
+                else:
+                    result = server_command.decompress(result.text, json=True)
             except:
                 return limits.mon_STATE_CRITICAL, "cannot decompress: {}".format(process_tools.get_except_info())
             # print result.text
@@ -539,12 +542,13 @@ class proclist_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["psutil"] = "yes"
         srv_com["num_cores"] = psutil.cpu_count(logical=True)
-        srv_com["process_tree"] = process_tools.compress_struct(
+        srv_com["process_tree"] = server_command.compress(
             process_tools.get_proc_list(
                 attrs=[
                     "pid", "ppid", "uids", "gids", "name", "exe", "cmdline", "status", "ppid", "cpu_affinity",
                 ]
-            )
+            ),
+            json=True
         )
 
     def interpret(self, srv_com, cur_ns):
@@ -592,7 +596,7 @@ class proclist_command(hm_classes.hm_command):
             num_cores = srv_com["*num_cores"]
             # unpack and cast pid to integer
             result = {
-                int(key): value for key, value in process_tools.decompress_struct(result.text).items()
+                int(key): value for key, value in server_command.decompress(result.text, json=True).items()
             }
             for _val in result.values():
                 _val["state"] = process_tools.PROC_STATUSES_REV[_val["status"]]

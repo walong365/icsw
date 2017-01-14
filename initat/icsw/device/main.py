@@ -19,8 +19,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-
-
 import datetime
 import os
 import re
@@ -184,7 +182,7 @@ def device_syslog(opt_ns, cur_dev, j_logs):
                 print("no rate info found")
                 print(_rates)
             _out_lines = logging_tools.NewFormList()
-            for _entry in process_tools.decompress_struct(_lines.text):
+            for _entry in server_command.decompress(_lines.text, json=True):
                 _out_lines.append(
                     [
                         logging_tools.form_entry(_entry["line_id"], header="idx"),

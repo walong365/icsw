@@ -25,8 +25,6 @@ dynamically creates config entries for devices (for devices queried via IPMI or 
 
 """
 
-
-
 import time
 
 from django.db.models import Q
@@ -97,7 +95,7 @@ class DynConfigProcess(threading_tools.process_obj):
 
     def _pcrs_as_chunk(self, *args, **kwargs):
         in_com = server_command.srv_command(source=args[0])
-        _chunk = process_tools.decompress_struct(in_com["*ascii_chunk"])
+        _chunk = server_command.decompress(in_com["*ascii_chunk"], json=True)
         _source = _chunk.get("source", "unknown")
         _prefix = _chunk["prefix"]
         try:

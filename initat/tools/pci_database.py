@@ -21,6 +21,7 @@
 import os
 import re
 import struct
+import codecs
 
 from lxml.builder import E
 
@@ -40,7 +41,7 @@ def get_pci_dicts(fname=None):
     lines = []
     for search_name in search_names:
         if os.path.isfile(search_name):
-            with open(search_name, "r") as file_:
+            with codecs.open(search_name, "r", "utf-8") as file_:
                 lines = file_.read().split('\n')
                 break
     classline = re.compile("^C (..)\s+(.*)$")

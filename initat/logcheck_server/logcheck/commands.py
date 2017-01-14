@@ -297,7 +297,7 @@ class SyslogCheckCommand(MonCommand):
                 icswServiceEnum.monitor_server,
                 server_command.srv_command(
                     command="passive_check_results_as_chunk",
-                    ascii_chunk=process_tools.compress_struct(_result_chunk),
+                    ascii_chunk=server_command.compress(_result_chunk, json=True),
                 )
             )
         # print srv_com, _dev, args

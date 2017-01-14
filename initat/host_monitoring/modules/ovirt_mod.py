@@ -116,7 +116,7 @@ class APIObject(object):
 
     @property
     def send_data(self):
-        return process_tools.compress_struct(etree.tostring(self.xml))
+        return server_command.compress(etree.tostring(self.xml, encoding="unicode"), json=True)
 
     @staticmethod
     def zero_text_strip(x):
@@ -219,7 +219,7 @@ class VM(APIObject, metaclass=XpathPropertyMeta):
     def deserialize(srv_com):
         _vms = E.vms()
         for _entry in srv_com.xpath(".//ns:vms")[0]:
-            _vms.append(etree.fromstring(process_tools.decompress_struct(_entry.text)))
+            _vms.append(etree.fromstring(server_command.decompress(_entry.text, json=True))
         return _vms
 
 
@@ -256,7 +256,7 @@ class StorageDomain(APIObject, metaclass=XpathPropertyMeta):
         # print(srv_com.pretty_print())
         for _node in srv_com.xpath(".//ns:storagedomains"):
             for _entry in _node:
-                _sds.append(etree.fromstring(process_tools.decompress_struct(_entry.text)))
+                _sds.append(etree.fromstring(server_command.decompress(_entry.text, json=True)))
         return _sds
 
 
@@ -292,7 +292,7 @@ class Host(APIObject, metaclass=XpathPropertyMeta):
         _sds = E.hosts()
         for _node in srv_com.xpath(".//ns:hosts"):
             for _entry in _node:
-                _sds.append(etree.fromstring(process_tools.decompress_struct(_entry.text)))
+                _sds.append(etree.fromstring(server_command.decompress_struct(_entry.text, json=True)))
         return _sds
 
 
@@ -433,7 +433,7 @@ class ovirt_overview_command(hm_classes.hm_command, OvirtBaseMixin):
     def interpret(self, srv_com, ns, *args, **kwargs):
         if ns.reference not in ["", "-"]:
             # reference is a compressed dict (base64 encoded)
-            _ref = process_tools.decompress_struct(ns.reference)
+            _ref = server_command.decompress(ns.reference, json=True)
             _passive_dict = {
                 "source": "ovirt_overview",
                 "prefix": ns.passive_check_prefix,
@@ -525,7 +525,7 @@ class ovirt_overview_command(hm_classes.hm_command, OvirtBaseMixin):
         if _ref is None:
             ascii_chunk = ""
         else:
-            ascii_chunk = process_tools.compress_struct(_passive_dict)
+            ascii_chunk = server_command.compress(_passive_dict, json=True)
         return ExtReturn(
             ret_state,
             "{}, {}".format(
@@ -576,7 +576,7 @@ class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
         }
         size_dict["size"] = size_dict["used"] + size_dict["available"]
         if ns.reference not in ["", "-"]:
-            _ref = process_tools.decompress_struct(ns.reference)
+            _ref = server_command.decompress(ns.reference, json=True)
             _passive_dict = {
                 "source": "ovirt_overview",
                 "prefix": ns.passive_check_prefix,
@@ -639,7 +639,7 @@ class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
                             "StorageDomain not found",
                         )
                     )
-            ret.ascii_chunk = process_tools.compress_struct(_passive_dict)
+            ret.ascii_chunk = server_command.compress(_passive_dict, json=True)
         ret.feed_str(
             ", ".join(
                 [
@@ -692,7 +692,7 @@ class ovirt_hosts_command(hm_classes.hm_command, OvirtBaseMixin):
             ]
         }
         if ns.reference not in ["", "-"]:
-            _ref = process_tools.decompress_struct(ns.reference)
+            _ref = server_command.decompress(ns.reference, json=True)
             _passive_dict = {
                 "source": "ovirt_overview",
                 "prefix": ns.passive_check_prefix,
@@ -744,7 +744,7 @@ class ovirt_hosts_command(hm_classes.hm_command, OvirtBaseMixin):
                         )
                     )
             # print _passive_dict
-            ret.ascii_chunk = process_tools.compress_struct(_passive_dict)
+            ret.ascii_chunk = server_command.compress(_passive_dict, json=True)
         ret.feed_str(
             ", ".join(
                 [

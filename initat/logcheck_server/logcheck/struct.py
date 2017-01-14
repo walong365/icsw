@@ -29,7 +29,7 @@ import time
 import pymongo
 
 from initat.cluster.backbone.models import device
-from initat.tools import logging_tools, process_tools, inotify_tools
+from initat.tools import logging_tools, process_tools, inotify_tools, server_command
 from initat.tools.mongodb import MongoDbConnector
 from .commands import MonCommand
 from .objects import LogRotateResult, InotifyRoot, FileWatcher
@@ -228,8 +228,9 @@ class Machine(object):
                 _dev.append(
                     srv_com.builder(
                         "lines",
-                        process_tools.compress_struct(
-                            [_line.get_xml_format() for _line in lines]
+                        server_command.compress(
+                            [_line.get_xml_format() for _line in lines],
+                            json=True
                         )
                     )
                 )

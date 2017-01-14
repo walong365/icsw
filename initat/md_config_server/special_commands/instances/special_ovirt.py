@@ -20,14 +20,15 @@
 """ special ovirt call """
 
 import json
+
 from lxml import etree
 
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.host_monitoring.modules import ovirt_mod
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_config_server.special_commands.base import SpecialBase
-from initat.tools import process_tools
-from ..struct import DynamicCheckServer, DynamicCheckAction, DynamicCheckActionCopyIp
+from initat.tools import server_command
+from ..struct import DynamicCheckServer, DynamicCheckActionCopyIp
 
 OVIRT_USER_NAME = "OVIRT_USER_NAME"
 OVIRT_PASSWORD = "OVIRT_PASSWORD"
@@ -43,7 +44,7 @@ def _get_ref_value(in_str):
         return in_str
     else:
         # in_str is json dump, compress it
-        return process_tools.compress_struct(_v).decode("ascii")
+        return server_command.compress(_v, json=True).decode("ascii")
 
 
 class SpecialOvirtDomains(SpecialBase):
@@ -82,7 +83,9 @@ class SpecialOvirtDomains(SpecialBase):
             # print("+" * 20)
             if "vms" in srv_reply:
                 for vm in srv_reply.xpath(".//ns:vms")[0]:
-                    _xml = etree.fromstring(process_tools.decompress_struct(vm.text))
+                    _xml = etree.fromstring(
+                        server_command.decompress(vm.text, json=True)
+                    )
                     # print(etree.tostring(_xml, pretty_print=True))
                     # try state paths
                     _state = _xml.xpath(".//status/state/text()")

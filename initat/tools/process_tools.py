@@ -77,21 +77,6 @@ def safe_unicode(obj):
             return obj.decode(errors='ignore')
 
 
-def compress_struct(input):
-    from initat.tools.server_command import compress
-    return compress(input, json=True)
-    # return base64.b64encode(bz2.compress(json.dumps(input)))
-
-
-def decompress_struct(b64_str, version=2):
-    if version == 2:
-        return json.loads(bz2.decompress((base64.b64decode(b64_str))))
-    elif version == 1:
-        return marshal.loads(bz2.decompress(base64.b64decode(b64_str)))
-    else:
-        raise ValueError("unknown version {} for decompress_struct".format(version))
-
-
 def getstatusoutput(cmd):
     return subprocess.getstatusoutput(cmd)
 
