@@ -39,7 +39,13 @@ __all__ = [
     "ConfigVar",
     "ConfigStore",
     "AccessModeEnum",
+    "ConfigStoreError",
 ]
+
+
+class ConfigStoreError(ValueError):
+    pass
+
 
 CS_NG = """
 <element name="config-store" xmlns="http://relaxng.org/ns/structure/1.0">
@@ -134,7 +140,7 @@ class ConfigVar(object):
             elif _type == "password":
                 _val = _val
         except:
-            raise ValueError(
+            raise ConfigStoreError(
                 "error casting key '{}' to {} (text was '{}'): {}".format(
                     _name,
                     _type,
@@ -181,6 +187,7 @@ class ConfigStore(object):
         access_mode=None,
         fix_access_mode=False,
         fix_prefix_on_read=True,
+        raise_exception_on_read=True,
     ):
         # do not move this to a property, otherwise the Makefile will no longer work
         self.file_name = ConfigStore.build_path(name)
@@ -190,6 +197,7 @@ class ConfigStore(object):
         self.name = name
         self.__quiet = quiet
         self.__log_com = log_com
+        self.__raise_exception_on_read = raise_exception_on_read
         self.__uid, self.__gid, self.__mode = (None, None, None)
         self.vars = {}
         self.__required_access_mode = access_mode
@@ -205,7 +213,7 @@ class ConfigStore(object):
 
     def set_prefix(self, prefix, index):
         if self.prefix:
-            raise ValueError("prefix already set ({})".format(self.prefix))
+            raise ConfigStoreError("prefix already set ({})".format(self.prefix))
         vars = {_key: _value.get_value() for _key, _value in self.vars.items()}
         self.vars = {}
         self.prefix = prefix
@@ -225,6 +233,11 @@ class ConfigStore(object):
                 print("{} {}".format(logging_tools.get_log_level_str(log_level), what))
 
     @staticmethod
+    def remove_store(name):
+        if os.path.exists(ConfigStore.build_path(name)):
+            os.unlink(ConfigStore.build_path(name))
+
+    @staticmethod
     def exists(name):
         # checks for existance and readability
         _exists = False
@@ -232,7 +245,7 @@ class ConfigStore(object):
             try:
                 _stat = os.stat(ConfigStore.build_path(name))
                 if _stat[stat.ST_SIZE] == 0:
-                    raise Exception()
+                    raise ConfigStoreError("empty size")
                 open(ConfigStore.build_path(name), "r").read(1)
             except:
                 pass
@@ -371,6 +384,8 @@ class ConfigStore(object):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
+        if not self.tree_valid and self.__raise_exception_on_read:
+            raise ConfigStoreError("Store is not valid, please check logs")
 
     def _generate(self):
         _root = E("config-store", name=self.name)
@@ -490,11 +505,11 @@ class ConfigStore(object):
                 if _r_dict:
                     return _r_dict
                 else:
-                    raise ValueError("no dict-type structure with key {} found".format(key))
+                    raise ConfigStoreError("no dict-type structure with key {} found".format(key))
             else:
                 return self.vars[key].get_value()
         else:
-            raise ValueError("ConfigStore {} not valid".format(self.name))
+            raise ConfigStoreError("ConfigStore {} not valid".format(self.name))
 
     def get(self, key, default):
         if self.tree_valid:
@@ -503,13 +518,13 @@ class ConfigStore(object):
             else:
                 return default
         else:
-            raise ValueError("ConfigStore {} not valid".format(self.name))
+            raise ConfigStoreError("ConfigStore {} not valid".format(self.name))
 
     def __delitem__(self, key):
         if self.tree_valid:
             del self.vars[key]
         else:
-            raise ValueError("ConfigStore {} not valid".format(self.name))
+            raise ConfigStoreError("ConfigStore {} not valid".format(self.name))
 
     def __setitem__(self, key, value):
         if isinstance(value, dict):
@@ -522,7 +537,7 @@ class ConfigStore(object):
                     )
                     self.vars[_full_key] = ConfigVar(_full_key, _svalue)
             else:
-                raise ValueError("prefix needed to set dict-type values ({} -> {})".format(key, str(value)))
+                raise ConfigStoreError("prefix needed to set dict-type values ({} -> {})".format(key, str(value)))
         else:
             if key in self:
                 _descr = self.vars[key].description

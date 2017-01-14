@@ -192,7 +192,19 @@ class server_process(
         self.SH._check_for_redistribute()
 
     def read_config_store(self):
-        self.config_store = config_store.ConfigStore(CS_NAME, log_com=self.log, access_mode=config_store.AccessModeEnum.LOCAL)
+        try:
+            self.config_store = config_store.ConfigStore(CS_NAME, log_com=self.log, access_mode=config_store.AccessModeEnum.LOCAL)
+        except config_store.ConfigStoreError:
+            self.log(
+                "configstore is not valid: {}".format(
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            # remove store
+            config_store.ConfigStore.remove_store(CS_NAME)
+            # create
+            self.config_store = config_store.ConfigStore(CS_NAME, log_com=self.log, access_mode=config_store.AccessModeEnum.LOCAL)
         for _key, _default in DEFAULT_PROC_DICT.items():
             self.config_store[_key] = self.config_store.get(_key, _default)
         global_config.add_config_entries(

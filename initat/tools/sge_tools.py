@@ -276,7 +276,7 @@ class SGEInfo(object):
             if self.__0mq_context:
                 self.__0mq_context.term()
             if self._cache_socket:
-                self._cache_socket.close()
+                del self._cache_socket
 
     def _init_cache(self):
         if memcache:
