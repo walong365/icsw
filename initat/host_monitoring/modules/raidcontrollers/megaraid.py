@@ -17,11 +17,6 @@
 #
 """ checks for Megaraid RAID controllers """
 
-
-
-import base64
-import bz2
-import json
 import re
 
 from initat.host_monitoring import limits, hm_classes
@@ -816,7 +811,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 # pprint.pprint(_passive_dict)
             # pprint.pprint(_passive_dict)
             if _store_passive:
-                ascii_chunk = base64.b64encode(bz2.compress(json.dumps(_passive_dict)))
+                ascii_chunk = server_command.compress(_passive_dict, json=True)
             else:
                 ascii_chunk = ""
             # print _ret_list, _ok_dict
