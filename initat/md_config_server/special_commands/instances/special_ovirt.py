@@ -39,10 +39,11 @@ def _get_ref_value(in_str):
         _v = json.loads(in_str)
     except:
         # in_str has old structure, pass
+        # print("o", type(in_str))
         return in_str
     else:
         # in_str is json dump, compress it
-        return process_tools.compress_struct(_v)
+        return process_tools.compress_struct(_v).decode("ascii")
 
 
 class SpecialOvirtDomains(SpecialBase):

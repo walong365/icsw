@@ -175,6 +175,7 @@ class DynamicCheckDict(object):
                 build_cache=gbc,
             )
         except:
+            # print(mccs.name, com_mccs.md_name)
             rv.feed_error(
                 "unable to initialize special '{}': {}".format(
                     mccs.name,

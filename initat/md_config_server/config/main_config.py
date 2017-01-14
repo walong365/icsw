@@ -546,7 +546,7 @@ class MainConfig(dict, NagVisMixin):
                         Q(active=True)
                     ) if cur_u.password_ssha.count(":")
                 ] + [""]
-            ).encode("utf8")
+            )
         )
         if self.master:
             if global_config["ENABLE_NAGVIS"]:

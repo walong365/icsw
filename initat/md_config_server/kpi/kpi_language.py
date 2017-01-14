@@ -21,7 +21,6 @@
 import datetime
 import re
 from collections import defaultdict
-from types import NoneType
 
 import pytz
 from enum import IntEnum, Enum
@@ -134,8 +133,9 @@ class KpiObject(object):
 
         self.kpi_id = kpi_id if kpi_id is not None else id(self)
 
-        self.result = result if isinstance(result, (KpiResult, NoneType)) \
-            else KpiResult.from_numeric_icinga_service_state(result)
+        self.result = result if (
+            isinstance(result, KpiResult) or result is None
+        ) else KpiResult.from_numeric_icinga_service_state(result)
         self.host_name = host_name
         self.host_pk = host_pk
 

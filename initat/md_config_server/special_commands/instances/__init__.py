@@ -19,6 +19,7 @@
 
 import inspect
 import os
+import importlib
 
 from initat.md_config_server.special_commands.base import SpecialBase
 from initat.tools import process_tools
@@ -46,13 +47,15 @@ for mod_name in _inst_list:
     __all__.append(str(mod_name))
     try:
         full_name = "initat.md_config_server.special_commands.instances.{}".format(mod_name)
-        new_mod = __import__(full_name, globals(), locals(), [str(mod_name)], -1)
+        new_mod = importlib.__import__(full_name, globals(), locals(), [str(mod_name)])
         for _key in dir(new_mod):
             _obj = getattr(new_mod, _key)
             if inspect.isclass(_obj) and not _obj == SpecialBase and issubclass(_obj, SpecialBase):
                 # print("***", _key, _obj, _obj.Meta)
                 dynamic_checks.feed(_key, _obj)
     except:
+        print("+++")
         exc_info = process_tools.exception_info()
         for log_line in exc_info.log_lines:
             dynamic_checks.import_errors.append((mod_name, "import", log_line))
+            print("l", log_line)
