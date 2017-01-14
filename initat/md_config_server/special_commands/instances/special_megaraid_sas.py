@@ -19,8 +19,6 @@
 #
 """ special config for MegaRaid SAS modules """
 
-
-
 from argparse import Namespace
 
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum

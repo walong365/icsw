@@ -19,8 +19,6 @@
 #
 """ IPMI check for collserver special """
 
-
-
 from django.db.models import Q
 
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum

@@ -20,8 +20,6 @@
 
 """ special call for disc monitoring """
 
-
-
 from django.db.models import Q
 
 from initat.cluster.backbone.models import partition, lvm_lv, SpecialGroupsEnum

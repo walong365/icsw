@@ -19,8 +19,6 @@
 #
 """ special (dynamic) tasks for md-config-server """
 
-
-
 import time
 
 import inflection
@@ -32,8 +30,8 @@ from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools
 
 __all__ = [
-    b"SpecialBase",
-    b"ArgTemplate",
+    "SpecialBase",
+    "ArgTemplate",
 ]
 
 

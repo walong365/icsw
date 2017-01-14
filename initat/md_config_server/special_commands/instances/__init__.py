@@ -17,8 +17,6 @@
 #
 """ importer for special modules """
 
-
-
 import inspect
 import os
 
@@ -27,7 +25,7 @@ from initat.tools import process_tools
 from ..struct import DynamicCheckDict
 
 __all__ = [
-    b"dynamic_checks",
+    "dynamic_checks",
 ]
 
 

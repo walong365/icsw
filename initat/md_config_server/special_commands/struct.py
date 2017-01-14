@@ -19,8 +19,6 @@
 #
 """ structs fopr special (dynamic) tasks for md-config-server """
 
-
-
 import inflection
 from enum import Enum
 
@@ -28,12 +26,12 @@ from initat.tools import logging_tools, process_tools
 
 
 __all__ = [
-    b"DynamicCheckServer",
-    b"DynamicCheckAction",
-    b"DynamicCheckActionCopyIp",
-    b"DynamicCheckDict",
-    b"DynamicCheckMode",
-    b"DynamicCheckResult",
+    "DynamicCheckServer",
+    "DynamicCheckAction",
+    "DynamicCheckActionCopyIp",
+    "DynamicCheckDict",
+    "DynamicCheckMode",
+    "DynamicCheckResult",
 ]
 
 

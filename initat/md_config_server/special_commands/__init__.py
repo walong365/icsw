@@ -20,8 +20,6 @@
 
 """ special tasks for md-config-server, load from submodule instances """
 
-
-
 from django.db.models import Q
 
 from initat.cluster.backbone.models import mon_check_command_special, mon_check_command, SpecialGroupsEnum

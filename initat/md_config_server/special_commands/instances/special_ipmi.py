@@ -19,8 +19,6 @@
 #
 """ IPMI special """
 
-
-
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
 from ..struct import DynamicCheckServer, DynamicCheckAction

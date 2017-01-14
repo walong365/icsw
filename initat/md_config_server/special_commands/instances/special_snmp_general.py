@@ -19,8 +19,6 @@
 #
 """ snmp check """
 
-
-
 from django.db.models import Q
 
 from initat.md_config_server.special_commands.base import SpecialBase

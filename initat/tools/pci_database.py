@@ -45,7 +45,6 @@ def get_pci_dicts(fname=None):
     subclassline = re.compile("^\t(..)\s+(.*)$")
     vendorline = re.compile("^(.{4})\s+(.*)$")
     devline = re.compile("^\t(.{4})\s+(.*)$")
-    _sdevline = re.compile("^\t\t(.*)$")
     actvendor = None
     actclass = None
     mode = True

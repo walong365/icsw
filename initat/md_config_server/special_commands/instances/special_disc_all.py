@@ -19,8 +19,6 @@
 #
 """ special check for all disks """
 
-
-
 from initat.cluster.backbone.models import SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
 

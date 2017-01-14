@@ -19,8 +19,6 @@
 #
 """ special for network monitoring """
 
-
-
 import re
 
 from django.db.models import Q

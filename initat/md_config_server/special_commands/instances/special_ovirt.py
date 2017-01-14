@@ -19,8 +19,6 @@
 #
 """ special ovirt call """
 
-
-
 import json
 from lxml import etree
 
