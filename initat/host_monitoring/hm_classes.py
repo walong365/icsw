@@ -154,7 +154,7 @@ class subprocess_struct(object):
         self.srv_com = srv_com
         self.command = srv_com["command"].text
         self.command_line = com_line
-        self.multi_command = isinstance(command_line, list)
+        self.multi_command = isinstance(self.command_line, list)
         self.com_num = 0
         self.popen = None
         self.srv_process = None
