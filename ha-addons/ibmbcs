@@ -1,7 +1,7 @@
-#!/usr/bin/python-init -Otu
+#!/usr/bin/python3-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2015,2017 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -42,7 +42,8 @@ class stonith_client(paramiko.SSHClient):
             "sshclient",
             "uds:/var/lib/logging-server/py_log_zmq",
             zmq=True,
-            context=self.zmq_context)
+            context=self.zmq_context
+        )
         self._required_cmds = "reset gethosts status getconfignames " \
             "getinfo-devid getinfo-devname getinfo-devdescr " \
             "getinfo-devurl getinfo-xml"
@@ -58,7 +59,7 @@ class stonith_client(paramiko.SSHClient):
                 self._parameters[name] = os.environ.get(name, '').split()[0]
             except IndexError:
                 self._parameters[name] = ""
-        for key, value in self._parameters.iteritems():
+        for key, value in self._parameters.items():
             self.log("  {:>25s}: {}".format(key, value or "<EMPTY>"))
         self.shell = None
 

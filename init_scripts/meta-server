@@ -32,7 +32,7 @@ SERVER_PID_ERROR=/var/run/meta-server.pid.pid
 
 rc_reset
 
-export PATH=/opt/python-init/bin:${PATH}
+export PATH=/opt/cluster/bin:${PATH}
 export PYTHONOPTIMIZE="yes"
 export PYTHONBUFFER="yes"
 export HOSTNAME=`/bin/hostname`
