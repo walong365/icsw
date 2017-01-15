@@ -97,7 +97,7 @@ def do_mail(cur_opts, log_com):
         print("No message given")
         sys.exit(-1)
     message = (" ".join(cur_opts.message)).replace("\\n", "\n").strip()
-    my_mail = mail_tools.mail(cur_opts.subject, getattr(cur_opts, "from"), all_users, message)
+    my_mail = mail_tools.icswMail(cur_opts.subject, getattr(cur_opts, "from"), all_users, message)
     my_mail.set_server(cur_opts.server)
     m_stat, m_ret_f = my_mail.send_mail()
     if m_stat:
@@ -441,7 +441,7 @@ def do_chpasswd(cur_opts, log_com):
 def user_main(cur_opts):
     log_com = icsw_logging.get_logger("user", cur_opts, all=True)
     ret_code = 0
-    if cur_opts.mode == "mail":
+    if cur_opts.mode == "icswMail":
         do_mail(cur_opts, log_com)
     elif cur_opts.mode == "list":
         do_list(cur_opts, log_com)

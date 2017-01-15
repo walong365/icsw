@@ -63,7 +63,7 @@ class MainProcess(ICSWBasePoolClient):
         self.register_exception("int_error", self._sigint)
         self.register_exception("term_error", self._sigint)
         # init stuff for mailing
-        self.__new_mail = mail_tools.mail(
+        self.__new_mail = mail_tools.icswMail(
             None,
             "{}@{}".format(
                 self.CC.CS["meta.mail.from.name"],

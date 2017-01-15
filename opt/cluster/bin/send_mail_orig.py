@@ -69,7 +69,7 @@ def main():
                 ", ".join(sorted(all_users)))
         )
     message = (" ".join(cur_opts.message)).replace("\\n", "\n").strip()
-    my_mail = mail_tools.mail(cur_opts.subject, getattr(cur_opts, "from"), cur_opts.to, message)
+    my_mail = mail_tools.icswMail(cur_opts.subject, getattr(cur_opts, "from"), cur_opts.to, message)
     my_mail.set_server(cur_opts.server)
     m_stat, m_ret_f = my_mail.send_mail()
     if m_stat:

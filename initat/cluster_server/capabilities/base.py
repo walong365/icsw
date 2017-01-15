@@ -68,7 +68,7 @@ class BackgroundBase(object):
         self.server_process.step(*args, **kwargs)
 
     def send_mail(self, to_addr, subject, msg_body):
-        new_mail = mail_tools.mail(subject, "{}@{}".format(global_config["FROM_NAME"], global_config["FROM_ADDR"]), to_addr, msg_body)
+        new_mail = mail_tools.icswMail(subject, "{}@{}".format(global_config["FROM_NAME"], global_config["FROM_ADDR"]), to_addr, msg_body)
         new_mail.set_server(global_config["MAILSERVER"], global_config["MAILSERVER"])
         _stat, log_lines = new_mail.send_mail()
         return log_lines

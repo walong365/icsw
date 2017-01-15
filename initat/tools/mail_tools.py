@@ -34,15 +34,11 @@ import sys
 
 from initat.tools import logging_tools, process_tools
 
-try:
-    import email.mime.base
-    import email.mime.multipart
-    import email.mime.image
-    import email.mime.text
-    import email.mime.message
-except ImportError:
-    # not present for python3
-    pass
+import email.mime.base
+import email.mime.multipart
+import email.mime.image
+import email.mime.text
+import email.mime.message
 import email.utils  # @UnusedImport
 try:
     import email.Encoders
@@ -50,12 +46,8 @@ except ImportError:
     # not present for python3
     pass
 
-if sys.version_info[0] == 3:
-    str = str
-    long = int
 
-
-class mail(object):
+class icswMail(object):
     def __init__(self, subject=None, from_addr=None, to_addr=None, txt=None, **args):
         self.set_server()
         self.set_subject(subject)

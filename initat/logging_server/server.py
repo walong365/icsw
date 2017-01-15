@@ -329,7 +329,7 @@ class MainProcess(ICSWBasePool):
             )
 
     def _send_mail(self, subject, msg_body):
-        new_mail = mail_tools.mail(
+        new_mail = mail_tools.icswMail(
             subject,
             "{}@{}".format(
                 self.CC.CS["log.mail.from.name"],
