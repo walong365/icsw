@@ -31,7 +31,6 @@ __all__ = [
     "MIGRATION_DIRS",
     "MIGRATIONS_DIR",
     "NEEDED_DIRS",
-    "PRE_MODELS_DIR",
     "MODELS_DIR",
     "MODELS_DIR_SAVE",
     "Z800_MODELS_DIR",
@@ -63,7 +62,6 @@ SYNC_APPS = ["liebherr", "licadmin"]
 
 NEEDED_DIRS = [LOG_ROOT]
 
-PRE_MODELS_DIR = os.path.join(BACKBONE_DIR, "models16")
 MODELS_DIR = os.path.join(BACKBONE_DIR, "models")
 MIGRATIONS_DIR = os.path.join(BACKBONE_DIR, "migrations")
 MODELS_DIR_SAVE = os.path.join(BACKBONE_DIR, ".models_save")

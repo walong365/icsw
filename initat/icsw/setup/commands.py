@@ -411,84 +411,6 @@ def check_migrations():
         print("no migrations found, OK")
 
 
-@SetupLogger
-def check_for_pre17(opts):
-    if os.path.isdir(PRE_MODELS_DIR):
-        print("pre-1.7 models dir {} found".format(PRE_MODELS_DIR))
-        # first step: move 1.7 models / serializers away
-        _move_dirs = ["models", "serializers"]
-        for _dir in _move_dirs:
-            os.rename(
-                os.path.join(BACKBONE_DIR, _dir),
-                os.path.join(BACKBONE_DIR, ".{}".format(_dir))
-            )
-        # next step: move pre-models to current models
-        os.rename(PRE_MODELS_DIR, MODELS_DIR)
-        # next step: remove all serializer relations from model files
-        _files_found = 0
-        _INIT_MODS = [
-            "ipvx_tools", "logging_tools", "net_tools", "process_tools", "server_command"
-        ]
-        for _path in [os.path.join(MODELS_DIR, _entry) for _entry in os.listdir(MODELS_DIR) if _entry.endswith(".py")]:
-            _files_found += 1
-            new_lines = []
-            _add = True
-            _removed, _kept = (0, 0)
-            for _line_num, _line in enumerate(open(_path, "r").readlines(), 1):
-                _line = _line.rstrip()
-                empty_line = True if not _line.strip() else False
-                _ser_line = _line.strip().startswith("class") and (_line.count("serializers.ModelSerializer") or _line.strip().endswith("serializer):"))
-                _import_line = _line.strip().startswith("import ") and _line.strip().split()[1] in _INIT_MODS
-                if not empty_line:
-                    if _ser_line:
-                        print("detected serializer line '{}'@{:d}".format(_line, _line_num))
-                        _add = False
-                        # add dummy declaration
-                        new_lines.append("{} = True".format(_line.split()[1].split("(")[0]))
-                    elif _import_line:
-                        print("detected import INIT line '{}'@{:d}".format(_line, _line_num))
-                        _add = True
-                        _line = "from initat.tools import {}".format(_line.strip().split()[1])
-                    elif _line[0] != " ":
-                        _add = True
-                    else:
-                        # leave _add flag on old value
-                        pass
-                if _add:
-                    new_lines.append(_line)
-                    _kept += 1
-                else:
-                    _removed += 1
-            print("file {}: removed {:d}, kept {:d}".format(_path, _removed, _kept))
-            print("")
-            open(_path, "w").write("\n".join(new_lines))
-        if not _files_found:
-            print("no .py-files found in {}, exit...".format(MODELS_DIR))
-            sys.exit(-1)
-        # next step: delete south models
-        _mig_dir = os.path.join(BACKBONE_DIR, "migrations")
-        _mig_save_dict = {}
-        for _entry in sorted(os.listdir(_mig_dir)):
-            if _entry[0].isdigit() and _entry.count("py"):
-                _num = int(_entry[0:4])
-                _path = os.path.join(_mig_dir, _entry)
-                if _num >= 799:
-                    _mig_save_dict[_path] = open(_path, "r").read()
-                    print("    storing file {} for later restore".format(_path))
-                print("    removing file {}".format(_path))
-                os.unlink(_path)
-        # next step: migrate backbone
-        migrate_app("backbone", migrate_args=["--fake"])
-        # next step: move pre-1.7 models dir away
-        os.rename(os.path.join(MODELS_DIR), os.path.join(BACKBONE_DIR, ".models_pre17"))
-        # next step: move 1.7 models back in place
-        for _dir in _move_dirs:
-            os.rename(os.path.join(BACKBONE_DIR, ".{}".format(_dir)), os.path.join(BACKBONE_DIR, _dir))
-        # restore migation files
-        for _key, _value in _mig_save_dict.items():
-            open(_key, "w").write(_value)
-
-
 def alarm(msg):
     _len = len(msg)
     print("")
@@ -689,7 +611,6 @@ class Migration(migrations.Migration):
 def migrate_db(opts):
     remove_pyco(BACKBONE_DIR)
     if os.path.isdir(CMIG_DIR):
-        check_for_pre17(opts)
         check_for_0800(opts)
         _merge_file = os.path.join(MIGRATIONS_DIR, "0801_merge.py")
         if not os.path.exists(_merge_file):
