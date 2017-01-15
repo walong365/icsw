@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2015 Bernhard Mallinger, init.at
+# Copyright (C) 2014-2015,2017 Bernhard Mallinger, init.at
 #
 # this file is part of md-config-server
 #

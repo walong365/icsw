@@ -21,8 +21,6 @@
 #
 """ inotify tools """
 
-
-
 import logging
 
 import pyinotify

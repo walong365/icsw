@@ -36,7 +36,7 @@ from initat.cluster.backbone.models import device, macbootlog, mac_ignore, \
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import config_tools, configfile, icmp_class, ipvx_tools, logging_tools, \
     process_tools, server_command, threading_tools, server_mixins
-from .command_tools import simple_command
+from .command_tools import MotherSimpleCommand
 from .config import global_config
 from .devicestate import DeviceState
 from .dhcp import DHCPCommand, DHCPSyncer
@@ -1318,7 +1318,7 @@ class NodeControlProcess(threading_tools.process_obj, server_mixins.EggConsumeMi
         self.mother_src = LogSource.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
         self.EC.init(global_config)
         # close database connection
-        simple_command.setup(self)
+        MotherSimpleCommand.setup(self)
         self.sc = config_tools.server_check(service_type_enum=icswServiceEnum.mother_server)
         if "b" in self.sc.identifier_ip_lut:
             _boot_ips = self.sc.identifier_ip_lut["b"]
@@ -1484,8 +1484,8 @@ class NodeControlProcess(threading_tools.process_obj, server_mixins.EggConsumeMi
         self.change_timer(self._check_commands, cur_to)
 
     def _check_commands(self):
-        simple_command.check()
-        if simple_command.idle():
+        MotherSimpleCommand.check()
+        if MotherSimpleCommand.idle():
             self.set_loop_timer(1000)
 
     def _syslog_line(self, *args, **kwargs):

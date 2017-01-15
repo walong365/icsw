@@ -17,8 +17,6 @@
 #
 """ SNMP process definition """
 
-
-
 import signal
 
 from pyasn1.codec.ber import decoder

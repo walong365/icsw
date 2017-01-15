@@ -21,8 +21,6 @@
 #
 """ kernel sync tools """
 
-
-
 import subprocess
 import datetime
 import gzip

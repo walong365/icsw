@@ -21,8 +21,6 @@
 
 """ return ClusterID if DB is present """
 
-
-
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store
 

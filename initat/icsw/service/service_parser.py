@@ -19,8 +19,6 @@
 
 """ parser for the icsw service subcommand """
 
-
-
 import argparse
 import sys
 

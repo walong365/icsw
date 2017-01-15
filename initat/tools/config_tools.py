@@ -24,8 +24,6 @@ module to operate with config and ip relationsships in the database. This
 module gets included from configfile
 """
 
-
-
 if __name__ == "__main__":
     # for testing
     import os

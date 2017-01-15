@@ -19,13 +19,11 @@
 #
 """ module to parse the drbd status """
 
-
-
 import os
 import stat
 
 
-class drbd_config(object):
+class DRBDConfig(object):
     def __init__(self, config_name="/etc/drbd.conf", config_dir="/etc/drbd.d", status_name="/proc/drbd", **kwargs):
         self.__config_name = config_name
         self.__config_dir = config_dir
@@ -203,5 +201,5 @@ class drbd_config(object):
 
 
 if __name__ == "__main__":
-    dc = drbd_config()
+    dc = DRBDConfig()
     print(dc.get_net_data())

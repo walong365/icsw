@@ -21,8 +21,6 @@
 #
 """ mother daemon, main part """
 
-
-
 import os
 import sys
 

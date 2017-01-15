@@ -22,8 +22,6 @@
 Checks related to pgpool-II >= 3.0 via SQL interface.
 """
 
-
-
 import pickle
 import os
 import subprocess
@@ -34,7 +32,7 @@ from initat.host_monitoring.hm_classes import hm_command, hm_module
 from initat.tools import server_command, logging_tools, process_tools, config_store
 
 try:
-    import psycopg2  # @UnresolvedImport
+    import psycopg2
 except:
     psycopg2 = None
 

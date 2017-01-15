@@ -20,8 +20,6 @@
 
 """ constants for service handling """
 
-
-
 import os
 
 from initat.constants import CLUSTER_DIR

@@ -21,8 +21,6 @@
 #
 """ simple command snippet for rsyslog """
 
-
-
 import sys
 
 import zmq

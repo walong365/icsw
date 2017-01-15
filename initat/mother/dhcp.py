@@ -27,7 +27,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone.models import device
 from initat.tools import logging_tools
-from .command_tools import simple_command
+from .command_tools import MotherSimpleCommand
 from .config import global_config
 
 
@@ -336,9 +336,9 @@ class DHCPSyncer(object):
 
     def _do_omshell(self, com_name, com_lines):
         if not self.__pending:
-            simple_command.process.set_check_freq(200)
+            MotherSimpleCommand.process.set_check_freq(200)
         self.__pending += 1
-        simple_command(
+        MotherSimpleCommand(
             "echo -e '{}' | /usr/bin/omshell".format(
                 "\n".join(com_lines),
             ),
@@ -366,7 +366,7 @@ class DHCPSyncer(object):
         # print "xxx", "\n".join(lines)
         self.__pending -= 1
         if not self.__pending:
-            simple_command.process.set_check_freq(1000)
+            MotherSimpleCommand.process.set_check_freq(1000)
         cur_dict = {}
         # extra error dict
         _error_dict = {}
@@ -404,7 +404,13 @@ class DHCPSyncer(object):
         for _key, _dict in _result_dict.items():
             if _key in _error_dict:
                 _dict["error"] = _error_dict[_key]
-                self.log("device {}: {}".format(_key, _dict["error"]), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "device {}: {}".format(
+                        _key,
+                        _dict["error"]
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             if _key not in self.__state:
                 self.__state[_key] = DHCPState(self, _key)
             _dict["uuid"] = self.__uuid_lut[_key]

@@ -18,8 +18,6 @@
 #
 """ filesystem tools, also used by cluster-server """
 
-
-
 import base64
 import codecs
 import os

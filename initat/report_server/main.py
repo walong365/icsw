@@ -19,8 +19,6 @@
 #
 """ report-server, main part """
 
-
-
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")

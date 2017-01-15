@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (C) 2015 Bernhard Mallinger
+# Copyright (C) 2015,2017 Bernhard Mallinger
 #
 # Send feedback to: <mallinger@init.at>
 #

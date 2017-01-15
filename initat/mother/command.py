@@ -27,7 +27,7 @@ from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import cd_connection, device_variable, \
     netdevice, DeviceLogEntry, user
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.mother.command_tools import simple_command
+from initat.mother.command_tools import MotherSimpleCommand
 from initat.snmp.sink import SNMPSink
 from initat.tools import config_tools, logging_tools, process_tools, server_command, threading_tools
 from .config import global_config
@@ -103,7 +103,7 @@ class HardControlCommand(object):
                     ),
                     dev=self.cd_obj.child
                 )
-                simple_command(
+                MotherSimpleCommand(
                     com_str,
                     short_info="True",
                     done_func=self.hc_done,
@@ -285,7 +285,7 @@ class ExternalCommandProcess(threading_tools.process_obj):
         )
         # close database connection
         db_tools.close_connection()
-        simple_command.setup(self)
+        MotherSimpleCommand.setup(self)
         self.router_obj = config_tools.RouterObject(self.log)
         self.snmp_sink = SNMPSink(self.log)
         self.sc = config_tools.server_check(service_type_enum=icswServiceEnum.mother_server)
@@ -303,17 +303,17 @@ class ExternalCommandProcess(threading_tools.process_obj):
         self.__log_template.close()
 
     def _delay_command(self, *args, **kwargs):
-        if simple_command.idle():
+        if MotherSimpleCommand.idle():
             self.register_timer(self._check_commands, 1)
-        _new_sc = simple_command(args[0], delay_time=kwargs.get("delay_time", 0))
+        _new_sc = MotherSimpleCommand(args[0], delay_time=kwargs.get("delay_time", 0))
 
     def _check_commands(self):
-        simple_command.check()
-        if simple_command.idle():
+        MotherSimpleCommand.check()
+        if MotherSimpleCommand.idle():
             self.unregister_timer(self._check_commands)
 
     def _hard_control(self, in_com, *args, **kwargs):
-        if simple_command.idle():
+        if MotherSimpleCommand.idle():
             self.register_timer(self._check_commands, 1)
         in_com = server_command.srv_command(source=in_com)
         self.router_obj.check_for_update()

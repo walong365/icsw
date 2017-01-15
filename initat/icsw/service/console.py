@@ -21,8 +21,6 @@
 
 """ checks installed servers on system """
 
-
-
 import time
 
 from prompt_toolkit.application import Application

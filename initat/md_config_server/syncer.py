@@ -26,8 +26,6 @@ software and performance
 
 """
 
-
-
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools, routing

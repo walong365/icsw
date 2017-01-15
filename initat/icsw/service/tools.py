@@ -21,8 +21,6 @@
 
 """ service related tools  """
 
-
-
 import os
 
 from initat.tools import net_tools, server_command

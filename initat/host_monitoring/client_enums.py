@@ -21,8 +21,6 @@
 #
 """ init all enums and create the IcswAppEnum object """
 
-
-
 from enum import Enum
 
 from initat.host_monitoring.service_enum_base import icswServiceEnumBaseClient

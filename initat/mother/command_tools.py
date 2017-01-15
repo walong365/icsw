@@ -21,15 +21,13 @@
 #
 """ classes for handling external command """
 
-
-
 import subprocess
 import time
 
 from initat.tools import logging_tools
 
 
-class command_stream(object):
+class MotherCommandStream(object):
     def __init__(self, stream_id):
         self.stream_id = stream_id
         self.log("init stream")
@@ -37,7 +35,7 @@ class command_stream(object):
         self.__running = False
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        simple_command.process.log("[cs {}] {}".format(self.stream_id, what), log_level)
+        MotherSimpleCommand.process.log("[cs {}] {}".format(self.stream_id, what), log_level)
 
     def new_command(self, new_sc):
         self.__commands.append(new_sc)
@@ -53,14 +51,14 @@ class command_stream(object):
             self.__running = False
 
 
-class simple_command(object):
+class MotherSimpleCommand(object):
     sc_idx = 0
     com_list = []
     stream_dict = {}
 
     def __init__(self, com_str, **kwargs):
-        simple_command.sc_idx += 1
-        self.idx = simple_command.sc_idx
+        MotherSimpleCommand.sc_idx += 1
+        self.idx = MotherSimpleCommand.sc_idx
         self.com_str = com_str
         # stream_id, None for unsorted
         # streams with the same id are processed strictly in order
@@ -82,30 +80,30 @@ class simple_command(object):
             )
         )
         if self.delay_time:
-            simple_command.process.register_timer(self.call, self.delay_time, oneshot=True)
+            MotherSimpleCommand.process.register_timer(self.call, self.delay_time, oneshot=True)
         else:
             if self.stream_id:
-                simple_command.feed_stream(self)
+                MotherSimpleCommand.feed_stream(self)
             else:
                 self.call()
-        simple_command.com_list.append(self)
+        MotherSimpleCommand.com_list.append(self)
 
     @staticmethod
     def feed_stream(cur_sc):
-        if cur_sc.stream_id not in simple_command.stream_dict:
-            simple_command.stream_dict[cur_sc.stream_id] = command_stream(cur_sc.stream_id)
-        simple_command.stream_dict[cur_sc.stream_id].new_command(cur_sc)
+        if cur_sc.stream_id not in MotherSimpleCommand.stream_dict:
+            MotherSimpleCommand.stream_dict[cur_sc.stream_id] = MotherCommandStream(cur_sc.stream_id)
+        MotherSimpleCommand.stream_dict[cur_sc.stream_id].new_command(cur_sc)
 
     @staticmethod
     def setup(process):
-        simple_command.process = process
-        simple_command.process.log("init simple_command metastructure")
+        MotherSimpleCommand.process = process
+        MotherSimpleCommand.process.log("init MotherSimpleCommand metastructure")
 
     @staticmethod
     def check():
         cur_time = time.time()
         new_list = []
-        for com in simple_command.com_list:
+        for com in MotherSimpleCommand.com_list:
             keep = True
             if com.start_time:
                 if com.finished():
@@ -117,17 +115,17 @@ class simple_command(object):
                     com.terminate()
             if keep:
                 new_list.append(com)
-        simple_command.com_list = new_list
+        MotherSimpleCommand.com_list = new_list
 
     @staticmethod
     def idle():
-        return True if not simple_command.com_list else False
+        return True if not MotherSimpleCommand.com_list else False
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_com:
             self.__log_com("[sc {:d}] {}".format(self.idx, what), log_level)
         else:
-            simple_command.process.log("[sc {:d}] {}".format(self.idx, what), log_level)
+            MotherSimpleCommand.process.log("[sc {:d}] {}".format(self.idx, what), log_level)
 
     def terminate(self):
         if self.popen:
@@ -148,7 +146,7 @@ class simple_command(object):
         if self.done_func:
             self.done_func(self)
         else:
-            simple_command.process.sc_finished(self)
+            MotherSimpleCommand.process.sc_finished(self)
         if self.stream:
             self.stream.done()
 

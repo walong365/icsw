@@ -19,8 +19,6 @@
 #
 """ handles module dependencies """
 
-
-
 import subprocess
 import copy
 import fnmatch

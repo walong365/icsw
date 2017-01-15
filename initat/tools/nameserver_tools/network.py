@@ -19,8 +19,6 @@
 #
 """ generates zonefiles for nsX.init.at """
 
-
-
 from .functions import make_qualified, to_idna
 
 PTR_RECORD = "{:<24s} IN PTR {}"

@@ -21,8 +21,6 @@
 
 """ checks installed servers on system """
 
-
-
 import datetime
 import os
 import sys

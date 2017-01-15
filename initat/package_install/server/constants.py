@@ -19,8 +19,6 @@
 #
 """ package server, constants """
 
-
-
 ADD_PACK_PATH = "additional_packages"
 DEL_PACK_PATH = "deleted_packages"
 

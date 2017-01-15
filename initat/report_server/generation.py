@@ -19,8 +19,6 @@
 #
 """ report-server, report part """
 
-
-
 import traceback
 import ast
 

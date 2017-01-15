@@ -19,8 +19,6 @@
 #
 """ status process, queries data from icinga via mk_livestatus """
 
-
-
 import json
 import time
 

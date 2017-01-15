@@ -20,8 +20,6 @@
 
 """ IPMI sensor readings """
 
-
-
 import subprocess
 import subprocess
 import time

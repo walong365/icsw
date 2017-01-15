@@ -22,8 +22,6 @@
 
 """ host-monitoring, with 0MQ and twisted support, constants """
 
-
-
 import os
 
 TIME_FORMAT = "{:.3f}"

@@ -18,8 +18,6 @@
 #
 """ simple compile tools """
 
-
-
 import subprocess
 import os
 

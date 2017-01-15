@@ -17,8 +17,6 @@
 #
 """ base class of background tasks """
 
-
-
 from initat.tools import logging_tools
 
 

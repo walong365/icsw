@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2015 Bernhard Mallinger, init.at
+# Copyright (C) 2014-2015,2017 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -19,8 +19,6 @@
 #
 
 # separated to enable flawless import from webfrontend
-
-
 
 __all__ = [
     "host_service_id_util",

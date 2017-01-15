@@ -18,8 +18,6 @@
 #
 """ classes for building rpm-packages """
 
-
-
 import argparse
 import subprocess
 import os

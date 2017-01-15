@@ -19,8 +19,6 @@
 #
 """ rrd-grapher for graphing rrd-data """
 
-
-
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")

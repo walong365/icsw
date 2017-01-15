@@ -21,8 +21,6 @@ for various servers
   o send to websocket channels
 """
 
-
-
 import datetime
 import json
 import redis

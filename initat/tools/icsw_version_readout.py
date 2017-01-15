@@ -19,8 +19,6 @@
 #
 """ read version from cstore """
 
-
-
 import datetime
 import os
 

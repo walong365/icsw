@@ -18,8 +18,6 @@
 #
 """ HardwareFingerPrintTools """
 
-
-
 import netifaces
 
 from django.db.models import Q

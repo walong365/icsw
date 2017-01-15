@@ -20,8 +20,6 @@
 
 """ rms-server, helper functions """
 
-
-
 import subprocess
 import time
 

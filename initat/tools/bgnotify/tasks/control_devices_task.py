@@ -17,8 +17,6 @@
 #
 """ cluster-server, change bootsetting tasks """
 
-
-
 import datetime
 
 from django.db.models import Q

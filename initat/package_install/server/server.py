@@ -20,8 +20,6 @@
 #
 """ package server """
 
-
-
 import os
 
 import zmq

@@ -17,8 +17,6 @@
 #
 """ various servers, background inotify import script """
 
-
-
 import datetime
 
 from django.db.models import Q

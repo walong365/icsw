@@ -66,12 +66,12 @@ class simple_command(object):
         if "data" in kwargs:
             self.data = kwargs["data"]
         simple_command.com_list.append(self)
-        # print "add", len(simple_command.com_list)
+        # print "add", len(MotherSimpleCommand.com_list)
 
     @staticmethod
     def setup(process):
         simple_command.process = process
-        simple_command.process.log("init simple_command metastructure")
+        simple_command.process.log("init MotherSimpleCommand metastructure")
 
     @staticmethod
     def check():

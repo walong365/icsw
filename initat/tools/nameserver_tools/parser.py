@@ -19,8 +19,6 @@
 #
 """ generates zonefiles for nsX.init.at """
 
-
-
 import argparse
 import os
 import pwd

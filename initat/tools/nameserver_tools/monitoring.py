@@ -19,8 +19,6 @@
 #
 """ monitoring for nsX.init.at """
 
-
-
 import os
 
 from .host import Host

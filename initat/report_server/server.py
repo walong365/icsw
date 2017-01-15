@@ -19,8 +19,6 @@
 #
 """ report-server, server process """
 
-
-
 from initat.cluster.backbone import db_tools
 
 from initat.cluster.backbone.server_enums import icswServiceEnum

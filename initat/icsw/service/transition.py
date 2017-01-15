@@ -21,8 +21,6 @@
 
 """ transition for service containers """
 
-
-
 import time
 
 from initat.tools import logging_tools

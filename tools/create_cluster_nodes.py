@@ -1,6 +1,6 @@
 #!/usr/bin/python3-init -Ot
 #
-# Copyright (C) 2015 Bernhard Mallinger
+# Copyright (C) 2015,2017 Bernhard Mallinger
 #
 # this file is part of icsw-server
 #

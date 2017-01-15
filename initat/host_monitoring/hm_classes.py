@@ -17,8 +17,6 @@
 #
 """ base class for host-monitoring modules """
 
-
-
 import argparse
 import pickle
 import marshal

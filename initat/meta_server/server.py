@@ -21,8 +21,6 @@
 #
 """ meta-server, server process """
 
-
-
 import os
 import stat
 import time

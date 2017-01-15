@@ -18,8 +18,6 @@
 """ helper functions for SNMP relayer """
 
 
-
-
 def k_str(i_val):
     f_val = float(i_val)
     if f_val < 1024:

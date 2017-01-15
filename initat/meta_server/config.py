@@ -22,8 +22,6 @@
 
 """ meta-server, config """
 
-
-
 from initat.tools import configfile, process_tools
 
 __all__ = [

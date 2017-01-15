@@ -19,8 +19,6 @@
 #
 """ helper functions """
 
-
-
 import encodings.idna
 
 

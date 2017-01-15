@@ -17,8 +17,6 @@
 #
 """ SNMP general schemes for SNMP relayer """
 
-
-
 from .base import SNMPRelayScheme
 
 

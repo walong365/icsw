@@ -26,8 +26,6 @@ software and performance
 
 """
 
-
-
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools
 from .config import global_config

@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015,2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -27,7 +27,7 @@ class _general(hm_classes.hm_module):
         self.__last_drbd_check = (-1, -1)
         if drbd_tools:
             try:
-                self.drbd_config = drbd_tools.drbd_config()
+                self.drbd_config = drbd_tools.DRBDConfig()
             except:
                 self.drbd_config = None
         else:
@@ -48,7 +48,7 @@ class drbd_status_command(hm_classes.hm_command):
                 )
         else:
             srv_com.set_result(
-                "no drbd_tools or drbd_config found",
+                "no drbd_tools or DRBDConfig found",
                 server_command.SRV_REPLY_STATE_ERROR
             )
 

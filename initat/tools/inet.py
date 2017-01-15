@@ -1,3 +1,7 @@
+# Copyright 1997, Corporation for National Research Initiatives
+# written by Jeremy Hylton, jeremy@cnri.reston.va.us
+# from _ip import *
+
 """
 
 Internet packet basic
@@ -5,12 +9,6 @@ Internet packet basic
 Simple operations like performing checksums and swapping byte orders.
 
 """
-
-# Copyright 1997, Corporation for National Research Initiatives
-# written by Jeremy Hylton, jeremy@cnri.reston.va.us
-# from _ip import *
-
-
 
 import array
 import struct

@@ -21,8 +21,6 @@
 #
 """ logcheck-server (to be run on a syslog_server), server process """
 
-
-
 import os
 
 import zmq

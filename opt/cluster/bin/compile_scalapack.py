@@ -1,6 +1,6 @@
 #!/usr/bin/python3-init -Otu
 #
-# Copyright (c) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2015,2017 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cbc-tools
 #

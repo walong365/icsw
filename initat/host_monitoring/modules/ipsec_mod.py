@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009,2012-2015 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2008-2009,2012-2015,2017 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -15,8 +15,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-
-
 
 import subprocess
 import re

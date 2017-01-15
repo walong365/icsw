@@ -22,8 +22,6 @@
 
 """ host-monitoring client """
 
-
-
 import os
 
 from initat.host_monitoring import limits

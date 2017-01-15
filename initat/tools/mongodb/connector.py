@@ -21,8 +21,6 @@
 #
 """ mongodb connector object """
 
-
-
 import time
 
 import pymongo

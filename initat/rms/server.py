@@ -20,8 +20,6 @@
 
 """ rms-server, process definitions """
 
-
-
 import os
 
 from initat.cluster.backbone import db_tools

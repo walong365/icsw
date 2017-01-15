@@ -1,7 +1,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2010,2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2010,2013-2015,2017 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #

@@ -25,7 +25,6 @@ import marshal
 import os
 import re
 import subprocess
-import sys
 import tempfile
 
 from initat.tools import logging_tools, server_command
@@ -33,11 +32,7 @@ from initat.tools import logging_tools, server_command
 
 # copy from process_tools
 def getstatusoutput(cmd):
-    if sys.version_info[0] == 3:
-        return subprocess.getstatusoutput(cmd)
-    else:
-        import subprocess
-        return subprocess.getstatusoutput(cmd)
+    return subprocess.getstatusoutput(cmd)
 
 
 def get_cpu_basic_info():

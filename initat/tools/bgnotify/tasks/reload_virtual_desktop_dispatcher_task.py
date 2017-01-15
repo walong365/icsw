@@ -17,8 +17,6 @@
 #
 """ cluster-server, reload_virtual_desktop dispatcher """
 
-
-
 import datetime
 
 from django.db.models import Q

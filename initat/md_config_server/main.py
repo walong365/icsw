@@ -20,8 +20,6 @@
 #
 """ main process for md-config-server """
 
-
-
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")

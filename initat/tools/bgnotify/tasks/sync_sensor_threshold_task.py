@@ -17,8 +17,6 @@
 #
 """ cluster-server, background inotify import script """
 
-
-
 import datetime
 
 from initat.cluster.backbone.models import background_job_run, cluster_timezone
