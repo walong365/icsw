@@ -56,7 +56,7 @@ class SyncerHandler(object):
             # this is called on all devices with a mon instance
             self.log("init local master")
             self.__local_master = SyncConfig(self.__process, None, distributed=False)
-            if self.__master_config:
+            if self.__master_config is not None:
                 # only on distribution master
                 self.__master_config.set_local_master(self.__local_master)
             # register at distribution master
@@ -92,11 +92,11 @@ class SyncerHandler(object):
 
     @property
     def is_distribution_master(self):
-        return True if self.__master_config else False
+        return True if self.__master_config is not None else False
 
     @property
     def is_distribution_slave(self):
-        return True if (not self.__master_config and self.__local_master) else False
+        return True if (self.__master_config is None and self.__local_master) else False
     # pure slave (==satellite) methods
 
     def check_result(self, srv_com):
@@ -149,7 +149,7 @@ class SyncerHandler(object):
         # M: Monitoring daemon
         # D: Distribution Master
         # S: Distribution Slave
-        if self.__master_config:
+        if self.__master_config is not None:
             if _master:
                 _config = self.__master_config
                 _slave = None

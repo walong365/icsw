@@ -436,7 +436,7 @@ class SyncConfig(object):
             satellite_info=server_command.compress(self.get_satellite_info(), json=True)
         )
 
-    def _build_file_content(self, _send_list):
+    def _build_file_content(self, send_list):
         srv_com = self._get_slave_srv_command(
             "file_content_bulk",
             config_version_send="{:d}".format(self.config_version_send),
@@ -447,13 +447,19 @@ class SyncConfig(object):
         srv_com["file_list"] = _bld.file_list(
             *[
                 _bld.file(
-                    _path,
-                    size="{:d}".format(_size)
-                ) for _uid, _gid, _path, _size, _content in _send_list
+                    entry["path"],
+                    size="{:d}".format(entry["size"]),
+                    uid="{:d}".format(entry["uid"]),
+                    gid="{:d}".format(entry["gid"]),
+                ) for entry in send_list
             ]
         )
         srv_com["bulk"] = server_command.compress(
-            "".join([_parts[-1].encode("utf-8") for _parts in _send_list])
+            "".join(
+                [
+                    entry["content"] for entry in send_list
+                ]
+            )
         )
         return srv_com
 
@@ -621,7 +627,15 @@ class SyncConfig(object):
                             _to_send.append(self._build_file_content(_send_list))
                             _send_list, _send_size = ([], 0)
                         # format: uid, gid, path, content_len, content
-                        _send_list.append((os.stat(full_r_path)[stat.ST_UID], os.stat(full_r_path)[stat.ST_GID], full_w_path, len(_content), _content))
+                        _send_list.append(
+                            {
+                                "uid": os.stat(full_r_path)[stat.ST_UID],
+                                "gid": os.stat(full_r_path)[stat.ST_GID],
+                                "path": full_w_path,
+                                "size": len(_content),
+                                "content": _content,
+                            }
+                        )
         if _send_list:
             _to_send.append(self._build_file_content(_send_list))
         return _to_send, _num_files, _size_data
@@ -680,7 +694,7 @@ class SyncConfig(object):
         )
         for _entry in srv_com.xpath(".//ns:file_list/ns:file"):
             _size = int(_entry.get("size"))
-            self._store_file(_entry.text, new_vers, _bulk[cur_offset:cur_offset + _size])
+            self._store_file(_entry.text, new_vers, _bulk[cur_offset:cur_offset + _size].decode("utf-8"))
             cur_offset += _size
         self.send_satellite_info()
 
@@ -824,21 +838,32 @@ class SyncConfig(object):
         s_time = time.time()
         # signature
         _sig = "{}{}".format(src, dst)
-        _type = {
+        _type_map = {
             # slave to remote (dist slave to dist master)
             "SR": "remote",
             # mon server to remote
             "MR": "remote",
             # mon server to dist master
             "MD": "local",
+            # dist master to slave
             "DS": "direct",
-        }[_sig]
-        getattr(self, "handle_{}_action".format(_type))(action, srv_com)
-        e_time = time.time()
-        self.log(
-            "{} action {} took {}".format(
-                action,
-                _type,
-                logging_tools.get_diff_time_str(e_time - s_time),
+        }
+        if _sig in _type_map:
+            _type = _type_map[_sig]
+            getattr(self, "handle_{}_action".format(_type))(action, srv_com)
+            e_time = time.time()
+            self.log(
+                "{} action {} took {}".format(
+                    action,
+                    _type,
+                    logging_tools.get_diff_time_str(e_time - s_time),
+                )
             )
-        )
+        else:
+            self.log(
+                "Unknown signature '{}' (action is {})".format(
+                    _sig,
+                    action,
+                ),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
