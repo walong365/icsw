@@ -121,7 +121,11 @@ def decompress(in_str, **kwargs):
     if kwargs.get("marshal", False):
         ret_struct = marshal.loads(ret_struct)
     elif kwargs.get("pickle", False):
-        ret_struct = pickle.loads(ret_struct)
+        try:
+            ret_struct = pickle.loads(ret_struct)
+        except UnicodeDecodeError:
+            # workaround for incompatible pickle dumps created with python2.x
+            ret_struct = pickle.loads(ret_struct, encoding='latin1')
     elif kwargs.get("json", False):
         ret_struct = json.loads(ret_struct)
     return ret_struct
