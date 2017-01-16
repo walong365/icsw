@@ -1537,15 +1537,10 @@ def zmq_main_code():
         ]
     )
     global_config.parse_file()
-    if NEW_CODE:
-        options = global_config.handle_commandline(
-            positional_arguments=True,
-            positional_arguments_optional=True,
-        )
-    else:
-        options = global_config.handle_commandline(
-            positional_arguments=True,
-        )
+    options = global_config.handle_commandline(
+        positional_arguments=True,
+        positional_arguments_optional=True,
+    )
     _exit = False
     if len(options.arguments) in [5, 8]:
         global_config.add_config_entries(
