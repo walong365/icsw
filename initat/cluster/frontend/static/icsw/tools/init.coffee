@@ -811,9 +811,7 @@ angular.module(
         _ICSW_ROLE_ADD_PERMISSIONS: "_icsw.role.add.permissions"
         _ICSW_FETCH_MON_BUILD_INFO: "_icsw.fetch.mon.build.info"
         _ICSW_DEVICE_INFO_ACTIVATE_TAB: "_icsw.device.info.activate.tab"
-        # send when fair-share tree is selected
-        _ICSW_RMS_FAIR_SHARE_TREE_SELECTED: "_icsw.rms.fair.share.tree.selected"
-        # tab has changed
+        # tab has changed (also used for fairshare selection)
         _ICSW_RMS_MAIN_TAB_CHANGED: "_icsw.rms.main.tab.changed"
     }
     _rev_dict = {}
@@ -992,6 +990,11 @@ angular.module(
 ) ->
     return (in_dict) ->
         _def = $q.defer()
+        if in_dict.parse_response?
+            parse_response = in_dict.parse_response
+            delete in_dict.parse_response
+        else
+            parse_response = true
         if in_dict.ignore_log_level?
             ignore_log_level = true
             delete in_dict.ignore_log_level
@@ -1008,7 +1011,7 @@ angular.module(
         else
             show_error = true
         in_dict.success = (res) =>
-            if in_dict.dataType == "json"
+            if in_dict.dataType == "json" or not parse_response
                 _def.resolve(res)
             else
                 if icswParseXMLResponseService(res, 40, show_error=show_error, hidden=hidden) or ignore_log_level

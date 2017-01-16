@@ -231,7 +231,7 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
         if len(data) == 2:
             srv_com = server_command.srv_command(source=data[1])
             if self._process_command(srv_com):
-                zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                zmq_sock.send(data[0], zmq.SNDMORE)
                 zmq_sock.send_unicode(str(srv_com))
         else:
             self.log(

@@ -259,7 +259,6 @@ class get_rms_done_json(View):
             "-pk"
         )[0:100]
         _done_ser = rms_job_run_serializer(done_jobs, many=True).data
-        # pprint.pprint(_done_ser)
         json_resp = {
             "done_table": _done_ser,
         }
@@ -330,21 +329,22 @@ class get_rms_current_json(View):
             if len(file_contents):
                 cur_fcd = []
                 for cur_fc in file_contents:
+                    from lxml import etree
                     file_name = cur_fc.attrib["name"]
                     content = cache.get(cur_fc.attrib["cache_uuid"])
                     if content is not None:
                         lines = content.replace(r"\r\n", r"\n").split("\n")
                         content = "\n".join(reversed(lines))
                         cur_fcd.append(
-                            (
-                                file_name,
-                                content,
-                                len(content),
-                                int(cur_fc.attrib.get("last_update", cur_time)),
-                                min(10, len(lines) + 1),
-                            )
+                            {
+                                "name": file_name,
+                                "content": content,
+                                "size": len(content),
+                                "last_update": int(cur_fc.attrib.get("last_update", cur_time)),
+                                "disp_len": min(10, len(lines) + 1),
+                            }
                         )
-                fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd, cmp=lambda x, y: cmp(x[3], y[3]))))
+                fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd, key=lambda x: x["last_update"])))
         for job_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]", smart_strings=False):
             job_id = job_el.attrib["full_id"]
             pinning_el = job_el.find(".//pinning_info")
@@ -356,10 +356,6 @@ class get_rms_current_json(View):
                         _dn = _rev_lut[int(_node_idx)]
                         for _proc_id, _core_id in _pin_dict.items():
                             _dev_dict[_dn]["pinning"].setdefault(_core_id, []).append(job_id)
-        # pprint.pprint(pinning_dict)
-        # todo: add jobvars to running (waiting for rescheduled ?) list
-        # print dir(rms_info.run_job_list)
-        # pprint.pprint(_done_ser)
         json_resp = {
             "run_table": _sort_list(rms_info.run_job_list),
             "wait_table": _sort_list(rms_info.wait_job_list),
@@ -409,8 +405,6 @@ class RmsJobViewSet(viewsets.ViewSet):
             "jobs_running": _xml_to_json(rms_info.run_job_list),
             "jobs_waiting": _xml_to_json(rms_info.wait_job_list),
         }
-        # import pprint
-        # pprint.pprint(json_resp)
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
 

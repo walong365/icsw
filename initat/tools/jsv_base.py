@@ -20,7 +20,6 @@
 """ SGE Job submission verifier """
 
 import os
-import re
 import sys
 
 from initat.tools import logging_tools
@@ -89,13 +88,13 @@ class JSVBase(object):
                 if len(iput) == 0:
                     continue
                 self.log(">>> {}".format(iput))
-                jsv_line = re.split('\s*', iput, maxsplit=3)
+                jsv_line = iput.split(None, 2)
                 if jsv_line[0] == "QUIT":
                     _jsv_quit = True
                 elif jsv_line[0] == "PARAM":
                     self.handle_param_command(jsv_line[1], jsv_line[2])
                 elif jsv_line[0] == "ENV":
-                    jsv_data = re.split('\s*', jsv_line[2], maxsplit=2)
+                    jsv_data = jsv_line[2].split(None, 1)
                     self.handle_env_command(jsv_line[1], jsv_data[0], jsv_data[1])
                 elif jsv_line[0] == "START":
                     self.handle_start_command()

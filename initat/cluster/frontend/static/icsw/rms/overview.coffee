@@ -814,8 +814,8 @@ rms_module = angular.module(
                 if entry.$$full_job_id of file_dict
                     entry.files = file_dict[entry.$$full_job_id]
                     for file in entry.files
-                        if file[0] not of @file_info_dict
-                            @file_info_dict[file[0]] = {
+                        if file.name not of @file_info_dict
+                            @file_info_dict[file.name] = {
                                 show: true
                             }
                     entry.file_info_dict = @file_info_dict
@@ -1336,11 +1336,9 @@ rms_module = angular.module(
     }
 
     $scope.activate_tab = ($event, tab_name) ->
+        _prev_tab = $scope.struct.active_tab
         $scope.struct.active_tab = tab_name
-        $scope.$broadcast(ICSW_SIGNALS("_ICSW_RMS_MAIN_TAB_CHANGED"))
-
-    $scope.select_fairshare_tree = ($event) ->
-        $scope.$broadcast(ICSW_SIGNALS("_ICSW_RMS_FAIR_SHARE_TREE_SELECTED"))
+        $scope.$broadcast(ICSW_SIGNALS("_ICSW_RMS_MAIN_TAB_CHANGED"), tab_name, _prev_tab)
 
     $scope.initial_load = () ->
         $scope.struct.loading = true
@@ -1590,6 +1588,8 @@ rms_module = angular.module(
         reload_timeout: undefined
         # draw results
         draw_results: []
+        # active queue tab
+        aqt_name: undefined
     }
 
     _reload_graphs = () ->
@@ -1615,6 +1615,7 @@ rms_module = angular.module(
             $scope.local_struct.reload_timeout = undefined
 
     _install_auto_reload = () ->
+        _stop_auto_reload()
         $scope.local_struct.reload_timeout = $timeout(
             () ->
                 _reload_graphs()
@@ -1682,7 +1683,7 @@ rms_module = angular.module(
                                 for result in $scope.local_struct.draw_results
                                     $scope.local_struct.graph_tree.draw_graphs(true, result)
                                 $scope.local_struct.graphs_drawn = true
-                                _install_auto_reload()
+                                _check_for_active_queue_overview(false)
                             (error) ->
                         )
         )
@@ -1693,22 +1694,30 @@ rms_module = angular.module(
     $scope.click_node = ($event, device) ->
         DeviceOverviewService($event, [device])
 
-    $scope.select_queue_overview = ($event) ->
-        # console.log "act"
+    _check_for_active_queue_overview = (reload_graphs) ->
+        if $scope.gstruct.active_tab == "queue" and $scope.struct.aqt_name == "overview"
+            if not $scope.local_struct.load_called
+                _load_queue_overview()
+            else
+                _install_auto_reload()
+                if reload_graphs
+                    _reload_graphs()
+        else
+            _stop_auto_reload()
+
+    $scope.activate_queue_tab = ($event, tab_name, arg) ->
+        $scope.struct.aqt_name = tab_name
+        _check_for_active_queue_overview(true)
+
+    $scope.$on(ICSW_SIGNALS("_ICSW_RMS_MAIN_TAB_CHANGED"), ($event, new_tab, old_tab) ->
+        _check_for_active_queue_overview(true)
+    )
 
     $scope.$on(
         "$destroy",
         () ->
             _stop_auto_reload()
     )
-
-    $scope.$on(ICSW_SIGNALS("_ICSW_RMS_MAIN_TAB_CHANGED"), ($event) ->
-        if $scope.gstruct.active_tab == "queue"
-            if not $scope.local_struct.load_called
-                _load_queue_overview()
-        # console.log "mtc", $scope.gstruct
-    )
-
 
 ]).directive("icswRmsIoStruct",
 [
@@ -2374,8 +2383,8 @@ rms_module = angular.module(
                     if _device?
                         $scope.struct.devices.push(_device)
         )
-    $scope.$on(ICSW_SIGNALS("_ICSW_RMS_FAIR_SHARE_TREE_SELECTED"), () ->
-        if not $scope.struct.load_called
+    $scope.$on(ICSW_SIGNALS("_ICSW_RMS_MAIN_TAB_CHANGED"), ($event, new_tab, old_tab) ->
+        if new_tab == "fairshare" and not $scope.struct.load_called
             _load()
     )
 ])

@@ -10,19 +10,19 @@
             <span class="text-danger" ng-show="struct.updating">Updating Data</span>
         </h3>
         <uib-tabset ng-if="struct.initial_data_present">
-            <uib-tab>
+            <uib-tab select="activate_tab($event, 'running')">
                 <uib-tab-heading>
                     <span class="fa fa-play"></span> {{ struct.rms.running.info }}
                 </uib-tab-heading>
                 <icsw-rms-job-running-table icsw-rms-struct="struct.rms.running" icsw-rms-global="struct"></icsw-rms-job-running-table>
             </uib-tab>
-            <uib-tab>
+            <uib-tab select="activate_tab($event, 'waiting')">
                 <uib-tab-heading>
                     <span class="fa fa-pause"></span> {{ struct.rms.waiting.info }}
                 </uib-tab-heading>
                 <icsw-rms-job-waiting-table icsw-rms-struct="struct.rms.waiting" icsw-rms-global="struct"></icsw-rms-job-waiting-table>
             </uib-tab>
-            <uib-tab>
+            <uib-tab select="activate_tab($event, 'done')">
                 <uib-tab-heading>
                     <span class="fa fa-stop"></span> {{ struct.rms.done.info }}
                 </uib-tab-heading>
@@ -34,20 +34,20 @@
                 </uib-tab-heading>
                 <icsw-rms-queue-table icsw-rms-struct="struct.rms.queue" icsw-rms-global="struct"></icsw-rms-queue-table>
             </uib-tab>
-            <uib-tab ng-if="struct.fstree_present" select="select_fairshare_tree($event)">
+            <uib-tab ng-if="struct.fstree_present" select="activate_tab($event, 'fairshare')">
                 <uib-tab-heading>
                     <span class="fa fa-tree"></span> FairShare tree
                 </uib-tab-heading>
                 <icsw-rms-fair-share-tree></icsw-rms-fair-share-tree>
             </uib-tab>
-            <uib-tab ng-repeat="(key, io_struct) in struct.io_dict" active="io_struct.active">
+            <uib-tab ng-repeat="(key, io_struct) in struct.io_dict" active="io_struct.active" select="activate_tab($event, 'io', key)">
                 <uib-tab-heading>
                     {{ key }}
                     <icsw-tools-button size="xs" type="close" ng-click="close_io($event, io_struct)"></icsw-tools-button>
                 </uib-tab-heading>
                 <icsw-rms-io-struct struct="io_struct"></icsw-rms-io-struct>
             </uib-tab>
-            <uib-tab ng-if="struct.jv_struct.show">
+            <uib-tab ng-if="struct.jv_struct.show" select="activate_tab($event, 'jobvar')">
                 <uib-tab-heading>
                     {{ struct.jv_struct.info }}
                 </uib-tab-heading>
@@ -166,7 +166,7 @@
 
 <script type="text/ng-template" id="icsw.rms.queue.table">
     <uib-tabset>
-        <uib-tab select="select_queue_overview($event)">
+        <uib-tab select="activate_queue_tab($event, 'overview')">
             <uib-tab-heading>
                 Overview
             </uib-tab-heading>
@@ -213,7 +213,7 @@
                 </div>
             </div>
         </uib-tab>
-        <uib-tab ng-repeat="queue in struct.queue_by_name_list">
+        <uib-tab ng-repeat="queue in struct.queue_by_name_list" select="activate_queue_tab($event, 'queue', queue.name)">
             <uib-tab-heading>
                 <span class="fa fa-reorder"></span> {{ queue.name }}
             </uib-tab-heading>
@@ -301,14 +301,14 @@
         <div>
             <input
                 type="button"
-                ng-class="job.file_info_dict[file[0]].show && 'btn btn-xs btn-success' || 'btn btn-xs btn-default'"
-                ng-click="job.file_info_dict[file[0]].show = !job.file_info_dict[file[0]].show"
-                ng-value="job.file_info_dict[file[0]].show && 'hide' || 'show'"
+                ng-class="job.file_info_dict[file.name].show && 'btn btn-xs btn-success' || 'btn btn-xs btn-default'"
+                ng-click="job.file_info_dict[file.name].show = !job.file_info_dict[file.name].show"
+                ng-value="job.file_info_dict[file.name].show && 'hide' || 'show'"
             />
-            {{ file[0] }}, {{ file[2] }} Bytes
+            {{ file.name }}, {{ file.size }} Bytes
         </div>
-        <div ng-show="job.file_info_dict[file[0]].show">
-            <textarea rows="{{ file[4] }}" cols="120" readonly="readonly">{{ file[1] }}</textarea>
+        <div ng-show="job.file_info_dict[file.name].show">
+            <textarea rows="{{ file.disp_len }}" cols="120" readonly="readonly">{{ file.content }}</textarea>
         </div>
     </div>
 </script>
@@ -317,10 +317,18 @@
     <td ng-show="struct.toggle['host']">
         {{ queue.host.host.value }}&nbsp;
         <span class="pull-right">
-            <icsw-tools-button type="info" size="xs" ng-click="click_node($evvent, queue.host.$$device)" ng-show="queue.host.$$device">
-            </icsw-tools-button>
-            <icsw-tools-button type="draw" size="xs" ng-show="queue.host.$$has_rrd" ng-click="gstruct.draw_rrd($event, queue.host.$$rrd_device_ids)">
-            </icsw-tools-button>
+            <icsw-tools-button
+                type="info"
+                size="xs"
+                ng-click="click_node($event, queue.host.$$device)"
+                ng-show="queue.host.$$device"
+            ></icsw-tools-button>
+            <icsw-tools-button
+                type="draw"
+                size="xs"
+                ng-show="queue.host.$$has_rrd"
+                ng-click="gstruct.draw_rrd($event, queue.host.$$rrd_device_ids)"
+            ></icsw-tools-button>
         </span>
     </td>
     <td ng-if="struct.toggle['queues']">
@@ -675,8 +683,8 @@
             ng-click="activate_io(job, 'stderr')"
         >{{ job.stderr.value }}</button>
     </td>
-    <td ng-show="struct.toggle['files']">
-        {{ job.files.value }}
+    <td ng-show="struct.toggle['files']" class="text-center">
+        {{ job.files.length }}
     </td>
     <td ng-show="struct.toggle['nodelist']">
         {{ job.$$nodelist }}

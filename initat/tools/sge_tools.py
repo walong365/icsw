@@ -1359,23 +1359,6 @@ def build_running_list(s_info, options, **kwargs):
         if options.show_stdoutstderr:
             cur_job.append(create_stdout_stderr(act_job, "stdout"))
             cur_job.append(create_stdout_stderr(act_job, "stderr"))
-        if options.show_variables:
-            _full_id = act_job.attrib["full_id"]
-            if _full_id in var_dict:
-                _vars = list(var_dict[_full_id].rmsjobvariable_set.all())
-                cur_job.append(
-                    E.variables(
-                        logging_tools.get_plural("variable", len(_vars)),
-                        raw=json.dumps(RMSJobVariableSerializer(_vars, many=True).data),
-                    )
-                )
-            else:
-                cur_job.append(
-                    E.variables(
-                        "-",
-                        raw=json.dumps([])
-                    )
-                )
         cur_job.append(create_file_content(act_job))
         if not options.suppress_nodelist:
             if act_job.get("full_id") in job_host_pe_lut:
@@ -1419,6 +1402,23 @@ def build_running_list(s_info, options, **kwargs):
                     )
             else:
                 cur_job.append(E.nodelist("not found"))
+        if options.show_variables:
+            _full_id = act_job.attrib["full_id"]
+            if _full_id in var_dict:
+                _vars = list(var_dict[_full_id].rmsjobvariable_set.all())
+                cur_job.append(
+                    E.variables(
+                        logging_tools.get_plural("variable", len(_vars)),
+                        raw=json.dumps(RMSJobVariableSerializer(_vars, many=True).data),
+                    )
+                )
+            else:
+                cur_job.append(
+                    E.variables(
+                        "-",
+                        raw=json.dumps([])
+                    )
+                )
         cur_job.append(create_action_field(act_job, user))
         job_list.append(cur_job)
     return job_list
@@ -1468,15 +1468,15 @@ def get_running_headers(options):
                 E.stderr()
             ]
         )
+    cur_job.append(E.files())
+    if not options.suppress_nodelist:
+        cur_job.append(E.nodelist(sort="$$nodelist"))
     if options.show_variables:
         cur_job.extend(
             [
                 E.jobvars(),
             ]
         )
-    cur_job.append(E.files())
-    if not options.suppress_nodelist:
-        cur_job.append(E.nodelist(sort="$$nodelist"))
     cur_job.append(E.action())
     return cur_job
 

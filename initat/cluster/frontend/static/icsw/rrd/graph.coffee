@@ -748,6 +748,7 @@ angular.module(
                     ordering: @base_setting.ordering
                     graph_setting: angular.toJson(@user_settings.resolve(_setting))
                 }
+                parse_response: false
             ).then(
                 (xml) ->
                     gfx.resolve(xml)

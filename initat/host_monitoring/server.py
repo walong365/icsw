@@ -22,15 +22,15 @@
 
 """ host-monitoring, with 0MQ and direct socket support, server code """
 
-import io
 import argparse
 import difflib
+import io
 import netifaces
 import os
 import sys
 import time
-from queue import Empty
 from multiprocessing import Queue
+from queue import Empty
 
 import zmq
 from lxml import etree
@@ -555,7 +555,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         self.register_poller(self.vector_socket, zmq.POLLIN, t_func)
 
     def _recv_ext_command(self, zmq_sock):
-        data = zmq_sock.recv()
+        data = zmq_sock.recv_unicode()
         if data.startswith("<"):
             srv_com = server_command.srv_command(source=data)
             src_id = srv_com["identity"].text
