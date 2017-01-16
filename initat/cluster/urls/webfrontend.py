@@ -47,6 +47,7 @@ report_patterns = [
 ]
 
 asset_patterns = [
+    url("^hidden_static_asset_template_type_manager$", asset_views.HiddenStaticAssetTemplateTypesManager.as_view(), name="hidden_static_asset_template_type_manager"),
     url("^asset_package_loader$", asset_views.AssetPackageLoader.as_view(), name="asset_package_loader"),
     url("^asset_batch_deleter$", asset_views.AssetBatchDeleter.as_view(), name="asset_batch_deleter"),
     url("^get_fieldvalues_for_template$", asset_views.get_fieldvalues_for_template.as_view(), name="get_fieldvalues_for_template"),

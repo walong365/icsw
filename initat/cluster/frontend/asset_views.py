@@ -654,3 +654,21 @@ class AssetPackageLoader(View):
             ap = AssetPackage.objects.prefetch_related("assetpackageversion_set").get(idx=asset_package_id)
             serializer = AssetPackageVersionSerializer(ap.assetpackageversion_set.all(), many=True)
             return HttpResponse(json.dumps(serializer.data))
+
+class HiddenStaticAssetTemplateTypesManager(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        from initat.cluster.backbone.models import HiddenStaticAssetTemplateTypes
+        if request.POST['action'] == "read":
+            from initat.cluster.backbone.serializers import HiddenStaticAssetTemplateTypesSerializer
+            queryset = HiddenStaticAssetTemplateTypes.objects.all()
+            serializer = HiddenStaticAssetTemplateTypesSerializer(queryset, many=True)
+            return HttpResponse(json.dumps(serializer.data))
+        elif request.POST['action'] == "write":
+            new_obj = HiddenStaticAssetTemplateTypes(type=request.POST["type"])
+            new_obj.save()
+        elif request.POST['action'] == "delete":
+            obj = HiddenStaticAssetTemplateTypes.objects.get(type=request.POST["type"])
+            obj.delete()
+
+        return HttpResponse(json.dumps(0))

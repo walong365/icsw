@@ -133,7 +133,7 @@ class TestIcsw(unittest.TestCase):
     def test_050_assign_configuration(self):
         self.driver.get_('main/deviceconfig')
         # wait to be loaded
-        self.driver.find_element_by_xpath('//th[text()="Type"]')
+        time.sleep(30.0)
         # get all available configurations
         configs = [
             e.text
