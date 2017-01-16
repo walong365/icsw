@@ -118,17 +118,17 @@
                                                     {{ device.full_name }}
                                                 </button>
                                             </td>
-                                            <td ng-repeat="field in device.$$static_field_values">
+                                            <td ng-repeat="field in device.$$static_field_values[obj.idx]">
                                                 {{ field.value }}
                                             </td>
                                             <td class="text-center">
-                                                <div ng-show="device.$$inventory_static_status == 0" class="alert-success">
+                                                <div ng-show="device.$$inventory_static_status[obj.idx] == 0" class="alert-success">
                                                     <strong>OK</strong>
                                                 </div>
-                                                <div ng-show="device.$$inventory_static_status == 1" class="alert-warning">
+                                                <div ng-show="device.$$inventory_static_status[obj.idx] == 1" class="alert-warning">
                                                     <strong>Warning</strong>
                                                 </div>
-                                                <div ng-show="device.$$inventory_static_status == 2" class="alert-danger">
+                                                <div ng-show="device.$$inventory_static_status[obj.idx] == 2" class="alert-danger">
                                                     <strong>Critical</strong>
                                                 </div>
                                             </td>

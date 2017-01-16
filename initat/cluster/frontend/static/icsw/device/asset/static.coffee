@@ -76,12 +76,7 @@ static_inventory_overview = angular.module(
                     $scope.struct.category_tree = data[1]
                     $scope.struct.staticasset_tree = data[2]
 
-                    console.log(data[0])
-                    console.log(data[2])
-
                     $scope.struct.categories.length = 0
-
-
 
                     for category in $scope.struct.category_tree.asset_list
                         o = {
@@ -128,20 +123,22 @@ static_inventory_overview = angular.module(
                                         if static_asset.$$fields[ordering_num].status > static_asset.$$inventory_static_status
                                             static_asset.$$inventory_static_status = static_asset.$$fields[ordering_num].status
 
-                                        if field_value.device_idx > 0
-                                            device = $scope.struct.device_tree.all_lut[field_value.device_idx]
-                                            if device.$$static_field_values == undefined
-                                                device.$$static_field_values = {}
+                                        device = $scope.struct.device_tree.all_lut[field_value.device_idx]
+                                        if device.$$static_field_values == undefined
+                                            device.$$static_field_values = {}
 
-                                            device.$$static_field_values[ordering_num] = field_value
-                                            if !(field_value.device_idx in static_asset.$$devices)
-                                                static_asset.$$devices[field_value.device_idx] = device
+                                        if device.$$static_field_values[static_asset.idx] == undefined
+                                            device.$$static_field_values[static_asset.idx] = {}
+
+                                        device.$$static_field_values[static_asset.idx][ordering_num] = field_value
+                                        if !(field_value.device_idx in static_asset.$$devices)
+                                            static_asset.$$devices[field_value.device_idx] = device
 
                                             field_value.$$device = $scope.struct.device_tree.all_lut[field_value.device_idx]
 
                                 for ordering_num in Object.getOwnPropertyNames(static_asset.$$fields)
                                     for device_num in Object.getOwnPropertyNames(static_asset.$$devices)
-                                        if static_asset.$$devices[device_num].$$static_field_values[ordering_num] == undefined
+                                        if static_asset.$$devices[device_num].$$static_field_values[static_asset.idx][ordering_num] == undefined
                                             o = {
                                                 value: static_asset.$$fields[ordering_num].aggregate
                                             }
@@ -152,12 +149,13 @@ static_inventory_overview = angular.module(
                                 for device_num in Object.getOwnPropertyNames(static_asset.$$devices)
                                     static_asset.$$expand_devices_button_disabled = false
                                     device = static_asset.$$devices[device_num]
-                                    device.$$inventory_static_status = 0
+                                    if device.$$inventory_static_status == undefined
+                                        device.$$inventory_static_status = {}
+                                    device.$$inventory_static_status[static_asset.idx] = 0
 
-                                    for ordering_num in Object.getOwnPropertyNames(device.$$static_field_values)
-                                        if device.$$static_field_values[ordering_num].status > device.$$inventory_static_status
-                                            device.$$inventory_static_status = device.$$static_field_values[ordering_num].status
-
+                                    for ordering_num in Object.getOwnPropertyNames(device.$$static_field_values[static_asset.idx])
+                                        if device.$$static_field_values[static_asset.idx][ordering_num].status > device.$$inventory_static_status[static_asset.idx]
+                                            device.$$inventory_static_status[static_asset.idx] = device.$$static_field_values[static_asset.idx][ordering_num].status
 
 
                             $scope.struct.data_loaded = true
