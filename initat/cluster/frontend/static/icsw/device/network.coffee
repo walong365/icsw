@@ -1546,7 +1546,6 @@ angular.module(
     device_tree = undefined
     config_tree = undefined
     dispatcher_links = undefined
-    nmap_scan_devices = []
     nmap_scan_to_network_lut = {}
     nmap_scan_lut = {}
     nmap_scans_websocket = undefined
@@ -1605,20 +1604,6 @@ angular.module(
                         salt_nmap_scan(nmap_scan)
                         nmap_scan_to_network_lut[nmap_scan.network].push(nmap_scan)
                         nmap_scan_lut[nmap_scan.idx] = nmap_scan
-
-                    # add devices that are defined as "nmap-scan-device"
-                    for config in config_tree.list
-                        if config.name == "nmap-scan-device"
-                            for obj in config.device_config_set
-                                nmap_scan_devices.push(device_tree.all_lut[obj.device])
-
-                    # also add devices that are already linked as a nmap-scan-device
-                    for dispatch_link in dispatcher_links
-                        if dispatch_link.schedule_handler == "network_scan_schedule_handler"
-                            device_id = parseInt(dispatch_link.schedule_handler_data)
-                            device = device_tree.all_lut[device_id]
-                            if device != undefined and !(device in nmap_scan_devices)
-                                nmap_scan_devices.push(device)
 
                     nmap_scans_websocket = icswWebSocketService.register_ws("nmap_scans")
                     nmap_scans_websocket.onmessage = (data) ->
@@ -1682,72 +1667,81 @@ angular.module(
             scope.edit_obj = obj_or_parent
             sub_scope = scope.$new(false)
             sub_scope.dispatcher_tree = dispatcher_tree
-            sub_scope.nmap_scan_devices = nmap_scan_devices
+            sub_scope.nmap_scan_devices = []
 
-            if scope.edit_obj.$$dispatchers == undefined
-                scope.edit_obj.$$dispatchers = []
+            icswConfigTreeService.load(scope.$id).then(
+                (config_tree) ->
+                    # add devices that are defined as "nmap-scan-device"
+                    for config in config_tree.list
+                        if config.name == "nmap-scan-device"
+                            for obj in config.device_config_set
+                                sub_scope.nmap_scan_devices.push(device_tree.all_lut[obj.device])
 
-                for link in dispatcher_links
-                    if scope.edit_obj.idx == link.object_id
-                        scope.edit_obj.$$dispatchers.push(link.dispatcher_setting)
-                        scope.edit_obj.$$scan_device = parseInt(link.schedule_handler_data)
+                    if scope.edit_obj.$$dispatchers == undefined
+                        scope.edit_obj.$$dispatchers = []
 
-            icswComplexModalService(
-                {
-                    message: $compile($templateCache.get("network.form"))(sub_scope)
-                    title: "Network"
-                    css_class: "modal-wide modal-form"
-                    ok_label: if create then "Create" else "Modify"
-                    closable: true
-                    ok_callback: (modal) ->
-                        d = $q.defer()
-                        if sub_scope.form_data.$invalid
-                            toaster.pop("warning", "form validation problem", "")
-                            d.reject("form not valid")
-                        else
-                            if create
-                                nw_tree.create_network(scope.edit_obj).then(
-                                    (ok) ->
-                                        d.resolve("created")
-                                    (notok) ->
-                                        d.reject("not created")
-                                )
-                            else
-                                scope.edit_obj.put().then(
-                                    (ok) ->
-                                        nw_tree.reorder()
-                                        d.resolve("updated")
-                                    (not_ok) ->
-                                        d.reject("not updated")
-                                )
+                        for link in dispatcher_links
+                            if scope.edit_obj.idx == link.object_id
+                                scope.edit_obj.$$dispatchers.push(link.dispatcher_setting)
+                                scope.edit_obj.$$scan_device = parseInt(link.schedule_handler_data)
 
-                            icswSimpleAjaxCall(
-                                {
-                                    url: ICSW_URLS.DISCOVERY_DISPATCHER_LINK_SYNCER
-                                    data:
-                                        model_name: "network"
-                                        object_id: scope.edit_obj.idx
-                                        dispatcher_setting_ids: (idx for idx in scope.edit_obj.$$dispatchers)
-                                        schedule_handler: "network_scan_schedule_handler"
-                                        schedule_handler_data: "" + scope.edit_obj.$$scan_device
-                                        user_id: user_tree.user.idx
-                                    dataType: "json"
-                                }
-                            )
+                    icswComplexModalService(
+                        {
+                            message: $compile($templateCache.get("network.form"))(sub_scope)
+                            title: "Network"
+                            css_class: "modal-wide modal-form"
+                            ok_label: if create then "Create" else "Modify"
+                            closable: true
+                            ok_callback: (modal) ->
+                                d = $q.defer()
+                                if sub_scope.form_data.$invalid
+                                    toaster.pop("warning", "form validation problem", "")
+                                    d.reject("form not valid")
+                                else
+                                    if create
+                                        nw_tree.create_network(scope.edit_obj).then(
+                                            (ok) ->
+                                                d.resolve("created")
+                                            (notok) ->
+                                                d.reject("not created")
+                                        )
+                                    else
+                                        scope.edit_obj.put().then(
+                                            (ok) ->
+                                                nw_tree.reorder()
+                                                d.resolve("updated")
+                                            (not_ok) ->
+                                                d.reject("not updated")
+                                        )
+
+                                    icswSimpleAjaxCall(
+                                        {
+                                            url: ICSW_URLS.DISCOVERY_DISPATCHER_LINK_SYNCER
+                                            data:
+                                                model_name: "network"
+                                                object_id: scope.edit_obj.idx
+                                                dispatcher_setting_ids: (idx for idx in scope.edit_obj.$$dispatchers)
+                                                schedule_handler: "network_scan_schedule_handler"
+                                                schedule_handler_data: "" + scope.edit_obj.$$scan_device
+                                                user_id: user_tree.user.idx
+                                            dataType: "json"
+                                        }
+                                    )
 
 
-                        return d.promise
-                    cancel_callback: (modal) ->
-                        if not create
-                            dbu.restore_backup(obj_or_parent)
-                        d = $q.defer()
-                        d.resolve("cancel")
-                        return d.promise
-                }
-            ).then(
-                (fin) ->
-                    console.log "finish"
-                    sub_scope.$destroy()
+                                return d.promise
+                            cancel_callback: (modal) ->
+                                if not create
+                                    dbu.restore_backup(obj_or_parent)
+                                d = $q.defer()
+                                d.resolve("cancel")
+                                return d.promise
+                        }
+                    ).then(
+                        (fin) ->
+                            console.log "finish"
+                            sub_scope.$destroy()
+                    )
             )
 
         delete: (scope, event, nw) ->
