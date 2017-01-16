@@ -1090,7 +1090,7 @@ def user_pre_save(sender, **kwargs):
             # known hash, pass
             pass
         else:
-            import passlib
+            import passlib.hash
             cur_inst.lm_password = passlib.hash.lmhash.encrypt(passwd).upper()
             cur_inst.nt_password = passlib.hash.nthash.encrypt(passwd).upper()
             pw_gen_1 = config_store.ConfigStore(GEN_CS_NAME, quiet=True)["password.hash.function"]
