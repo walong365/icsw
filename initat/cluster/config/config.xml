@@ -886,6 +886,7 @@
                 <menuEntry icon="fa-book" routeName="main.report" name="Report"/>
                 <menuEntry icon="fa-code-fork" routeName="main.kpisettings" name="KPI"/>
                 <menuEntry icon="fa-wrench" routeName="main.monitorbasics" name="Monitoring"/>
+                <menuEntry icon="fa-eye" name="Monitoring" routeName="main.monitorbuildinfo"/>
                 <menuEntry icon="fa-sitemap" routeName="main.devicenetwork" name="Network"/>
                 <menuEntry icon="fa-user" routeName="main.usertree" name="User, Groups and Roles"/>
                 <menuEntry icon="fa-info" routeName="main.serverinfo" name="Server Information"/>
