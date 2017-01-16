@@ -408,20 +408,22 @@ class search_similar_names(View):
             _f_matcher.set_seq1(fqdn)
         # total device count
         total_count = device.all_real_enabled.count()
-        _list = device.all_real_devices.all().values_list(
+        _list = device.all_real_devices.all().values(
             "name",
             "domain_tree_node__full_name",
             "device_group__name",
-            "enabled"
+            "enabled",
+            "idx",
+            "device_group__enabled",
         )
         for TARGET_RATIO in [0.6, 0.4, 0.0]:
             result = []
-            for _sname, _dom, dg_name, enabled in _list:
+            for entry in _list:
                 full_name = "{}{}".format(
-                    _sname,
-                    ".{}".format(_dom) if _dom else "",
+                    entry["name"],
+                    ".{}".format(entry["domain_tree_node__full_name"]) if entry["domain_tree_node__full_name"] else "",
                 )
-                _s_matcher.set_seq2(_sname)
+                _s_matcher.set_seq2(entry["name"])
                 _s_ratio = _s_matcher.ratio()
                 if full_match:
                     _f_matcher.set_seq2(full_name)
@@ -438,13 +440,14 @@ class search_similar_names(View):
                     result.append(
                         {
                             "full_name": full_name,
-                            "short_name": _sname,
+                            "short_name": entry["name"],
                             "full": _m_type,
                             "ratio": _ratio * 100,
                             "full_ratio": _f_ratio * 100,
                             "short_ratio": _s_ratio * 100,
-                            "enabled": enabled,
-                            "device_group_name": dg_name,
+                            "enabled": entry["enabled"] and entry["device_group__enabled"],
+                            "device_group_name": entry["device_group__name"],
+                            "idx": entry["idx"],
                         }
                     )
             if len(result) > 10:

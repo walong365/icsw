@@ -803,9 +803,10 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBas
                     }
                 )
             except zmq.error.ZMQError:
-                self.__log_cache.append(
-                    ("error sending to 'main' ({:d}, iter {:d})".format(os.getpid(), _iter), logging_tools.LOG_LEVEL_ERROR)
-                )
+                if _iter > 2:
+                    self.__log_cache.append(
+                        ("error sending to 'main' ({:d}, iter {:d})".format(os.getpid(), _iter), logging_tools.LOG_LEVEL_ERROR)
+                    )
                 if _iter > 10:
                     raise
                 time.sleep(0.1)
@@ -862,6 +863,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBas
         self.send_pool_message("process_start")
 
     def _send_module_list(self):
+        # not used any longer
         _keys = list(sys.modules.keys())
         _files = set()
         for _key in _keys:
@@ -940,7 +942,8 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBas
         self._install_signal_handlers()
         self._init_sockets()
         self._send_start_message()
-        self._send_module_list()
+        # not used any longer, maybe remove ?
+        # self._send_module_list()
         # redirect stdout / stderr ?
         if self.stdout_target:
             self.orig_stdout = sys.stdout

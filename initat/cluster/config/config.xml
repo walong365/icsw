@@ -854,6 +854,7 @@
         </menuHeader>
         <menuHeader name="Status" icon="fa-question" side="left">
             <routeSubGroup name="Status">
+                <menuEntry icon="fa-dashboard" routeName="main.dashboard" name="Dashboard"/>
                 <menuEntry icon="fa-dot-circle-o" routeName="main.livestatus" name="Liveview"/>
                 <menuEntry icon="fa-list" routeName="main.monitorov" name="Availability Overview"/>
                 <menuEntry icon="fa-pie-chart" routeName="main.statushistory" name="Availability Detail"/>
@@ -866,6 +867,7 @@
             <routeSubGroup name="Asset">
                 <menuEntry icon="fa-reorder" routeName="main.assetstaticoverview" name="Static"/>
                 <menuEntry icon="fa-diamond" routeName="main.assetdynamicoverview" name="Dynamic"/>
+                <menuEntry icon="fa-clock-o" routeName="main.schedasset" name="Select Schedules"/>
             </routeSubGroup>
         </menuHeader>
         <menuHeader name="HPC" icon="fa-question" side="left">
@@ -882,10 +884,12 @@
         </menuHeader>
         <menuHeader name="$$USER_INFO" icon="fa-cog" side="right">
             <routeSubGroup name="Preferences">
-                <menuEntry icon="fa-clock-o" routeName="main.schedasset" name="Schedule"/>
+                <menuEntry icon="fa-gears" name="Schedule" routeName="main.schedoverviewasset"/>
                 <menuEntry icon="fa-book" routeName="main.report" name="Report"/>
+                <menuEntry icon="fa-heartbeat" name="Auto Discovery" routeName="main.networkoverview"/>
                 <menuEntry icon="fa-code-fork" routeName="main.kpisettings" name="KPI"/>
                 <menuEntry icon="fa-wrench" routeName="main.monitorbasics" name="Monitoring"/>
+                <menuEntry icon="fa-eye" name="Monitoring" routeName="main.monitorbuildinfo"/>
                 <menuEntry icon="fa-sitemap" routeName="main.devicenetwork" name="Network"/>
                 <menuEntry icon="fa-user" routeName="main.usertree" name="User, Groups and Roles"/>
                 <menuEntry icon="fa-info" routeName="main.serverinfo" name="Server Information"/>

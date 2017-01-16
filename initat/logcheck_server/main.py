@@ -21,8 +21,6 @@
 #
 """ logcheck-server (to be run on a syslog_server) """
 
-
-
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")

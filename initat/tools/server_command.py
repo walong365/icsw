@@ -111,9 +111,13 @@ def compress(in_str, **kwargs):
     # print("*", base64.b64encode(bz2.compress(str.encode(in_str))))
 
     if isinstance(in_str, str):
-        return base64.b64encode(bz2.compress(str.encode(in_str)))
+        _bytes = base64.b64encode(bz2.compress(str.encode(in_str)))
     else:
-        return base64.b64encode(bz2.compress(in_str))
+        _bytes = base64.b64encode(bz2.compress(in_str))
+    if kwargs.get("to_string", False):
+        return _bytes.decode("utf-8")
+    else:
+        return _bytes
 
 
 def decompress(in_str, **kwargs):

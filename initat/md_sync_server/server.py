@@ -411,7 +411,7 @@ class server_process(
     @RemoteCall()
     def distribute_info(self, srv_com, **kwargs):
         di_info = server_command.decompress(srv_com["*info"], marshal=True)
-        self.config_store["distribute_info"] = server_command.compress(di_info, json=True)
+        self.config_store["distribute_info"] = server_command.compress(di_info, json=True, to_string=True)
         self.config_store.write()
         self.SH.distribute_info(di_info)
         return None

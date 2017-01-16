@@ -28,7 +28,7 @@ import inspect
 import os
 import random
 import string
-import smbpasswd
+# import smbpasswd
 import datetime
 
 from django.conf import settings
