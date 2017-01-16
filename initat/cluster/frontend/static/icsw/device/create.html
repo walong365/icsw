@@ -65,7 +65,13 @@
                                                 <span ng-show="!entry.full" class="label label-success">Short</span>
                                             </td>
                                             <td>
-                                                {{ entry.full_name }}
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-xs btn-primary"
+                                                    ng-click="show_device($event, entry.idx)"
+                                                >
+                                                    {{ entry.full_name }}
+                                                </button>
                                             </td>
                                             <td>
                                                 {{ entry.short_name }}

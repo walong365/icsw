@@ -130,31 +130,29 @@ class user_scan_stuff(BackgroundBase):
         try:
             nfs_mounts, nfs_ignore = (set(), [])
             _last_dir = ""
-            cur_settings = {"dict": _size_dict}
-            with os.scandir(_start_dir) as s_it:
-                for entry in s_it:
-                    if os.path.ismount(entry.path):
-                        nfs_mounts.add(entry.path)
-                    elif any([entry.path.startswith(_nfs) for _nfs in nfs_mounts]):
-                        nfs_ignore.append(entry.path)
-                        continue
-
-                    _last_entry = entry.path
-                    if entry.is_dir():
-                        _cur_depth = entry.path.count("/")
-                        _parts = entry.path.split("/")
-                        _max_depth = min(_top_depth + _scan_user.scan_depth, _cur_depth)
-                        _key = "/".join(_parts[:_max_depth + 1])
-                        # print _parts, _key
-                        cur_dict = _size_dict
-                        cur_settings["dict"] = _size_dict
-                        for _skey in _parts[_top_depth:_max_depth + 1]:
-                            cur_dict = cur_dict.add_sub_dir(_skey)
-                        cur_dict.dirs += 1
-                    else:
-                        dir_dict = cur_settings["dict"]
-                        dir_dict.files += 1
-                        dir_dict.size += entry.stat()[stat.ST_SIZE]
+            for _main, _dirs, _files in os.walk(_start_dir):
+                if os.path.ismount(_main):
+                    nfs_mounts.add(_main)
+                    continue
+                elif any([_main.startswith(_nfs) for _nfs in nfs_mounts]):
+                    nfs_ignore.append(_main)
+                    continue
+                _last_dir = _main
+                _cur_depth = _main.count("/")
+                _parts = _main.split("/")
+                _max_depth = min(_top_depth + _scan_user.scan_depth, _cur_depth)
+                _key = "/".join(_parts[:_max_depth + 1])
+                # print _parts, _key
+                cur_dict = _size_dict
+                for _skey in _parts[_top_depth:_max_depth + 1]:
+                    cur_dict = cur_dict.add_sub_dir(_skey)
+                cur_dict.dirs += 1
+                for _file in _files:
+                    try:
+                        cur_dict.files += 1
+                        cur_dict.size += os.stat(os.path.join(_main, _file))[stat.ST_SIZE]
+                    except:
+                        pass
             if nfs_mounts:
                 self.log(
                     "ignored {} on {}".format(
@@ -164,9 +162,9 @@ class user_scan_stuff(BackgroundBase):
                 )
         except UnicodeDecodeError:
             self.log(
-                "UnicodeDecode: {}, _last_entry is '{}'".format(
+                "UnicodeDecode: {}, _last_dir is '{}'".format(
                     process_tools.get_except_info(),
-                    _last_entry,
+                    _last_dir,
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )

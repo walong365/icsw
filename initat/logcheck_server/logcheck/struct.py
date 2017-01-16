@@ -488,8 +488,7 @@ class Machine(object):
             self.log("starting walk for rotate_logs() in {}".format(log_start_dir))
             # directories processed
             try:
-                for root_dir, sub_dirs, files in os.scandir(log_start_dir):
-                    # FIXME, will not work for pyhton3
+                for root_dir, sub_dirs, files in os.walk(log_start_dir):
                     _res["dirs_found"] += 1
                     if root_dir.startswith(log_start_dir):
                         root_dir_p = [int(entry) for entry in root_dir[lsd_len:].split("/") if entry.isdigit()]
@@ -542,7 +541,7 @@ class Machine(object):
                                     _res["files_del"] += len(ok_files)
                         elif len(root_dir_p) == 3:
                             dir_time = time.mktime(
-                                [
+                                (
                                     root_dir_p[0],
                                     root_dir_p[1],
                                     root_dir_p[2],
@@ -552,7 +551,7 @@ class Machine(object):
                                     0,
                                     0,
                                     0
-                                ]
+                                )
                             )
                             day_diff = int((start_time - dir_time) / (3600 * 24))
                             host_info_str = "(dir {:04d}/{:02d}/{:02d})".format(

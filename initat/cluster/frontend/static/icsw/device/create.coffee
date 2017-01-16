@@ -246,6 +246,11 @@ angular.module(
                     $scope.device_data.ip = $(xml).find("value[name='ip']").text()
             )
 
+    $scope.show_device = ($event, dev_idx) ->
+        $event.stopPropagation()
+        $event.preventDefault()
+        DeviceOverviewService($event, [$scope.struct.device_tree.all_lut[dev_idx]])
+
     $scope.create_device_and_edit = ($event) ->
         _create_device($event, true)
 

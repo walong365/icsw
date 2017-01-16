@@ -567,7 +567,7 @@ class SubprocessStruct(object):
 
     def read(self):
         if self.popen:
-            self.current_stdout = "{}{}".format(self.current_stdout, self.popen.stdout.read())
+            self.current_stdout = "{}{}".format(self.current_stdout, self.popen.stdout.read().decode("utf-8"))
             return self.current_stdout
         else:
             return None

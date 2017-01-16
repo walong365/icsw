@@ -1090,8 +1090,9 @@ def user_pre_save(sender, **kwargs):
             # known hash, pass
             pass
         else:
-            cur_inst.lm_password = smbpasswd.lmhash(passwd)
-            cur_inst.nt_password = smbpasswd.nthash(passwd)
+            import passlib
+            cur_inst.lm_password = passlib.hash.lmhash.encrypt(passwd).upper()
+            cur_inst.nt_password = passlib.hash.nthash.encrypt(passwd).upper()
             pw_gen_1 = config_store.ConfigStore(GEN_CS_NAME, quiet=True)["password.hash.function"]
             if pw_gen_1 == "CRYPT":
                 salt = "".join(random.choice(string.ascii_uppercase + string.digits) for _x in range(4))
