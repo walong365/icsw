@@ -21,17 +21,11 @@
 DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
 monitoring_build_info_module = angular.module(
-    "icsw.monitoring.build_info",
+    "icsw.monitoring.control",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).config([
-    "icswRouteExtensionProvider",
-(
-    icswRouteExtensionProvider,
-) ->
-    icswRouteExtensionProvider.add_route("main.monitorbuildinfo")
-]).service("icswMonitoringSysInfoTree",
+).service("icswMonitoringSysInfoTree",
 [
     "$q",
 (
@@ -171,7 +165,18 @@ monitoring_build_info_module = angular.module(
         rest_map
         ""
     )
-]).controller("icswMonitoringBuildInfoCtrl",
+]).directive('icswMonitoringControlInfo',
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: 'EA'
+        template: $templateCache.get("icsw.monitoring.control.info")
+        controller: "icswMonitoringControlInfoCtrl"
+    }
+]).controller("icswMonitoringControlInfoCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$window", "ICSW_SIGNALS",
     "$q", "$uibModal", "icswAccessLevelService", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceTreeService",
@@ -181,7 +186,8 @@ monitoring_build_info_module = angular.module(
     $q, $uibModal, icswAccessLevelService, $timeout, icswTools, ICSW_URLS, icswDeviceTreeService,
     icswMonitoringSysInfoTreeService, blockUI, icswSimpleAjaxCall,
 ) ->
-    icswAccessLevelService.install($scope)
+    console.log "go", $scope.$watch, $scope.$id
+    # icswAccessLevelService.install($scope)
 
     $scope.struct = {
         # infostruct
@@ -286,13 +292,7 @@ monitoring_build_info_module = angular.module(
                 blockUI.stop()
         )
 
-]).directive('icswMonitoringBuildInfo', () ->
-    return {
-        restrict: 'EA'
-        templateUrl: 'icsw.monitoring.build_info'
-        controller: "icswMonitoringBuildInfoCtrl"
-    }
-).directive("icswMonitoringSysInfoNode",
+]).directive("icswMonitoringSysInfoNode",
 [
     "$templateCache",
 (
@@ -340,10 +340,10 @@ monitoring_build_info_module = angular.module(
     if $scope.master?
         _update_master()
 
-    $scope.$watch("master", (new_val) ->
-        if new_val
-            _update_master()
-    )
+    #$scope.$watch("master", (new_val) ->
+    #    if new_val
+    #        _update_master()
+    #)
 
     $scope.toggle_flag = ($event, flag_name) ->
         blockUI.start()

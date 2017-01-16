@@ -43,7 +43,6 @@ monitoring_basic_module = angular.module(
 (
     $q, $templateCache,
 ) ->
-    console.log "ms"
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.monitoring.setup")

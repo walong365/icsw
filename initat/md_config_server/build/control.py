@@ -195,7 +195,7 @@ class BuildControl(object):
             self.__process.add_process(BuildProcess(_p_name), start=True)
             self.__process.send_to_process(
                 _p_name,
-                "start_build",
+                "init_build",
                 _mode.name,
                 _ser_info,
                 self.version,
@@ -210,6 +210,11 @@ class BuildControl(object):
                 BuildModesEnum.all_master: BuildModesEnum.all_slave,
                 BuildModesEnum.sync_users_master: BuildModesEnum.sync_users_slave,
             }.get(_mode, _mode)
+        # start build on master process
+        self.__process.send_to_process(
+            "build1",
+            "start_build",
+        )
 
     def process_action(self, proc_name, ss_flag):
         if proc_name in {"DynConfig"}:
