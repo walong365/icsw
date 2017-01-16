@@ -7,7 +7,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    replaces = [(b'backbone', '0966_auto_20160720_1232'), (b'backbone', '0967_staticassettemplate_enabled')]
+    replaces = [('backbone', '0966_auto_20160720_1232'), ('backbone', '0967_staticassettemplate_enabled')]
 
     dependencies = [
         ('backbone', '0965_auto_20160720_0812'),
