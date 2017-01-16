@@ -121,28 +121,10 @@ def decompress(in_str, **kwargs):
     if kwargs.get("marshal", False):
         ret_struct = marshal.loads(ret_struct)
     elif kwargs.get("pickle", False):
-        try:
-            ret_struct = pickle.loads(ret_struct)
-        except UnicodeDecodeError:
-            # workaround for incompatible pickle dumps created with python2.x
-            ret_struct = pickle.loads(ret_struct, encoding='latin1')
+        ret_struct = pickle.loads(ret_struct)
     elif kwargs.get("json", False):
         ret_struct = json.loads(ret_struct)
     return ret_struct
-
-
-def add_namespace(in_str):
-    # add namespace info to all elements, hacky code
-    # mostly needed to add NS info to C-Code generated XML
-    def _transform(sub_str):
-        return sub_str.replace("<", "<ns:").replace("<ns:/", "</ns:")
-    _parts = _transform(in_str).split(">", 1)
-    in_str = "{} xmlns:ns=\"{}\">{}".format(
-        _parts[0],
-        XML_NS,
-        _parts[1],
-    )
-    return srv_command(source=in_str)
 
 
 class srv_command(object):
@@ -360,6 +342,9 @@ class srv_command(object):
                     else:
                         raise
             cur_element.attrib["type"] = "str"
+        elif isinstance(value, bool):
+            cur_element.text = str(value)
+            cur_element.attrib["type"] = "bool"
         elif isinstance(value, int):
             cur_element.text = "{:d}".format(value)
             cur_element.attrib["type"] = "int"
@@ -375,9 +360,6 @@ class srv_command(object):
         elif isinstance(value, datetime.datetime):
             cur_element.text = value.isoformat()
             cur_element.attrib["type"] = "datetime"
-        elif isinstance(value, bool):
-            cur_element.text = str(value)
-            cur_element.attrib["type"] = "bool"
         elif isinstance(value, dict) or isinstance(value, collections.OrderedDict):
             cur_element.attrib["type"] = "dict"
             for sub_key, sub_value in value.items():
@@ -541,3 +523,17 @@ class srv_command(object):
 
     def __len__(self):
         return len(etree.tostring(self.tree))
+
+
+def add_namespace(in_str: str) -> srv_command:
+    # add namespace info to all elements, hacky code
+    # mostly needed to add NS info to C-Code generated XML
+    def _transform(sub_str):
+        return sub_str.replace("<", "<ns:").replace("<ns:/", "</ns:")
+    _parts = _transform(in_str).split(">", 1)
+    in_str = "{} xmlns:ns=\"{}\">{}".format(
+        _parts[0],
+        XML_NS,
+        _parts[1],
+    )
+    return srv_command(source=in_str)
