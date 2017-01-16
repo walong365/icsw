@@ -58,11 +58,18 @@
                 Static Asset Overview
             </h3>
             <uib-tabset>
-                <uib-tab ng-repeat="(static_type_name, static_asset_list) in struct.static_asset_tabs">
+                <uib-tab ng-show="struct.hidden_static_asset_template_types.indexOf(static_type_name) == -1" ng-repeat="(static_type_name, static_asset_list) in struct.static_asset_tabs">
                     <uib-tab-heading>
                         <span>
                             {{ static_type_name }} ({{ static_asset_list.length }})
                         </span>
+                        <button
+                            type="button"
+                            class="btn btn-xs btn-warning"
+                            ng-click="hide_static_asset_type(static_type_name)"
+                        >
+                            Hide
+                        </button>
                     </uib-tab-heading>
                     <br/>
                     <div class="panel panel-default">
@@ -136,6 +143,45 @@
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+                </uib-tab>
+                <uib-tab ng-show="struct.hidden_static_asset_template_types.length > 0">
+                    <uib-tab-heading>
+                        <span>
+                            Hidden Tabs/Types ({{ struct.hidden_static_asset_template_types.length }})
+                        </span>
+                    </uib-tab-heading>
+                    <br/>
+                    <div class="panel panel-default">
+                        <div class="panel-body" style="padding: 6px 15px">
+                            <br/>
+                            <table
+                                class="table table-condensed table-striped simple-border"
+                                style="width:auto;"
+
+                            >
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="hidden_type in struct.hidden_static_asset_template_types">
+                                        <td>{{ hidden_type }}</td>
+                                        <td>
+                                            <button
+                                                type="button"
+                                                class="btn btn-xs btn-warning"
+                                                ng-click="unhide_static_asset_type(hidden_type)"
+                                            >
+                                                Unhide
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </uib-tab>

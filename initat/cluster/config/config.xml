@@ -886,6 +886,7 @@
             <routeSubGroup name="Preferences">
                 <menuEntry icon="fa-gears" name="Schedule" routeName="main.schedoverviewasset"/>
                 <menuEntry icon="fa-book" routeName="main.report" name="Report"/>
+                <menuEntry icon="fa-code" name="Variables" routeName="main.devvars"/>
                 <menuEntry icon="fa-heartbeat" name="Auto Discovery" routeName="main.networkoverview"/>
                 <menuEntry icon="fa-code-fork" routeName="main.kpisettings" name="KPI"/>
                 <menuEntry icon="fa-wrench" routeName="main.monitorbasics" name="Monitoring"/>

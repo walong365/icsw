@@ -37,6 +37,7 @@ __all__ = [
     "StaticAssetTemplateField",
     "StaticAsset",
     "StaticAssetFieldValue",
+    "HiddenStaticAssetTemplateTypes"
 ]
 
 
@@ -103,6 +104,12 @@ class StaticAssetTemplate(models.Model):
         permissions = (
             ("setup", "Change StaticAsset templates", False),
         )
+
+
+class HiddenStaticAssetTemplateTypes(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    type = models.CharField(max_length=256, unique=True)
 
 
 class StaticAssetTemplateField(models.Model):

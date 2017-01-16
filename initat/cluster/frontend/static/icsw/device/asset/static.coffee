@@ -57,6 +57,7 @@ static_inventory_overview = angular.module(
         device_tree: undefined
         category_tree: undefined
         staticasset_tree: undefined
+        hidden_static_asset_template_types: undefined
         data_loaded: false
 
         # easier to handle data structures
@@ -70,11 +71,20 @@ static_inventory_overview = angular.module(
             icswDeviceTreeService.load($scope.$id)
             icswCategoryTreeService.load($scope.$id)
             icswStaticAssetTemplateTreeService.load($scope.$id)
+            icswSimpleAjaxCall({
+                url: ICSW_URLS.ASSET_HIDDEN_STATIC_ASSET_TEMPLATE_TYPE_MANAGER
+                data:
+                    action: "read"
+                dataType: 'json'
+            })
         ]).then(
                 (data) ->
                     $scope.struct.device_tree = data[0]
                     $scope.struct.category_tree = data[1]
                     $scope.struct.staticasset_tree = data[2]
+                    $scope.struct.hidden_static_asset_template_types = (obj.type for obj in data[3])
+
+                    console.log($scope.hidden_static_asset_template_types)
 
                     $scope.struct.categories.length = 0
 
@@ -163,8 +173,6 @@ static_inventory_overview = angular.module(
                         (not_ok) ->
                             console.log(not_ok)
                     )
-
-
         )
 
     $scope.show_devices = ($event, obj) ->
@@ -173,6 +181,28 @@ static_inventory_overview = angular.module(
     $scope.show_device = ($event, device) ->
         DeviceOverviewService($event, [device])
 
+    $scope.hide_static_asset_type = (static_asset_type_name) ->
+        icswSimpleAjaxCall({
+            url: ICSW_URLS.ASSET_HIDDEN_STATIC_ASSET_TEMPLATE_TYPE_MANAGER
+            data:
+                action: "write"
+                type: static_asset_type_name
+            dataType: 'json'
+        }).then(
+            $scope.struct.hidden_static_asset_template_types.push(static_asset_type_name)
+        )
+
+    $scope.unhide_static_asset_type = (static_asset_type_name) ->
+        icswSimpleAjaxCall({
+            url: ICSW_URLS.ASSET_HIDDEN_STATIC_ASSET_TEMPLATE_TYPE_MANAGER
+            data:
+                action: "delete"
+                type: static_asset_type_name
+            dataType: 'json'
+        }).then(
+
+            _.pull($scope.struct.hidden_static_asset_template_types, static_asset_type_name)
+        )
 ]).directive("icswStaticAssetTemplateOverview",
 [
     "ICSW_URLS", "Restangular",

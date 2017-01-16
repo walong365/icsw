@@ -1,4 +1,4 @@
-#!/usr/bin/python3.4 -Ot
+#!/usr/bin/python3-init -Ot
 
 import datetime
 import subprocess
@@ -201,33 +201,21 @@ def reset_test_server(user, password, server_id, snapshot_id, machine_name):
     return output_dict
 
 
-def basic_availability_test(host, test_system_name):
+def basic_availability_test(host):
     sys.stdout.write("Checking availability of icsw interface ... ")
     sys.stdout.flush()
 
     time.sleep(60)
 
-    exception = None
-    title = None
-    for i in range(5):
-        try:
-            driver = Webdriver(
-                base_url='http://{}'.format(host),
-                command_executor='http://192.168.1.246:4444/wd/hub',
-                desired_capabilities=DesiredCapabilities.CHROME,
-            )
-            driver.maximize_window()
+    driver = Webdriver(
+        base_url='http://{}'.format(host),
+        command_executor='http://192.168.1.246:4444/wd/hub',
+        desired_capabilities=DesiredCapabilities.CHROME,
+    )
+    driver.maximize_window()
 
-            driver.log_in('admin', 'abc123', delay=60)
-            title = driver.title
-        except Exception as e:
-            exception = e
-        else:
-            exception = None
-            break
-
-    if exception:
-        raise exception
+    driver.log_in('admin', 'abc123', delay=60)
+    title = driver.title
 
     if title and title == 'Dashboard':
         sys.stdout.write("done\n")
@@ -269,7 +257,7 @@ def main():
     output_dict = parse_output_dict(output_dict)
 
     install_icsw_base_system(output_dict['ip'], "root", password, package_manager, test_system_name)
-    basic_availability_test(output_dict['ip'], test_system_name)
+    basic_availability_test(output_dict['ip'])
 
 
 def parse_output_dict(output_dict):

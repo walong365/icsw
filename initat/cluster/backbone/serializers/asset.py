@@ -28,7 +28,7 @@ from initat.cluster.backbone.models import AssetRun, AssetPackage, \
     StaticAssetTemplate, StaticAssetTemplateField, AssetLicenseEntry, AssetUpdateEntry, \
     AssetPCIEntry, AssetDMIHead, AssetDMIHandle, AssetDMIValue, AssetHWMemoryEntry, AssetHWCPUEntry, AssetHWGPUEntry, \
     AssetHWDisplayEntry, StaticAsset, StaticAssetFieldValue, \
-    AssetPackageVersionInstallInfo, AssetHWNetworkDevice
+    AssetPackageVersionInstallInfo, AssetHWNetworkDevice, HiddenStaticAssetTemplateTypes
 
 from initat.cluster.backbone.models.partition import partition_table, partition_disc, partition, LogicalDisc
 
@@ -56,9 +56,14 @@ __all__ = [
     "StaticAssetSerializer",
     "StaticAssetFieldValueSerializer",
     "StaticAssetTemplateRefsSerializer",
-    "SimpleAssetBatchSerializer"
+    "SimpleAssetBatchSerializer",
+    "HiddenStaticAssetTemplateTypesSerializer"
 ]
 
+class HiddenStaticAssetTemplateTypesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HiddenStaticAssetTemplateTypes
+        fields = ( "idx", "type" )
 
 # for simple overview on frontend
 class ShallowPastAssetRunSerializer(serializers.ModelSerializer):
