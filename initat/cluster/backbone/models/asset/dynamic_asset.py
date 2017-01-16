@@ -554,29 +554,32 @@ class AssetRun(models.Model):
         assets = []
         try:
             package_dict = server_command.decompress(blob, pickle=True)
-        except:
-            raise
-        else:
-            for package_name in package_dict:
-                for versions_dict in package_dict[package_name]:
-                    installtimestamp = None
-                    if 'installtimestamp' in versions_dict:
-                        installtimestamp = versions_dict['installtimestamp']
+        except UnicodeDecodeError:
+            # workaround for incompatible python2.x pickle dumps
+            import pickle
+            package_dict = bz2.decompress(base64.b64decode(blob))
+            package_dict = pickle.loads(package_dict, encoding="latin1")
 
-                    size = 0
-                    if 'size' in versions_dict:
-                        size = versions_dict['size']
+        for package_name in package_dict:
+            for versions_dict in package_dict[package_name]:
+                installtimestamp = None
+                if 'installtimestamp' in versions_dict:
+                    installtimestamp = versions_dict['installtimestamp']
 
-                    assets.append(
-                        BaseAssetPackage(
-                            package_name,
-                            version=versions_dict['version'],
-                            size=size,
-                            release=versions_dict['release'],
-                            install_date=installtimestamp,
-                            package_type=PackageTypeEnum.LINUX
-                        )
+                size = 0
+                if 'size' in versions_dict:
+                    size = versions_dict['size']
+
+                assets.append(
+                    BaseAssetPackage(
+                        package_name,
+                        version=versions_dict['version'],
+                        size=size,
+                        release=versions_dict['release'],
+                        install_date=installtimestamp,
+                        package_type=PackageTypeEnum.LINUX
                     )
+                )
         self._generate_assets_package(assets)
 
     def _generate_assets_package(self, assets):
