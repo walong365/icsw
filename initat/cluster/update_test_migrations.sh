@@ -6,7 +6,7 @@ mv ./backbone/test_migrations/ ./backbone/migrations
 
 rm ./backbone/migrations/0001_initial.py*
 
-./manage.py makemigrations
+./manage.py makemigrations backbone
 
 mv ./backbone/migrations ./backbone/test_migrations
 

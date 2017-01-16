@@ -19,7 +19,7 @@
 #
 
 
-
+import ast
 import binascii
 import os
 import re
@@ -235,6 +235,9 @@ def _parse_lsblk(dump):
         raw_data = [line.strip().split() for line in lines if line.strip()]
     elif dump["version"] == 1:
         # new version, list format, column are separated by vertical blank lines
+        if result.startswith("b'"):
+            result = ast.literal_eval(result).decode("utf-8")
+
         lines = result.strip().split('\n')
         _seps = [0]
         longest_line = max([len(line) for line in lines])
