@@ -329,7 +329,7 @@ class get_mon_vars(View):
         for _mc in mon_check_commands:
             _mon_info, _log_lines = parse_commandline(_mc.command_line)
             for _key, _value in _mon_info["default_values"].items():
-                if isinstance(value, tuple):
+                if isinstance(_value, tuple):
                     res_list.append(
                         (
                             _mc.name,

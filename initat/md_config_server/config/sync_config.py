@@ -131,7 +131,7 @@ class SyncConfig(object):
             # system falgs
             "sysinfo": {},
             "name": self.__slave_name,
-            "master": self.master or "",
+            "master": self.master or False,
             "latest_contact": 0,
         }
         # try to get relayer / mon_version from latest build
@@ -160,9 +160,13 @@ class SyncConfig(object):
         return self.__raw_info
 
     def set_info(self, info):
-        for _copy_key in ["sysinfo", "latest_contact"]:
+        # import pprint
+        # pprint.pprint(info)
+        for _copy_key in ["sysinfo"]:
             if _copy_key in info:
                 self.__raw_info[_copy_key] = info[_copy_key]
+        # handle latest conact
+        self.__raw_info["latest_contact"] = time.time()
         _cs = info.get("config_store", {})
         if "icsw.version" in _cs:
             self.__raw_info["version"]["relayer_version"] = "{}-{}".format(
