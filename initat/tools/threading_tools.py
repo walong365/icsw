@@ -1429,6 +1429,7 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
             _debug("join_done for {:d}".format(t_pid))
         else:
             self.log("process {} forced exit".format(t_name))
+        # print("R", t_name)
         del self.__processes[t_name]
         # self.__sockets[t_name].close()
         # del self.__sockets[t_name]

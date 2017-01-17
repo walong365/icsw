@@ -461,9 +461,9 @@ class LicenseFileReader(object):
             try:
                 cert = M2Crypto.X509.load_cert(cert_file)
             except M2Crypto.X509.X509Error as e:
-                logger.warn("Failed to read certificate file {}: {}".format(cert_file, e))
+                logger.warning("Failed to read certificate file {}: {}".format(cert_file, e))
             except IOError as e:
-                logger.warn("Failed to open certificate file {}: {}".format(cert_file, e))
+                logger.warning("Failed to open certificate file {}: {}".format(cert_file, e))
             else:
                 # only use certs which are currently valid
                 now = datetime.datetime.now(tz=pytz.timezone(TIME_ZONE))

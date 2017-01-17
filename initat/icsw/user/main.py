@@ -22,8 +22,6 @@
 #
 """ user commands for icsw """
 
-
-
 import base64
 import bz2
 import json
@@ -401,7 +399,7 @@ def get_pass(prompt=">"):
                 print("password is empty")
     termios.tcsetattr(fd, termios.TCSADRAIN, old)
     print()
-    return passwd
+    return passwd.encode("utf-8")
 
 
 def do_chpasswd(cur_opts, log_com):

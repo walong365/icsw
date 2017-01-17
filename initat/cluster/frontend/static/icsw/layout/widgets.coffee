@@ -29,29 +29,50 @@ angular.module(
     bindings: {}
 }).controller("icswWidgetCtrl",
 [
-    "$timeout", "icswComplexModalService", "$controller", "$injector",
-    "$rootScope", "$compile", "$templateCache",
+    "$timeout", "icswComplexModalService", "$controller",
+    "$rootScope", "$compile", "$templateCache", "$q",
 (
-    $timeout, icswComplexModalService, $controller, $injector,
-    $rootScope, $compile, $templateCache,
+    $timeout, icswComplexModalService, $controller,
+    $rootScope, $compile, $templateCache, $q,
 ) ->
-
+    OV_STRUCT = {
+        monitoring: {
+            ctrl: "icswMonitoringControlInfoCtrl"
+            template: "icsw.monitoring.control.info"
+            title: "Monitoring control"
+        }
+    }
     @show_overlay = ($event, name) ->
-        if name not in @struct.open
+        $event.preventDefault()
+        $event.stopPropagation()
+        if not _.some(entry.name == name for entry in @struct.open)
+            _def = OV_STRUCT[name]
             # check rights ?
-            @struct.open.push(name)
-            # console.log $injector.get("icswMonitoringControlInfoCtrl")
-            sub_scope = $controller("icswMonitoringControlInfoCtrl", {$scope: $rootScope.$new(true)})
-            msg = $compile($templateCache.get("icsw.monitoring.control.info"))(sub_scope)
+            @struct.open.push({name: name})
+            sub_scope = $rootScope.$new(true)
+            $controller(_def.ctrl, {$scope: sub_scope})
+            msg = $compile($templateCache.get(_def.template))(sub_scope)
             icswComplexModalService(
+                title: _def.title
                 message: msg
+                closeable: true
+                ok_label: "close"
+                ok_callback: () ->
+                    _defer = $q.defer()
+                    _defer.resolve("close")
+                    return _defer.promise
+            ).then(
+                (done) =>
+                    # console.log @
+                    sub_scope.$destroy()
+                    _.remove(@struct.open, (entry) -> return entry.name == name)
             )
-            console.log "so", name
+            @struct.menu_open = false
 
     @$onInit = () ->
         @struct = {
             open: []
+            menu_open: false
         }
-        console.log "WC"
     return null
 ])

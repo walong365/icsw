@@ -17,8 +17,6 @@
 #
 """ modifies password for a given user """
 
-
-
 import base64
 import bz2
 
@@ -42,7 +40,7 @@ class modify_password(cs_base_class.icswCSServerCom):
         _data_ok = True
         for _c_key in [_key for _key in self.Meta.needed_option_keys if _key.count("password")]:
             try:
-                opt_dict[_c_key] = bz2.decompress(base64.b64decode(opt_dict[_c_key]))
+                opt_dict[_c_key] = bz2.decompress(base64.b64decode(opt_dict[_c_key])).decode("utf-8")
             except:
                 cur_inst.srv_com.set_result(
                     "invalid data received",

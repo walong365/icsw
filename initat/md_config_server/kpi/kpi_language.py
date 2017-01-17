@@ -307,7 +307,7 @@ class KpiServiceObject(KpiObject):
             raise ValueError("service_info is None")
         super(KpiServiceObject, self).__init__(**kwargs)
         if self.host_pk is None:
-            logger.warn(
+            logger.warning(
                 "KpiServiceObject without host pk: {} {}".format(
                     service_id,
                     service_info
@@ -1032,7 +1032,7 @@ class KpiSet(object):
                  else:
                      print ("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id, service_info))
                      # TODO: logging is broken in this context
-                     # logger.warn("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id,
+                     # logger.warning("Historical obj found but no kpi obj: {} {} {}".format(dev_id, service_id,
                      service_info))
      return KpiSet(objects=objects, parents=[self])
 
@@ -1055,7 +1055,7 @@ def evaluate_historic(self, ratio_ok, ratio_warn):
                 else:
                     ok_value = ok_states[0]['value']
                     if len(ok_states) > 1:
-                        logger.warn("Multiple ok states for {} {} {}: {}".format(dev_id, service_id,
+                        logger.warning("Multiple ok states for {} {} {}: {}".format(dev_id, service_id,
                                                                                  service_data, state_list))
 
                 if ok_value >= ratio_ok:

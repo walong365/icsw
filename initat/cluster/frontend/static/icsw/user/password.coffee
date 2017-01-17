@@ -92,7 +92,7 @@ password_module = angular.module(
         ).then(
             (fin) ->
                 child_scope.$destroy()
-                console.log child_scope.pwd
+                # console.log child_scope.pwd
                 defer.resolve("done")
         )
         return defer.promise

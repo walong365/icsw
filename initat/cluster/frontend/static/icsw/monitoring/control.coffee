@@ -165,17 +165,6 @@ monitoring_build_info_module = angular.module(
         rest_map
         ""
     )
-]).directive('icswMonitoringControlInfo',
-[
-    "$templateCache",
-(
-    $templateCache,
-) ->
-    return {
-        restrict: 'EA'
-        template: $templateCache.get("icsw.monitoring.control.info")
-        controller: "icswMonitoringControlInfoCtrl"
-    }
 ]).controller("icswMonitoringControlInfoCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$window", "ICSW_SIGNALS",
@@ -186,8 +175,7 @@ monitoring_build_info_module = angular.module(
     $q, $uibModal, icswAccessLevelService, $timeout, icswTools, ICSW_URLS, icswDeviceTreeService,
     icswMonitoringSysInfoTreeService, blockUI, icswSimpleAjaxCall,
 ) ->
-    console.log "go", $scope.$watch, $scope.$id
-    # icswAccessLevelService.install($scope)
+    icswAccessLevelService.install($scope)
 
     $scope.struct = {
         # infostruct
@@ -253,7 +241,6 @@ monitoring_build_info_module = angular.module(
 
     $scope.$on("$destroy", () ->
         if $scope.struct.reload_to
-            console.log "C"
             $timeout.cancel($scope.struct.reload_to)
     )
     $scope.load(true)

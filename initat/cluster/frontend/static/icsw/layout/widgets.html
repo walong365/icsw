@@ -1,9 +1,29 @@
 <script type="text/ng-template" id="icsw.layout.widgets">
-    <button
-        type="button"
-        class="btn btn-xs btn-success"
-        ng-click="ctrl.show_overlay($event, 'monitoring')"
+    <div
+        class="btn-group"
+        uib-dropdown
+        is-open="ctrl.struct.menu_open"
     >
-        Monitoring {{ ctrl.struct }}
-    </button>
+        <button
+            type="button"
+            class="btn btn-default"
+            uib-dropdown-toggle
+            ng-disabled="disabled"
+        >
+            <span class="fa fa-wheelchair"></span>
+            Widget
+            <span class="caret"></span>
+        </button>
+        <ul
+            class="dropdown-menu"
+            role="menu"
+            uib-dropdown-menu
+        >
+            <li class="menuitem">
+                <a href="" ng-click="ctrl.show_overlay($event, 'monitoring')">
+                    Monitoring
+                </a>
+            </li>
+        </ul>
+    </div>
 </script>

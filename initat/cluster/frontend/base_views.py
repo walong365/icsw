@@ -351,7 +351,7 @@ class CheckDeleteObject(View):
 
         if len(objs_to_delete) < len(obj_pks):
             request.xml_response.error("Could not find all objects to delete.")
-            logger.warn(
+            logger.warning(
                 "To delete: {}; found only: {}".format(
                     obj_pks,
                     [o.pk for o in objs_to_delete]
