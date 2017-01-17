@@ -22,12 +22,9 @@
 Channel settings
 """
 
+from channels.routing import route
 
-
-from channels.routing import route, route_class
-
-from initat.cluster.backbone.consumers import ws_add, ws_disconnect, ws_message, icswConsumer
-
+from initat.cluster.backbone.consumers import ws_add, ws_disconnect, ws_message
 
 channel_routing = [
     #  route_class(icswConsumer, path=r"^/icsw/ws/device_log_entries/$"),

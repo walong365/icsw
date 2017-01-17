@@ -105,11 +105,11 @@ device_variable_module = angular.module(
 ]).controller("icswVariableScopeOverviewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
-    "icswTools", "icswDeviceVariableListService", "icswDeviceVariableScopeTreeService",
+    "icswTools", "icswDeviceVariableScopeTreeService",
     "icswVariableScopeService",
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
-    icswTools, icswDeviceVariableListService, icswDeviceVariableScopeTreeService,
+    icswTools, icswDeviceVariableScopeTreeService,
     icswVariableScopeService,
 ) ->
     $scope.struct = {

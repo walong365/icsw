@@ -284,13 +284,10 @@ angular.module(
     create_small_info_fields = (struct) ->
         obj = struct.edit_obj
         if struct.is_devicegroup
-            obj.$$full_device_name = obj.name.substr(8)
             # not really needed
             obj.$$snmp_scheme_info = "N/A"
             obj.$$snmp_info = "N/A"
             obj.$$ip_info = "N/A"
-        else
-            obj.$$full_device_name = obj.full_name
 
     $scope.new_devsel = (in_list) ->
         $scope.struct.data_valid = false
@@ -366,12 +363,12 @@ angular.module(
         $scope.struct.tmd_list.push(last)
         icswTools.order_in_place(
             $scope.struct.tmd_list
-            ["edit_obj.$$full_device_name"]
+            ["edit_obj.$$print_name"]
             ["asc"]
         )
         icswTools.order_in_place(
             $scope.struct.slist
-            ["edit_obj.$$full_device_name"]
+            ["edit_obj.$$print_name"]
             ["asc"]
         )
 

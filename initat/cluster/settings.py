@@ -46,11 +46,6 @@ logging_tools.UNIFIED_NAME = "cluster.http"
 
 ugettext = lambda s: s
 
-# monkey-patch threading for python 2.7.x
-if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
-    import threading
-    threading._DummyThread._Thread__stop = lambda x: 42
-
 DEBUG = ICSW_DEBUG_MODE
 
 ADMINS = (

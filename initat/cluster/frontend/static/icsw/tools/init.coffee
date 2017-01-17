@@ -87,23 +87,26 @@ angular.module(
                 # loading
                 is_loading: true
                 # header
-                header: ""
+                header: "..."
             }
             scope.$watchCollection(
                 "device_list"
                 (new_list) ->
-                    scope.struct.is_loading = true
-                    scope.struct.header = "#{scope.device_list.length} devices"
-                    icswSimpleAjaxCall(
-                        url: ICSW_URLS.DEVICE_DEVICE_LIST_INFO
-                        data:
-                            pk_list: angular.toJson((dev.idx for dev in new_list))
-                        dataType: "json"
-                    ).then(
-                        (result) ->
-                            scope.struct.is_loading = false
-                            scope.struct.header = result.header
-                    )
+                    if new_list?
+                        scope.struct.is_loading = true
+                        scope.struct.header = "#{scope.device_list.length} devices"
+                        icswSimpleAjaxCall(
+                            url: ICSW_URLS.DEVICE_DEVICE_LIST_INFO
+                            data:
+                                pk_list: angular.toJson((dev.idx for dev in new_list))
+                            dataType: "json"
+                        ).then(
+                            (result) ->
+                                scope.struct.is_loading = false
+                                scope.struct.header = result.header
+                        )
+                    else
+                        console.error "new_list for deviceListInfo is not definde"
             )
 
     }

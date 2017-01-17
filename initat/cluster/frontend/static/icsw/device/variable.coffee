@@ -160,244 +160,189 @@ device_variable_module = angular.module(
                     return "#{obj.key} = #{obj.value}"
                 else
                     return obj.key
-]).service("icswDeviceVariableListService",
+]).controller("icswDeviceVariableEditCtrl",
 [
-    "$q", "Restangular", "icswSimpleAjaxCall", "blockUI",
-    "ICSW_URLS", "icswDeviceTreeService", "icswToolsSimpleModalService", "icswComplexModalService",
-    "$compile", "$templateCache", "icswDeviceVariableBackup", "toaster",
+    "$scope", "device_variable_scope_tree", "create", "obj_or_parent",
+    "icswDeviceVariableBackup", "icswSimpleAjaxCall", "ICSW_URLS", "icswComplexModalService",
+    "toaster", "$q", "struct", "$compile", "$templateCache", "blockUI",
 (
-    $q, Restangular, icswSimpleAjaxCall, blockUI,
-    ICSW_URLS, icswDeviceTreeService, icswToolsSimpleModalService, icswComplexModalService,
-    $compile, $templateCache, icswDeviceVariableBackup, toaster,
+    $scope, device_variable_scope_tree, create, obj_or_parent,
+    icswDeviceVariableBackup, icswSimpleAjaxCall, ICSW_URLS, icswComplexModalService,
+    toaster, $q, struct, $compile, $templateCache, blockUI,
 ) ->
-    create_or_edit = (scope, event, create, obj_or_parent) ->
-        _dvst = scope.device_variable_scope_tree
-        if create
-            single_create = true
-            if obj_or_parent
-                device = obj_or_parent
-                nv_idx = 0
-                var_pf = "new_variable"
-                var_name = var_pf
-                while (true for entry in device.device_variable_set when entry.name == var_name).length > 0
-                    nv_idx++
-                    var_name = "#{var_pf}_#{nv_idx}"
-                obj_or_parent = {
-                    device: device.idx
-                    name: var_name
-                    var_type: "s"
-                    _mon_var: null
-                    inherit: true
-                    device_variable_scope: _dvst.lut_by_name["normal"].idx
-                }
-            else
-                single_create = false
-                obj_or_parent = {
-                    device: 0
-                    name: "new_variable"
-                    var_type: "s"
-                    _mon_var: null
-                    inherit: true
-                    device_variable_scope: _dvst.lut_by_name["normal"].idx
-                }
+    $scope.device_variable_scope_tree = device_variable_scope_tree
+    if create
+        single_create = true
+        if obj_or_parent
+            device = obj_or_parent
+            nv_idx = 0
+            var_pf = "new_variable"
+            var_name = var_pf
+            while (true for entry in device.device_variable_set when entry.name == var_name).length > 0
+                nv_idx++
+                var_name = "#{var_pf}_#{nv_idx}"
+            obj_or_parent = {
+                device: device.idx
+                name: var_name
+                var_type: "s"
+                _mon_var: null
+                inherit: true
+                device_variable_scope: device_variable_scope_tree.lut_by_name["normal"].idx
+            }
         else
             single_create = false
-            dbu = new icswDeviceVariableBackup()
-            dbu.create_backup(obj_or_parent)
-        sub_scope = scope.$new(true)
-        sub_scope.create = create
-        sub_scope.device_variable_scope_tree = _dvst
-        sub_scope.single_create = single_create
-        sub_scope.mon_vars = []
-        if single_create
-            # fetch mon_vars
-            icswSimpleAjaxCall(
-                url: ICSW_URLS.MON_GET_MON_VARS
-                data: {
-                    device_pk: device.idx
-                }
-                dataType: "json"
-            ).then(
-                (json) ->
-                    # add selections delayed
-                    for entry in json
-                        sub_scope.mon_vars.push(entry)
-            )
-            # install take_mon_var command
-            sub_scope.take_mon_var = () ->
-                if sub_scope.edit_obj._mon_var?
-                    # copy monitoring var
-                    _mon_var = sub_scope.edit_obj._mon_var
-                    sub_scope.edit_obj.var_type = _mon_var.type
-                    sub_scope.edit_obj.name = _mon_var.name
-                    sub_scope.edit_obj.device_variable_scope = _dvst.lut_by_name["normal"].idx
-                    sub_scope.edit_obj.inherit = false
-                    if _mon_var.type == "i"
-                        sub_scope.edit_obj.val_int = parseInt(_mon_var.value)
-                    else
-                        sub_scope.edit_obj.val_str = _mon_var.value
-        # functions
-        sub_scope.change_scope = () ->
-            cur_scope = _dvst.lut[sub_scope.edit_obj.device_variable_scope]
-            if cur_scope.dvs_allowed_name_set.length
-                sub_scope.$$discrete_names = true
-                sub_scope.$$possible_names = (entry.name for entry in cur_scope.dvs_allowed_name_set)
-                sub_scope.edit_obj.name = sub_scope.$$possible_names[0]
-            else 
-                sub_scope.$$discrete_names = false
-                sub_scope.$$possible_names = []
-
-        sub_scope.change_name = () ->
-            cur_scope = _dvst.lut[sub_scope.edit_obj.device_variable_scope]
-            cur_var = (entry for entry in cur_scope.dvs_allowed_name_set when entry.name == sub_scope.edit_obj.name)
-            if cur_var.length
-                cur_var = cur_var[0]
-                if cur_var.forced_type in ["i", "s"]
-                    sub_scope.edit_obj.var_type = cur_var.forced_type
-
-        sub_scope.edit_obj = obj_or_parent
-
-        sub_scope.valid_var_types = [
-            {short: "i", long: "integer"},
-            {short: "s", long: "string"},
-        ]
-        # init fields
-        sub_scope.change_scope()
-
-        icswComplexModalService(
-            {
-                message: $compile($templateCache.get("icsw.device.variable.form"))(sub_scope)
-                title: "Device Variable"
-                # css_class: "modal-wide"
-                ok_label: if create then "Create" else "Modify"
-                closable: true
-                ok_callback: (modal) ->
-                    d = $q.defer()
-                    if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "")
-                        d.reject("form not valid")
-                    else
-                        if create
-                            if single_create
-                                # single creation
-                                scope.device_tree.create_device_variable(sub_scope.edit_obj, scope.helper).then(
-                                    (new_conf) ->
-                                        d.resolve("created")
-                                    (notok) ->
-                                        d.reject("not created")
-                                )
-                            else
-                                # multi-var creation
-                                wait_list = []
-                                for dev in scope.devices
-                                    local_var = angular.copy(sub_scope.edit_obj)
-                                    local_var.device = dev.idx
-                                    wait_list.push(scope.device_tree.create_device_variable(local_var, scope.helper))
-                                $q.allSettled(wait_list).then(
-                                    (result) ->
-                                        d.resolve("created")
-                                )
-                        else
-                            scope.device_tree.update_device_variable(sub_scope.edit_obj, scope.helper).then(
-                                (new_var) ->
-                                    d.resolve("updated")
-                                (not_ok) ->
-                                    d.reject("not updated")
-                            )
-                    return d.promise
-                cancel_callback: (modal) ->
-                    if not create
-                        dbu.restore_backup(obj_or_parent)
-                    d = $q.defer()
-                    d.resolve("cancel")
-                    return d.promise
+            obj_or_parent = {
+                device: 0
+                name: "new_variable"
+                var_type: "s"
+                _mon_var: null
+                inherit: true
+                device_variable_scope: device_variable_scope_tree.lut_by_name["normal"].idx
             }
+    else
+        single_create = false
+        dbu = new icswDeviceVariableBackup()
+        dbu.create_backup(obj_or_parent)
+
+    $scope.valid_var_types = [
+        {short: "i", long: "integer"},
+        {short: "s", long: "string"},
+    ]
+    $scope.edit_obj = obj_or_parent
+    $scope.create = create
+    $scope.single_create = single_create
+    $scope.mon_vars = []
+    # init monitoring vars when single_create is True
+    if single_create
+        # fetch mon_vars
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.MON_GET_MON_VARS
+            data: {
+                device_pk: device.idx
+            }
+            dataType: "json"
         ).then(
-            (fin) ->
-                console.log "finish"
-                sub_scope.$destroy()
+            (json) ->
+                # add selections delayed
+                for entry in json
+                    $scope.mon_vars.push(entry)
         )
+        # install take_mon_var command
+        $scope.take_mon_var = () ->
+            if $scope.edit_obj._mon_var?
+                # copy monitoring var
+                _mon_var = $scope.edit_obj._mon_var
+                $scope.edit_obj.var_type = _mon_var.type
+                $scope.edit_obj.name = _mon_var.name
+                $scope.edit_obj.device_variable_scope = device_variable_scope_tree.lut_by_name["normal"].idx
+                $scope.edit_obj.inherit = false
+                if _mon_var.type == "i"
+                    $scope.edit_obj.val_int = parseInt(_mon_var.value)
+                else
+                    $scope.edit_obj.val_str = _mon_var.value
 
-    return {
-        fetch: (scope) ->
-            # copy device list and references from icsw_config_object
+    # functions
 
-            scope.helper = scope.icsw_config_object.helper
-            scope.devices = scope.icsw_config_object.devices
-            scope.device_tree = scope.icsw_config_object.device_tree
-            scope.device_variable_scope_tree = scope.icsw_config_object.device_variable_scope_tree
+    $scope.change_scope = () ->
+        cur_scope = device_variable_scope_tree.lut[$scope.edit_obj.device_variable_scope]
+        if cur_scope.dvs_allowed_name_set.length
+            $scope.$$discrete_names = true
+            $scope.$$possible_names = (entry.name for entry in cur_scope.dvs_allowed_name_set)
+            if $scope.edit_obj.name not in $scope.$$possible_names
+                $scope.edit_obj.name = $scope.$$possible_names[0]
+        else
+            $scope.$$discrete_names = false
+            $scope.$$possible_names = []
 
-            _list_defer = $q.defer()
-            _list_defer.resolve(scope.devices)
-            return _list_defer.promise
+    $scope.change_name = () ->
+        cur_scope = device_variable_scope_tree.lut[$scope.edit_obj.device_variable_scope]
+        cur_var = (entry for entry in cur_scope.dvs_allowed_name_set when entry.name == $scope.edit_obj.name)
+        if cur_var.length
+            cur_var = cur_var[0]
+            if cur_var.forced_type in ["i", "s"]
+                $scope.edit_obj.var_type = cur_var.forced_type
 
-        toggle_expand: (obj) ->
-            obj.$vars_expanded = not obj.$vars_expanded
+    # init fields
+    $scope.change_scope()
 
-        get_expand_class: (obj) ->
-            if obj.$vars_expanded
-                return "glyphicon glyphicon-chevron-down"
-            else
-                return "glyphicon glyphicon-chevron-right"
-
-        # variable related calls
-        variable_edit_ok: (d_var, device) ->
-            return d_var.device == device.idx and d_var.is_public
-
-        variable_delete_ok: (d_var, device) ->
-            return d_var.device == device.idx and !d_var.protected
-
-        variable_local_copy_ok: (d_var, device) ->
-            return d_var.device != device.idx and d_var.local_copy_ok
-
-        get_source: (d_var, device) ->
-            if d_var.device == device.idx
-                return "direct"
-            else if d_var.$source == "m"
-                return "group"
-            else
-                return "cluster"
-
-        create_or_edit: (scope, event, create, obj_or_parent) ->
-            create_or_edit(scope, event, create, obj_or_parent)
-
-        delete: (scope, event, d_var) ->
-            icswToolsSimpleModalService("Really delete Device Variable '#{d_var.name}' ?").then(
-                () =>
-                    blockUI.start()
-                    scope.device_tree.delete_device_variable(d_var).then(
-                        () ->
-                            scope.helper.filter_device_variables()
+    icswComplexModalService(
+        {
+            message: $compile($templateCache.get("icsw.device.variable.form"))($scope)
+            title: "Device Variable"
+            # css_class: "modal-wide"
+            ok_label: if create then "Create" else "Modify"
+            closable: true
+            ok_callback: (modal) ->
+                d = $q.defer()
+                if $scope.form_data.$invalid
+                    toaster.pop("warning", "form validation problem", "")
+                    d.reject("form not valid")
+                else
+                    save_defer = $q.defer()
+                    blockUI.start("saving ...")
+                    if create
+                        if single_create
+                            # single creation
+                            struct.device_tree.create_device_variable($scope.edit_obj, struct.helper).then(
+                                (new_conf) ->
+                                    save_defer.resolve("created")
+                                (notok) ->
+                                    save_defer.reject("not created")
+                            )
+                        else
+                            # multi-var creation
+                            wait_list = []
+                            for dev in struct.devices
+                                local_var = angular.copy($scope.edit_obj)
+                                local_var.device = dev.idx
+                                wait_list.push(struct.device_tree.create_device_variable(local_var, struct.helper))
+                            $q.allSettled(wait_list).then(
+                                (result) ->
+                                    save_defer.resolve("created")
+                            )
+                    else
+                        struct.device_tree.update_device_variable($scope.edit_obj, struct.helper).then(
+                            (new_var) ->
+                                save_defer.resolve("updated")
+                            (not_ok) ->
+                                save_defer.reject("not updated")
+                        )
+                    save_defer.promise.then(
+                        (ok) ->
                             blockUI.stop()
-                        (error) ->
+                            d.resolve(ok)
+                        (notok) ->
                             blockUI.stop()
+                            d.reject(notok)
                     )
-            )
+                return d.promise
+            cancel_callback: (modal) ->
+                if not create
+                    dbu.restore_backup(obj_or_parent)
+                d = $q.defer()
+                d.resolve("cancel")
+                return d.promise
+        }
+    ).then(
+        (fin) ->
+            console.log "finish"
+            $scope.$destroy()
+    )
 
-        special_fn: (scope, event, fn_name, d_var, device) ->
-            if fn_name == "local_copy"
-                new_var = angular.copy(d_var)
-                new_var.device = device.idx
-                blockUI.start()
-                scope.device_tree.create_device_variable(new_var, scope.helper).then(
-                    (new_conf) ->
-                        blockUI.stop()
-                    (notok) ->
-                        blockUI.stop()
-                )
-            else if fn_name == "create_for_all"
-                create_or_edit(scope, event, true, null)
 
-    }
 ]).controller("icswDeviceVariableCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
-    "icswTools", "icswDeviceVariableListService", "icswDeviceVariableScopeTreeService",
-    "icswDeviceTreeService", "icswDeviceTreeHelperService",
+    "icswTools", "icswDeviceVariableScopeTreeService",
+    "icswDeviceTreeService", "icswDeviceTreeHelperService", "icswDeviceVariableBackup",
+    "toaster", "icswComplexModalService", "icswSimpleAjaxCall", "ICSW_URLS", "$controller",
+    "icswToolsSimpleModalService",
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
-    icswTools, icswDeviceVariableListService, icswDeviceVariableScopeTreeService,
-    icswDeviceTreeService, icswDeviceTreeHelperService,
+    icswTools, icswDeviceVariableScopeTreeService,
+    icswDeviceTreeService, icswDeviceTreeHelperService, icswDeviceVariableBackup,
+    toaster, icswComplexModalService, icswSimpleAjaxCall, ICSW_URLS, $controller,
+    icswToolsSimpleModalService,
 ) ->
     $scope.vars = {
         name_filter: ""
@@ -408,10 +353,13 @@ device_variable_module = angular.module(
         devices: []
         # device tree
         device_tree: undefined
+        # helper
+        helper: undefined
         # device variable scope tree
         device_variable_scope_tree: undefined
+        # data loaded
+        data_loaded: false
     }
-    $scope.dataLoaded = false
 
     $scope.new_devsel = (devs) ->
         $q.all(
@@ -426,14 +374,15 @@ device_variable_module = angular.module(
                 trace_devices =  device_tree.get_device_trace(devs)
                 hs = icswDeviceTreeHelperService.create(device_tree, trace_devices)
                 device_tree.enrich_devices(hs, ["variable_info"]).then(
-                    (_done) ->
+                    (done) ->
                         $scope.struct.devices.length = 0
                         for entry in devs
                             $scope.struct.devices.push(entry)
                         $scope.struct.device_tree = device_tree
                         $scope.struct.helper = hs
                         # console.log "****", $scope.devices
-                        $scope.dataLoaded = true
+                        $scope.struct.data_loaded = true
+                        $scope.new_filter_set()
                 )
         )
 
@@ -453,9 +402,79 @@ device_variable_module = angular.module(
         else
             return obj.full_name
 
-    $scope.new_filter_set = () ->
-        $scope.struct.helper.set_var_filter($scope.vars.name_filter)
+    $scope.new_filter_set = ($event) ->
+        # $scope.struct.helper.set_var_filter($scope.vars.name_filter)
 
+    $scope.toggle_expand = ($event, obj) ->
+        obj.$vars_expanded = not obj.$vars_expanded
+
+    $scope.create_or_edit = ($event, create, obj_or_parent) ->
+        _dvst = $scope.struct.device_variable_scope_tree
+        sub_scope = $scope.$new(true)
+        $controller(
+            "icswDeviceVariableEditCtrl"
+            {
+                $scope: sub_scope
+                device_variable_scope_tree: $scope.struct.device_variable_scope_tree
+                create: create
+                obj_or_parent: obj_or_parent
+                struct: $scope.struct
+            }
+        )
+        sub_scope.$on("$destroy", () ->
+            console.log "D"
+        )
+
+    $scope.delete = ($event, device, d_var) ->
+        icswToolsSimpleModalService("Really delete Device Variable '#{d_var.name}' ?").then(
+            () =>
+                blockUI.start()
+                $scope.struct.device_tree.delete_device_variable(d_var).then(
+                    () ->
+                        $scope.struct.helper.salt_device_variables()
+                        blockUI.stop()
+                    (error) ->
+                        blockUI.stop()
+                )
+        )
+
+    $scope.local_copy = ($event, device, d_var) ->
+        new_var = angular.copy(d_var)
+        new_var.device = device.idx
+        blockUI.start()
+        $scope.struct.device_tree.create_device_variable(new_var, $scope.struct.helper).then(
+            (new_conf) ->
+                blockUI.stop()
+            (notok) ->
+                blockUI.stop()
+        )
+
+    $scope.config_service = {
+        get_source: (d_var, device) ->
+            if d_var.device == device.idx
+                return "direct"
+            else if d_var.$source == "m"
+                return "group"
+            else
+                return "cluster"
+
+        # variable related calls
+        variable_edit_ok: (d_var, device) ->
+            return d_var.device == device.idx and d_var.is_public
+
+        variable_delete_ok: (d_var, device) ->
+            return d_var.device == device.idx and !d_var.protected
+
+        variable_local_copy_ok: (d_var, device) ->
+            return d_var.device != device.idx and d_var.local_copy_ok
+
+        get_expand_class: (obj) ->
+            if obj.$vars_expanded
+                return "glyphicon glyphicon-chevron-down"
+            else
+                return "glyphicon glyphicon-chevron-right"
+
+    }
 ]).directive("icswDeviceVariableOverview",
 [
     "$templateCache",
@@ -476,18 +495,6 @@ device_variable_module = angular.module(
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.variable.table")
-        link : (scope, el, attrs) ->
-            scope.device = scope.$eval(attrs["device"])
-    }
-]).directive("icswDeviceVariableHead",
-[
-    "$templateCache",
-(
-    $templateCache
-) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.variable.head")
     }
 ]).directive("icswDeviceVariableRow",
 [

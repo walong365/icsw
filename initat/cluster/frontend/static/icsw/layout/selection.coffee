@@ -243,7 +243,7 @@ angular.module(
         resolve_dev_name: (dev_idx) =>
             _dev = @tree.all_lut[dev_idx]
             if _dev.is_meta_device
-                return "[M] " + _dev.full_name.substring(8)
+                return "[M] " + _dev.$$print_name
             else
                 return _dev.full_name
 

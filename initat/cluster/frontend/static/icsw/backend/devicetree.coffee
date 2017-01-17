@@ -234,17 +234,17 @@ angular.module(
                             dev_lut[cd.child].$$master_list.push(cd)
             
         post_g_variable_info: () ->
-            if not @var_name_filter?
-                @var_name_filter = ""
-            for dev in @devices
-                if not dev.$vars_expanded?
-                    dev.$vars_expanded = false
-            @filter_device_variables()
+            # if not @var_name_filter?
+            #     @var_name_filter = ""
+            # for dev in @devices
+            #    if not dev.$vars_expanded?
+            #        dev.$vars_expanded = false
+            @salt_device_variables()
 
             
-        set_var_filter: (new_filter) =>
-            @var_name_filter = new_filter
-            @filter_device_variables()
+        # set_var_filter: (new_filter) =>
+        #    @var_name_filter = new_filter
+        #    @filter_device_variables()
 
         replace_device_variable: (new_var) =>
             for dev in @devices
@@ -252,20 +252,20 @@ angular.module(
                     _.remove(dev.device_variable_set, (entry) -> return entry.idx == new_var.idx)
                     dev.device_variable_set.push(new_var)
                     
-        filter_device_variables: () =>
-            try
-                filter_re = new RegExp(@var_name_filter, "gi")
-            catch
-                filter_re = new RegExp("^$", "gi")
+        salt_device_variables: () =>
+            # try
+            #    filter_re = new RegExp(@var_name_filter, "gi")
+            # catch
+            #    filter_re = new RegExp("^$", "gi")
             # scope tree
             _dvst = @tree.device_variable_scope_tree
             # step 1: filter variables
             for dev in @devices
-                dev.$var_filter_active = false
-                if dev.device_variables_filtered?
-                    dev.device_variables_filtered.length = 0
+                # dev.$var_filter_active = false
+                if dev.device_variables?
+                    dev.device_variables.length = 0
                 else
-                    dev.device_variables_filtered = []
+                    dev.device_variables = []
                 if dev.is_cluster_device_group
                     v_source = "c"
                 else if dev.is_meta_device
@@ -276,9 +276,18 @@ angular.module(
                 dev.$num_vars_parent = 0
                 dev.$num_vars_shadowed = 0
                 for d_var in dev.device_variable_set
+                    d_var.$$from_server = true
+                    d_var.$$device = dev
+                    d_var.$$inherited = false
+                    d_var.$$created_mom = moment(d_var.date)
+                    d_var.$$created_str = d_var.$$created_mom.format("dd, D. MMM YYYY HH:mm:ss")
                     if not d_var.$selected?
                         d_var.$selected = false
                     d_var.$scope_name = _dvst.lut[d_var.device_variable_scope].name
+                    # how oftens is this variable shadowed
+                    d_var.$$shadow_count = 0
+                    # is a shadow of an inherited variable
+                    d_var.$$shadow = false
                     # set var_type
                     if d_var.var_type == "s"
                         d_var.$var_type = "string"
@@ -304,53 +313,83 @@ angular.module(
 
                     # source is device
                     d_var.$source = v_source
-                    if d_var.name.match(filter_re)
-                        dev.device_variables_filtered.push(d_var)
-                    else
-                        dev.$var_filter_active = true
-                dev.$local_var_names = (d_var.name for d_var in dev.device_variables_filtered)
+                    # if d_var.name.match(filter_re)
+                    dev.device_variables.push(d_var)
+                    # else
+                    #    dev.$var_filter_active = true
+                dev.$local_var_names = (d_var.name for d_var in dev.device_variables)
+                # variable names inheritted from meta
                 dev.$local_meta_var_names = []
+
+            _copy_var = (s_var) ->
+                new_var = angular.copy(s_var)
+                new_var.$$from_server = false
+                new_var.$$shadow_count = 0
+                new_var.$$shadow = false
+                new_var.$$inherited = true
+                return new_var
+
             # step 2: add meta-vars to devices
             for dev in @devices
                 if not dev.is_meta_device
                     meta = @tree.get_meta_device(dev)
-                    if not meta.device_variables_filtered?
-                        console.error "metadevice #{meta.full_name} / #{meta.idx} not init, deviceHelper call missing?"
-                    for d_var in meta.device_variables_filtered
+                    # if not meta.device_variables_filtered?
+                    #    console.error "metadevice #{meta.full_name} / #{meta.idx} not init, deviceHelper call missing?"
+                    for d_var in meta.device_variable_set
                         if d_var.inherit
                             if d_var.name in dev.$local_var_names
                                 # var locally set, ignore
                                 dev.$num_vars_shadowed++
+                                _local_var = (l_var for l_var in dev.device_variables when l_var.name == d_var.name)[0]
+                                _local_var.$$shadow = true
+                                d_var.$$shadow_count++
                             else
-                                if !(d_var in dev.device_variables_filtered)
-                                    dev.device_variables_filtered.push(d_var)
+                                if d_var not in dev.device_variables
+                                    dev.device_variables.push(_copy_var(d_var))
                                     dev.$num_vars_total++
                                     dev.$num_vars_parent++
+                                else
+                                    console.error "N O"
                             # store in local_meta_var_names
-                            if !(d_var.name in dev.$local_meta_var_names)
+                            if d_var.name not in dev.$local_meta_var_names
+                                console.log "MVN", d_var.name
                                 dev.$local_meta_var_names.push(d_var.name)
+
             # step 3: add cdg vars to rest
             cdg_dev = @tree.cluster_device_group_device
             for dev in @devices
                 if dev.idx != cdg_dev.idx
-                    for d_var in cdg_dev.device_variables_filtered
+                    console.log "****", dev.$$print_name
+                    for d_var in cdg_dev.device_variables
                         if d_var.inherit
-                            if d_var.name in dev.$local_var_names
-                                if d_var not in dev.$local_meta_var_names
+                            console.log "g", d_var.name, d_var.name in dev.$local_var_names
+                            _is_local = d_var.name in dev.$local_var_names
+                            _is_meta_inherited = d_var.name in dev.$local_meta_var_names
+                            if _is_local
+                                if not _is_meta_inherited
                                     dev.$num_vars_shadowed++
+                                    _local_var = (l_var for l_var in dev.device_variables when l_var.name == d_var.name)[0]
+                                    _local_var.$$shadow = true
+                                    console.log "D", d_var
+                                    d_var.$$shadow_count++
                                 else
                                     # var already shadowed via meta, ignore
+                                    console.log "mc"
                                     true
+                            #else if _is_meta_inherited
+                            #    # var is inherited from meta
+                            #    console.log "********", d_var
                             else
-                                if !(d_var in dev.device_variables_filtered)
-                                    dev.device_variables_filtered.push(d_var)
+                                if d_var not in dev.device_variables
+                                    console.log "COPY"
+                                    dev.device_variables.push(_copy_var(d_var))
                                     dev.$num_vars_total++
                                     dev.$num_vars_parent++
-                dev.$num_vars_filtered = dev.device_variables_filtered.length
+                # dev.$num_vars_filtered = dev.device_variables.length
             # step 4: sort variables
             for dev in @devices
                 icswTools.order_in_place(
-                    dev.device_variables_filtered
+                    dev.device_variables
                     ["$scope_name"]
                     ["name"]
                     ["asc"]
@@ -862,6 +901,8 @@ angular.module(
                 dev._nc_device_group_name = _.toLower(dev.device_group_name)
                 dev.full_name = @domain_tree.get_full_name(dev)
                 dev._nc_name = _.toLower(dev.name)
+            for group in @group_list
+                group.full_name = @domain_tree.get_full_name(dev)
             # see code in rest_views
             @build_luts(
                 _.orderBy(
@@ -887,6 +928,10 @@ angular.module(
             @cluster_device_group = undefined
             _disabled_groups = []
             for _entry in full_list
+                if _entry.is_meta_device
+                    _entry.$$print_name = _entry.full_name.substring(8)
+                else
+                    _entry.$$print_name = _entry.full_name
                 if not _entry.$$delete_pending?
                     _entry.$$delete_pending = false
                 # pseudo flag from backend
@@ -1231,7 +1276,7 @@ angular.module(
             cur_var.put().then(
                 (mod_var) =>
                     helper.replace_device_variable(mod_var)
-                    helper.filter_device_variables()
+                    helper.salt_device_variables()
                     defer.resolve("updated")
                 (not_ok) =>
                     defer.reject("not ok")
@@ -1270,7 +1315,7 @@ angular.module(
                 (new_var) =>
                     dev = @all_lut[new_var.device]
                     dev.device_variable_set.push(new_var)
-                    helper.filter_device_variables()
+                    helper.salt_device_variables()
                     defer.resolve(msg)
             )
 

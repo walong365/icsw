@@ -116,8 +116,8 @@
             >
                 <uib-tab-heading>
                     <span ng-show="entry.edit_obj.is_meta_device" class="glyphicon glyphicon-list"></span>
-                    <span ng-show="entry.init_called">{{ entry.edit_obj.$$full_device_name }}</span>
-                    <em ng-show="!entry.init_called">{{ entry.edit_obj.$$full_device_name }}</em>
+                    <span ng-show="entry.init_called">{{ entry.edit_obj.$$print_name }}</span>
+                    <em ng-show="!entry.init_called">{{ entry.edit_obj.$$print_name }}</em>
                     <img ng-if="entry.edit_obj.mon_ext_host" ng-src="{{ entry.edit_obj.$$image_source }}" width="16"></img>
                 </uib-tab-heading>
                 <icsw-device-info-device icsw-struct="entry"></icsw-device-info-device>
@@ -136,7 +136,7 @@
                             ng-click="show_device($event, entry)"
                         ></icsw-tools-button>
                         <span ng-show="entry.edit_obj.is_devicegroup" class="glyphicon glyphicon-list"></span>
-                        {{ entry.edit_obj.$$full_device_name }}
+                        {{ entry.edit_obj.$$print_name }}
                     </li>
                 </ul>
             </uib-tab>
@@ -148,7 +148,7 @@
 <script type="text/ng-template" id="icsw.device.info.form">
     <fieldset>
         <legend>
-            Base Information for '{{ edit_obj.$$full_device_name }}'
+            Base Information for '{{ edit_obj.$$print_name }}'
             <img ng-if="edit_obj.mon_ext_host" ng-src="{{ edit_obj.$$image_source }}" width="16" style="margin-left:5px;"></img>
         </legend>
         <div class="form-group row">
@@ -396,7 +396,7 @@
     <form class="form-horizontal" name="form_data">
         <fieldset>
             <legend>
-                Basic Settings for '{{ edit_obj.$$full_device_name }}'
+                Basic Settings for '{{ edit_obj.$$print_name }}'
                 <img ng-if="edit_obj.mon_ext_host" ng-src="{{ edit_obj.$$image_source }}" width="16"></img>
             </legend>
             <div class="form-group row">

@@ -24,8 +24,6 @@ daphne consumers
 
 """
 
-
-
 from channels import Group
 from channels.generic import BaseConsumer
 from django.conf import settings

@@ -315,8 +315,9 @@ def device_variable_pre_save(sender, **kwargs):
                     ).count()
                     print("Fg", _found)
                 if _allowed_struct.forced_type:
+                    # print(cur_inst.var_type, _allowed_struct.forced_type)
                     if cur_inst.var_type != _allowed_struct.forced_type:
-                        raise ValidationError("Type is not allowed")
+                        raise ValidationError("Type is not allowed (VariableScope issue)")
             check_empty_string(cur_inst, "name")
             all_var_names = device_variable.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device)).values_list("name", flat=True)
             if cur_inst.name in all_var_names:

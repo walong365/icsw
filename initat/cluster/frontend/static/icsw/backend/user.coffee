@@ -48,11 +48,11 @@ angular.module(
                 for entry in device_tree.enabled_list
                     if entry.is_meta_device
                         if entry.is_cluster_device_group
-                            _name = "[CDG] " + entry.full_name.substr(8)
+                            _name = "[CDG] " + entry.$$print_name
                         else
-                            _name = "[MD] " + entry.full_name.substr(8)
+                            _name = "[MD] " + entry.$$print_name
                     else
-                        _name = entry.full_name
+                        _name = entry.$$print_name
                     _list.push(
                         {
                             idx: entry.idx
