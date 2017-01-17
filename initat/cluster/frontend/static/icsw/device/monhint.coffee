@@ -146,12 +146,6 @@ angular.module(
         devices: []
         # device tree
         device_tree: undefined
-        # config accordion
-        monconfig_open: true
-        # hint accordion
-        monhint_open: true
-        # device logs open
-        devlog_open: false
         # monconfig tables
         mc_tables: []
         # active table

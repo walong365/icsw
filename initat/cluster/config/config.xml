@@ -830,7 +830,7 @@
         </menuHeader>
     </menu>
     <menu layout="newstyle">
-        <menuHeader name="Device" icon="fa-question" side="left">
+        <menuHeader name="Device" icon="fa-desktop" side="left">
             <routeSubGroup name="Control">
                 <menuEntry icon="fa-plus-circle" routeName="main.devicecreate" name="New"/>
                 <menuEntry icon="fa-tree" routeName="main.devtree" name="Tree"/>
@@ -852,7 +852,7 @@
                 <menuEntry icon="fa-info" routeName="main.monitordynamic" name="Dynamic Monitoring"/>
             </routeSubGroup>
         </menuHeader>
-        <menuHeader name="Status" icon="fa-question" side="left">
+        <menuHeader name="Status" icon="fa-eye" side="left">
             <routeSubGroup name="Status">
                 <menuEntry icon="fa-dashboard" routeName="main.dashboard" name="Dashboard"/>
                 <menuEntry icon="fa-dot-circle-o" routeName="main.livestatus" name="Liveview"/>
@@ -863,14 +863,14 @@
                 <menuEntry icon="fa-book" routeName="main.report" name="Report History"/>
             </routeSubGroup>
         </menuHeader>
-        <menuHeader name="Asset" icon="fa-question" side="left">
+        <menuHeader name="Asset" icon="fa-diamond" side="left">
             <routeSubGroup name="Asset">
                 <menuEntry icon="fa-reorder" routeName="main.assetstaticoverview" name="Static"/>
                 <menuEntry icon="fa-diamond" routeName="main.assetdynamicoverview" name="Dynamic"/>
                 <menuEntry icon="fa-clock-o" routeName="main.schedasset" name="Select Schedules"/>
             </routeSubGroup>
         </menuHeader>
-        <menuHeader name="HPC" icon="fa-question" side="left">
+        <menuHeader name="HPC" icon="fa-cloud" side="left">
             <routeSubGroup name="HPC">
                 <menuEntry icon="fa-rocket" routeName="main.deployboot" name="Boot nodes"/>
                 <menuEntry icon="fa-database" routeName="main.partition" name="Partition overview"/>

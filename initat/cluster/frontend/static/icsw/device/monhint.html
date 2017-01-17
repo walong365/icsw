@@ -1,6 +1,7 @@
 <script type="text/ng-template" id="icsw.device.livestatus.monconfig">
     <div class="container-fluid">
         <h3 ng-show="struct.devices.length">
+            <icsw-widget></icsw-widget>
             Monitoring Configuration and Hints for
             <icsw-device-list-info icsw-device-list="struct.devices"></icsw-device-list-info>
         </h3>
@@ -16,11 +17,12 @@
             ng-show="!struct.loading && struct.devices.length == 0">
             No devices selected
         </div>
-        <uib-accordion close-others="no" ng-if="struct.devices.length">
-            <div uib-accordion-group class="panel-default" is-open="struct.monconfig_open" ng-show="!struct.fetching">
-                <uib-accordion-heading>
-                    <icsw-tools-accordion-chevron icsw-flag="struct.monconfig_open"></icsw-tools-accordion-chevron>
+        <uib-tabset ng-if="struct.devices.length">
+            <uib-tab>
+                <uib-tab-heading>
                     Monitoring Configuration ({{ struct.mc_tables.length }} Tables shown)
+                </uib-tab-heading>
+                <h3>
                     <span class="text-danger" ng-show="struct.fetching_mon">Fetching Monitoring Data from Server ...</span>
                     <icsw-tools-button
                         type="create"
@@ -28,7 +30,7 @@
                         ng-click="load_mon_data($event)"
                         ng-show="!struct.fetching_mon"
                     ></icsw-tools-button>
-                </uib-accordion-heading>
+                </h3>
                 <uib-tabset active="struct.active_table">
                     <uib-tab ng-repeat="table in struct.mc_tables" index="table.name">
                         <uib-tab-heading>
@@ -90,18 +92,19 @@
                         </table>
                     </uib-tab>
                 </uib-tabset>
-            </div>
-            <div uib-accordion-group class="panel-default" is-open="struct.devlog_open">
-                <uib-accordion-heading>
-                    <icsw-tools-accordion-chevron icsw-flag="struct.devlog_open"></icsw-tools-accordion-chevron>
+            </uib-tab>
+            <uib-tab>
+                <uib-tab-heading>
                     Device logs ({{ struct.devices.length }} devices)
-                </uib-accordion-heading>
+                </uib-tab-heading>
                 <icsw-device-log-table icsw-device-list="struct.devices"></icsw-device-log-table>
-            </div>
-            <div uib-accordion-group class="panel-default" is-open="struct.monhint_open">
-                <uib-accordion-heading>
-                    <icsw-tools-accordion-chevron icsw-flag="struct.monhint_open"></icsw-tools-accordion-chevron>
+            </uib-tab>
+            <uib-tab>
+                <uib-tab-heading>
                     Monitoring Hints
+                </uib-tab-heading>
+                <h3>
+                    Hints
                     <span class="text-danger" ng-show="struct.fetching_hint">Fetching Monitoring Hints from Server ...</span>
                     <icsw-tools-button
                         type="reload"
@@ -119,8 +122,7 @@
                     <span ng-show="struct.trigger_fetch" class="text-warning">
                         Fetching DynConfig...
                     </span>
-                </uib-accordion-heading>
-
+                </h3>
                 <uib-tabset ng-show="!struct.trigger_fetch">
                     <uib-tab ng-repeat="device in struct.devices">
                         <uib-tab-heading>
@@ -149,8 +151,8 @@
                         ></icsw-monitoring-hint-table>
                     </uib-tab>
                 </uib-tabset>
-            </div>
-        </uib-accordion>
+            </uib-tab>
+        </uib-tabset>
     </div>
 </script>
 
