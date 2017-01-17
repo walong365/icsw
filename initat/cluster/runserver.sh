@@ -55,6 +55,10 @@ done
 
 export ICSW_DEBUG_SOFTWARE=1
 
+# disable __pycache__
+
+export PYTHONDONTWRITEBYTECODE=1
+
 [ ! -z "${EXTRA_OPTIONS}" ] && echo "settings: EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
 
 echo "Starting daphne, worker and server ..."

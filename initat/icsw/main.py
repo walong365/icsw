@@ -34,6 +34,7 @@ def main():
 if __name__ == "__main__":
     if __package__ is None:
         _add_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        sys.dont_write_bytecode = True
         if _add_path not in sys.path:
             sys.path.insert(0, _add_path)
     main()
