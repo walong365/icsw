@@ -1668,6 +1668,7 @@ angular.module(
             sub_scope = scope.$new(false)
             sub_scope.dispatcher_tree = dispatcher_tree
             sub_scope.nmap_scan_devices = []
+            sub_scope.create_mode = create
 
             icswConfigTreeService.load(scope.$id).then(
                 (config_tree) ->
@@ -1709,25 +1710,25 @@ angular.module(
                                         scope.edit_obj.put().then(
                                             (ok) ->
                                                 nw_tree.reorder()
-                                                d.resolve("updated")
+                                                icswSimpleAjaxCall(
+                                                    {
+                                                        url: ICSW_URLS.DISCOVERY_DISPATCHER_LINK_SYNCER
+                                                        data:
+                                                            model_name: "network"
+                                                            object_id: scope.edit_obj.idx
+                                                            dispatcher_setting_ids: (idx for idx in scope.edit_obj.$$dispatchers)
+                                                            schedule_handler: "network_scan_schedule_handler"
+                                                            schedule_handler_data: "" + scope.edit_obj.$$scan_device
+                                                            user_id: user_tree.user.idx
+                                                        dataType: "json"
+                                                    }
+                                                ).then(
+                                                    (ok) ->
+                                                        d.resolve("updated")
+                                                )
                                             (not_ok) ->
                                                 d.reject("not updated")
                                         )
-
-                                    icswSimpleAjaxCall(
-                                        {
-                                            url: ICSW_URLS.DISCOVERY_DISPATCHER_LINK_SYNCER
-                                            data:
-                                                model_name: "network"
-                                                object_id: scope.edit_obj.idx
-                                                dispatcher_setting_ids: (idx for idx in scope.edit_obj.$$dispatchers)
-                                                schedule_handler: "network_scan_schedule_handler"
-                                                schedule_handler_data: "" + scope.edit_obj.$$scan_device
-                                                user_id: user_tree.user.idx
-                                            dataType: "json"
-                                        }
-                                    )
-
 
                                 return d.promise
                             cancel_callback: (modal) ->

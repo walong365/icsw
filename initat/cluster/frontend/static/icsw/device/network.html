@@ -1531,7 +1531,7 @@
                     </div>
                 </fieldset>
             </uib-tab>
-            <uib-tab heading="Host Discovery">
+            <uib-tab ng-show="!create_mode" heading="Host Discovery">
                 <legend>Scan Settings</legend>
                 <div ng-if="nmap_scan_devices.length > 0" class="form-group">
                     <label class="control-label col-sm-3 requiredField icsw-formlabel">
