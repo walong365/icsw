@@ -57,6 +57,7 @@ class BuildProcess(
         self.CC.init(None, global_config)
         db_tools.close_connection()
         self.__hosts_pending, self.__hosts_waiting = (set(), set())
+        self.register_func("init_build", self._init_build)
         self.register_func("start_build", self._start_build)
         self.register_func("fetch_dyn_config", self._fetch_dyn_config)
         self.register_func("routing_fingerprint", self._routing_fingerprint)
@@ -306,7 +307,8 @@ class BuildProcess(
         end_time = time.time()
         self.log("dyn_config run took {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
 
-    def _start_build(self, *args, **kwargs):
+    def _init_build(self, *args, **kwargs):
+        # set basic settings from control
         args = list(args)
         self.build_mode = getattr(BuildModesEnum, args.pop(0))
         self.__gen_config = MainConfig(self, args.pop(0))
@@ -314,23 +316,27 @@ class BuildProcess(
         self.srv_com = server_command.srv_command(source=args.pop(0))
         self.single_build = True if len(args) > 0 else False
         self.host_list = list(args)
-        if self.__gen_config.master:
-            self.router_obj = config_tools.RouterObject(self.log)
-            self.send_pool_message("build_step", "routing_ok", self.router_obj.fingerprint)
-            self.routing_fingerprint = self.router_obj.fingerprint
-            build_cache = BuildCache(
-                self.log,
-                full_build=not self.single_build,
-                router_obj=self.router_obj,
-            )
-            if self.build_mode == BuildModesEnum.all_master:
-                # from mixin
-                # todo, remove, move to syncer
-                self.VCM_check_md_version()
-                self._cleanup_db()
-                # check for SNMP container config
-                self._check_for_snmp_container()
-            self.fingerprint_set(build_cache)
+
+    def _start_build(self, *args, **kwargs):
+        # called after init_build, split from init_build to avoid the slaves process
+        # receiving fingerprint_set before init_build (was: start_build)
+        # only called for master process
+        self.router_obj = config_tools.RouterObject(self.log)
+        self.send_pool_message("build_step", "routing_ok", self.router_obj.fingerprint)
+        self.routing_fingerprint = self.router_obj.fingerprint
+        build_cache = BuildCache(
+            self.log,
+            full_build=not self.single_build,
+            router_obj=self.router_obj,
+        )
+        if self.build_mode == BuildModesEnum.all_master:
+            # from mixin
+            # todo, remove, move to syncer
+            self.VCM_check_md_version()
+            self._cleanup_db()
+            # check for SNMP container config
+            self._check_for_snmp_container()
+        self.fingerprint_set(build_cache)
 
     def fingerprint_set(self, build_cache):
         # fingerprint valid (either called directly or via routing_fingerprint command from control)

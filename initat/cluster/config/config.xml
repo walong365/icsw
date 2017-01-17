@@ -290,7 +290,7 @@
                 </description>
             </icswData>
         </route>
-        <route name="main.monitorbuildinfo">
+        <!-- <route name="main.monitorbuildinfo">
             <stateData url="/monitorbuildinfo" templateUrl="icsw/monitoring/build/info"/>
             <icswData pageTitle="Monitoring Control and Buildinfo">
                 <rights>
@@ -303,7 +303,7 @@
                     <infoText language="en">Trigger a monitoring configuration re-build</infoText>
                 </description>
             </icswData>
-        </route>
+        </route> -->
         <route name="main.monitorlocation">
             <stateData url="/monitorlocation" templateUrl="icsw/device/location/monitoring"/>
             <icswData pageTitle="Location Service">
@@ -717,7 +717,7 @@
             <routeSubGroup name="Control">
                 <menuEntry icon="fa-plug" name="Power Controlling Connections" routeName="main.deviceconnection"/>
                 <menuEntry icon="fa-clock-o" name="Schedule Asset Run" routeName="main.schedasset"/>
-                <menuEntry icon="fa-eye" name="Monitoring" routeName="main.monitorbuildinfo"/>
+                <!-- <menuEntry icon="fa-eye" name="Monitoring" routeName="main.monitorbuildinfo"/> -->
                 <!-- <menuEntry icon="fa-reorder" name="Static Asset Templates" routeName="main.statictemplates"/> -->
             </routeSubGroup>
             <routeSubGroup name="Reporting">
@@ -784,7 +784,7 @@
                 <!-- <menuEntry icon="fa-hdd-o" routeName="main.monitordisk" name="Disk Information"/> -->
                 <menuEntry icon="fa-pie-chart" routeName="main.statushistory" name="Device Availability"/>
                 <menuEntry icon="fa-list-alt" name="Event Logs" routeName="main.eventlog"/>
-                <menuEntry icon="fa-info-circle" name="Control and Info" routeName="main.monitorbuildinfo"/>
+                <!-- <menuEntry icon="fa-info-circle" name="Control and Info" routeName="main.monitorbuildinfo"/> -->
                 <menuEntry icon="fa-map-marker" name="Location Service" routeName="main.monitorlocation"/>
                 <menuEntry icon="fa-code-fork" name="Key Performance Indicators" routeName="main.kpievaluation"/>
             </routeSubGroup>
@@ -890,7 +890,7 @@
                 <menuEntry icon="fa-heartbeat" name="Auto Discovery" routeName="main.networkoverview"/>
                 <menuEntry icon="fa-code-fork" routeName="main.kpisettings" name="KPI"/>
                 <menuEntry icon="fa-wrench" routeName="main.monitorbasics" name="Monitoring"/>
-                <menuEntry icon="fa-eye" name="Monitoring" routeName="main.monitorbuildinfo"/>
+                <!-- <menuEntry icon="fa-eye" name="Monitoring" routeName="main.monitorbuildinfo"/> -->
                 <menuEntry icon="fa-sitemap" routeName="main.devicenetwork" name="Network"/>
                 <menuEntry icon="fa-user" routeName="main.usertree" name="User, Groups and Roles"/>
                 <menuEntry icon="fa-info" routeName="main.serverinfo" name="Server Information"/>

@@ -36,7 +36,7 @@ logger = logging.getLogger("cluster.auth")
 
 
 class db_backend(object):
-    def authenticate(self, username=None, password=None):
+    def authenticate(self, username: str=None, password: str=None):
         try:
             cur_user = user.objects.get(Q(login=username))
         except user.DoesNotExist:
@@ -53,6 +53,9 @@ class db_backend(object):
                 pw_hash, db_password = cur_pw.split(":", 1)
             else:
                 pw_hash, db_password = ("", cur_pw)
+            if db_password.startswith("b'"):
+                # fix for temporary str / byte problems
+                db_password = db_password[2:-1]
             if pw_hash in ["SHA1"]:
                 new_h = hashlib.new(pw_hash)
                 new_h.update(password.encode("ascii"))
@@ -60,12 +63,12 @@ class db_backend(object):
                     # match
                     return cur_user
                 else:
-                    logger.warn("password mismatch for '{}'".format(username))
+                    logger.warning("password mismatch for '{}'".format(username))
             elif pw_hash in ["CRYPT"]:
                 if crypt.crypt(password, db_password) == db_password:
                     return cur_user
                 else:
-                    logger.warn("password mismatch for '{}'".format(username))
+                    logger.warning("password mismatch for '{}'".format(username))
             else:
                 logger.error(
                     "unknown password hash '{}' for user '{}'".format(

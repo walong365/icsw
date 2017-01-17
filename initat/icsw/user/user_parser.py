@@ -29,8 +29,6 @@ Attention: the 'icsw user --mode mail' command is also used by the md-config-ser
 
 """
 
-
-
 import os
 import pwd
 
@@ -97,7 +95,7 @@ class Parser(object):
             parser.add_argument(
                 "--username",
                 default=_user_name,
-                choices=[s.encode('unicode_escape') for s in user.objects.filter(Q(active=True) & Q(group__active=True)).values_list("login", flat=True)],
+                choices=[s for s in user.objects.filter(Q(active=True) & Q(group__active=True)).values_list("login", flat=True)],
                 help="user to use for info and changepwd [%(default)s]"
             )
             parser.add_argument("--timeout", default=10, type=int, help="timeout for server connections [%(default)d]")

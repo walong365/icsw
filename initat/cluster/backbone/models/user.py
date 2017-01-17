@@ -1096,19 +1096,19 @@ def user_pre_save(sender, **kwargs):
             pw_gen_1 = config_store.ConfigStore(GEN_CS_NAME, quiet=True)["password.hash.function"]
             if pw_gen_1 == "CRYPT":
                 salt = "".join(random.choice(string.ascii_uppercase + string.digits) for _x in range(4))
-                cur_pw = "{}:{}".format(pw_gen_1, crypt.crypt(passwd, salt))
+                cur_pw = "{}:{}".format(pw_gen_1, crypt.crypt(passwd, salt).decode("utf-8"))
                 cur_inst.password = cur_pw
                 cur_inst.password_ssha = ""
             else:
                 salt = os.urandom(4)
                 new_sh = hashlib.new(pw_gen_1)
-                new_sh.update(passwd)
-                cur_pw = "{}:{}".format(pw_gen_1, base64.b64encode(new_sh.digest()))
+                new_sh.update(passwd.encode("utf-8"))
+                cur_pw = "{}:{}".format(pw_gen_1, base64.b64encode(new_sh.digest()).decode("utf-8"))
                 cur_inst.password = cur_pw
                 # ssha1
                 new_sh.update(salt)
                 # print base64.b64encode(new_sh.digest() +  salt)
-                cur_inst.password_ssha = "{}:{}".format("SSHA", base64.b64encode(new_sh.digest() + salt))
+                cur_inst.password_ssha = "{}:{}".format("SSHA", base64.b64encode(new_sh.digest() + salt).decode("utf-8"))
 
 
 @receiver(signals.post_save, sender=user)

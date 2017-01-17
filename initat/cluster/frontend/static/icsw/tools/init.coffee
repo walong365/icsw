@@ -1459,10 +1459,6 @@ angular.module(
                 d.resolve("closed")
             buttons: buttons
         }
-        if in_dict.closable?
-            bs_dict.closable = true
-        else
-            bs_dict.closable = false
         BootstrapDialog.show bs_dict
         return d.promise
 
