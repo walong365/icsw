@@ -269,7 +269,7 @@ elif platform.system() == "Windows":
 INIT_ZMQ_DIR_PID = "{:d}".format(os.getpid())
 ALLOW_MULTIPLE_INSTANCES = True
 
-
+IPC_TO_TCP_PORT_MAP = {}
 def get_zmq_ipc_name(name, **kwargs):
     if "s_name" in kwargs:
         s_name = kwargs["s_name"]
@@ -317,15 +317,20 @@ def get_zmq_ipc_name(name, **kwargs):
     )
 
     if platform.system() == "Windows":
-        # remap ipc to tcp
-        if "main/internal" in _name:
-            _name = "tcp://127.0.0.1:2140"
-        elif "collserver/vector" in _name:
-            _name = "tcp://127.0.0.1:2141"
-        elif "collserver/command" in _name:
-            _name = "tcp://127.0.0.1:2142"
-        elif "collserver/result" in _name:
-            _name = "tcp://127.0.0.1:2143"
+        def get_free_loopback_port():
+            sock = socket.socket()
+            sock.bind(("127.0.0.1", 0))
+            host, port = sock.gethostname()
+            sock.close()
+            return port
+
+        if _name not in IPC_TO_TCP_PORT_MAP:
+            tcp_name = "tcp://127.0.0.1:{}".format(get_free_loopback_port())
+            print("{} -> {}", _name, tcp_name)
+            IPC_TO_TCP_PORT_MAP[_name] = tcp_name
+            _name = tcp_name
+        else:
+            _name = IPC_TO_TCP_PORT_MAP[_name]
 
     return _name
 
