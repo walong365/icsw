@@ -23,34 +23,28 @@
 """ network views """
 
 
-
-import json
-import logging
-import netifaces
-
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
-from django.db.utils import IntegrityError
-from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from networkx.readwrite import json_graph
 
-from initat.cluster.backbone.serializers import NmapScanSerializerSimple, NmapScanSerializerDetailed
-from initat.cluster.backbone.models import device, peer_information, network, network_type, NmapScan, NmapScanIgnoredDevice
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.helper_functions import xml_wrapper
-from initat.tools import config_tools, ipvx_tools, logging_tools
-
-logger = logging.getLogger("cluster.network")
+from initat.tools import logging_tools
 
 
-class json_network(View):
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+class JsonNetwork(View):
+    @staticmethod
+    def log(what, log_level=logging_tools.LOG_LEVEL_OK):
+        import logging
+        logger = logging.getLogger("cluster.network")
         logger.log(log_level, "[jsn] {}".format(what))
 
     @method_decorator(login_required)
     def post(self, request):
+        import json
+        import logging
+        from initat.tools import config_tools
+        logger = logging.getLogger("cluster.network")
         _post = request.POST
         graph_mode = _post["graph_sel"]
         # devices currently selected (or in monitoring data, dependening on the call)
@@ -70,26 +64,30 @@ class json_network(View):
             user=request.user
         )
         # r_obj.add_full_names()
+        from networkx.readwrite import json_graph
         json_obj = json.dumps(json_graph.node_link_data(r_obj.nx))
         # import time
         # time.sleep(10)
         # pprint.pprint(json_obj)
+        from django.http import HttpResponse
         return HttpResponse(json_obj, content_type="application/json")
 
 
-class copy_network(View):
+class CopyNetwork(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        import json
+        from initat.cluster.backbone.models import device
         _post = request.POST
         import pprint
         pprint.pprint(_post)
-        source_dev = device.objects.get(Q(pk=_post["source_dev"]))
+        source_dev = device.objects.get(pk=_post["source_dev"])
         copy_coms = True if _post["copy_coms"].lower()[0] in ["1", "t", "y"] else False
         target_devs = device.objects.exclude(
-            Q(pk=source_dev.pk)
+            pk=source_dev.pk
         ).filter(
-            Q(pk__in=json.loads(_post["all_devs"]))
+            pk__in=json.loads(_post["all_devs"])
         ).prefetch_related(
             "netdevice_set",
             "netdevice_set__netdevice_speed",
@@ -99,6 +97,9 @@ class copy_network(View):
             "netdevice_set__net_ip_set__network__network_type"
         ).order_by("name")
         if len(target_devs):
+            import logging
+            from initat.tools import ipvx_tools
+            logger = logging.getLogger("cluster.network")
             diff_ip = ipvx_tools.ipv4("0.0.0.1")
             logger.info("source device is %s" % (str(source_dev)))
             logger.info(
@@ -110,6 +111,8 @@ class copy_network(View):
             # read peer_informations
             src_nds = source_dev.netdevice_set.all().values_list("pk", flat=True)
             peer_dict = {}
+            from django.db.models import Q
+            from initat.cluster.backbone.models import peer_information
             for peer_info in peer_information.objects.filter(Q(s_netdevice__in=src_nds) | Q(d_netdevice__in=src_nds)):
                 s_local, d_local = (peer_info.s_netdevice_id in src_nds,
                                     peer_info.d_netdevice_id in src_nds)
@@ -120,9 +123,11 @@ class copy_network(View):
                     else:
                         peer_dict.setdefault(peer_info.s_netdevice_id, []).append((None, peer_info.penalty))
                 elif s_local:
-                    peer_dict.setdefault(peer_info.s_netdevice_id, []).append((peer_info.d_netdevice, peer_info.penalty))
+                    peer_dict.setdefault(peer_info.s_netdevice_id, []).append((peer_info.d_netdevice,
+                                                                               peer_info.penalty))
                 else:
-                    peer_dict.setdefault(peer_info.d_netdevice_id, []).append((peer_info.s_netdevice, peer_info.penalty))
+                    peer_dict.setdefault(peer_info.d_netdevice_id, []).append((peer_info.s_netdevice,
+                                                                               peer_info.penalty))
             for target_num, target_dev in enumerate(target_devs):
                 offset = target_num + 1
                 logger.info(
@@ -196,6 +201,7 @@ class copy_network(View):
                                     penalty=penalty,
                                 ).save()
                             else:
+                                from django.db.utils import IntegrityError
                                 try:
                                     # remote peer
                                     peer_information(
@@ -230,26 +236,37 @@ class copy_network(View):
                 logger
             )
         else:
+            import logging
+            logger = logging.getLogger("cluster.network")
             request.xml_response.error("no target_devices", logger)
 
 
-class get_network_clusters(permission_required_mixin, View):
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+class GetNetworkClusters(permission_required_mixin, View):
+    @staticmethod
+    def log(what, log_level=logging_tools.LOG_LEVEL_OK):
+        import logging
+        logger = logging.getLogger("cluster.network")
         logger.log(log_level, "[jsn] {}".format(what))
 
     all_required_permissions = []
 
     def post(self, request):
+        _ = request
+        import json
+        from initat.tools import config_tools
         r_obj = config_tools.RouterObject(self.log)
+        from django.http import HttpResponse
         return HttpResponse(json.dumps(r_obj.get_clusters()), content_type="application/json")
 
 
-class get_free_ip(View):
+class GetFreeIp(View):
     @method_decorator(login_required)
     def post(self, request):
+        import json
+        from initat.cluster.backbone.models import network
         _post = request.POST
         net_ip = json.loads(_post["netip"])
-        cur_nw = network.objects.get(Q(idx=net_ip["network"]))
+        cur_nw = network.objects.get(idx=net_ip["network"])
         free_ip = cur_nw.get_free_ip()
         if free_ip:
             _res = {
@@ -257,25 +274,28 @@ class get_free_ip(View):
             }
         else:
             _res = {}
+        from django.http import HttpResponse
         return HttpResponse(
             json.dumps(_res),
             content_type="application/json"
         )
 
 
-class rescan_networks(View):
+class RescanNetworks(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        from initat.cluster.backbone.models import network
         if network.objects.all().count() and False:
             request.xml_response.warn("Networks already defined")
         else:
             import pprint
+            import netifaces
             _post = request.POST
             pprint.pprint(_post)
             _ifs = netifaces.interfaces()
             # todo: add gateways
-            _gws = netifaces.gateways().get(netifaces.AF_INET, [])
+            _ = netifaces.gateways().get(netifaces.AF_INET, [])
             # dict: network -> network objects
             new_nets = {}
             for _if in _ifs:
@@ -284,10 +304,12 @@ class rescan_networks(View):
                     for _net in _addr[netifaces.AF_INET]:
                         _required_keys = {"addr", "netmask"}
                         if _net["netmask"] != "255.255.255.255" and _required_keys == _required_keys & set(_net.keys()):
+                            from initat.tools import ipvx_tools
                             netmask = ipvx_tools.ipv4(_net["netmask"])
                             address = ipvx_tools.ipv4(_net["addr"])
                             networkaddr = netmask & address
                             if str(networkaddr) not in new_nets:
+                                from initat.cluster.backbone.models import network_type
                                 # get type
                                 if ipvx_tools.is_loopback_network(networkaddr):
                                     _type = network_type.objects.get(identifier="l")
@@ -315,17 +337,19 @@ class rescan_networks(View):
 class NmapScanDataLoader(View):
     @method_decorator(login_required)
     def post(self, request):
+        import json
+        from django.http import HttpResponse
+        from initat.cluster.backbone.models import NmapScan
         simple = bool(int(request.POST['simple']))
         if simple:
             queryset = NmapScan.objects.all()
+            from initat.cluster.backbone.serializers import NmapScanSerializerSimple
             serializer = NmapScanSerializerSimple(queryset, many=True)
             return HttpResponse(json.dumps(serializer.data))
-
         else:
             nmap_scan_id = int(request.POST['nmap_scan_id'])
-
             nmap_scan = NmapScan.objects.get(idx=nmap_scan_id)
-
+            from initat.cluster.backbone.serializers import NmapScanSerializerDetailed
             serializer = NmapScanSerializerDetailed(nmap_scan)
             return HttpResponse(json.dumps(serializer.data))
 
@@ -333,6 +357,9 @@ class NmapScanDataLoader(View):
 class NmapScanDiffer(View):
     @method_decorator(login_required)
     def post(self, request):
+        import json
+        from django.http import HttpResponse
+        from initat.cluster.backbone.models import NmapScan
         if "last_scan" in request.POST:
             scan_id = int(request.POST['scan_id'])
 
@@ -349,7 +376,6 @@ class NmapScanDiffer(View):
             if old_nmap_scan:
                 old_devices = old_nmap_scan.get_nmap_devices()
                 current_devices = nmap_scan.get_nmap_devices()
-
 
                 for device in current_devices:
                     if device not in old_devices:
@@ -416,6 +442,7 @@ class HandleNmapScanDevice(View):
         mac_list = set(request.POST.getlist("mac_list[]"))
         nmap_scan_idx = int(request.POST.get("nmap_scan_idx"))
 
+        from initat.cluster.backbone.models import NmapScanIgnoredDevice
         if bool(int(request.POST.get("ignore"))):
             for mac in mac_list:
                 try:
@@ -428,17 +455,24 @@ class HandleNmapScanDevice(View):
                 nsid = NmapScanIgnoredDevice.objects.get(mac=mac)
                 nsid.delete()
 
+        from initat.cluster.backbone.models import NmapScan
         nmap_scan = NmapScan.objects.get(idx=nmap_scan_idx)
         nmap_scan.reset_devices_ignored()
         nmap_scan.save()
 
+        import json
+        from django.http import HttpResponse
         return HttpResponse(json.dumps(nmap_scan.matrix))
+
 
 class NmapScanDeleter(View):
     @method_decorator(login_required)
     def post(self, request):
         idx_list = [int(value) for value in request.POST.getlist("idx_list[]")]
 
+        from initat.cluster.backbone.models import NmapScan
         deleted, _ = NmapScan.objects.filter(idx__in=idx_list).delete()
 
+        import json
+        from django.http import HttpResponse
         return HttpResponse(json.dumps({'deleted': deleted}))
