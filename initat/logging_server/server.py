@@ -35,14 +35,13 @@ import zmq
 
 from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.icsw.service import clusterid
-from initat.logging_server.config import global_config
 from initat.tools import io_stream_helper, logging_tools, mail_tools, process_tools, threading_tools, \
     uuid_tools, logging_functions
 from initat.tools.server_mixins import ICSWBasePool
 
 
 class MainProcess(ICSWBasePool):
-    def __init__(self, options):
+    def __init__(self, options, global_config):
         self.__options = options
         # log structures
         self.__log_cache = []
@@ -52,11 +51,11 @@ class MainProcess(ICSWBasePool):
         # number of usecounts
         self.__handle_usecount = {}
         self.__usecount_ts = time.time()
-        threading_tools.process_pool.__init__(self, "main", stack_size=2 * 1024 * 1024, zmq=True)
+        threading_tools.icswProcessPool.__init__(self, "main", stack_size=2 * 1024 * 1024, zmq=True, global_config=global_config)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("startup_error", self._startup_error)
-        self.CC.init(icswServiceEnum.logging_server, global_config, init_logging=False, native_logging=True)
+        self.CC.init(icswServiceEnum.logging_server, self.global_config, init_logging=False, native_logging=True)
         self.CC.check_config()
         self.change_resource()
         self.CC.log_config()
@@ -164,7 +163,7 @@ class MainProcess(ICSWBasePool):
             client.bind(io_stream_helper.icswIOStream.zmq_socket_name(h_name, check_ipc_prefix=True))
             os.chmod(io_stream_helper.icswIOStream.zmq_socket_name(h_name), stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
         self.network_bind(
-            bind_port=global_config["COMMAND_PORT"],
+            bind_port=self.global_config["COMMAND_PORT"],
             bind_to_localhost=True,
             pollin=self._recv_data,
             client_type=icswServiceEnum.logging_server,
@@ -418,7 +417,7 @@ class MainProcess(ICSWBasePool):
         s_dict = {key: float(value) / diff_time for key, value in self.__handle_usecount.items()}
         self.__handle_usecount = {key: 0 for key in self.__handle_usecount}
         # ("EXCESS_LIMIT", configfile.int_c_var(1000, help_string="log lines per second to trigger excess_log [%(default)s]")),
-        # s_dict = {key: value for key, value in s_dict.iteritems() if value > global_config["EXCESS_LIMIT"]}
+        # s_dict = {key: value for key, value in s_dict.iteritems() if value > self.global_config["EXCESS_LIMIT"]}
         # pprint.pprint(s_dict)
 
     def get_python_handle(self, record):

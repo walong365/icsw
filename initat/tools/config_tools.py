@@ -38,7 +38,6 @@ import hashlib
 
 # print(hashlib.algorithms)
 
-import networkx
 from django.db.models import Q, Count
 
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
@@ -63,6 +62,7 @@ class RouterObject(object):
         self._update()
 
     def init_fingerprint(self):
+        import networkx
         if self.nx:
             self.previous_fp = self.fp.hexdigest()
             del self.nx
@@ -205,6 +205,7 @@ class RouterObject(object):
             self.__log_com("[router] {}".format(what), log_level)
 
     def get_ndl_ndl_pathes(self, s_list, d_list, **kwargs):
+        import networkx
         """
         returns all pathes between s_list and d_list (:: net_device)
         """
@@ -232,6 +233,7 @@ class RouterObject(object):
         return [self.nd_lut[value] for value in in_path]
 
     def get_clusters(self):
+        import networkx
         clusters = []
         for _cce in networkx.connected_components(self.nx):
             _num_nds = len(_cce)
@@ -294,6 +296,7 @@ class TopologyObject(object):
                 self.nx.add_edge(src_node, dst_node, min_penalty=min(penalty_list), num_connections=len(penalty_list))
 
     def _update(self):
+        import networkx
         s_time = time.time()
         dev_sel = device.all_real_enabled.select_related("domain_tree_node")
         if self.__graph_mode.startswith("sel"):

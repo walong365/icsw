@@ -35,7 +35,7 @@ from initat.tools import logging_tools, threading_tools, config_tools, process_t
 from initat.tools.mongodb import MongoDbConnector
 
 
-class EventLogPollerProcess(threading_tools.process_obj):
+class EventLogPollerProcess(threading_tools.icswProcessObj):
 
     PROCESS_NAME = 'event_log_poller'
 

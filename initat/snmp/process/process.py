@@ -30,7 +30,7 @@ from .batch import SNMPBatch
 from .config import DEFAULT_RETURN_NAME
 
 
-class SNMPProcess(threading_tools.process_obj):
+class SNMPProcess(threading_tools.icswProcessObj):
     def __init__(self, name, conf_dict, **kwargs):
         self.__snmp_name = name
         self.__log_name, self.__log_destination = (
@@ -39,7 +39,7 @@ class SNMPProcess(threading_tools.process_obj):
         )
         self.__verbose = conf_dict.get("VERBOSE", False)
         self.debug_zmq = conf_dict.get("DEBUG_ZMQ", False)
-        threading_tools.process_obj.__init__(self, name, busy_loop=True)
+        threading_tools.icswProcessObj.__init__(self, name, busy_loop=True)
         if kwargs.get("ignore_signals", False):
             signal.signal(signal.SIGTERM, signal.SIG_IGN)
 

@@ -26,8 +26,6 @@ import tarfile
 import tempfile
 from collections import OrderedDict
 
-from OpenSSL import crypto
-
 from initat.tools import logging_tools, process_tools
 
 _KEYS = ["CN", "C", "ST", "O", "emailAddress"]
@@ -366,6 +364,8 @@ class CA(object):
 
     @SSLSecure(backup=True)
     def new_cert(self, obj_dict, mode, file_name, **kwargs):
+        from OpenSSL import crypto
+
         if mode in ["ca"]:
             raise KeyError("mode '{}' not allowed".format(mode))
         run_ok = False

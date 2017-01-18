@@ -77,7 +77,7 @@ class QueueInfo(object):
         )
 
 
-class RMSMonProcess(threading_tools.process_obj):
+class RMSMonProcess(threading_tools.icswProcessObj):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(

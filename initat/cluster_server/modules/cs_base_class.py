@@ -30,7 +30,7 @@ from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import process_tools, server_command, threading_tools, config_tools, io_stream_helper, logging_tools
 
 
-class BackgroundProcess(threading_tools.process_obj):
+class BackgroundProcess(threading_tools.icswProcessObj):
     class Meta:
         background = False
         show_execution_time = True

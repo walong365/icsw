@@ -19,26 +19,12 @@
 #
 """ report views """
 
-
-
-import base64
-import json
 import os
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from reportlab.lib.pagesizes import landscape, letter, A4, A3
-
-from initat.cluster.backbone.models import device, device_variable
-from initat.cluster.backbone.models.report import ReportHistory
-from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
-from initat.tools import server_command
-
-_ = {landscape, letter, A4, A3}
 
 if settings.DEBUG:
     _file_root = os.path.join(settings.FILE_ROOT, "frontend", "static")
@@ -56,6 +42,10 @@ else:
 class GetProgress(View):
     @method_decorator(login_required)
     def post(self, request):
+        import json
+        from django.http import HttpResponse
+        from initat.cluster.backbone.models.report import ReportHistory
+
         report_id = int(request.POST["id"])
 
         report_history_object = ReportHistory.objects.filter(idx=report_id)
@@ -79,10 +69,16 @@ class GetProgress(View):
 class GetReportData(View):
     @method_decorator(login_required)
     def post(self, request):
+        import json
+        from django.http import HttpResponse
+
         data_b64 = ""
         report_type = "unknown"
 
         if "report_id" in request.POST:
+            import base64
+            from initat.cluster.backbone.models.report import ReportHistory
+
             report_id = int(request.POST["report_id"])
 
             report_history = ReportHistory.objects.get(idx=report_id)
@@ -103,6 +99,11 @@ class GetReportData(View):
 
     @method_decorator(login_required)
     def get(self, request):
+        import json
+        import base64
+        from django.http import HttpResponse
+        from initat.cluster.backbone.models.report import ReportHistory
+
         report_id = int(request.GET["report_id"])
 
         report_history = ReportHistory.objects.get(idx=report_id)
@@ -122,6 +123,12 @@ class GetReportData(View):
 class GenerateReportPdf(View):
     @method_decorator(login_required)
     def post(self, request):
+        import json
+        from django.http import HttpResponse
+        from initat.cluster.backbone.server_enums import icswServiceEnum
+        from initat.cluster.frontend.helper_functions import contact_server
+        from initat.tools import server_command
+
         pk_settings, _devices = _init_report_settings(request)
 
         if 'HOSTNAME' in request.META:
@@ -154,10 +161,15 @@ class GenerateReportPdf(View):
 
 
 class UploadReportGfx(View):
-    @method_decorator(xml_wrapper)
+    @method_decorator(login_required)
     def post(self, request):
+        import json
+        from django.http import HttpResponse
+
         _file = request.FILES[list(request.FILES.keys())[0]]
         if _file.content_type in ["image/png", "image/jpeg"]:
+            from initat.cluster.backbone.models import device
+
             system_device = None
             for _device in device.objects.all():
                 if _device.is_cluster_device_group():
@@ -165,6 +177,9 @@ class UploadReportGfx(View):
                     break
 
             if system_device:
+                import base64
+                from initat.cluster.backbone.models import device_variable
+
                 report_logo_tmp = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
                 if report_logo_tmp:
                     report_logo_tmp = report_logo_tmp[0]
@@ -178,10 +193,30 @@ class UploadReportGfx(View):
                 report_logo_tmp.val_blob = base64.b64encode(_file.read())
                 report_logo_tmp.save()
 
+            return HttpResponse(
+                json.dumps(
+                    {
+                        'logo_changed': 1
+                    }
+                )
+            )
+        else:
+            return HttpResponse(
+                json.dumps(
+                    {
+                        'logo_changed': 0
+                    }
+                )
+            )
+
 
 class GetReportGfx(View):
-    @method_decorator(xml_wrapper)
+    @method_decorator(login_required)
     def post(self, request):
+        import json
+        from django.http import HttpResponse
+        from initat.cluster.backbone.models import device
+
         id(request)
         val_blob = ""
         system_device = None
@@ -208,6 +243,12 @@ class GetReportGfx(View):
 class GenerateReportXlsx(View):
     @method_decorator(login_required)
     def post(self, request):
+        import json
+        from django.http import HttpResponse
+        from initat.cluster.backbone.server_enums import icswServiceEnum
+        from initat.cluster.frontend.helper_functions import contact_server
+        from initat.tools import server_command
+
         pk_settings, _devices = _init_report_settings(request)
 
         srv_com = server_command.srv_command(command="generate_report")
@@ -237,7 +278,12 @@ class GenerateReportXlsx(View):
 class ReportDataAvailable(View):
     @method_decorator(login_required)
     def post(self, request):
-        from initat.report_server.report import _select_assetruns_for_device
+        import json
+        from django.http import HttpResponse
+
+        from initat.report_server.report import select_assetruns_for_device
+        from initat.cluster.backbone.models import device
+
         idx_list = request.POST.getlist("idx_list[]", [])
 
         assetbatch_id = request.POST.get("assetbatch_id", None)
@@ -258,7 +304,7 @@ class ReportDataAvailable(View):
                 meta_devices.append(_device)
                 continue
 
-            selected_runs = _select_assetruns_for_device(_device, assetbatch_id=assetbatch_id)
+            selected_runs = select_assetruns_for_device(_device, assetbatch_id=assetbatch_id)
             selected_run_info_array = \
                 [(ar.run_type, str(ar.run_start_time), ar.asset_batch.idx) for ar in selected_runs]
 
@@ -287,8 +333,13 @@ class ReportDataAvailable(View):
 class ReportHistoryAvailable(View):
     @method_decorator(login_required)
     def post(self, request):
-        id(request)
+        import json
+        from django.http import HttpResponse
+
         from initat.report_server.report import sizeof_fmt
+        from initat.cluster.backbone.models.report import ReportHistory
+
+        id(request)
         data = {}
         report_ids = []
 
@@ -325,6 +376,10 @@ class ReportHistoryAvailable(View):
 class UpdateDownloadCount(View):
     @method_decorator(login_required)
     def post(self, request):
+        import json
+        from django.http import HttpResponse
+        from initat.cluster.backbone.models.report import ReportHistory
+
         idx = int(request.POST["idx"])
 
         report_history = ReportHistory.objects.get(idx=idx)
@@ -346,6 +401,9 @@ class UpdateDownloadCount(View):
 ########################################################################################################################
 
 def _init_report_settings(request):
+    import json
+    from initat.cluster.backbone.models import device
+
     settings_dict = {}
 
     _settings = json.loads(request.POST["json"])

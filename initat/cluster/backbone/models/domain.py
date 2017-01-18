@@ -26,7 +26,6 @@ import os
 import re
 import uuid
 
-from PIL import Image, ImageEnhance, ImageFilter
 from django.apps import apps
 from django.conf import settings
 from django.core.cache import cache
@@ -716,6 +715,7 @@ class location_gfx(models.Model):
         return "lgfx_icon_{}".format(self.uuid)
 
     def get_icon(self):
+        from PIL import Image
         _content = cache.get(self.icon_cache_key)
         if _content is None:
             _entry = os.path.join(settings.ICSW_WEBCACHE, "lgfx", self.uuid)
@@ -741,23 +741,27 @@ class location_gfx(models.Model):
 
     @staticmethod
     def default_icon():
+        from PIL import Image
         _content = io.StringIO()
         Image.new("RGB", (24, 24), color="red").save(_content, format="JPEG")
         return _content.getvalue()
 
     @staticmethod
     def default_image():
+        from PIL import Image
         _content = io.StringIO()
         Image.new("RGB", (640, 400), color="red").save(_content, format="JPEG")
         return _content.getvalue()
 
     def _read_image(self):
         # returns an _img object and stores for undo
+        from PIL import Image
         _img = Image.open(open(self.image_file_name, "rb"))
         _img.save(open(self.image_file_name_last, "wb"), format="PNG")
         return _img
 
     def resize(self, factor):
+        from PIL import Image
         _img = self._read_image()
         _img = _img.resize((int(_img.size[0] * factor), int(_img.size[1] * factor)), Image.BICUBIC)
         self.store_graphic(_img, self.content_type, self.image_name)
@@ -767,14 +771,17 @@ class location_gfx(models.Model):
         self.store_graphic(_img, self.content_type, self.image_name)
 
     def brightness(self, factor):
+        from PIL import ImageEnhance
         _img = ImageEnhance.Brightness(self._read_image()).enhance(factor)
         self.store_graphic(_img, self.content_type, self.image_name)
 
     def sharpen(self, factor):
+        from PIL import ImageEnhance
         _img = ImageEnhance.Sharpness(self._read_image()).enhance(factor)
         self.store_graphic(_img, self.content_type, self.image_name)
 
     def apply_filter(self, filter_name):
+        from PIL import ImageFilter
         try:
             _filter = getattr(ImageFilter, filter_name)
         except:
@@ -784,11 +791,13 @@ class location_gfx(models.Model):
             self.store_graphic(_img, self.content_type, self.image_name)
 
     def restore_original_image(self):
+        from PIL import Image
         if os.path.exists(self.image_file_name_orig):
             _img = Image.open(open(self.image_file_name_orig, "rb"))
             self.store_graphic(_img, self.content_type, self.image_name)
 
     def undo_last_step(self):
+        from PIL import Image
         if os.path.exists(self.image_file_name_last):
             _img = Image.open(open(self.image_file_name_last, "rb"))
             self.store_graphic(_img, self.content_type, self.image_name)

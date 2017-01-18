@@ -47,7 +47,6 @@ from initat.cluster.backbone.models.functions import check_empty_string, \
 from initat.cluster.backbone.signals import BootsettingsChanged
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store, logging_tools, server_command
-from initat.tools.bgnotify.create import propagate_channel_object
 
 logger = logging.getLogger(__name__)
 
@@ -650,6 +649,7 @@ class DeviceScanLock(models.Model):
 @receiver(signals.post_save, sender=DeviceScanLock)
 def device_scan_lock_post_save(sender, **kwargs):
     if "instance" in kwargs:
+        from initat.tools.bgnotify.create import propagate_channel_object
         from ..serializers import DeviceScanLockSerializer
         _inst = kwargs["instance"]
         # print("create", _inst)
@@ -991,6 +991,7 @@ class DeviceLogEntry(models.Model):
 @receiver(signals.post_save, sender=DeviceLogEntry)
 def device_log_entry_post_save(sender, **kwargs):
     from initat.cluster.backbone.serializers import DeviceLogEntrySerializer
+    from initat.tools.bgnotify.create import propagate_channel_object
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         info_obj = DeviceLogEntrySerializer(cur_inst).data

@@ -39,7 +39,6 @@ from initat.host_monitoring.modules.network_mod import ping_command
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, server_command, threading_tools, uuid_tools
 from initat.tools.server_mixins import ICSWBasePool
-from .config import global_config
 from .discovery import ZMQDiscovery
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
@@ -48,17 +47,17 @@ from .ipc_comtools import IPCCommandHandler
 
 
 class RelayCode(ICSWBasePool, HMHRMixin):
-    def __init__(self):
+    def __init__(self, global_config):
         # monkey path process tools to allow consistent access
         process_tools.ALLOW_MULTIPLE_INSTANCES = False
+        self.global_config = global_config
         self.objgraph = None
         # copy to access from modules
         from initat.host_monitoring import modules
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         self.modules = modules
-        self.global_config = global_config
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
-        self.CC.init(icswServiceEnum.host_relay, global_config)
+        threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
+        self.CC.init(icswServiceEnum.host_relay, self.global_config)
         self.CC.check_config()
         if self.CC.CS["hr.enable.objgraph"]:
             try:
@@ -67,7 +66,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 pass
             else:
                 self.objgraph = objgraph
-        self.__verbose = global_config["VERBOSE"]
+        self.__verbose = self.global_config["VERBOSE"]
         self.__force_resolve = self.CC.CS["hr.force.name.resolve"]
         # ip resolving
         if self.__force_resolve:
@@ -830,7 +829,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
 
     def _show_config(self):
         try:
-            for log_line, log_level in global_config.get_log():
+            for log_line, log_level in self.global_config.get_log():
                 self.log("Config info : [{:d}] {}".format(log_level, log_line))
         except:
             self.log(
@@ -839,7 +838,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-        conf_info = global_config.get_config_info()
+        conf_info = self.global_config.get_config_info()
         self.log(
             "Found {}:".format(
                 logging_tools.get_plural("valid configline", len(conf_info))

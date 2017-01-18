@@ -22,8 +22,6 @@
 
 """ RRD views """
 
-
-
 import datetime
 import os
 import json

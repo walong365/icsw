@@ -26,7 +26,6 @@ import datetime
 import glob
 import logging
 
-import M2Crypto
 import dateutil.parser
 import pytz
 from lxml import etree
@@ -440,6 +439,7 @@ class LicenseFileReader(object):
 
     @staticmethod
     def verify_signature(lic_file_xml, signature_xml):
+        import M2Crypto
         """
         :return: True if signature is fine
         :rtype : bool

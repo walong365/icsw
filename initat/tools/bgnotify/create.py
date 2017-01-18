@@ -23,9 +23,8 @@ for various servers
 
 import datetime
 import json
-import redis
-
 import requests
+
 from channels import Group
 from django.conf import settings
 from django.db.models import Q
@@ -130,6 +129,7 @@ def propagate_channel_object(group, dict_obj):
     _hosts = settings.CHANNEL_LAYERS["default"]["CONFIG"]["hosts"]
     # print("G", group, dict_obj)
     if any([_addr == "127.0.0.1" for _addr, _port in _hosts]):
+        import redis
         # send to backend, only text is allowed as key
         # print("g", group, dict_obj)
         try:

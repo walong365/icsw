@@ -21,17 +21,20 @@
 
 import os
 
-from initat.package_install.client.config import global_config
 from initat.client_version import VERSION_STRING
 from initat.tools import configfile, process_tools
 
 
-def run_code():
+def run_code(global_config):
     from initat.package_install.client.server import server_process
-    server_process().loop()
+    server_process(global_config).loop()
 
 
 def main():
+    global_config = configfile.get_global_config(
+        process_tools.get_programm_name(),
+        single_process_mode=True,
+    )
     prog_name = global_config.name()
     global_config.add_config_entries(
         [
@@ -69,7 +72,7 @@ def main():
         ret_code = 5
     if not ret_code:
         global_config.add_config_entries([("DEBIAN", configfile.bool_c_var(os.path.isfile("/etc/debian_version")))])
-        run_code()
+        run_code(global_config)
         # exit
         os._exit(0)
     return 0

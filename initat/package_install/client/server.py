@@ -24,24 +24,24 @@ import time
 
 import zmq
 
+from initat.client_version import VERSION_STRING
 from initat.host_monitoring.client_enums import icswServiceEnum
-from initat.tools import configfile, logging_tools, process_tools, server_command, \
+from initat.tools import logging_tools, process_tools, server_command, \
     threading_tools, uuid_tools, server_mixins
 from initat.tools.server_mixins import RemoteCall
-from .config import global_config
-from .installprocess import YumInstallProcess, ZypperInstallProcess, get_srv_command, DebianInstallProcess
+from .installprocess import YumInstallProcess, ZypperInstallProcess, DebianInstallProcess
 
 
 @server_mixins.RemoteCallProcess
 class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
-    def __init__(self):
-        self.global_config = global_config
-        threading_tools.process_pool.__init__(
+    def __init__(self, global_config):
+        threading_tools.icswProcessPool.__init__(
             self,
             "main",
             zmq=True,
+            global_config=global_config,
         )
-        self.CC.init(icswServiceEnum.package_client, global_config)
+        self.CC.init(icswServiceEnum.package_client, self.global_config)
         self.CC.check_config(client=True)
         self.install_signal_handlers()
         # init environment
@@ -67,6 +67,13 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         else:
             self.main_socket = None
             self._int_error("no package_server id")
+
+    def get_srv_command(self, **kwargs):
+        return server_command.srv_command(
+            package_client_version=VERSION_STRING,
+            debian="1" if self.global_config["DEBIAN"] else "0",
+            **kwargs
+        )
 
     def _init_environment(self):
         # Debian fix to get full package names, sigh ...
@@ -109,7 +116,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
 
     def _get_package_server_id(self):
         self.srv_conn_str = "tcp://{}:{:d}".format(
-            global_config["PACKAGE_SERVER"],
+            self.global_config["PACKAGE_SERVER"],
             self.CC.CS["pc.server.com.port"],
         )
         ps_id_file_name = "/etc/packageserver_id"
@@ -175,7 +182,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.__send_buffer = []
         # socket
         self.network_bind(
-            bind_port=global_config["COMMAND_PORT"],
+            bind_port=self.global_config["COMMAND_PORT"],
             bind_to_localhost=True,
             pollin=self.remote_call,
             client_type=icswServiceEnum.package_client,
@@ -294,18 +301,18 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self._send_to_server("self", os.getpid(), xml_com["command"].text, str(xml_com), "server command")
 
     def _register(self):
-        self._send_to_server_int(get_srv_command(command="register"))
+        self._send_to_server_int(self.get_srv_command(command="register"))
 
     def _get_new_config(self):
-        self._send_to_server_int(get_srv_command(command="get_package_list"))
-        # self._send_to_server_int(get_srv_command(command="get_rsync_list"))
+        self._send_to_server_int(self.get_srv_command(command="get_package_list"))
+        # self._send_to_server_int(self.get_srv_command(command="get_rsync_list"))
 
     def _get_repos(self):
-        self._send_to_server_int(get_srv_command(command="get_repo_list"))
+        self._send_to_server_int(self.get_srv_command(command="get_repo_list"))
 
     @RemoteCall()
     def status(self, srv_com, **kwargs):
-        return self.server_status(srv_com, self.CC.msi_block, global_config)
+        return self.server_status(srv_com, self.CC.msi_block, self.global_config)
 
     @RemoteCall()
     def get_0mq_id(self, srv_com, **kwargs):

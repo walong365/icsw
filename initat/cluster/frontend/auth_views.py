@@ -22,8 +22,6 @@
 
 """ auth views for nginx """
 
-
-
 import base64
 import bz2
 import logging

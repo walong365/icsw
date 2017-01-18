@@ -567,6 +567,9 @@ class Configuration(object):
         if args:
             self.add_config_entries(*args)
 
+    def as_dict(self):
+        return {key: self.__c_dict[key].value for key in self.keys()}
+
     @property
     def mc_prefix(self):
         return self.__mc_prefix

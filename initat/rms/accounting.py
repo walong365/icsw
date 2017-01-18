@@ -53,7 +53,7 @@ _OBJ_DICT = {
 }
 
 
-class AccountingProcess(threading_tools.process_obj, server_mixins.EggConsumeMixin):
+class AccountingProcess(threading_tools.icswProcessObj, server_mixins.EggConsumeMixin):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(

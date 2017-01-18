@@ -43,7 +43,6 @@ from initat.host_monitoring.hm_mixins import HMHRMixin
 from initat.tools import logging_tools, process_tools, \
     server_command, threading_tools, uuid_tools, config_store
 from initat.tools.server_mixins import ICSWBasePool
-from .config import global_config
 from .constants import TIME_FORMAT, ZMQ_ID_MAP_STORE
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
@@ -59,20 +58,20 @@ IDLE_LOOP_GRANULARITY = 10000.0
 
 
 class ServerCode(ICSWBasePool, HMHRMixin):
-    def __init__(self):
+    def __init__(self, global_config):
         # monkey path process tools to allow consistent access
         process_tools.ALLOW_MULTIPLE_INSTANCES = False
         # copy to access from modules
-        self.global_config = global_config
         self.objgraph = None
-        threading_tools.process_pool.__init__(
+        threading_tools.icswProcessPool.__init__(
             self,
             "main",
             zmq=True,
             zmq_contexts=1,
             loop_granularity=IDLE_LOOP_GRANULARITY,
+            global_config=global_config,
         )
-        self.CC.init(icswServiceEnum.host_monitoring, global_config)
+        self.CC.init(icswServiceEnum.host_monitoring, self.global_config)
         self.CC.check_config()
         if self.CC.CS["hm.enable.objgraph"]:
             try:
@@ -98,7 +97,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         if HMInotifyProcess and not self.CC.CS["hm.disable.inotify.process"]:
             self.add_process(HMInotifyProcess("inotify", busy_loop=True, kill_myself=True), start=True)
         self._show_config()
-        self.__debug = global_config["DEBUG"]
+        self.__debug = self.global_config["DEBUG"]
         if self.objgraph:
             self.register_timer(self._objgraph_run, 30, instant=True)
         from initat.host_monitoring import modules
@@ -515,7 +514,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             sock.unbind(
                 "tcp://{}:{:d}".format(
                     bind_ip,
-                    global_config["COMMAND_PORT"]
+                    self.global_config["COMMAND_PORT"]
                 )
             )
             sock.close()
@@ -538,7 +537,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
             _conn_str = "tcp://{}:{:d}".format(
                 bind_ip,
-                global_config["COMMAND_PORT"]
+                self.global_config["COMMAND_PORT"]
             )
             try:
                 client.bind(_conn_str)
@@ -779,14 +778,14 @@ class ServerCode(ICSWBasePool, HMHRMixin):
 
     def _show_config(self):
         try:
-            for log_line, log_level in global_config.get_log():
+            for log_line, log_level in self.global_config.get_log():
                 self.log("Config info : [%d] %s" % (log_level, log_line))
         except:
             self.log(
                 "error showing configfile log, old configfile ? ({})".format(process_tools.get_except_info()),
                 logging_tools.LOG_LEVEL_ERROR
             )
-        conf_info = global_config.get_config_info()
+        conf_info = self.global_config.get_config_info()
         self.log("Found {}:".format(logging_tools.get_plural("valid configline", len(conf_info))))
         for conf in conf_info:
             self.log("Config : {}".format(conf))

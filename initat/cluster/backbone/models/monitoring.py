@@ -19,16 +19,15 @@
 #
 """ database definitions for monitoring """
 
+import enum
 import json
 import re
 
-import enum
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from django.utils import timezone
 
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer
 from initat.tools import logging_tools

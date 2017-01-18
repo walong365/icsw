@@ -17,54 +17,28 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-
 """ asset views """
 
-
-
-import base64
-import csv
-import datetime
-import json
-import logging
-import tempfile
-
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
-from django.db.models import Q
-from django.http import HttpResponse
-from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from rest_framework import viewsets, status
-from rest_framework.response import Response
+from rest_framework import viewsets
 
-from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
-    AssetPackageVersion, AssetType, StaticAssetTemplate, user, PackageTypeEnum, \
-    AssetBatch, StaticAssetTemplateField, StaticAsset, StaticAssetFieldValue, StaticAssetTemplateFieldType
-from initat.cluster.backbone.models.dispatch import ScheduleItem
-from initat.cluster.backbone.models.functions import can_delete_obj, get_change_reset_list
-from initat.cluster.backbone.serializers import ScheduleItemSerializer, \
-    AssetPackageSerializer, StaticAssetTemplateSerializer, ReverseSimpleAssetPackageSerializer, \
-    StaticAssetTemplateFieldSerializer, StaticAssetSerializer, StaticAssetTemplateRefsSerializer, \
-    AssetBatchSerializer, SimpleAssetBatchSerializer, AssetPackageVersionSerializer
 from initat.cluster.frontend.helper_functions import xml_wrapper
 
-# moved to views
-# from initat.report_server.report import PDFReportGenerator, generate_csv_entry_for_assetrun
 
-try:
-    from openpyxl import Workbook
-    from openpyxl.writer.excel import save_virtual_workbook
-except ImportError:
-    Workbook = None
-
-
-logger = logging.getLogger(__name__)
+########################################################################################################################
+# Static Asset Views
+########################################################################################################################
 
 class SimpleAssetBatchLoader(View):
     @method_decorator(login_required)
     def post(self, request):
+        import json
+        from django.http import HttpResponse
+        from initat.cluster.backbone.models import AssetBatch
+        from initat.cluster.backbone.serializers import SimpleAssetBatchSerializer
+
         device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
         excluded_assetbatch_pks = [int(obj) for obj in request.POST.getlist("excluded_assetbatch_pks[]")]
 
@@ -78,8 +52,11 @@ class SimpleAssetBatchLoader(View):
 class AssetBatchDeleter(View):
     @method_decorator(login_required)
     def post(self, request):
+        import json
+        from django.http import HttpResponse
+        from initat.cluster.backbone.models import AssetBatch
+
         assetbatch_pks = [int(obj) for obj in request.POST.getlist("assetbatch_pks[]")]
-        print(assetbatch_pks)
 
         queryset = AssetBatch.objects.filter(idx__in=assetbatch_pks)
 
@@ -89,7 +66,11 @@ class AssetBatchDeleter(View):
 
 
 class AssetBatchViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
     def list(self, request):
+        import json
+        from initat.cluster.backbone.models import AssetBatch
+
         if "simple" in request.query_params:
             prefetch_list = []
         else:
@@ -118,15 +99,25 @@ class AssetBatchViewSet(viewsets.ViewSet):
                 queryset = AssetBatch.objects.prefetch_related(*prefetch_list).all()
 
         if "simple" in request.query_params:
+            from initat.cluster.backbone.serializers import SimpleAssetBatchSerializer
             serializer = SimpleAssetBatchSerializer(queryset, many=True)
         else:
+            from initat.cluster.backbone.serializers import AssetBatchSerializer
             serializer = AssetBatchSerializer(queryset, many=True)
+
+        from rest_framework.response import Response
         return Response(serializer.data)
 
 
-class run_assetrun_for_device_now(View):
+class AssetScanRunner(View):
     @method_decorator(login_required)
     def post(self, request):
+        import json
+        from django.utils import timezone
+        from django.http import HttpResponse
+        from initat.cluster.backbone.models import device
+        from initat.cluster.backbone.models.dispatch import ScheduleItem
+
         _dev = device.objects.get(pk=int(request.POST['pk']))
         ScheduleItem.objects.create(
             model_name="device",
@@ -143,26 +134,17 @@ class run_assetrun_for_device_now(View):
         )
 
 
-class get_devices_for_asset(View):
-    @method_decorator(login_required)
-    def post(self, request, *args, **kwargs):
-        apv = AssetPackageVersion.objects.get(pk=int(request.POST['pk']))
-
-        return HttpResponse(
-            json.dumps(
-                {
-                    'devices': list(set([ar.asset_batch.device.pk for ar in apv.assetrun_set.all()]))
-                }
-            ),
-            content_type="application/json"
-        )
-
-
 class ScheduledRunViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
     def list(self, request):
+        import json
+        from initat.cluster.backbone.models.dispatch import ScheduleItem
+        from initat.cluster.backbone.serializers import ScheduleItemSerializer
+
         if "pks" in request.query_params:
             queryset = ScheduleItem.objects.filter(
-                Q(model_name="device", object_id__in=json.loads(request.query_params.getlist("pks")[0]))
+                model_name="device",
+                object_id__in=json.loads(request.query_params.getlist("pks")[0])
             )
         else:
             queryset = ScheduleItem.objects.all()
@@ -171,38 +153,55 @@ class ScheduledRunViewSet(viewsets.ViewSet):
         for entry in serializer.data:
             entry['device'] = entry['object_id']
 
+        from rest_framework.response import Response
         return Response(serializer.data)
 
 
-class AssetPackageViewSet(viewsets.ViewSet):
-    @method_decorator(login_required)
-    def get_all(self, request):
+class AssetPackageLoader(View):
+        @method_decorator(login_required)
+        def post(self, request):
+            import json
+            from django.http import HttpResponse
+            from initat.cluster.backbone.models import AssetPackage
 
-        queryset = AssetPackage.objects.all().prefetch_related(
-            "assetpackageversion_set",
-            "assetpackageversion_set__assetpackageversioninstallinfo_set",
-            "assetpackageversion_set__assetpackageversioninstallinfo_set__assetbatch_set",
-            "assetpackageversion_set__assetpackageversioninstallinfo_set__assetbatch_set__device"
-        ).order_by(
-            "name",
-            "package_type",
-        )
-        serializer = AssetPackageSerializer(queryset, many=True)
-        return Response(serializer.data)
+            if request.POST['type'] == "AssetPackage":
+                from initat.cluster.backbone.serializers import ReverseSimpleAssetPackageSerializer
+                queryset = AssetPackage.objects.prefetch_related("assetpackageversion_set").all()
+                serializer = ReverseSimpleAssetPackageSerializer(queryset, many=True)
+                return HttpResponse(json.dumps(serializer.data))
+            elif request.POST['type'] == "AssetPackageVersion":
+                from initat.cluster.backbone.serializers import AssetPackageVersionSerializer
+                asset_package_id = int(request.POST["asset_package_id"])
+                ap = AssetPackage.objects.prefetch_related("assetpackageversion_set").get(idx=asset_package_id)
+                serializer = AssetPackageVersionSerializer(ap.assetpackageversion_set.all(), many=True)
+                return HttpResponse(json.dumps(serializer.data))
+
+
+########################################################################################################################
+# Dynamic Asset Views
+########################################################################################################################
 
 
 class StaticAssetTemplateViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
     def get_all(self, request):
+        _ = request
+        from initat.cluster.backbone.models import StaticAssetTemplate
+        from initat.cluster.backbone.serializers import StaticAssetTemplateSerializer
         queryset = StaticAssetTemplate.objects.all().prefetch_related(
             "staticassettemplatefield_set"
         )
         [_template.check_ordering() for _template in queryset]
         serializer = StaticAssetTemplateSerializer(queryset, many=True)
+        from rest_framework.response import Response
         return Response(serializer.data)
 
     @method_decorator(login_required)
     def get_refs(self, request):
+        _ = request
+        from initat.cluster.backbone.models import StaticAsset
+        from initat.cluster.backbone.serializers import StaticAssetTemplateRefsSerializer
+
         queryset = StaticAsset.objects.all().prefetch_related(
             "device__domain_tree_node"
         )
@@ -211,33 +210,49 @@ class StaticAssetTemplateViewSet(viewsets.ViewSet):
             _template_idx = _entry.static_asset_template_id
             _full_name = _entry.device.full_name
             _data.append({"static_asset_template": _template_idx, "device_name": _full_name})
+
+        from rest_framework.response import Response
         return Response(StaticAssetTemplateRefsSerializer(_data, many=True).data)
 
     @method_decorator(login_required)
     def reorder_fields(self, request):
-        field_1 = StaticAssetTemplateField.objects.get(Q(pk=request.data["field1"]))
-        field_2 = StaticAssetTemplateField.objects.get(Q(pk=request.data["field2"]))
+        from initat.cluster.backbone.models import StaticAssetTemplateField
+
+        field_1 = StaticAssetTemplateField.objects.get(pk=request.data["field1"])
+        field_2 = StaticAssetTemplateField.objects.get(pk=request.data["field2"])
         _swap = field_1.ordering
         field_1.ordering = field_2.ordering
         field_2.ordering = _swap
         field_1.save(update_fields=["ordering"])
         field_2.save(update_fields=["ordering"])
+
+        from rest_framework.response import Response
         return Response({"msg": "done"})
 
     @method_decorator(login_required)
     def create_template(self, request):
+        from initat.cluster.backbone.serializers import StaticAssetTemplateSerializer
         new_obj = StaticAssetTemplateSerializer(data=request.data)
         if new_obj.is_valid():
             new_obj.save()
         else:
+            from django.core.exceptions import ValidationError
             raise ValidationError("New Template is not valid: {}".format(new_obj.errors))
+
+        from rest_framework.response import Response
         return Response(new_obj.data)
 
     @method_decorator(login_required)
     def delete_template(self, request, *args, **kwargs):
-        cur_obj = StaticAssetTemplate.objects.get(Q(pk=kwargs["pk"]))
+        _, _ = request, args
+        from initat.cluster.backbone.models import StaticAssetTemplate
+        from initat.cluster.backbone.models.functions import can_delete_obj
+
+        cur_obj = StaticAssetTemplate.objects.get(pk=kwargs["pk"])
         can_delete_answer = can_delete_obj(cur_obj)
         if can_delete_answer:
+            from rest_framework import status
+            from rest_framework.response import Response
             cur_obj.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         else:
@@ -245,18 +260,28 @@ class StaticAssetTemplateViewSet(viewsets.ViewSet):
 
     @method_decorator(login_required)
     def create_field(self, request):
+        from initat.cluster.backbone.serializers import StaticAssetTemplateFieldSerializer
         new_obj = StaticAssetTemplateFieldSerializer(data=request.data)
         if new_obj.is_valid():
             new_obj.save()
         else:
+            from django.core.exceptions import ValidationError
             raise ValidationError("New TemplateField is not valid: {}".format(new_obj.errors))
+
+        from rest_framework.response import Response
         return Response(new_obj.data)
 
     @method_decorator(login_required())
     def delete_field(self, request, **kwargs):
-        cur_obj = StaticAssetTemplateField.objects.get(Q(pk=kwargs["pk"]))
+        _ = request
+        from initat.cluster.backbone.models import StaticAssetTemplateField
+        from initat.cluster.backbone.models.functions import can_delete_obj
+
+        cur_obj = StaticAssetTemplateField.objects.get(pk=kwargs["pk"])
         can_delete_answer = can_delete_obj(cur_obj)
         if can_delete_answer:
+            from rest_framework import status
+            from rest_framework.response import Response
             cur_obj.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
             # it makes no sense to return something meaningful because the DestroyModelMixin returns
@@ -272,10 +297,14 @@ class StaticAssetTemplateViewSet(viewsets.ViewSet):
 
     @method_decorator(login_required())
     def store_field(self, request, **kwargs):
-        _prev_field = StaticAssetTemplateField.objects.get(Q(pk=kwargs["pk"]))
+        from initat.cluster.backbone.models import StaticAssetTemplateField
+        from initat.cluster.backbone.models.functions import get_change_reset_list
+        from initat.cluster.backbone.serializers import StaticAssetTemplateFieldSerializer
+
+        _prev_field = StaticAssetTemplateField.objects.get(pk=kwargs["pk"])
         # print _prev_var
         _cur_ser = StaticAssetTemplateFieldSerializer(
-            StaticAssetTemplateField.objects.get(Q(pk=kwargs["pk"])),
+            StaticAssetTemplateField.objects.get(pk=kwargs["pk"]),
             data=request.data
         )
         # print "*" * 20
@@ -284,9 +313,12 @@ class StaticAssetTemplateViewSet(viewsets.ViewSet):
             _new_field = _cur_ser.save()
         else:
             # todo, fixme
+            from django.core.exceptions import ValidationError
             raise ValidationError("Validation error: {}".format(str(_cur_ser.errors)))
         resp = _cur_ser.data
         c_list, r_list = get_change_reset_list(_prev_field, _new_field, request.data)
+
+        from rest_framework.response import Response
         resp = Response(resp)
         # print c_list, r_list
         resp.data["_change_list"] = c_list
@@ -294,11 +326,16 @@ class StaticAssetTemplateViewSet(viewsets.ViewSet):
         return resp
 
 
-class copy_static_template(View):
+class CopyStaticTemplate(View):
     @method_decorator(login_required)
     def post(self, request):
-        src_obj = StaticAssetTemplate.objects.get(Q(pk=request.POST["src_idx"]))
-        create_user = user.objects.get(Q(pk=request.POST["user_idx"]))
+        import json
+        from django.http import HttpResponse
+        from initat.cluster.backbone.models import StaticAssetTemplate, user
+        from initat.cluster.backbone.serializers import StaticAssetTemplateSerializer
+
+        src_obj = StaticAssetTemplate.objects.get(pk=request.POST["src_idx"])
+        create_user = user.objects.get(pk=request.POST["user_idx"])
         new_obj = json.loads(request.POST["new_obj"])
         new_template = src_obj.copy(new_obj, create_user)
         serializer = StaticAssetTemplateSerializer(new_template)
@@ -308,193 +345,47 @@ class copy_static_template(View):
         )
 
 
-class export_assetruns_to_csv(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        from initat.report_server.report import generate_csv_entry_for_assetrun
-        tmpfile = tempfile.SpooledTemporaryFile()
-
-        writer = csv.writer(tmpfile)
-
-        ar = AssetRun.objects.get(idx=int(request.POST["pk"]))
-
-        generate_csv_entry_for_assetrun(ar, writer.writerow)
-
-        tmpfile.seek(0)
-        s = tmpfile.read()
-
-        return HttpResponse(
-            json.dumps(
-                {
-                    'csv': s
-                }
-            )
-        )
-
-
-class export_packages_to_csv(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        tmpfile = tempfile.SpooledTemporaryFile()
-
-        writer = csv.writer(tmpfile)
-
-        apv = AssetPackageVersion.objects.select_related("asset_package").all()
-
-        base_header = ['Name',
-                       'Package Type',
-                       'Version',
-                       'Release',
-                       'Size']
-
-        writer.writerow(base_header)
-
-        for version in apv:
-            row = []
-
-            row.append(version.asset_package.name)
-            row.append(PackageTypeEnum(version.asset_package.package_type).name)
-            row.append(version.version)
-            row.append(version.release)
-            row.append(version.size)
-
-            writer.writerow(row)
-
-        tmpfile.seek(0)
-        s = tmpfile.read()
-
-        return HttpResponse(
-            json.dumps(
-                {
-                    'csv': s
-                }
-            )
-        )
-
-
-class export_scheduled_runs_to_csv(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        tmpfile = tempfile.SpooledTemporaryFile()
-
-        writer = csv.writer(tmpfile)
-
-        schedule_items = ScheduleItem.objects.select_related("dispatch_setting").all()
-
-        base_header = [
-            'Device Name',
-            'Planned Time',
-            'Dispatch Setting Name'
-        ]
-
-        writer.writerow(base_header)
-
-        for schedule_item in schedule_items:
-            row = []
-
-            row.append(schedule_item.device.full_name)
-            row.append(schedule_item.planned_date)
-            row.append(schedule_item.dispatch_setting.name)
-
-            writer.writerow(row)
-
-        tmpfile.seek(0)
-        s = tmpfile.read()
-
-        return HttpResponse(
-            json.dumps(
-                {
-                    'csv': s
-                }
-            )
-        )
-
-
-class export_assetbatch_to_xlsx(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        from initat.report_server.report import generate_csv_entry_for_assetrun
-        ab = AssetBatch.objects.get(idx=int(request.POST["pk"]))
-
-        assetruns = ab.assetrun_set.all()
-
-        workbook = Workbook()
-        workbook.remove_sheet(workbook.active)
-
-        for ar in assetruns:
-            sheet = workbook.create_sheet()
-            sheet.title = AssetType(ar.run_type).name
-
-            generate_csv_entry_for_assetrun(ar, sheet.append)
-
-        s = save_virtual_workbook(workbook)
-
-        new_s = base64.b64encode(s)
-
-        return HttpResponse(
-            json.dumps(
-                {
-                    'xlsx': new_s
-                }
-            )
-        )
-
-
-class export_assetbatch_to_pdf(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        from initat.report_server.report import PDFReportGenerator
-
-        ab = AssetBatch.objects.get(idx=int(request.POST["pk"]))
-
-        settings_dict = {
-            "packages_selected": True,
-            "licenses_selected": True,
-            "installed_updates_selected": True,
-            "avail_updates_selected": True,
-            "hardware_report_selected": True
-        }
-
-        pdf_report_generator = PDFReportGenerator()
-        pdf_report_generator.generate_device_report(ab.device, settings_dict)
-        pdf_report_generator.finalize_pdf()
-        pdf_b64 = base64.b64encode(pdf_report_generator.buffer.getvalue())
-
-        return HttpResponse(
-            json.dumps(
-                {
-                    'pdf': pdf_b64
-                }
-            )
-        )
-
-
 class DeviceStaticAssetViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
     def create_asset(self, request):
+        from initat.cluster.backbone.serializers import StaticAssetSerializer
         _count = request.data.get("count", 1)
+        asset = None
         for _iter in range(_count):
             new_asset = StaticAssetSerializer(data=request.data)
             if new_asset.is_valid():
                 asset = new_asset.save()
                 asset.add_fields()
             else:
+                from django.core.exceptions import ValidationError
                 raise ValidationError(
                     "cannot create new StaticAsset"
                 )
         # return only latest asset
+        from rest_framework.response import Response
         return Response(StaticAssetSerializer(asset).data)
 
     @method_decorator(login_required)
     def delete_asset(self, request, **kwargs):
-        StaticAsset.objects.get(Q(idx=kwargs["pk"])).delete()
+        _ = request
+        from rest_framework import status
+        from initat.cluster.backbone.models import StaticAsset
+        StaticAsset.objects.get(idx=kwargs["pk"]).delete()
+
+        from rest_framework.response import Response
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @method_decorator(login_required())
     def delete_field(self, request, **kwargs):
-        cur_obj = StaticAssetFieldValue.objects.get(Q(pk=kwargs["pk"]))
+        _ = request
+        from initat.cluster.backbone.models import StaticAssetFieldValue
+        from initat.cluster.backbone.models.functions import can_delete_obj
+
+        cur_obj = StaticAssetFieldValue.objects.get(pk=kwargs["pk"])
         can_delete_answer = can_delete_obj(cur_obj)
         if can_delete_answer:
+            from rest_framework import status
+            from rest_framework.response import Response
             cur_obj.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         else:
@@ -502,21 +393,30 @@ class DeviceStaticAssetViewSet(viewsets.ViewSet):
 
     @method_decorator(login_required)
     def add_unused(self, request, **kwargs):
-        _asset = StaticAsset.objects.get(Q(pk=request.data["asset"]))
-        for _field in StaticAssetTemplateField.objects.filter(Q(pk__in=request.data["fields"])):
+        _ = kwargs
+        from initat.cluster.backbone.models import StaticAssetTemplateField, StaticAsset
+
+        _asset = StaticAsset.objects.get(pk=request.data["asset"])
+        for _field in StaticAssetTemplateField.objects.filter(pk__in=request.data["fields"]):
             _field.create_field_value(_asset)
+
+        from rest_framework.response import Response
         return Response({"msg": "added"})
 
 
-class device_asset_post(View):
+class DeviceAssetPost(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request, *args, **kwargs):
+        _, _ = args, kwargs
+        import json
+        from initat.cluster.backbone.models import StaticAssetFieldValue
+
         _lut = {_value["idx"]: _value for _value in json.loads(request.POST["asset_data"])}
         # import pprint
         # pprint.pprint(_lut)
         _field_list = StaticAssetFieldValue.objects.filter(
-            Q(pk__in=list(_lut.keys()))
+            pk__in=list(_lut.keys())
         ).select_related(
             "static_asset_template_field"
         )
@@ -533,13 +433,17 @@ class device_asset_post(View):
             request.xml_response.error("validation problem")
 
 
-class get_fieldvalues_for_template(View):
+class GetFieldvaluesForTemplate(View):
     @method_decorator(login_required)
     def post(self, request):
+        import json
+        from django.http import HttpResponse
+        from initat.cluster.backbone.models import StaticAssetTemplate, StaticAssetTemplateFieldType
+
         idx_list = [int(value) for value in request.POST.getlist("idx_list[]")]
 
         static_asset_templates = StaticAssetTemplate.objects.filter(
-            Q(idx__in=idx_list)
+            idx__in=idx_list
         ).prefetch_related(
             "staticassettemplatefield_set__staticassetfieldvalue_set__static_asset__device",
             # "staticassettemplatefield_set__device"
@@ -547,31 +451,31 @@ class get_fieldvalues_for_template(View):
 
         data = {}
 
-        def set_aggregate_value(aggregate_obj, field_object, fixed):
+        def set_aggregate_value(aggregate_obj, _field_object, fixed):
             if fixed:
-                aggregate_obj['aggregate'] = field_object['value']
+                aggregate_obj['aggregate'] = _field_object['value']
                 return
 
-            field_type = field_object['field_type']
+            field_type = _field_object['field_type']
             if field_type == StaticAssetTemplateFieldType.INTEGER:
                 if not aggregate_obj['aggregate']:
                     aggregate_obj['aggregate'] = 0
-                aggregate_obj['aggregate'] += field_object['value_int']
+                aggregate_obj['aggregate'] += _field_object['value_int']
             else:
                 aggregate_obj['aggregate'] = "N/A"
 
-        def set_value(field_object):
+        def set_value(_field_object):
             value = None
-            if field_object['field_type'] == StaticAssetTemplateFieldType.STRING:
-                value = field_object['value_str']
-            elif field_object['field_type'] == StaticAssetTemplateFieldType.INTEGER:
-                value = field_object['value_int']
-            elif field_object['field_type'] == StaticAssetTemplateFieldType.DATE:
-                value = field_object['value_date']
-            elif field_object['field_type'] == StaticAssetTemplateFieldType.TEXT:
-                value = field_object['value_text']
+            if _field_object['field_type'] == StaticAssetTemplateFieldType.STRING:
+                value = _field_object['value_str']
+            elif _field_object['field_type'] == StaticAssetTemplateFieldType.INTEGER:
+                value = _field_object['value_int']
+            elif _field_object['field_type'] == StaticAssetTemplateFieldType.DATE:
+                value = _field_object['value_date']
+            elif _field_object['field_type'] == StaticAssetTemplateFieldType.TEXT:
+                value = _field_object['value_text']
 
-            field_object['value'] = value
+            _field_object['value'] = value
 
         for static_asset_template in static_asset_templates:
             data[static_asset_template.idx] = {}
@@ -586,21 +490,27 @@ class get_fieldvalues_for_template(View):
                 data[static_asset_template.idx][template_field.ordering]['status'] = 0
 
                 for template_field_value in template_field.staticassetfieldvalue_set.all():
+                    date_obj = template_field_value.value_date.isoformat() if template_field_value.value_date else None
                     field_object = {
                         'device_idx': template_field_value.static_asset.device.idx,
                         'field_name': template_field.name,
                         'value_str': template_field_value.value_str,
                         'value_int': template_field_value.value_int,
-                        'value_date': template_field_value.value_date.isoformat() if template_field_value.value_date else None,
+                        'value_date': date_obj,
                         'value_text': template_field_value.value_text,
                         'field_type': template_field.field_type,
                         'status': 0
                     }
                     set_value(field_object)
-                    set_aggregate_value(data[static_asset_template.idx][template_field.ordering], field_object, template_field.fixed)
+                    set_aggregate_value(
+                        data[static_asset_template.idx][template_field.ordering],
+                        field_object,
+                        template_field.fixed
+                    )
                     data[static_asset_template.idx][template_field.ordering]['list'].append(field_object)
 
                     if template_field.field_type == StaticAssetTemplateFieldType.DATE and template_field.date_check:
+                        import datetime
                         warn_delta = datetime.timedelta(days=template_field.date_warn_value)
                         critical_delta = datetime.timedelta(days=template_field.date_critical_value)
 
@@ -640,25 +550,13 @@ class get_fieldvalues_for_template(View):
         )
 
 
-class AssetPackageLoader(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        if request.POST['type'] == "AssetPackage":
-            queryset = AssetPackage.objects.prefetch_related("assetpackageversion_set").all()
-
-            serializer = ReverseSimpleAssetPackageSerializer(queryset, many=True)
-
-            return HttpResponse(json.dumps(serializer.data))
-        elif request.POST['type'] == "AssetPackageVersion":
-            asset_package_id = int(request.POST["asset_package_id"])
-            ap = AssetPackage.objects.prefetch_related("assetpackageversion_set").get(idx=asset_package_id)
-            serializer = AssetPackageVersionSerializer(ap.assetpackageversion_set.all(), many=True)
-            return HttpResponse(json.dumps(serializer.data))
-
 class HiddenStaticAssetTemplateTypesManager(View):
     @method_decorator(login_required)
     def post(self, request):
+        import json
+        from django.http import HttpResponse
         from initat.cluster.backbone.models import HiddenStaticAssetTemplateTypes
+
         if request.POST['action'] == "read":
             from initat.cluster.backbone.serializers import HiddenStaticAssetTemplateTypesSerializer
             queryset = HiddenStaticAssetTemplateTypes.objects.all()

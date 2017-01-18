@@ -22,8 +22,6 @@
 
 """ views for dynamic docu"""
 
-
-
 import logging
 import os
 

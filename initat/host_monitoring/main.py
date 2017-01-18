@@ -22,18 +22,11 @@
 
 """ host-monitoring, main part """
 
-
-
 import sys
 
-if __name__ == "__main__":
-    # modify path if testing
-    sys.path.insert(0, ".")
-
-from initat.host_monitoring.config import global_config
 from initat.client_version import VERSION_STRING
-from initat.tools import configfile
 from initat.icsw.service.instance import InstanceXML
+from initat.tools import configfile, process_tools
 
 COLLCLIENT = False
 
@@ -43,10 +36,10 @@ def run_code(prog_name, global_config):
         prog_name = "collserver"
     if prog_name in ["collserver"]:
         from initat.host_monitoring.server import ServerCode
-        ret_state = ServerCode().loop()
+        ret_state = ServerCode(global_config).loop()
     elif prog_name in ["collrelay"]:
         from initat.host_monitoring.relay import RelayCode
-        ret_state = RelayCode().loop()
+        ret_state = RelayCode(global_config).loop()
     elif prog_name == "collclient":
         from initat.host_monitoring.client import ClientCode
         ret_state = ClientCode(global_config)
@@ -57,6 +50,10 @@ def run_code(prog_name, global_config):
 
 
 def main():
+    global_config = configfile.get_global_config(
+        process_tools.get_programm_name(),
+        single_process_mode=True
+    )
     prog_name = global_config.name()
     if COLLCLIENT:
         prog_name = "collserver"
@@ -96,6 +93,5 @@ def main():
 
 
 if __name__ == "__main__":
-    #if sys.argv[0] == "main.py":
     COLLCLIENT = True
     sys.exit(main())

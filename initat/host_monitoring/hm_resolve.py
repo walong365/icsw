@@ -22,12 +22,9 @@
 
 """ caching resolver """
 
-
-
 import socket
 import time
 
-from initat.host_monitoring.config import global_config
 from initat.tools import logging_tools, process_tools, threading_tools
 
 CACHE_TIMEOUT = 20
@@ -46,12 +43,16 @@ class CacheEntry(object):
             return False
 
 
-class ResolveProcess(threading_tools.process_obj):
+class ResolveProcess(threading_tools.icswProcessObj):
     def process_init(self):
-        global_config.close()
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.__log_template = logging_tools.get_logger(
+            self.global_config["LOG_NAME"],
+            self.global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context
+        )
         # log.startLoggingWithObserver(my_observer, setStdout=False)
-        self.__debug = global_config["DEBUG"]
+        self.__debug = self.global_config["DEBUG"]
         self.register_func("resolve", self._resolve, greedy=True)
         # clear flag for extra twisted thread
         self.__cache = {}

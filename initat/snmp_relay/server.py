@@ -37,7 +37,7 @@ from initat.tools import configfile, logging_tools, process_tools, \
 class server_process(server_mixins.ICSWBasePool):
     def __init__(self):
         self.__verbose = global_config["VERBOSE"]
-        threading_tools.process_pool.__init__(
+        threading_tools.icswProcessPool.__init__(
             self,
             "main",
             zmq=True,

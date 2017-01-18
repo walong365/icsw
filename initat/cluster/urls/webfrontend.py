@@ -19,14 +19,14 @@
 #
 """ url definitions for ICSW """
 
-
-
 import os
 
 import django.contrib.staticfiles.views
 from django.conf import settings
 from django.conf.urls import include, url
 from django.conf.urls.static import static
+
+# from utkik.dispatch import url, include
 
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
@@ -50,22 +50,15 @@ asset_patterns = [
     url("^hidden_static_asset_template_type_manager$", asset_views.HiddenStaticAssetTemplateTypesManager.as_view(), name="hidden_static_asset_template_type_manager"),
     url("^asset_package_loader$", asset_views.AssetPackageLoader.as_view(), name="asset_package_loader"),
     url("^asset_batch_deleter$", asset_views.AssetBatchDeleter.as_view(), name="asset_batch_deleter"),
-    url("^get_fieldvalues_for_template$", asset_views.get_fieldvalues_for_template.as_view(), name="get_fieldvalues_for_template"),
+    url("^get_fieldvalues_for_template$", asset_views.GetFieldvaluesForTemplate.as_view(), name="get_fieldvalues_for_template"),
     url("^simple_asset_batch_loader$", asset_views.SimpleAssetBatchLoader.as_view(), name="simple_asset_batch_loader"),
     url("^get_assetbatch_list$", asset_views.AssetBatchViewSet.as_view({"get": "list"}), name="get_assetbatch_list"),
-    url("^export_assetbatch_to_xlsx$", asset_views.export_assetbatch_to_xlsx.as_view(), name="export_assetbatch_to_xlsx"),
-    url("^export_assetbatch_to_pdf$", asset_views.export_assetbatch_to_pdf.as_view(), name="export_assetbatch_to_pdf"),
-    url("^export_scheduled_runs_to_csv$", asset_views.export_scheduled_runs_to_csv.as_view(), name="export_scheduled_runs_to_csv"),
-    url("^export_packages_to_csv$", asset_views.export_packages_to_csv.as_view(), name="export_packages_to_csv"),
-    url("^export_assetruns_to_csv$", asset_views.export_assetruns_to_csv.as_view(), name="export_assetruns_to_csv"),
-    url("^run_assetrun_for_device_now$", asset_views.run_assetrun_for_device_now.as_view(), name="run_assetrun_for_device_now"),
-    url("^get_devices_for_asset$", asset_views.get_devices_for_asset.as_view(), name="get_devices_for_asset"),
+    url("^run_assetrun_for_device_now$", asset_views.AssetScanRunner.as_view(), name="run_assetrun_for_device_now"),
     url("^get_schedule_list$", asset_views.ScheduledRunViewSet.as_view({"get": "list"}), name="get_schedule_list"),
-    url("^get_asset_packages$", asset_views.AssetPackageViewSet.as_view({"get": "get_all"}), name="get_all_asset_packages"),
     url("^get_static_templates$", asset_views.StaticAssetTemplateViewSet.as_view({"get": "get_all"}), name="get_static_templates"),
     url("^get_static_template_refs$", asset_views.StaticAssetTemplateViewSet.as_view({"get": "get_refs"}), name="get_static_template_references"),
     url("^reorder_template_field$", asset_views.StaticAssetTemplateViewSet.as_view({"post": "reorder_fields"}), name="reorder_template_fields"),
-    url("^copy_static_template$", asset_views.copy_static_template.as_view(), name="copy_static_template"),
+    url("^copy_static_template$", asset_views.CopyStaticTemplate.as_view(), name="copy_static_template"),
     url(
         "^create_static_template$",
         asset_views.StaticAssetTemplateViewSet.as_view({"post": "create_template"}),
@@ -102,7 +95,7 @@ asset_patterns = [
         name="device_asset_field_detail"
     ),
     url(
-        "device_asset_post$", asset_views.device_asset_post.as_view(), name="device_asset_post",
+        "device_asset_post$", asset_views.DeviceAssetPost.as_view(), name="device_asset_post",
     ),
     url(
         "device_asset_add_unused$", asset_views.DeviceStaticAssetViewSet.as_view({"post": "add_unused"}),
@@ -277,12 +270,12 @@ icsw_lic_patterns = [
 network_patterns = [
     # url("^network$", network_views.show_cluster_networks.as_view(), name="show_networks"),
     # url("^dev_network$", network_views.device_network.as_view(), name="device_network"),
-    url("^copy_network$", network_views.copy_network.as_view(), name="copy_network"),
-    url("^json_network$", network_views.json_network.as_view(), name="json_network"),
+    url("^copy_network$", network_views.CopyNetwork.as_view(), name="copy_network"),
+    url("^json_network$", network_views.JsonNetwork.as_view(), name="json_network"),
     # url("^cdnt$", network_views.get_domain_name_tree.as_view(), name="domain_name_tree"),
-    url("^get_clusters$", network_views.get_network_clusters.as_view(), name="get_clusters"),
-    url("^get_free_ip$", network_views.get_free_ip.as_view(), name="get_free_ip"),
-    url("^rescan_networks$", network_views.rescan_networks.as_view(), name="rescan_networks"),
+    url("^get_clusters$", network_views.GetNetworkClusters.as_view(), name="get_clusters"),
+    url("^get_free_ip$", network_views.GetFreeIp.as_view(), name="get_free_ip"),
+    url("^rescan_networks$", network_views.RescanNetworks.as_view(), name="rescan_networks"),
     url("^nmap_scan_data_loader$", network_views.NmapScanDataLoader.as_view(), name="nmap_scan_data_loader"),
     url("^nmap_scan_deleter$", network_views.NmapScanDeleter.as_view(), name="nmap_scan_deleter"),
     url("^nmap_scan_diff$", network_views.NmapScanDiffer.as_view(), name="nmap_scan_diff"),
@@ -359,6 +352,7 @@ main_patterns = [
     url(r"^server_control$", main_views.server_control.as_view(), name="server_control"),
     url(r"^virtual_desktop_viewer$", main_views.virtual_desktop_viewer.as_view(), name="virtual_desktop_viewer"),
     url(r"^num_background_jobs$", main_views.get_number_of_background_jobs.as_view(), name="get_number_of_background_jobs"),
+    # url(r"^routing_info$", "main_views.get_routing_info", name="routing_info"),
     url(r"^routing_info$", main_views.get_routing_info.as_view(), name="routing_info"),
     url(r"^get_cluster_info$", main_views.get_cluster_info.as_view(), name="get_cluster_info"),
     url(r"^get_docu_info$", main_views.get_docu_info.as_view(), name="get_docu_info"),
@@ -407,7 +401,6 @@ for src_mod, obj_name in rest_views.REST_LIST:
 rpl.extend([
     url("^device_tree$", rest_views.device_tree_list.as_view(), name="device_tree_list"),
     url("^device_tree/(?P<pk>[0-9]+)$", rest_views.device_tree_detail.as_view(), name="device_tree_detail"),
-    # url("^device_tree/(?P<pk>[0-9]+)$", rest_views.device_tree_detail.as_view(), name="device_tree_detail"),
     url("^device_com_cap_list$", rest_views.device_com_capabilities.as_view(), name="device_com_capabilities"),
     url("^home_export_list$", rest_views.rest_home_export_list.as_view(), name="home_export_list"),
     url("^csw_object_list$", rest_views.csw_object_list.as_view({"get": "list"}), name="csw_object_list"),

@@ -321,7 +321,6 @@ angular.module(
 
             _copy_var = (s_var) ->
                 new_var = angular.copy(s_var)
-                console.log "create", s_var.name
                 new_var.$$original = s_var
                 new_var.$$from_server = false
                 new_var.$$shadow_count = 0
@@ -329,52 +328,40 @@ angular.module(
                 new_var.$$inherited = true
                 return new_var
 
-            # step 2: add cdg vars to meta
+            # step 2: add cdg vars to meta, then meta to normal
             cdg_dev = @tree.cluster_device_group_device
-            for dev in @devices
-                if dev.idx != cdg_dev.idx and dev.is_meta_device
-                    for d_var in cdg_dev.device_variables
-                        if d_var.inherit
-                            if d_var.name in dev.$local_var_names
-                                dev.$num_vars_shadowed++
-                                _local_var = (l_var for l_var in dev.device_variables when l_var.name == d_var.name)[0]
-                                _local_var.$$shadow = true
-                                d_var.$$shadow_count++
-                            else
-                                # create a copy and append to device_variables
-                                dev.device_variables.push(_copy_var(d_var))
-                                dev.$num_vars_total++
-                                dev.$num_vars_parent++
-                # dev.$num_vars_filtered = dev.device_variables.length
-
-            # step 3: add meta-vars to devices
-            for dev in @devices
-                console.log "---", dev.$$print_name
-                if not dev.is_meta_device
-                    meta = @tree.get_meta_device(dev)
-                    # if not meta.device_variables_filtered?
-                    #    console.error "metadevice #{meta.full_name} / #{meta.idx} not init, deviceHelper call missing?"
-                    for d_var in meta.device_variables
-                        if d_var.inherit
-                            if d_var.name in dev.$local_var_names
-                                # var locally set, ignore
-                                dev.$num_vars_shadowed++
-                                _local_var = (l_var for l_var in dev.device_variables when l_var.name == d_var.name)[0]
-                                _local_var.$$shadow = true
-                                if d_var.$$inherited
-                                    d_var.$$original.$$shadow_count++
+            for _cdg_mode in [true, false]
+                for dev in @devices
+                    _check = false
+                    if _cdg_mode
+                        if dev.idx != cdg_dev.idx and dev.is_meta_device
+                            src_dev = cdg_dev
+                            _check = true
+                    else
+                        if not dev.is_meta_device
+                            src_dev = @tree.get_meta_device(dev)
+                            _check = true
+                    if _check
+                        for d_var in src_dev.device_variables
+                            if d_var.inherit
+                                if d_var.name in dev.$local_var_names
+                                    dev.$num_vars_shadowed++
+                                    _local_var = (l_var for l_var in dev.device_variables when l_var.name == d_var.name)[0]
+                                    _local_var.$$shadow = true
+                                    if d_var.$$inherited
+                                        d_var.$$original.$$shadow_count++
+                                    else
+                                        d_var.$$shadow_count++
                                 else
-                                    d_var.$$shadow_count++
-                            else
-                                console.log "check", d_var.name, d_var.$$inherited
-                                if d_var.$$inherited
-                                    # var is already inherited, take original var
-                                    dev.device_variables.push(_copy_var(d_var.$$original))
-                                else
-                                    # var is inherited from meta
-                                    dev.device_variables.push(_copy_var(d_var))
-                                dev.$num_vars_total++
-                                dev.$num_vars_parent++
+                                    # create a copy and append to device_variables
+                                    if d_var.$$inherited
+                                        # var is already inherited, take original var
+                                        dev.device_variables.push(_copy_var(d_var.$$original))
+                                    else
+                                        # var is inherited from meta
+                                        dev.device_variables.push(_copy_var(d_var))
+                                    dev.$num_vars_total++
+                                    dev.$num_vars_parent++
 
             # step 4: sort variables
             for dev in @devices

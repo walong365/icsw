@@ -1269,7 +1269,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
             self._update()
 
 
-class ICMPProcess(threading_tools.process_obj):
+class ICMPProcess(threading_tools.icswProcessObj):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(
@@ -1302,7 +1302,7 @@ class ICMPProcess(threading_tools.process_obj):
         self.__log_template.close()
 
 
-class NodeControlProcess(threading_tools.process_obj, server_mixins.EggConsumeMixin):
+class NodeControlProcess(threading_tools.icswProcessObj, server_mixins.EggConsumeMixin):
     def process_init(self):
         global_config.close()
         # check log type (queue or direct)

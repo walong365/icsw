@@ -22,8 +22,6 @@
 
 """ REST views """
 
-
-
 from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -51,7 +49,6 @@ import json
 import logging
 from initat.tools import logging_tools, process_tools
 import operator
-import pprint  # @UnusedImport
 import time
 import types
 import importlib

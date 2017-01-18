@@ -30,7 +30,6 @@ import logging
 import re
 import time
 
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db.models import Q
@@ -366,6 +365,7 @@ class generate_config(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        from initat.cluster.backbone.server_enums import icswServiceEnum
         _post = request.POST
         if "pk_list" in _post:
             sel_list = json.loads(_post["pk_list"])
@@ -690,6 +690,7 @@ class get_device_cvars(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        from initat.cluster.backbone.server_enums import icswServiceEnum
         _post = request.POST
         if "keys" in _post:
             pk_list = json.loads(_post["keys"])

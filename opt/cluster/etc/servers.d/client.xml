@@ -32,9 +32,6 @@
             <arg key="group">idg</arg>
         </start-argument>
         <nice-level>15</nice-level>
-        <dependencies>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
-        </dependencies>
         <network>
             <ports>
                 <port type="command">8011</port>
@@ -92,7 +89,6 @@
         </config-enums>
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <network>
             <ports>
@@ -115,18 +111,10 @@
         </config-enums>
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <network>
             <ports>
                 <port type="command">2003</port>
-            </ports>
-        </network>
-    </instance>
-    <instance name="memcached" check_type="simple" init_script_name="init-memcached" pid_file_name="init-memcached/memcached.pid" any-processes-ok="1" runs_on="system">
-        <network>
-            <ports>
-                <port type="command">8001</port>
             </ports>
         </network>
     </instance>
