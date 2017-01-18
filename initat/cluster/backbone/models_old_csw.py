@@ -2412,7 +2412,7 @@ def net_ip_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         try:
-            ipv_addr = ipvx_tools.ipv4(cur_inst.ip)
+            ipv_addr = ipvx_tools.IPv4(cur_inst.ip)
         except:
             raise ValidationError("not a valid IPv4 address")
         if not ipv_addr.network_matches(cur_inst.network):

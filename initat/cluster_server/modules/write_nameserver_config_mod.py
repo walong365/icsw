@@ -318,8 +318,8 @@ class write_nameserver_config(cs_base_class.icswCSServerCom):
         # nets = call_params.dc.fetchall()
         for net in nets:
             print("**", net)
-            nw_ip = ipvx_tools.ipv4(net.network)
-            nw_mask = ipvx_tools.ipv4(net.netmask)
+            nw_ip = ipvx_tools.IPv4(net.network)
+            nw_mask = ipvx_tools.IPv4(net.netmask)
             nw_ip_parts, nw_mask_parts = (
                 nw_ip.parts,
                 nw_mask.parts
@@ -427,7 +427,7 @@ class write_nameserver_config(cs_base_class.icswCSServerCom):
                             )
                         )
                         for ret in print_ips:
-                            host_part = str(ipvx_tools.ipv4(ret.ip) & (~ipvx_tools.ipv4(net.network))).split(".")
+                            host_part = str(ipvx_tools.IPv4(ret.ip) & (~ipvx_tools.IPv4(net.network))).split(".")
                             host_part.reverse()
                             for _idx in range(network_parts):
                                 host_part.pop(-1)

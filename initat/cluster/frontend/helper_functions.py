@@ -22,7 +22,6 @@
 
 """ helper functions for the init.at clustersoftware """
 
-import memcache
 import time
 from django.conf import settings
 from django.http import HttpResponse
@@ -263,6 +262,7 @@ class CachedMemcacheClient(object):
 
     @property
     def client(self):
+        import memcache
         if self.__client is None:
             self.__client = memcache.Client(self.address, cache_cas=True)
         return self.__client

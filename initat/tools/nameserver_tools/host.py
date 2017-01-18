@@ -56,7 +56,7 @@ class Host(object):
         if ip is None:
             if name.count(":"):
                 self.name = name.strip().split(":")[0]
-                self.ip = ipvx_tools.ipv4(name.strip().split(":")[1])
+                self.ip = ipvx_tools.IPv4(name.strip().split(":")[1])
                 if register:
                     Host.feed(self.ip, self.name)
                 self.public_ip, self.private_ip = (None, None)
@@ -65,19 +65,19 @@ class Host(object):
                 self.ip = None
                 self.public_ip = kwargs.get("public_ip")
                 self.private_ip = kwargs.get("private_ip")
-                if not isinstance(self.public_ip, ipvx_tools.ipv4):
-                    self.public_ip = ipvx_tools.ipv4(self.public_ip)
-                if not isinstance(self.private_ip, ipvx_tools.ipv4):
-                    self.private_ip = ipvx_tools.ipv4(self.private_ip)
+                if not isinstance(self.public_ip, ipvx_tools.IPv4):
+                    self.public_ip = ipvx_tools.IPv4(self.public_ip)
+                if not isinstance(self.private_ip, ipvx_tools.IPv4):
+                    self.private_ip = ipvx_tools.IPv4(self.private_ip)
                 if register:
                     Host.feed(self.public_ip, self.name)
                     Host.feed(self.private_ip, self.name)
         else:
             self.name = name
-            if isinstance(ip, ipvx_tools.ipv4):
+            if isinstance(ip, ipvx_tools.IPv4):
                 self.ip = ip
             else:
-                self.ip = ipvx_tools.ipv4(ip)
+                self.ip = ipvx_tools.IPv4(ip)
             if register:
                 Host.feed(self.ip, self.name)
             self.public_ip, self.private_ip = (None, None)

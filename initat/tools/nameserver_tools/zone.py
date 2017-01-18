@@ -496,7 +496,7 @@ class Zone(object):
         if Zone.opts.deploy_map:
             for _entry in Zone.opts.deploy_map.strip().split(","):
                 _src_ip, _dst_ip = _entry.strip().split(":")
-                d_map[ipvx_tools.ipv4(_src_ip)] = ipvx_tools.ipv4(_dst_ip)
+                d_map[ipvx_tools.IPv4(_src_ip)] = ipvx_tools.IPv4(_dst_ip)
         for _entry in Zone.Meta.nameservers:
             _entry.deploy_ip = d_map.get(_entry.ip, _entry.ip)
         print(

@@ -23,7 +23,6 @@ import json
 import operator
 import time
 
-import memcache
 from django.db.models import Q
 
 from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple,\
@@ -250,7 +249,7 @@ class KpiData(object):
         return dev_mon_tuples, dev_list
 
     def _get_memcached_data(self):
-
+        import memcache
         device_full_names = {
             entry.full_name: entry for entry in device.objects.all().prefetch_related('domain_tree_node')
         }

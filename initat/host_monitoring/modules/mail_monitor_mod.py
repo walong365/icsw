@@ -188,7 +188,17 @@ class MailLogObject(file_object):
             # check timestamp and correct year if necessary
             diff_days = int(
                 (
-                    time.mktime([self.__act_year, act_month, act_day] + [int(x) for x in act_hms_str.split(":")] + [0, 0, -1]) - act_time
+                    time.mktime(
+                        tuple(
+                            [
+                                self.__act_year, act_month, act_day
+                            ] + [
+                                int(x) for x in act_hms_str.split(":")
+                            ] + [
+                                0, 0, -1
+                            ]
+                        )
+                    ) - act_time
                 ) / (3600 * 24)
             )
             if diff_days < -150:

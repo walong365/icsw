@@ -98,7 +98,7 @@ class CopyNetwork(View):
         ).order_by("name")
         if len(target_devs):
             logger = logging.getLogger("cluster.network")
-            diff_ip = ipvx_tools.ipv4("0.0.0.1")
+            diff_ip = ipvx_tools.IPv4("0.0.0.1")
             logger.info("source device is %s" % (str(source_dev)))
             logger.info(
                 "{}: {}".format(
@@ -178,7 +178,7 @@ class CopyNetwork(View):
                         new_ip.netdevice = new_nd
                         if cur_ip.network.network_type.identifier != "l":
                             # increase IP for non-loopback addresses
-                            ip_val = ipvx_tools.ipv4(cur_ip.ip)
+                            ip_val = ipvx_tools.IPv4(cur_ip.ip)
                             for _seq in range(offset):
                                 ip_val += diff_ip
                             new_ip.ip = str(ip_val)
@@ -289,8 +289,8 @@ class RescanNetworks(View):
                         _required_keys = {"addr", "netmask"}
                         if _net["netmask"] != "255.255.255.255" and _required_keys == _required_keys & set(_net.keys()):
                             from initat.tools import ipvx_tools
-                            netmask = ipvx_tools.ipv4(_net["netmask"])
-                            address = ipvx_tools.ipv4(_net["addr"])
+                            netmask = ipvx_tools.IPv4(_net["netmask"])
+                            address = ipvx_tools.IPv4(_net["addr"])
                             networkaddr = netmask & address
                             if str(networkaddr) not in new_nets:
                                 from initat.cluster.backbone.models import network_type

@@ -56,7 +56,6 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         # monkey path process tools to allow consistent access
         process_tools.ALLOW_MULTIPLE_INSTANCES = False
         # copy to access from modules
-        self.objgraph = None
         threading_tools.icswProcessPool.__init__(
             self,
             "main",
@@ -67,13 +66,6 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         )
         self.CC.init(icswServiceEnum.host_monitoring, self.global_config)
         self.CC.check_config()
-        if self.CC.CS["hm.enable.objgraph"]:
-            try:
-                import objgraph
-            except ImportError:
-                pass
-            else:
-                self.objgraph = objgraph
         self.add_process(SocketProcess("socket"), start=True)
         self.add_process(ResolveProcess("resolve"), start=True)
         self.install_signal_handlers()
@@ -92,8 +84,6 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             self.add_process(HMInotifyProcess("inotify", busy_loop=True, kill_myself=True), start=True)
         self._show_config()
         self.__debug = self.global_config["DEBUG"]
-        if self.objgraph:
-            self.register_timer(self._objgraph_run, 30, instant=True)
         from initat.host_monitoring import modules
         self.modules = modules
         self.__delayed = []
@@ -168,19 +158,6 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             else:
                 if _ret_val != "N/A":
                     self.log("called reload() for {}".format(cur_mod.name))
-
-    def _objgraph_run(self):
-        # lines = unicode(self.hpy.heap().byrcs[0].byid).split("\n")
-        cur_stdout = sys.stdout
-        my_io = io.StringIO()
-        sys.stdout = my_io
-        self.objgraph.show_growth()
-        lines = [line.rstrip() for line in str(my_io.getvalue()).split("\n") if line.strip()]
-        self.log("objgraph show_growth ({})".format(logging_tools.get_plural("line", len(lines)) if lines else "no output"))
-        if lines:
-            for line in lines:
-                self.log(" - {}".format(line))
-        sys.stdout = cur_stdout
 
     def _check_ksm(self):
         if self.CC.CS["hm.enable.ksm"]:

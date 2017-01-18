@@ -181,7 +181,7 @@ class write_etc_hosts(cs_base_class.icswCSServerCom):
                     for _act_val, act_list in [(x_value, x_list) for x_value, x_list in h_list if x_value == val]:
                         out_names.extend([value for value in act_list if value not in out_names])
                 # print min_value, ip, out_names
-                loc_dict.setdefault(min_value, []).append([ipvx_tools.ipv4(ip)] + out_names)
+                loc_dict.setdefault(min_value, []).append([ipvx_tools.IPv4(ip)] + out_names)
         pen_list = sorted(loc_dict.keys())
         out_file = []
         for pen_value in pen_list:
