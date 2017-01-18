@@ -26,7 +26,7 @@ from django.conf import settings
 from django.conf.urls import include, url
 from django.conf.urls.static import static
 
-from utkik.dispatch import url, include
+# from utkik.dispatch import url, include
 
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
@@ -352,6 +352,7 @@ main_patterns = [
     url(r"^server_control$", main_views.server_control.as_view(), name="server_control"),
     url(r"^virtual_desktop_viewer$", main_views.virtual_desktop_viewer.as_view(), name="virtual_desktop_viewer"),
     url(r"^num_background_jobs$", main_views.get_number_of_background_jobs.as_view(), name="get_number_of_background_jobs"),
+    # url(r"^routing_info$", "main_views.get_routing_info", name="routing_info"),
     url(r"^routing_info$", main_views.get_routing_info.as_view(), name="routing_info"),
     url(r"^get_cluster_info$", main_views.get_cluster_info.as_view(), name="get_cluster_info"),
     url(r"^get_docu_info$", main_views.get_docu_info.as_view(), name="get_docu_info"),
@@ -400,7 +401,6 @@ for src_mod, obj_name in rest_views.REST_LIST:
 rpl.extend([
     url("^device_tree$", rest_views.device_tree_list.as_view(), name="device_tree_list"),
     url("^device_tree/(?P<pk>[0-9]+)$", rest_views.device_tree_detail.as_view(), name="device_tree_detail"),
-    # url("^device_tree/(?P<pk>[0-9]+)$", rest_views.device_tree_detail.as_view(), name="device_tree_detail"),
     url("^device_com_cap_list$", rest_views.device_com_capabilities.as_view(), name="device_com_capabilities"),
     url("^home_export_list$", rest_views.rest_home_export_list.as_view(), name="home_export_list"),
     url("^csw_object_list$", rest_views.csw_object_list.as_view({"get": "list"}), name="csw_object_list"),
