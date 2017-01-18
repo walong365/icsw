@@ -32,7 +32,7 @@ from initat.tools.kernel_sync_tools import KernelHelper
 from .config import global_config
 
 
-class KernelSyncProcess(threading_tools.process_obj):
+class KernelSyncProcess(threading_tools.icswProcessObj):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(

@@ -27,7 +27,7 @@ from initat.md_config_server.config import global_config
 from initat.tools import threading_tools, logging_tools, process_tools
 
 
-class LicenseChecker(threading_tools.process_obj):
+class LicenseChecker(threading_tools.icswProcessObj):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(

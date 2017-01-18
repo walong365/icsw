@@ -25,10 +25,10 @@
 from initat.tools import configfile, process_tools
 
 __all__ = [
-    b"global_config",
+    "global_config",
     # original sql schema version
-    b"INIT_SQL_SCHEMA_VERSION",
-    b"SQL_SCHEMA_VERSION",
+    "INIT_SQL_SCHEMA_VERSION",
+    "SQL_SCHEMA_VERSION",
 ]
 
 

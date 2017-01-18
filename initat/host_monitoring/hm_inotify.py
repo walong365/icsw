@@ -29,7 +29,6 @@ import time
 
 import zmq
 
-from initat.host_monitoring.config import global_config
 from initat.tools import inotify_tools, logging_tools, process_tools, server_command, \
     threading_tools, uuid_tools
 
@@ -42,7 +41,7 @@ class HMFileWatcher(object):
         self.mode = kwargs.get("mode", "content")
         self.comment = kwargs.get("comment", "")
         # verbose flag
-        self.__verbose = global_config["VERBOSE"]
+        self.__verbose = self.global_config["VERBOSE"]
         # exit flag
         self.__exit_flag = False
         # check for valid id, target_server and target_port
@@ -408,12 +407,15 @@ class HMFileWatcher(object):
                             send_com)
 
 
-class HMInotifyProcess(threading_tools.process_obj):
+class HMInotifyProcess(threading_tools.icswProcessObj):
     def process_init(self):
-        global_config.close()
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], context=self.zmq_context)
+        self.__log_template = logging_tools.get_logger(
+            self.global_config["LOG_NAME"],
+            self.global_config["LOG_DESTINATION"],
+            context=self.zmq_context
+        )
         self.__watcher = inotify_tools.InotifyWatcher()
-        # was INOTIFY_IDLE_TIMEOUT in global_config, now static
+        # was INOTIFY_IDLE_TIMEOUT in self.global_config, now static
         self.__idle_timeout = 5
         # self.__watcher.add_watcher("internal", "/etc/sysconfig/host-monitoring.d", inotify_tools.IN_CREATE | inotify_tools.IN_MODIFY, self._trigger)
         self.__file_watcher_dict = {}

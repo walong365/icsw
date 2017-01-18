@@ -38,7 +38,7 @@ from initat.icsw.service.instance import InstanceXML
 from initat.tools import config_tools, logging_tools, process_tools, server_command, threading_tools
 
 
-class CapabilityProcess(threading_tools.process_obj):
+class CapabilityProcess(threading_tools.icswProcessObj):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(

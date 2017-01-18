@@ -32,7 +32,7 @@ from .config import global_config
 from .structs import RepoTypeRpmYum, RepoTypeRpmZypper, SubprocessStruct, RepoTypeDebDebian
 
 
-class RepoProcess(threading_tools.process_obj):
+class RepoProcess(threading_tools.icswProcessObj):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(

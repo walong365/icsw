@@ -52,7 +52,7 @@ __all__ = [
 ]
 
 
-class IcingaLogReader(threading_tools.process_obj):
+class IcingaLogReader(threading_tools.icswProcessObj):
     class malformed_icinga_log_entry(RuntimeError):
         pass
 

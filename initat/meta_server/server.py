@@ -41,7 +41,7 @@ from .servicestate import ServiceState
 class MainProcess(ICSWBasePoolClient):
     def __init__(self):
         self.__debug = global_config["DEBUG"]
-        threading_tools.process_pool.__init__(self, "main")
+        threading_tools.icswProcessPool.__init__(self, "main")
         self.CC.init(icswServiceEnum.meta_server, global_config, native_logging=True)
         self.CC.check_config()
         self.CC.CS.copy_to_global_config(

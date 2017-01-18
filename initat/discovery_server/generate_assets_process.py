@@ -29,7 +29,7 @@ from initat.tools import logging_tools, threading_tools, process_tools
 from .config import global_config
 
 
-class GenerateAssetsProcess(threading_tools.process_obj):
+class GenerateAssetsProcess(threading_tools.icswProcessObj):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(

@@ -62,7 +62,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
     def __init__(self):
         self.__verbose = global_config["VERBOSE"]
         long_host_name, _mach_name = process_tools.get_fqdn()
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
         self.CC.init(icswServiceEnum.collectd_server, global_config)
         self.CC.check_config()
         # override default

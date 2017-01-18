@@ -615,7 +615,7 @@ class ICSWAutoInit(object):
             # ... is not the first class
             # ... is subclass of ICSWAutoInit
             # ... is not process_pool or process_base
-            if _idx > 0 and issubclass(_cl, ICSWAutoInit) and _cl not in [ICSWAutoInit, process_pool, process_obj]:
+            if _idx > 0 and issubclass(_cl, ICSWAutoInit) and _cl not in [ICSWAutoInit, icswProcessPool, icswProcessObj]:
                 _cl.__init__(self)
 
 
@@ -701,7 +701,7 @@ class ExceptionHandlingMixin(object):
         return _handled
 
 
-class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixin, ICSWAutoInit):
+class icswProcessObj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixin, ICSWAutoInit):
     def __init__(self, name, **kwargs):
         # early init of name
         self._name = name
@@ -1094,7 +1094,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBas
                     raise
 
 
-class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixin, ICSWAutoInit):
+class icswProcessPool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixin, ICSWAutoInit):
     def __init__(self, name, **kwargs):
         threading.currentThread().setName(kwargs.get("name", "main"))
         self.name = name
@@ -1127,6 +1127,8 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
         self.__queue_get_timeout = kwargs.get("queue_get_timeout", None)
         # verbose
         self.__verbose = kwargs.get("verbose", False)
+        # global config object
+        self.__global_config = kwargs.get("global_config", None)
         # ignore calls
         self.__ignore_funcs = []
         # function table
@@ -1149,6 +1151,14 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
         # clock ticks per second
         self.__sc_clk_tck = float(os.sysconf(os.sysconf_names["SC_CLK_TCK"]))
         self.__cpu_usage = []
+
+    @property
+    def global_config(self):
+        return self.__global_config
+
+    @global_config.setter
+    def global_config(self, g_conf):
+        self.__global_config = g_conf
 
     def check_cpu_usage(self):
         _excess = False
@@ -1284,6 +1294,9 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
                 setattr(t_obj, "stderr_target", sys.stderr.stream_target)
             # copy debug_zmq flag to child process
             t_obj.debug_zmq = self.debug_zmq
+            if self.global_config:
+                # copy as simple dict
+                t_obj.global_config = self.global_config.as_dict()
             if kwargs.get("start", False):
                 self.start_process(t_obj.getName())
             self._flush_process_buffers(t_obj.getName())

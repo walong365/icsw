@@ -379,4 +379,11 @@
             <dir value="/opt/cluster/share/reports" user="idreport" group="idg" create="1"/>
         </access-rights>
     </instance>
+    <instance name="memcached" check_type="simple" init_script_name="init-memcached" pid_file_name="init-memcached/memcached.pid" any-processes-ok="1" runs_on="system">
+        <network>
+            <ports>
+                <port type="command">8001</port>
+            </ports>
+        </network>
+    </instance>
 </instances>

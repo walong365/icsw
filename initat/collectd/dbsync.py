@@ -175,7 +175,7 @@ class MVValueEntryCache(GenCache):
         self[key] = _mvv
 
 
-class SyncProcess(threading_tools.process_obj, server_mixins.OperationalErrorMixin):
+class SyncProcess(threading_tools.icswProcessObj, server_mixins.OperationalErrorMixin):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(

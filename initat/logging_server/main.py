@@ -21,15 +21,16 @@
 #
 """ logging server, central logging facility, main part """
 
-
-
 from initat.client_version import VERSION_STRING
-from initat.logging_server.config import global_config
 from initat.logging_server.server import MainProcess
-from initat.tools import configfile
+from initat.tools import configfile, process_tools
 
 
 def main():
+    global_config = configfile.get_global_config(
+        process_tools.get_programm_name(),
+        single_process_mode=True
+    )
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable ebugging [%(default)s]", only_commandline=True, short_options="d")),
@@ -38,5 +39,5 @@ def main():
     options = global_config.handle_commandline(
         description="logging server, version is {}".format(VERSION_STRING),
     )
-    MainProcess(options).loop()
+    MainProcess(options, global_config).loop()
     return 0

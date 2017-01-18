@@ -29,7 +29,7 @@ from initat.tools import logging_tools, process_tools, rrd_tools, server_mixins,
 from .rsync import RSyncMixin
 
 
-class resize_process(threading_tools.process_obj, server_mixins.OperationalErrorMixin, RSyncMixin):
+class resize_process(threading_tools.icswProcessObj, server_mixins.OperationalErrorMixin, RSyncMixin):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(

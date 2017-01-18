@@ -38,7 +38,7 @@ from initat.md_config_server.icinga_log_reader.log_reader import host_service_id
 from initat.tools import logging_tools, server_command, process_tools, threading_tools
 
 
-class DynConfigProcess(threading_tools.process_obj):
+class DynConfigProcess(threading_tools.icswProcessObj):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(

@@ -19,14 +19,14 @@
 #
 """ url definitions for ICSW """
 
-
-
 import os
 
 import django.contrib.staticfiles.views
 from django.conf import settings
 from django.conf.urls import include, url
 from django.conf.urls.static import static
+
+from utkik.dispatch import url, include
 
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
