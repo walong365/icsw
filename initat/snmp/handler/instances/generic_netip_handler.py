@@ -56,7 +56,7 @@ class handler(SNMPHandler):
                 # check for static entries
                 if 4 in struct and struct[4] == 4:
                     # build snmp_ip struct
-                    _ip = ipvx_tools.ipv4(".".join(["{:d}".format(_entry) for _entry in key[1:]]))
+                    _ip = ipvx_tools.IPv4(".".join(["{:d}".format(_entry) for _entry in key[1:]]))
                     _networks = _ip.find_matching_network(network.objects.all())
                     if _networks:
                         self.log(

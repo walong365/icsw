@@ -339,7 +339,7 @@ class WmiScanBatch(ScanBatch):
 
                         for ip_found in WmiUtils.WmiList.handle(adapter_configuration['IPAddress']):
                             try:
-                                ip_found_struct = ipvx_tools.ipv4(ip_found)
+                                ip_found_struct = ipvx_tools.IPv4(ip_found)
                             except ValueError:
                                 self.log("Found IP which is not supported: {}".format(ip_found),
                                          logging_tools.LOG_LEVEL_WARN)
@@ -348,7 +348,7 @@ class WmiScanBatch(ScanBatch):
                                 netmasks_found = []
                                 for _nm in WmiUtils.WmiList.handle(adapter_configuration["IPSubnet"]):
                                     try:
-                                        netmasks_found.append(ipvx_tools.ipv4(_nm))
+                                        netmasks_found.append(ipvx_tools.IPv4(_nm))
                                     except ValueError:
                                         pass
 
@@ -360,7 +360,7 @@ class WmiScanBatch(ScanBatch):
                                     _gws = []
                                     for _gw in WmiUtils.WmiList.handle(adapter_configuration["DefaultIPGateway"]):
                                         try:
-                                            _gws.append(ipvx_tools.ipv4(_gw))
+                                            _gws.append(ipvx_tools.IPv4(_gw))
                                         except ValueError:
                                             pass
 

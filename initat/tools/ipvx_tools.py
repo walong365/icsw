@@ -19,9 +19,9 @@
 """ handles ipv4 addresses """
 
 
-class ipv4(object):
+class IPv4(object):
     def __init__(self, in_value):
-        if isinstance(in_value, ipv4):
+        if isinstance(in_value, IPv4):
             in_value = str(in_value)
         # cast tuple to list
         if isinstance(in_value, int):
@@ -77,7 +77,7 @@ class ipv4(object):
             bits = 32
             while not (bin_mask & 1) and bin_mask:
                 bits -= 1
-                bin_mask /= 2
+                bin_mask //= 2
         else:
             bits = 0
         return bits
@@ -92,13 +92,13 @@ class ipv4(object):
         return len(str(self))
 
     def __invert__(self):
-        return ipv4(".".join([str(255 - x) for x in self.parts]))
+        return IPv4(".".join([str(255 - x) for x in self.parts]))
 
     def __and__(self, other):
-        return ipv4(".".join([str(x & y) for x, y in zip(self.parts, other.parts)]))
+        return IPv4(".".join([str(x & y) for x, y in zip(self.parts, other.parts)]))
 
     def __or__(self, other):
-        return ipv4(".".join([str(x | y) for x, y in zip(self.parts, other.parts)]))
+        return IPv4(".".join([str(x | y) for x, y in zip(self.parts, other.parts)]))
 
     def __eq__(self, other):
         return self.parts == other.parts
@@ -122,7 +122,7 @@ class ipv4(object):
         if ov:
             raise ValueError("Overflow while adding IPv4 addresses {} and {}".format(str(self), str(other)))
         else:
-            return ipv4(".".join([str(x) for x in new_v]))
+            return IPv4(".".join([str(x) for x in new_v]))
 
     def __lt__(self, other):
         for i in range(4):
@@ -168,30 +168,30 @@ class ipv4(object):
     def find_matching_network(self, nw_list):
         match_list = []
         for nw_stuff in nw_list:
-            network, netmask = (ipv4(nw_stuff.network), ipv4(nw_stuff.netmask))
+            network, netmask = (IPv4(nw_stuff.network), IPv4(nw_stuff.netmask))
             if self & netmask == network:
                 match_list.append((netmask.netmask_bits(), nw_stuff))
         return sorted(match_list, reverse=True)
 
     def network_matches(self, nw_stuff):
-        return self & ipv4(nw_stuff.netmask) == ipv4(nw_stuff.network)
+        return self & IPv4(nw_stuff.netmask) == IPv4(nw_stuff.network)
 
 
 _PRIV_NETWORKS = [
     (
-        ipv4("10.0.0.0"), ipv4("255.0.0.0"),
+        IPv4("10.0.0.0"), IPv4("255.0.0.0"),
     ),
     (
-        ipv4("172.16.0.0"), ipv4("255.224.0.0"),
+        IPv4("172.16.0.0"), IPv4("255.224.0.0"),
     ),
     (
-        ipv4("192.168.0.0"), ipv4("255.255.0.0"),
+        IPv4("192.168.0.0"), IPv4("255.255.0.0"),
     ),
 ]
 
 
 def is_loopback_network(nw_addr):
-    return True if nw_addr & ipv4("127.0.0.0") == ipv4("127.0.0.0") else False
+    return True if nw_addr & IPv4("127.0.0.0") == IPv4("127.0.0.0") else False
 
 
 def get_network_name_from_mask(mask):

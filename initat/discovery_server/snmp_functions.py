@@ -64,7 +64,7 @@ class SNMPBatch(object):
             handle_error("error setting device node: {}".format(process_tools.get_except_info()))
         else:
             try:
-                ipvx_tools.ipv4(self.snmp_address)
+                ipvx_tools.IPv4(self.snmp_address)
             except ValueError:
                 handle_error("Invalid IP: '{}'".format(self.snmp_address))
             else:
