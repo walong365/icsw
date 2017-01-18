@@ -282,7 +282,7 @@ class server_process(server_mixins.ICSWBasePool):
                 self._send_return(scheme.envelope, ret_state, ret_str)
 
     def _recv_command(self, zmq_sock):
-        body = zmq_sock.recv()
+        body = zmq_sock.recv().decode()
         if zmq_sock.getsockopt(zmq.RCVMORE):
             _src_id = body
             body = zmq_sock.recv()
