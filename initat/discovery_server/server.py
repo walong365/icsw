@@ -44,7 +44,7 @@ from .discovery import DiscoveryProcess
 @server_mixins.RemoteCallProcess
 class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
     def __init__(self):
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.CC.init(icswServiceEnum.discovery_server, global_config)

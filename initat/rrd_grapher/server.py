@@ -42,7 +42,7 @@ class ServerProcess(
     server_mixins.RemoteCallMixin,
 ):
     def __init__(self):
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
         self.CC.init(icswServiceEnum.grapher_server, global_config)
         self.CC.check_config()
         # close connection (daemonizing)

@@ -19,8 +19,6 @@
 #
 """ url definitions for ICSW """
 
-
-
 import os
 
 import django.contrib.staticfiles.views

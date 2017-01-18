@@ -1360,13 +1360,13 @@ class RMSJob(object):
         self.__log_template.close()
 
 
-class ProcessPool(threading_tools.process_pool):
+class ProcessPool(threading_tools.icswProcessPool):
     def __init__(self, **kwargs):
         self.dummy_call = kwargs.get("dummy_call", False)
         self.start_time = time.time()
         self.__log_cache, self.__log_template = ([], None)
         self.log("-" * SEP_LEN)
-        threading_tools.process_pool.__init__(
+        threading_tools.icswProcessPool.__init__(
             self,
             "main",
             zmq=True,

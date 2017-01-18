@@ -37,7 +37,7 @@ from .hm_functions import HostMonitoringMixin
 from .snmp_functions import SNMPBatch
 
 
-class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, HostMonitoringMixin, BaseScanMixin, WmiScanMixin, EggConsumeMixin):
+class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.icswProcessObj, HostMonitoringMixin, BaseScanMixin, WmiScanMixin, EggConsumeMixin):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)

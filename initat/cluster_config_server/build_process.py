@@ -91,7 +91,7 @@ class network_tree(dict):
                         self[cur_net.master_network_id].idx_list.append(net_pk)
 
 
-class build_process(threading_tools.process_obj):
+class build_process(threading_tools.icswProcessObj):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(

@@ -38,7 +38,7 @@ class ServerProcess(
     server_mixins.RemoteCallMixin,
 ):
     def __init__(self):
-        threading_tools.process_pool.__init__(
+        threading_tools.icswProcessPool.__init__(
             self,
             "main",
             zmq=True,

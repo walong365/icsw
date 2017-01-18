@@ -29,19 +29,18 @@ import time
 
 import zmq
 
-from initat.host_monitoring.config import global_config
 from initat.tools import icmp_class, logging_tools, process_tools, server_command, \
     threading_tools
 
 
 class HMIcmpProtocol(icmp_class.icmp_protocol):
-    def __init__(self, process, log_template):
+    def __init__(self, process, log_template, debug):
         self.__log_template = log_template
         icmp_class.icmp_protocol.__init__(self)
         self.__process = process
         self.__work_dict, self.__seqno_dict = ({}, {})
         self.__pings_in_flight = 0
-        self.__debug = global_config["DEBUG"]
+        self.__debug = debug
         # keys already handled
         self.__handled = set()
         # group dict for ping to multiple hosts
@@ -379,12 +378,11 @@ class TCPCon(object):
         del self.srv_com
 
 
-class SocketProcess(threading_tools.process_obj):
+class SocketProcess(threading_tools.icswProcessObj):
     def process_init(self):
-        global_config.close()
         self.__log_template = logging_tools.get_logger(
-            global_config["LOG_NAME"],
-            global_config["LOG_DESTINATION"],
+            self.global_config["LOG_NAME"],
+            self.global_config["LOG_DESTINATION"],
             zmq=True,
             context=self.zmq_context
         )
@@ -394,7 +392,7 @@ class SocketProcess(threading_tools.process_obj):
         self.__extra_twisted_threads = 0
         # print self.start_kwargs
         if self.start_kwargs.get("icmp", True):
-            self.icmp_protocol = HMIcmpProtocol(self, self.__log_template)
+            self.icmp_protocol = HMIcmpProtocol(self, self.__log_template, debug=self.global_config["DEBUG"])
             # reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
             # reactor.listen_ICMP(self.icmp_protocol)
             self.register_func("ping", self._ping)

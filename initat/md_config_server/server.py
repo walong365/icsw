@@ -51,7 +51,7 @@ class ServerProcess(
 ):
     def __init__(self):
         long_host_name, mach_name = process_tools.get_fqdn()
-        threading_tools.process_pool.__init__(self, "main", zmq=True)
+        threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
         self.CC.init(icswServiceEnum.monitor_server, global_config)
         self.CC.check_config()
         db_tools.close_connection()

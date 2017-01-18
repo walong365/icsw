@@ -30,7 +30,7 @@ from initat.report_server.config import global_config
 from initat.report_server.report import PDFReportGenerator, XlsxReportGenerator
 
 
-class ReportGenerationProcess(threading_tools.process_obj):
+class ReportGenerationProcess(threading_tools.icswProcessObj):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(

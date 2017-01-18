@@ -39,7 +39,7 @@ from ..config import global_config
 FLOAT_FMT = "{:.6f}"
 
 
-class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMixin, server_mixins.EggConsumeMixin):
+class GraphProcess(threading_tools.icswProcessObj, server_mixins.OperationalErrorMixin, server_mixins.EggConsumeMixin):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(

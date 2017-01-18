@@ -378,7 +378,7 @@ class ConfigCheckObject(object):
             self.__msi_block = None
         if not self.__native_logging:
             self.__process.log_template.close()
-        if isinstance(self.__process, threading_tools.process_pool):
+        if isinstance(self.__process, threading_tools.icswProcessPool):
             # remove global config if we were called from the process poll
             self.global_config.delete()
 
@@ -1211,7 +1211,7 @@ class RemoteCall(object):
         return self.rc_signature
 
 
-class ICSWBasePool(threading_tools.process_pool, NetworkBindMixin, ServerStatusMixin, ConfigCheckMixin, OperationalErrorMixin):
+class ICSWBasePool(threading_tools.icswProcessPool, NetworkBindMixin, ServerStatusMixin, ConfigCheckMixin, OperationalErrorMixin):
     def __init__(self):
         pass
 
@@ -1221,21 +1221,21 @@ class ICSWBasePool(threading_tools.process_pool, NetworkBindMixin, ServerStatusM
 
 
 # baseprocess for all child process on server side
-class ICSWBaseProcess(threading_tools.process_obj, ConfigCheckMixin, OperationalErrorMixin):
+class ICSWBaseProcess(threading_tools.icswProcessObj, ConfigCheckMixin, OperationalErrorMixin):
     def __init__(self, name=None):
         # this is not very elegant, on child process we get called twice
         # because of the class iterater in ICSWAutoInit so we call the __init__
         # of process_obj only if name is set
         if name is not None:
             # manually init process_obj
-            threading_tools.process_obj.__init__(self, name)
+            threading_tools.icswProcessObj.__init__(self, name)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         ConfigCheckMixin.log(self, what, log_level)
 
 
 # basepool for clients (without operationalerrormixin)
-class ICSWBasePoolClient(threading_tools.process_pool, NetworkBindMixin, ServerStatusMixin, ConfigCheckMixin):
+class ICSWBasePoolClient(threading_tools.icswProcessPool, NetworkBindMixin, ServerStatusMixin, ConfigCheckMixin):
     def __init__(self):
         pass
 

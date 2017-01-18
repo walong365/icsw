@@ -21,8 +21,6 @@
 #
 """ meta-server, main part """
 
-
-
 import os
 
 from initat.client_version import VERSION_STRING

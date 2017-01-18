@@ -117,7 +117,7 @@ class PackageCheck(object):
         return subprocess.check_output(cmd_string, shell=True)
 
 
-class BuildProcess(threading_tools.process_obj):
+class BuildProcess(threading_tools.icswProcessObj):
     def process_init(self):
         self.__verbose = global_config["VERBOSE"]
         self.__log_template = logging_tools.get_logger(
@@ -204,12 +204,12 @@ class BuildProcess(threading_tools.process_obj):
         return result
 
 
-class ServerProcess(threading_tools.process_pool):
+class ServerProcess(threading_tools.icswProcessPool):
     def __init__(self):
         self.__start_time = time.time()
         self.__verbose = global_config["VERBOSE"]
         self.__log_cache, self.__log_template = ([], None)
-        threading_tools.process_pool.__init__(
+        threading_tools.icswProcessPool.__init__(
             self,
             "main",
             zmq=True,

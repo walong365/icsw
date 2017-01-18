@@ -39,10 +39,10 @@ class my_options(argparse.ArgumentParser):
         self.add_argument("args", nargs="+")
 
 
-class log_process(threading_tools.process_obj):
+class log_process(threading_tools.icswProcessObj):
     def __init__(self, t_name, options, log_template):
         self.__options = options
-        threading_tools.process_obj.__init__(self, t_name)
+        threading_tools.icswProcessObj.__init__(self, t_name)
 
     def process_init(self):
         self.__log_template = logging_tools.get_logger(self.__options.log_name, self.__options.dst, zmq=True, context=self.zmq_context)
@@ -67,11 +67,11 @@ class log_process(threading_tools.process_obj):
         self.__log_template.close()
 
 
-class my_thread_pool(threading_tools.process_pool):
+class my_thread_pool(threading_tools.icswProcessPool):
     def __init__(self, options):
         self.__options = options
         self.__log_template, self.__log_cache = (None, [])
-        threading_tools.process_pool.__init__(self, self.__options.log_name, zmq=True)
+        threading_tools.icswProcessPool.__init__(self, self.__options.log_name, zmq=True)
         self.__log_template = logging_tools.get_logger(options.log_name, options.dst, zmq=True, context=self.zmq_context)
         self.__log_template.log_command("set_max_line_length %d" % (256))
         self.register_func("stop_logging", self._stop_logging)

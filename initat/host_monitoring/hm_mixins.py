@@ -22,10 +22,7 @@
 
 """ host-monitoring / relay mixin """
 
-
-
 from initat.tools import logging_tools, process_tools
-from .config import global_config
 
 INIT_LIST = [
     ("register_server", True),
@@ -53,7 +50,7 @@ class HMHRMixin(object):
             cur_mod.INIT_STATE = {_name: False for _name, _flag in INIT_LIST}
         for call_name, add_self in INIT_LIST:
             for cur_mod in self.modules.module_list:
-                if global_config["VERBOSE"]:
+                if self.global_config["VERBOSE"]:
                     self.log(
                         "calling {} for module '{}'".format(
                             call_name,

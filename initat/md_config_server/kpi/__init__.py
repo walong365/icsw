@@ -41,7 +41,7 @@ class KpiEvaluationError(Exception):
         super(KpiEvaluationError, self).__init__(error_report)
 
 
-class KpiProcess(threading_tools.process_obj):
+class KpiProcess(threading_tools.icswProcessObj):
 
     def process_init(self):
         global_config.close()

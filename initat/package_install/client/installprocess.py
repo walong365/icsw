@@ -26,8 +26,6 @@ import os
 from lxml.builder import E
 
 from initat.package_install.client.command import simple_command
-from initat.package_install.client.config import global_config
-from initat.client_version import VERSION_STRING
 from initat.tools import logging_tools, process_tools, threading_tools, config_store, server_command
 
 RPM_QUERY_FORMAT = "%{NAME}\n%{INSTALLTIME}\n%{VERSION}\n%{RELEASE}\n"
@@ -95,19 +93,10 @@ def get_repo_str(_type, in_repo):
     return "\n".join(_vf)
 
 
-def get_srv_command(**kwargs):
-    return server_command.srv_command(
-        package_client_version=VERSION_STRING,
-        debian="1" if global_config["DEBIAN"] else "0",
-        **kwargs
-    )
-
-
-class InstallProcess(threading_tools.process_obj):
+class InstallProcess(threading_tools.icswProcessObj):
     """ handles all install and external command stuff """
     def __init__(self, name):
-        global_config.close()
-        threading_tools.process_obj.__init__(
+        threading_tools.icswProcessObj.__init__(
             self,
             name,
             loop_timer=1000.0
@@ -138,8 +127,8 @@ class InstallProcess(threading_tools.process_obj):
 
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
-            global_config["LOG_NAME"],
-            global_config["LOG_DESTINATION"],
+            self.global_config["LOG_NAME"],
+            self.global_config["LOG_DESTINATION"],
             zmq=True,
             context=self.zmq_context,
             init_logger=True
