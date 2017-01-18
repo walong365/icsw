@@ -550,11 +550,7 @@ class ConfigKeyError(object):
 
 class Configuration(object):
     def __init__(self, name, *args, **kwargs):
-        inst_xml = instance.InstanceXML(quiet=True)
         self.__mc_enabled = kwargs.get("mc_enabled", True)
-        _mc_addr = "127.0.0.1"
-        _mc_port = inst_xml.get_port_dict("memcached", command=True)
-        self.__mc_addr = "{}:{:d}".format(_mc_addr, _mc_port)
         self.__name = name
         self.__backend_init = False
         self.mc_prefix = ""
@@ -595,13 +591,17 @@ class Configuration(object):
         self._reopen_mc()
 
     def _reopen_mc(self, first=False):
-        import memcache
         if self.__spm:
             self.__mc_client = None
         else:
+            import memcache
             if not first:
                 self.__mc_client.disconnect_all()
             try:
+                inst_xml = instance.InstanceXML(quiet=True)
+                _mc_addr = "127.0.0.1"
+                _mc_port = inst_xml.get_port_dict("memcached", command=True)
+                self.__mc_addr = "{}:{:d}".format(_mc_addr, _mc_port)
                 self.__mc_client = memcache.Client([self.__mc_addr])
             except:
                 raise
