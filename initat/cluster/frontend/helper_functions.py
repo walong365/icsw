@@ -140,8 +140,6 @@ class XMLWrapper(object):
                     "name": key,
                     "type": {
                         int: "integer",
-                        int: "integer",
-                        str: "string",
                         str: "string",
                         float: "float",
                         etree._Element: "xml",
