@@ -42,7 +42,6 @@ from initat.tools.server_mixins import ICSWBasePool
 
 class MainProcess(ICSWBasePool):
     def __init__(self, options, global_config):
-        self.global_config = global_config
         self.__options = options
         # log structures
         self.__log_cache = []
@@ -52,7 +51,7 @@ class MainProcess(ICSWBasePool):
         # number of usecounts
         self.__handle_usecount = {}
         self.__usecount_ts = time.time()
-        threading_tools.icswProcessPool.__init__(self, "main", stack_size=2 * 1024 * 1024, zmq=True)
+        threading_tools.icswProcessPool.__init__(self, "main", stack_size=2 * 1024 * 1024, zmq=True, global_config=global_config)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("startup_error", self._startup_error)

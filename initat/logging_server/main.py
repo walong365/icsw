@@ -21,7 +21,6 @@
 #
 """ logging server, central logging facility, main part """
 
-
 from initat.client_version import VERSION_STRING
 from initat.logging_server.server import MainProcess
 from initat.tools import configfile, process_tools
