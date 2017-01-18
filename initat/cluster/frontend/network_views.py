@@ -22,8 +22,6 @@
 
 """ network views """
 
-
-
 import json
 import logging
 import netifaces
@@ -34,10 +32,10 @@ from django.db.utils import IntegrityError
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from networkx.readwrite import json_graph
 
 from initat.cluster.backbone.serializers import NmapScanSerializerSimple, NmapScanSerializerDetailed
-from initat.cluster.backbone.models import device, peer_information, network, network_type, NmapScan, NmapScanIgnoredDevice
+from initat.cluster.backbone.models import device, peer_information, network, network_type, NmapScan, \
+    NmapScanIgnoredDevice
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.tools import config_tools, ipvx_tools, logging_tools
@@ -51,6 +49,7 @@ class json_network(View):
 
     @method_decorator(login_required)
     def post(self, request):
+        from networkx.readwrite import json_graph
         _post = request.POST
         graph_mode = _post["graph_sel"]
         # devices currently selected (or in monitoring data, dependening on the call)
@@ -350,7 +349,6 @@ class NmapScanDiffer(View):
                 old_devices = old_nmap_scan.get_nmap_devices()
                 current_devices = nmap_scan.get_nmap_devices()
 
-
                 for device in current_devices:
                     if device not in old_devices:
                         new_devices.append(device.get_dict())
@@ -433,6 +431,7 @@ class HandleNmapScanDevice(View):
         nmap_scan.save()
 
         return HttpResponse(json.dumps(nmap_scan.matrix))
+
 
 class NmapScanDeleter(View):
     @method_decorator(login_required)

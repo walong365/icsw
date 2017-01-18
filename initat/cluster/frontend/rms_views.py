@@ -22,43 +22,34 @@
 
 """ RMS views """
 
-
-
 import datetime
 import json
 import logging
+import re
 import sys
 import threading
 import time
-import operator
-import re
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from collections import namedtuple
-from django.views.decorators.csrf import csrf_exempt
 
 import memcache
-from rest_framework import viewsets, status
-from initat.icsw.service.instance import InstanceXML
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import View
 from lxml.builder import E
+from rest_framework import viewsets
 
 from initat.cluster.backbone.models import rms_job_run, device
 from initat.cluster.backbone.models.functions import cluster_timezone
-from initat.cluster.backbone.routing import SrvTypeRouting
 from initat.cluster.backbone.serializers import rms_job_run_serializer
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, server_command, process_tools
-
-try:
-    from initat.tools import sge_tools
-except ImportError:
-    sge_tools = None
 
 RMS_ADDON_KEYS = [
     key for key in list(sys.modules.keys()) if key.startswith("initat.cluster.frontend.rms_addons.") and sys.modules[key]
@@ -74,14 +65,24 @@ MC_ADDRESS = "127.0.0.1"
 
 logger = logging.getLogger("cluster.rms")
 
-if sge_tools:
-    class ThreadLockedSGEInfo(sge_tools.SGEInfo):
-        # sge_info object with thread lock layer
-        def __init__(self):
-            self._init = False
+my_sge_info = None
 
-        def ensure_init(self):
-            if not self._init:
+
+# to be beautified ...
+
+
+def get_sge_info():
+    global my_sge_info
+    if my_sge_info is None:
+        from initat.tools import sge_tools
+        # display loaded packages
+        # for key in sorted(list(set([".".join(_key.split(".", 2)[:-1]) for _key in sys.modules.keys()]))):
+        #    print("*", key)
+
+        class ThreadLockedSGEInfo(sge_tools.SGEInfo):
+            # sge_info object with thread lock layer
+            def __init__(self):
+                from initat.cluster.backbone.routing import SrvTypeRouting
                 self._init = True
                 _srv_type = "rms-server"
                 _routing = SrvTypeRouting()
@@ -101,30 +102,27 @@ if sge_tools:
                     persistent_socket=True,
                 )
 
-        def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-            logger.log(log_level, "[sge] {}".format(what))
+            def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+                logger.log(log_level, "[sge] {}".format(what))
 
-        def update(self):
-            self.ensure_init()
-            self.lock.acquire()
-            try:
-                sge_tools.SGEInfo.update(self)
-                sge_tools.SGEInfo.build_luts(self)
-            finally:
-                self.lock.release()
-else:
-    class tl_sge_info(object):
-        def update(self):
-            pass
-
-my_sge_info = ThreadLockedSGEInfo()
+            def update(self):
+                self.lock.acquire()
+                try:
+                    sge_tools.SGEInfo.update(self)
+                    sge_tools.SGEInfo.build_luts(self)
+                finally:
+                    self.lock.release()
+        my_sge_info = ThreadLockedSGEInfo()
+    return my_sge_info
 
 
 def get_job_options(request):
+    from initat.tools import sge_tools
     return sge_tools.get_empty_job_options(compress_nodelist=False, queue_details=True, show_variables=True)
 
 
 def get_node_options(request):
+    from initat.tools import sge_tools
     return sge_tools.get_empty_node_options(merge_node_queue=True, show_type=True, show_seq=True, show_memory=True)
 
 
@@ -132,9 +130,8 @@ class get_header_dict(View):
     @method_decorator(login_required)
     def post(self, request):
         res = rms_headers(request)
-        if sge_tools is not None:
-            for change_obj in RMS_ADDONS:
-                change_obj.modify_headers(res)
+        for change_obj in RMS_ADDONS:
+            change_obj.modify_headers(res)
         header_dict = {}
         for _entry in res:
             _sub_list = header_dict.setdefault(_entry.tag, [])
@@ -146,6 +143,7 @@ class get_header_dict(View):
 
 
 def rms_headers(request):
+    from initat.tools import sge_tools
     if sge_tools:
         res = E.headers(
             E.running_headers(
@@ -171,9 +169,8 @@ class get_header_xml(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         res = rms_headers(request)
-        if sge_tools is not None:
-            for change_obj in RMS_ADDONS:
-                change_obj.modify_headers(res)
+        for change_obj in RMS_ADDONS:
+            change_obj.modify_headers(res)
         request.xml_response["headers"] = res
 
 
@@ -220,7 +217,9 @@ def _salt_addons(request):
 def _fetch_rms_info(request):
     # get rms info needed by several views
     # call my_sge_info.update() before calling this!
-    if sge_tools:
+    my_sge_info = get_sge_info()
+    if my_sge_info is not None:
+        from initat.tools import sge_tools
         if request.user.is_authenticated():
             _user = request.user
         else:
@@ -268,7 +267,9 @@ class get_rms_done_json(View):
 class get_rms_current_json(View):
     @method_decorator(login_required)
     def post(self, request):
+        from initat.tools import sge_tools
         _post = request.POST
+        my_sge_info = get_sge_info()
         my_sge_info.update()
         _salt_addons(request)
         rms_info = _fetch_rms_info(request)
@@ -329,7 +330,6 @@ class get_rms_current_json(View):
             if len(file_contents):
                 cur_fcd = []
                 for cur_fc in file_contents:
-                    from lxml import etree
                     file_name = cur_fc.attrib["name"]
                     content = cache.get(cur_fc.attrib["cache_uuid"])
                     if content is not None:
@@ -372,6 +372,7 @@ class get_rms_jobinfo(View):
     @method_decorator(login_required)
     def post(self, request):
         _post = request.POST
+        my_sge_info = get_sge_info()
         my_sge_info.update()
         _salt_addons(request)
         rms_info = _fetch_rms_info(request)
@@ -395,6 +396,7 @@ class get_rms_jobinfo(View):
 class RmsJobViewSet(viewsets.ViewSet):
     @csrf_exempt
     def simple_get(self, request):
+        my_sge_info = get_sge_info()
         my_sge_info.update()
 
         _salt_addons(request)
@@ -442,6 +444,7 @@ class get_file_content(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        my_sge_info = get_sge_info()
         _post = request.POST
         if "file_ids" in _post:
             file_id_list = []

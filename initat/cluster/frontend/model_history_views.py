@@ -26,16 +26,12 @@ import logging
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import ForeignKey
 from django.utils.decorators import method_decorator
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
-from reversion.models import Version
 
 from initat.cluster.backbone.models import device
-from initat.cluster.backbone.models.model_history import icsw_deletion_record, icsw_register
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.cluster.frontend.ext.diff_match_patch import diff_match_patch
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.tools import server_mixins, logging_tools
 
@@ -51,6 +47,7 @@ class get_models_with_history(RetrieveAPIView):
     @method_decorator(login_required)
     @rest_logging
     def get(self, request, *args, **kwargs):
+        from initat.cluster.backbone.models.model_history import icsw_register
         return Response(
             {
                 model.__name__: model._meta.verbose_name for model in icsw_register.REGISTERED_MODELS
@@ -60,6 +57,7 @@ class get_models_with_history(RetrieveAPIView):
 
 class DeletedObjectsCache(dict):
     def __missing__(self, target_model):
+        from reversion.models import Version
         value = {entry.pk: entry for entry in Version.objects.get_deleted(target_model)}
         self[target_model] = value
         return value
@@ -70,6 +68,12 @@ class get_historical_data(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
+        from django.db.models import ForeignKey
+        from reversion.models import Version
+
+        from initat.cluster.frontend.ext.diff_match_patch import diff_match_patch
+        from initat.cluster.backbone.models.model_history import icsw_deletion_record, icsw_register
+
         model_name = request.GET['model']
         # try currently registered models
         try:

@@ -26,8 +26,6 @@ import shutil
 import subprocess
 import time
 
-import pymongo
-
 from initat.cluster.backbone.models import device
 from initat.tools import logging_tools, process_tools, inotify_tools, server_command
 from initat.tools.mongodb import MongoDbConnector
@@ -71,6 +69,8 @@ class Machine(object):
 
     @classmethod
     def init_mongo(cls):
+        import pymongo
+
         cls.mongo_init = True
         cls.mongo_db = cls.mongo_connection.event_log_db
         cls.mongo_db.system_log.create_index(

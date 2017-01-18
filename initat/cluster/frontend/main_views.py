@@ -22,8 +22,6 @@
 
 """ main views """
 
-
-
 import datetime
 import glob
 import json

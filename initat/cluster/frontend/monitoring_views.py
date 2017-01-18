@@ -40,7 +40,6 @@ from rest_framework import viewsets
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 
-from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models import get_related_models, mon_check_command, \
     parse_commandline, mon_check_command_special, device, mon_dist_master, \
     MonDisplayPipeSpec
@@ -53,9 +52,7 @@ from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
-from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
 from initat.tools import server_command, server_mixins, logging_tools, process_tools
-from initat.cluster.backbone.icinga_commands_enum import IcingaCommandEnum, IcingaCommandSerializer
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -236,6 +233,7 @@ class DummyLogger(object):
 class NodeStatusViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
     def get_all(self, request):
+        from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
         def _to_fqdn(_vals):
             if _vals[2]:
                 return "{}.{}".format(_vals[1], _vals[2])
@@ -643,13 +641,13 @@ class get_hist_timespan(RetrieveAPIView):
 
 
 class AllIcingaCmds(ListAPIView):
-    queryset = [entry.value for entry in IcingaCommandEnum]
 
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
+        from initat.cluster.backbone.icinga_commands_enum import IcingaCommandEnum, IcingaCommandSerializer
         return Response(
-            IcingaCommandSerializer(self.queryset, many=True).data
+            IcingaCommandSerializer([entry.value for entry in IcingaCommandEnum], many=True).data
         )
 
 
@@ -689,6 +687,7 @@ class get_hist_service_data(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
+        from initat.cluster.backbone.available_licenses import LicenseEnum
         device_ids = json.loads(request.GET.get("device_ids"))
 
         timespans_db = _device_status_history_util.get_timespans_db_from_request(request)

@@ -24,19 +24,15 @@
 import collections
 import json
 
-import bson.json_util
 import dateutil.parser
-import pymongo
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from pymongo.errors import PyMongoError
 
 from initat.cluster.backbone.models import device, DispatcherLink, DispatcherSetting, user, ScheduleItem
 from initat.cluster.backbone.serializers import DispatcherLinkSerializer
 from initat.cluster.frontend.rest_views import rest_logging
-from initat.tools.mongodb import MongoDbConnector
 
 
 class GetEventLogDeviceInfo(View):
@@ -44,6 +40,8 @@ class GetEventLogDeviceInfo(View):
 
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
+        from pymongo.errors import PyMongoError
+        from initat.tools.mongodb import MongoDbConnector
         device_pks = json.loads(request.GET['device_pks'])
         ret = {}
         mongo = MongoDbConnector()
@@ -152,6 +150,7 @@ class GetEventLog(View):
 
     class GetIpmiEventLog(object):
         def __init__(self):
+            from initat.tools.mongodb import MongoDbConnector
             self.mongo = MongoDbConnector()
 
         def __call__(self, device_pks, pagination_skip, pagination_limit,
@@ -216,6 +215,8 @@ class GetEventLog(View):
             return GetEventLog.EventLogResult(total_num=total_num, keys_ordered=keys_ordered, entries=result_paginated)
 
         def _regular_query(self, device_pks, pagination_skip, pagination_limit, filter_str=None):
+            import pymongo
+
             projection_obj = {
                 'sections': 1,
                 'device_pk': 1,
@@ -280,6 +281,7 @@ class GetEventLog(View):
     class GetSystemLogEventLog(object):
         def __init__(self, device_pks, pagination_skip, pagination_limit,
                      group_by=None, filter_str=None, from_date=None, to_date=None):
+            from initat.tools.mongodb import MongoDbConnector
             self.device_pks = device_pks
             self.pagination_skip = pagination_skip
             self.pagination_limit = pagination_limit
@@ -310,6 +312,7 @@ class GetEventLog(View):
             return query_obj
 
         def _regular_query(self):
+            import pymongo
             query_obj = self._create_match_obj()
 
             projection_obj = {
@@ -362,6 +365,7 @@ class GetEventLog(View):
     class GetWmiEventLog(object):
         def __init__(self, device_pks, pagination_skip, pagination_limit,
                      group_by=None, filter_str=None, from_date=None, to_date=None, logfile=None):
+            from initat.tools.mongodb import MongoDbConnector
             self.device_pks = device_pks
             self.pagination_skip = pagination_skip
             self.pagination_limit = pagination_limit
@@ -402,6 +406,8 @@ class GetEventLog(View):
                                               mode_specific_parameters=mode_specific_parameters)
 
         def _regular_query(self):
+            import pymongo
+
             query_obj = self._create_match_obj()
 
             projection_obj = {
@@ -477,6 +483,7 @@ class GetEventLog(View):
     @method_decorator(login_required)
     @rest_logging
     def post(self, request, *args, **kwargs):
+        import bson.json_util
         # NOTE: currently, this list always contains one entry
         device_pks = json.loads(request.POST['device_pks'])
         pagination_skip = int(request.POST.get('pagination_skip'))
@@ -576,6 +583,7 @@ class DispatcherLinkSyncer(View):
 
         return HttpResponse(json.dumps([links_deleted, links_created]))
 
+
 class ScheduleItemCreator(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -587,7 +595,8 @@ class ScheduleItemCreator(View):
 
         user_obj = user.objects.get(idx=int(user_id))
 
-        new_schedule_item = ScheduleItem(model_name=model_name,
+        new_schedule_item = ScheduleItem(
+            model_name=model_name,
             object_id=int(object_id),
             run_now=True,
             schedule_handler=schedule_handler,

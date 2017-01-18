@@ -22,15 +22,11 @@
 
 """ base views """
 
-
-
 import datetime
 import json
 import logging
 import time
 
-import PIL
-from PIL import Image
 from django.apps import apps
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
@@ -46,13 +42,10 @@ from rest_framework.response import Response
 
 from initat.cluster.backbone.models import category, category_tree, location_gfx, \
     DeleteRequest, device_mon_location
-from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
 from initat.cluster.backbone.render import permission_required_mixin
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.tools import logging_tools, process_tools, server_command
-from initat.tools.bgnotify.create import propagate_channel_object
 
 logger = logging.getLogger("cluster.base")
 
@@ -93,6 +86,8 @@ TARGET_WIDTH, TARGET_HEIGTH = (1920, 1920)
 class upload_location_gfx(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
+        import PIL
+        from PIL import Image
         _location_gfx = location_gfx.objects.get(Q(pk=request.POST["location_gfx_id"]))
 
         if len(request.FILES) == 1:
@@ -304,6 +299,7 @@ class GetKpiSourceData(View):
     @method_decorator(xml_wrapper)
     @rest_logging
     def post(self, request):
+        from initat.cluster.backbone.server_enums import icswServiceEnum
         srv_com = server_command.srv_command(command="get_kpi_source_data")
         srv_com['dev_mon_cat_tuples'] = request.POST['dev_mon_cat_tuples']
         srv_com['time_range'] = request.POST['time_range']
@@ -319,6 +315,7 @@ class CalculateKpiPreview(View):
     @method_decorator(xml_wrapper)
     @rest_logging
     def post(self, request):
+        from initat.cluster.backbone.server_enums import icswServiceEnum
         srv_com = server_command.srv_command(command="calculate_kpi_preview")
         srv_com["kpi_serialized"] = request.POST['kpi_serialized']
         srv_com['dev_mon_cat_tuples'] = request.POST['dev_mon_cat_tuples']
@@ -339,6 +336,7 @@ class CheckDeleteObject(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
         # returns:
         # - related_objs: {obj_ok : [related_obj_info] } for objects which have related objects
         # - deletable_objects: [obj_pk]
@@ -366,7 +364,7 @@ class CheckDeleteObject(View):
 
             can_delete_answer = can_delete_obj(obj_to_delete, logger)
             # print 'can del took ', time.time() - a, bool(can_delete_answer), len(can_delete_answer.related_objects)
-            if can_delete_answer:  #  or True:
+            if can_delete_answer:  # or True:
                 deletable_objects.append(obj_to_delete.pk)
             else:
                 info = []
@@ -434,6 +432,7 @@ class AddDeleteRequest(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        from initat.cluster.backbone.server_enums import icswServiceEnum
         data = json.loads(request.POST.get("data"))
         # import pprint
         # pprint.pprint(data)
@@ -532,6 +531,7 @@ class CategoryReferences(ListAPIView):
 
 @csrf_exempt
 def propagate_channel_message(request, group):
+    from initat.tools.bgnotify.create import propagate_channel_object
     # data = json.loads(request.body)
     propagate_channel_object(group, json.loads(request.body))
     return HttpResponse("ok")

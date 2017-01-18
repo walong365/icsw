@@ -22,18 +22,16 @@
 
 """ setup views """
 
-
-
 import logging
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from lxml.builder import E
 
 from initat.cluster.backbone.models import partition_table, image
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import server_command
 

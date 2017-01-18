@@ -4,7 +4,6 @@
 import argparse
 import base64
 
-from M2Crypto import EVP
 from lxml import etree
 from lxml.builder import E
 
@@ -41,6 +40,7 @@ RJFfUw9Ll0BI4y0xE+RV9MLkyVKbvn4KdeflTrU0b71GnF2DVji9GQ==
 
 class Signature(object):
     def __init__(self, private_key=PRIVATE_KEY):
+        from M2Crypto import EVP
         self.key = EVP.load_key_string(private_key)
 
     def _sign(self, data):

@@ -22,8 +22,6 @@
 
 """ user views """
 
-
-
 import json
 import logging
 
@@ -46,7 +44,6 @@ from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.license_views import login_required_rest
 from initat.cluster.frontend.rest_views import rest_logging
-from initat.server_version import VERSION_STRING, VERSION_MAJOR, BUILD_MACHINE
 from initat.tools import config_tools, server_command
 
 logger = logging.getLogger("cluster.user")
@@ -281,6 +278,7 @@ class GetObjectPermissions(RetrieveAPIView):
 class GetInitProduct(RetrieveAPIView):
     @rest_logging
     def get(self, request, *args, **kwargs):
+        from initat.server_version import VERSION_STRING, VERSION_MAJOR, BUILD_MACHINE
         product = License.objects.get_init_product()
         family = product.get_version_family(VERSION_MAJOR)
         return Response(

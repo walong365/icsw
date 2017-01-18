@@ -22,8 +22,6 @@
 
 """ license views """
 
-
-
 import logging
 
 from django.contrib.auth.decorators import login_required
@@ -38,8 +36,7 @@ from initat.cluster.backbone.available_licenses import LicenseEnum, get_availabl
 from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.backbone.models import License, device_variable, icswEggCradle
 from initat.cluster.backbone.serializers import icswEggCradleSerializer
-from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
 
 logger = logging.getLogger("cluster.license")

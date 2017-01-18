@@ -23,8 +23,6 @@
 
 """ boot views """
 
-
-
 import json
 import logging
 import time
@@ -43,8 +41,6 @@ from rest_framework.views import APIView
 
 from initat.cluster.backbone.models import device, cd_connection, cluster_timezone, \
     kernel, image, partition_table, status, network, DeviceLogEntry, mac_ignore
-from initat.cluster.backbone.serializers import device_serializer_boot
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import logging_tools, server_command
 
@@ -55,6 +51,8 @@ class get_boot_info_json(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        from initat.cluster.backbone.server_enums import icswServiceEnum
+        from initat.cluster.backbone.serializers import device_serializer_boot
         _post = request.POST
         # print _post
         sel_list = _post.getlist("sel_list[]")
@@ -143,6 +141,7 @@ class update_device(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        from initat.cluster.backbone.server_enums import icswServiceEnum
         _post = request.POST
         dev_data = json.loads(_post["boot"])
         # pprint.pprint(dev_data)
@@ -334,6 +333,7 @@ class soft_control(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        from initat.cluster.backbone.server_enums import icswServiceEnum
         _post = request.POST
         dev_pk_list = json.loads(_post["dev_pk_list"])
         cur_devs = {
@@ -384,6 +384,7 @@ class hard_control(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        from initat.cluster.backbone.server_enums import icswServiceEnum
         _post = request.POST
         cd_con_pks = json.loads(_post["cd_pk_list"])
         cur_cd_cons = cd_connection.objects.select_related("child", "parent").filter(Q(pk__in=cd_con_pks))
