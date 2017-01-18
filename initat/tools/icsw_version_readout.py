@@ -20,7 +20,7 @@
 """ read version from cstore """
 
 import datetime
-import os
+import platform
 
 from initat.constants import VERSION_CS_NAME
 from initat.tools import config_store
@@ -42,11 +42,11 @@ if config_store.ConfigStore.exists(VERSION_CS_NAME):
         BUILD_MACHINE = _vers["build.machine"]
     else:
         BUILD_TIME = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        BUILD_MACHINE = os.uname()[1]
+        BUILD_MACHINE = platform.uname()[1]
 else:
     VERSION_STRING = "0.0-0"
     BUILD_TIME = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    BUILD_MACHINE = os.uname()[1]
+    BUILD_MACHINE = platform.uname()[1]
 
 VERSION_MAJOR = VERSION_STRING.split("-")[0]
 VERSION_MINOR = VERSION_STRING.split("-")[1]

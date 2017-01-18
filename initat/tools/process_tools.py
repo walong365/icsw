@@ -20,13 +20,19 @@
 """ various tools to handle processes and stuff """
 
 import atexit
-import grp
+try:
+    import grp
+except ImportError:
+    grp = None
 import inspect
 import marshal
 import os
 import pickle
 import platform
-import pwd
+try:
+    import pwd
+except ImportError:
+    pwd = None
 import random
 import re
 import socket
@@ -44,14 +50,11 @@ from lxml.builder import E
 from initat.constants import META_SERVER_DIR
 from initat.tools import logging_tools
 
-if os.path.exists("/proc/stat"):
-    try:
-        import psutil
-    except (NotImplementedError, ImportError, IOError):
-        # handle chrooted calls
-        print("cannot import psutil, running chrooted ? setting psutil to None")
-        psutil = None
-else:
+try:
+    import psutil
+except (NotImplementedError, ImportError, IOError):
+    # handle chrooted calls
+    # print("cannot import psutil, running chrooted ? setting psutil to None")
     psutil = None
 
 RUN_DIR = "/var/run"
@@ -246,12 +249,23 @@ def remove_zmq_dirs(dir_name):
     except:
         pass
 
-LOCAL_ZMQ_DIR = "/var/run/icsw/zmq/.zmq_{:d}:{:d}".format(
-    os.getuid(),
-    os.getpid(),
-)
+if platform.system() == "Linux":
+    LOCAL_ZMQ_DIR = "/var/run/icsw/zmq/.zmq_{:d}:{:d}".format(
+        os.getuid(),
+        os.getpid(),
+    )
+    LOCAL_ROOT_ZMQ_DIR = "/var/run/icsw/sockets"
+elif platform.system() == "Windows":
+    LOCAL_ZMQ_DIR = "C:/tmp/icsw/zmq/.zmq_{:d}".format(
+        os.getpid()
+    )
+    os.makedirs(LOCAL_ZMQ_DIR, exist_ok=True)
+    LOCAL_ROOT_ZMQ_DIR = "C:/tmp/icsw/sockets"
 
-LOCAL_ROOT_ZMQ_DIR = "/var/run/icsw/sockets"
+    def getuid():
+        return 0
+    os.getuid = getuid
+
 INIT_ZMQ_DIR_PID = "{:d}".format(os.getpid())
 ALLOW_MULTIPLE_INSTANCES = True
 
@@ -301,6 +315,18 @@ def get_zmq_ipc_name(name, **kwargs):
         sub_dir,
         name
     )
+
+    if platform.system() == "Windows":
+        # remap ipc to tcp
+        if "main/internal" in _name:
+            _name = "tcp://127.0.0.1:2140"
+        elif "collserver/vector" in _name:
+            _name = "tcp://127.0.0.1:2141"
+        elif "collserver/command" in _name:
+            _name = "tcp://127.0.0.1:2142"
+        elif "collserver/result" in _name:
+            _name = "tcp://127.0.0.1:2143"
+
     return _name
 
 

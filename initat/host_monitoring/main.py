@@ -40,7 +40,7 @@ COLLCLIENT = False
 
 def run_code(prog_name, global_config):
     if COLLCLIENT:
-        prog_name = "collclient"
+        prog_name = "collserver"
     if prog_name in ["collserver"]:
         from initat.host_monitoring.server import ServerCode
         ret_state = ServerCode().loop()
@@ -59,7 +59,7 @@ def run_code(prog_name, global_config):
 def main():
     prog_name = global_config.name()
     if COLLCLIENT:
-        prog_name = "collclient"
+        prog_name = "collserver"
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),

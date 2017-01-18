@@ -793,7 +793,9 @@ class _general(hm_classes.hm_module):
             # mv["mem.used.shared"] = 0
         else:
             # buffers + cached
-            bc_mem = virt_info.buffers + virt_info.cached
+            bc_mem = 0
+            if platform.system() == "Linux":
+                bc_mem = virt_info.buffers + virt_info.cached
             mv["mem.avail.phys"] = virt_info.total / 1024
             mv["mem.avail.swap"] = swap_info.total / 1024
             mv["mem.avail.total"] = (virt_info.total + swap_info.total) / 1024
@@ -807,8 +809,13 @@ class _general(hm_classes.hm_module):
             mv["mem.used.swap"] = (swap_info.total - swap_info.free) / 1024
             mv["mem.used.total"] = (virt_info.total + swap_info.total - (virt_info.free + swap_info.free + bc_mem)) / 1024
             mv["mem.used.total.bc"] = (virt_info.total + swap_info.total - (virt_info.free + swap_info.free)) / 1024
-            mv["mem.used.buffers"] = virt_info.buffers / 1024
-            mv["mem.used.cached"] = virt_info.cached / 1024
+            mv["mem.used.buffers"] = 0 #virt_info.buffers / 1024
+            mv["mem.used.cached"] = 0 #virt_info.cached / 1024
+            if platform.system() == "Linux":
+                mv["mem.used.buffers"] = virt_info.buffers / 1024
+                mv["mem.used.cached"] = virt_info.cached / 1024
+
+
             # mv["mem.used.shared"] = mem_list["MemShared"]
         for call_name in ["_df_int", "_vmstat_int", "_nfsstat_int"]:
             try:
@@ -1750,7 +1757,7 @@ class load_command(hm_classes.hm_command):
 
 
 class uptime_command(hm_classes.hm_command):
-    info_string = "update information"
+    info_string = "uptime information"
 
     def __call__(self, srv_com, cur_ns):
         upt_data = [int(float(value)) for value in open("/proc/uptime", "r").read().strip().split()]

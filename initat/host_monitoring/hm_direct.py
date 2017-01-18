@@ -26,6 +26,7 @@ import re
 import select
 import socket
 import time
+import platform
 
 import zmq
 
@@ -393,7 +394,7 @@ class SocketProcess(threading_tools.process_obj):
         # clear flag for extra twisted thread
         self.__extra_twisted_threads = 0
         # print self.start_kwargs
-        if self.start_kwargs.get("icmp", True):
+        if self.start_kwargs.get("icmp", True) and platform.system() == "Linux":
             self.icmp_protocol = HMIcmpProtocol(self, self.__log_template)
             # reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
             # reactor.listen_ICMP(self.icmp_protocol)

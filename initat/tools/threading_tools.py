@@ -39,6 +39,7 @@ import socket
 import sys
 import threading
 import time
+import platform
 
 import six
 import zmq
@@ -690,13 +691,16 @@ class ExceptionHandlingMixin(object):
                     )
             out_lines.append(except_info)
             # write to logging-server
-            err_h = io_stream_helper.icswIOStream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
-            err_h.write("\n".join(out_lines))
-            err_h.close()
-            self.log(
-                "waiting for 1 second",
-                logging_tools.LOG_LEVEL_WARN
-            )
+            if platform.system() == "Linux":
+                err_h = io_stream_helper.icswIOStream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
+                err_h.write("\n".join(out_lines))
+                err_h.close()
+                self.log(
+                    "waiting for 1 second",
+                    logging_tools.LOG_LEVEL_WARN
+                )
+            else:
+                print("\n".join(out_lines))
             time.sleep(1)
         return _handled
 
@@ -916,14 +920,17 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBas
             self.log(" ... ignoring", logging_tools.LOG_LEVEL_WARN)
 
     def _install_signal_handlers(self):
-        # ignore all signals
-        for sig_num in [
+        signals = [
             signal.SIGTERM,
-            signal.SIGINT,
-            signal.SIGTSTP,
-            signal.SIGALRM,
-            signal.SIGHUP,
-        ]:
+            signal.SIGINT
+        ]
+        if platform.system() == "Linux":
+            signals.append(signal.SIGTSTP)
+            signals.append(signal.SIGALRM)
+            signals.append(signal.SIGHUP)
+
+        # ignore all signals
+        for sig_num in signals:
             signal.signal(sig_num, signal.SIG_IGN)
 
     def allow_signal(self, sig_num):
@@ -1147,7 +1154,9 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
         self.set_stack_size(kwargs.get("stack_size", DEFAULT_STACK_SIZE))
         self.__processes_stopped = set()
         # clock ticks per second
-        self.__sc_clk_tck = float(os.sysconf(os.sysconf_names["SC_CLK_TCK"]))
+        self.__sc_clk_tck = 100.0
+        if platform.system() == "Linux":
+            self.__sc_clk_tck = float(os.sysconf(os.sysconf_names["SC_CLK_TCK"]))
         self.__cpu_usage = []
 
     def check_cpu_usage(self):
@@ -1454,16 +1463,27 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
         sig_str = "got signal {:d}".format(signum)
         self.log(sig_str)
         # return self._handle_exception()
-        if signum == signal.SIGTERM:
-            raise term_error(sig_str)
-        elif signum == signal.SIGINT:
-            raise int_error(sig_str)
-        elif signum == signal.SIGTSTP:
-            raise stop_error(sig_str)
-        elif signum == signal.SIGALRM:
-            raise alarm_error(sig_str)
-        elif signum == signal.SIGHUP:
-            raise hup_error(sig_str)
+
+        if platform.system() == "Linux":
+            if signum == signal.SIGTERM:
+                raise term_error(sig_str)
+            elif signum == signal.SIGINT:
+                raise int_error(sig_str)
+            elif signum == signal.SIGTSTP:
+                raise stop_error(sig_str)
+            elif signum == signal.SIGALRM:
+                raise alarm_error(sig_str)
+            elif signum == signal.SIGHUP:
+                raise hup_error(sig_str)
+            else:
+                raise
+        elif platform.system() == "Windows":
+            if signum == signal.SIGTERM:
+                raise term_error(sig_str)
+            elif signum == signal.SIGINT:
+                raise int_error(sig_str)
+            else:
+                raise
         else:
             raise
 
@@ -1472,13 +1492,17 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
             self["signal_handlers_installed"] = True
             self.log("installing signal handlers")
             self.__orig_sig_handlers = {}
-            for sig_num in [
+
+            signals = [
                 signal.SIGTERM,
-                signal.SIGINT,
-                signal.SIGTSTP,
-                signal.SIGALRM,
-                signal.SIGHUP
-            ]:
+                signal.SIGINT
+            ]
+            if platform.system() == "Linux":
+                signals.append(signal.SIGTSTP)
+                signals.append(signal.SIGALRM)
+                signals.append(signal.SIGHUP)
+
+            for sig_num in signals:
                 self.__orig_sig_handlers[sig_num] = signal.signal(sig_num, self._sig_handler)
 
     def uninstall_signal_handlers(self):
