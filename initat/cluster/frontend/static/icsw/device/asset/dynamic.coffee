@@ -420,26 +420,6 @@ device_asset_module = angular.module(
 (
     $scope, $q, ICSW_URLS, icswSimpleAjaxCall
 ) ->
-    $scope.downloadCsv = ->
-        icswSimpleAjaxCall(
-            {
-                url: ICSW_URLS.ASSET_EXPORT_SCHEDULED_RUNS_TO_CSV
-                dataType: 'json'
-            }
-        ).then(
-            (result) ->
-                    uri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(result.csv)
-                    downloadLink = document.createElement("a")
-                    downloadLink.href = uri
-                    downloadLink.download = "scheduled_runs.csv"
-
-                    document.body.appendChild(downloadLink)
-                    downloadLink.click()
-                    document.body.removeChild(downloadLink)
-            (not_ok) ->
-                console.log not_ok
-        )
-
 ]).directive("icswAssetKnownPackages",
 [
     "$q", "$templateCache",

@@ -27,6 +27,10 @@ from rest_framework import viewsets
 from initat.cluster.frontend.helper_functions import xml_wrapper
 
 
+########################################################################################################################
+# Static Asset Views
+########################################################################################################################
+
 class SimpleAssetBatchLoader(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -153,25 +157,29 @@ class ScheduledRunViewSet(viewsets.ViewSet):
         return Response(serializer.data)
 
 
-class AssetPackageViewSet(viewsets.ViewSet):
-    @method_decorator(login_required)
-    def get_all(self, request):
-        _ = request
-        from initat.cluster.backbone.models import AssetPackage
-        from initat.cluster.backbone.serializers import AssetPackageSerializer
+class AssetPackageLoader(View):
+        @method_decorator(login_required)
+        def post(self, request):
+            import json
+            from django.http import HttpResponse
+            from initat.cluster.backbone.models import AssetPackage
 
-        queryset = AssetPackage.objects.all().prefetch_related(
-            "assetpackageversion_set",
-            "assetpackageversion_set__assetpackageversioninstallinfo_set",
-            "assetpackageversion_set__assetpackageversioninstallinfo_set__assetbatch_set",
-            "assetpackageversion_set__assetpackageversioninstallinfo_set__assetbatch_set__device"
-        ).order_by(
-            "name",
-            "package_type",
-        )
-        serializer = AssetPackageSerializer(queryset, many=True)
-        from rest_framework.response import Response
-        return Response(serializer.data)
+            if request.POST['type'] == "AssetPackage":
+                from initat.cluster.backbone.serializers import ReverseSimpleAssetPackageSerializer
+                queryset = AssetPackage.objects.prefetch_related("assetpackageversion_set").all()
+                serializer = ReverseSimpleAssetPackageSerializer(queryset, many=True)
+                return HttpResponse(json.dumps(serializer.data))
+            elif request.POST['type'] == "AssetPackageVersion":
+                from initat.cluster.backbone.serializers import AssetPackageVersionSerializer
+                asset_package_id = int(request.POST["asset_package_id"])
+                ap = AssetPackage.objects.prefetch_related("assetpackageversion_set").get(idx=asset_package_id)
+                serializer = AssetPackageVersionSerializer(ap.assetpackageversion_set.all(), many=True)
+                return HttpResponse(json.dumps(serializer.data))
+
+
+########################################################################################################################
+# Dynamic Asset Views
+########################################################################################################################
 
 
 class StaticAssetTemplateViewSet(viewsets.ViewSet):
@@ -540,26 +548,6 @@ class GetFieldvaluesForTemplate(View):
                 }
             )
         )
-
-
-class AssetPackageLoader(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        import json
-        from django.http import HttpResponse
-        from initat.cluster.backbone.models import AssetPackage
-
-        if request.POST['type'] == "AssetPackage":
-            from initat.cluster.backbone.serializers import ReverseSimpleAssetPackageSerializer
-            queryset = AssetPackage.objects.prefetch_related("assetpackageversion_set").all()
-            serializer = ReverseSimpleAssetPackageSerializer(queryset, many=True)
-            return HttpResponse(json.dumps(serializer.data))
-        elif request.POST['type'] == "AssetPackageVersion":
-            from initat.cluster.backbone.serializers import AssetPackageVersionSerializer
-            asset_package_id = int(request.POST["asset_package_id"])
-            ap = AssetPackage.objects.prefetch_related("assetpackageversion_set").get(idx=asset_package_id)
-            serializer = AssetPackageVersionSerializer(ap.assetpackageversion_set.all(), many=True)
-            return HttpResponse(json.dumps(serializer.data))
 
 
 class HiddenStaticAssetTemplateTypesManager(View):
