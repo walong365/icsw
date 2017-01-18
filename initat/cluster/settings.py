@@ -233,10 +233,15 @@ ICSW_CACHE_KEY = ICSW_CACHE_KEY_LONG[:4]
 
 FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 
+try:
+    _mc_port = InstanceXML(quiet=True).get_port_dict("memcached", command=True)
+except KeyError:
+    _mc_port = 0
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.memcached.MemcachedCache",
-        "LOCATION": "127.0.0.1:{:d}".format(InstanceXML(quiet=True).get_port_dict("memcached", command=True)),
+        "LOCATION": "127.0.0.1:{:d}".format(_mc_port),
     }
 }
 
