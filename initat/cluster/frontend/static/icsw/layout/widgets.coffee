@@ -75,4 +75,103 @@ angular.module(
             menu_open: false
         }
     return null
+]).service("icswTableFilterService",
+[
+    "$q",
+(
+    $q,
+) ->
+
+    class icswFilterEntry
+        constructor: (@filterObj, @name, @placeholder, @cmp_func) ->
+            @choices = []
+            @selected = undefined
+            @clear_choices()
+
+        add_choice: (choice_id, choice_str, choice_val, is_def) ->
+            if not _.some(@choices, (entry) -> return entry.id == choice_id)
+                _new_entry = {
+                    id: choice_id
+                    string: choice_str
+                    value: choice_val
+                    default: is_def
+                }
+                @choices.push(_new_entry)
+                if is_def and not @selected
+                    @selected = _new_entry
+            return @
+
+        clear_choices: () ->
+            _.remove(@choices, (entry) -> return not entry.default)
+            _defs = (entry for entry in @choices when entry.default)
+            if _defs.length
+                @selected = _defs[0]
+            else
+                @selected = undefined
+            return @
+
+        filter: (entry) ->
+            return @cmp_func(entry, @selected)
+
+    class icswFilter
+        constructor: () ->
+            @_filter_list = []
+            @_filter_lut = {}
+            @notifier = $q.defer()
+            @source_list = []
+
+        add: (name, placeholder, cmp_func) =>
+            _nf = new icswFilterEntry(@, name, placeholder, cmp_func)
+            @_filter_list.push(_nf)
+            @_filter_lut[_nf.name] = _nf
+            return _nf
+
+        get: (name) ->
+            return @_filter_lut[name]
+
+        update: ($event) ->
+            @notifier.notify("update")
+
+        close: () ->
+            @notifier.reject("close")
+
+        filter: (in_list) ->
+            @source_list.length = 0
+            for entry in in_list
+                _add = true
+                for _fe in @_filter_list
+                    _add = _fe.filter(entry)
+                    if not _add
+                        break
+                if _add
+                    @source_list.push(entry)
+
+    return {
+        get_instance: () ->
+            return new icswFilter()
+    }
+]).component("icswTableFilter", {
+    template: [
+        "$templateCache", "$element", "$attrs", ($templateCache, $element, $attrs) ->
+            return $templateCache.get("icsw.layout.table.filter")
+    ]
+    controller: "icswTableFilterCtrl as ctrl"
+    bindings: {
+        filter: "<icswTableFilter"
+        name: "@icswFilterName"
+    }
+    # transclude: true
+}).controller("icswTableFilterCtrl",
+[
+    "$q",
+(
+    $q,
+) ->
+    @$onChanges = (changes) ->
+        if changes.filter
+            @entry = @filter.get(@name)
+
+    @$onInit = () ->
+
+    return null
 ])

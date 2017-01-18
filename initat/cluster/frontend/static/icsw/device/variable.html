@@ -109,6 +109,8 @@
                 <th>Value</th>
                 <th>Public</th>
                 <th>Inherit</th>
+                <th>Inherited</th>
+                <th>Shadow</th>
                 <th>Source</th>
                 <th>Created</th>
                 <th colspan="1">Actions</th>
@@ -123,9 +125,11 @@
                 <td class="text-center"><span class="badge">{{ obj.$var_type }}</span></td>
                 <td>{{ obj.$var_value }}</td>
                 <td class="text-center">{{ obj.is_public | yesno2 }}</td>
-                <td class="text-center">{{ obj.inherit | yesno2 }} / {{ obj.$$shadow_count }} / {{ obj.$$shadow }} / {{ obj.$$inherited }}</td>
+                <td class="text-center">{{ obj.inherit | yesno2 }}</td>
+                <td class="text-center"><span ng-bind-html="obj.$$inherited | yesno3"></span></td>
+                <td class="text-center"><span ng-bind-html="obj.$$shadow | yesno3"></span></td>
                 <td class="text-center">
-                    {{ config_service.get_source(obj, device) }}
+                    <span class="badge">{{ obj.$$source }}</span>
                 </td>
                 <td class="text-right">{{ obj.$$created_str }}</td>
                 <td>
@@ -179,6 +183,21 @@
                             possible-items-by-page="15,30,100,200"
                         ></div>
                     </td>
+                </tr>
+                <tr>
+                    <th>
+                        <icsw-table-filter
+                            icsw-table-filter="struct.filter"
+                            icsw-filter-name="device_names"
+                        ></icsw-table-filter>
+                    </th>
+                    <th></th>
+                    <th>
+                        <icsw-table-filter
+                            icsw-table-filter="struct.filter"
+                            icsw-filter-name="source"
+                        ></icsw-table-filter>
+                    </th>
                 </tr>
                 <tr>
                     <th>Info</th>

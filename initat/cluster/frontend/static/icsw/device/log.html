@@ -102,7 +102,7 @@
     <div ng-if="struct.data_loaded">
         <table
             st-table="entries_displayed"
-            st-safe-src="struct.filtered_device_log_entries"
+            st-safe-src="struct.filter.source_list"
             class="table table-condensed table-striped table-hover simple-border"
         >
             <thead>
@@ -130,54 +130,34 @@
                 </tr>
                 <tr>
                     <th>
-                        <ui-select ng-model="struct.selected_device_name" ng-change="update_filter($event)">
-                            <ui-select-match class="ui-select-match" placeholder="Select Device">
-                                {{ $select.selected }}
-                            </ui-select-match>
-                            <ui-select-choices repeat="devname in struct.device_names | filter: $select.search">
-                                <div ng-bind="devname"></div>
-                            </ui-select-choices>
-                        </ui-select>
+                        <icsw-table-filter
+                            icsw-table-filter="struct.filter"
+                            icsw-filter-name="devices"
+                        ></icsw-table-filter>
                     </th>
                     <th colspan="2">
-                        <ui-select ng-model="struct.selected_time_frame" ng-change="update_filter($event)">
-                            <ui-select-match class="ui-select-match" placeholder="Select Timeframe">
-                                {{ $select.selected.string }}
-                            </ui-select-match>
-                            <ui-select-choices repeat="time_frame in struct.time_frames | filter: $select.search">
-                                <div ng-bind="time_frame.string"></div>
-                            </ui-select-choices>
-                        </ui-select>
+                        <icsw-table-filter
+                            icsw-table-filter="struct.filter"
+                            icsw-filter-name="timeframes"
+                        ></icsw-table-filter>
                     </th>
                     <th>
-                        <ui-select ng-model="struct.selected_username" ng-change="update_filter($event)">
-                            <ui-select-match class="ui-select-match" placeholder="Select User">
-                                {{ $select.selected }}
-                            </ui-select-match>
-                            <ui-select-choices repeat="username in struct.user_names | filter: $select.search">
-                                <div ng-bind="username"></div>
-                            </ui-select-choices>
-                        </ui-select>
+                        <icsw-table-filter
+                            icsw-table-filter="struct.filter"
+                            icsw-filter-name="users"
+                        ></icsw-table-filter>
                     </th>
                     <th>
-                        <ui-select ng-model="struct.selected_source"  ng-change="update_filter($event)">
-                            <ui-select-match class="ui-select-match" placeholder="Select Source">
-                                {{ $select.selected }}
-                            </ui-select-match>
-                            <ui-select-choices repeat="source in struct.sources | filter: $select.search">
-                                <div ng-bind="source"></div>
-                            </ui-select-choices>
-                        </ui-select>
+                        <icsw-table-filter
+                            icsw-table-filter="struct.filter"
+                            icsw-filter-name="sources"
+                        ></icsw-table-filter>
                     </th>
                     <th>
-                        <ui-select ng-model="struct.selected_level" ng-change="update_filter($event)">
-                            <ui-select-match class="ui-select-match" placeholder="Select Level">
-                                {{ $select.selected }}
-                            </ui-select-match>
-                            <ui-select-choices repeat="level in struct.levels | filter: $select.search">
-                                <div ng-bind="level"></div>
-                            </ui-select-choices>
-                        </ui-select>
+                        <icsw-table-filter
+                            icsw-table-filter="struct.filter"
+                            icsw-filter-name="levels"
+                        ></icsw-table-filter>
                     </th>
                     <th>
                         <input st-search="text" placeholder="Filter by text" class="input-sm form-control" type="search"/>

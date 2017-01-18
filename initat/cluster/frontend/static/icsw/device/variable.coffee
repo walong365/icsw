@@ -328,18 +328,16 @@ device_variable_module = angular.module(
             console.log "finish"
             $scope.$destroy()
     )
-
-
 ]).controller("icswDeviceVariableCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
-    "icswTools", "icswDeviceVariableScopeTreeService",
+    "icswTools", "icswDeviceVariableScopeTreeService", "icswTableFilterService",
     "icswDeviceTreeService", "icswDeviceTreeHelperService", "icswDeviceVariableBackup",
     "toaster", "icswComplexModalService", "icswSimpleAjaxCall", "ICSW_URLS", "$controller",
     "icswToolsSimpleModalService",
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
-    icswTools, icswDeviceVariableScopeTreeService,
+    icswTools, icswDeviceVariableScopeTreeService, icswTableFilterService,
     icswDeviceTreeService, icswDeviceTreeHelperService, icswDeviceVariableBackup,
     toaster, icswComplexModalService, icswSimpleAjaxCall, ICSW_URLS, $controller,
     icswToolsSimpleModalService,
@@ -359,8 +357,20 @@ device_variable_module = angular.module(
         device_variable_scope_tree: undefined
         # data loaded
         data_loaded: false
+        # filter instance
+        filter: icswTableFilterService.get_instance()
     }
 
+    $scope.struct.filter.add(
+        "device_names"
+        "All devices"
+        "Select device"
+    )
+    $scope.struct.filter.add(
+        "source"
+        "Sources"
+        "Select Source"
+    ).add_choice("direct").add_choice("group").add_choice("system")
     $scope.new_devsel = (devs) ->
         $q.all(
             [
@@ -402,7 +412,22 @@ device_variable_module = angular.module(
         else
             return obj.full_name
 
+    _update_filter = () ->
+        console.log "nf"
+
     $scope.new_filter_set = ($event) ->
+        _dnf = $scope.struct.filter.get("device_names")
+        _dnf.clear_choices()
+        for entry in $scope.struct.devices
+            _dnf.add_choice(entry.$$print_name)
+        _update_filter()
+
+    $scope.struct.filter.notifier.promise.then(
+        () ->
+        () ->
+        () ->
+            _update_filter()
+    )
         # $scope.struct.helper.set_var_filter($scope.vars.name_filter)
 
     $scope.toggle_expand = ($event, obj) ->
@@ -424,6 +449,10 @@ device_variable_module = angular.module(
         sub_scope.$on("$destroy", () ->
             console.log "D"
         )
+
+    $scope.$on("$destroy", () ->
+        $scope.struct.filter.close()
+    )
 
     $scope.delete = ($event, device, d_var) ->
         icswToolsSimpleModalService("Really delete Device Variable '#{d_var.name}' ?").then(
