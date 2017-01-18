@@ -320,7 +320,7 @@ def get_zmq_ipc_name(name, **kwargs):
         def get_free_loopback_port():
             sock = socket.socket()
             sock.bind(("127.0.0.1", 0))
-            host, port = sock.gethostname()
+            host, port = sock.getsockname()
             sock.close()
             return port
 
