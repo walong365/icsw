@@ -318,13 +318,15 @@ angular.module(
                                     (show) ->
                                         blockUI.stop()
                                 )
-                            else
+                            else if $scope.device_data.nmap_device != undefined
                                 $timeout(
                                     () ->
                                         $scope.device_data.nmap_device.linked_devices.push(new_dev)
                                         init_with_device_info()
                                     0
                                 )
+                                blockUI.stop()
+                            else
                                 blockUI.stop()
                         (not_ok) ->
                             blockUI.stop()
