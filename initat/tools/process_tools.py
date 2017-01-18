@@ -249,22 +249,19 @@ def remove_zmq_dirs(dir_name):
     except:
         pass
 
-if platform.system() == "Linux":
-    LOCAL_ZMQ_DIR = "/var/run/icsw/zmq/.zmq_{:d}:{:d}".format(
-        os.getuid(),
-        os.getpid(),
-    )
-    LOCAL_ROOT_ZMQ_DIR = "/var/run/icsw/sockets"
-elif platform.system() == "Windows":
-    LOCAL_ZMQ_DIR = "C:/tmp/icsw/zmq/.zmq_{:d}".format(
-        os.getpid()
-    )
-    os.makedirs(LOCAL_ZMQ_DIR, exist_ok=True)
-    LOCAL_ROOT_ZMQ_DIR = "C:/tmp/icsw/sockets"
 
+if platform.system() == "Windows":
     def getuid():
         return 0
     os.getuid = getuid
+
+
+LOCAL_ZMQ_DIR = "/var/run/icsw/zmq/.zmq_{:d}:{:d}".format(
+    os.getuid(),
+    os.getpid(),
+)
+LOCAL_ROOT_ZMQ_DIR = "/var/run/icsw/sockets"
+
 
 INIT_ZMQ_DIR_PID = "{:d}".format(os.getpid())
 ALLOW_MULTIPLE_INSTANCES = True
@@ -301,15 +298,17 @@ def get_zmq_ipc_name(name, **kwargs):
     else:
         if ALLOW_MULTIPLE_INSTANCES and not ctri:
             root_dir = os.path.join(LOCAL_ROOT_ZMQ_DIR, INIT_ZMQ_DIR_PID)
-            atexit.register(remove_zmq_dirs, root_dir)
+            if not platform.system() == "Windows":
+                atexit.register(remove_zmq_dirs, root_dir)
         else:
             root_dir = LOCAL_ROOT_ZMQ_DIR
-    if not os.path.isdir(root_dir):
+
+    if not os.path.isdir(root_dir) and not platform.system() == "Windows":
         os.mkdir(root_dir)
     sub_dir = os.path.join(root_dir, s_name)
-    if not os.getuid():
+    if not os.getuid() and not platform.system() == "Windows":
         atexit.register(remove_zmq_dirs, sub_dir)
-    if not os.path.isdir(sub_dir):
+    if not os.path.isdir(sub_dir) and not platform.system() == "Windows":
         os.mkdir(sub_dir)
     _name = "ipc://{}/{}".format(
         sub_dir,
@@ -326,7 +325,6 @@ def get_zmq_ipc_name(name, **kwargs):
 
         if _name not in IPC_TO_TCP_PORT_MAP:
             tcp_name = "tcp://127.0.0.1:{}".format(get_free_loopback_port())
-            print("{} -> {}", _name, tcp_name)
             IPC_TO_TCP_PORT_MAP[_name] = tcp_name
             _name = tcp_name
         else:
