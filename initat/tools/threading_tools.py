@@ -1156,6 +1156,10 @@ class icswProcessPool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingM
     def global_config(self):
         return self.__global_config
 
+    @global_config.setter
+    def global_config(self, g_conf):
+        self.__global_config = g_conf
+
     def check_cpu_usage(self):
         _excess = False
         _pids = [self.pid] + [value.pid for value in self.processes.values()]
