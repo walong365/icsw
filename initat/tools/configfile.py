@@ -29,8 +29,6 @@ import os
 import re
 import uuid
 
-import memcache
-
 from initat.icsw.service import instance
 from initat.tools import logging_tools, process_tools
 
@@ -597,6 +595,7 @@ class Configuration(object):
         self._reopen_mc()
 
     def _reopen_mc(self, first=False):
+        import memcache
         if self.__spm:
             self.__mc_client = None
         else:

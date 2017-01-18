@@ -24,7 +24,6 @@ import os
 import re
 import time
 
-import memcache
 import zmq
 from lxml import etree
 from lxml.builder import E
@@ -437,8 +436,9 @@ class AGObj(object):
         return AGSink(action=self.action, target_key=self.target_key)
 
 
-class aggregate_process(threading_tools.icswProcessObj, server_mixins.OperationalErrorMixin):
+class AggregateProcess(threading_tools.icswProcessObj, server_mixins.OperationalErrorMixin):
     def process_init(self):
+        import memcache
         global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
@@ -544,6 +544,7 @@ class aggregate_process(threading_tools.icswProcessObj, server_mixins.Operationa
             self.__struct_update = cur_time
 
     def get_mc(self):
+        import memcache
         return memcache.Client(self.__memcache_address)
 
     def _fetch_hosts(self, mc):
