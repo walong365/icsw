@@ -29,6 +29,7 @@ import sys
 import threading
 import time
 import traceback
+import platform
 
 import zmq
 
@@ -122,8 +123,10 @@ class icswLogAdapter(logging.LoggerAdapter):
         if self.__prefix:
             what = "{}{}".format(self.__prefix, what)
         try:
-            #logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
-            print(what)
+            if platform.system() == "Linux":
+                logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
+            else:
+                print(what)
         except:
             my_syslog(what)
             print(what, self)
@@ -147,7 +150,7 @@ class ZMQHandler(logging.Handler):
             ZMQHandler.store_context(self._context)
         else:
             self._context = ZMQHandler.get_context()
-        self._dest = "tcp://127.0.0.1:2012"
+        self._dest = kwargs["destination"]
         logging.Handler.__init__(self)
         self.__logger = logger_struct
         self._open = False
@@ -208,7 +211,7 @@ class ZMQHandler(logging.Handler):
         # self.set_target(pub)
 
     def reopen(self):
-        #print("Reopen for {:d}".format(os.getpid()))
+        # print("Reopen for {:d}".format(os.getpid()))
         self.close()
         time.sleep(0.2)
         self.open(os.getpid())

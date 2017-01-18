@@ -500,7 +500,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             else:
                 setattr(self, "{}_socket".format(short_sock_name), cur_socket)
                 _backlog_size = self.CC.CS["hm.socket.backlog.size"]
-                if platform.system("Linux"):
+                if platform.system() == "Linux":
                     os.chmod(file_name, 0o777)
                 cur_socket.setsockopt(zmq.LINGER, 0)
                 cur_socket.setsockopt(zmq.SNDHWM, hwm_size)
