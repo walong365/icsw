@@ -1136,7 +1136,7 @@ class PDFReportGenerator(ReportGenerator):
         report.add_buffer_to_report(_buffer)
 
     def __generate_device_assetrun_reports(self, _device, report_settings, root_report):
-        assetruns = _select_assetruns_for_device(_device, assetbatch_id=report_settings["assetbatch_id"])
+        assetruns = select_assetruns_for_device(_device, assetbatch_id=report_settings["assetbatch_id"])
 
         row_collector = RowCollector()
 
@@ -2351,7 +2351,7 @@ class XlsxReportGenerator(ReportGenerator):
             self.__generate_device_overview(_device, workbook)
             device_report = DeviceReport(_device, self.device_settings[_device.idx], _device.full_name)
 
-            selected_runs = _select_assetruns_for_device(_device, self.device_settings[_device.idx]["assetbatch_id"])
+            selected_runs = select_assetruns_for_device(_device, self.device_settings[_device.idx]["assetbatch_id"])
 
             for ar in selected_runs:
                 if not device_report.module_selected(ar):
@@ -2741,7 +2741,7 @@ def _generate_hardware_info_data_dict(_devices):
     data = []
 
     for _device in _devices:
-        selected_runs = _select_assetruns_for_device(_device)
+        selected_runs = select_assetruns_for_device(_device)
 
         cpu_str = "N/A"
         gpu_str = "N/A"
@@ -2830,7 +2830,7 @@ def _generate_hardware_info_data_dict(_devices):
     return data
 
 
-def _select_assetruns_for_device(_device, assetbatch_id=None):
+def select_assetruns_for_device(_device, assetbatch_id=None):
     selected_asset_runs = []
     selected_assetbatch = None
 

@@ -281,7 +281,7 @@ class ReportDataAvailable(View):
         import json
         from django.http import HttpResponse
 
-        from initat.report_server.report import _select_assetruns_for_device
+        from initat.report_server.report import select_assetruns_for_device
         from initat.cluster.backbone.models import device
 
         idx_list = request.POST.getlist("idx_list[]", [])
@@ -304,7 +304,7 @@ class ReportDataAvailable(View):
                 meta_devices.append(_device)
                 continue
 
-            selected_runs = _select_assetruns_for_device(_device, assetbatch_id=assetbatch_id)
+            selected_runs = select_assetruns_for_device(_device, assetbatch_id=assetbatch_id)
             selected_run_info_array = \
                 [(ar.run_type, str(ar.run_start_time), ar.asset_batch.idx) for ar in selected_runs]
 
