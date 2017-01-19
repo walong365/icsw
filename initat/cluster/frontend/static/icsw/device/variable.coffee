@@ -342,9 +342,7 @@ device_variable_module = angular.module(
     toaster, icswComplexModalService, icswSimpleAjaxCall, ICSW_URLS, $controller,
     icswToolsSimpleModalService,
 ) ->
-    $scope.vars = {
-        name_filter: ""
-    }
+    $scope.show_column = {}
     # struct to hand over to VarCtrl
     $scope.struct = {
         # devices
@@ -359,18 +357,75 @@ device_variable_module = angular.module(
         data_loaded: false
         # filter instance
         filter: icswTableFilterService.get_instance()
+        # variables to display
+        var_list: []
     }
 
     $scope.struct.filter.add(
-        "device_names"
-        "All devices"
+        "devices"
         "Select device"
+        (entry, choice) ->
+            return true
+    ).add_choice(0, "All Devices", null, true)
+    $scope.struct.filter.add(
+        "sources"
+        "Select Source"
+        (entry, choice) ->
+            if not choice.id
+                return true
+            else
+                return entry.$$source == choice.value
+    ).add_choice(
+        0, "All Sources", null, true
+    ).add_choice(
+        1, "Direct", "direct", false
+    ).add_choice(
+        2, "Group", "group", false
+    ).add_choice(
+        3, "System", "system", false
+    )
+
+    $scope.struct.filter.add(
+        "scopes"
+        "Select Scope"
+        (entry, choice) ->
+            if not choice.id
+                return true
+            else
+                return entry.$$scope_name == choice.value
+    ).add_choice(
+        0, "All Scopes", null, true
     )
     $scope.struct.filter.add(
-        "source"
-        "Sources"
-        "Select Source"
-    ).add_choice("direct").add_choice("group").add_choice("system")
+        "types"
+        "Select Tyoe"
+        (entry, choice) ->
+            if not choice.id
+                return true
+            else
+                return entry.$var_type == choice.value
+    ).add_choice(
+        0, "All Types", null, true
+    )
+    $scope.struct.filter.add(
+        "creation"
+        "Select creation"
+        (entry, choice) ->
+            if not choice.id
+                return true
+            else
+                return entry.$$created_mom.isAfter(choice.value)
+    ).add_choice(
+        0, "All times", null, true
+    ).add_choice(
+        1, "1 month ago", moment.duration(1, "months"), false
+    ).add_choice(
+        2, "1 day ago", moment.duration(1, "days"), false
+    ).add_choice(
+        3, "1 hour ago", moment.duration(1, "hours"), false
+    ).add_choice(
+        4, "10 minutes ago", moment.duration(10, "minutes"), false
+    )
     $scope.new_devsel = (devs) ->
         $q.all(
             [
@@ -388,11 +443,12 @@ device_variable_module = angular.module(
                         $scope.struct.devices.length = 0
                         for entry in devs
                             $scope.struct.devices.push(entry)
+
                         $scope.struct.device_tree = device_tree
                         $scope.struct.helper = hs
                         # console.log "****", $scope.devices
                         $scope.struct.data_loaded = true
-                        $scope.new_filter_set()
+                        _build_var_list()
                 )
         )
 
@@ -412,15 +468,25 @@ device_variable_module = angular.module(
         else
             return obj.full_name
 
-    _update_filter = () ->
-        console.log "nf"
-
-    $scope.new_filter_set = ($event) ->
-        _dnf = $scope.struct.filter.get("device_names")
+    _build_var_list = () ->
+        _dnf = $scope.struct.filter.get("devices")
         _dnf.clear_choices()
+        _dvsf = $scope.struct.filter.get("scopes")
+        _dvsf.clear_choices()
+        _dvtf = $scope.struct.filter.get("types")
+        _dvtf.clear_choices()
+        $scope.struct.var_list.length = 0
         for entry in $scope.struct.devices
-            _dnf.add_choice(entry.$$print_name)
+            _dnf.add_choice(entry.idx, entry.$$print_name, entry.idx, false)
+            for d_var in entry.device_variables
+                $scope.struct.var_list.push(d_var)
+                _dvsf.add_choice(d_var.device_variable_scope, d_var.$$scope_name, d_var.$$scope_name, false)
+                _dvtf.add_choice(d_var.$var_type, d_var.$var_type, d_var.$var_type, false)
         _update_filter()
+
+
+    _update_filter = () ->
+        $scope.struct.filter.filter($scope.struct.var_list)
 
     $scope.struct.filter.notifier.promise.then(
         () ->
@@ -428,8 +494,6 @@ device_variable_module = angular.module(
         () ->
             _update_filter()
     )
-        # $scope.struct.helper.set_var_filter($scope.vars.name_filter)
-
     $scope.toggle_expand = ($event, obj) ->
         obj.$vars_expanded = not obj.$vars_expanded
 
@@ -447,63 +511,43 @@ device_variable_module = angular.module(
             }
         )
         sub_scope.$on("$destroy", () ->
-            console.log "D"
+            _build_var_list()
         )
 
     $scope.$on("$destroy", () ->
         $scope.struct.filter.close()
     )
 
-    $scope.delete = ($event, device, d_var) ->
-        icswToolsSimpleModalService("Really delete Device Variable '#{d_var.name}' ?").then(
+    $scope.delete = ($event, d_var) ->
+        device = d_var.$$device
+        icswToolsSimpleModalService("Really delete Device Variable '#{d_var.name}' on device '#{device.$$print_name}' ?").then(
             () =>
                 blockUI.start()
-                $scope.struct.device_tree.delete_device_variable(d_var).then(
+                $scope.struct.device_tree.delete_device_variable(d_var, $scope.struct.helper).then(
                     () ->
-                        $scope.struct.helper.salt_device_variables()
+                        _build_var_list()
                         blockUI.stop()
                     (error) ->
+                        _build_var_list()
                         blockUI.stop()
                 )
         )
 
-    $scope.local_copy = ($event, device, d_var) ->
+    $scope.local_copy = ($event, d_var) ->
+        device = d_var.$$device
         new_var = angular.copy(d_var)
         new_var.device = device.idx
+        new_var.uuid = ""
         blockUI.start()
         $scope.struct.device_tree.create_device_variable(new_var, $scope.struct.helper).then(
             (new_conf) ->
+                _build_var_list()
                 blockUI.stop()
             (notok) ->
+                _build_var_list()
                 blockUI.stop()
         )
 
-    $scope.config_service = {
-        get_source: (d_var, device) ->
-            if d_var.device == device.idx
-                return "direct"
-            else if d_var.$source == "m"
-                return "group"
-            else
-                return "cluster"
-
-        # variable related calls
-        variable_edit_ok: (d_var, device) ->
-            return d_var.device == device.idx and d_var.is_public
-
-        variable_delete_ok: (d_var, device) ->
-            return d_var.device == device.idx and !d_var.protected
-
-        variable_local_copy_ok: (d_var, device) ->
-            return d_var.device != device.idx and d_var.local_copy_ok
-
-        get_expand_class: (obj) ->
-            if obj.$vars_expanded
-                return "glyphicon glyphicon-chevron-down"
-            else
-                return "glyphicon glyphicon-chevron-right"
-
-    }
 ]).directive("icswDeviceVariableOverview",
 [
     "$templateCache",
@@ -514,26 +558,6 @@ device_variable_module = angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.device.variable.overview")
         controller: "icswDeviceVariableCtrl"
-    }
-]).directive("icswDeviceVariableTable",
-[
-    "$templateCache",
-(
-    $templateCache,
-) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.variable.table")
-    }
-]).directive("icswDeviceVariableRow",
-[
-    "$templateCache",
-(
-    $templateCache
-) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.device.variable.row")
     }
 ]).directive("icswDeviceFixedScopeVarsOverview",
 [
@@ -566,8 +590,6 @@ device_variable_module = angular.module(
         dvs_tree: undefined
         # fixed variable helper
         fixed_var_helper: undefined
-        # toggle: show / hide, no longer needed
-        # shown: false
     }
 
     _build_struct = (device) ->
@@ -1084,7 +1106,8 @@ device_variable_module = angular.module(
             (data) ->
                 $scope.struct.device_tree = data[0]
                 $scope.struct.dvs_tree = data[1]
-                helper =  icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+                trace_devices =  $scope.struct.device_tree.get_device_trace($scope.struct.devices)
+                helper =  icswDeviceTreeHelperService.create($scope.struct.device_tree, trace_devices)
                 $scope.struct.device_tree.enrich_devices(helper, ["variable_info"]).then(
                     (_done) ->
                         # console.log "****", $scope.devices

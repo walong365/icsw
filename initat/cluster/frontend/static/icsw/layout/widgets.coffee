@@ -31,22 +31,34 @@ angular.module(
 [
     "$timeout", "icswComplexModalService", "$controller",
     "$rootScope", "$compile", "$templateCache", "$q",
+    "icswActiveSelectionService",
 (
     $timeout, icswComplexModalService, $controller,
     $rootScope, $compile, $templateCache, $q,
+    icswActiveSelectionService,
 ) ->
-    OV_STRUCT = {
+    @OV_STRUCT = {
         monitoring: {
+            name: "Monitoring"
             ctrl: "icswMonitoringControlInfoCtrl"
             template: "icsw.monitoring.control.info"
-            title: "Monitoring control"
+            title: "Monitoring Control"
+            send_selection: false
+        }
+        variables: {
+            name: "Variables"
+            ctrl: "icswDeviceVariableCtrl"
+            template: "icsw.device.variable.overview"
+            title: "Device Variables"
+            send_selection: true
+            css_class: "modal-tall modal-wide"
         }
     }
     @show_overlay = ($event, name) ->
         $event.preventDefault()
         $event.stopPropagation()
         if not _.some(entry.name == name for entry in @struct.open)
-            _def = OV_STRUCT[name]
+            _def = @OV_STRUCT[name]
             # check rights ?
             @struct.open.push({name: name})
             sub_scope = $rootScope.$new(true)
@@ -57,6 +69,11 @@ angular.module(
                 message: msg
                 closeable: true
                 ok_label: "close"
+                css_class: _def.css_class
+                show_callback: () ->
+                    if _def.send_selection
+                        _cur = icswActiveSelectionService.current()
+                        sub_scope.new_devsel(_cur.resolve_devices(_cur.tot_dev_sel))
                 ok_callback: () ->
                     _defer = $q.defer()
                     _defer.resolve("close")
@@ -119,6 +136,8 @@ angular.module(
             @_filter_lut = {}
             @notifier = $q.defer()
             @source_list = []
+            # redraw list trigger counter
+            @redraw_list = 0
 
         add: (name, placeholder, cmp_func) =>
             _nf = new icswFilterEntry(@, name, placeholder, cmp_func)
@@ -145,6 +164,7 @@ angular.module(
                         break
                 if _add
                     @source_list.push(entry)
+            @redraw_list++
 
     return {
         get_instance: () ->

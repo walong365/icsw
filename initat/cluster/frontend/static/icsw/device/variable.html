@@ -71,152 +71,128 @@
 
 </script>
 
-<script type="text/ng-template" id="icsw.device.variable.row">
-    <td>
-        <button
-            class="btn btn-primary btn-xs"
-            ng-disabled="!device.device_variables.length"
-            ng-click="toggle_expand($event, device)"
-        >
-            <span ng_class="config_service.get_expand_class(device)"></span>
-            {{ device.$num_vars_total }}
-            <span ng-if="device.$var_filter_active"> / {{ device.$num_vars_filtered }} shown</span>
-            <span ng-if="device.$num_vars_parent">&nbsp;({{ device.$num_vars_parent }} inherited)</span>
-            <span ng-if="device.$num_vars_shadowed">&nbsp;({{ device.$num_vars_shadowed }} shadowed)</span>
-        </button>
-    </td>
-    <td>{{ get_name(device) }}</td>
-    <td>{{ device.device_group_name }}</td>
-    <td>{{ device.comment }}</td>
-    <td>
-        <icsw-tools-button value="create" type="create" ng-click="create_or_edit($event, true, device)" size="xs"/>
-    </td>
-</script>
-
-<script type="text/ng-template" id="icsw.device.variable.table">
-    <table
-        ng-show="device.$vars_expanded || device.num_filtered"
-        class="table table-condensed table-striped simple-border"
-        style="width:auto;"
-    >
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Device</th>
-                <th>UUID</th>
-                <th class="text-center">Scope</th>
-                <th class="text-center">Type</th>
-                <th>Value</th>
-                <th>Public</th>
-                <th>Inherit</th>
-                <th>Inherited</th>
-                <th>Shadow</th>
-                <th>Source</th>
-                <th>Created</th>
-                <th colspan="1">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="obj in device.device_variables">
-                <td>{{ obj.name }}</td>
-                <td>{{ obj.$$device.$$print_name }}</td>
-                <td><code>{{ obj.uuid }}</code></td>
-                <td class="text-center">{{ obj.$scope_name }}</td>
-                <td class="text-center"><span class="badge">{{ obj.$var_type }}</span></td>
-                <td>{{ obj.$var_value }}</td>
-                <td class="text-center">{{ obj.is_public | yesno2 }}</td>
-                <td class="text-center">{{ obj.inherit | yesno2 }}</td>
-                <td class="text-center"><span ng-bind-html="obj.$$inherited | yesno3"></span></td>
-                <td class="text-center"><span ng-bind-html="obj.$$shadow | yesno3"></span></td>
-                <td class="text-center">
-                    <span class="badge">{{ obj.$$source }}</span>
-                </td>
-                <td class="text-right">{{ obj.$$created_str }}</td>
-                <td>
-                    <icsw-tools-button type="modify" size="xs" ng-show="config_service.variable_edit_ok(obj, device)" ng-click="create_or_edit($event, false, obj)"/>
-                    <icsw-tools-button type="delete" size="xs" ng-show="config_service.variable_delete_ok(obj, device)" ng-click="delete($event, device, obj)"/>
-                    <icsw-tools-button type="create" size="xs" ng-show="config_service.variable_local_copy_ok(obj, device)" ng-click="local_copy($event, device, obj)" value="local copy"/>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</script>
-
 <script type="text/ng-template" id="icsw.device.variable.overview">
     <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="struct.data_loaded">
+        <icsw-widget></icsw-widget>
         <h3>
-            Device Variables (<icsw-device-list-info icsw-device-list="struct.devices"></icsw-device-list-info>)
+            Device Variables ({{ struct.var_list.length }} variables, <icsw-device-list-info icsw-device-list="struct.devices"></icsw-device-list-info>)
         </h3>
-        <div class="row" style="margin-bottom: 10px;">
-            <div class="col-sm-5 form-inline">
-                <div class="form-group">
-                    Name Filter:
-                    <input
-                        class="form-control"
-                        ng-model="vars.name_filter"
-                        ng-change="new_filter_set($event)"
-                        placeholder="filter"
-                    />
-                </div>
-                <icsw-tools-button
-                    type="create"
-                    value="create for all"
-                    title="create a new variable for all shown devices"
-                    ng-click="create_or_edit($event, true, null)"
-                    size="xs"
-                ></icsw-tools-button>
-            </div>
-        </div>
         <table
-            st-table="var_devices_displayed"
-            st-safe-src="struct.devices"
+            st-table="vars_displayed"
+            st-safe-src="struct.filter.source_list"
+            st-trigger-redraw="struct.filter.redraw_list"
             class="table table-condensed table-striped table-hover"
             style="width:auto;"
         >
             <thead>
                 <tr>
                     <td colspan="99">
-                        <div
-                            icsw-tools-pagination
-                            st-displayed-pages="11"
-                            st-items-by-page="15"
-                            possible-items-by-page="15,30,100,200"
-                        ></div>
+                        <div class="form-inline">
+                            <div
+                                icsw-tools-pagination
+                                st-displayed-pages="11"
+                                st-items-by-page="15"
+                                possible-items-by-page="15,30,100,200"
+                                class="pull-left"
+                            ></div>
+                            &nbsp;
+                            <icsw-tools-button
+                                type="create"
+                                value="create for all"
+                                title="create a new variable for all shown devices"
+                                ng-click="create_or_edit($event, true, null)"
+                                size="xs"
+                            ></icsw-tools-button>
+                            &nbsp;
+                            <input
+                                class="form-control"
+                                st-search="$$filter_field"
+                                placeholder="filter"
+                            />
+                        </div>
                     </td>
                 </tr>
                 <tr>
-                    <th>
-                        <icsw-table-filter
-                            icsw-table-filter="struct.filter"
-                            icsw-filter-name="device_names"
-                        ></icsw-table-filter>
+                    <th colspan="99">
+                        <icsw-tools-show-hide-columns
+                            columns="uuid source"
+                            columns-target="show_column"
+                        ></icsw-tools-show-hide-columns>
                     </th>
+                </tr>
+                <tr>
                     <th></th>
                     <th>
                         <icsw-table-filter
                             icsw-table-filter="struct.filter"
-                            icsw-filter-name="source"
+                            icsw-filter-name="devices"
+                        ></icsw-table-filter>
+                    </th>
+                    <th ng-show="show_column.uuid"></th>
+                    <th>
+                        <icsw-table-filter
+                            icsw-table-filter="struct.filter"
+                            icsw-filter-name="scopes"
+                        ></icsw-table-filter>
+                    </th>
+                    <th>
+                        <icsw-table-filter
+                            icsw-table-filter="struct.filter"
+                            icsw-filter-name="types"
+                        ></icsw-table-filter>
+                    </th>
+                    <th></th>
+                    <th colspan="5" ng-show="show_column.source">
+                        <icsw-table-filter
+                            icsw-table-filter="struct.filter"
+                            icsw-filter-name="sources"
+                        ></icsw-table-filter>
+                    </th>
+                    <th colspan="2">
+                        <icsw-table-filter
+                            icsw-table-filter="struct.filter"
+                            icsw-filter-name="creation"
                         ></icsw-table-filter>
                     </th>
                 </tr>
                 <tr>
-                    <th>Info</th>
-                    <th>Name</th>
-                    <th>Group</th>
-                    <th>Comment</th>
-                    <th colspan="1">Action</th>
+                    <th st-sort="name" st-sort-default="true">Name</th>
+                    <th st-sort="$$device.$$print_name">Device</th>
+                    <th ng-show="show_column.uuid">UUID</th>
+                    <th class="text-center">Scope</th>
+                    <th class="text-center">Type</th>
+                    <th>Value</th>
+                    <th ng-show="show_column.source">Public</th>
+                    <th ng-show="show_column.source">Inherit</th>
+                    <th ng-show="show_column.source">Inherited</th>
+                    <th ng-show="show_column.source">Shadow</th>
+                    <th ng-show="show_column.source">Source</th>
+                    <th>Created</th>
+                    <th colspan="1">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <tr
-                    icsw-device-variable-row
-                    ng-repeat-start="device in var_devices_displayed"
-                    ng-class="get_tr_class(device)"
+                    ng-repeat="obj in vars_displayed"
                 >
-                </tr>
-                <tr ng-repeat-end ng-if="device.$vars_expanded">
-                    <td colspan="9">
-                        <icsw-device-variable-table></icsw-device-variable-table>
+                    <td>{{ obj.name }}</td>
+                    <td>{{ obj.$$device.$$print_name }}</td>
+                    <td ng-show="show_column.uuid" class="text-center"><code>{{ obj.uuid }}</code></td>
+                    <td class="text-center">{{ obj.$$scope_name }}</td>
+                    <td class="text-center"><span class="badge">{{ obj.$var_type }}</span></td>
+                    <td>{{ obj.$var_value }}</td>
+                    <td ng-show="show_column.source" class="text-center">{{ obj.is_public | yesno2 }}</td>
+                    <td ng-show="show_column.source" class="text-center">{{ obj.inherit | yesno2 }}</td>
+                    <td ng-show="show_column.source" class="text-center"><span ng-bind-html="obj.$$inherited | yesno3"></span></td>
+                    <td ng-show="show_column.source" class="text-center"><span ng-bind-html="obj.$$shadow | yesno3"></span></td>
+                    <td ng-show="show_column.source" class="text-center">
+                        <span class="badge">{{ obj.$$source }}</span>
+                    </td>
+                    <td class="text-right">{{ obj.$$created_str }}</td>
+                    <td>
+                        <icsw-tools-button type="modify" size="xs" ng-show="obj.$$edit_ok" ng-click="create_or_edit($event, false, obj)"/>
+                        <icsw-tools-button type="delete" size="xs" ng-show="obj.$$delete_ok" ng-click="delete($event, obj)"/>
+                        <icsw-tools-button type="create" size="xs" ng-show="obj.$$local_copy_ok" ng-click="local_copy($event, obj)" value="local copy"/>
                     </td>
                 </tr>
             </tbody>

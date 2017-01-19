@@ -19,9 +19,9 @@
             role="menu"
             uib-dropdown-menu
         >
-            <li class="menuitem">
-                <a href="" ng-click="ctrl.show_overlay($event, 'monitoring')">
-                    Monitoring
+            <li class="menuitem" ng-repeat="(name, struct) in ctrl.OV_STRUCT">
+                <a href="" ng-click="ctrl.show_overlay($event, name)">
+                    {{ struct.name }}
                 </a>
             </li>
         </ul>

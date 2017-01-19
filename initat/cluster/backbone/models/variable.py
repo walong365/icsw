@@ -202,7 +202,7 @@ class device_variable(models.Model):
     val_time = models.TextField(blank=True, null=True)  # This field type is a guess.
     # link to dvs_allowed_name entry
     dvs_allowed_name = models.ForeignKey("backbone.dvs_allowed_name", null=True, blank=True)
-    uuid = models.TextField(default="", max_length=64)
+    uuid = models.TextField(default="", max_length=64, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
     @staticmethod

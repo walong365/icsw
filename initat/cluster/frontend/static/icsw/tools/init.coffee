@@ -665,9 +665,7 @@ angular.module(
                             _tree = icswDeviceTreeService.current()
                             if _tree?
                                 # filter illegal selection elements
-                                _new_sel(
-                                    (_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel when _tree.all_lut[pk]?)
-                                )
+                                _new_sel(icswActiveSelectionService.current().resolve_devices(icswActiveSelectionService.current().tot_dev_sel))
                             else
                                 console.error "tree not valid, ignoring, triggering load"
                                 icswDeviceTreeService.load(scope.$id).then(

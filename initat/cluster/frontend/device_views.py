@@ -779,6 +779,19 @@ class DeviceVariableViewSet(viewsets.ViewSet):
         # print _cur_ser.device_variable_type
         if _cur_ser.is_valid():
             _new_var = _cur_ser.save()
+        else:
+            raise ValidationError(
+                "New Variable not valid: {}".format(
+                    ", ".join(
+                        [
+                            "{}: {}".format(
+                                _key,
+                                ", ".join(_value),
+                            ) for _key, _value in _cur_ser.errors.items()
+                        ]
+                    )
+                )
+            )
         resp = _cur_ser.data
         c_list, r_list = get_change_reset_list(_prev_var, _new_var, request.data)
         resp = Response(resp)
