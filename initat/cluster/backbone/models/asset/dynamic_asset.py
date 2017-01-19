@@ -551,35 +551,53 @@ class AssetRun(models.Model):
 
     def _generate_assets_package_hm(self, tree):
         blob = tree.xpath('ns0:pkg_list', namespaces=tree.nsmap)[0].text
+        package_format = tree.xpath('ns0:format', namespaces=tree.nsmap)[0].text
+
         assets = []
-        try:
-            package_dict = server_command.decompress(blob, pickle=True)
-        except UnicodeDecodeError:
-            # workaround for incompatible python2.x pickle dumps
-            import pickle
-            package_dict = bz2.decompress(base64.b64decode(blob))
-            package_dict = pickle.loads(package_dict, encoding="latin1")
+        if package_format == "windows":
+            packages = server_command.decompress(blob, pickle=True)
 
-        for package_name in package_dict:
-            for versions_dict in package_dict[package_name]:
-                installtimestamp = None
-                if 'installtimestamp' in versions_dict:
-                    installtimestamp = versions_dict['installtimestamp']
-
-                size = 0
-                if 'size' in versions_dict:
-                    size = versions_dict['size']
-
+            for package in packages:
+                if package.estimatedSize == "Unknown":
+                    package.estimatedSize = 0
                 assets.append(
                     BaseAssetPackage(
-                        package_name,
-                        version=versions_dict['version'],
-                        size=size,
-                        release=versions_dict['release'],
-                        install_date=installtimestamp,
-                        package_type=PackageTypeEnum.LINUX
+                        package.displayName,
+                        version=package.displayVersion,
+                        size=package.estimatedSize,
+                        install_date=package.installDate,
+                        package_type=PackageTypeEnum.WINDOWS
                     )
                 )
+        else:
+            try:
+                package_dict = server_command.decompress(blob, pickle=True)
+            except UnicodeDecodeError:
+                # workaround for incompatible python2.x pickle dumps
+                import pickle
+                package_dict = bz2.decompress(base64.b64decode(blob))
+                package_dict = pickle.loads(package_dict, encoding="latin1")
+
+            for package_name in package_dict:
+                for versions_dict in package_dict[package_name]:
+                    installtimestamp = None
+                    if 'installtimestamp' in versions_dict:
+                        installtimestamp = versions_dict['installtimestamp']
+
+                    size = 0
+                    if 'size' in versions_dict:
+                        size = versions_dict['size']
+
+                    assets.append(
+                        BaseAssetPackage(
+                            package_name,
+                            version=versions_dict['version'],
+                            size=size,
+                            release=versions_dict['release'],
+                            install_date=installtimestamp,
+                            package_type=PackageTypeEnum.LINUX
+                        )
+                    )
         self._generate_assets_package(assets)
 
     def _generate_assets_package(self, assets):
@@ -1289,11 +1307,11 @@ ASSETTYPE_HM_COMMAND_MAP = {
 ASSETTYPE_NRPE_COMMAND_MAP = {
     AssetType.PACKAGE: "list-software-py3",
     AssetType.HARDWARE: "list-hardware-lstopo-py3",
+    AssetType.PENDING_UPDATE: "list-pending-updates-py3",
     AssetType.UPDATE: "list-updates-alt-py3",
     AssetType.DMI: "dmiinfo",
     AssetType.PCI: "pciinfo",
     AssetType.PRETTYWINHW: "list-hardware-py3",
-    AssetType.PENDING_UPDATE: "list-pending-updates-py3"
 }
 
 
