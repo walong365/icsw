@@ -767,36 +767,63 @@ class AssetRun(models.Model):
         self.asset_batch.save()
 
     def _generate_assets_pending_update_hm(self, tree):
+        package_format = tree.xpath('ns0:format', namespaces=tree.nsmap)[0].text
         blob = tree.xpath('ns0:update_list', namespaces=tree.nsmap)[0]\
             .text
         l = server_command.decompress(blob, pickle=True)
         self.asset_batch.pending_updates_status = 1
-        for (name, version) in l:
-            asset_update_entry = AssetUpdateEntry.objects.filter(
-                name=name,
-                version="",
-                release="",
-                kb_idx=0,
-                install_date=None,
-                status="",
-                optional=True,
-                installed=False,
-                new_version=version
-                )
-            if asset_update_entry:
-                asset_update_entry = asset_update_entry[0]
-            else:
-                asset_update_entry = AssetUpdateEntry(
+        if package_format == "windows":
+            for (name, optional) in l:
+                asset_update_entry = AssetUpdateEntry.objects.filter(
                     name=name,
-                    # by definition linux updates are optional
+                    version="",
+                    release="",
+                    kb_idx=0,
+                    install_date=None,
+                    status="",
+                    optional=optional,
+                    installed=False,
+                    new_version=""
+                )
+                if asset_update_entry:
+                    asset_update_entry = asset_update_entry[0]
+                else:
+                    asset_update_entry = AssetUpdateEntry(
+                        name=name,
+                        installed=False,
+                        optional=optional,
+                    )
+                    asset_update_entry.save()
+
+                self.asset_batch.pending_updates.add(asset_update_entry)
+                self.asset_batch.pending_updates_status = 2
+        else:
+            for (name, version) in l:
+                asset_update_entry = AssetUpdateEntry.objects.filter(
+                    name=name,
+                    version="",
+                    release="",
+                    kb_idx=0,
+                    install_date=None,
+                    status="",
                     optional=True,
                     installed=False,
-                    new_version=version,
-                )
-                asset_update_entry.save()
+                    new_version=version
+                    )
+                if asset_update_entry:
+                    asset_update_entry = asset_update_entry[0]
+                else:
+                    asset_update_entry = AssetUpdateEntry(
+                        name=name,
+                        # by definition linux updates are optional
+                        optional=True,
+                        installed=False,
+                        new_version=version,
+                    )
+                    asset_update_entry.save()
 
-            self.asset_batch.pending_updates.add(asset_update_entry)
-            self.asset_batch.pending_updates_status = 2
+                self.asset_batch.pending_updates.add(asset_update_entry)
+                self.asset_batch.pending_updates_status = 2
         self.asset_batch.save()
 
     def _generate_assets_update_nrpe(self, data):

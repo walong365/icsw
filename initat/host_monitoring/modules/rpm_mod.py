@@ -366,6 +366,7 @@ class updatelist_command(hm_classes.hm_command):
                 optional = not search_result.Updates.Item(i).IsMandatory
                 update_list.append((title, optional))
 
+            srv_com["format"] = "windows"
             srv_com["update_list"] = server_command.compress(update_list, pickle=True)
         else:
             s_time = time.time()
@@ -374,6 +375,7 @@ class updatelist_command(hm_classes.hm_command):
             srv_com.set_result(
                 "ok got list in {}".format(logging_tools.get_diff_time_str(e_time - s_time)),
             )
+            srv_com["format"] = "linux"
             srv_com["update_list"] = server_command.compress(update_list, pickle=True)
 
     def interpret(self, srv_com, cur_ns):
