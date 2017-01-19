@@ -150,6 +150,23 @@ class _general(hm_classes.hm_module):
     pass
 
 
+class Package:
+    def __init__(self):
+        self.displayName = "Unknown"
+        self.displayVersion = "Unknown"
+        self.estimatedSize = "Unknown"
+        self.installDate = "Unknown"
+
+    def __lt__(self, other):
+        return self.displayName < other.displayName
+
+    def __eq__(self, other):
+        return self.displayName == other.displayName
+
+    def __hash__(self):
+        return hash((self.displayName, self.displayVersion, self.estimatedSize, self.installDate))
+
+
 class rpmlist_command(hm_classes.hm_command):
     info_str = "rpm list"
 
@@ -162,22 +179,6 @@ class rpmlist_command(hm_classes.hm_command):
             UNINSTALL_PATH2 = "SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
 
             import winreg
-
-            class Package:
-                def __init__(self):
-                    self.displayName = "Unknown"
-                    self.displayVersion = "Unknown"
-                    self.estimatedSize = "Unknown"
-                    self.installDate = "Unknown"
-
-                def __lt__(self, other):
-                    return self.displayName < other.displayName
-
-                def __eq__(self, other):
-                    return self.displayName == other.displayName
-
-                def __hash__(self):
-                    return hash((self.displayName, self.displayVersion, self.estimatedSize, self.installDate))
 
             def get_installed_packages_for_keypath(keypath):
                 key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, keypath, 0, winreg.KEY_READ)
