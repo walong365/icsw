@@ -52,6 +52,10 @@ angular.module(
             title: "Device Variables"
             send_selection: true
             css_class: "modal-tall modal-wide"
+            show_callback: (scope) ->
+                # hack, disable certain columns per default
+                scope.show_column.source = false
+                scope.show_column.uuid = false
         }
     }
     @show_overlay = ($event, name) ->
@@ -70,10 +74,13 @@ angular.module(
                 closeable: true
                 ok_label: "close"
                 css_class: _def.css_class
-                show_callback: () ->
+                shown_callback: () ->
+                    if _def.show_callback?
+                        _def.show_callback(sub_scope)
                     if _def.send_selection
                         _cur = icswActiveSelectionService.current()
                         sub_scope.new_devsel(_cur.resolve_devices(_cur.tot_dev_sel))
+                    return null
                 ok_callback: () ->
                     _defer = $q.defer()
                     _defer.resolve("close")
