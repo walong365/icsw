@@ -21,8 +21,6 @@
 parser for relay info / modifying
 """
 
-
-
 from initat.host_monitoring.discovery import CS_NAME
 from initat.tools.config_store import ConfigStore
 

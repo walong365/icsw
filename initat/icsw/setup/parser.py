@@ -22,8 +22,6 @@
 
 """ parser for icsw setup command """
 
-
-
 import os
 
 from .commands import DB_CS_FILENAME

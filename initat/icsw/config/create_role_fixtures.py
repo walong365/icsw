@@ -19,8 +19,6 @@
 #
 """ creates fixtures for noctua """
 
-
-
 import netifaces
 import os
 import socket

@@ -22,9 +22,6 @@
 """ config information and modify """
 
 
-
-
-
 class Parser(object):
     def link(self, sub_parser, **kwargs):
         self.__server_mode = kwargs["server_mode"]

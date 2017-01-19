@@ -24,10 +24,6 @@ import os
 import importlib
 
 from django.conf import settings
-from django.conf.urls import include, url
-from django.contrib import admin
-
-admin.autodiscover()
 
 urlpatterns = []
 
@@ -47,9 +43,3 @@ if settings.ICSW_INCLUDE_URLS and not Z800_MIGRATION:
                 # new_mod = __import__(entry.split(".")[0], globals(), locals())
                 if hasattr(new_mod, "urlpatterns"):
                     urlpatterns.extend(new_mod.urlpatterns)
-
-urlpatterns.extend(
-    [
-        url(r"^{}/admin/".format(settings.REL_SITE_ROOT), include(admin.site.urls)),
-    ]
-)

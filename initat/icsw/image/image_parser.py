@@ -22,8 +22,6 @@
 """ image information and modify """
 
 
-
-
 class Parser(object):
     def link(self, sub_parser, **kwargs):
         if kwargs["server_mode"]:

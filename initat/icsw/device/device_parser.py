@@ -21,8 +21,6 @@
 #
 """ device information and modify """
 
-
-
 import os
 
 

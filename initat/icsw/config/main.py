@@ -21,8 +21,6 @@
 
 """ show config script for simple use in CSW """
 
-
-
 import base64
 import bz2
 import datetime

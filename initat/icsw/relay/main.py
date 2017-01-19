@@ -21,8 +21,6 @@
 functions for relay cstore handling
 """
 
-
-
 import re
 import sys
 import time
