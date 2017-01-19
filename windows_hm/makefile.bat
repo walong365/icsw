@@ -84,6 +84,6 @@ DEL .\Components.wixobj
 DEL .\Components.wxs
 DEL .\ICSW_Windows_Client.wixobj
 DEL .\ICSW_Windows_Client.wixpdb
-DEL .\HostEditingDlg.wixobj
+:: DEL .\HostEditingDlg.wixobj
 
 @pause
