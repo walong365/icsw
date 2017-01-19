@@ -20,6 +20,7 @@ import subprocess
 import os
 import re
 import time
+import platform
 
 from initat.host_monitoring import hm_classes, limits
 from initat.tools import logging_tools, server_command
@@ -156,50 +157,130 @@ class rpmlist_command(hm_classes.hm_command):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
-        if os.path.isfile("/etc/debian_version"):
-            is_debian = True
+        if platform.system() == "Windows":
+            UNINSTALL_PATH1 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
+            UNINSTALL_PATH2 = "SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
+
+            import winreg
+
+            class Package:
+                def __init__(self):
+                    self.displayName = "Unknown"
+                    self.displayVersion = "Unknown"
+                    self.estimatedSize = "Unknown"
+                    self.installDate = "Unknown"
+
+                def __lt__(self, other):
+                    return self.displayName < other.displayName
+
+                def __eq__(self, other):
+                    return self.displayName == other.displayName
+
+                def __hash__(self):
+                    return hash((self.displayName, self.displayVersion, self.estimatedSize, self.installDate))
+
+            def get_installed_packages_for_keypath(keypath):
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, keypath, 0, winreg.KEY_READ)
+
+                packages = []
+
+                i = 0
+
+                while True:
+                    try:
+                        subkey_str = winreg.EnumKey(key, i)
+                        i += 1
+                        subkey = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, keypath + "\\" + subkey_str,
+                            0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY)
+                        # print subkey_str
+
+                        j = 0
+
+                        package = Package()
+                        while True:
+                            try:
+                                subvalue = winreg.EnumValue(subkey, j)
+                                j += 1
+
+                                _val, _data, _type = subvalue
+
+                                _data = str(_data).split("\\u0000")[0]
+
+                                if _val == "DisplayName":
+                                    package.displayName = _data
+                                elif _val == "DisplayVersion":
+                                    package.displayVersion = _data
+                                elif _val == "EstimatedSize":
+                                    package.estimatedSize = _data
+                                elif _val == "InstallDate":
+                                    package.installDate = _data
+
+                            except WindowsError as e:
+                                break
+
+                        if package.displayName != "Unknown":
+                            packages.append(package)
+
+                    except WindowsError as e:
+                        break
+
+                return packages
+
+            package_list1 = get_installed_packages_for_keypath(UNINSTALL_PATH1)
+            package_list2 = get_installed_packages_for_keypath(UNINSTALL_PATH2)
+            package_list1.extend(package_list2)
+
+            package_list = list(set(package_list1))
+
+            package_list.sort()
+
+            srv_com["format"] = "windows"
+            srv_com["pkg_list"] = server_command.compress(package_list, pickle=True)
         else:
-            is_debian = False
-        rpm_root_dir, re_strs = ("/", [])
-        if len(cur_ns.arguments):
-            for arg in cur_ns.arguments:
-                if arg.startswith("/"):
-                    rpm_root_dir = arg
-                else:
-                    re_strs.append(arg)
-        if is_debian:
-            self.log(
-                "Starting dpkg -l command for root_dir '{}' ({:d} regexp_strs{})".format(
-                    rpm_root_dir,
-                    len(re_strs),
-                    ": {}".format(", ".join(re_strs)) if re_strs else "",
+            if os.path.isfile("/etc/debian_version"):
+                is_debian = True
+            else:
+                is_debian = False
+            rpm_root_dir, re_strs = ("/", [])
+            if len(cur_ns.arguments):
+                for arg in cur_ns.arguments:
+                    if arg.startswith("/"):
+                        rpm_root_dir = arg
+                    else:
+                        re_strs.append(arg)
+            if is_debian:
+                self.log(
+                    "Starting dpkg -l command for root_dir '{}' ({:d} regexp_strs{})".format(
+                        rpm_root_dir,
+                        len(re_strs),
+                        ": {}".format(", ".join(re_strs)) if re_strs else "",
+                    )
                 )
-            )
-        else:
-            self.log(
-                "Starting rpm-list command for root_dir '{}' ({:d} regexp_strs{})".format(
-                    rpm_root_dir,
-                    len(re_strs),
-                    ": {}".format(", ".join(re_strs)) if re_strs else "",
+            else:
+                self.log(
+                    "Starting rpm-list command for root_dir '{}' ({:d} regexp_strs{})".format(
+                        rpm_root_dir,
+                        len(re_strs),
+                        ": {}".format(", ".join(re_strs)) if re_strs else "",
+                    )
                 )
-            )
-        s_time = time.time()
-        log_list, ret_dict, cur_stat = rpmlist_int(rpm_root_dir, re_strs, is_debian)
-        e_time = time.time()
-        for log in log_list:
-            self.log(log)
-        if not cur_stat:
-            srv_com.set_result(
-                "ok got list in {}".format(logging_tools.get_diff_time_str(e_time - s_time)),
-            )
-            srv_com["root_dir"] = rpm_root_dir
-            srv_com["format"] = "deb" if is_debian else "rpm"
-            srv_com["pkg_list"] = server_command.compress(ret_dict, pickle=True)
-        else:
-            srv_com["result"].set_result(
-                "error getting list: {:d}".format(cur_stat),
-                server_command.SRV_REPLY_STATE_ERROR
-            )
+            s_time = time.time()
+            log_list, ret_dict, cur_stat = rpmlist_int(rpm_root_dir, re_strs, is_debian)
+            e_time = time.time()
+            for log in log_list:
+                self.log(log)
+            if not cur_stat:
+                srv_com.set_result(
+                    "ok got list in {}".format(logging_tools.get_diff_time_str(e_time - s_time)),
+                )
+                srv_com["root_dir"] = rpm_root_dir
+                srv_com["format"] = "deb" if is_debian else "rpm"
+                srv_com["pkg_list"] = server_command.compress(ret_dict, pickle=True)
+            else:
+                srv_com["result"].set_result(
+                    "error getting list: {:d}".format(cur_stat),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
 
     def interpret(self, srv_com, cur_ns):
         r_dict = server_command.decompress(srv_com["pkg_list"].text, pickle=True)
