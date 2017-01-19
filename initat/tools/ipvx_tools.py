@@ -171,7 +171,7 @@ class IPv4(object):
             network, netmask = (IPv4(nw_stuff.network), IPv4(nw_stuff.netmask))
             if self & netmask == network:
                 match_list.append((netmask.netmask_bits(), nw_stuff))
-        return sorted(match_list, reverse=True)
+        return sorted(match_list, reverse=True, key=lambda x: x[0])
 
     def network_matches(self, nw_stuff):
         return self & IPv4(nw_stuff.netmask) == IPv4(nw_stuff.network)
