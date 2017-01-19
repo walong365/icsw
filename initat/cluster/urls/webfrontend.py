@@ -47,7 +47,11 @@ report_patterns = [
 ]
 
 asset_patterns = [
-    url("^hidden_static_asset_template_type_manager$", asset_views.HiddenStaticAssetTemplateTypesManager.as_view(), name="hidden_static_asset_template_type_manager"),
+    url(
+        "^hidden_static_asset_template_type_manager$",
+        asset_views.HiddenStaticAssetTemplateTypesManager.as_view(),
+        name="hidden_static_asset_template_type_manager"
+    ),
     url("^asset_package_loader$", asset_views.AssetPackageLoader.as_view(), name="asset_package_loader"),
     url("^asset_batch_deleter$", asset_views.AssetBatchDeleter.as_view(), name="asset_batch_deleter"),
     url("^get_fieldvalues_for_template$", asset_views.GetFieldvaluesForTemplate.as_view(), name="get_fieldvalues_for_template"),
@@ -121,6 +125,7 @@ rms_patterns = [
     url(r"get_header_xml", rms_views.get_header_xml.as_view(), name="get_header_xml"),
     url(r"get_rms_current_json", rms_views.get_rms_current_json.as_view(), name="get_rms_current_json"),
     url(r"get_rms_done_json", rms_views.get_rms_done_json.as_view(), name="get_rms_done_json"),
+    # for dashboard jobinfo
     url(r"get_rms_jobinfo", rms_views.get_rms_jobinfo.as_view(), name="get_rms_jobinfo"),
     url(r"control_job", rms_views.control_job.as_view(), name="control_job"),
     url(r"control_queue", rms_views.control_queue.as_view(), name="control_queue"),

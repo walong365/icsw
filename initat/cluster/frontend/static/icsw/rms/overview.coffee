@@ -147,6 +147,32 @@ rms_module = angular.module(
             0
         )
 
+    calc_message_details = (gwi, list, open_messages) ->
+        for entry in list
+            # new sub_scope
+            sub_scope = $rootScope.$new(true)
+            sub_scope.j = entry
+            sub_scope.msgs = []
+            entry.messages.total = "#{entry.messages.value}"
+            if gwi.length
+                entry.messages.total = "#{entry.messages.total} + #{gwi.length}"
+            for _line in gwi
+                sub_scope.msgs.push([_line.value, "global", "label label-danger"])
+            for _line in entry.messages.raw
+                sub_scope.msgs.push([_line, "local", "label label-warning"])
+            entry.messages.$$compiled = $compile($templateCache.get("icsw.rms.msgdetail.popover"))(sub_scope)
+            entry.messages.$$sub_scope = sub_scope
+        $timeout(
+            () =>
+                for entry in list
+                    # console.log entry.queue_details.raw
+                    entry.messages.popover = (_line.outerHTML for _line in entry.messages.$$compiled).join(" ")
+                    entry.messages.$$sub_scope.$destroy()
+                    entry.messages.$$open = entry.job_id.value in open_messages
+            0
+        )
+
+
     queue_states = [
         {
             name: "total"
@@ -218,6 +244,9 @@ rms_module = angular.module(
 
         calc_queue_details: (sched_struct, list, open_popups) ->
             return calc_queue_details(sched_struct, list, open_popups)
+
+        calc_message_details: (gwi, list, open_messages) ->
+            return calc_message_details(gwi, list, open_messages)
     }
 
 ]).service("icswRMSJobVarStruct",
@@ -870,12 +899,14 @@ rms_module = angular.module(
                 ["desc"]
             )
 
-        feed_list: (simple_list) =>
+        feed_list: (simple_list, gwi) =>
             # get list of currently open popovers
             if @list?
                 _open_pops = (entry.job_id.value for entry in @list when entry.queue_details.$$open)
+                _open_msgs = (entry.job_id.value for entry in @list when entry.messages.$$open)
             else
                 _open_pops = []
+                _open_msgs = []
             @feed_xml_list(simple_list)
             @set_alter_job_flags()
             @set_full_ids()
@@ -888,6 +919,7 @@ rms_module = angular.module(
                         _waiting_slots += parseInt(entry.requested_pe.value.split("(")[1].split(")")[0])
 
                 icswRMSTools.calc_queue_details(@struct.rms.sched, @list, _open_pops)
+                icswRMSTools.calc_message_details(gwi, @list, _open_msgs)
 
                 @calc_details_global()
                 @info = "Waiting (#{@list.length} jobs, #{_waiting_slots} slots)"
@@ -908,6 +940,9 @@ rms_module = angular.module(
 
         toggle_popover: (job) =>
             job.queue_details.$$open = !job.queue_details.$$open
+
+        toggle_messages: (job) =>
+            job.messages.$$open = !job.messages.$$open
 
 ]).service("icswRMSDoneStruct",
 [
@@ -1444,7 +1479,7 @@ rms_module = angular.module(
                     $scope.struct.jv_struct.feed_start("r")
 
                     $scope.struct.rms.running.feed_list(json.run_table, json.files)
-                    $scope.struct.rms.waiting.feed_list(json.wait_table)
+                    $scope.struct.rms.waiting.feed_list(json.wait_table, json.global_waiting_info)
                     $scope.struct.rms.queue.feed_list(json.node_table, json.node_values)
 
                     $scope.struct.fstree = json.fstree

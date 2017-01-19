@@ -179,7 +179,7 @@ def sec_to_str(in_sec):
                 dt
             )
         else:
-            out_f = "????"
+            out_f = "in_sec is negative ({:d})".format(int(in_sec))
     return out_f
 
 
@@ -305,7 +305,7 @@ class SGEInfo(object):
             logging_tools.my_syslog("[si] {}".format(what), log_level)
 
     def get_tree(self, **kwargs):
-        # return etree.fromstring(etree.tostring(self.__tree))
+        # salt qstat-parsed tree with external info
         r_tree = copy.deepcopy(self.__tree)
         if "file_dict" in kwargs:
             for job_id, file_dict in kwargs["file_dict"].items():
@@ -382,25 +382,79 @@ class SGEInfo(object):
             ext_xml = etree.fromstring(_cache)
         self.__run_job_dict[job_id] = ext_xml
 
-    def add_wait_job_info(self, job_id, qstat_com):
-        job_key = "sgeinfo:job:w{}".format(job_id)
-        _cache = self.get_cache(job_key)
-        if _cache is None:
-            _c_stat, c_out = self._execute_command("{} -u \* -xml -j {}".format(qstat_com, job_id))
+    def add_wait_job_info(self, job_ids, qstat_com):
+        cur_time = int(time.time())
+        # determine missing job ids / cache info too old
+        renew_ids = set()
+        for job_id in job_ids:
+            job_key = "sgeinfo:job:wait:{}".format(job_id)
+            _cache = self.get_cache(job_key)
+            if _cache is None:
+                renew_ids.add(job_id)
+            else:
+                ext_xml = etree.fromstring(_cache, encoding="unicode")
+                c_time = int(ext_xml.get("init_time", "0"))
+                if abs(cur_time - c_time) > 10:
+                    # renew info
+                    renew_ids.add(job_id)
+                else:
+                    self.__wait_job_dict[job_id] = ext_xml
+        if renew_ids:
+            _c_stat, c_out = self._execute_command(
+                "{} -u \* -xml -j {}".format(
+                    qstat_com,
+                    ",".join(renew_ids)
+                )
+            )
+            for _id in renew_ids:
+                self.__wait_job_dict[_id] = None
             if _c_stat:
                 job_xml = E.call_error(c_out, stat="{:d}".format(_c_stat))
             else:
                 job_xml = etree.parse(StringIO(c_out), self.xml_parser)
-            # print etree.tostring(job_xml, pretty_print=True)
-            ext_xml = E.job_ext_info()
-            _exec_time_el = job_xml.find(".//JB_execution_time")
-            if _exec_time_el is not None and int(_exec_time_el.text):
-                _exec_time = datetime.datetime.fromtimestamp(int(_exec_time_el.text))
-                ext_xml.append(E.execution_time(str(int(_exec_time_el.text))))
-            self.set_cache(job_key, etree.tostring(ext_xml))
+                # local dict, job id -> xml
+                job_xml_dict = {}
+                for job_el in job_xml.findall(".//djob_info/element"):
+                    job_id = job_el.findtext("JB_job_number")
+                    ext_xml = E.job_ext_info(
+                        E.messages(),
+                        init_time="{:d}".format(cur_time), job_id=job_id
+                    )
+                    _exec_time_el = job_xml.find(".//JB_execution_time")
+                    if _exec_time_el is not None and int(_exec_time_el.text):
+                        ext_xml.append(E.execution_time(str(int(_exec_time_el.text))))
+                    job_xml_dict[job_id] = ext_xml
+                # local messages
+                for msg_xml in job_xml.findall(".//messages/element/SME_message_list/element"):
+                    for id_xml in msg_xml.findall(".//MES_job_number_list//ULNG_value"):
+                        job_id = id_xml.text
+                        if job_id in job_xml_dict:
+                            job_xml_dict[job_id].find(".//messages").append(
+                                E.message(
+                                    msg_xml.findtext(".//MES_message")
+                                )
+                            )
+                # always set wait_job_dict with job_id "G" (for global)
+                job_xml_dict["G"] = E.global_waiting_info(
+                    E.messages(
+                        *[
+                            E.message(
+                                msg_xml.findtext(".//MES_message")
+                            ) for msg_xml in job_xml.findall(".//SME_global_message_list/element")
+                        ]
+                    )
+                )
+                for job_id, job_xml in job_xml_dict.items():
+                    # set cache
+                    self.set_cache(job_id, etree.tostring(job_xml, encoding="unicode"))
+                    self.__wait_job_dict[job_id] = job_xml
+                    # print(etree.tostring(job_xml, pretty_print=True, encoding="unicode"))
+
+    def get_global_waiting_info(self):
+        if "G" in self.__wait_job_dict:
+            return self.__wait_job_dict["G"]
         else:
-            ext_xml = etree.fromstring(_cache)
-        self.__wait_job_dict[job_id] = ext_xml
+            return E.global_waiting_info(E.messages())
 
     def get_run_job_info(self, job_id):
         return self.__run_job_dict.get(job_id, None)
@@ -430,14 +484,14 @@ class SGEInfo(object):
             left_time = abs(run_time - datetime.timedelta(0, int(h_rt)))
             return sec_to_str(left_time.days * 24 * 3600 + left_time.seconds)
         else:
-            return "???"
+            return "N/A"
 
     def get_h_rt_time(self, h_rt):
         if h_rt:
             h_rt = datetime.timedelta(0, int(h_rt))
             return sec_to_str(h_rt.days * 24 * 3600 + h_rt.seconds)
         else:
-            return "???"
+            return "N/A"
 
     @property
     def tree(self):
@@ -942,18 +996,24 @@ class SGEInfo(object):
             if job_info is not None:
                 cur_job.append(job_info)
         # add info for waiting jobs
+        # attention: not task-array save
         waiting_ids = set(all_jobs.xpath(".//job_list[@state='pending']/JB_job_number/text()", smart_strings=False))
-        present_ids = set(self.__wait_job_dict.keys())
-        for del_job_id in present_ids - waiting_ids:
-            self.del_wait_job_info(del_job_id)
-        for add_job_id in waiting_ids - present_ids:
-            self.add_wait_job_info(add_job_id, qstat_com)
+        if waiting_ids:
+            # warning: the global state may get stale when waiting_ids is empty
+            self.add_wait_job_info(waiting_ids, qstat_com)
         for cur_job in all_jobs.xpath(".//job_list[@state='pending' and JB_job_number]"):
             cur_job_id = cur_job.findtext("JB_job_number")
             if cur_job_id in waiting_ids:
                 job_info = self.get_wait_job_info(cur_job_id)
                 if job_info is not None:
                     cur_job.append(job_info)
+        # add global scheduling info to end
+        _gwi = self.get_global_waiting_info()
+        if _gwi is not None:
+            all_jobs.append(_gwi)
+
+        # salt stdout / stderr info
+
         self._add_stdout_stderr_info(all_jobs)
         for state_el in all_jobs.xpath(".//job_list/state", smart_strings=False):
             state_el.addnext(
@@ -986,7 +1046,10 @@ class SGEInfo(object):
             ("JB_submission_time", "submit_time")
         ]:
             for time_el in all_jobs.findall(".//{}".format(node_name)):
-                time_el.getparent().attrib[attr_name] = datetime.datetime.strptime(time_el.text, "%Y-%m-%dT%H:%M:%S").strftime("%s")
+                time_el.getparent().attrib[attr_name] = datetime.datetime.strptime(
+                    time_el.text,
+                    "%Y-%m-%dT%H:%M:%S"
+                ).strftime("%s")
         return all_jobs
 
     def _add_stdout_stderr_info(self, all_jobs):
@@ -1499,6 +1562,11 @@ def get_waiting_headers(options):
         )
     cur_job.extend(
         [
+            E.messages()
+        ]
+    )
+    cur_job.extend(
+        [
             E.priority(sort="prio.value"),
             E.posix_priority(sort="posix_priority.value"),
         ]
@@ -1595,6 +1663,18 @@ def build_waiting_list(s_info, options, **kwargs):
             else:
                 _exec_time = datetime.datetime.fromtimestamp(int(_exec_time.text))
                 cur_job.append(E.exec_time(logging_tools.get_relative_dt(_exec_time)))
+        _msg_el = act_job.find(".//messages")
+        if _msg_el is not None and len(_msg_el):
+            cur_job.append(
+                E.messages(
+                    "{:d}".format(len(_msg_el)),
+                    raw=json.dumps([el.text for el in _msg_el]),
+                    type="int",
+                )
+            )
+        else:
+            cur_job.append(E.messages("0", type="int"))
+        # print("D",
         dep_list = sorted(act_job.xpath(".//predecessor_jobs_req/text()", smart_strings=False))
         # print etree.tostring(act_job, pretty_print=True)
         # print "*"
