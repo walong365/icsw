@@ -52,8 +52,8 @@
       
       <!--<CustomAction Id="ExecFinalizeInstall" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\python\pythonw.exe finalize-install.py [HOSTNAMES] [PORTNAMES] [SERVICENAME]" Return="check" />-->
 
-      <CustomAction Id="ExecRedirectStdout" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nssm.exe set [SERVICENAME] AppStdout [installdir]\log.txt" Return="check" />
-      <CustomAction Id="ExecRedirectStderr" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nssm.exe set [SERVICENAME] AppStderr [installdir]\log.txt" Return="check" />
+      <CustomAction Id="ExecRedirectStdout" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nssm.exe set [SERVICENAME] AppStdout [INSTALLDIR]\log.txt" Return="check" />
+      <CustomAction Id="ExecRedirectStderr" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nssm.exe set [SERVICENAME] AppStderr [INSTALLDIR]\log.txt" Return="check" />
       <CustomAction Id="ExecRedirectStoutSettings" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nssm.exe set [SERVICENAME] AppStdoutCreationDisposition 4" Return="check" />
       <CustomAction Id="ExecRedirectSterrSettings" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nssm.exe set [SERVICENAME] AppStderrCreationDisposition 4" Return="check" />
       <CustomAction Id="ExecAppRotateFiles" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nssm.exe set [SERVICENAME] AppRotateFiles 1" Return="check" />
