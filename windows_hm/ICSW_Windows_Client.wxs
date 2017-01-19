@@ -52,7 +52,7 @@
       
       <!--<CustomAction Id="ExecFinalizeInstall" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\python\pythonw.exe finalize-install.py [HOSTNAMES] [PORTNAMES] [SERVICENAME]" Return="check" />-->
 	  <CustomAction Id="ExecCleanupService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nssm.exe remove [SERVICENAME] confirm" Return="ignore" />
-      <CustomAction Id="ExecInstallService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand='[INSTALLDIR]\nssm.exe install [SERVICENAME] "[INSTALLDIR]\python.exe" "\"[INSTALLDIR]\Lib\site-packages\initat\host_monitoring\main.py\""' Return="check" />
+      <CustomAction Id="ExecInstallService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand='[INSTALLDIR]\nssm.exe install [SERVICENAME] "[INSTALLDIR]\python.exe" "\"[INSTALLDIR]\Lib\site-packages\initat\host_monitoring\main_windows.py\""' Return="check" />
       <CustomAction Id="ExecStartService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nssm.exe start [SERVICENAME]" Return="check" />
       <CustomAction Id="ExecUninstallService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nssm.exe remove [SERVICENAME] confirm" Return="check" />
       <CustomAction Id="ExecStopService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nssm.exe stop [SERVICENAME]" Return="check" />
