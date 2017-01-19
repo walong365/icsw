@@ -86,7 +86,7 @@ class sum_aggreg(aggreg):
         act_pf = ""
         in_int = sum(self.__values)
         while in_int > 1024:
-            in_int /= 1024.
+            in_int //= 1024.
             act_pf = mult.pop(0)
         return "%.2f %s%s%s" % (in_int,
                                 act_pf,

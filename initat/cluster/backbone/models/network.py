@@ -191,9 +191,9 @@ class network_type(models.Model):
 class _NetworkManager(models.Manager):
     def get_or_create_network(self, network_addr, netmask, gateway=None, context=None):
         """
-        :type network_addr: ipvx_tools.ipv4
-        :type netmask: ipvx_tools.ipv4
-        :type gateway: ipvx_tools.ipv4 | None
+        :type network_addr: ipvx_tools.icswIPv4
+        :type netmask: ipvx_tools.icswIPv4
+        :type gateway: ipvx_tools.IPv4 | None
         :param str context: string added to network name and info
         :rtype: network
         """
@@ -205,7 +205,7 @@ class _NetworkManager(models.Manager):
             else:
                 _identifier = "o"
             info_str = " from {}".format(context) if context else ""
-            gateway = str(gateway) if gateway else str(network_addr + ipvx_tools.ipv4("0.0.0.1"))
+            gateway = str(gateway) if gateway else str(network_addr + ipvx_tools.IPv4("0.0.0.1"))
             cur_nw = self.model(
                 network_type=network_type.objects.get(Q(identifier=_identifier)),
                 short_names=False,
@@ -263,12 +263,12 @@ class network(models.Model):
         _ignore_range = {None, "", "0.0.0.0"}
         free_ip = None
         if self.start_range not in _ignore_range and self.end_range not in _ignore_range:
-            used_ips = {ipvx_tools.ipv4(_ip.ip) for _ip in self.net_ip_set.all()}
-            offset = ipvx_tools.ipv4("0.0.0.1")
-            free_ip = ipvx_tools.ipv4(self.start_range)
+            used_ips = {ipvx_tools.IPv4(_ip.ip) for _ip in self.net_ip_set.all()}
+            offset = ipvx_tools.IPv4("0.0.0.1")
+            free_ip = ipvx_tools.IPv4(self.start_range)
             while free_ip in used_ips:
                 free_ip += offset
-            if free_ip > ipvx_tools.ipv4(self.end_range):
+            if free_ip > ipvx_tools.IPv4(self.end_range):
                 free_ip = None
         return free_ip
 
@@ -354,7 +354,7 @@ def network_pre_save(sender, **kwargs):
         }
         for key in list(ip_dict.keys()):
             try:
-                ip_dict[key] = ipvx_tools.ipv4(getattr(cur_inst, key))
+                ip_dict[key] = ipvx_tools.IPv4(getattr(cur_inst, key))
             except:
                 raise ValidationError("{} is not an IPv4 address".format(key))
         if not change_attr:
@@ -404,8 +404,8 @@ def network_pre_save(sender, **kwargs):
         if cur_inst.start_range not in _ignore_range and cur_inst.end_range not in _ignore_range:
             # validate range
             try:
-                ip_dict["start_range"] = ipvx_tools.ipv4(cur_inst.start_range)
-                ip_dict["end_range"] = ipvx_tools.ipv4(cur_inst.end_range)
+                ip_dict["start_range"] = ipvx_tools.IPv4(cur_inst.start_range)
+                ip_dict["end_range"] = ipvx_tools.IPv4(cur_inst.end_range)
             except:
                 raise ValidationError(
                     "start / end range {} / {} not valid".format(
@@ -502,7 +502,7 @@ def net_ip_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         try:
-            ipv_addr = ipvx_tools.ipv4(cur_inst.ip)
+            ipv_addr = ipvx_tools.IPv4(cur_inst.ip)
         except:
             raise ValidationError("not a valid IPv4 address")
         if not cur_inst.network_id:
@@ -566,7 +566,6 @@ def net_ip_pre_save(sender, **kwargs):
 
 @receiver(signals.pre_delete, sender=net_ip)
 def net_ip_pre_delete(sender, **kwargs):
-    cur_inst = kwargs["instance"]
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if cur_inst.network.network_type.identifier == "b":

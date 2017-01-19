@@ -161,51 +161,20 @@ device_logs = angular.module(
 ]).controller("icswDeviceLogTableCtrl",
 [
     "$q", "Restangular", "ICSW_URLS", "$scope", "icswUserGroupRoleTreeService", "$timeout", "icswSimpleAjaxCall",
-    "icswWebSocketService"
+    "icswWebSocketService", "icswTableFilterService",
 (
     $q, Restangular, ICSW_URLS, $scope, icswUserGroupRoleTreeService, $timeout, icswSimpleAjaxCall,
-    icswWebSocketService
+    icswWebSocketService, icswTableFilterService,
 ) ->
 
     $scope.struct = {
+        # filter
+        filter: icswTableFilterService.get_instance()
         data_loaded: false
         user_tree: undefined
         websocket: undefined
 
-        user_names: []
-        selected_username: undefined
-
-        sources: []
-        selected_source: undefined
-
-        levels: []
-        selected_level: undefined
-
-        device_names: []
-        selected_device_name: undefined
-
-        time_frames: [
-            {
-                string: "All times"
-                duration: null
-            }
-            {
-                string: "1 day ago"
-                duration: moment.duration(1, "days")
-            }
-            {
-                string: "1 hour ago"
-                duration: moment.duration(1, "hours")
-            }
-            {
-                string: "10 minutes ago"
-                duration: moment.duration(10, "minutes")
-            }
-        ]
-        selected_time_frame: undefined
-
         device_log_entries: []
-        filtered_device_log_entries: []
         device_log_entries_lut: {}
 
         reload_timer: undefined
@@ -214,78 +183,101 @@ device_logs = angular.module(
         # fingerprint of dev idxs
         def_fp: ""
     }
+    # init filter
 
-    _init_struct = () ->
-        for [attr, def_val, sel_name] in [
-            ["user_names", "All Users", "selected_username"]
-            ["device_names", "All Devices", "selected_username"]
-            ["sources", "All Sources", "selected_source"]
-            ["levels", "All Levels", "selected_level"]
-        ]
-            $scope.struct[attr].length = 0
-            $scope.struct[attr].push(def_val)
-            $scope.struct[sel_name] = undefined
+    $scope.struct.filter.add(
+        "devices"
+        "Select Device"
+        (entry, choice) ->
+            if not choice.id
+                return true
+            else
+                return entry.device == choice.value
+    ).add_choice(0, "All Devices", null, true)
+
+    $scope.struct.filter.add(
+        "timeframes"
+        "Select timeframe"
+        (entry, choice) ->
+            if not choice.id
+                return true
+            else
+                return entry.$$mom_date.isAfter(choice.value)
+    ).add_choice(
+        0, "All times", null, true
+    ).add_choice(
+        1, "1 day ago", moment.duration(1, "days"), false
+    ).add_choice(
+        2, "1 hour ago", moment.duration(1, "hours"), false
+    ).add_choice(
+        3, "10 minutes ago", moment.duration(10, "minutes"), false
+    )
+
+    $scope.struct.filter.add(
+        "users"
+        "Select User"
+        (entry, choice) ->
+            if not choice.id
+                return true
+            else
+                return entry.user == choice.value
+    ).add_choice(0, "All users", null, true)
+
+    $scope.struct.filter.add(
+        "sources"
+        "Select Source"
+        (entry, choice) ->
+            if not choice.id
+                return true
+            else
+                return entry.source.idx == choice.value
+    ).add_choice(0, "All Sources", null, true)
+
+    $scope.struct.filter.add(
+        "levels"
+        "Select Level"
+        (entry, choice) ->
+            if not choice.id
+                return true
+            else
+                return entry.level.idx == choice.value
+    ).add_choice(0, "All Levels", null, true)
+
+    $scope.struct.filter.notifier.promise.then(
+        () ->
+        () ->
+        () ->
+            _update_filter()
+    )
 
     $scope.$watch(
         "device_list"
         (new_val) ->
-            console.log "nv", new_val
+            # console.log "nv", new_val
             new_fp = ("#{dev.idx}" for dev in new_val).join("::")
             if new_fp != $scope.struct.def_fp
                 $scope.struct.def_fp = new_fp
-                _init_struct()
+                ($scope.struct.filter.get(_en).clear_choices() for _en in ["users", "levels", "devices", "sources"])
                 $scope.struct.device_lut = {}
                 $scope.struct.device_idxs.length = 0
                 for entry in $scope.device_list
                     $scope.struct.device_idxs.push(entry.idx)
                     $scope.struct.device_lut[entry.idx] = entry
-                    $scope.struct.device_names.push(entry.full_name)
+                    $scope.struct.filter.get("devices").add_choice(entry.idx, entry.$$print_name, entry.idx, false)
                 # filter all device log entries where device_idx is not in device_idxs
                 $scope.struct.device_log_entries.length = 0
                 reload()
         true
     )
-
-    $scope.update_filter = ($event) ->
-        $scope.struct.filtered_device_log_entries.length = 0
-        _uname = $scope.struct.selected_username
-        if _uname == "All Users"
-            _uname = undefined
-        _source = $scope.struct.selected_source
-        if _source == "All Sources"
-            _source = undefined
-        _level = $scope.struct.selected_level
-        if _level == "All Levels"
-            _level = undefined
-        _dname = $scope.struct.selected_device_name
-        if _dname == "All Devices"
-            _dname = undefined
-        _duration = $scope.struct.selected_time_frame.duration
-        if _duration
-            _duration = moment().subtract(_duration)
-        for entry in $scope.struct.device_log_entries
-            _add = true
-            if _uname? and entry.user_resolved != _uname
-                _add = false
-            if _source? and entry.source.identifier != _source
-                _add = false
-            if _level? and entry.level.name != _level
-                _add = false
-            if _dname? and entry.$$full_name != _dname
-                _add = false
-            if _duration and _add
-                _add = entry.$$mom_date.isAfter(_duration)
-            if _add
-                $scope.struct.filtered_device_log_entries.push(entry)
+    _update_filter = () ->
+        $scope.struct.filter.filter($scope.struct.device_log_entries)
 
     update_filter_lists = (device_log_entry) ->
-        # only used onee
-        if device_log_entry.user_resolved not in $scope.struct.user_names
-            $scope.struct.user_names.push(device_log_entry.user_resolved)
-        if device_log_entry.source.identifier not in $scope.struct.sources
-            $scope.struct.sources.push(device_log_entry.source.identifier)
-        if device_log_entry.level.name not in $scope.struct.levels
-            $scope.struct.levels.push(device_log_entry.level.name)
+        # only used once
+        if device_log_entry.user
+            $scope.struct.filter.get("users").add_choice(device_log_entry.user, device_log_entry.user_resolved, device_log_entry.user, false)
+        $scope.struct.filter.get("sources").add_choice(device_log_entry.source.idx, device_log_entry.source.identifier, device_log_entry.source.idx, false )
+        $scope.struct.filter.get("levels").add_choice(device_log_entry.level.idx, device_log_entry.level.name, device_log_entry.level.idx, false )
 
     handle_log_entry = (log_entry) ->
         if log_entry.device in $scope.struct.device_idxs and $scope.struct.device_log_entries_lut[log_entry.idx] == undefined
@@ -326,7 +318,7 @@ device_logs = angular.module(
             (result) ->
                 if result.length
                     (handle_log_entry(log_entry) for log_entry in result)
-                    $scope.update_filter()
+                    _update_filter()
                 start_timer()
         )
 
@@ -363,13 +355,8 @@ device_logs = angular.module(
                 $scope.struct.user_tree = data[0]
                 (handle_log_entry(log_entry) for log_entry in data[1])
                 # initial load, set default levels
-                $scope.struct.selected_username = $scope.struct.user_names[0]
-                $scope.struct.selected_source = $scope.struct.sources[0]
-                $scope.struct.selected_level = $scope.struct.levels[0]
-                $scope.struct.selected_device_name = $scope.struct.device_names[0]
-                $scope.struct.selected_time_frame = $scope.struct.time_frames[0]
 
-                $scope.update_filter()
+                _update_filter()
 
                 $scope.struct.data_loaded = true
 
@@ -381,7 +368,7 @@ device_logs = angular.module(
                     $timeout(
                         () ->
                             handle_log_entry(json_dict)
-                            $scope.update_filter()
+                            _update_filter()
                         0
                     )
         )
@@ -391,5 +378,6 @@ device_logs = angular.module(
             $scope.struct.websocket.close()
             $scope.struct.websocket = undefined
         stop_timer()
+        $scope.struct.filter.close()
     )
 ])

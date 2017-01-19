@@ -439,7 +439,7 @@ def do_chpasswd(cur_opts, log_com):
 def user_main(cur_opts):
     log_com = icsw_logging.get_logger("user", cur_opts, all=True)
     ret_code = 0
-    if cur_opts.mode == "icswMail":
+    if cur_opts.mode == "mail":
         do_mail(cur_opts, log_com)
     elif cur_opts.mode == "list":
         do_list(cur_opts, log_com)

@@ -31,7 +31,6 @@ import threading
 import time
 from collections import namedtuple
 
-import memcache
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
@@ -267,6 +266,7 @@ class get_rms_done_json(View):
 class get_rms_current_json(View):
     @method_decorator(login_required)
     def post(self, request):
+        import memcache
         from initat.tools import sge_tools
         _post = request.POST
         my_sge_info = get_sge_info()

@@ -76,7 +76,7 @@ class DiscoveryDispatcher(object):
                     interval = dispatch_setting.get_interval_as_delta()
                     if not last_run.success:
                         # last run failed, rerun earlier (cut interval):
-                        interval /= 10
+                        interval //= 10
 
                     planned_date = max(last_run.date + interval, start)
 

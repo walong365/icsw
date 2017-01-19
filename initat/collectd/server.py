@@ -46,7 +46,7 @@ from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.var_cache import VarCache
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.process import SNMPProcessContainer
-from .aggregate import aggregate_process
+from .aggregate import AggregateProcess
 from .background import SNMPJob, BackgroundJob, IPMIBuilder
 from .collectd_struct import CollectdHostInfo, ext_com, HostMatcher, FileCreator
 from .config import global_config, IPC_SOCK_SNMP
@@ -143,7 +143,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         self._init_snmp()
         # stop resize-process at the end
         self.add_process(resize_process("resize", priority=20), start=True)
-        self.add_process(aggregate_process("aggregate"), start=True)
+        self.add_process(AggregateProcess("aggregate"), start=True)
         self.add_process(SyncProcess("dbsync"), start=True)
         # self.init_notify_framework(global_config)
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)

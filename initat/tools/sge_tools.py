@@ -30,7 +30,6 @@ import time
 import uuid
 from io import StringIO
 
-import memcache
 import zmq
 from lxml import etree
 from lxml.builder import E
@@ -279,18 +278,15 @@ class SGEInfo(object):
                 del self._cache_socket
 
     def _init_cache(self):
-        if memcache:
-            # always true
-            self._cache_socket = memcache.Client(
-                [
-                    "127.0.0.1:{:d}".format(
-                        InstanceXML(quiet=True).get_port_dict("memcached", command=True)
-                    )
-                ],
-                debug=0
-            )
-        else:
-            self._cache_socket = None
+        import memcache
+        self._cache_socket = memcache.Client(
+            [
+                "127.0.0.1:{:d}".format(
+                    InstanceXML(quiet=True).get_port_dict("memcached", command=True)
+                )
+            ],
+            debug=0
+        )
 
     def get_cache(self, key):
         if self._cache_socket:

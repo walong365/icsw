@@ -50,22 +50,18 @@ class RelayCode(ICSWBasePool, HMHRMixin):
     def __init__(self, global_config):
         # monkey path process tools to allow consistent access
         process_tools.ALLOW_MULTIPLE_INSTANCES = False
-        self.global_config = global_config
-        self.objgraph = None
         # copy to access from modules
+        threading_tools.icswProcessPool.__init__(
+            self,
+            "main",
+            zmq=True,
+            global_config=global_config,
+        )
         from initat.host_monitoring import modules
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         self.modules = modules
-        threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
         self.CC.init(icswServiceEnum.host_relay, self.global_config)
         self.CC.check_config()
-        if self.CC.CS["hr.enable.objgraph"]:
-            try:
-                import objgraph
-            except ImportError:
-                pass
-            else:
-                self.objgraph = objgraph
         self.__verbose = self.global_config["VERBOSE"]
         self.__force_resolve = self.CC.CS["hr.force.name.resolve"]
         # ip resolving
@@ -101,8 +97,6 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         self.register_timer(self._check_timeout, 2)
         self.register_func("socket_result", self._socket_result)
         self.register_func("socket_ping_result", self._socket_ping_result)
-        if self.objgraph:
-            self.register_timer(self._objgraph_run, 30, instant=True)
         if not self._init_commands():
             self._sigint("error init")
 
@@ -111,19 +105,6 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
-
-    def _objgraph_run(self):
-        # lines = unicode(self.hpy.heap().byrcs[0].byid).split("\n")
-        cur_stdout = sys.stdout
-        my_io = io.StringIO()
-        sys.stdout = my_io
-        self.objgraph.show_growth()
-        lines = [line.rstrip() for line in str(my_io.getvalue()).split("\n") if line.strip()]
-        self.log("objgraph show_growth ({})".format(logging_tools.get_plural("line", len(lines)) if lines else "no output"))
-        if lines:
-            for line in lines:
-                self.log(" - {}".format(line))
-        sys.stdout = cur_stdout
 
     def _hup_error(self, err_cause):
         self.log("got SIGHUP ({})".format(err_cause), logging_tools.LOG_LEVEL_WARN)

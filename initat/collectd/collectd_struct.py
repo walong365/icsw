@@ -18,7 +18,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-
+""" definitions for collectd """
 
 
 import json
@@ -28,7 +28,6 @@ import shutil
 import subprocess
 import time
 
-import memcache
 from django.db.models import Q
 from lxml.builder import E
 
@@ -439,6 +438,7 @@ class CollectdHostInfo(object):
 
     @staticmethod
     def setup(fc):
+        import memcache
         CollectdHostInfo.entries = {}
         CollectdHostInfo.fc = fc
         CollectdHostInfo.mc = memcache.Client(["{}:{:d}".format(global_config["MEMCACHE_HOST"], global_config["MEMCACHE_PORT"])])

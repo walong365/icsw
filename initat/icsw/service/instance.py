@@ -233,12 +233,17 @@ class InstanceXML(object):
                 _need = _need_el.text
                 _sym = True if int(_need_el.get("symmetrical", "0")) else False
                 if self.tree.find(".//instance[@name='{}']".format(_need)) is None:
-                    raise KeyError("dependency '{}' for instance '{}' not found".format(_need, _inst_name))
+                    if _need in {"memcached"}:
+                        # transient error, ignore
+                        _need = None
+                    else:
+                        raise KeyError("dependency '{}' for instance '{}' not found".format(_need, _inst_name))
                 if _need == _inst_name:
                     raise KeyError("cannot depend on myself ({})".format(_inst_name))
-                self.__needed_for_start.setdefault(_inst_name, []).append(_need)
-                if _sym:
-                    self.__needed_for_stop.setdefault(_need, []).append(_inst_name)
+                if _need is not None:
+                    self.__needed_for_start.setdefault(_inst_name, []).append(_need)
+                    if _sym:
+                        self.__needed_for_stop.setdefault(_need, []).append(_inst_name)
 
     def get_start_dependencies(self, inst_name):
         # return list of required started instances for given instance name

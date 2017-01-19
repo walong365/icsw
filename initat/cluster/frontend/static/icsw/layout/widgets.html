@@ -27,3 +27,14 @@
         </ul>
     </div>
 </script>
+
+<script type="text/ng-template" id="icsw.layout.table.filter">
+    <ui-select ng-model="ctrl.entry.selected" ng-change="ctrl.filter.update($event)">
+        <ui-select-match class="ui-select-match" placeholder="{{ ctrl.entry.placeholder }}">
+            {{ $select.selected.string }}
+        </ui-select-match>
+        <ui-select-choices repeat="choice in ctrl.entry.choices">
+            <div ng-bind="choice.string"></div>
+        </ui-select-choices>
+    </ui-select>
+</script>

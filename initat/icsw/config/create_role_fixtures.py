@@ -325,7 +325,7 @@ def create_noctua_fixtures():
         if_name = get_interface_by_ip(if_address)
         if_netmask = get_netmask_by_interface(if_name)
         if_broadcast = get_broadcast_by_interface(if_name)
-        if_network = str(ipvx_tools.ipv4(if_netmask) & ipvx_tools.ipv4(if_broadcast))
+        if_network = str(ipvx_tools.IPv4(if_netmask) & ipvx_tools.IPv4(if_broadcast))
         if_gateway = get_default_gateway_linux()
 
     print('Creating network objects.')

@@ -278,6 +278,7 @@ angular.module(
                 for d_var in dev.device_variable_set
                     d_var.$$from_server = true
                     d_var.$$device = dev
+                    d_var.$$source = "direct"
                     d_var.$$inherited = false
                     d_var.$$created_mom = moment(d_var.date)
                     d_var.$$created_str = d_var.$$created_mom.format("dd, D. MMM YYYY HH:mm:ss")
@@ -319,13 +320,17 @@ angular.module(
                     #    dev.$var_filter_active = true
                 dev.$local_var_names = (d_var.name for d_var in dev.device_variables)
 
-            _copy_var = (s_var) ->
+            _copy_var = (s_var, cdg_mode) ->
                 new_var = angular.copy(s_var)
                 new_var.$$original = s_var
                 new_var.$$from_server = false
                 new_var.$$shadow_count = 0
                 new_var.$$shadow = false
                 new_var.$$inherited = true
+                if cdg_mode
+                    new_var.$$source = "cluster"
+                else
+                    new_var.$$source = "group"
                 return new_var
 
             # step 2: add cdg vars to meta, then meta to normal
@@ -356,10 +361,10 @@ angular.module(
                                     # create a copy and append to device_variables
                                     if d_var.$$inherited
                                         # var is already inherited, take original var
-                                        dev.device_variables.push(_copy_var(d_var.$$original))
+                                        dev.device_variables.push(_copy_var(d_var.$$original, _cdg_mode))
                                     else
                                         # var is inherited from meta
-                                        dev.device_variables.push(_copy_var(d_var))
+                                        dev.device_variables.push(_copy_var(d_var, _cdg_mode))
                                     dev.$num_vars_total++
                                     dev.$num_vars_parent++
 

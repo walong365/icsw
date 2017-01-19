@@ -210,8 +210,8 @@ class ifSNMPIP(object):
     def __init__(self, in_dict):
         self.address = ".".join(["{:d}".format(ord(_val)) for _val in in_dict[1]])
         self.netmask = ".".join(["{:d}".format(ord(_val)) for _val in in_dict[3]])
-        self.address_ipv4 = ipvx_tools.ipv4(self.address)
-        self.netmask_ipv4 = ipvx_tools.ipv4(self.netmask)
+        self.address_ipv4 = ipvx_tools.IPv4(self.address)
+        self.netmask_ipv4 = ipvx_tools.IPv4(self.netmask)
         self.if_idx = in_dict[2]
 
     def __repr__(self):

@@ -1478,13 +1478,13 @@ class net_command(hm_classes.hm_command):
         def bit_str(i_val):
             if i_val < 500:
                 return "{:d} B/s".format(int(i_val))
-            i_val /= 1000
+            i_val //= 1000
             if i_val < 500:
                 return "{:d} kB/s".format(int(i_val))
-            i_val /= 1000
+            i_val //= 1000
             if i_val < 500:
                 return "{:d} MB/s".format(int(i_val))
-            i_val /= 1000
+            i_val //= 1000
             return "{:d} GB/s".format(int(i_val))
 
         def parse_ib_speed_bit(in_str):

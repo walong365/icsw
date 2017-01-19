@@ -23,7 +23,6 @@ import re
 import sys
 import time
 
-import memcache
 import zmq
 
 from initat.host_monitoring.hm_classes import mvect_entry
@@ -54,6 +53,7 @@ class BaseCom(object):
         return str(self.srv_com)
 
     def get_mc(self):
+        import memcache
         return memcache.Client(
             [
                 "{}:{:d}".format(self.options.mc_addr, self.options.mc_port)
