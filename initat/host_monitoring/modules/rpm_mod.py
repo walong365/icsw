@@ -350,13 +350,31 @@ class updatelist_command(hm_classes.hm_command):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
-        s_time = time.time()
-        update_list = get_update_list()
-        e_time = time.time()
-        srv_com.set_result(
-            "ok got list in {}".format(logging_tools.get_diff_time_str(e_time - s_time)),
-        )
-        srv_com["update_list"] = server_command.compress(update_list, pickle=True)
+        if platform.system() == "Windows":
+            import win32com
+            import win32com.client
+
+            update = win32com.client.Dispatch('Microsoft.Update.Session')
+            updateSearcher = update.CreateUpdateSearcher()
+
+            search_result = updateSearcher.Search("( IsInstalled = 0 and IsHidden = 0 )")
+
+            update_list = []
+            # Update items interface: IUpdate
+            for i in range(search_result.Updates.Count):
+                title = search_result.Updates.Item(i).Title
+                optional = not search_result.Updates.Item(i).IsMandatory
+                update_list.append((title, optional))
+
+            srv_com["update_list"] = server_command.compress(update_list, pickle=True)
+        else:
+            s_time = time.time()
+            update_list = get_update_list()
+            e_time = time.time()
+            srv_com.set_result(
+                "ok got list in {}".format(logging_tools.get_diff_time_str(e_time - s_time)),
+            )
+            srv_com["update_list"] = server_command.compress(update_list, pickle=True)
 
     def interpret(self, srv_com, cur_ns):
         update_list = server_command.decompress(srv_com["update_list"].text, pickle=True)
