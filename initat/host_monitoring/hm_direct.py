@@ -26,7 +26,6 @@ import re
 import select
 import socket
 import time
-import platform
 
 import zmq
 
