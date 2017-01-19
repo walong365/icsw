@@ -22,8 +22,6 @@
 """ collectd parser """
 
 
-
-
 class Parser(object):
     def link(self, sub_parser, **kwargs):
         inst_xml = kwargs.get("instance_xml")

@@ -139,6 +139,7 @@ angular.module(
     class icswDeviceTreeHelper
         constructor: (@tree, devices) ->
             # just for testing
+            @helper_id = icswTools.get_unique_id("icswHelper")
             ref_ctr++
             @ref_ctr = ref_ctr
             @netdevice_list = []
@@ -253,11 +254,6 @@ angular.module(
                     dev.device_variable_set.push(new_var)
                     
         salt_device_variables: () =>
-            # try
-            #    filter_re = new RegExp(@var_name_filter, "gi")
-            # catch
-            #    filter_re = new RegExp("^$", "gi")
-            # scope tree
             _dvst = @tree.device_variable_scope_tree
             # step 1: filter variables
             for dev in @devices
@@ -284,7 +280,9 @@ angular.module(
                     d_var.$$created_str = d_var.$$created_mom.format("dd, D. MMM YYYY HH:mm:ss")
                     if not d_var.$selected?
                         d_var.$selected = false
-                    d_var.$scope_name = _dvst.lut[d_var.device_variable_scope].name
+                        d_var.$$rep = 0
+                    d_var.$$rep++
+                    d_var.$$scope_name = _dvst.lut[d_var.device_variable_scope].name
                     # how oftens is this variable shadowed
                     d_var.$$shadow_count = 0
                     # is a shadow of an inherited variable
@@ -312,23 +310,34 @@ angular.module(
                         d_var.$var_type = "VarType #{d_var.var_type}"
                         d_var.$var_value = "unknown type #{d_var.var_type}"
 
+                    d_var.$$filter_field = "#{d_var.name} #{d_var.$var_value}"
+
                     # source is device
                     d_var.$source = v_source
+                    # edit flags
+                    d_var.$$delete_ok = not d_var.protected
+                    d_var.$$edit_ok = d_var.is_public
+                    d_var.$$local_copy_ok = false
                     # if d_var.name.match(filter_re)
                     dev.device_variables.push(d_var)
                     # else
                     #    dev.$var_filter_active = true
                 dev.$local_var_names = (d_var.name for d_var in dev.device_variables)
 
-            _copy_var = (s_var, cdg_mode) ->
+            _copy_var = (new_dev, s_var, cdg_mode) ->
                 new_var = angular.copy(s_var)
+                new_var.$$device = new_dev
+                new_var.$$delete_ok = false
+                new_var.$$edit_ok = false
+                new_var.$$local_copy_ok = true
                 new_var.$$original = s_var
                 new_var.$$from_server = false
                 new_var.$$shadow_count = 0
                 new_var.$$shadow = false
                 new_var.$$inherited = true
+                new_var.uuid = "---"
                 if cdg_mode
-                    new_var.$$source = "cluster"
+                    new_var.$$source = "system"
                 else
                     new_var.$$source = "group"
                 return new_var
@@ -361,21 +370,13 @@ angular.module(
                                     # create a copy and append to device_variables
                                     if d_var.$$inherited
                                         # var is already inherited, take original var
-                                        dev.device_variables.push(_copy_var(d_var.$$original, _cdg_mode))
+                                        dev.device_variables.push(_copy_var(dev, d_var.$$original, _cdg_mode))
                                     else
                                         # var is inherited from meta
-                                        dev.device_variables.push(_copy_var(d_var, _cdg_mode))
+                                        dev.device_variables.push(_copy_var(dev, d_var, _cdg_mode))
+                                    # dev.$local_var_names.push(d_var.name)
                                     dev.$num_vars_total++
                                     dev.$num_vars_parent++
-
-            # step 4: sort variables
-            for dev in @devices
-                icswTools.order_in_place(
-                    dev.device_variables
-                    ["$scope_name"]
-                    ["name"]
-                    ["asc"]
-                )
 
 
 ]).service("icswDeviceTreeHelperService",
@@ -1276,7 +1277,7 @@ angular.module(
             )
             return defer.promise
 
-        delete_device_variable: (del_var) =>
+        delete_device_variable: (del_var, helper) =>
             # ensure REST hooks
             Restangular.restangularizeElement(null, del_var, ICSW_URLS.DEVICE_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2))
             defer = $q.defer()
@@ -1285,6 +1286,8 @@ angular.module(
                     dev = @all_lut[del_var.device]
                     # console.log del_var, dev.device_variable_set.length
                     _.remove(dev.device_variable_set, (entry) -> return entry.idx == del_var.idx)
+                    # salt vars
+                    helper.salt_device_variables()
                     # console.log del_var, dev.device_variable_set.length
                     defer.resolve("deleted")
                 (error) ->
@@ -1417,8 +1420,9 @@ angular.module(
                 if _md.idx not in _res
                     _res.push(_md.idx)
 
-            # add the cluster device group
-            _res.push(@cluster_device_group_device.idx)
+            # add the cluster device group if not already in list
+            if @cluster_device_group_device.idx not in _res
+                _res.push(@cluster_device_group_device.idx)
             # console.log "trace: in #{devs.length}, out #{_res.length}"
             return (@all_lut[idx] for idx in _res)
 

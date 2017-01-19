@@ -21,8 +21,6 @@
 #
 """ job helper functions """
 
-
-
 from initat.tools import process_tools
 
 

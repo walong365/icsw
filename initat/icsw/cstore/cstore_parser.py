@@ -22,7 +22,6 @@ parser for config store
 """
 
 
-
 class Parser(object):
     def link(self, sub_parser, **kwargs):
         return self._add_cstore_parser(sub_parser)

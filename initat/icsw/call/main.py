@@ -22,8 +22,6 @@
 #
 """ call commands for given subsystems """
 
-
-
 import sys
 import time
 

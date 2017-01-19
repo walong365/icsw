@@ -21,8 +21,6 @@
 #
 """ call subsystem commands """
 
-
-
 from initat.tools import process_tools
 
 

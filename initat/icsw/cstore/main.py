@@ -21,8 +21,6 @@
 functions for config store
 """
 
-
-
 import sys
 
 from initat.tools import logging_tools, process_tools

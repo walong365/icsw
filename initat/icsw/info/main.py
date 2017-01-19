@@ -22,8 +22,6 @@
 #
 """ shows command help """
 
-
-
 from initat.tools import logging_tools
 
 

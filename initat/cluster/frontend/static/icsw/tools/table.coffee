@@ -324,7 +324,12 @@ angular.module(
                 scope.struct.cur_columns.length = 0
                 for entry in new_columns
                     scope.struct.cur_columns.push(entry)
-                    scope.struct.show_column[entry] = true
+                    if scope.columns_target[entry]?
+                        # copy from prepopulated setting, for instance variable widget
+                        scope.struct.show_column[entry] = scope.columns_target[entry]
+                    else
+                        # per default new columns are shown
+                        scope.struct.show_column[entry] = true
                 if attrs.columnsFromSettings?
                     scope.$watch(
                         "columns_from_settings"

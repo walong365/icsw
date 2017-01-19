@@ -21,8 +21,6 @@
 #
 """ show cluster error logs """
 
-
-
 import os
 import sys
 

@@ -233,10 +233,15 @@ ICSW_CACHE_KEY = ICSW_CACHE_KEY_LONG[:4]
 
 FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 
+try:
+    _mc_port = InstanceXML(quiet=True).get_port_dict("memcached", command=True)
+except KeyError:
+    _mc_port = 0
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.memcached.MemcachedCache",
-        "LOCATION": "127.0.0.1:{:d}".format(InstanceXML(quiet=True).get_port_dict("memcached", command=True)),
+        "LOCATION": "127.0.0.1:{:d}".format(_mc_port),
     }
 }
 
@@ -348,39 +353,12 @@ INSTALLED_APPS = (
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.sites",
-    "django.contrib.staticfiles",
-    # Uncomment the next line to enable the admin:
-    "django.contrib.admin",
-    # Uncomment the next line to enable admin documentation:
     "django_extensions",
     "reversion",
     "channels"
 )
 
 ICSW_WEBCACHE = os.path.join(CLUSTER_DIR, "share", "webcache")
-
-# List of finder classes that know how to find static files in
-# various locations.
-STATICFILES_FINDERS = (
-    "django.contrib.staticfiles.finders.FileSystemFinder",
-    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-)
-
-# print STATICFILES_FINDERS, STATICFILES_STORAGE
-
-STATICFILES_DIRS = []
-if os.path.isdir("/opt/icinga/share/images/logos"):
-    STATICFILES_DIRS.append(
-        ("icinga", "/opt/icinga/share/images/logos")
-    )
-
-STATICFILES_DIRS.append(
-    ("admin", os.path.join(SITE_PACKAGES_BASE, "django", "contrib", "admin", "static", "admin")),
-)
-
-STATICFILES_DIRS = list(STATICFILES_DIRS)
-
-# print STATICFILES_DIRS
 
 # add all applications, including backbone
 

@@ -22,8 +22,6 @@
 #
 """ job subcommands """
 
-
-
 import os
 import sys
 

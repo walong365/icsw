@@ -21,8 +21,6 @@
 #
 """ show command helps """
 
-
-
 from initat.tools import process_tools
 
 

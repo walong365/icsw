@@ -300,6 +300,11 @@ angular.module(
                     console.warn "device with pk #{_pk} is not resolvable"
             return [dev_pk_list, dev_pk_nmd_list, devg_pk_list, dev_pk_md_list]
 
+        resolve_devices: (in_list) ->
+            return (
+                @tree.all_lut[pk] for pk in in_list when @tree.all_lut[pk]?
+            )
+
         category_selected: (cat_idx) ->
             return cat_idx in @cat_sel
 
