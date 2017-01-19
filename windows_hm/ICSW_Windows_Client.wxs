@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<?define ProductVersion = "3.0.2"?>
+<?define ProductVersion = "3.0.1"?>
 <?define ProductUpgradeCode = "77EA450B-4B37-478C-919B-D0D62F2ED7C5"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
    <Product Id="*" UpgradeCode="$(var.ProductUpgradeCode)" 
@@ -55,14 +55,14 @@
       <CustomAction Id="ExecInstallService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand='[INSTALLDIR]\nssm.exe install [SERVICENAME] "[INSTALLDIR]\python.exe" "\"[INSTALLDIR]\Lib\site-packages\initat\host_monitoring\main.py\""' Return="check" />
       <CustomAction Id="ExecStartService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nssm.exe start [SERVICENAME]" Return="check" />
       <CustomAction Id="ExecUninstallService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nssm.exe remove [SERVICENAME] confirm" Return="check" />
-      <CustomAction Id="ExecStopService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nscp.exe service --stop --name [SERVICENAME]" Return="check" />
+      <CustomAction Id="ExecStopService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLDIR]\nssm.exe stop [SERVICENAME]" Return="check" />
     
       <InstallExecuteSequence>
          <!--<Custom Action="ExecFinalizeInstall" After="InstallFiles">NOT Installed</Custom>-->
 		 <Custom Action="ExecCleanupService" Before="InstallFinalize">NOT Installed</Custom>
          <Custom Action="ExecInstallService" After="ExecCleanupService">NOT Installed</Custom>
-         <!--<Custom Action="ExecStartService" After="ExecInstallService">NOT Installed</Custom>-->
-         <!--<Custom Action="ExecStopService" After="InstallInitialize">Installed AND NOT UPGRADINGPRODUCTCODE</Custom>-->
+         <Custom Action="ExecStartService" After="ExecInstallService">NOT Installed</Custom>
+         <!-- <Custom Action="ExecStopService" After="InstallInitialize">Installed AND NOT UPGRADINGPRODUCTCODE</Custom> -->
          <Custom Action="ExecUninstallService" Before="RemoveFiles">Installed AND NOT UPGRADINGPRODUCTCODE</Custom>
       </InstallExecuteSequence>
  
