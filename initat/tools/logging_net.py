@@ -33,6 +33,7 @@ import platform
 
 import zmq
 
+from initat.tools.process_tools import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 from .logging_tools import LOG_LEVEL_OK, rewrite_log_destination, my_syslog, get_plural, UNIFIED_NAME
 
 CONTEXT_KEY = "__ctx__"
@@ -123,7 +124,7 @@ class icswLogAdapter(logging.LoggerAdapter):
         if self.__prefix:
             what = "{}{}".format(self.__prefix, what)
         try:
-            if platform.system() == "Linux":
+            if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
                 logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
             else:
                 print(what)

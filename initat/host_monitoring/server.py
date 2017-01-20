@@ -29,7 +29,6 @@ import netifaces
 import os
 import sys
 import time
-import platform
 
 from multiprocessing import Queue
 from queue import Empty
@@ -43,12 +42,13 @@ from initat.host_monitoring.hm_mixins import HMHRMixin
 from initat.tools import logging_tools, process_tools, \
     server_command, threading_tools, uuid_tools, config_store
 from initat.tools.server_mixins import ICSWBasePool
+from initat.tools.process_tools import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 from .constants import TIME_FORMAT, ZMQ_ID_MAP_STORE
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
 from .long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
 
-if platform.system() == "Linux":
+if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
     from .hm_inotify import HMInotifyProcess
 else:
     HMInotifyProcess = None
@@ -476,7 +476,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             else:
                 setattr(self, "{}_socket".format(short_sock_name), cur_socket)
                 _backlog_size = self.CC.CS["hm.socket.backlog.size"]
-                if platform.system() == "Linux":
+                if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
                     os.chmod(file_name, 0o777)
                 cur_socket.setsockopt(zmq.LINGER, 0)
                 cur_socket.setsockopt(zmq.SNDHWM, hwm_size)

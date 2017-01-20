@@ -20,19 +20,11 @@
 """ various tools to handle processes and stuff """
 
 import atexit
-try:
-    import grp
-except ImportError:
-    grp = None
 import inspect
 import marshal
 import os
 import pickle
 import platform
-try:
-    import pwd
-except ImportError:
-    pwd = None
 import random
 import re
 import socket
@@ -47,8 +39,31 @@ import six
 from lxml import etree
 from lxml.builder import E
 
+from enum import Enum
+
 from initat.constants import META_SERVER_DIR
 from initat.tools import logging_tools
+
+
+class PlatformSystemTypeEnum(Enum):
+    LINUX = 1
+    WINDOWS = 2
+    UNKNOWN = 3
+
+if platform.system() == "Linux":
+    PLATFORM_SYSTEM_TYPE = PlatformSystemTypeEnum.LINUX
+elif platform.system() == "Windows":
+    PLATFORM_SYSTEM_TYPE = PlatformSystemTypeEnum.WINDOWS
+else:
+    PLATFORM_SYSTEM_TYPE = PlatformSystemTypeEnum.UNKNOWN
+
+
+if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+    import pwd
+    import grp
+else:
+    pwd = None
+    grp = None
 
 try:
     import psutil
@@ -250,7 +265,7 @@ def remove_zmq_dirs(dir_name):
         pass
 
 
-if platform.system() == "Windows":
+if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
     def getuid():
         return 0
     os.getuid = getuid
@@ -298,24 +313,24 @@ def get_zmq_ipc_name(name, **kwargs):
     else:
         if ALLOW_MULTIPLE_INSTANCES and not ctri:
             root_dir = os.path.join(LOCAL_ROOT_ZMQ_DIR, INIT_ZMQ_DIR_PID)
-            if not platform.system() == "Windows":
+            if not PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
                 atexit.register(remove_zmq_dirs, root_dir)
         else:
             root_dir = LOCAL_ROOT_ZMQ_DIR
 
-    if not os.path.isdir(root_dir) and not platform.system() == "Windows":
+    if not os.path.isdir(root_dir) and not PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
         os.mkdir(root_dir)
     sub_dir = os.path.join(root_dir, s_name)
-    if not os.getuid() and not platform.system() == "Windows":
+    if not os.getuid() and not PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
         atexit.register(remove_zmq_dirs, sub_dir)
-    if not os.path.isdir(sub_dir) and not platform.system() == "Windows":
+    if not os.path.isdir(sub_dir) and not PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
         os.mkdir(sub_dir)
     _name = "ipc://{}/{}".format(
         sub_dir,
         name
     )
 
-    if platform.system() == "Windows":
+    if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
         def get_free_loopback_port():
             sock = socket.socket()
             sock.bind(("127.0.0.1", 0))

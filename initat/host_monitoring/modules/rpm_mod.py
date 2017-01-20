@@ -24,6 +24,7 @@ import platform
 
 from initat.host_monitoring import hm_classes, limits
 from initat.tools import logging_tools, server_command
+from initat.tools.process_tools import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 TEST_OUTPUT_ZYPPER = """Loading repository data...
 Reading installed packages...
@@ -174,7 +175,7 @@ class rpmlist_command(hm_classes.hm_command):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
-        if platform.system() == "Windows":
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
             UNINSTALL_PATH1 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
             UNINSTALL_PATH2 = "SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
 
@@ -350,7 +351,7 @@ class updatelist_command(hm_classes.hm_command):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
-        if platform.system() == "Windows":
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
             import win32com
             import win32com.client
 

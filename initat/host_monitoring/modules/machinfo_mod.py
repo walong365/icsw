@@ -37,6 +37,7 @@ from initat.host_monitoring import hm_classes, limits
 from initat.host_monitoring.constants import ZMQ_ID_MAP_STORE
 from initat.tools import cpu_database, logging_tools, partition_tools, pci_database, \
     process_tools, server_command, uuid_tools, config_store, dmi_tools
+from initat.tools.process_tools import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 nw_classes = ["ethernet", "network", "infiniband"]
 
@@ -793,9 +794,10 @@ class _general(hm_classes.hm_module):
             # mv["mem.used.shared"] = 0
         else:
             # buffers + cached
-            bc_mem = 0
-            if platform.system() == "Linux":
+            if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
                 bc_mem = virt_info.buffers + virt_info.cached
+            else:
+                bc_mem = 0
             mv["mem.avail.phys"] = virt_info.total / 1024
             mv["mem.avail.swap"] = swap_info.total / 1024
             mv["mem.avail.total"] = (virt_info.total + swap_info.total) / 1024
@@ -809,11 +811,13 @@ class _general(hm_classes.hm_module):
             mv["mem.used.swap"] = (swap_info.total - swap_info.free) / 1024
             mv["mem.used.total"] = (virt_info.total + swap_info.total - (virt_info.free + swap_info.free + bc_mem)) / 1024
             mv["mem.used.total.bc"] = (virt_info.total + swap_info.total - (virt_info.free + swap_info.free)) / 1024
-            mv["mem.used.buffers"] = 0 #virt_info.buffers / 1024
-            mv["mem.used.cached"] = 0 #virt_info.cached / 1024
-            if platform.system() == "Linux":
+
+            if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
                 mv["mem.used.buffers"] = virt_info.buffers / 1024
                 mv["mem.used.cached"] = virt_info.cached / 1024
+            else:
+                mv["mem.used.buffers"] = 0
+                mv["mem.used.cached"] = 0
 
 
             # mv["mem.used.shared"] = mem_list["MemShared"]

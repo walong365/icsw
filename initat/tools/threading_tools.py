@@ -39,13 +39,13 @@ import socket
 import sys
 import threading
 import time
-import platform
 
 import six
 import zmq
 
 from initat.tools import io_stream_helper, logging_tools, process_tools
 from initat.debug import ICSW_DEBUG_MODE
+from initat.tools.process_tools import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 # default stacksize
 DEFAULT_STACK_SIZE = 2 * 1024 * 1024
@@ -691,7 +691,7 @@ class ExceptionHandlingMixin(object):
                     )
             out_lines.append(except_info)
             # write to logging-server
-            if platform.system() == "Linux":
+            if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
                 err_h = io_stream_helper.icswIOStream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
                 err_h.write("\n".join(out_lines))
                 err_h.close()
@@ -924,7 +924,7 @@ class icswProcessObj(multiprocessing.Process, TimerBase, PollerBase, icswProcess
             signal.SIGTERM,
             signal.SIGINT
         ]
-        if platform.system() == "Linux":
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
             signals.append(signal.SIGTSTP)
             signals.append(signal.SIGALRM)
             signals.append(signal.SIGHUP)
@@ -1157,7 +1157,7 @@ class icswProcessPool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingM
         self.__processes_stopped = set()
         # clock ticks per second
         self.__sc_clk_tck = 100.0
-        if platform.system() == "Linux":
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
             self.__sc_clk_tck = float(os.sysconf(os.sysconf_names["SC_CLK_TCK"]))
         self.__cpu_usage = []
 
@@ -1477,7 +1477,7 @@ class icswProcessPool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingM
         self.log(sig_str)
         # return self._handle_exception()
 
-        if platform.system() == "Linux":
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
             if signum == signal.SIGTERM:
                 raise term_error(sig_str)
             elif signum == signal.SIGINT:
@@ -1490,7 +1490,7 @@ class icswProcessPool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingM
                 raise hup_error(sig_str)
             else:
                 raise
-        elif platform.system() == "Windows":
+        elif PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
             if signum == signal.SIGTERM:
                 raise term_error(sig_str)
             elif signum == signal.SIGINT:
@@ -1510,7 +1510,7 @@ class icswProcessPool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingM
                 signal.SIGTERM,
                 signal.SIGINT
             ]
-            if platform.system() == "Linux":
+            if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
                 signals.append(signal.SIGTSTP)
                 signals.append(signal.SIGALRM)
                 signals.append(signal.SIGHUP)
