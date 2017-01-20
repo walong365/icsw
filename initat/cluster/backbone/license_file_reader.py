@@ -442,8 +442,8 @@ class LicenseFileReader(object):
         # import pem
         from cryptography import x509
         from cryptography.exceptions import InvalidSignature
-        from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.backends import default_backend
+        from cryptography.hazmat.primitives import hashes
         from cryptography.hazmat.primitives.asymmetric import padding
         """
         :return: True if signature is fine
@@ -451,6 +451,7 @@ class LicenseFileReader(object):
         """
         backend = default_backend()
         signed_string = LicenseFileReader._extract_string_for_signature(lic_file_xml)
+        # print(len(signed_string))
         signature = base64.b64decode(signature_xml.text.encode("ascii"))
         # print("V" * 50)
         # print("*", signature_xml.text)
@@ -458,6 +459,8 @@ class LicenseFileReader(object):
 
         cert_files = glob.glob("{}/*.pem".format(CERT_DIR))
         # print(cert_files)
+
+        result = -1
 
         if not cert_files:
             # raise Exception("No certificate files in certificate dir {}.".format(CERT_DIR))
@@ -494,16 +497,12 @@ class LicenseFileReader(object):
                         ),
                         hashes.SHA512(),
                     )
-                    # print("*", signature)
-                    # print("*", signed_string)
                     verifier.update(signed_string.encode("utf-8"))
                     try:
                         verifier.verify()
                     except InvalidSignature:
-                        print("-")
                         result = 0
                     else:
-                        print("OK")
                         result = 1
                     # Result of verification: 1 for success, 0 for failure, -1 on other error.
 
@@ -512,7 +511,7 @@ class LicenseFileReader(object):
                 else:
                     logger.debug("Cert file {} is not valid at this point in time".format(cert_file))
 
-        return False
+        return result == 1
 
     @staticmethod
     def _extract_string_for_signature(content):

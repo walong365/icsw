@@ -28,8 +28,12 @@ class Parser(object):
     def link(self, sub_parser, **kwargs):
         if not kwargs["server_mode"]:
             return
+        return self._add_license_parser(sub_parser)
+
+    def _add_license_parser(self, sub_parser):
 
         lic_parser = sub_parser.add_parser("license", help="license utility")
+        lic_parser.set_defaults(subcom="show_cluster_id", execute=self._execute, raw=False, without_fp=True)
         lic_sub_parser = lic_parser.add_subparsers()
 
         show_cluster_id_parser = lic_sub_parser.add_parser("show_cluster_id", help="Show Cluster ID")

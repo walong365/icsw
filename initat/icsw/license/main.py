@@ -24,8 +24,9 @@
 import os
 import sys
 import traceback
-import urllib.request, urllib.parse, urllib.error
-import urllib.request, urllib.error, urllib.parse
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from lxml import etree
 
@@ -39,7 +40,6 @@ from initat.tools import process_tools, hfp_tools, config_store, logging_tools
 __all__ = [
     "main",
 ]
-
 
 if ICSW_DEBUG_MODE:
     REGISTRATION_URL = "http://localhost:8081/icsw/api/v2/GetLicenseFile"
@@ -181,12 +181,12 @@ def _install_license(content):
                 license_file_reader.LicenseFileReader(lic_file_content)
                 new_lic = License(
                     file_name="uploaded_via_command_line",
-                    license_file=lic_file_content
+                    license_file=lic_file_content,
                 )
                 new_lic.save()
                 print("Successfully added license file: {}".format(str(new_lic)))
     else:
-        print ("Exiting due to errors.")
+        print("Exiting due to errors.")
         sys.exit(1)
 
 
@@ -212,9 +212,8 @@ def register_cluster(opts):
         _dict["{}_version".format(_df)] = _vers[_df]
 
     data = urllib.parse.urlencode(_dict)
-
     try:
-        res = urllib.request.urlopen(REGISTRATION_URL, data)
+        res = urllib.request.urlopen(REGISTRATION_URL, data.encode("utf-8"))
     except urllib.error.URLError as e:
         print("Error while accessing registration: {}".format(e))
         traceback.print_exc(e)
