@@ -181,7 +181,7 @@ def get_packages_for_ar(asset_run):
 
     assets = []
 
-    if blob:
+    if blob is not None:
         if runtype == AssetType.PACKAGE:
             if scantype == ScanType.NRPE:
                 l = json.loads(blob)
