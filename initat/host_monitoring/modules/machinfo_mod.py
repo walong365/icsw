@@ -2657,6 +2657,46 @@ class dmiinfo_command(hm_classes.hm_command):
             return limits.mon_STATE_OK, "\n".join(_out_f)
 
 
+class windowshardware_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+            from collections import defaultdict
+            import wmi
+
+            c = wmi.WMI()
+            mapping_classes = [
+                'Win32_DiskDriveToDiskPartition', 'Win32_LogicalDiskToPartition',
+            ]
+            classes = [
+                'Win32_PhysicalMemory', 'Win32_PhysicalMemoryArray',
+                'Win32_Processor', 'Win32_VideoController', 'Win32_DiskDrive',
+                'Win32_DiskPartition', 'Win32_LogicalDisk', 'Win32_NetworkAdapter',
+                'Win32_ComputerSystem', 'Win32_DesktopMonitor',
+            ]
+
+            def path(wmi_object):
+                return (wmi_object.Path_.Path)
+
+            mapping_info = defaultdict(list)
+            for class_name in mapping_classes:
+                results = c.query('SELECT * FROM {}'.format(class_name))
+                for result in results:
+                    key = path(result.Dependent)
+                    mapping_info[class_name].append((key, path(result.Antecedent)))
+
+            info = defaultdict(list)
+            for class_name in classes:
+                results = c.query('SELECT * FROM {}'.format(class_name))
+                for result in results:
+                    info_result = {'_path': path(result)}
+                    for prop in list(result.properties.keys()):
+                        value = getattr(result, prop)
+                        info_result[prop] = value
+                    info[class_name].append(info_result)
+
+            info.update(mapping_info)
+            srv_com["windowshardware_dict"] = server_command.compress(info, pickle=True)
+
 # helper routines
 def get_nfs_mounts():
     m_dict = {}

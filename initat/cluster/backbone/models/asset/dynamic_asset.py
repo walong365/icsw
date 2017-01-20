@@ -1367,7 +1367,8 @@ ASSETTYPE_HM_COMMAND_MAP = {
     AssetType.LSHW: "lshw",
     AssetType.PARTITION: "partinfo",
     AssetType.LSBLK: "lsblk",
-    AssetType.XRANDR: "xrandr"
+    AssetType.XRANDR: "xrandr",
+    AssetType.PRETTYWINHW: "windowshardware",
 }
 
 
