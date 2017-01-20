@@ -566,7 +566,7 @@
     <td ng-show="struct.toggle['queue_time']">
         {{ job.queue_time.value }}
     </td>
-    <td ng-show="struct.toggle['wait_time']">
+    <td class="text-center" ng-show="struct.toggle['wait_time']">
         {{ job.wait_time.value }}
     </td>
     <td ng-show="struct.toggle['left_time']">
@@ -575,7 +575,22 @@
     <td ng-show="struct.toggle['exec_time']">
         {{ job.exec_time.value }}
     </td>
-    <td ng-show="struct.toggle['priority']">
+    <td class="text-center" ng-show="struct.toggle['messages']">
+        {{ job.messages.total }}
+        <button
+            ng-show="job.messages.value"
+            type="button"
+            class="btn btn-xs btn-primary"
+            popover-placement="right"
+            popover-trigger="none"
+            popover-is-open="job.messages.$$open"
+            uib-popover-html="job.messages.popover"
+            ng-click="struct.toggle_messages(job)"
+        >
+            <span class="glyphicon glyphicon-info-sign"></span>
+        </button>
+    </td>
+    <td class="text-center" ng-show="struct.toggle['priority']">
         {{ job.priority.value }}
     </td>
     <td ng-show="struct.toggle['posix_priority']" class="text-right">
@@ -734,6 +749,18 @@
             </div>
         </div>
     </form>
+</script>
+
+<script type="text/ng-template" id="icsw.rms.msgdetail.popover">
+    <div>
+        <h4>Messages for Job {{ j.job_id.value }}</h4>
+        <ul class="list-group">
+            <li class="list-group-item" ng-repeat="entry in msgs">
+                <span ng-class="entry[2]">{{ entry[1] }}</span>
+                {{ entry[0] }}
+            </li>
+        </ul>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.rms.detail.popover">

@@ -174,11 +174,15 @@ class get_header_xml(View):
 
 
 def _node_to_value(in_node):
-    _attrs = {key: value for key, value in in_node.attrib.items()}
+    _attrs = {
+        key: value for key, value in in_node.attrib.items()
+    }
     if "raw" in _attrs:
         _attrs["raw"] = json.loads(_attrs["raw"])
     if in_node.get("type", "string") == "float":
         _attrs["value"] = _attrs["format"].format(float(in_node.text))
+    elif in_node.get("type", "string") == "int":
+        _attrs["value"] = int(in_node.text)
     else:
         _attrs["value"] = in_node.text
     return _attrs
@@ -186,7 +190,9 @@ def _node_to_value(in_node):
 
 def _sort_list(in_list):
     # interpret nodes according to optional type attribute, reformat if needed, preserve attributes
-    return [[_node_to_value(sub_node) for sub_node in row] for row in in_list]
+    return [
+        [_node_to_value(sub_node) for sub_node in row] for row in in_list
+    ]
 
 
 def _xml_to_json(in_list):
@@ -225,14 +231,23 @@ def _fetch_rms_info(request):
             _user = None
         run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=_user, django_init=True)
         wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request), user=_user)
-
         if RMS_ADDONS:
             for change_obj in RMS_ADDONS:
                 change_obj.modify_running_jobs(my_sge_info, run_job_list)
                 change_obj.modify_waiting_jobs(my_sge_info, wait_job_list)
-        return namedtuple("RmsInfo", ["run_job_list", "wait_job_list"])(run_job_list, wait_job_list)
+        return namedtuple(
+            "RmsInfo",
+            ["run_job_list", "wait_job_list"]
+        )(
+            run_job_list, wait_job_list,
+        )
     else:
-        return namedtuple("RmsInfo", ["run_job_list", "wait_job_list"])([], [])
+        return namedtuple(
+            "RmsInfo",
+            ["run_job_list", "wait_job_list"]
+        )(
+            [], [],
+        )
 
 
 class get_rms_done_json(View):
@@ -356,6 +371,11 @@ class get_rms_current_json(View):
                         _dn = _rev_lut[int(_node_idx)]
                         for _proc_id, _core_id in _pin_dict.items():
                             _dev_dict[_dn]["pinning"].setdefault(_core_id, []).append(job_id)
+        _gsi = my_sge_info.tree.find(".//global_waiting_info")
+        if _gsi is not None:
+            _g_msgs = [_node_to_value(el) for el in _gsi.findall(".//message")]
+        else:
+            _g_msgs = []
         json_resp = {
             "run_table": _sort_list(rms_info.run_job_list),
             "wait_table": _sort_list(rms_info.wait_job_list),
@@ -364,6 +384,7 @@ class get_rms_current_json(View):
             "files": fc_dict,
             "fstree": sge_tools.build_fstree_info(my_sge_info),
             "node_values": _dev_dict,
+            "global_waiting_info": _g_msgs,
         }
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
@@ -393,6 +414,7 @@ class get_rms_jobinfo(View):
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
 
+# liebherr
 class RmsJobViewSet(viewsets.ViewSet):
     @csrf_exempt
     def simple_get(self, request):

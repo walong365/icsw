@@ -298,6 +298,9 @@ class AccountingProcess(threading_tools.icswProcessObj, server_mixins.EggConsume
                         elif _key.endswith("time") and len(_value.split()) > 4:
                             _value = cluster_timezone.localize(datetime.datetime.strptime(_value, "%a %b %d %H:%M:%S %Y"))
                         _dict[_key] = _value
+            if self["exit_requested"]:
+                self.log("exiting accounting loop due to exit requst", logging_tools.LOG_LEVEL_WARN)
+                break
         if "jobnumber" in _dict:
             _found += 1
             _matched += self._feed_qacct(_dict)
@@ -333,7 +336,8 @@ class AccountingProcess(threading_tools.icswProcessObj, server_mixins.EggConsume
         self.__entries_scanned += 1
         self.__jobs_scanned.add(_job_id)
         self.__highest_id = max(self.__highest_id, in_dict["jobnumber"])
-        if not self.__entries_scanned % 100:
+        if not self.__entries_scanned % 25:
+            self.step(blocking=False, handle_timer=False)
             self._log_stats()
 
         try:
