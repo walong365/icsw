@@ -940,8 +940,19 @@ class AssetRun(models.Model):
         self._generate_assets_dmi(xml)
 
     def _generate_assets_dmi_hm(self, tree):
+        dmi_type = tree.xpath('ns0:dmi_type', namespaces=tree.nsmap)[0].text
         blob = tree.xpath('ns0:dmi_dump', namespaces=tree.nsmap)[0].text
-        xml = dmi_tools.decompress_dmi_info(blob)
+        if dmi_type == "linux":
+            xml = dmi_tools.decompress_dmi_info(blob)
+        elif dmi_type == "windows":
+            _lines = []
+            for line in blob.decode().split("\r\n"):
+                _lines.append(line)
+                if line == "End Of Table":
+                    break
+            xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(_lines))
+        else:
+            xml = None
         self._generate_assets_dmi(xml)
 
     def _generate_assets_dmi(self, xml):
