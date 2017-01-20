@@ -904,31 +904,86 @@ class AssetRun(models.Model):
             new_pci.save()
 
     def _generate_assets_pci_hm(self, tree):
+        pci_dump_format = tree.xpath('ns0:pci_type', namespaces=tree.nsmap)[0].text
         blob = tree.xpath('ns0:pci_dump', namespaces=tree.nsmap)[0].text
-        s = pci_database.pci_struct_to_xml(
-            pci_database.decompress_pci_info(blob)
-        )
-        for func in s.findall(".//func"):
-            _slot = func.getparent()
-            _bus = _slot.getparent()
-            _domain = _bus.getparent()
-            new_pci = AssetPCIEntry(
-                asset_run=self,
-                domain=int(_domain.get("id")),
-                bus=int(_domain.get("id")),
-                slot=int(_slot.get("id")),
-                func=int(func.get("id")),
-                pci_class=int(func.get("class"), 16),
-                subclass=int(func.get("subclass"), 16),
-                device=int(func.get("device"), 16),
-                vendor=int(func.get("vendor"), 16),
-                revision=int(func.get("revision"), 16),
-                pci_classname=func.get("classname"),
-                subclassname=func.get("subclassname"),
-                devicename=func.get("devicename"),
-                vendorname=func.get("vendorname"),
+
+        if pci_dump_format == "linux":
+            s = pci_database.pci_struct_to_xml(
+                pci_database.decompress_pci_info(blob)
             )
-            new_pci.save()
+            for func in s.findall(".//func"):
+                _slot = func.getparent()
+                _bus = _slot.getparent()
+                _domain = _bus.getparent()
+                new_pci = AssetPCIEntry(
+                    asset_run=self,
+                    domain=int(_domain.get("id")),
+                    bus=int(_domain.get("id")),
+                    slot=int(_slot.get("id")),
+                    func=int(func.get("id")),
+                    pci_class=int(func.get("class"), 16),
+                    subclass=int(func.get("subclass"), 16),
+                    device=int(func.get("device"), 16),
+                    vendor=int(func.get("vendor"), 16),
+                    revision=int(func.get("revision"), 16),
+                    pci_classname=func.get("classname"),
+                    subclassname=func.get("subclassname"),
+                    devicename=func.get("devicename"),
+                    vendorname=func.get("vendorname"),
+                )
+                new_pci.save()
+        elif pci_dump_format == "windows":
+            info_dicts = []
+            info_dict = {}
+            for line in blob.split("\r\n"):
+                if len(line) == 0:
+                    if len(info_dict) > 0:
+                        info_dicts.append(info_dict)
+                        info_dict = {}
+                if line.startswith("Slot:"):
+                    info_dict['slot'] = line.split("\t", 1)[1]
+
+                    comps = info_dict['slot'].split(":")
+                    bus = comps[0]
+
+                    comps = comps[1].split(".")
+                    slot = comps[0]
+                    func = comps[1]
+
+                    info_dict['bus'] = bus
+                    info_dict['slot'] = slot
+                    info_dict['func'] = func
+                elif line.startswith("Class:"):
+                    info_dict['class'] = line.split("\t", 1)[1]
+                elif line.startswith("Vendor:"):
+                    info_dict['vendor'] = line.split("\t", 1)[1]
+                elif line.startswith("Device:"):
+                    info_dict['device'] = line.split("\t", 1)[1]
+                elif line.startswith("SVendor:"):
+                    info_dict['svendor'] = line.split("\t", 1)[1]
+                elif line.startswith("SDevice:"):
+                    info_dict['sdevice'] = line.split("\t", 1)[1]
+                elif line.startswith("Rev:"):
+                    info_dict['rev'] = line.split("\t", 1)[1]
+
+            for info_dict in info_dicts:
+                new_pci = AssetPCIEntry(
+                    asset_run=self,
+                    domain=0,
+                    bus=int(info_dict['bus'], 16) if 'bus' in info_dict else 0,
+                    slot=int(info_dict['slot'], 16) if 'slot' in info_dict else 0,
+                    func=int(info_dict['func'], 16) if 'func' in info_dict else 0,
+                    pci_class=0,
+                    subclass=0,
+                    device=0,
+                    vendor=0,
+                    revision=int(info_dict['rev'], 16) if 'rev' in info_dict else 0,
+                    pci_classname=info_dict['class'],
+                    subclassname=info_dict['class'],
+                    devicename=info_dict['device'],
+                    vendorname=info_dict['vendor'],
+                )
+                new_pci.save()
 
     def _generate_assets_dmi_nrpe(self, blob):
         _lines = []
@@ -946,7 +1001,7 @@ class AssetRun(models.Model):
             xml = dmi_tools.decompress_dmi_info(blob)
         elif dmi_type == "windows":
             _lines = []
-            for line in blob.decode().split("\r\n"):
+            for line in blob.split("\r\n"):
                 _lines.append(line)
                 if line == "End Of Table":
                     break
