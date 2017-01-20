@@ -632,7 +632,12 @@ class AssetRun(models.Model):
     def _generate_assets_hardware_hm(self, tree):
         blob = tree.xpath('ns0:lstopo_dump', namespaces=tree.nsmap)[0].text
         xml_str = bz2.decompress(base64.b64decode(blob))
-        root = etree.fromstring(xml_str)
+
+        try:
+            root = etree.fromstring(xml_str)
+        except etree.XMLSyntaxError:
+            return
+
         self._generate_assets_hardware(root)
 
     def _generate_assets_hardware(self, root):
@@ -1182,13 +1187,22 @@ class AssetBatch(models.Model):
                         arg_value = json.loads(blob)
                     elif run.scan_type == ScanType.HM:
                         tree = run.raw_result
-                        if run.run_type == AssetType.PARTITION:
+                        if run.run_type == AssetType.PRETTYWINHW:
+                            try:
+                                blob = tree.xpath('ns0:windowshardware_dict', namespaces=tree.nsmap)[0].text
+                            except IndexError:
+                                continue
+                            arg_value = server_command.decompress(blob, pickle=True)
+                        elif run.run_type == AssetType.PARTITION:
                             arg_value = tree
                         else:
-                            blob = tree.xpath(
-                                'ns0:{}'.format(arg_name),
-                                namespaces=tree.nsmap
-                            )[0].text
+                            try:
+                                blob = tree.xpath(
+                                    'ns0:{}'.format(arg_name),
+                                    namespaces=tree.nsmap
+                                )[0].text
+                            except IndexError:
+                                blob = None
                             if not blob:
                                 continue
                             if arg_name in ["lsblk_dump"]:
@@ -1203,7 +1217,10 @@ class AssetBatch(models.Model):
                             else:
                                 blob = server_command.decompress(blob)
                             if run.run_type == AssetType.LSHW:
-                                arg_value = etree.fromstring(blob)
+                                try:
+                                    arg_value = etree.fromstring(blob)
+                                except:
+                                    continue
                             else:
                                 arg_value = blob
 
