@@ -832,23 +832,22 @@
     <menu layout="newstyle">
         <menuHeader name="Device" icon="fa-desktop" side="left">
             <routeSubGroup name="Control">
-                <menuEntry icon="fa-plus-circle" routeName="main.devicecreate" name="New"/>
+                <menuEntry icon="fa-plus-circle" routeName="main.devicecreate" name="Add"/>
                 <menuEntry icon="fa-tree" routeName="main.devtree" name="Tree"/>
                 <menuEntry icon="fa-bars" routeName="main.deviceinfo" name="Information"/>
                 <menuEntry icon="fa-sitemap" routeName="main.devicenetwork" name="Network"/>
             </routeSubGroup>
             <routeSubGroup name="Categories">
                 <menuEntry icon="fa-table" routeName="main.categorytree" name="Categories"/>
-                <menuEntry icon="fa-map-marker" routeName="main.monitorlocation" name="Location Service"/>
                 <menuEntry icon="fa-list-alt" routeName="main.domaintree" name="Domain Names"/>
-                <menuEntry icon="fa-map-marker" routeName="main.devlocation" name="Locations"/>
+                <menuEntry icon="fa-map-marker" routeName="main.monitorlocation" name="Show Locations"/>
+                <menuEntry icon="fa-map-marker" routeName="main.devlocation" name="Edit Locations"/>
             </routeSubGroup>
             <routeSubGroup name="Properties">
-                <menuEntry icon="fa-check-square" routeName="main.devicesrvconfig" name="Assign System Service"/>
-                <menuEntry icon="fa-check-square-o" routeName="main.moncheckoverview" name="Checks"/>
-                <menuEntry icon="fa-check-square-o" routeName="main.configoverview" name="Configurations"/>
-                <menuEntry icon="fa-check-square" routeName="main.devicemonconfig" name="Checks"/>
-                <menuEntry icon="fa-check-square" routeName="main.deviceconfig" name="Configurations"/>
+                <menuEntry icon="fa-check-square-o" routeName="main.moncheckoverview" name="Edit Checks"/>
+                <menuEntry icon="fa-check-square-o" routeName="main.configoverview" name="Edit Configurations"/>
+                <menuEntry icon="fa-check-square" routeName="main.devicemonconfig" name="Assign Checks"/>
+                <menuEntry icon="fa-check-square" routeName="main.deviceconfig" name="Assign Configurations"/>
                 <menuEntry icon="fa-info" routeName="main.monitordynamic" name="Dynamic Monitoring"/>
             </routeSubGroup>
         </menuHeader>
@@ -883,22 +882,29 @@
             </routeSubGroup>
         </menuHeader>
         <menuHeader name="$$USER_INFO" icon="fa-cog" side="right">
-            <routeSubGroup name="Preferences">
+            <routeSubGroup name="Monitoring">
+                <menuEntry icon="fa-cubes" routeName="main.setupprogress" name="Setup Progress"/>
                 <menuEntry icon="fa-gears" name="Schedule" routeName="main.schedoverviewasset"/>
                 <menuEntry icon="fa-book" routeName="main.report" name="Report"/>
                 <menuEntry icon="fa-code" name="Variables" routeName="main.devvars"/>
-                <menuEntry icon="fa-heartbeat" name="Auto Discovery" routeName="main.networkoverview"/>
                 <menuEntry icon="fa-code-fork" routeName="main.kpisettings" name="KPI"/>
                 <menuEntry icon="fa-wrench" routeName="main.monitorbasics" name="Monitoring"/>
                 <!-- <menuEntry icon="fa-eye" name="Monitoring" routeName="main.monitorbuildinfo"/> -->
-                <menuEntry icon="fa-sitemap" routeName="main.devicenetwork" name="Network"/>
+            </routeSubGroup>
+            <routeSubGroup name="Server">
                 <menuEntry icon="fa-user" routeName="main.usertree" name="User, Groups and Roles"/>
-                <menuEntry icon="fa-info" routeName="main.serverinfo" name="Server Information"/>
                 <menuEntry icon="fa-key" routeName="main.syslicenseoverview" name="License"/>
-                <menuEntry icon="fa-cubes" routeName="main.setupprogress" name="Setup Progress"/>
-                <menuEntry icon="fa-list" routeName="main.backgroundinfo" name="Background Job Info"/>
+                <menuEntry icon="fa-check-square" routeName="main.devicesrvconfig" name="Assign System Service"/>
                 <menuEntry icon="fa-history" routeName="main.history" name="Database History"/>
                 <menuEntry icon="fa-bars" routeName="main.statelist" name="Internal State List"/>
+                <menuEntry icon="fa-list" routeName="main.backgroundinfo" name="Background Job Info"/>
+                <menuEntry icon="fa-info" routeName="main.serverinfo" name="Server Information"/>
+            </routeSubGroup>
+            <routeSubGroup name="Network">
+                <menuEntry icon="fa-heartbeat" routeName="main.networkoverview" name="Auto Discovery"/>
+                <menuEntry icon="fa-sitemap" routeName="main.devicenetwork" name="Network"/>
+            </routeSubGroup>
+            <routeSubGroup name="Session">
                 <menuEntry icon="fa-info" routeName="main.useraccount" name="Account Info"/>
                 <menuEntry icon="fa-sign-out" routeName="logout" name="Logout"/>
             </routeSubGroup>
