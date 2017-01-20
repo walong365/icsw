@@ -710,8 +710,7 @@ class AssetRun(models.Model):
 
     def _generate_assets_pending_update_hm(self, tree):
         package_format = tree.xpath('ns0:format', namespaces=tree.nsmap)[0].text
-        blob = tree.xpath('ns0:update_list', namespaces=tree.nsmap)[0]\
-            .text
+        blob = tree.xpath('ns0:update_list', namespaces=tree.nsmap)[0].text
         l = server_command.decompress(blob, pickle=True)
         self.asset_batch.pending_updates_status = 1
         if package_format == "windows":
@@ -766,6 +765,38 @@ class AssetRun(models.Model):
 
                 self.asset_batch.pending_updates.add(asset_update_entry)
                 self.asset_batch.pending_updates_status = 2
+        self.asset_batch.save()
+
+    def _generate_assets_update_hm(self, tree):
+        blob = tree.xpath('ns0:installed_updates', namespaces=tree.nsmap)[0].text
+        l = server_command.decompress(blob, pickle=True)
+        self.asset_batch.installed_updates_status = 1
+        for (name, up_date, status) in l:
+            asset_update_entry = AssetUpdateEntry.objects.filter(
+                name=name,
+                version="",
+                release="",
+                kb_idx=0,
+                install_date=dateparse.parse_datetime(up_date),
+                status=status,
+                optional=False,
+                installed=True,
+                new_version=""
+                )
+            if asset_update_entry:
+                asset_update_entry = asset_update_entry[0]
+            else:
+                asset_update_entry = AssetUpdateEntry(
+                    name=name,
+                    install_date=dateparse.parse_datetime(up_date),
+                    status=status,
+                    optional=False,
+                    installed=True
+                )
+                asset_update_entry.save()
+
+            self.asset_batch.installed_updates.add(asset_update_entry)
+            self.asset_batch.installed_updates_status = 2
         self.asset_batch.save()
 
     def _generate_assets_update_nrpe(self, data):
@@ -1261,9 +1292,10 @@ class DeviceInventory(models.Model):
 
 ASSETTYPE_HM_COMMAND_MAP = {
     AssetType.PACKAGE: "rpmlist",
+    AssetType.PENDING_UPDATE: "updatelist",
+    AssetType.UPDATE: "installedupdates",
     AssetType.HARDWARE: "lstopo",
     AssetType.PROCESS: "proclist",
-    AssetType.PENDING_UPDATE: "updatelist",
     AssetType.DMI: "dmiinfo",
     AssetType.PCI: "pciinfo",
     AssetType.LSHW: "lshw",

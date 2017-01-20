@@ -151,25 +151,82 @@ class _general(hm_classes.hm_module):
     pass
 
 
-class Package:
-    def __init__(self):
-        self.displayName = "Unknown"
-        self.displayVersion = "Unknown"
-        self.estimatedSize = "Unknown"
-        self.installDate = "Unknown"
+class installedupdates_command(hm_classes.hm_command):
+    info_str = "installed updates (windows only)"
 
-    def __lt__(self, other):
-        return self.displayName < other.displayName
+    class Update:
+        def __init__(self):
+            self.title = None
+            self.status = None
+            self.date = None
 
-    def __eq__(self, other):
-        return self.displayName == other.displayName
+        def __lt__(self, other):
+            return self.date < other.date
 
-    def __hash__(self):
-        return hash((self.displayName, self.displayVersion, self.estimatedSize, self.installDate))
+        def __eg__(self, other):
+            return self.date == other.date
+
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+
+    def __call__(self, srv_com, cur_ns):
+        installed_updates = []
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+            import win32com.client
+            import pywintypes
+
+            update = win32com.client.Dispatch('Microsoft.Update.Session')
+            updateSearcher = update.CreateUpdateSearcher()
+            count = updateSearcher.GetTotalHistoryCount()
+
+            updateHistory = updateSearcher.QueryHistory(0, count)
+
+            for i in range(updateHistory.Count):
+                update = installedupdates_command.Update()
+                update.title = updateHistory.Item(i).Title
+                update.date = updateHistory.Item(i).Date
+                try:
+                    update.status = updateHistory.Item(i).ResultCode
+                except pywintypes.com_error:
+                    update.status = "Unknown"
+
+                if update.status == 0:
+                    update.status = "NotStarted"
+                elif update.status == 1:
+                    update.status = "InProgress"
+                elif update.status == 2:
+                    update.status = "Succeeded"
+                elif update.status == 3:
+                    update.status = "SucceededWithErrors"
+                elif update.status == 4:
+                    update.status = "Failed"
+                elif update.status == 5:
+                    update.status = "Aborted"
+
+                installed_updates.append(update)
+
+        installed_updates = [(update.title, update.date.isoformat(), update.status) for update in installed_updates]
+        srv_com["installed_updates"] = server_command.compress(installed_updates, pickle=True)
 
 
 class rpmlist_command(hm_classes.hm_command):
     info_str = "rpm list"
+
+    class Package:
+        def __init__(self):
+            self.displayName = "Unknown"
+            self.displayVersion = "Unknown"
+            self.estimatedSize = "Unknown"
+            self.installDate = "Unknown"
+
+        def __lt__(self, other):
+            return self.displayName < other.displayName
+
+        def __eq__(self, other):
+            return self.displayName == other.displayName
+
+        def __hash__(self):
+            return hash((self.displayName, self.displayVersion, self.estimatedSize, self.installDate))
 
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
@@ -198,7 +255,7 @@ class rpmlist_command(hm_classes.hm_command):
 
                         j = 0
 
-                        package = Package()
+                        package = rpmlist_command.Package()
                         while True:
                             try:
                                 subvalue = winreg.EnumValue(subkey, j)
