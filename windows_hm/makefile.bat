@@ -5,8 +5,8 @@ SET WINPYTH_MINORFIX=3
 SET WIX_BIN_PATH=C:\Program Files (x86)\WiX Toolset v3.10\bin\
 
 :: Fetch pciutils and move into script directory
-:: bin\wget -nc https://eternallybored.org/misc/pciutils/releases/pciutils-%PCIUTILS_VERSION%-win32.zip
-:: bin\7z -o.\tmp\ x pciutils-%PCIUTILS_VERSION%-win32.zip
+bin\wget -nc https://eternallybored.org/misc/pciutils/releases/pciutils-%PCIUTILS_VERSION%-win32.zip
+bin\7z -o.\tmp\ x pciutils-%PCIUTILS_VERSION%-win32.zip
 
 :: Fetch full and zero version of (portable) python
 bin\wget -nc https://sourceforge.net/projects/winpython/files/WinPython_3.%WINPYTH_MAJOR%/3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%/WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%.exe
@@ -41,6 +41,7 @@ MOVE .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64 .\host_monitor_wi
 .\host_monitor_windows\python.exe -m pip install setproctitle
 .\host_monitor_windows\python.exe -m pip install zmq
 .\host_monitor_windows\python.exe -m pip install psutil
+.\host_monitor_windows\python.exe -m pip install wmi
 
 XCOPY .\syslog.py .\host_monitor_windows\Lib\site-packages\
 
@@ -61,12 +62,10 @@ RMDIR /s /q .\host_monitor_windows\Doc
 
 XCOPY .\bin\nssm.exe .\host_monitor_windows\
 
-:: XCOPY .\nscp\python\pywintypes3%WINPYTH_MAJOR%.dll .\nscp\
-:: XCOPY .\scripts\* .\nscp\scripts\python\
+XCOPY .\scripts\dmidecode212.exe .\host_monitor_windows\
+XCOPY .\scripts\lspci.exe .\host_monitor_windows\
 :: XCOPY .\scripts\finalize-install.py .\nscp\
-:: XCOPY .\nsclient.ini .\nscp\
-
-:: MOVE .\tmp\pciutils-%PCIUTILS_VERSION%-win32 .\nscp\scripts\python\pciutils
+MOVE .\tmp\pciutils-%PCIUTILS_VERSION%-win32 .\host_monitor_windows\pciutils
 
 MOVE .\host_monitor_windows .\nscp
 
