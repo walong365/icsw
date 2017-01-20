@@ -39,6 +39,7 @@ from initat.cluster.backbone.models.asset.asset_functions import \
     RunResult, AssetType, sizeof_fmt
 from initat.cluster.backbone.models.partition import partition_disc, \
     partition_table, partition, partition_fs, LogicalDisc
+from initat.cluster.backbone.models.asset.asset_functions import get_packages_for_ar
 from initat.cluster.backbone.tools.hw import Hardware
 from initat.tools import server_command, pci_database, dmi_tools
 from initat.tools.bgnotify.create import propagate_channel_object
@@ -532,75 +533,16 @@ class AssetRun(models.Model):
                 self.save()
 
     def _generate_assets_package_nrpe(self, data):
-        assets = []
-        if self.scan_type == ScanType.NRPE:
-            l = json.loads(data)
-            for (name, version, size, date) in l:
-                if size == "Unknown":
-                    size = 0
-                assets.append(
-                    BaseAssetPackage(
-                        name,
-                        version=version,
-                        size=size,
-                        install_date=date,
-                        package_type=PackageTypeEnum.WINDOWS
-                    )
-                )
-        self._generate_assets_package(assets)
+        _ = data
+        self._generate_assets_package()
 
     def _generate_assets_package_hm(self, tree):
-        blob = tree.xpath('ns0:pkg_list', namespaces=tree.nsmap)[0].text
-        package_format = tree.xpath('ns0:format', namespaces=tree.nsmap)[0].text
+        _ = tree
+        self._generate_assets_package()
 
-        assets = []
-        if package_format == "windows":
-            packages = server_command.decompress(blob, pickle=True)
+    def _generate_assets_package(self):
+        assets = get_packages_for_ar(self)
 
-            for package in packages:
-                if package.estimatedSize == "Unknown":
-                    package.estimatedSize = 0
-                assets.append(
-                    BaseAssetPackage(
-                        package.displayName,
-                        version=package.displayVersion,
-                        size=package.estimatedSize,
-                        install_date=package.installDate,
-                        package_type=PackageTypeEnum.WINDOWS
-                    )
-                )
-        else:
-            try:
-                package_dict = server_command.decompress(blob, pickle=True)
-            except UnicodeDecodeError:
-                # workaround for incompatible python2.x pickle dumps
-                import pickle
-                package_dict = bz2.decompress(base64.b64decode(blob))
-                package_dict = pickle.loads(package_dict, encoding="latin1")
-
-            for package_name in package_dict:
-                for versions_dict in package_dict[package_name]:
-                    installtimestamp = None
-                    if 'installtimestamp' in versions_dict:
-                        installtimestamp = versions_dict['installtimestamp']
-
-                    size = 0
-                    if 'size' in versions_dict:
-                        size = versions_dict['size']
-
-                    assets.append(
-                        BaseAssetPackage(
-                            package_name,
-                            version=versions_dict['version'],
-                            size=size,
-                            release=versions_dict['release'],
-                            install_date=installtimestamp,
-                            package_type=PackageTypeEnum.LINUX
-                        )
-                    )
-        self._generate_assets_package(assets)
-
-    def _generate_assets_package(self, assets):
         aps_needing_save = []
         apvs_needing_save = []
         apviis_needing_save = []
