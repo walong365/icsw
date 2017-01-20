@@ -24,6 +24,7 @@
 import base64
 import datetime
 import glob
+import time
 import os
 
 import dateutil.parser
@@ -37,6 +38,9 @@ from initat.tools import process_tools, server_command, logging_tools
 
 CERT_DIR = os.path.join(CLUSTER_DIR, "share/cert")
 
+# when emitting license log, mark it in this dict (license.idx -> log_time) to avoid excessive logging
+LICENSE_LOG_CACHE = {}
+
 
 class LicenseFileReader(object):
 
@@ -48,7 +52,6 @@ class LicenseFileReader(object):
 
     def __init__(self, file_content, file_name=None, license=None, cluster_id=None, current_fingerprint=None, log_com=None):
         from initat.cluster.backbone.models import device_variable
-
         self.__log_com = log_com
         self.file_name = file_name
         # contains the license-file tag, i.e. information relevant for program without signature
@@ -455,6 +458,26 @@ class LicenseFileReader(object):
         :return: True if signature is fine
         :rtype : bool
         """
+        cur_time = int(time.time())
+        log_stat = {
+            "target": 0,
+            "emitted": 0,
+        }
+
+        def log(what, log_level=logging_tools.LOG_LEVEL_OK):
+            log_stat["target"] += 1
+            if license is None:
+                _logit = True
+            elif license.idx not in LICENSE_LOG_CACHE:
+                _logit = True
+            elif abs(LICENSE_LOG_CACHE[license.idx] - cur_time) > 300:
+                _logit = True
+            else:
+                _logit = False
+            if _logit:
+                log_stat["emitted"] += 1
+                self.log(what, log_level)
+
         backend = default_backend()
         signed_string = LicenseFileReader._extract_string_for_signature(lic_file_xml)
         # print(len(signed_string))
@@ -471,7 +494,7 @@ class LicenseFileReader(object):
         if not cert_files:
             # raise Exception("No certificate files in certificate dir {}.".format(CERT_DIR))
             # currently it's not clear whether this is only bad or actually critical
-            self.log(
+            log(
                 "No certificate files in certificate dir {}.".format(CERT_DIR),
                 logging_tools.LOG_LEVEL_ERROR
             )
@@ -486,7 +509,7 @@ class LicenseFileReader(object):
                 )
             except:
                 # print(process_tools.get_except_info())
-                self.log(
+                log(
                     "Failed to read certificate file {}: {}".format(
                         cert_file,
                         process_tools.get_except_info()
@@ -518,7 +541,7 @@ class LicenseFileReader(object):
                     # Result of verification: 1 for success, 0 for failure, -1 on other error.
 
                     if result != 1:
-                        self.log(
+                        log(
                             "Cert file {} verification result for '{}': {}".format(
                                 short_cert_file,
                                 str(license) if license else "N/A",
@@ -528,11 +551,16 @@ class LicenseFileReader(object):
                         )
 
                 else:
-                    self.log(
+                    log(
                         "Cert file {} is not valid at this point in time".format(short_cert_file),
                         logging_tools.LOG_LEVEL_ERROR
                     )
 
+        if license.idx:
+            if log_stat["emitted"]:
+                LICENSE_LOG_CACHE[license.idx] = cur_time
+            elif not log_stat["target"] and license.idx in LICENSE_LOG_CACHE:
+                del LICENSE_LOG_CACHE[license.idx]
         return result == 1
 
     @staticmethod

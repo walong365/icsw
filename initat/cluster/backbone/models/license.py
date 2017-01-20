@@ -290,7 +290,7 @@ class _LicenseManager(models.Manager):
                 self.cached_log(
                     "Invalid license file in database {}: {}".format(
                         lic.file_name,
-                        e
+                        e,
                     ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
