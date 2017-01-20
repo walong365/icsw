@@ -25,10 +25,9 @@
 
 import collections
 import datetime
-import logging
+import enum
 
 import django.utils.timezone
-import enum
 from dateutil import relativedelta
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
@@ -58,8 +57,6 @@ __all__ = [
     "icswEggRequest",
     "LICENSE_USAGE_GRACE_PERIOD",
 ]
-
-logger = logging.getLogger("cluster.icsw_license")
 
 LICENSE_USAGE_GRACE_PERIOD = relativedelta.relativedelta(weeks=2)
 
@@ -253,14 +250,27 @@ class _LicenseManager(models.Manager):
 
     _license_readers_cache = {}
 
+    def cached_log(self, what, log_level=logging_tools.LOG_LEVEL_ERROR):
+        if not hasattr(self, "_log_cache"):
+            self._log_cache = []
+        self._log_cache.append((what, log_level))
+
+    @property
+    def cached_logs(self):
+        for what, log_level in self._log_cache:
+            yield ("[CLL] {}".format(what), log_level)
+        self._log_cache = []
+
     @property
     @memoize_with_expiry(10, _cache=_license_readers_cache)
     def _license_readers(self):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
         from initat.cluster.backbone.models import device_variable
         from initat.tools import hfp_tools
+
         cluster_id = device_variable.objects.get_cluster_id()
         cur_fp = hfp_tools.get_server_fp(serialize=True)
+
         readers = []
         for file_content, file_name, idx in self.values_list("license_file", "file_name", "idx"):
             try:
@@ -270,15 +280,17 @@ class _LicenseManager(models.Manager):
                         file_name,
                         idx=idx,
                         cluster_id=cluster_id,
-                        current_fingerprint=cur_fp
+                        current_fingerprint=cur_fp,
+                        log_com=self.cached_log,
                     )
                 )
             except LicenseFileReader.InvalidLicenseFile as e:
-                logger.error(
+                self.cached_log(
                     "Invalid license file in database {}: {}".format(
                         file_name,
                         e
-                    )
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
                 )
 
         return readers
@@ -334,7 +346,8 @@ class License(models.Model):
 
     def __str__(self):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
-        return LicenseFileReader(self.license_file, self.file_name).license_info
+
+        return LicenseFileReader(self.license_file, self.file_name, log_com=self.objects.cached_log).license_info
 
     class Meta:
         app_label = "backbone"

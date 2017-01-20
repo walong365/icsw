@@ -24,19 +24,16 @@
 import base64
 import datetime
 import glob
-import logging
 import os
 
 import dateutil.parser
 from lxml import etree
 
-from initat.constants import CLUSTER_DIR
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, \
     ICSW_XML_NS_MAP, LICENSE_USAGE_GRACE_PERIOD
+from initat.constants import CLUSTER_DIR
 from initat.tools import process_tools, server_command, logging_tools
-
-logger = logging.getLogger("cluster.license_file_reader")
 
 CERT_DIR = os.path.join(CLUSTER_DIR, "share/cert")
 
@@ -49,9 +46,10 @@ class LicenseFileReader(object):
                 msg if msg is not None else "Invalid license file format"
             )
 
-    def __init__(self, file_content, file_name=None, idx=0, cluster_id=None, current_fingerprint=None):
+    def __init__(self, file_content, file_name=None, idx=0, cluster_id=None, current_fingerprint=None, log_com=None):
         from initat.cluster.backbone.models import device_variable
 
+        self.__log_com = log_com
         self.file_name = file_name
         # contains the license-file tag, i.e. information relevant for program without signature
         self.content_xml = self._read_and_parse(file_content, idx)
@@ -62,6 +60,12 @@ class LicenseFileReader(object):
         self.current_fp = current_fingerprint
         self._check_fingerprint()
         self._check_eggs()
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        if self.__log_com:
+            self.__log_com("[LFR] {}".format(what), log_level)
+        else:
+            print("[LFR]{} {}".format(logging_tools.get_log_level_str(log_level), what))
 
     @property
     def current_fingerprint(self):
@@ -98,10 +102,11 @@ class LicenseFileReader(object):
         try:
             signed_content_str = server_command.decompress(file_content)
         except:
-            logger.error(
+            self.log(
                 "Error reading uploaded license file: {}".format(
                     process_tools.get_except_info()
-                )
+                ),
+                logging_tools.LOG_LEVEL_ERROR
             )
             raise LicenseFileReader.InvalidLicenseFile()
 
@@ -114,7 +119,6 @@ class LicenseFileReader(object):
 
         content_xml = signed_content_xml.find('icsw:license-file', ICSW_XML_NS_MAP)
         signature_xml = signed_content_xml.find('icsw:signature', ICSW_XML_NS_MAP)
-        # print("*", type(signature_xml.text))
 
         signature_ok = self.verify_signature(content_xml, signature_xml)
 
@@ -279,7 +283,10 @@ class LicenseFileReader(object):
             try:
                 ret.append(LicenseEnum[lic_id])
             except KeyError:
-                logger.debug("Invalid license in license file: {}".format(lic_id))
+                self.log(
+                    "Invalid license in license file: {}".format(lic_id),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
         return ret
 
     def get_valid_parameters(self):
@@ -437,8 +444,7 @@ class LicenseFileReader(object):
             return _r_list
         return [extract_package_data(_struct["pack_xml"], _struct["customer_xml"]) for _struct in package_uuid_map.values()]
 
-    @staticmethod
-    def verify_signature(lic_file_xml, signature_xml):
+    def verify_signature(self, lic_file_xml, signature_xml):
         # import pem
         from cryptography import x509
         from cryptography.exceptions import InvalidSignature
@@ -465,7 +471,10 @@ class LicenseFileReader(object):
         if not cert_files:
             # raise Exception("No certificate files in certificate dir {}.".format(CERT_DIR))
             # currently it's not clear whether this is only bad or actually critical
-            logger.error("No certificate files in certificate dir {}.".format(CERT_DIR))
+            self.log(
+                "No certificate files in certificate dir {}.".format(CERT_DIR),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
         for cert_file in cert_files:
             try:
@@ -476,11 +485,12 @@ class LicenseFileReader(object):
                 )
             except:
                 # print(process_tools.get_except_info())
-                logger.warning(
+                self.log(
                     "Failed to read certificate file {}: {}".format(
                         cert_file,
                         process_tools.get_except_info()
-                    )
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
                 )
             else:
                 # print(cert)
@@ -506,10 +516,17 @@ class LicenseFileReader(object):
                         result = 1
                     # Result of verification: 1 for success, 0 for failure, -1 on other error.
 
-                    logger.debug("Cert file {} verification result: {}".format(cert_file, result))
+                    if result != 1:
+                        self.log(
+                            "Cert file {} verification result: {}".format(cert_file, result),
+                            logging_tools.LOG_LEVEL_WARN,
+                        )
 
                 else:
-                    logger.debug("Cert file {} is not valid at this point in time".format(cert_file))
+                    self.log(
+                        "Cert file {} is not valid at this point in time".format(cert_file),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
 
         return result == 1
 

@@ -139,6 +139,10 @@ class ServiceContainer(object):
                 except:
                     pass
                 self.__valid_licenses = None
+            else:
+                # dump cache
+                for line, log_level in License.objects.cached_logs:
+                    self.log(line, log_level)
         else:
             self.__valid_licenses = None
 
