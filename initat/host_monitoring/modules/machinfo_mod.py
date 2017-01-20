@@ -2069,7 +2069,11 @@ class thugepageinfo_command(hm_classes.hm_command):
 
 class pciinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        srv_com["pci_dump"] = self.module._pciinfo_int()
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+            srv_com["pci_dump"] = self.module._pciinfo_int()
+        elif PLATFORM_SYSTEM_TYPE == PLATFORM_SYSTEM_TYPE.WINDOWS:
+            srv_com["pci_dump"] = subprocess.check_output(["pciutils\lspci.exe", "-v", "-mm"])
+
         # srv_com["pci"] = pci_database.get_actual_pci_struct(*pci_database.get_pci_dicts())
 
     def interpret(self, srv_com, cur_ns):
@@ -2600,7 +2604,10 @@ class xrandr_command(hm_classes.hm_command):
 
 class dmiinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        srv_com["dmi_dump"] = self.module._dmiinfo_int()
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+            srv_com["dmi_dump"] = self.module._dmiinfo_int()
+        elif PLATFORM_SYSTEM_TYPE == PLATFORM_SYSTEM_TYPE.WINDOWS:
+            srv_com["dmi_dump"] = subprocess.check_output("dmidecode212.exe")
 
     def interpret(self, srv_com, cur_ns):
         with tempfile.NamedTemporaryFile() as tmp_file:
