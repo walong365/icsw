@@ -242,7 +242,7 @@ class Service(object):
                 if _req_lic is not None:
                     _req_lic = _req_lic.text.strip()
                     # default license state
-                    lic_state = LIC_STATE_VIOLATED
+                    lic_state = LIC_STATE_NONE
                     for _vl in valid_licenses:
                         if _vl.name == _req_lic:
                             lic_state = License.objects._get_license_state(_vl)

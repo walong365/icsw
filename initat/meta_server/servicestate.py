@@ -79,9 +79,12 @@ class ServiceActionState(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         ServiceActionState.parent.log("[sas] {}".format(what), log_level)
 
-    def __init__(self, **kwargs):
+    def __init__(self, name, **kwargs):
+        self.name = name
         # target state(s) or NONE if does not matter
-        self._vals = {_key: None for _key in ServiceActionState.keys}
+        self._vals = {
+            _key: None for _key in ServiceActionState.keys
+        }
         for _key in ServiceActionState.keys:
             if _key in kwargs:
                 _val = kwargs[_key]
@@ -102,7 +105,20 @@ class ServiceActionState(object):
             else:
                 _als = sum([[_pl + [_val] for _val in _vals] for _pl in _als], [])
         for _tuple in _als:
-            ServiceActionState.d_dict[tuple(_tuple)] = sas._action
+            if tuple(_tuple) in ServiceActionState.d_dict:
+                if ServiceActionState.d_dict[tuple(_tuple)][1] != sas._action:
+                    ServiceActionState.parent.log(
+                        "tuple {} already set (current target {} for '{}' != new target {} for '{}')".format(
+                            str(_tuple),
+                            str(ServiceActionState.d_dict[tuple(_tuple)][1]),
+                            str(ServiceActionState.d_dict[tuple(_tuple)][0]),
+                            str(sas._action),
+                            sas.name,
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+            else:
+                ServiceActionState.d_dict[tuple(_tuple)] = (sas.name, sas._action)
         ServiceActionState.g_log(
             "added action {}, {:d} states defined, {:d} keys".format(
                 sas._action,
@@ -113,7 +129,7 @@ class ServiceActionState(object):
 
     @staticmethod
     def get_action(_tuple):
-        return ServiceActionState.d_dict.get(_tuple, "keep")
+        return ServiceActionState.d_dict.get(_tuple, ("source", "keep"))[1]
 
 
 class ServiceStateTranstaction(object):
@@ -167,6 +183,7 @@ class ServiceState(object):
     def init_sas(self):
         ServiceActionState.setup(self)
         ServiceActionState(
+            "ok running",
             target=constants.TARGET_STATE_RUNNING,
             process=constants.SERVICE_OK,
             configured=constants.CONF_STATE_RUN,
@@ -178,6 +195,7 @@ class ServiceState(object):
             action="keep",
         )
         ServiceActionState(
+            "keep invalid stopped",
             target=constants.TARGET_STATE_RUNNING,
             process=constants.SERVICE_DEAD,
             configured=[
@@ -193,9 +211,14 @@ class ServiceState(object):
             action="keep",
         )
         ServiceActionState(
+            "start ok",
             target=constants.TARGET_STATE_RUNNING,
             configured=constants.CONF_STATE_RUN,
-            process=[constants.SERVICE_INCOMPLETE, constants.SERVICE_NOT_INSTALLED, constants.SERVICE_DEAD],
+            process=[
+                constants.SERVICE_INCOMPLETE,
+                constants.SERVICE_NOT_INSTALLED,
+                constants.SERVICE_DEAD,
+            ],
             license=[
                 constants.LIC_STATE_VALID,
                 constants.LIC_STATE_NOT_NEEDED,
@@ -204,19 +227,51 @@ class ServiceState(object):
             action="start",
         )
         ServiceActionState(
+            "stop invalid",
             target=constants.TARGET_STATE_RUNNING,
-            configured=[constants.CONF_STATE_STOP, constants.CONF_STATE_IP_MISMATCH, constants.CONF_STATE_MODELS_CHANGED],
-            process=[constants.SERVICE_OK, constants.SERVICE_INCOMPLETE],
+            configured=[
+                constants.CONF_STATE_STOP,
+                constants.CONF_STATE_IP_MISMATCH,
+                constants.CONF_STATE_MODELS_CHANGED,
+            ],
+            process=[
+                constants.SERVICE_OK,
+                constants.SERVICE_INCOMPLETE,
+            ],
             action="stop",
         )
         ServiceActionState(
+            "stop invalid license",
+            target=constants.TARGET_STATE_RUNNING,
+            process=[
+                constants.SERVICE_OK,
+                constants.SERVICE_INCOMPLETE,
+            ],
+            license=[
+                constants.LIC_STATE_VIOLATED,
+                constants.LIC_STATE_EXPIRED,
+                constants.LIC_STATE_VALID_IN_FUTURE,
+                constants.LIC_STATE_NONE,
+            ],
+            action="stop",
+        )
+        ServiceActionState(
+            "keep dead stopped",
             target=constants.TARGET_STATE_STOPPED,
-            process=[constants.SERVICE_DEAD, constants.SERVICE_NOT_INSTALLED, constants.SERVICE_NOT_CONFIGURED],
+            process=[
+                constants.SERVICE_DEAD,
+                constants.SERVICE_NOT_INSTALLED,
+                constants.SERVICE_NOT_CONFIGURED
+            ],
             action="keep",
         )
         ServiceActionState(
+            "stop incomplete",
             target=constants.TARGET_STATE_STOPPED,
-            process=[constants.SERVICE_INCOMPLETE, constants.SERVICE_OK],
+            process=[
+                constants.SERVICE_INCOMPLETE,
+                constants.SERVICE_OK
+            ],
             action="stop",
         )
 
@@ -503,7 +558,6 @@ class ServiceState(object):
         return self._check_current_state(_ct)
 
     def _check_current_state(self, ct):
-        _target, _process, _config, _license = ct
         _action = ServiceActionState.get_action(ct)
         return (_action == "keep", _action)
 
