@@ -24,8 +24,6 @@
 system-wide constants for the ICSW
 """
 
-
-
 import os
 import sys
 

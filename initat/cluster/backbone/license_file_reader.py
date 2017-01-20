@@ -25,20 +25,20 @@ import base64
 import datetime
 import glob
 import logging
+import os
 
 import dateutil.parser
-import pytz
 from lxml import etree
 
+from initat.constants import CLUSTER_DIR
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, \
     ICSW_XML_NS_MAP, LICENSE_USAGE_GRACE_PERIOD
-from initat.cluster.settings import TIME_ZONE
 from initat.tools import process_tools, server_command, logging_tools
 
 logger = logging.getLogger("cluster.license_file_reader")
 
-CERT_DIR = "/opt/cluster/share/cert"
+CERT_DIR = os.path.join(CLUSTER_DIR, "share/cert")
 
 
 class LicenseFileReader(object):
@@ -439,18 +439,28 @@ class LicenseFileReader(object):
 
     @staticmethod
     def verify_signature(lic_file_xml, signature_xml):
-        import M2Crypto
+        # import pem
+        from cryptography import x509
+        from cryptography.exceptions import InvalidSignature
+        from cryptography.hazmat.backends import default_backend
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import padding
         """
         :return: True if signature is fine
         :rtype : bool
         """
+        backend = default_backend()
         signed_string = LicenseFileReader._extract_string_for_signature(lic_file_xml)
-        signature = base64.b64decode(signature_xml.text)
+        # print(len(signed_string))
+        signature = base64.b64decode(signature_xml.text.encode("ascii"))
         # print("V" * 50)
         # print("*", signature_xml.text)
         # print(".", signature)
 
         cert_files = glob.glob("{}/*.pem".format(CERT_DIR))
+        # print(cert_files)
+
+        result = -1
 
         if not cert_files:
             # raise Exception("No certificate files in certificate dir {}.".format(CERT_DIR))
@@ -459,41 +469,56 @@ class LicenseFileReader(object):
 
         for cert_file in cert_files:
             try:
-                cert = M2Crypto.X509.load_cert(cert_file)
-            except M2Crypto.X509.X509Error as e:
-                logger.warning("Failed to read certificate file {}: {}".format(cert_file, e))
-            except IOError as e:
-                logger.warning("Failed to open certificate file {}: {}".format(cert_file, e))
+                # print("*" * 20)
+                cert = x509.load_pem_x509_certificate(
+                    open(cert_file, "rb").read(),
+                    backend,
+                )
+            except:
+                # print(process_tools.get_except_info())
+                logger.warning(
+                    "Failed to read certificate file {}: {}".format(
+                        cert_file,
+                        process_tools.get_except_info()
+                    )
+                )
             else:
+                # print(cert)
                 # only use certs which are currently valid
-                now = datetime.datetime.now(tz=pytz.timezone(TIME_ZONE))
+                now = datetime.datetime.now()  # tz=pytz.timezone(TIME_ZONE))
                 # print("*", str(cert.get_not_before())
-                if cert.get_not_before().get_datetime() <= now <= cert.get_not_after().get_datetime():
-                    evp_verify_pkey = M2Crypto.EVP.PKey()
-                    evp_verify_pkey.assign_rsa(cert.get_pubkey().get_rsa())
-                    evp_verify_pkey.verify_init()
-                    # print(type(signed_string))
-                    # print("s", signed_string)
-                    evp_verify_pkey.verify_update(signed_string.encode("utf-8"))
-                    result = evp_verify_pkey.verify_final(signature)
-# FIXME
-                    result = 1
-                    # print("*", result)
+                if cert.not_valid_before <= now <= cert.not_valid_after:
+                    # print("ok")
+                    verifier = cert.public_key().verifier(
+                        signature,
+                        padding.PSS(
+                            mgf=padding.MGF1(hashes.SHA512()),
+                            salt_length=padding.PSS.MAX_LENGTH,
+                        ),
+                        hashes.SHA512(),
+                    )
+                    verifier.update(signed_string.encode("utf-8"))
+                    try:
+                        verifier.verify()
+                    except InvalidSignature:
+                        result = 0
+                    else:
+                        result = 1
                     # Result of verification: 1 for success, 0 for failure, -1 on other error.
 
                     logger.debug("Cert file {} verification result: {}".format(cert_file, result))
 
-                    if result == 1:
-                        return True
                 else:
                     logger.debug("Cert file {} is not valid at this point in time".format(cert_file))
 
-        return False
+        return result == 1
 
     @staticmethod
     def _extract_string_for_signature(content):
         def dict_to_str(d):
-            return ";".join("{}:{}".format(k, v) for k, v in d.items())
+            return ";".join(
+                "{}:{}".format(k, v) for k, v in d.items()
+            )
         return "_".join(
             (
                 "{}/{}/{}".format(
