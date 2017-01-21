@@ -26,9 +26,12 @@ import argparse
 import time
 
 import zmq
+from enum import Enum
 
 from initat.host_monitoring import limits
 from initat.tools import logging_tools, process_tools, server_command
+
+from .constants import MAX_0MQ_CONNECTION_ERRORS
 
 
 class ExtReturn(object):
@@ -155,11 +158,13 @@ class SRProbe(object):
         cur_time = time.time()
         diff_time = abs(cur_time - self.__time)
         if diff_time > 30 * 60:
-            self.log("sent / received in {}: {} / {}".format(
-                logging_tools.get_diff_time_str(diff_time),
-                logging_tools.get_size_str(self.__val["send"]),
-                logging_tools.get_size_str(self.__val["recv"]),
-            ))
+            self.log(
+                "sent / received in {}: {} / {}".format(
+                    logging_tools.get_diff_time_str(diff_time),
+                    logging_tools.get_size_str(self.__val["send"]),
+                    logging_tools.get_size_str(self.__val["recv"]),
+                )
+            )
             self.__time = cur_time
             self.__val = {
                 "send": 0,
@@ -176,8 +181,14 @@ class SRProbe(object):
         self.__val["recv"] += val
 
 
+class HostConnectionReTriggerEnum(Enum):
+    no = "no"
+    init = "init"
+    sent = "sent"
+
+
 class HostConnection(object):
-    __slots__ = ["zmq_id", "tcp_con", "sr_probe", "__open", "__conn_str", "messages"]
+    __slots__ = ["zmq_id", "tcp_con", "sr_probe", "__open", "__conn_str", "messages", "zmq_conn_errors", "retrigger_state"]
 
     def __init__(self, conn_str, **kwargs):
         self.zmq_id = kwargs.get("zmq_id", "ms")
@@ -185,6 +196,9 @@ class HostConnection(object):
         self.tcp_con = kwargs.get("dummy_connection", False)
         HostConnection.hc_dict[self.hc_dict_key] = self
         self.sr_probe = SRProbe(self)
+        # number of consecutive 0MQ errors
+        self.zmq_conn_errors = 0
+        self.retrigger_state = HostConnectionReTriggerEnum.no
         self.messages = {}
         self.__open = False
 
@@ -203,7 +217,7 @@ class HostConnection(object):
         pass
 
     @staticmethod
-    def init(r_process, backlog_size, timeout, verbose):
+    def init(r_process, backlog_size, timeout, verbose, zmq_discovery):
         HostConnection.relayer_process = r_process
         # 2 queues for 0MQ and tcp, 0MQ is (True, conn_str), TCP is (False, conn_str)
         HostConnection.hc_dict = {}
@@ -233,6 +247,8 @@ class HostConnection(object):
         )
         HostConnection.zmq_socket = new_sock
         HostConnection.relayer_process.register_poller(new_sock, zmq.POLLIN, HostConnection.get_result)
+        # ZMQDiscovery instance
+        HostConnection.zmq_discovery = zmq_discovery
 
     @staticmethod
     def has_hc_0mq(conn_str, target_id="ms", **kwargs):
@@ -294,6 +310,7 @@ class HostConnection(object):
                 )
 
     def _open(self):
+        _opened = False
         if not self.__open:
             try:
                 self.log("connecting 0MQ")
@@ -302,9 +319,10 @@ class HostConnection(object):
                 raise
             else:
                 self.__open = True
+                _opened = True
                 # make a short nap to let 0MQ settle things down
                 # time.sleep(0.2)
-        return self.__open
+        return _opened
 
     def _close(self):
         if self.__open:
@@ -328,7 +346,7 @@ class HostConnection(object):
         else:
             if not self.tcp_con:
                 try:
-                    self._open()
+                    was_opened = self._open()
                 except:
                     self.return_error(
                         host_mes,
@@ -338,16 +356,42 @@ class HostConnection(object):
                         )
                     )
                 else:
+                    # print("*", was_opened)
+                    # Todo, fixme: delay sending when connection was just openened
                     send_str = str(host_mes.srv_com)
                     try:
                         HostConnection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT | zmq.SNDMORE)
                         HostConnection.zmq_socket.send_unicode(send_str, zmq.DONTWAIT)
                     except:
+                        self.zmq_conn_errors += 1
+                        if self.zmq_conn_errors == MAX_0MQ_CONNECTION_ERRORS and self.retrigger_state == HostConnectionReTriggerEnum.no:
+                            self.retrigger_state = HostConnectionReTriggerEnum.init
+                            _info = ", trigger 0MQ-ID fetch "
+                        else:
+                            _info = ""
                         self.return_error(
                             host_mes,
-                            "connection error ({})".format(process_tools.get_except_info()),
+                            "connection error via ZMQ-ID '{}'{}({})".format(
+                                self.zmq_id,
+                                _info,
+                                process_tools.get_except_info(),
+                            ),
                         )
+                        if self.retrigger_state == HostConnectionReTriggerEnum.init:
+                            # check current state
+                            if HostConnection.zmq_discovery.has_mapping(self.conn_str) and not HostConnection.zmq_discovery.is_pending(self.conn_str):
+                                HostConnection.zmq_discovery(
+                                    server_command.srv_command(
+                                        conn_str=self.conn_str,
+                                    ),
+                                    src_id=None,
+                                    xml_input=True,
+                                )
+                            else:
+                                # not present, maybe another mapping request is running
+                                self.retrigger_state = HostConnectionReTriggerEnum.no
                     else:
+                        self.zmq_conn_errors = 0
                         self.sr_probe.send = len(send_str)
                         host_mes.sr_probe = self.sr_probe
                         host_mes.sent = True

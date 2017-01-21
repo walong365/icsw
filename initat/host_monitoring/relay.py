@@ -22,11 +22,9 @@
 
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
-import io
 import os
 import resource
 import socket
-import sys
 import time
 
 import zmq
@@ -75,15 +73,27 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         # global timeout value for host connections
         self.__global_timeout = self.CC.CS["hr.connection.timeout"]
         self.ICH = IPCCommandHandler(self)
-        self._show_config()
-        HostConnection.init(self, self.CC.CS["hm.socket.backlog.size"], self.__global_timeout, self.__verbose)
+        self.CC.log_config()
         # init lut
         self.__old_send_lut = {}
         # we need no icmp capability in relaying
         self.add_process(SocketProcess("socket"), start=True)
         self.add_process(ResolveProcess("resolve"), start=True)
         self.install_signal_handlers()
-        ZMQDiscovery.init(self, self.CC.CS["hm.socket.backlog.size"], self.__global_timeout, self.__verbose, self.__force_resolve)
+        ZMQDiscovery.init(
+            self,
+            self.CC.CS["hm.socket.backlog.size"],
+            self.__global_timeout,
+            self.__verbose,
+            self.__force_resolve,
+        )
+        HostConnection.init(
+            self,
+            self.CC.CS["hm.socket.backlog.size"],
+            self.__global_timeout,
+            self.__verbose,
+            ZMQDiscovery,
+        )
         self._init_filecache()
         self._change_rlimits()
         self._init_network_sockets()
@@ -145,6 +155,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         self.__client_dict = {
             _key: "0" for _key in ZMQDiscovery.get_hm_0mq_addrs()
         }
+        # default 0MQ enabled
         self.__default_0mq = False
 
     def _new_client(self, c_ip, c_port):
@@ -265,18 +276,30 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         self.__nhm_connections = set()
         # also used in md-sync-server/server, ToDo: Refactor
         sock_list = [
-            ("ipc", "receiver", zmq.PULL, 2),
-            ("ipc", "sender", zmq.PUB, 1024),
+            {
+                "proto": "ipc",
+                "name": "receiver",
+                "type": zmq.PULL,
+                "hwm_size": 2,
+            },
+            {
+                "proto": "ipc",
+                "name": "sender",
+                "type": zmq.PUB,
+                "hwm_size": 1024,
+            },
         ]
-        [setattr(self, "{}_socket".format(short_sock_name), None) for _sock_proto, short_sock_name, _a0, _b0 in sock_list]
-        for _sock_proto, short_sock_name, sock_type, hwm_size in sock_list:
-            sock_name = process_tools.get_zmq_ipc_name(short_sock_name, s_name="collrelay")
+        [
+            setattr(self, "{}_socket".format(_sock["name"]), None) for _sock in sock_list
+        ]
+        for _sock in sock_list:
+            sock_name = process_tools.get_zmq_ipc_name(_sock["name"], s_name="collrelay")
             file_name = sock_name[5:]
             self.log(
                 "init {} ipc_socket '{}' (HWM: {:d})".format(
-                    short_sock_name,
+                    _sock["name"],
                     sock_name,
-                    hwm_size
+                    _sock["hwm_size"],
                 )
             )
             if os.path.exists(file_name):
@@ -290,26 +313,26 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 self.log("socket {} still exists, waiting".format(sock_name))
                 time.sleep(0.1)
                 wait_iter += 1
-            cur_socket = self.zmq_context.socket(sock_type)
+            cur_socket = self.zmq_context.socket(_sock["type"])
             try:
                 process_tools.bind_zmq_socket(cur_socket, sock_name)
                 # client.bind("tcp://*:8888")
             except zmq.ZMQError:
                 self.log(
                     "error binding {}: {}" .format(
-                        short_sock_name,
+                        _sock["name"],
                         process_tools.get_except_info()
                     ),
                     logging_tools.LOG_LEVEL_CRITICAL
                 )
                 raise
             else:
-                setattr(self, "{}_socket".format(short_sock_name), cur_socket)
+                setattr(self, "{}_socket".format(_sock["name"]), cur_socket)
                 os.chmod(file_name, 0o777)
                 cur_socket.setsockopt(zmq.LINGER, 0)
-                cur_socket.setsockopt(zmq.SNDHWM, hwm_size)
-                cur_socket.setsockopt(zmq.RCVHWM, hwm_size)
-                if sock_type == zmq.PULL:
+                cur_socket.setsockopt(zmq.SNDHWM, _sock["hwm_size"])
+                cur_socket.setsockopt(zmq.RCVHWM, _sock["hwm_size"])
+                if _sock["type"] == zmq.PULL:
                     self.register_poller(cur_socket, zmq.POLLIN, self._recv_command_ipc)
         self.client_socket = process_tools.get_socket(
             self.zmq_context,
@@ -488,11 +511,12 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                             # not needed
                             # HostConnection.delete_hc(srv_com)
                             if t_host not in self.__last_tried:
-                                self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
-                            self.__last_tried[t_host] = {
-                                "T": "0",
-                                "0": "T",
-                            }[self.__last_tried[t_host]]
+                                self.__last_tried[t_host] = "0" if self.__default_0mq else "T"
+                            else:
+                                self.__last_tried[t_host] = {
+                                    "T": "0",
+                                    "0": "T",
+                                }[self.__last_tried[t_host]]
                             c_state = self.__last_tried[t_host]
                         con_mode = c_state
                     else:
@@ -566,12 +590,14 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             _host,
             int(srv_com["*port"])
         )
+        # has connection_string vanished ?
         if conn_str in ZMQDiscovery.vanished:
             self.log(
                 "{} has vanished, closing connection".format(conn_str),
-                logging_tools.LOG_LEVEL_ERROR
+                logging_tools.LOG_LEVEL_ERROR,
             )
             ZMQDiscovery.vanished.remove(conn_str)
+            # get current connection
             cur_hc = HostConnection.get_hc_0mq(conn_str, "ignore")
             cur_hc._close()
         if ZMQDiscovery.has_mapping(conn_str):
@@ -588,10 +614,11 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                     "command '{}' not defined on relayer".format(com_name)
                 )
         elif ZMQDiscovery.is_pending(conn_str):
+            # discovery pending ?
             cur_hc = HostConnection.get_hc_0mq(conn_str)
             com_name = srv_com["command"].text
             cur_mes = cur_hc.add_message(HostMessage(com_name, src_id, srv_com, xml_input))
-            cur_hc.return_error(cur_mes, "0mq discovery in progress")
+            cur_hc.return_error(cur_mes, "0MQ discovery in progress")
         else:
             ZMQDiscovery(srv_com, src_id, xml_input)
 
@@ -683,7 +710,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                     elif kwargs.get("register", True):
                         self.__nhm_dict[srv_com["identity"].text] = (time.time(), srv_com)
         elif ZMQDiscovery.is_pending(conn_str):
-            self._send_result(src_id, "0mq discovery in progress", server_command.SRV_REPLY_STATE_CRITICAL)
+            self._send_result(src_id, "0MQ discovery in progress", server_command.SRV_REPLY_STATE_CRITICAL)
         else:
             ZMQDiscovery(srv_com, src_id, xml_input)
 
@@ -807,26 +834,6 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             ascii_chunk=ascii_chunk,
         )
         self.send_to_syncer(srv_com)
-
-    def _show_config(self):
-        try:
-            for log_line, log_level in self.global_config.get_log():
-                self.log("Config info : [{:d}] {}".format(log_level, log_line))
-        except:
-            self.log(
-                "error showing configfile log, old configfile ? ({})".format(
-                    process_tools.get_except_info()
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-        conf_info = self.global_config.get_config_info()
-        self.log(
-            "Found {}:".format(
-                logging_tools.get_plural("valid configline", len(conf_info))
-            )
-        )
-        for conf in conf_info:
-            self.log("Config : {}".format(conf))
 
     def _close_ipc_sockets(self):
         if self.receiver_socket is not None:
