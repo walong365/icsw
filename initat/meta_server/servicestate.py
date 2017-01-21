@@ -26,6 +26,7 @@ import subprocess
 import os
 import sqlite3
 import time
+import enum
 
 import inflection
 
@@ -36,6 +37,12 @@ from initat.tools import logging_tools, server_command, process_tools
 
 LOCK_TIMEOUT = 30
 TRANSACTION_WINDOW = 300
+
+
+class StateEnum(enum.Enum):
+    keep = "keep"
+    start = "start"
+    stop = "stop"
 
 
 class DBCursor(object):
@@ -129,7 +136,7 @@ class ServiceActionState(object):
 
     @staticmethod
     def get_action(_tuple):
-        return ServiceActionState.d_dict.get(_tuple, ("source", "keep"))[1]
+        return ServiceActionState.d_dict.get(_tuple, ("source", StateEnum.keep))[1]
 
 
 class ServiceStateTranstaction(object):
@@ -138,7 +145,7 @@ class ServiceStateTranstaction(object):
         self.repeat = 0
         max_dt = 0.0
         for _action, _time in actions:
-            if _action == "start":
+            if _action == StateEnum.start:
                 self.repeat += 1
                 max_dt = max(max_dt, _time)
             else:
@@ -192,7 +199,7 @@ class ServiceState(object):
                 constants.LIC_STATE_NOT_NEEDED,
                 constants.LIC_STATE_GRACE,
             ],
-            action="keep",
+            action=StateEnum.keep,
         )
         ServiceActionState(
             "keep invalid stopped",
@@ -208,7 +215,7 @@ class ServiceState(object):
                 constants.LIC_STATE_VALID_IN_FUTURE,
                 constants.LIC_STATE_NONE,
             ],
-            action="keep",
+            action=StateEnum.keep,
         )
         ServiceActionState(
             "start ok",
@@ -224,7 +231,7 @@ class ServiceState(object):
                 constants.LIC_STATE_NOT_NEEDED,
                 constants.LIC_STATE_GRACE,
             ],
-            action="start",
+            action=StateEnum.start,
         )
         ServiceActionState(
             "stop invalid",
@@ -238,7 +245,7 @@ class ServiceState(object):
                 constants.SERVICE_OK,
                 constants.SERVICE_INCOMPLETE,
             ],
-            action="stop",
+            action=StateEnum.stop,
         )
         ServiceActionState(
             "stop invalid license",
@@ -253,7 +260,7 @@ class ServiceState(object):
                 constants.LIC_STATE_VALID_IN_FUTURE,
                 constants.LIC_STATE_NONE,
             ],
-            action="stop",
+            action=StateEnum.stop,
         )
         ServiceActionState(
             "keep dead stopped",
@@ -263,7 +270,7 @@ class ServiceState(object):
                 constants.SERVICE_NOT_INSTALLED,
                 constants.SERVICE_NOT_CONFIGURED
             ],
-            action="keep",
+            action=StateEnum.keep,
         )
         ServiceActionState(
             "stop incomplete",
@@ -272,7 +279,7 @@ class ServiceState(object):
                 constants.SERVICE_INCOMPLETE,
                 constants.SERVICE_OK
             ],
-            action="stop",
+            action=StateEnum.stop,
         )
 
     def init_db(self):
@@ -559,7 +566,7 @@ class ServiceState(object):
 
     def _check_current_state(self, ct):
         _action = ServiceActionState.get_action(ct)
-        return (_action == "keep", _action)
+        return (_action == StateEnum.keep, _action)
 
     def _check_for_stable_state(self, service):
         name = service.name
@@ -577,7 +584,7 @@ class ServiceState(object):
                     self.__service_lut[name],
                 )
             ).fetchall()
-            if _actions and _actions[0][0] == "start" and _actions[0][1] < 5:
+            if _actions and _actions[0][0] == StateEnum.start and _actions[0][1] < 5:
                 # latest action only 5 seconds ago, not stable
                 _stable = False
                 service.log(
@@ -672,7 +679,7 @@ class ServiceState(object):
                 crs.execute(
                     "INSERT INTO action(service, action, created) VALUES(?, ?, ?)",
                     (
-                        self.__service_lut[name], action, int(cur_time),
+                        self.__service_lut[name], action.value, int(cur_time),
                     ),
                 )
                 trans_id = crs.lastrowid
@@ -816,9 +823,9 @@ class ServiceState(object):
         # return two flags, Dependency issues when starting and Dependency issues when stopping
         _start, _stop = (False, False)
         for _key, _struct in self.__dependency_problems.items():
-            if _struct["start"]:
+            if _struct[StateEnum.start]:
                 _start = True
-            if _struct["stop"]:
+            if _struct[StateEnum.stop]:
                 _stop = True
             if _start and _stop:
                 break
@@ -845,18 +852,18 @@ class ServiceState(object):
                         _ret.append(_dep)
             return _ret
 
-        self.__dependency_problems.setdefault(inst_name, {"start": False, "stop": False})
+        self.__dependency_problems.setdefault(inst_name, {StateEnum.start: False, StateEnum.stop: False})
 
         # list of unfullfilled dependencies
         _uf_list = []
-        if action == "start":
+        if action == StateEnum.start:
             _dep_list = self.instance.get_start_dependencies(inst_name)
             if len(_dep_list):
                 for _dep in _filter_list(_dep_list):
                     _state = self.__state_dict[_dep]
                     if constants.STATE_DICT[_state[0]] != "ok":
                         _uf_list.append(_dep)
-        elif action == "stop":
+        elif action == StateEnum.stop:
             _dep_list = self.instance.get_stop_dependencies(inst_name)
             # self.log("*** {} {} {}".format(action, inst_name, str(_dep_list)))
             # self.log("filtered: {}".format(str(_filter_list(_dep_list))))
