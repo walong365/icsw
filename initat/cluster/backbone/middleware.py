@@ -105,7 +105,7 @@ def show_database_calls(*args, **kwargs):
                     out_str = out_str[0:cur_width - 21]
                     _len_post = len(out_str)
                     if _len_pre == _len_post:
-                        _size_str = "      {:5d}".format(_len_pre)
+                        _size_str = "     {:5d}".format(_len_pre)
                     else:
                         _size_str = "{:4d}/{:5d}".format(_len_post, _len_pre)
                     output(
