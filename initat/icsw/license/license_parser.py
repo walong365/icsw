@@ -33,11 +33,11 @@ class Parser(object):
     def _add_license_parser(self, sub_parser):
 
         lic_parser = sub_parser.add_parser("license", help="license utility")
-        lic_parser.set_defaults(subcom="show_cluster_id", execute=self._execute, raw=False, without_fp=True)
+        lic_parser.set_defaults(subcom="show-cluster-id", execute=self._execute, raw=False, without_fp=True)
         lic_sub_parser = lic_parser.add_subparsers()
 
-        show_cluster_id_parser = lic_sub_parser.add_parser("show_cluster_id", help="Show Cluster ID")
-        show_cluster_id_parser.set_defaults(subcom="show_cluster_id", execute=self._execute)
+        show_cluster_id_parser = lic_sub_parser.add_parser("show-cluster-id", help="Show Cluster ID")
+        show_cluster_id_parser.set_defaults(subcom="show-cluster-id", execute=self._execute)
         show_cluster_id_parser.add_argument(
             "--without-fp",
             default=False,
@@ -51,14 +51,14 @@ class Parser(object):
             help="enable raw mode (only data will be printed) [%(default)s]",
         )
 
-        show_license_parser = lic_sub_parser.add_parser("show_license_info", help="Show License info")
-        show_license_parser.set_defaults(subcom="show_license_info", execute=self._execute)
+        show_license_parser = lic_sub_parser.add_parser("show-license-info", help="Show License info")
+        show_license_parser.set_defaults(subcom="show-license-info", execute=self._execute)
         show_license_parser.add_argument("--raw", default=False, action="store_true", help="show raw info [%(default)s]")
         reg_cluster_parser = lic_sub_parser.add_parser(
-            "register_cluster",
+            "register-cluster",
             help="register your cluster at init.at and obtain a license file"
         )
-        reg_cluster_parser.set_defaults(subcom="register_cluster", execute=self._execute)
+        reg_cluster_parser.set_defaults(subcom="register-cluster", execute=self._execute)
         reg_cluster_parser.add_argument("-u", "--user", dest='user', required=True, help="your icsw user name")
         reg_cluster_parser.add_argument("-p", "--password", dest='password', required=True, help="your icsw password")
         reg_cluster_parser.add_argument(
@@ -71,14 +71,14 @@ class Parser(object):
 
         self._add_ovum_parser(lic_sub_parser)
         install_cluster_parser = lic_sub_parser.add_parser(
-            "install_license",
+            "install-license",
             help="install already downloaded license file"
         )
-        install_cluster_parser.set_defaults(subcom="install_license", execute=self._execute)
+        install_cluster_parser.set_defaults(subcom="install-license", execute=self._execute)
         install_cluster_parser.add_argument("licensefile", help="License file")
-        raw_list_parser = lic_sub_parser.add_parser("raw_license_info", help="Show raw License data")
-        raw_list_parser.set_defaults(subcom="raw_license_info", execute=self._execute)
-        raw_list_parser.add_argument("--mark-invalid", default=False, action="store_true", help="Mark all invalid LicenseFiles [%(default)s]")
+        raw_list_parser = lic_sub_parser.add_parser("raw-license-info", help="Show raw License data")
+        raw_list_parser.set_defaults(subcom="raw-license-info", execute=self._execute)
+        raw_list_parser.add_argument("--mark-error", default=False, action="store_true", help="Mark all LicenseFiles with error as invalid [%(default)s]")
         raw_list_parser.add_argument("--unmark-all", default=False, action="store_true", help="Unmark all LicenseFiles [%(default)s]")
 
     def _add_ovum_parser(self, sub_parser):

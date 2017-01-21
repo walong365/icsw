@@ -537,26 +537,26 @@ class LicenseFileReader(object):
                     except InvalidSignature:
                         result = 0
                     else:
+                        # found a valid signature, exit
                         result = 1
+                        break
                     # Result of verification: 1 for success, 0 for failure, -1 on other error.
 
-                    if result != 1:
-                        log(
-                            "Cert file {} verification result for '{}': {}".format(
-                                short_cert_file,
-                                str(license) if license else "N/A",
-                                result,
-                            ),
-                            logging_tools.LOG_LEVEL_WARN,
-                        )
-
+                    log(
+                        "Cert file {} verification result for '{}': {}".format(
+                            short_cert_file,
+                            str(license) if license else "N/A",
+                            result,
+                        ),
+                        logging_tools.LOG_LEVEL_WARN,
+                    )
                 else:
                     log(
                         "Cert file {} is not valid at this point in time".format(short_cert_file),
                         logging_tools.LOG_LEVEL_ERROR
                     )
 
-        if license.idx:
+        if license and license.idx:
             if log_stat["emitted"]:
                 LICENSE_LOG_CACHE[license.idx] = cur_time
             elif not log_stat["target"] and license.idx in LICENSE_LOG_CACHE:

@@ -166,10 +166,12 @@ def raw_license_info(opts):
         else:
             _error = False
         if _error:
-            if opts.mark_invalid:
+            if opts.mark_error:
                 _valid = False
             elif opts.unmark_all:
                 _valid = True
+            else:
+                _valid = lic.valid
         else:
             _valid = True
         if lic.valid != _valid:
@@ -178,6 +180,7 @@ def raw_license_info(opts):
         out_list.append(
             [
                 logging_tools.form_entry(lic.file_name, header="Filename"),
+                logging_tools.form_entry(lic.date.isoformat(), header="created"),
                 logging_tools.form_entry_right(lic.idx, header="idx"),
                 logging_tools.form_entry_center("valid" if lic.valid else "invalid", header="validity"),
                 logging_tools.form_entry_center("error" if _error else "ok", header="error"),
@@ -285,15 +288,15 @@ def show_cluster_id(opts):
 
 
 def main(opts):
-    if opts.subcom == "register_cluster":
+    if opts.subcom == "register-cluster":
         register_cluster(opts)
-    elif opts.subcom == "install_license_file":
+    elif opts.subcom == "install-license-file":
         install_license_file(opts)
-    elif opts.subcom == "show_cluster_id":
+    elif opts.subcom == "show-cluster-id":
         show_cluster_id(opts)
-    elif opts.subcom == "show_license_info":
+    elif opts.subcom == "show-license-info":
         show_license_info(opts)
-    elif opts.subcom == "raw_license_info":
+    elif opts.subcom == "raw-license-info":
         raw_license_info(opts)
     elif opts.subcom == "ova":
         if opts.init:
