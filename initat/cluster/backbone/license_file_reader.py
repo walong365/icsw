@@ -174,7 +174,7 @@ class LicenseFileReader(object):
                     "pack_xml": pack_xml,
                     "version": _version,
                     "date": _date,
-                    "idx": license.idx,
+                    "idx": license.idx if license else 0,
                     "customer_xml": customer_xml,
                     "reader": self,
                 }
