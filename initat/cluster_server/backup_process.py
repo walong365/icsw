@@ -32,10 +32,6 @@ from initat.cluster_server.config import global_config
 from initat.tools import logging_tools, process_tools, threading_tools
 
 
-class dummy_file(object):
-    ending = None
-
-
 class BackupProcess(threading_tools.icswProcessObj):
     def process_init(self):
         global_config.close()
@@ -105,7 +101,7 @@ class BackupProcess(threading_tools.icswProcessObj):
         )
         self.log("storing backup in {}".format(full_path))
         buf_com = dumpdataslow.Command()
-        buf_com.stdout = dummy_file(full_path, "wb")
+        buf_com.stdout = open(full_path, "wb")
         # get argument parser
         _ap = buf_com.create_parser("dumpdataslow", buf_com)
         _args = [
@@ -129,7 +125,14 @@ class BackupProcess(threading_tools.icswProcessObj):
         opts = _ap.parse_args(_args)
         buf_com.handle(**vars(opts))
         buf_com.stdout.close()
-        open("{}.bz2".format(full_path), "wb").write(bz2.compress(open(full_path, "r").read()))
+        open(
+            "{}.bz2".format(full_path),
+            "wb"
+        ).write(
+            bz2.compress(
+                open(full_path, "r").read().encode("utf-8")
+            )
+        )
         os.unlink(full_path)
 
     def _database_backup(self, bu_dir):
