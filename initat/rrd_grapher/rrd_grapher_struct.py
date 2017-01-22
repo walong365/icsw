@@ -311,7 +311,7 @@ class DataStore(object):
         try:
             _comps = DataStore.compound_tree.append_compounds(in_list)
         except:
-            for _line in process_tools.exception_info().log_lines:
+            for _line in process_tools.icswExceptionInfo().log_lines:
                 DataStore.g_log(_line, logging_tools.LOG_LEVEL_ERROR)
             _comps = []
         else:

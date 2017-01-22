@@ -223,7 +223,7 @@ class StatusProcess(threading_tools.icswProcessObj):
                 srv_com.set_result("cannot connect to socket", server_command.SRV_REPLY_STATE_CRITICAL)
         except:
             self.log("fetch exception: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-            exc_info = process_tools.exception_info()
+            exc_info = process_tools.icswExceptionInfo()
             for line in exc_info.log_lines:
                 self.log(" - {}".format(line), logging_tools.LOG_LEVEL_ERROR)
             self._close()

@@ -118,7 +118,7 @@ class KpiProcess(threading_tools.icswProcessObj):
             try:
                 kpi_data = KpiData(self.log)
             except Exception as e:
-                _exc = process_tools.exception_info()
+                _exc = process_tools.icswExceptionInfo()
                 self.log(
                     "Exception when gathering kpi data: {}".format(process_tools.get_except_info()),
                     logging_tools.LOG_LEVEL_ERROR,

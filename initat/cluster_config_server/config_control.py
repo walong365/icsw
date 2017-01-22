@@ -120,7 +120,7 @@ class config_control(object):
             try:
                 ret_str = com_call(s_req)
             except:
-                exc_info = process_tools.exception_info()
+                exc_info = process_tools.icswExceptionInfo()
                 ret_str = "error interpreting command {}: {}".format(
                     node_text,
                     process_tools.get_except_info(),

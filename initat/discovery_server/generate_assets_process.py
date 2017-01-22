@@ -57,7 +57,7 @@ class GenerateAssetsProcess(threading_tools.icswProcessObj):
         try:
             asset_run.generate_assets()
         except:
-            _exc = process_tools.exception_info()
+            _exc = process_tools.icswExceptionInfo()
             _err = process_tools.get_except_info()
             self.log(
                 "error in asset_run.generate_assets: {}".format(_err),
@@ -89,7 +89,7 @@ class GenerateAssetsProcess(threading_tools.icswProcessObj):
         try:
             asset_batch.generate_assets()
         except:
-            _exc = process_tools.exception_info()
+            _exc = process_tools.icswExceptionInfo()
             _err = process_tools.get_except_info()
             self.log(
                 "error in asset_batch.generate_assets: {}".format(_err),

@@ -175,7 +175,6 @@ class Service(object):
                         except:
                             # cannot get server_check instance, set config_check_ok to False
                             self.config_check_ok = False
-                            # _exc_info = process_tools.exception_info()
                             _cr = None
                     if _cr is not None:
                         if _cr.effective_device:

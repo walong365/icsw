@@ -405,7 +405,7 @@ class BuildContainer(object):
                     "exec"
                 )
             except:
-                exc_info = process_tools.exception_info()
+                exc_info = process_tools.icswExceptionInfo()
                 self.log(
                     "error during compile of {} ({})".format(
                         cur_script.name,
@@ -453,7 +453,7 @@ class BuildContainer(object):
                         }
                     )
                 except:
-                    exc_info = process_tools.exception_info()
+                    exc_info = process_tools.icswExceptionInfo()
                     conf_dict["called"].setdefault(False, []).append((cur_conf.pk, [line for line in exc_info.log_lines]))
                     self.log(
                         "An Error occured during eval() after {}:".format(logging_tools.get_diff_time_str(time.time() - start_time)),

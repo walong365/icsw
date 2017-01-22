@@ -625,7 +625,7 @@ class handle_cached_config(View):
                     print("b")
                     # pass
                 except:
-                    for entry in process_tools.exception_info().log_lines:
+                    for entry in process_tools.icswExceptionInfo().log_lines:
                         logger.log(logging_tools.LOG_LEVEL_ERROR, entry)
                     request.xml_response.error(
                         "error saving entry '{}': {}".format(

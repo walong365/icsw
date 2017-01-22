@@ -129,8 +129,6 @@ class Machine(object):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-            # _e = process_tools.exception_info()
-            # print _e.log_lines
         else:
             pass
 

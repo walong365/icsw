@@ -141,7 +141,7 @@ class resize_process(threading_tools.icswProcessObj, server_mixins.OperationalEr
                             pass
                     else:
                         self.log("cannot get info about {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                        for _line in process_tools.exception_info().log_lines:
+                        for _line in process_tools.icswExceptionInfo().log_lines:
                             self.log(_line, logging_tools.LOG_LEVEL_ERROR)
                 else:
                     _changed = self.check_rrd_file_2(f_name, _rrd)

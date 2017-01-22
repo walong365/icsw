@@ -111,7 +111,7 @@ def main():
         except:
             # catastrophe
             from initat.tools import logging_tools, process_tools
-            for _line in process_tools.exception_info().log_lines:
+            for _line in process_tools.icswExceptionInfo().log_lines:
                 logging_tools.my_syslog(_line, logging_tools.LOG_LEVEL_ERROR)
     else:
         if gids:

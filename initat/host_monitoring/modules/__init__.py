@@ -45,7 +45,7 @@ for mod_name in __all__:
             if new_hm_mod.enabled:
                 _new_hm_list.append((new_hm_mod.Meta().priority, new_hm_mod))
     except:
-        exc_info = process_tools.exception_info()
+        exc_info = process_tools.icswExceptionInfo()
         for log_line in exc_info.log_lines:
             IMPORT_ERRORS.append((mod_name, "import", log_line))
 
@@ -65,7 +65,7 @@ for _pri, new_hm_mod in sorted(_new_hm_list, key=lambda x: x[0], reverse=True):
         try:
             new_hm_mod.add_command(loc_com, getattr(new_mod, loc_com))
         except:
-            exc_info = process_tools.exception_info()
+            exc_info = process_tools.icswExceptionInfo()
             for log_line in exc_info.log_lines:
                 IMPORT_ERRORS.append((new_mod.__name__, loc_com, log_line))
         # print getattr(getattr(new_mod, loc_com), "info_string", "???")

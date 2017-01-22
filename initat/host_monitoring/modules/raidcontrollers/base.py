@@ -194,7 +194,7 @@ class ctrl_check_struct(hm_classes.subprocess_struct):
         try:
             self.__ct_struct.process(self)
         except:
-            exc_info = process_tools.exception_info()
+            exc_info = process_tools.icswExceptionInfo()
             for _line in exc_info.log_lines:
                 self.log(_line, logging_tools.LOG_LEVEL_ERROR)
             self.srv_com.set_result(

@@ -140,7 +140,7 @@ def get_except_info(exc_info=None, **kwargs):
     )
 
 
-class exception_info(object):
+class icswExceptionInfo(object):
     def __init__(self, **kwargs):
         self.thread_name = threading.currentThread().getName()
         self.except_info = kwargs.get("exc_info", sys.exc_info())

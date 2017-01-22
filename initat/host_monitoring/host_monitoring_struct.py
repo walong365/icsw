@@ -472,7 +472,7 @@ class HostConnection(object):
                         process_tools.get_except_info()
                     )
                 )
-                exc_info = process_tools.exception_info()
+                exc_info = process_tools.icswExceptionInfo()
                 for line in exc_info.log_lines:
                     HostConnection.relayer_process.log(line, logging_tools.LOG_LEVEL_CRITICAL)
             self.send_result(cur_mes, ret)

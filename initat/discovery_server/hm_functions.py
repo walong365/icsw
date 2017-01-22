@@ -336,7 +336,7 @@ class HostMonitoringMixin(object):
                                 )
                                 if strict_mode:
                                     res_node.error(err_str)
-                                for _log in process_tools.exception_info().log_lines:
+                                for _log in process_tools.icswExceptionInfo().log_lines:
                                     self.log("  {}".format(_log), logging_tools.LOG_LEVEL_CRITICAL)
                                 all_ok = False
                             else:

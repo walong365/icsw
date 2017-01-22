@@ -806,7 +806,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         try:
             self.commands[srv_com["command"].text](srv_com)
         except:
-            for log_line in process_tools.exception_info().log_lines:
+            for log_line in process_tools.icswExceptionInfo().log_lines:
                 self.log(log_line, logging_tools.LOG_LEVEL_ERROR)
                 srv_com.set_result(
                     "caught server exception '{}'".format(process_tools.get_except_info()),

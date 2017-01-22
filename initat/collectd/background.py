@@ -213,7 +213,7 @@ class SNMPJob(object):
                         ),
                         logging_tools.LOG_LEVEL_CRITICAL
                     )
-                    for _log_line in process_tools.exception_info().log_lines:
+                    for _log_line in process_tools.icswExceptionInfo().log_lines:
                         self.log(_log_line, logging_tools.LOG_LEVEL_CRITICAL)
             # graphing
             self.bg_proc.process_data_xml(mv_tree, len(etree.tostring(mv_tree)))

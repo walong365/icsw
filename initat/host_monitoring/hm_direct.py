@@ -161,7 +161,7 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
                         self.send_echo(value["host"])
                     except:
                         value["error_list"].append(process_tools.get_except_info())
-                        for l in process_tools.exception_info().log_lines:
+                        for l in process_tools.icswExceptionInfo().log_lines:
                             print("l", l)
                         self.log(
                             "error sending to {}: {}".format(
