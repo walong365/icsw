@@ -26,8 +26,8 @@ system-wide constants for the ICSW
 
 import os
 import sys
+import platform
 
-from initat.tools.process_tools import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 __all__ = [
 
@@ -86,7 +86,7 @@ if any([_var in os.environ for _var in _os_vars]) and not all([_var in os.enviro
     )
     raise SystemExit
 
-if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+if platform.system() == "Windows":
     import site
 
     for _path in site.getsitepackages():
