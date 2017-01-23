@@ -714,7 +714,11 @@ class AssetRun(models.Model):
         self.asset_batch.save()
 
     def _generate_assets_pending_update_hm(self, tree):
-        package_format = tree.xpath('ns0:format', namespaces=tree.nsmap)[0].text
+        package_format = tree.xpath('ns0:format', namespaces=tree.nsmap)
+        if package_format:
+            package_format = package_format[0].text
+        else:
+            package_format = "linux"
         blob = tree.xpath('ns0:update_list', namespaces=tree.nsmap)[0].text
         l = server_command.decompress(blob, pickle=True)
         self.asset_batch.pending_updates_status = 1
@@ -909,7 +913,11 @@ class AssetRun(models.Model):
             new_pci.save()
 
     def _generate_assets_pci_hm(self, tree):
-        pci_dump_format = tree.xpath('ns0:pci_type', namespaces=tree.nsmap)[0].text
+        pci_dump_format = tree.xpath('ns0:pci_type', namespaces=tree.nsmap)
+        if pci_dump_format:
+            pci_dump_format = pci_dump_format[0]
+        else:
+            pci_dump_format = "linux"
         blob = tree.xpath('ns0:pci_dump', namespaces=tree.nsmap)[0].text
 
         if pci_dump_format == "linux":
@@ -1000,7 +1008,11 @@ class AssetRun(models.Model):
         self._generate_assets_dmi(xml)
 
     def _generate_assets_dmi_hm(self, tree):
-        dmi_type = tree.xpath('ns0:dmi_type', namespaces=tree.nsmap)[0].text
+        dmi_type = tree.xpath('ns0:dmi_type', namespaces=tree.nsmap)
+        if dmi_type:
+            dmi_type = dmi_type[0].text
+        else:
+            dmi_type = "linux"
         blob = tree.xpath('ns0:dmi_dump', namespaces=tree.nsmap)[0].text
         if dmi_type == "linux":
             xml = dmi_tools.decompress_dmi_info(blob)
