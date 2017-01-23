@@ -26,6 +26,9 @@ system-wide constants for the ICSW
 
 import os
 import sys
+import platform
+from enum import Enum
+
 
 __all__ = [
 
@@ -84,7 +87,29 @@ if any([_var in os.environ for _var in _os_vars]) and not all([_var in os.enviro
     )
     raise SystemExit
 
-CLUSTER_DIR = os.environ.get("ICSW_CLUSTER_DIR", _cluster_dir)
+class PlatformSystemTypeEnum(Enum):
+    LINUX = 1
+    WINDOWS = 2
+    UNKNOWN = 3
+
+if platform.system() == "Linux":
+    PLATFORM_SYSTEM_TYPE = PlatformSystemTypeEnum.LINUX
+elif platform.system() == "Windows":
+    PLATFORM_SYSTEM_TYPE = PlatformSystemTypeEnum.WINDOWS
+else:
+    PLATFORM_SYSTEM_TYPE = PlatformSystemTypeEnum.UNKNOWN
+
+if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+    import site
+
+    for _path in site.getsitepackages():
+        opt_path = os.path.join(_path, "opt")
+        if os.path.exists(opt_path):
+            CLUSTER_DIR = os.path.join(opt_path, "cluster")
+            break
+else:
+    CLUSTER_DIR = os.environ.get("ICSW_CLUSTER_DIR", _cluster_dir)
+
 ICSW_ROOT = os.environ.get("ICSW_ROOT", _icsw_root)
 
 # user extension dir
@@ -106,3 +131,5 @@ INITAT_BASE_DEBUG = os.path.dirname(__file__)
 
 # meta server directory
 META_SERVER_DIR = "/var/lib/meta-server"
+
+

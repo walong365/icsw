@@ -175,20 +175,16 @@ def sizeof_fmt(num, suffix='B'):
 
 
 def get_packages_for_ar(asset_run):
-    blob = asset_run.raw_result_str
+    blob = asset_run.raw_result
     runtype = asset_run.run_type
     scantype = asset_run.scan_type
 
     assets = []
 
-    if blob:
+    if blob is not None:
         if runtype == AssetType.PACKAGE:
             if scantype == ScanType.NRPE:
-                if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-                else:
-                    _data = bz2.decompress(base64.b64decode(blob))
-                l = json.loads(_data)
+                l = json.loads(blob)
                 for (name, version, size, date) in l:
                     if size == "Unknown":
                         size = 0
@@ -202,24 +198,50 @@ def get_packages_for_ar(asset_run):
                         )
                     )
             elif scantype == ScanType.HM:
-                tree = etree.fromstring(blob)
+                tree = blob
                 blob = tree.xpath('ns0:pkg_list', namespaces=tree.nsmap)[0].text
-                try:
-                    package_dict = server_command.decompress(blob, pickle=True)
-                except:
-                    raise
+                package_format = tree.xpath('ns0:format', namespaces=tree.nsmap)[0].text
+
+                assets = []
+                if package_format == "windows":
+                    packages = server_command.decompress(blob, pickle=True)
+
+                    for package in packages:
+                        if package.estimatedSize == "Unknown":
+                            package.estimatedSize = 0
+                        assets.append(
+                            BaseAssetPackage(
+                                package.displayName,
+                                version=package.displayVersion,
+                                size=package.estimatedSize,
+                                install_date=package.installDate,
+                                package_type=PackageTypeEnum.WINDOWS
+                            )
+                        )
                 else:
+                    try:
+                        package_dict = server_command.decompress(blob, pickle=True)
+                    except UnicodeDecodeError:
+                        # workaround for incompatible python2.x pickle dumps
+                        import pickle
+                        package_dict = bz2.decompress(base64.b64decode(blob))
+                        package_dict = pickle.loads(package_dict, encoding="latin1")
+
                     for package_name in package_dict:
                         for versions_dict in package_dict[package_name]:
                             installtimestamp = None
                             if 'installtimestamp' in versions_dict:
                                 installtimestamp = versions_dict['installtimestamp']
 
+                            size = 0
+                            if 'size' in versions_dict:
+                                size = versions_dict['size']
+
                             assets.append(
                                 BaseAssetPackage(
                                     package_name,
                                     version=versions_dict['version'],
-                                    size=versions_dict['size'],
+                                    size=size,
                                     release=versions_dict['release'],
                                     install_date=installtimestamp,
                                     package_type=PackageTypeEnum.LINUX

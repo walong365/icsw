@@ -37,6 +37,7 @@ from initat.host_monitoring import hm_classes, limits
 from initat.host_monitoring.constants import ZMQ_ID_MAP_STORE
 from initat.tools import cpu_database, logging_tools, partition_tools, pci_database, \
     process_tools, server_command, uuid_tools, config_store, dmi_tools
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 nw_classes = ["ethernet", "network", "infiniband"]
 
@@ -793,7 +794,10 @@ class _general(hm_classes.hm_module):
             # mv["mem.used.shared"] = 0
         else:
             # buffers + cached
-            bc_mem = virt_info.buffers + virt_info.cached
+            if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+                bc_mem = virt_info.buffers + virt_info.cached
+            else:
+                bc_mem = 0
             mv["mem.avail.phys"] = virt_info.total / 1024
             mv["mem.avail.swap"] = swap_info.total / 1024
             mv["mem.avail.total"] = (virt_info.total + swap_info.total) / 1024
@@ -807,8 +811,15 @@ class _general(hm_classes.hm_module):
             mv["mem.used.swap"] = (swap_info.total - swap_info.free) / 1024
             mv["mem.used.total"] = (virt_info.total + swap_info.total - (virt_info.free + swap_info.free + bc_mem)) / 1024
             mv["mem.used.total.bc"] = (virt_info.total + swap_info.total - (virt_info.free + swap_info.free)) / 1024
-            mv["mem.used.buffers"] = virt_info.buffers / 1024
-            mv["mem.used.cached"] = virt_info.cached / 1024
+
+            if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+                mv["mem.used.buffers"] = virt_info.buffers / 1024
+                mv["mem.used.cached"] = virt_info.cached / 1024
+            else:
+                mv["mem.used.buffers"] = 0
+                mv["mem.used.cached"] = 0
+
+
             # mv["mem.used.shared"] = mem_list["MemShared"]
         for call_name in ["_df_int", "_vmstat_int", "_nfsstat_int"]:
             try:
@@ -1750,7 +1761,7 @@ class load_command(hm_classes.hm_command):
 
 
 class uptime_command(hm_classes.hm_command):
-    info_string = "update information"
+    info_string = "uptime information"
 
     def __call__(self, srv_com, cur_ns):
         upt_data = [int(float(value)) for value in open("/proc/uptime", "r").read().strip().split()]
@@ -2058,7 +2069,13 @@ class thugepageinfo_command(hm_classes.hm_command):
 
 class pciinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        srv_com["pci_dump"] = self.module._pciinfo_int()
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+            srv_com["pci_type"] = "linux"
+            srv_com["pci_dump"] = self.module._pciinfo_int()
+        elif PLATFORM_SYSTEM_TYPE == PLATFORM_SYSTEM_TYPE.WINDOWS:
+            srv_com["pci_type"] = "windows"
+            srv_com["pci_dump"] = subprocess.check_output(["pciutils\lspci.exe", "-v", "-mm"])
+
         # srv_com["pci"] = pci_database.get_actual_pci_struct(*pci_database.get_pci_dicts())
 
     def interpret(self, srv_com, cur_ns):
@@ -2589,7 +2606,12 @@ class xrandr_command(hm_classes.hm_command):
 
 class dmiinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        srv_com["dmi_dump"] = self.module._dmiinfo_int()
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+            srv_com["dmi_type"] = "linux"
+            srv_com["dmi_dump"] = self.module._dmiinfo_int()
+        elif PLATFORM_SYSTEM_TYPE == PLATFORM_SYSTEM_TYPE.WINDOWS:
+            srv_com["dmi_type"] = "windows"
+            srv_com["dmi_dump"] = subprocess.check_output("dmidecode212.exe")
 
     def interpret(self, srv_com, cur_ns):
         with tempfile.NamedTemporaryFile() as tmp_file:
@@ -2634,6 +2656,46 @@ class dmiinfo_command(hm_classes.hm_command):
                 _out_f.append("")
             return limits.mon_STATE_OK, "\n".join(_out_f)
 
+
+class windowshardware_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+            from collections import defaultdict
+            import wmi
+
+            c = wmi.WMI()
+            mapping_classes = [
+                'Win32_DiskDriveToDiskPartition', 'Win32_LogicalDiskToPartition',
+            ]
+            classes = [
+                'Win32_PhysicalMemory', 'Win32_PhysicalMemoryArray',
+                'Win32_Processor', 'Win32_VideoController', 'Win32_DiskDrive',
+                'Win32_DiskPartition', 'Win32_LogicalDisk', 'Win32_NetworkAdapter',
+                'Win32_ComputerSystem', 'Win32_DesktopMonitor',
+            ]
+
+            def path(wmi_object):
+                return (wmi_object.Path_.Path)
+
+            mapping_info = defaultdict(list)
+            for class_name in mapping_classes:
+                results = c.query('SELECT * FROM {}'.format(class_name))
+                for result in results:
+                    key = path(result.Dependent)
+                    mapping_info[class_name].append((key, path(result.Antecedent)))
+
+            info = defaultdict(list)
+            for class_name in classes:
+                results = c.query('SELECT * FROM {}'.format(class_name))
+                for result in results:
+                    info_result = {'_path': path(result)}
+                    for prop in list(result.properties.keys()):
+                        value = getattr(result, prop)
+                        info_result[prop] = value
+                    info[class_name].append(info_result)
+
+            info.update(mapping_info)
+            srv_com["windowshardware_dict"] = server_command.compress(info, pickle=True)
 
 # helper routines
 def get_nfs_mounts():

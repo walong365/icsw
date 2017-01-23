@@ -23,8 +23,10 @@ simple interface to a file-base config store, file format is XML
 for password-types we need to add some encryption / message digest code via {algorithm}hash
 
 """
-
-import grp
+try:
+    import grp
+except ImportError:
+    grp = None
 import os
 import stat
 

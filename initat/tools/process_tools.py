@@ -20,13 +20,11 @@
 """ various tools to handle processes and stuff """
 
 import atexit
-import grp
 import inspect
 import marshal
 import os
 import pickle
 import platform
-import pwd
 import random
 import re
 import socket
@@ -41,17 +39,21 @@ import six
 from lxml import etree
 from lxml.builder import E
 
-from initat.constants import META_SERVER_DIR
+from initat.constants import META_SERVER_DIR, PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 from initat.tools import logging_tools
 
-if os.path.exists("/proc/stat"):
-    try:
-        import psutil
-    except (NotImplementedError, ImportError, IOError):
-        # handle chrooted calls
-        print("cannot import psutil, running chrooted ? setting psutil to None")
-        psutil = None
+if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+    import pwd
+    import grp
 else:
+    pwd = None
+    grp = None
+
+try:
+    import psutil
+except (NotImplementedError, ImportError, IOError):
+    # handle chrooted calls
+    # print("cannot import psutil, running chrooted ? setting psutil to None")
     psutil = None
 
 RUN_DIR = "/var/run"
@@ -246,16 +248,24 @@ def remove_zmq_dirs(dir_name):
     except:
         pass
 
+
+if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+    def getuid():
+        return 0
+    os.getuid = getuid
+
+
 LOCAL_ZMQ_DIR = "/var/run/icsw/zmq/.zmq_{:d}:{:d}".format(
     os.getuid(),
     os.getpid(),
 )
-
 LOCAL_ROOT_ZMQ_DIR = "/var/run/icsw/sockets"
+
+
 INIT_ZMQ_DIR_PID = "{:d}".format(os.getpid())
 ALLOW_MULTIPLE_INSTANCES = True
 
-
+IPC_TO_TCP_PORT_MAP = {}
 def get_zmq_ipc_name(name, **kwargs):
     if "s_name" in kwargs:
         s_name = kwargs["s_name"]
@@ -287,20 +297,38 @@ def get_zmq_ipc_name(name, **kwargs):
     else:
         if ALLOW_MULTIPLE_INSTANCES and not ctri:
             root_dir = os.path.join(LOCAL_ROOT_ZMQ_DIR, INIT_ZMQ_DIR_PID)
-            atexit.register(remove_zmq_dirs, root_dir)
+            if not PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+                atexit.register(remove_zmq_dirs, root_dir)
         else:
             root_dir = LOCAL_ROOT_ZMQ_DIR
-    if not os.path.isdir(root_dir):
+
+    if not os.path.isdir(root_dir) and not PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
         os.mkdir(root_dir)
     sub_dir = os.path.join(root_dir, s_name)
-    if not os.getuid():
+    if not os.getuid() and not PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
         atexit.register(remove_zmq_dirs, sub_dir)
-    if not os.path.isdir(sub_dir):
+    if not os.path.isdir(sub_dir) and not PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
         os.mkdir(sub_dir)
     _name = "ipc://{}/{}".format(
         sub_dir,
         name
     )
+
+    if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+        def get_free_loopback_port():
+            sock = socket.socket()
+            sock.bind(("127.0.0.1", 0))
+            host, port = sock.getsockname()
+            sock.close()
+            return port
+
+        if _name not in IPC_TO_TCP_PORT_MAP:
+            tcp_name = "tcp://127.0.0.1:{}".format(get_free_loopback_port())
+            IPC_TO_TCP_PORT_MAP[_name] = tcp_name
+            _name = tcp_name
+        else:
+            _name = IPC_TO_TCP_PORT_MAP[_name]
+
     return _name
 
 

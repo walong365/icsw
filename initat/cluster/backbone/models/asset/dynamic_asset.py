@@ -39,6 +39,7 @@ from initat.cluster.backbone.models.asset.asset_functions import \
     RunResult, AssetType, sizeof_fmt
 from initat.cluster.backbone.models.partition import partition_disc, \
     partition_table, partition, partition_fs, LogicalDisc
+from initat.cluster.backbone.models.asset.asset_functions import get_packages_for_ar
 from initat.cluster.backbone.tools.hw import Hardware
 from initat.tools import server_command, pci_database, dmi_tools
 from initat.tools.bgnotify.create import propagate_channel_object
@@ -532,57 +533,16 @@ class AssetRun(models.Model):
                 self.save()
 
     def _generate_assets_package_nrpe(self, data):
-        assets = []
-        if self.scan_type == ScanType.NRPE:
-            l = json.loads(data)
-            for (name, version, size, date) in l:
-                if size == "Unknown":
-                    size = 0
-                assets.append(
-                    BaseAssetPackage(
-                        name,
-                        version=version,
-                        size=size,
-                        install_date=date,
-                        package_type=PackageTypeEnum.WINDOWS
-                    )
-                )
-        self._generate_assets_package(assets)
+        _ = data
+        self._generate_assets_package()
 
     def _generate_assets_package_hm(self, tree):
-        blob = tree.xpath('ns0:pkg_list', namespaces=tree.nsmap)[0].text
-        assets = []
-        try:
-            package_dict = server_command.decompress(blob, pickle=True)
-        except UnicodeDecodeError:
-            # workaround for incompatible python2.x pickle dumps
-            import pickle
-            package_dict = bz2.decompress(base64.b64decode(blob))
-            package_dict = pickle.loads(package_dict, encoding="latin1")
+        _ = tree
+        self._generate_assets_package()
 
-        for package_name in package_dict:
-            for versions_dict in package_dict[package_name]:
-                installtimestamp = None
-                if 'installtimestamp' in versions_dict:
-                    installtimestamp = versions_dict['installtimestamp']
+    def _generate_assets_package(self):
+        assets = get_packages_for_ar(self)
 
-                size = 0
-                if 'size' in versions_dict:
-                    size = versions_dict['size']
-
-                assets.append(
-                    BaseAssetPackage(
-                        package_name,
-                        version=versions_dict['version'],
-                        size=size,
-                        release=versions_dict['release'],
-                        install_date=installtimestamp,
-                        package_type=PackageTypeEnum.LINUX
-                    )
-                )
-        self._generate_assets_package(assets)
-
-    def _generate_assets_package(self, assets):
         aps_needing_save = []
         apvs_needing_save = []
         apviis_needing_save = []
@@ -672,7 +632,12 @@ class AssetRun(models.Model):
     def _generate_assets_hardware_hm(self, tree):
         blob = tree.xpath('ns0:lstopo_dump', namespaces=tree.nsmap)[0].text
         xml_str = bz2.decompress(base64.b64decode(blob))
-        root = etree.fromstring(xml_str)
+
+        try:
+            root = etree.fromstring(xml_str)
+        except etree.XMLSyntaxError:
+            return
+
         self._generate_assets_hardware(root)
 
     def _generate_assets_hardware(self, root):
@@ -749,36 +714,98 @@ class AssetRun(models.Model):
         self.asset_batch.save()
 
     def _generate_assets_pending_update_hm(self, tree):
-        blob = tree.xpath('ns0:update_list', namespaces=tree.nsmap)[0]\
-            .text
+        package_format = tree.xpath('ns0:format', namespaces=tree.nsmap)
+        if package_format:
+            package_format = package_format[0].text
+        else:
+            package_format = "linux"
+        blob = tree.xpath('ns0:update_list', namespaces=tree.nsmap)[0].text
         l = server_command.decompress(blob, pickle=True)
         self.asset_batch.pending_updates_status = 1
-        for (name, version) in l:
+        if package_format == "windows":
+            for (name, optional) in l:
+                asset_update_entry = AssetUpdateEntry.objects.filter(
+                    name=name,
+                    version="",
+                    release="",
+                    kb_idx=0,
+                    install_date=None,
+                    status="",
+                    optional=optional,
+                    installed=False,
+                    new_version=""
+                )
+                if asset_update_entry:
+                    asset_update_entry = asset_update_entry[0]
+                else:
+                    asset_update_entry = AssetUpdateEntry(
+                        name=name,
+                        installed=False,
+                        optional=optional,
+                    )
+                    asset_update_entry.save()
+
+                self.asset_batch.pending_updates.add(asset_update_entry)
+                self.asset_batch.pending_updates_status = 2
+        else:
+            for (name, version) in l:
+                asset_update_entry = AssetUpdateEntry.objects.filter(
+                    name=name,
+                    version="",
+                    release="",
+                    kb_idx=0,
+                    install_date=None,
+                    status="",
+                    optional=True,
+                    installed=False,
+                    new_version=version
+                    )
+                if asset_update_entry:
+                    asset_update_entry = asset_update_entry[0]
+                else:
+                    asset_update_entry = AssetUpdateEntry(
+                        name=name,
+                        # by definition linux updates are optional
+                        optional=True,
+                        installed=False,
+                        new_version=version,
+                    )
+                    asset_update_entry.save()
+
+                self.asset_batch.pending_updates.add(asset_update_entry)
+                self.asset_batch.pending_updates_status = 2
+        self.asset_batch.save()
+
+    def _generate_assets_update_hm(self, tree):
+        blob = tree.xpath('ns0:installed_updates', namespaces=tree.nsmap)[0].text
+        l = server_command.decompress(blob, pickle=True)
+        self.asset_batch.installed_updates_status = 1
+        for (name, up_date, status) in l:
             asset_update_entry = AssetUpdateEntry.objects.filter(
                 name=name,
                 version="",
                 release="",
                 kb_idx=0,
-                install_date=None,
-                status="",
-                optional=True,
-                installed=False,
-                new_version=version
+                install_date=dateparse.parse_datetime(up_date),
+                status=status,
+                optional=False,
+                installed=True,
+                new_version=""
                 )
             if asset_update_entry:
                 asset_update_entry = asset_update_entry[0]
             else:
                 asset_update_entry = AssetUpdateEntry(
                     name=name,
-                    # by definition linux updates are optional
-                    optional=True,
-                    installed=False,
-                    new_version=version,
+                    install_date=dateparse.parse_datetime(up_date),
+                    status=status,
+                    optional=False,
+                    installed=True
                 )
                 asset_update_entry.save()
 
-            self.asset_batch.pending_updates.add(asset_update_entry)
-            self.asset_batch.pending_updates_status = 2
+            self.asset_batch.installed_updates.add(asset_update_entry)
+            self.asset_batch.installed_updates_status = 2
         self.asset_batch.save()
 
     def _generate_assets_update_nrpe(self, data):
@@ -886,31 +913,90 @@ class AssetRun(models.Model):
             new_pci.save()
 
     def _generate_assets_pci_hm(self, tree):
+        pci_dump_format = tree.xpath('ns0:pci_type', namespaces=tree.nsmap)
+        if pci_dump_format:
+            pci_dump_format = pci_dump_format[0]
+        else:
+            pci_dump_format = "linux"
         blob = tree.xpath('ns0:pci_dump', namespaces=tree.nsmap)[0].text
-        s = pci_database.pci_struct_to_xml(
-            pci_database.decompress_pci_info(blob)
-        )
-        for func in s.findall(".//func"):
-            _slot = func.getparent()
-            _bus = _slot.getparent()
-            _domain = _bus.getparent()
-            new_pci = AssetPCIEntry(
-                asset_run=self,
-                domain=int(_domain.get("id")),
-                bus=int(_domain.get("id")),
-                slot=int(_slot.get("id")),
-                func=int(func.get("id")),
-                pci_class=int(func.get("class"), 16),
-                subclass=int(func.get("subclass"), 16),
-                device=int(func.get("device"), 16),
-                vendor=int(func.get("vendor"), 16),
-                revision=int(func.get("revision"), 16),
-                pci_classname=func.get("classname"),
-                subclassname=func.get("subclassname"),
-                devicename=func.get("devicename"),
-                vendorname=func.get("vendorname"),
+
+        if pci_dump_format == "linux":
+            s = pci_database.pci_struct_to_xml(
+                pci_database.decompress_pci_info(blob)
             )
-            new_pci.save()
+            for func in s.findall(".//func"):
+                _slot = func.getparent()
+                _bus = _slot.getparent()
+                _domain = _bus.getparent()
+                new_pci = AssetPCIEntry(
+                    asset_run=self,
+                    domain=int(_domain.get("id")),
+                    bus=int(_domain.get("id")),
+                    slot=int(_slot.get("id")),
+                    func=int(func.get("id")),
+                    pci_class=int(func.get("class"), 16),
+                    subclass=int(func.get("subclass"), 16),
+                    device=int(func.get("device"), 16),
+                    vendor=int(func.get("vendor"), 16),
+                    revision=int(func.get("revision"), 16),
+                    pci_classname=func.get("classname"),
+                    subclassname=func.get("subclassname"),
+                    devicename=func.get("devicename"),
+                    vendorname=func.get("vendorname"),
+                )
+                new_pci.save()
+        elif pci_dump_format == "windows":
+            info_dicts = []
+            info_dict = {}
+            for line in blob.split("\r\n"):
+                if len(line) == 0:
+                    if len(info_dict) > 0:
+                        info_dicts.append(info_dict)
+                        info_dict = {}
+                if line.startswith("Slot:"):
+                    info_dict['slot'] = line.split("\t", 1)[1]
+
+                    comps = info_dict['slot'].split(":")
+                    bus = comps[0]
+
+                    comps = comps[1].split(".")
+                    slot = comps[0]
+                    func = comps[1]
+
+                    info_dict['bus'] = bus
+                    info_dict['slot'] = slot
+                    info_dict['func'] = func
+                elif line.startswith("Class:"):
+                    info_dict['class'] = line.split("\t", 1)[1]
+                elif line.startswith("Vendor:"):
+                    info_dict['vendor'] = line.split("\t", 1)[1]
+                elif line.startswith("Device:"):
+                    info_dict['device'] = line.split("\t", 1)[1]
+                elif line.startswith("SVendor:"):
+                    info_dict['svendor'] = line.split("\t", 1)[1]
+                elif line.startswith("SDevice:"):
+                    info_dict['sdevice'] = line.split("\t", 1)[1]
+                elif line.startswith("Rev:"):
+                    info_dict['rev'] = line.split("\t", 1)[1]
+
+            for info_dict in info_dicts:
+                new_pci = AssetPCIEntry(
+                    asset_run=self,
+                    domain=0,
+                    bus=int(info_dict['bus'], 16) if 'bus' in info_dict else 0,
+                    slot=int(info_dict['slot'], 16) if 'slot' in info_dict else 0,
+                    func=int(info_dict['func'], 16) if 'func' in info_dict else 0,
+                    pci_class=0,
+                    subclass=0,
+                    device=0,
+                    vendor=0,
+                    revision=int(info_dict['rev'], 16) if 'rev' in info_dict else 0,
+                    pci_classname=info_dict['class'],
+                    subclassname=info_dict['class'],
+                    devicename=info_dict['device'],
+                    vendorname=info_dict['vendor'],
+                )
+                new_pci.save()
 
     def _generate_assets_dmi_nrpe(self, blob):
         _lines = []
@@ -922,8 +1008,23 @@ class AssetRun(models.Model):
         self._generate_assets_dmi(xml)
 
     def _generate_assets_dmi_hm(self, tree):
+        dmi_type = tree.xpath('ns0:dmi_type', namespaces=tree.nsmap)
+        if dmi_type:
+            dmi_type = dmi_type[0].text
+        else:
+            dmi_type = "linux"
         blob = tree.xpath('ns0:dmi_dump', namespaces=tree.nsmap)[0].text
-        xml = dmi_tools.decompress_dmi_info(blob)
+        if dmi_type == "linux":
+            xml = dmi_tools.decompress_dmi_info(blob)
+        elif dmi_type == "windows":
+            _lines = []
+            for line in blob.split("\r\n"):
+                _lines.append(line)
+                if line == "End Of Table":
+                    break
+            xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(_lines))
+        else:
+            xml = None
         self._generate_assets_dmi(xml)
 
     def _generate_assets_dmi(self, xml):
@@ -1098,13 +1199,22 @@ class AssetBatch(models.Model):
                         arg_value = json.loads(blob)
                     elif run.scan_type == ScanType.HM:
                         tree = run.raw_result
-                        if run.run_type == AssetType.PARTITION:
+                        if run.run_type == AssetType.PRETTYWINHW:
+                            try:
+                                blob = tree.xpath('ns0:windowshardware_dict', namespaces=tree.nsmap)[0].text
+                            except IndexError:
+                                continue
+                            arg_value = server_command.decompress(blob, pickle=True)
+                        elif run.run_type == AssetType.PARTITION:
                             arg_value = tree
                         else:
-                            blob = tree.xpath(
-                                'ns0:{}'.format(arg_name),
-                                namespaces=tree.nsmap
-                            )[0].text
+                            try:
+                                blob = tree.xpath(
+                                    'ns0:{}'.format(arg_name),
+                                    namespaces=tree.nsmap
+                                )[0].text
+                            except IndexError:
+                                blob = None
                             if not blob:
                                 continue
                             if arg_name in ["lsblk_dump"]:
@@ -1119,7 +1229,10 @@ class AssetBatch(models.Model):
                             else:
                                 blob = server_command.decompress(blob)
                             if run.run_type == AssetType.LSHW:
-                                arg_value = etree.fromstring(blob)
+                                try:
+                                    arg_value = etree.fromstring(blob)
+                                except:
+                                    continue
                             else:
                                 arg_value = blob
 
@@ -1274,26 +1387,28 @@ class DeviceInventory(models.Model):
 
 ASSETTYPE_HM_COMMAND_MAP = {
     AssetType.PACKAGE: "rpmlist",
+    AssetType.PENDING_UPDATE: "updatelist",
+    AssetType.UPDATE: "installedupdates",
     AssetType.HARDWARE: "lstopo",
     AssetType.PROCESS: "proclist",
-    AssetType.PENDING_UPDATE: "updatelist",
     AssetType.DMI: "dmiinfo",
     AssetType.PCI: "pciinfo",
     AssetType.LSHW: "lshw",
     AssetType.PARTITION: "partinfo",
     AssetType.LSBLK: "lsblk",
-    AssetType.XRANDR: "xrandr"
+    AssetType.XRANDR: "xrandr",
+    AssetType.PRETTYWINHW: "windowshardware",
 }
 
 
 ASSETTYPE_NRPE_COMMAND_MAP = {
     AssetType.PACKAGE: "list-software-py3",
     AssetType.HARDWARE: "list-hardware-lstopo-py3",
+    AssetType.PENDING_UPDATE: "list-pending-updates-py3",
     AssetType.UPDATE: "list-updates-alt-py3",
     AssetType.DMI: "dmiinfo",
     AssetType.PCI: "pciinfo",
     AssetType.PRETTYWINHW: "list-hardware-py3",
-    AssetType.PENDING_UPDATE: "list-pending-updates-py3"
 }
 
 

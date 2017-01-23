@@ -45,6 +45,7 @@ import zmq
 
 from initat.tools import io_stream_helper, logging_tools, process_tools
 from initat.debug import ICSW_DEBUG_MODE
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 # default stacksize
 DEFAULT_STACK_SIZE = 2 * 1024 * 1024
@@ -690,13 +691,16 @@ class ExceptionHandlingMixin(object):
                     )
             out_lines.append(except_info)
             # write to logging-server
-            err_h = io_stream_helper.icswIOStream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
-            err_h.write("\n".join(out_lines))
-            err_h.close()
-            self.log(
-                "waiting for 1 second",
-                logging_tools.LOG_LEVEL_WARN
-            )
+            if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+                err_h = io_stream_helper.icswIOStream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
+                err_h.write("\n".join(out_lines))
+                err_h.close()
+                self.log(
+                    "waiting for 1 second",
+                    logging_tools.LOG_LEVEL_WARN
+                )
+            else:
+                print("\n".join(out_lines))
             time.sleep(1)
         return _handled
 
@@ -916,14 +920,17 @@ class icswProcessObj(multiprocessing.Process, TimerBase, PollerBase, icswProcess
             self.log(" ... ignoring", logging_tools.LOG_LEVEL_WARN)
 
     def _install_signal_handlers(self):
-        # ignore all signals
-        for sig_num in [
+        signals = [
             signal.SIGTERM,
-            signal.SIGINT,
-            signal.SIGTSTP,
-            signal.SIGALRM,
-            signal.SIGHUP,
-        ]:
+            signal.SIGINT
+        ]
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+            signals.append(signal.SIGTSTP)
+            signals.append(signal.SIGALRM)
+            signals.append(signal.SIGHUP)
+
+        # ignore all signals
+        for sig_num in signals:
             signal.signal(sig_num, signal.SIG_IGN)
 
     def allow_signal(self, sig_num):
@@ -1155,7 +1162,9 @@ class icswProcessPool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingM
         self.set_stack_size(kwargs.get("stack_size", DEFAULT_STACK_SIZE))
         self.__processes_stopped = set()
         # clock ticks per second
-        self.__sc_clk_tck = float(os.sysconf(os.sysconf_names["SC_CLK_TCK"]))
+        self.__sc_clk_tck = 100.0
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+            self.__sc_clk_tck = float(os.sysconf(os.sysconf_names["SC_CLK_TCK"]))
         self.__cpu_usage = []
 
     @property
@@ -1473,16 +1482,27 @@ class icswProcessPool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingM
         sig_str = "got signal {:d}".format(signum)
         self.log(sig_str)
         # return self._handle_exception()
-        if signum == signal.SIGTERM:
-            raise term_error(sig_str)
-        elif signum == signal.SIGINT:
-            raise int_error(sig_str)
-        elif signum == signal.SIGTSTP:
-            raise stop_error(sig_str)
-        elif signum == signal.SIGALRM:
-            raise alarm_error(sig_str)
-        elif signum == signal.SIGHUP:
-            raise hup_error(sig_str)
+
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+            if signum == signal.SIGTERM:
+                raise term_error(sig_str)
+            elif signum == signal.SIGINT:
+                raise int_error(sig_str)
+            elif signum == signal.SIGTSTP:
+                raise stop_error(sig_str)
+            elif signum == signal.SIGALRM:
+                raise alarm_error(sig_str)
+            elif signum == signal.SIGHUP:
+                raise hup_error(sig_str)
+            else:
+                raise
+        elif PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+            if signum == signal.SIGTERM:
+                raise term_error(sig_str)
+            elif signum == signal.SIGINT:
+                raise int_error(sig_str)
+            else:
+                raise
         else:
             raise
 
@@ -1491,13 +1511,17 @@ class icswProcessPool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingM
             self["signal_handlers_installed"] = True
             self.log("installing signal handlers")
             self.__orig_sig_handlers = {}
-            for sig_num in [
+
+            signals = [
                 signal.SIGTERM,
-                signal.SIGINT,
-                signal.SIGTSTP,
-                signal.SIGALRM,
-                signal.SIGHUP
-            ]:
+                signal.SIGINT
+            ]
+            if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+                signals.append(signal.SIGTSTP)
+                signals.append(signal.SIGALRM)
+                signals.append(signal.SIGHUP)
+
+            for sig_num in signals:
                 self.__orig_sig_handlers[sig_num] = signal.signal(sig_num, self._sig_handler)
 
     def uninstall_signal_handlers(self):

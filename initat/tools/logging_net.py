@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2001-2017 Andreas Lang-Nevyjel
 #
@@ -30,9 +29,11 @@ import sys
 import threading
 import time
 import traceback
+import datetime
 
 import zmq
 
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 from .logging_tools import LOG_LEVEL_OK, rewrite_log_destination, my_syslog, get_plural, UNIFIED_NAME
 
 CONTEXT_KEY = "__ctx__"
@@ -123,7 +124,14 @@ class icswLogAdapter(logging.LoggerAdapter):
         if self.__prefix:
             what = "{}{}".format(self.__prefix, what)
         try:
-            logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
+            if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+                logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
+            else:
+                _, file_name, line_num, _, _, _ = inspect.stack()[1]
+                _, file_name = os.path.split(file_name)
+                level_name = logging.getLevelName(level)
+                cur_time = datetime.datetime.now().ctime()
+                print("{} : {} [{}.{}] {}".format(cur_time, level_name, file_name, line_num, what))
         except:
             my_syslog(what)
             print(what, self)

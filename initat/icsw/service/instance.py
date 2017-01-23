@@ -28,8 +28,9 @@ from lxml import etree
 from lxml.builder import E
 
 from initat.tools import logging_tools, process_tools
-from .constants import SERVERS_DIR
+from .constants import SERVERS_DIR, CLUSTER_DIR
 
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 def _dummy_log_com(what, log_level=logging_tools.LOG_LEVEL_OK):
     print("{} {}".format(logging_tools.get_log_level_str(log_level), what))
@@ -45,6 +46,18 @@ class RelaxNG(object):
     cache = {}
 
     def __init__(self, start_dir, name):
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+            path_comps = []
+            while True:
+                start_dir, ext = os.path.split(start_dir)
+                if ext == "cluster":
+                    break
+                path_comps.append(ext)
+
+            start_dir = CLUSTER_DIR
+            for path_comp in reversed(path_comps):
+                start_dir = os.path.join(start_dir, path_comp)
+
         self.name = name
         if self.name not in RelaxNG.cache:
             RelaxNG.cache[self.name] = etree.RelaxNG(
@@ -118,6 +131,10 @@ class InstanceXML(object):
         else:
             # not beautiful but working
             _dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", SERVERS_DIR[1:])
+
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+            _dir = os.path.join(CLUSTER_DIR, "etc", "servers.d")
+
         _inst_ng = RelaxNG(_dir, "instance")
         _overlay_ng = RelaxNG(_dir, "overlay")
         self.tree = E.instances()

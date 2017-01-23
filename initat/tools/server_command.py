@@ -28,6 +28,7 @@ import marshal
 import os
 import pickle
 import re
+import platform
 
 from lxml import etree
 from lxml.builder import ElementMaker
@@ -151,7 +152,7 @@ class srv_command(object):
         else:
             self.__tree = self.__builder.ics_batch(
                 self.__builder.source(
-                    host=os.uname()[1],
+                    host=platform.uname()[1],
                     pid="{:d}".format(os.getpid())),
                 self.__builder.command(kwargs.pop("command", "not set")),
                 self.__builder.identity(kwargs.pop("identity", "not set")),
@@ -481,7 +482,7 @@ class srv_command(object):
         if len(_source):
             _source[0].attrib.update(
                 {
-                    "host": os.uname()[1],
+                    "host": platform.uname()[1],
                     "pid": "{:d}".format(os.getpid()),
                     "sendcounter": "{:d}".format(
                         1 + self.sendcounter
