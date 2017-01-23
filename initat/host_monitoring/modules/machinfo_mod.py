@@ -1592,8 +1592,16 @@ class mem_command(hm_classes.hm_command):
             )
             _fact = 1024
         else:
-            buffers = mem_dict["buffers"]
-            cached = mem_dict["cached"]
+            if "buffers" in mem_dict:
+                buffers = mem_dict["buffers"]
+            else:
+                buffers = 0
+
+            if "cached" in mem_dict:
+                cached = mem_dict["cached"]
+            else:
+                cached = 0
+
             mem_total, mem_free = (
                 mem_dict["total"],
                 mem_dict["free"],
@@ -1764,10 +1772,13 @@ class uptime_command(hm_classes.hm_command):
     info_string = "uptime information"
 
     def __call__(self, srv_com, cur_ns):
-        upt_data = [int(float(value)) for value in open("/proc/uptime", "r").read().strip().split()]
-        srv_com["uptime"] = "%d" % (upt_data[0])
-        if len(upt_data) > 1:
-            srv_com["idle"] = "%d" % (upt_data[1])
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+            srv_com["uptime"] = "{}".format(time.time() - psutil.boot_time())
+        else:
+            upt_data = [int(float(value)) for value in open("/proc/uptime", "r").read().strip().split()]
+            srv_com["uptime"] = "%d" % (upt_data[0])
+            if len(upt_data) > 1:
+                srv_com["idle"] = "%d" % (upt_data[1])
 
     def interpret(self, srv_com, cur_ns):
         uptime_int = int(srv_com["uptime"].text)
