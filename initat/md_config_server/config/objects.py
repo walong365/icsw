@@ -154,7 +154,11 @@ class MonAllCommands(MonFileContainer):
             cluster_name = "N/A"
         else:
             # cluster_name has to be set, otherwise something went seriously wrong while setting up the cluster
-            cluster_name = cluster_location.db_device_variable(cdg, "CLUSTER_NAME", description="name of the cluster").get_value()
+            cluster_name = cluster_location.db_device_variable(
+                cdg,
+                "CLUSTER_NAME",
+                description="name of the cluster"
+            ).get_value()
         md_vers = global_config["MD_VERSION_STRING"]
         md_type = global_config["MD_TYPE"]
         send_mail_prog = os.path.join(

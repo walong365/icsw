@@ -24,8 +24,8 @@
 import base64
 import datetime
 import glob
-import time
 import os
+import time
 
 import dateutil.parser
 from lxml import etree
@@ -200,7 +200,11 @@ class LicenseFileReader(object):
         """
         only check if the license is valid by examining the given timeframe, do not check fingerprint violations
         """
-        parse_date = lambda date_str: datetime.date(*(int(i) for i in date_str.split("-")))
+        parse_date = lambda date_str: datetime.date(
+            *(
+                int(_i) for _i in date_str.split("-")
+            )
+        )
 
         valid_from = parse_date(lic_xml.find("icsw:valid-from", ICSW_XML_NS_MAP).text)
         valid_to = parse_date(lic_xml.find("icsw:valid-to", ICSW_XML_NS_MAP).text)

@@ -99,18 +99,17 @@ class MonUniqueList(object):
 
     def add(self, name):
         if name not in self._list:
-            self._list.add(name)
-            return name
+            _name = name
         else:
-            add_idx = 1
+            # create new unique name with an integer postfix
+            add_idx = 0
             while True:
+                add_idx += 1
                 _name = "{}_{:d}".format(name, add_idx)
                 if _name not in self._list:
                     break
-                else:
-                    add_idx += 1
-            self._list.add(_name)
-            return _name
+        self._list.add(_name)
+        return _name
 
 
 class CfgEmitStats(object):

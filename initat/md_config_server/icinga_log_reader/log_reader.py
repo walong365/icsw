@@ -44,11 +44,11 @@ from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log
 from initat.tools import threading_tools, logging_tools
 # separated to enable flawless import from webfrontend
 
-from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
+from initat.md_config_server.icinga_log_reader.log_reader_utils import HostServiceIDUtil
 
 __all__ = [
     "IcingaLogReader",
-    "host_service_id_util",
+    "HostServiceIDUtil",
 ]
 
 
@@ -728,7 +728,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         # used for service and service flapping alerts as well as service notifications
 
         # primary method: check special service description
-        host, service, service_info = host_service_id_util.parse_host_service_description(service_spec, self.log)
+        host, service, service_info = HostServiceIDUtil.parse_host_service_description(service_spec, self.log)
 
         if host not in self._valid_host_ids:
             host = None  # host has been properly logged, but doesn't exist any more

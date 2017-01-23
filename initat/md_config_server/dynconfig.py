@@ -34,7 +34,7 @@ from initat.cluster.backbone.models import device, monitoring_hint, mon_check_co
     mon_check_command, DeviceLogEntry
 from initat.host_monitoring import limits
 from initat.md_config_server.config import global_config
-from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
+from initat.md_config_server.icinga_log_reader.log_reader import HostServiceIDUtil
 from initat.tools import logging_tools, server_command, process_tools, threading_tools
 
 
@@ -76,7 +76,7 @@ class DynConfigProcess(threading_tools.icswProcessObj):
                     _check.check_command_pk = _check.pk
                     _check.mccs_id = None
                     # print _check, _dev
-                    _ocsp_prefix = host_service_id_util.create_host_service_description(_dev.pk, _check, "")
+                    _ocsp_prefix = HostServiceIDUtil.create_host_service_description(_dev.pk, _check, "")
                     ocsp_line = "[{:d}] PROCESS_SERVICE_CHECK_RESULT;{};{};{:d};{}".format(
                         int(time.time()),
                         _dev.full_name,
@@ -208,7 +208,7 @@ class DynConfigProcess(threading_tools.icswProcessObj):
                 else:
                     _mc.check_command_pk = _mc.pk
                     _mc.mccs_id = _mcs.pk
-                    _prefix = host_service_id_util.create_host_service_description(cur_dev.pk, _mc, "")
+                    _prefix = HostServiceIDUtil.create_host_service_description(cur_dev.pk, _mc, "")
             except mon_check_command.MultipleObjectsReturned:
                 # more than one check command found
                 self.log(
@@ -221,7 +221,7 @@ class DynConfigProcess(threading_tools.icswProcessObj):
             else:
                 _mc.check_command_pk = _mc.pk
                 _mc.mccs_id = _mcs.pk
-                _prefix = host_service_id_util.create_host_service_description(cur_dev.pk, _mc, "")
+                _prefix = HostServiceIDUtil.create_host_service_description(cur_dev.pk, _mc, "")
         return _prefix
 
     def _create_hints_ipmi(self, cur_dev, mon_info):

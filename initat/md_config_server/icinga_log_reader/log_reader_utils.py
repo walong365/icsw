@@ -2,7 +2,7 @@
 #
 # this file is part of md-config-server
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <mallinger@init.at>, <lang-nevyjel@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 3 as
@@ -18,14 +18,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-# separated to enable flawless import from webfrontend
+"""
+class for encoding and decoding icinga command names
+separated to enable flawless import from webfrontend
+"""
 
 __all__ = [
-    "host_service_id_util",
+    "HostServiceIDUtil",
 ]
 
 
-class host_service_id_util(object):
+class HostServiceIDUtil(object):
 
     """
     NOTE: we could also encode hosts like this, but then we need to always use this host identification
@@ -68,9 +71,10 @@ class host_service_id_util(object):
         )
 
     @classmethod
-    def create_host_service_description_direct(cls, host_pk, check_command_pk=None,
-                                               special_check_command_pk=None, info=""):
-        retval = None
+    def create_host_service_description_direct(
+        cls, host_pk, check_command_pk=None,
+        special_check_command_pk=None, info=""
+    ):
         if special_check_command_pk is not None:
             # special service check
             # form is similar to regular service check, other prefix and we also set the pk of the special_command

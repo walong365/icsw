@@ -23,7 +23,7 @@ from argparse import Namespace
 
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.host_monitoring.modules.raidcontrollers.all import AllRAIDCtrl
-from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
+from initat.md_config_server.icinga_log_reader.log_reader import HostServiceIDUtil
 from initat.md_config_server.special_commands.base import SpecialBase
 from ..struct import DynamicCheckServer, DynamicCheckAction
 
@@ -86,7 +86,7 @@ class SpecialMegaraidSas(SpecialBase):
 
     def call(self):
         # print self.host, self.s_check
-        _passive_check_prefix = host_service_id_util.create_host_service_description(self.host.pk, self.parent_check, "")
+        _passive_check_prefix = HostServiceIDUtil.create_host_service_description(self.host.pk, self.parent_check, "")
         hints = self.hint_list
         if not hints:
             hints = [self._transform_to_hint(entry) for entry in self.RCClass()._dummy_hints()]

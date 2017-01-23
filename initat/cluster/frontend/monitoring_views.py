@@ -233,7 +233,7 @@ class DummyLogger(object):
 class NodeStatusViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
     def get_all(self, request):
-        from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
+        from initat.md_config_server.icinga_log_reader.log_reader_utils import HostServiceIDUtil
         def _to_fqdn(_vals):
             if _vals[2]:
                 return "{}.{}".format(_vals[1], _vals[2])
@@ -285,7 +285,7 @@ class NodeStatusViewSet(viewsets.ViewSet):
             service_results_filtered = []
             if len(service_results):
                 for serv_res in json.loads(service_results[0]):
-                    host_pk, service_pk, _ = host_service_id_util.parse_host_service_description(
+                    host_pk, service_pk, _ = HostServiceIDUtil.parse_host_service_description(
                         serv_res['description'],
                         log=logger.error
                     )
