@@ -464,7 +464,7 @@ class _general(hm_classes.hm_module):
                 "exception in net_int:",
                 logging_tools.LOG_LEVEL_ERROR
             )
-            for log_line in process_tools.exception_info().log_lines:
+            for log_line in process_tools.icswExceptionInfo().log_lines:
                 self.log(" - {}".format(log_line), logging_tools.LOG_LEVEL_ERROR)
 
     def get_netstat_info(self):

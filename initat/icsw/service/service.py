@@ -175,7 +175,6 @@ class Service(object):
                         except:
                             # cannot get server_check instance, set config_check_ok to False
                             self.config_check_ok = False
-                            # _exc_info = process_tools.exception_info()
                             _cr = None
                     if _cr is not None:
                         if _cr.effective_device:
@@ -241,7 +240,8 @@ class Service(object):
                 _req_lic = self.entry.find(".//required-license")
                 if _req_lic is not None:
                     _req_lic = _req_lic.text.strip()
-                    lic_state = 0
+                    # default license state
+                    lic_state = LIC_STATE_NONE
                     for _vl in valid_licenses:
                         if _vl.name == _req_lic:
                             lic_state = License.objects._get_license_state(_vl)

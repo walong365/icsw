@@ -2169,7 +2169,7 @@ class cpuinfo_command(hm_classes.hm_command):
             cpu_info = cpu_database.global_cpu_info(xml=srv_com.tree, parse=True)
         except:
             join_str, head_str = ("; ", "error decoding cpu_info: %s" % (process_tools.get_except_info()))
-            exc_info = process_tools.exception_info()
+            exc_info = process_tools.icswExceptionInfo()
             print("\n".join(exc_info.log_lines))
         else:
             for cpu in [cpu_info[cpu_idx] for cpu_idx in cpu_info.cpu_idxs()]:

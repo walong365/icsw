@@ -33,3 +33,6 @@ ICINGA_TOP_DIR = "/opt/icinga"
 ZMQ_ID_MAP_STORE = "icsw.hm.0mq-mapping"
 MACHVECTOR_CS_NAME = "icsw.hm.machvector"
 RELAY_SETTINGS_CS_NAME = "icsw.relay.settings"
+
+# number of 0MQ connection errors before we try to re-get the 0MQ id
+MAX_0MQ_CONNECTION_ERRORS = 20

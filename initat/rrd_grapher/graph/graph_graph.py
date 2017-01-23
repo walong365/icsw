@@ -436,7 +436,7 @@ class RRDGraph(object):
                             except:
                                 # in case of strange 'argument 0 has to be a string or a list of strings' 
                                 self.log("error creating graph: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                                for _line in process_tools.exception_info().log_lines:
+                                for _line in process_tools.icswExceptionInfo().log_lines:
                                     self.log("    {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
                                 if global_config["DEBUG"]:
                                     for _idx, _entry in enumerate(rrd_args, 1):

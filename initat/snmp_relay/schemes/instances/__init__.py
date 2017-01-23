@@ -33,7 +33,7 @@ for mod_name in [
     try:
         new_mod = __import__(mod_name, globals(), locals())
     except:
-        exc_info = process_tools.exception_info()
+        exc_info = process_tools.icswExceptionInfo()
         import_errors.extend(
             [
                 (mod_name, "import", _line) for _line in exc_info.log_lines

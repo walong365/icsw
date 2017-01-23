@@ -430,7 +430,7 @@ class mon_check_command(models.Model):
     mon_service_templ = models.ForeignKey("backbone.mon_service_templ", null=True, blank=True)
     # only unique per config
     name = models.CharField(max_length=192)  # , unique=True)
-    # flag for special commands (@<SREF>@command)
+    # link to mon_check_special_command
     mon_check_command_special = models.ForeignKey("backbone.mon_check_command_special", null=True, blank=True)
     # for mon_check_special_command this is empty
     command_line = models.CharField(max_length=765, default="")

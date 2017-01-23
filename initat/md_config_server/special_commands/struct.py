@@ -208,7 +208,7 @@ class DynamicCheckDict(object):
                                     logging_tools.LOG_LEVEL_ERROR
                                 )
             except:
-                exc_info = process_tools.exception_info()
+                exc_info = process_tools.icswExceptionInfo()
                 rv.feed_error(
                     "error calling special {}:".format(mccs.name),
                 )

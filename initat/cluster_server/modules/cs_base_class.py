@@ -157,7 +157,7 @@ class icswCSComInstance(object):
             try:
                 result = self.sc_obj._call(self)
             except:
-                exc_info = process_tools.exception_info()
+                exc_info = process_tools.icswExceptionInfo()
                 for line in exc_info.log_lines:
                     self.log(line, logging_tools.LOG_LEVEL_CRITICAL)
                 self.srv_com.set_result(

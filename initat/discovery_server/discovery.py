@@ -142,7 +142,7 @@ class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.icswProcessObj, H
             try:
                 getattr(self, c_name)(_dev_xml, _dev)
             except:
-                _exc_info = process_tools.exception_info()
+                _exc_info = process_tools.icswExceptionInfo()
                 for _line in _exc_info.log_lines:
                     self.log("   {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
             finally:

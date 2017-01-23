@@ -25,10 +25,9 @@
 
 import collections
 import datetime
-import logging
+import enum
 
 import django.utils.timezone
-import enum
 from dateutil import relativedelta
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
@@ -58,8 +57,6 @@ __all__ = [
     "icswEggRequest",
     "LICENSE_USAGE_GRACE_PERIOD",
 ]
-
-logger = logging.getLogger("cluster.icsw_license")
 
 LICENSE_USAGE_GRACE_PERIOD = relativedelta.relativedelta(weeks=2)
 
@@ -212,7 +209,7 @@ class _LicenseManager(models.Manager):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
         # fix for above problem: build a map dict where only the latest license files
         # are referenced
-        merged_maps = LicenseFileReader._merge_maps(self._license_readers)
+        merged_maps = LicenseFileReader.merge_license_maps(self._license_readers)
         # import pprint
         # pprint.pprint(merged_maps)
         return [
@@ -227,7 +224,7 @@ class _LicenseManager(models.Manager):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
         # fix for above problem: build a map dict where only the latest license files
         # are referenced
-        merged_maps = LicenseFileReader._merge_maps(self._license_readers)
+        merged_maps = LicenseFileReader.merge_license_maps(self._license_readers)
         # import pprint
         # pprint.pprint(merged_maps)
         res = set()
@@ -253,32 +250,49 @@ class _LicenseManager(models.Manager):
 
     _license_readers_cache = {}
 
+    def cached_log(self, what, log_level=logging_tools.LOG_LEVEL_ERROR):
+        if not hasattr(self, "_log_cache"):
+            self._log_cache = []
+        self._log_cache.append((what, log_level))
+
+    @property
+    def cached_logs(self):
+        for what, log_level in self._log_cache:
+            yield ("[CLL] {}".format(what), log_level)
+        self._log_cache = []
+
     @property
     @memoize_with_expiry(10, _cache=_license_readers_cache)
     def _license_readers(self):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
         from initat.cluster.backbone.models import device_variable
         from initat.tools import hfp_tools
+
+        if not hasattr(self, "_log_cache"):
+            self._log_cache = []
         cluster_id = device_variable.objects.get_cluster_id()
         cur_fp = hfp_tools.get_server_fp(serialize=True)
+
         readers = []
-        for file_content, file_name, idx in self.values_list("license_file", "file_name", "idx"):
+        for lic in self.filter(Q(valid=True)):
             try:
                 readers.append(
                     LicenseFileReader(
-                        file_content,
-                        file_name,
-                        idx=idx,
+                        lic.license_file,
+                        lic.file_name,
+                        license=lic,
                         cluster_id=cluster_id,
-                        current_fingerprint=cur_fp
+                        current_fingerprint=cur_fp,
+                        log_com=self.cached_log,
                     )
                 )
             except LicenseFileReader.InvalidLicenseFile as e:
-                logger.error(
+                self.cached_log(
                     "Invalid license file in database {}: {}".format(
-                        file_name,
-                        e
-                    )
+                        lic.file_name,
+                        e,
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
                 )
 
         return readers
@@ -318,6 +332,10 @@ class _LicenseManager(models.Manager):
                     license=License.objects.get(Q(pk=_new_bk)),
                 )
 
+    def get_license_info(self, lic_obj):
+        from initat.cluster.backbone.license_file_reader import LicenseFileReader
+        return LicenseFileReader(lic_obj.license_file, lic_obj.file_name, license=lic_obj).license_info
+
 
 ########################################
 # actual license documents:
@@ -329,12 +347,16 @@ class License(models.Model):
 
     date = models.DateTimeField(auto_now_add=True)
 
+    valid = models.BooleanField(default=True)
+
     file_name = models.CharField(max_length=512)
     license_file = models.TextField()  # contains the exact file content of the respective license files
 
     def __str__(self):
-        from initat.cluster.backbone.license_file_reader import LicenseFileReader
-        return LicenseFileReader(self.license_file, self.file_name).license_info
+        return "License {} ({:d})".format(
+            self.file_name,
+            self.idx
+        )
 
     class Meta:
         app_label = "backbone"
@@ -353,7 +375,6 @@ def license_post_save_delete(sender, **kwargs):
 def license_post_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        print(cur_inst)
 
 
 ########################################

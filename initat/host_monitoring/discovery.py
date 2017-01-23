@@ -46,8 +46,16 @@ class ZMQDiscovery(object):
     ]
 
     def __init__(self, srv_com, src_id, xml_input):
-        self.port = int(srv_com["port"].text)
-        self.host = srv_com["host"].text
+        if "conn_str" in srv_com:
+            _conn_str = srv_com["*conn_str"]
+            _parts = _conn_str.split(":")
+            if len(_parts) == 3:
+                _parts.pop(0)
+            self.host = _parts.pop(0).split("/")[-1]
+            self.port = int(_parts.pop(0))
+        else:
+            self.port = int(srv_com["port"].text)
+            self.host = srv_com["host"].text
         self.raw_connect = True if int(srv_com.get("raw_connect", "0")) else False
         self.conn_str = "tcp://{}:{:d}".format(
             self.host,
@@ -91,9 +99,12 @@ class ZMQDiscovery(object):
 
     def send_return(self, error_msg):
         self.log(error_msg, logging_tools.LOG_LEVEL_ERROR)
-        dummy_mes = HostMessage(self.srv_com["command"].text, self.src_id, self.srv_com, self.xml_input)
-        dummy_mes.set_result(limits.mon_STATE_CRITICAL, error_msg)
-        self.send_result(dummy_mes)
+        if self.src_id:
+            dummy_mes = HostMessage(self.srv_com["command"].text, self.src_id, self.srv_com, self.xml_input)
+            dummy_mes.set_result(limits.mon_STATE_CRITICAL, error_msg)
+            self.send_result(dummy_mes)
+        else:
+            self.close()
 
     def send_result(self, host_mes, result=None):
         ZMQDiscovery.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
@@ -108,14 +119,20 @@ class ZMQDiscovery(object):
         if self.conn_str in ZMQDiscovery.last_try:
             del ZMQDiscovery.last_try[self.conn_str]
         try:
+            _res = zmq_sock.recv()
+            # print("*", _res)
             if self.raw_connect:
                 # only valid for hoststatus, FIXME
-                zmq_id = etree.fromstring(zmq_sock.recv()).findtext("nodestatus")
+                zmq_id = etree.fromstring(_res).findtext("nodestatus")
             else:
-                cur_reply = server_command.srv_command(source=zmq_sock.recv())
+                cur_reply = server_command.srv_command(source=_res)
                 zmq_id = cur_reply["zmq_id"].text
         except:
-            self.send_return("error extracting 0MQ id (discovery): {}".format(process_tools.get_except_info()))
+            self.send_return(
+                "error extracting 0MQ id (discovery): {}".format(
+                    process_tools.get_except_info(),
+                )
+            )
         else:
             if zmq_id in ZMQDiscovery.reverse_mapping and (self.host not in ZMQDiscovery.reverse_mapping[zmq_id]) and ZMQDiscovery.force_resolve:
                 self.log(
@@ -144,11 +161,14 @@ class ZMQDiscovery(object):
                 else:
                     self.log("0MQ id is {}".format(zmq_id))
                     ZMQDiscovery.set_mapping(self.conn_str, zmq_id)  # mapping[self.conn_str] = zmq_id
-                    # reinject
-                    if self.port == self.hm_port:
-                        ZMQDiscovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
+                    if self.src_id:
+                        # reinject
+                        if self.port == self.hm_port:
+                            ZMQDiscovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
+                        else:
+                            ZMQDiscovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
                     else:
-                        ZMQDiscovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
+                        self.log("no src_id set, was internal ID check", logging_tools.LOG_LEVEL_WARN)
                 self.close()
 
     def close(self):

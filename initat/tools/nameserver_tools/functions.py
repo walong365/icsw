@@ -31,4 +31,4 @@ def make_unqualified(in_str):
 
 
 def to_idna(in_str):
-    return ".".join([entry and encodings.idna.ToASCII(entry) or "" for entry in in_str.split(".")])
+    return ".".join([entry and encodings.idna.ToASCII(entry).decode("utf-8") or "" for entry in in_str.split(".")])

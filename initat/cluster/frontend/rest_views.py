@@ -159,7 +159,7 @@ class rest_logging(object):
         try:
             result = self._func(*args, **kwargs)
         except:
-            exc_info = process_tools.exception_info()
+            exc_info = process_tools.icswExceptionInfo()
             _err_str = process_tools.get_except_info()
             self.log(
                 "exception: {}".format(_err_str),

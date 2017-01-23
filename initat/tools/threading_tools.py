@@ -552,7 +552,7 @@ class PollerBase(object):
                                 if _db_debug:
                                     _db_debug.end_call()
                             except:
-                                exc_info = process_tools.exception_info()
+                                exc_info = process_tools.icswExceptionInfo()
                                 self.log(
                                     "error calling handler in poller_obj: {}".format(
                                         process_tools.get_except_info()

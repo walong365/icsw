@@ -89,7 +89,7 @@ class SNMPSink(object):
             try:
                 return _handler.update(dev, scheme, result_dict, oid_list, flags)
             except:
-                exc_info = process_tools.exception_info()
+                exc_info = process_tools.icswExceptionInfo()
                 _err_str = "unable to process results: {}".format(process_tools.get_except_info())
                 self.log(_err_str, logging_tools.LOG_LEVEL_ERROR)
                 for _line in exc_info.log_lines:

@@ -24,21 +24,22 @@
 import base64
 import datetime
 import glob
-import logging
+import time
 import os
 
 import dateutil.parser
 from lxml import etree
 
-from initat.constants import CLUSTER_DIR
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, \
     ICSW_XML_NS_MAP, LICENSE_USAGE_GRACE_PERIOD
+from initat.constants import CLUSTER_DIR
 from initat.tools import process_tools, server_command, logging_tools
 
-logger = logging.getLogger("cluster.license_file_reader")
-
 CERT_DIR = os.path.join(CLUSTER_DIR, "share/cert")
+
+# when emitting license log, mark it in this dict (license.idx -> log_time) to avoid excessive logging
+LICENSE_LOG_CACHE = {}
 
 
 class LicenseFileReader(object):
@@ -49,12 +50,12 @@ class LicenseFileReader(object):
                 msg if msg is not None else "Invalid license file format"
             )
 
-    def __init__(self, file_content, file_name=None, idx=0, cluster_id=None, current_fingerprint=None):
+    def __init__(self, file_content, file_name=None, license=None, cluster_id=None, current_fingerprint=None, log_com=None):
         from initat.cluster.backbone.models import device_variable
-
+        self.__log_com = log_com
         self.file_name = file_name
         # contains the license-file tag, i.e. information relevant for program without signature
-        self.content_xml = self._read_and_parse(file_content, idx)
+        self.content_xml = self._read_and_parse(file_content, license)
         if cluster_id is None:
             self.cluster_id = device_variable.objects.get_cluster_id()
         else:
@@ -62,6 +63,12 @@ class LicenseFileReader(object):
         self.current_fp = current_fingerprint
         self._check_fingerprint()
         self._check_eggs()
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        if self.__log_com:
+            self.__log_com("[LFR] {}".format(what), log_level)
+        else:
+            print("[LFR][{}] {}".format(logging_tools.get_log_level_str(log_level), what))
 
     @property
     def current_fingerprint(self):
@@ -90,7 +97,7 @@ class LicenseFileReader(object):
     def fingerprint_ok(self):
         return self.__fingerprint_valid
 
-    def _read_and_parse(self, file_content, idx):
+    def _read_and_parse(self, file_content, license):
         # read content and parse some basic maps, raise an error if
         # - wrong format (decompression problem)
         # - XML not valid
@@ -98,10 +105,11 @@ class LicenseFileReader(object):
         try:
             signed_content_str = server_command.decompress(file_content)
         except:
-            logger.error(
+            self.log(
                 "Error reading uploaded license file: {}".format(
                     process_tools.get_except_info()
-                )
+                ),
+                logging_tools.LOG_LEVEL_ERROR
             )
             raise LicenseFileReader.InvalidLicenseFile()
 
@@ -114,9 +122,8 @@ class LicenseFileReader(object):
 
         content_xml = signed_content_xml.find('icsw:license-file', ICSW_XML_NS_MAP)
         signature_xml = signed_content_xml.find('icsw:signature', ICSW_XML_NS_MAP)
-        # print("*", type(signature_xml.text))
 
-        signature_ok = self.verify_signature(content_xml, signature_xml)
+        signature_ok = self.verify_signature(content_xml, signature_xml, license)
 
         if not signature_ok:
             raise LicenseFileReader.InvalidLicenseFile("Invalid signature")
@@ -167,7 +174,7 @@ class LicenseFileReader(object):
                     "pack_xml": pack_xml,
                     "version": _version,
                     "date": _date,
-                    "idx": idx,
+                    "idx": license.idx if license else 0,
                     "customer_xml": customer_xml,
                     "reader": self,
                 }
@@ -279,7 +286,10 @@ class LicenseFileReader(object):
             try:
                 ret.append(LicenseEnum[lic_id])
             except KeyError:
-                logger.debug("Invalid license in license file: {}".format(lic_id))
+                self.log(
+                    "Invalid license in LicensFiles: {}".format(lic_id),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
         return ret
 
     def get_valid_parameters(self):
@@ -317,7 +327,7 @@ class LicenseFileReader(object):
         return ret
 
     @classmethod
-    def _merge_maps(cls, license_readers):
+    def merge_license_maps(cls, license_readers):
         # merge all maps for the given license readers
         _res_map = {}
         for _reader in license_readers:
@@ -338,7 +348,7 @@ class LicenseFileReader(object):
         # this has to be called on all license readers to work out (packages can be contained in multiple files and some
         # might contain deprecated versions)
         # map with only the latest valid readers
-        package_uuid_map = cls._merge_maps(license_readers)
+        package_uuid_map = cls.merge_license_maps(license_readers)
         # print("*", package_uuid_map)
 
         def extract_parameter_data(cluster_xml):
@@ -437,8 +447,7 @@ class LicenseFileReader(object):
             return _r_list
         return [extract_package_data(_struct["pack_xml"], _struct["customer_xml"]) for _struct in package_uuid_map.values()]
 
-    @staticmethod
-    def verify_signature(lic_file_xml, signature_xml):
+    def verify_signature(self, lic_file_xml, signature_xml, license):
         # import pem
         from cryptography import x509
         from cryptography.exceptions import InvalidSignature
@@ -449,6 +458,26 @@ class LicenseFileReader(object):
         :return: True if signature is fine
         :rtype : bool
         """
+        cur_time = int(time.time())
+        log_stat = {
+            "target": 0,
+            "emitted": 0,
+        }
+
+        def log(what, log_level=logging_tools.LOG_LEVEL_OK):
+            log_stat["target"] += 1
+            if license is None:
+                _logit = True
+            elif license.idx not in LICENSE_LOG_CACHE:
+                _logit = True
+            elif abs(LICENSE_LOG_CACHE[license.idx] - cur_time) > 300:
+                _logit = True
+            else:
+                _logit = False
+            if _logit:
+                log_stat["emitted"] += 1
+                self.log(what, log_level)
+
         backend = default_backend()
         signed_string = LicenseFileReader._extract_string_for_signature(lic_file_xml)
         # print(len(signed_string))
@@ -465,9 +494,13 @@ class LicenseFileReader(object):
         if not cert_files:
             # raise Exception("No certificate files in certificate dir {}.".format(CERT_DIR))
             # currently it's not clear whether this is only bad or actually critical
-            logger.error("No certificate files in certificate dir {}.".format(CERT_DIR))
+            log(
+                "No certificate files in certificate dir {}.".format(CERT_DIR),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
         for cert_file in cert_files:
+            short_cert_file = os.path.basename(cert_file)
             try:
                 # print("*" * 20)
                 cert = x509.load_pem_x509_certificate(
@@ -476,11 +509,12 @@ class LicenseFileReader(object):
                 )
             except:
                 # print(process_tools.get_except_info())
-                logger.warning(
+                log(
                     "Failed to read certificate file {}: {}".format(
                         cert_file,
                         process_tools.get_except_info()
-                    )
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
                 )
             else:
                 # print(cert)
@@ -503,14 +537,30 @@ class LicenseFileReader(object):
                     except InvalidSignature:
                         result = 0
                     else:
+                        # found a valid signature, exit
                         result = 1
+                        break
                     # Result of verification: 1 for success, 0 for failure, -1 on other error.
 
-                    logger.debug("Cert file {} verification result: {}".format(cert_file, result))
-
+                    log(
+                        "Cert file {} verification result for '{}': {}".format(
+                            short_cert_file,
+                            str(license) if license else "N/A",
+                            result,
+                        ),
+                        logging_tools.LOG_LEVEL_WARN,
+                    )
                 else:
-                    logger.debug("Cert file {} is not valid at this point in time".format(cert_file))
+                    log(
+                        "Cert file {} is not valid at this point in time".format(short_cert_file),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
 
+        if license and license.idx:
+            if log_stat["emitted"]:
+                LICENSE_LOG_CACHE[license.idx] = cur_time
+            elif not log_stat["target"] and license.idx in LICENSE_LOG_CACHE:
+                del LICENSE_LOG_CACHE[license.idx]
         return result == 1
 
     @staticmethod

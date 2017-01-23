@@ -129,7 +129,7 @@ class Zone(object):
                 used_names.append(_h.name.split(".")[0])
                 if _h.forward_domain:
                     fwd_domains.append((_h.forward_domain, _h))
-            for _fwd in sorted(fwd_domains):
+            for _fwd in sorted(fwd_domains, key=lambda x: x[0]):
                 content.append(NSS_RECORD.format(make_qualified(_fwd[0]), make_qualified(_fwd[1].long_name)))
             [Zone.feed_host(_host, self) for _host in self.records]
         if self.cname_records:
@@ -168,7 +168,7 @@ class Zone(object):
                 else:
                     if not _entry.private:
                         r_list.append(_entry)
-        return sorted(r_list, lambda x, y: cmp(x.name, y.name))
+        return sorted(r_list, key=lambda x: x.name)
 
     def create_master_slave_content(self):
         self.split_zone = self.public_content != self.private_content
@@ -413,6 +413,7 @@ class Zone(object):
                 )
                 # forward zones
                 _fwd_zones = [_zn for _zn in Zone.zones if _zn.Meta.forward_to]
+                # loop not needed ? please check, ToDo, Fixme
                 for _fwd_zone in _fwd_zones:
                     _z_content.extend(
                         [

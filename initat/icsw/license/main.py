@@ -154,6 +154,48 @@ def show_license_info(opts):
         _show_pack_info(_valid_pack)
 
 
+def raw_license_info(opts):
+    out_list = logging_tools.new_form_list()
+    _to_save = []
+    for lic in License.objects.all():
+        try:
+            _info = License.objects.get_license_info(lic)
+        except:
+            _info = process_tools.get_except_info()
+            _error = True
+        else:
+            _error = False
+        if _error:
+            if opts.mark_error:
+                _valid = False
+            elif opts.unmark_all:
+                _valid = True
+            else:
+                _valid = lic.valid
+        else:
+            _valid = True
+        if lic.valid != _valid:
+            lic.valid = _valid
+            _to_save.append(lic)
+        out_list.append(
+            [
+                logging_tools.form_entry(lic.file_name, header="Filename"),
+                logging_tools.form_entry(lic.date.isoformat(), header="created"),
+                logging_tools.form_entry_right(lic.idx, header="idx"),
+                logging_tools.form_entry_center("valid" if lic.valid else "invalid", header="validity"),
+                logging_tools.form_entry_center("error" if _error else "ok", header="error"),
+                logging_tools.form_entry(_info, header="Info"),
+            ]
+        )
+    print(str(out_list))
+    if len(_to_save):
+        print("")
+        print("Updating LicenseFile states ({:d})".format(len(_to_save)))
+        for lic_to_save in _to_save:
+            lic_to_save.save(update_fields=["valid"])
+        print("...done")
+
+
 def _install_license(content):
     try:
         content_xml = etree.fromstring(content)
@@ -246,14 +288,16 @@ def show_cluster_id(opts):
 
 
 def main(opts):
-    if opts.subcom == "register_cluster":
+    if opts.subcom == "register-cluster":
         register_cluster(opts)
-    elif opts.subcom == "install_license_file":
+    elif opts.subcom == "install-license-file":
         install_license_file(opts)
-    elif opts.subcom == "show_cluster_id":
+    elif opts.subcom == "show-cluster-id":
         show_cluster_id(opts)
-    elif opts.subcom == "show_license_info":
+    elif opts.subcom == "show-license-info":
         show_license_info(opts)
+    elif opts.subcom == "raw-license-info":
+        raw_license_info(opts)
     elif opts.subcom == "ova":
         if opts.init:
             ova_init(opts)

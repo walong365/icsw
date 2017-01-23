@@ -161,7 +161,7 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
                         self.send_echo(value["host"])
                     except:
                         value["error_list"].append(process_tools.get_except_info())
-                        for l in process_tools.exception_info().log_lines:
+                        for l in process_tools.icswExceptionInfo().log_lines:
                             print("l", l)
                         self.log(
                             "error sending to {}: {}".format(
@@ -342,6 +342,7 @@ class TCPCon(object):
         except:
             _recv_str = "recv problem: {}".format(process_tools.get_except_info())
         else:
+            # print("*", _data)
             if _data[0:8].isdigit():
                 _len = int(_data[0:8])
                 if _len + 8 == len(_data):
@@ -356,7 +357,7 @@ class TCPCon(object):
                 _recv_str = "wrong header: {}".format(
                     ":".join(
                         [
-                            "{:02x}".format(ord(_chr)) for _chr in _data[0:8]
+                            "{:02x}".format(_chr) for _chr in _data[0:8]
                         ]
                     )
                 )
@@ -366,6 +367,8 @@ class TCPCon(object):
                 _recv_str,
                 logging_tools.LOG_LEVEL_ERROR
             )
+        # else:
+        #    print("*RECV*", self.src_id, _recv_str)
         self.__process.send_result(self.src_id, str(self.srv_com), _recv_str, _is_error)
         self.close()
 

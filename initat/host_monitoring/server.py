@@ -731,7 +731,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 cur_ns, _rest = cur_com.handle_commandline(rest_str.strip().split())
             sp_struct = cur_com(srv_com, cur_ns)
         except:
-            exc_info = process_tools.exception_info()
+            exc_info = process_tools.icswExceptionInfo()
             for log_line in exc_info.log_lines:
                 self.log(log_line, logging_tools.LOG_LEVEL_ERROR)
             srv_com.set_result(
@@ -779,7 +779,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 try:
                     cur_mod.stop_module()
                 except:
-                    exc_info = process_tools.exception_info()
+                    exc_info = process_tools.icswExceptionInfo()
                     for log_line in exc_info.log_lines:
                         self.log(log_line, logging_tools.LOG_LEVEL_CRITICAL)
                     _init_ok = False

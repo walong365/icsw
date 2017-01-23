@@ -25,11 +25,8 @@
 # from backend.models import site_call_log, session_call_log
 
 
-
-import fcntl
+import shutil
 import time
-import struct
-import termios
 
 from django.conf import settings
 
@@ -69,25 +66,17 @@ REVISION_MIDDLEWARE_FLAG = "reversion.revision_middleware_active"
 
 
 def get_terminal_size():
-    height, width, _hp, _wp = struct.unpack(
-        'HHHH',
-        fcntl.ioctl(0, termios.TIOCGWINSZ, struct.pack('HHHH', 0, 0, 0, 0)))
+    width, height = shutil.get_terminal_size()
     return width, height
 
 
 def show_database_calls(*args, **kwargs):
-    DB_DEBUG = False
-
     def output(s):
         if 'printfun' in kwargs:
             kwargs['printfun'](s)
         else:
-            print (s)
+            print(s)
 
-    if hasattr(settings, "DATABASE_DEBUG"):
-        DB_DEBUG = settings.DATABASE_DEBUG
-    else:
-        DB_DEBUG = settings.DEBUG
     DB_CALL_LIMIT = 10
     if DB_DEBUG:
         from django.db import connection  # @Reimport
@@ -115,11 +104,14 @@ def show_database_calls(*args, **kwargs):
                     _len_pre = len(out_str)
                     out_str = out_str[0:cur_width - 21]
                     _len_post = len(out_str)
+                    if _len_pre == _len_post:
+                        _size_str = "     {:5d}".format(_len_pre)
+                    else:
+                        _size_str = "{:4d}/{:5d}".format(_len_post, _len_pre)
                     output(
-                        "{:6.2f} [{:4d}/{:5d}] {}".format(
+                        "{:6.2f} [{}] {}".format(
                             float(act_sql["time"]),
-                            _len_post,
-                            _len_pre,
+                            _size_str,
                             out_str
                         )
                     )

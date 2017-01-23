@@ -63,7 +63,7 @@ class HMHRMixin(object):
                     else:
                         getattr(cur_mod, call_name)()
                 except:
-                    exc_info = process_tools.exception_info()
+                    exc_info = process_tools.icswExceptionInfo()
                     for log_line in exc_info.log_lines:
                         self.log(log_line, logging_tools.LOG_LEVEL_CRITICAL)
                     _init_ok = False

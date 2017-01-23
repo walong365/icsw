@@ -318,7 +318,7 @@ class MainProcess(ICSWBasePoolClient):
                 self.log("*" * 20, logging_tools.LOG_LEVEL_CRITICAL)
                 self.__transitions = [entry for entry in self.__transitions if _trans.name not in entry.service_names]
             _new_t = transition.ServiceTransition(
-                _trans.action,
+                _trans.action.value,
                 [_trans.name],
                 self.container,
                 self.server_instance,

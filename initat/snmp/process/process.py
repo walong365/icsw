@@ -106,7 +106,7 @@ class SNMPProcess(threading_tools.icswProcessObj):
             )
             _term_cause = "ValueConstraintError"
         except:
-            exc_info = process_tools.exception_info()
+            exc_info = process_tools.icswExceptionInfo()
             self.log(
                 "exception in dispatcher, terminating process",
                 logging_tools.LOG_LEVEL_CRITICAL

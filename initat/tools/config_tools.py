@@ -782,11 +782,16 @@ class server_check(object):
             return
         # find matching IP-adresses
         for cur_dev in dev_list:
-            dev_ips = set(net_ip.objects.exclude(
-                Q(network__network_type__identifier='l')
-            ).filter(
-                Q(netdevice__device=cur_dev)
-            ).values_list("ip", flat=True))
+            dev_ips = set(
+                net_ip.objects.exclude(
+                    Q(network__network_type__identifier='l')
+                ).filter(
+                    Q(netdevice__device=cur_dev)
+                ).values_list(
+                    "ip",
+                    flat=True
+                )
+            )
             match_ips = my_ips & dev_ips
             if match_ips:
                 self.device = cur_dev
@@ -794,7 +799,8 @@ class server_check(object):
                 if self.__server_type is None:
                     _queries = [
                         Q(config_service_enum__enum_name=self.__service_type_enum.name),
-                        Q(config_service_enum__enum_name=self.__service_type_enum.name) & Q(config_catalog__system_catalog=True),
+                        Q(config_service_enum__enum_name=self.__service_type_enum.name) &
+                        Q(config_catalog__system_catalog=True),
                     ]
                 else:
                     _queries = [
@@ -916,7 +922,12 @@ class server_check(object):
         if self.netdevice_idx_list and other.netdevice_idx_list:
             # skip if any of both netdevice_idx_lists are empty
             # get peer_information
-            all_pathes = router_obj.get_ndl_ndl_pathes(self.netdevice_idx_list, other.netdevice_idx_list, add_penalty=True, only_endpoints=True)
+            all_pathes = router_obj.get_ndl_ndl_pathes(
+                self.netdevice_idx_list,
+                other.netdevice_idx_list,
+                add_penalty=True,
+                only_endpoints=True,
+            )
             for penalty, s_nd_pk, d_nd_pk in all_pathes:
                 # dicts identifier -> ips
                 source_ip_lut, dest_ip_lut = ({}, {})

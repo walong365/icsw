@@ -60,7 +60,7 @@ class LicenseViewSet(viewsets.ViewSet):
     @rest_logging
     def get_all_licenses(self, request, *args, **kwargs):
         # pseudo-serialize named dict
-        return Response(
+        _resp = Response(
             [
                 {
                     'id': lic.id,
@@ -71,6 +71,9 @@ class LicenseViewSet(viewsets.ViewSet):
                 } for lic in get_available_licenses()
             ]
         )
+        for line, level in License.objects.cached_logs:
+            logger.log(level, line)
+        return _resp
 
     @rest_logging
     def get_ova_counter(self, request):
@@ -86,8 +89,12 @@ class get_license_packages(ListAPIView):
     # no login required for this since we want to show it in the login page
     @rest_logging
     def list(self, request, *args, **kwargs):
+        # this triggers a lot of DB-calls
         License.objects.check_ova_baskets()
-        return Response(License.objects.get_license_packages())
+        resp = Response(License.objects.get_license_packages())
+        for line, level in License.objects.cached_logs:
+            logger.log(level, line)
+        return resp
 
 
 class GetLicenseViolations(ListAPIView):
@@ -108,12 +115,15 @@ class GetValidLicenses(RetrieveAPIView):
     )
     @rest_logging
     def get(self, request, *args, **kwargs):
-        return Response(
+        resp = Response(
             {
                 'valid_licenses': [l.name for l in License.objects.get_valid_licenses()],
                 'all_licenses': [l.name for l in LicenseEnum],
             }
         )
+        for line, level in License.objects.cached_logs:
+            logger.log(level, line)
+        return resp
 
 
 class upload_license_file(View):
@@ -124,7 +134,7 @@ class upload_license_file(View):
         lic_file_content = lic_file.read()
 
         try:
-            reader = LicenseFileReader(lic_file_content)
+            reader = LicenseFileReader(lic_file_content, log_com=request.xml_response.log)
         except LicenseFileReader.InvalidLicenseFile as e:
             request.xml_response.error(str(e), logger=logger)
         else:

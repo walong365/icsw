@@ -89,8 +89,10 @@ def get_log_level_str(level):
 
 def get_relative_dt(dt_struct):
     act_time = datetime.datetime.now()
-    diff_days = (datetime.date(act_time.year, act_time.month, act_time.day) -
-                 datetime.date(dt_struct.year, dt_struct.month, dt_struct.day)).days
+    diff_days = (
+        datetime.date(act_time.year, act_time.month, act_time.day) -
+        datetime.date(dt_struct.year, dt_struct.month, dt_struct.day)
+    ).days
     if diff_days < 2:
         if diff_days == 1:
             return dt_struct.strftime("yesterday %H:%M:%S")
@@ -460,9 +462,7 @@ class form_entry(object):
             self,
             "content_type", {
                 str: "s",
-                str: "s",
                 type(None): "s",
-                int: "d",
                 int: "d",
                 float: "f",
                 datetime.date: "s",
@@ -631,7 +631,15 @@ class NewFormList(object):
                     _str = entry.format(max_len)
                     if last:
                         _str = _str.rstrip()
-                    _line.append((getattr(Token.String.ICSW, getattr(entry, "display_attribute", "dummy").title() or "Dummy"), _str))
+                    _line.append(
+                        (
+                            getattr(
+                                Token.String.ICSW,
+                                getattr(entry, "display_attribute", "dummy").title() or "Dummy"
+                            ),
+                            _str
+                        )
+                    )
                     if not last:
                         _line.append(
                             (Token.String.ICSW.Dummy, self.__col_sep)
@@ -643,7 +651,10 @@ class NewFormList(object):
                 out_lines.append(
                     self.__col_sep.join(
                         [
-                            self._apply_da_map(entry, max_len) for entry, max_len in zip(line, row_lens[:len(line)])
+                            self._apply_da_map(entry, max_len) for entry, max_len in zip(
+                                line,
+                                row_lens[:len(line)]
+                            )
                         ]
                     )
                 )

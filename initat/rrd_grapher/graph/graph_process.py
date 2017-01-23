@@ -188,7 +188,7 @@ class GraphProcess(threading_tools.icswProcessObj, server_mixins.OperationalErro
                     early_return_call,
                 ).graph(dev_pks, graph_keys)
             except:
-                for _line in process_tools.exception_info().log_lines:
+                for _line in process_tools.icswExceptionInfo().log_lines:
                     self.log(_line, logging_tools.LOG_LEVEL_ERROR)
                 srv_com["graphs"] = []
                 srv_com.set_result(

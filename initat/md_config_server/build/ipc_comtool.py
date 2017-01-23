@@ -215,7 +215,7 @@ class IPCClientHandler(threading_tools.PollerBase):
                         run_str,
                     ),
                 )
-                exc_info = process_tools.exception_info()
+                exc_info = process_tools.icswExceptionInfo()
                 self.log(
                     "an error occured (device={}): {}".format(
                         str(dc_action.hbc.device),

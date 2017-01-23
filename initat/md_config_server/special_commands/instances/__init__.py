@@ -55,7 +55,7 @@ for mod_name in _inst_list:
                 dynamic_checks.feed(_key, _obj)
     except:
         print("+++")
-        exc_info = process_tools.exception_info()
+        exc_info = process_tools.icswExceptionInfo()
         for log_line in exc_info.log_lines:
             dynamic_checks.import_errors.append((mod_name, "import", log_line))
             print("l", log_line)

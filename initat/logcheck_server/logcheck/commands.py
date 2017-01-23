@@ -91,7 +91,7 @@ class MonCommand(object):
                 server_command.SRV_REPLY_STATE_CRITICAL,
             )
         except:
-            exc_com = process_tools.exception_info()
+            exc_com = process_tools.icswExceptionInfo()
             for _line in exc_com.log_lines:
                 self.log(_line, logging_tools.LOG_LEVEL_ERROR)
             srv_com.set_result(

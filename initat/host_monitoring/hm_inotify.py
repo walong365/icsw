@@ -529,7 +529,7 @@ class HMInotifyProcess(threading_tools.icswProcessObj):
             try:
                 getattr(self, "_{}".format(in_com))(srv_com, args)
             except:
-                exc_info = process_tools.exception_info()
+                exc_info = process_tools.icswExceptionInfo()
                 for line in exc_info.log_lines:
                     self.log("  {}".format(line), logging_tools.LOG_LEVEL_ERROR)
                 srv_com.set_result(

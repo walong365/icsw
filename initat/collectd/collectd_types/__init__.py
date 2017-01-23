@@ -45,7 +45,7 @@ for mod_name in _mods:
     try:
         new_mod = importlib.import_module("initat.collectd.collectd_types.{}".format(mod_name))
     except:
-        exc_info = process_tools.exception_info()
+        exc_info = process_tools.icswExceptionInfo()
         IMPORT_ERRORS.extend(exc_info.log_lines)
     else:
         for _name in dir(new_mod):
