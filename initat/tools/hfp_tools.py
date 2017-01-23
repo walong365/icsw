@@ -109,9 +109,6 @@ def get_local_net_hfp():
         if netifaces.AF_LINK in _if and netifaces.AF_INET in _if:
             _if_dict[_if_name] = _if
     _gw_info = netifaces.gateways()
-    import pprint
-
-    pprint.pprint(_if_dict)
     if "default" in _gw_info and netifaces.AF_INET in _gw_info["default"]:
         _inet_gw = _gw_info["default"][netifaces.AF_INET]
         _gw_dev = _inet_gw[1]
