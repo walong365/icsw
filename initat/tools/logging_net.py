@@ -29,7 +29,7 @@ import sys
 import threading
 import time
 import traceback
-import platform
+import datetime
 
 import zmq
 
@@ -127,7 +127,11 @@ class icswLogAdapter(logging.LoggerAdapter):
             if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
                 logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
             else:
-                print(what)
+                _, file_name, line_num, _, _, _ = inspect.stack()[1]
+                _, file_name = os.path.split(file_name)
+                level_name = logging.getLevelName(level)
+                cur_time = datetime.datetime.now().ctime()
+                print("{} : {} [{}.{}] {}".format(cur_time, level_name, file_name, line_num, what))
         except:
             my_syslog(what)
             print(what, self)
