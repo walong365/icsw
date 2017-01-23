@@ -153,7 +153,8 @@ class srv_command(object):
             self.__tree = self.__builder.ics_batch(
                 self.__builder.source(
                     host=platform.uname()[1],
-                    pid="{:d}".format(os.getpid())),
+                    pid="{:d}".format(os.getpid())
+                ),
                 self.__builder.command(kwargs.pop("command", "not set")),
                 self.__builder.identity(kwargs.pop("identity", "not set")),
                 # set srv_command version

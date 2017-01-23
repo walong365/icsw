@@ -55,6 +55,13 @@ __all__ = [
     "META_SERVER_DIR",
 ]
 
+
+class PlatformSystemTypeEnum(Enum):
+    LINUX = 1
+    WINDOWS = 2
+    UNKNOWN = 3
+
+
 GEN_CS_NAME = "icsw.general"
 DB_ACCESS_CS_NAME = "icsw.db.access"
 VERSION_CS_NAME = "icsw.sysversion"
@@ -86,12 +93,6 @@ if any([_var in os.environ for _var in _os_vars]) and not all([_var in os.enviro
         )
     )
     raise SystemExit
-
-class PlatformSystemTypeEnum(Enum):
-    LINUX = 1
-    WINDOWS = 2
-    UNKNOWN = 3
-
 if platform.system() == "Linux":
     PLATFORM_SYSTEM_TYPE = PlatformSystemTypeEnum.LINUX
 elif platform.system() == "Windows":
@@ -131,5 +132,3 @@ INITAT_BASE_DEBUG = os.path.dirname(__file__)
 
 # meta server directory
 META_SERVER_DIR = "/var/lib/meta-server"
-
-
