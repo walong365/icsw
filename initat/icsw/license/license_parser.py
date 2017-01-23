@@ -80,6 +80,7 @@ class Parser(object):
         raw_list_parser.set_defaults(subcom="raw-license-info", execute=self._execute)
         raw_list_parser.add_argument("--mark-error", default=False, action="store_true", help="Mark all LicenseFiles with error as invalid [%(default)s]")
         raw_list_parser.add_argument("--unmark-all", default=False, action="store_true", help="Unmark all LicenseFiles [%(default)s]")
+        raw_list_parser.add_argument("--only-valid", default=False, action="store_true", help="Show only valid licenses [%(default)s]")
 
     def _add_ovum_parser(self, sub_parser):
         _act = sub_parser.add_parser("ova", help="ova handling")

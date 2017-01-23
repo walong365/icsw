@@ -61,7 +61,8 @@ def get_server_fp(serialize=False):
             "pk": _dev.pk
         }
     if serialize:
-        return HardwareFingerPrint.serialize(_s_dict)
+        # return an ascii-decoded string
+        return HardwareFingerPrint.serialize(_s_dict).decode("ascii")
     else:
         return _s_dict
 
@@ -108,6 +109,9 @@ def get_local_net_hfp():
         if netifaces.AF_LINK in _if and netifaces.AF_INET in _if:
             _if_dict[_if_name] = _if
     _gw_info = netifaces.gateways()
+    import pprint
+
+    pprint.pprint(_if_dict)
     if "default" in _gw_info and netifaces.AF_INET in _gw_info["default"]:
         _inet_gw = _gw_info["default"][netifaces.AF_INET]
         _gw_dev = _inet_gw[1]

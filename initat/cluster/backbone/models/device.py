@@ -128,9 +128,19 @@ class HardwareFingerPrint(models.Model):
     def serialize(in_obj):
         return server_command.compress(in_obj, json=True)
 
-    @staticmethod
-    def deserialize(in_str):
-        return server_command.decompress(in_str, json=True)
+    @classmethod
+    def deserialize(cls, in_str, deep=False):
+        def _decode(in_dict):
+            for key, value in in_dict.items():
+                if key == "fingerprints" and isinstance(value, list):
+                    in_dict[key] = [cls.deserialize(_val) for _val in value]
+                if isinstance(value, dict):
+                    _decode(value)
+
+        _res = server_command.decompress(in_str, json=True)
+        if deep:
+            _decode(_res)
+        return _res
 
     def __str__(self):
         return "HFP for {} ({})".format(

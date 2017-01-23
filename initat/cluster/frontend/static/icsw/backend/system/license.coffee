@@ -119,13 +119,13 @@ angular.module(
         update: (list, pack_list, violation_list) =>
             @list.length = 0
             for entry in list
-                @list.push(entry)
+                @list.push(entry.plain())
             @pack_list.length = 0
             for entry in pack_list
-                @pack_list.push(entry)
+                @pack_list.push(entry.plain())
             @violation_list.length = 0
             for entry in violation_list
-                @violation_list.push(entry)
+                @violation_list.push(entry.plain())
             if @violation_list.length
                 console.error "add license_violation test", @violation_list
             @build_luts()

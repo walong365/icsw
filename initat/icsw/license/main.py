@@ -28,6 +28,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from django.db.models import Q
 from lxml import etree
 
 from initat.cluster.backbone import license_file_reader
@@ -157,13 +158,18 @@ def show_license_info(opts):
 def raw_license_info(opts):
     out_list = logging_tools.new_form_list()
     _to_save = []
-    for lic in License.objects.all():
+    _query = License.objects.all()
+    if opts.only_valid:
+        _query = _query.filter(Q(valid=True))
+    for lic in _query:
         try:
             _info = License.objects.get_license_info(lic)
         except:
             _info = process_tools.get_except_info()
+            _raw_info = None
             _error = True
         else:
+            _raw_info = License.objects.get_raw_license_info(lic)
             _error = False
         if _error:
             if opts.mark_error:
@@ -177,6 +183,9 @@ def raw_license_info(opts):
         if lic.valid != _valid:
             lic.valid = _valid
             _to_save.append(lic)
+        # todo, extract fingerprint info from raw_license_info
+        # import pprint
+        # pprint.pprint(_raw_info)
         out_list.append(
             [
                 logging_tools.form_entry(lic.file_name, header="Filename"),

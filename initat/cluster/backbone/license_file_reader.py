@@ -50,12 +50,15 @@ class LicenseFileReader(object):
                 msg if msg is not None else "Invalid license file format"
             )
 
-    def __init__(self, file_content, file_name=None, license=None, cluster_id=None, current_fingerprint=None, log_com=None):
+    def __init__(self, file_content=None, file_name=None, license=None, cluster_id=None, current_fingerprint=None, log_com=None):
         from initat.cluster.backbone.models import device_variable
         self.__log_com = log_com
         self.file_name = file_name
         # contains the license-file tag, i.e. information relevant for program without signature
-        self.content_xml = self._read_and_parse(file_content, license)
+        if license is not None:
+            self.content_xml = self._read_and_parse(license.license_file, license)
+        else:
+            self.content_xml = self._read_and_parse(file_content, license)
         if cluster_id is None:
             self.cluster_id = device_variable.objects.get_cluster_id()
         else:
@@ -175,6 +178,7 @@ class LicenseFileReader(object):
                     "version": _version,
                     "date": _date,
                     "idx": license.idx if license else 0,
+                    "file_name": license.file_name if license else "",
                     "customer_xml": customer_xml,
                     "reader": self,
                 }
@@ -190,7 +194,7 @@ class LicenseFileReader(object):
         def _clean(_xml):
             for _sig in _xml.xpath(".//icsw:signature|.//icsw:license-file-meta/icsw:creation-datetime", namespaces=ICSW_XML_NS_MAP):
                 _sig.text = ""
-        _lic_xml = etree.fromstring(server_command.decompress(lic_content))
+        _lic_xml = etree.fromstring(server_command.decompress(lic_content))  # .encode("utf-8")))
         _clean(_lic_xml)
         _lic_stream = server_command.compress(etree.tostring(_lic_xml))
         return _lic_stream
@@ -336,6 +340,7 @@ class LicenseFileReader(object):
         _res_map = {}
         for _reader in license_readers:
             for _uuid, _struct in _reader.package_uuid_map.items():
+                # print("*", _uuid, _struct["hash"])
                 if _uuid not in _res_map:
                     _add = True
                 elif _struct["hash"] > _res_map[_uuid]["hash"]:
@@ -374,8 +379,10 @@ class LicenseFileReader(object):
                     _r_list.append(_add_dict)
             return _r_list
 
-        def extract_package_data(pack_xml, customer_xml):
+        def extract_package_data(struct, pack_xml, customer_xml):
             return {
+                "file_name": struct["file_name"],
+                "idx": struct["idx"],
                 'name': pack_xml.findtext("icsw:package-meta/icsw:package-name", namespaces=ICSW_XML_NS_MAP),
                 'date': pack_xml.findtext("icsw:package-meta/icsw:package-date", namespaces=ICSW_XML_NS_MAP),
                 "version": pack_xml.findtext("icsw:package-meta/icsw:package-version", namespaces=ICSW_XML_NS_MAP),
@@ -402,6 +409,7 @@ class LicenseFileReader(object):
             }
 
         def extract_fp_data(cluster_xml):
+
             def get_cluster_id(_xml):
                 return _xml.findtext("icsw:id", namespaces=ICSW_XML_NS_MAP)
 
@@ -410,6 +418,8 @@ class LicenseFileReader(object):
             fp_node = cluster_xml.xpath(fp_q, namespaces=ICSW_XML_NS_MAP)
 
             if len(fp_node):
+                # print("*remote", HardwareFingerPrint.deserialize(fp_node[0].encode("ascii"), deep=True))
+                # print("*local ", HardwareFingerPrint.deserialize(hfp_tools.get_server_fp(serialize=True).encode("ascii"), deep=True))
                 return {
                     "info": "present",
                     "valid": fp_node[0] == hfp_tools.get_server_fp(serialize=True)
@@ -449,7 +459,14 @@ class LicenseFileReader(object):
                 } for lic_xml in cluster_xml.xpath("icsw:license", namespaces=ICSW_XML_NS_MAP)
             ]
             return _r_list
-        return [extract_package_data(_struct["pack_xml"], _struct["customer_xml"]) for _struct in package_uuid_map.values()]
+        # print("***", len(package_uuid_map.values()), package_uuid_map.keys())
+        return [
+            extract_package_data(
+                _struct,
+                _struct["pack_xml"],
+                _struct["customer_xml"]
+            ) for _struct in package_uuid_map.values()
+        ]
 
     def verify_signature(self, lic_file_xml, signature_xml, license):
         # import pem
