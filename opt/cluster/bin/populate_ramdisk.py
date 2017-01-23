@@ -38,20 +38,22 @@ else:
 
     from django.db.models import Q
     from initat.cluster.backbone.models import kernel, initrd_build, PopulateRamdiskCmdLine
-    from initat.cluster.backbone.server_enums import icswServiceEnum
+    from initat.cluster.backbone.server_enums import icswServiceEnum#
+    from django.utils import timezone
 
 import argparse
 import subprocess
 import datetime
 import gzip
-from initat.tools import logging_tools, process_tools, server_command, uuid_tools
 import re
 import shutil
 import stat
 import getpass
-import statvfs
 import tempfile
 import time
+
+from initat.tools import logging_tools, process_tools, server_command, uuid_tools
+
 
 LINUXRC_NAMES = ["init", "linuxrc"]
 
@@ -474,7 +476,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         elif os.path.isfile(file_name):
             if verbose > 1:
                 f_size = os.stat(file_name)[stat.ST_SIZE]
-                f_free = os.statvfs(temp_dir)[statvfs.F_BFREE] * os.statvfs(temp_dir)[statvfs.F_BSIZE]
+                f_free = os.statvfs(temp_dir).f_bfree * os.statvfs(temp_dir).f_bsize
                 print(
                     "{:4d} of {:4d}, {}, {} free, file {}".format(
                         act_file,
@@ -544,7 +546,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                 if verbose > 1:
                     l_size = os.stat(lib_name)[stat.ST_SIZE]
                     free_stat = os.statvfs(temp_dir)
-                    l_free = free_stat[statvfs.F_BFREE] * free_stat[statvfs.F_BSIZE]
+                    l_free = free_stat.f_bfree * free_stat.f_bsize
                     print(
                         "{:4d} of {:4d}, {}, {} free, lib {}{}".format(
                             act_lib,
@@ -564,10 +566,10 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                 print("{:4d} unknown library {}".format(act_lib, lib_name))
     if strip_files:
         free_stat = os.statvfs(temp_dir)
-        free_before = free_stat[statvfs.F_BFREE] * free_stat[statvfs.F_BSIZE]
+        free_before = free_stat.f_bfree * free_stat.f_bsize
         _strip_stat, _strip_out = subprocess.getstatusoutput("strip -s {}".format(" ".join(strip_files)))
         free_stat = os.statvfs(temp_dir)
-        free_after = free_stat[statvfs.F_BFREE] * free_stat[statvfs.F_BSIZE]
+        free_after = free_stat.f_bfree * free_stat.f_bsize
         print(
             "size saved by stripping: {}".format(
                 logging_tools.get_size_str(free_after - free_before)
@@ -1674,12 +1676,12 @@ def main_normal():
         )
     if my_kernel:
         for stage1_flav in ["lo", "cpio", "cramfs"]:
-            setattr(my_kernel, "stage1_%s_present" % (stage1_flav), True)
+            setattr(my_kernel, "stage1_{}_present".format(stage1_flav), True)
         my_kernel.stage2_present = True
         if not my_kernel.initrd_version:
             my_kernel.initrd_version = 0
         my_kernel.initrd_version += 1
-        my_kernel.initrd_built = datetime.datetime.now()
+        my_kernel.initrd_built = timezone.now()
         my_kernel.save()
     # cleaning up
     if my_args.root_dir:

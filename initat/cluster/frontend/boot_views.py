@@ -35,7 +35,6 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -117,10 +116,9 @@ class get_boot_info_json(View):
             many=True,
             context=ctx,
         ).data
-        _resp = JSONRenderer().render(_json)
         # import pprint
         # pprint.pprint(_json)
-        request.xml_response["response"] = _resp
+        request.xml_response["response"] = json.dumps(_json)
 
 
 class update_device_bootsettings(APIView):
@@ -144,7 +142,6 @@ class update_device(View):
         from initat.cluster.backbone.server_enums import icswServiceEnum
         _post = request.POST
         dev_data = json.loads(_post["boot"])
-        # pprint.pprint(dev_data)
         _change_lut = {
             "b": "change_dhcp_mac",
             "t": "change_target_state",

@@ -157,7 +157,7 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
         send_async_return=False,
     )
     def syslog_line(self, payload, **kwargs):
-        return payload
+        return payload.decode("utf-8")
 
     @RemoteCall(
         id_filter="^.*:(tell_mother|hoststatus):.*$",

@@ -26,12 +26,20 @@ from django.db.models import Q
 from initat.cluster.backbone.models import partition, sys_partition
 
 
-class partition_setup(object):
-    def __init__(self, conf):
+class icswPartitionSetup(object):
+    def __init__(self, conf, log_com):
+        self.__log_com = log_com
+        self.__config = conf
+        self._generate()
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_com("[PS] {}".format(what), log_level)
+
+    def _generate(self):
         root_dev = None
         part_valid = False
         part_list = partition.objects.filter(
-            Q(partition_disc__partition_table=conf.conf_dict["device"].partition_table)
+            Q(partition_disc__partition_table=self.__config.conf_dict["device"].partition_table)
         ).select_related(
             "partition_disc",
             "partition_disc__partition_table",
@@ -48,7 +56,7 @@ class partition_setup(object):
                 cur_disc = cur_part.partition_disc
                 cur_pt = cur_disc.partition_table
                 if root_dev is None:
-                    root_dev = conf.conf_dict["device"].partdev
+                    root_dev = self.__config.conf_dict["device"].partdev
                     # partition prefix for cciss partitions
                     part_pf = "p" if root_dev.count("cciss") else ""
                 is_valid, pt_name = (cur_pt.valid, cur_pt.name)
@@ -91,8 +99,8 @@ class partition_setup(object):
                             "lvm": "ext2",
                             "ext": ""
                         }.get(fs_name, fs_name),
-                        "{:d}".format(lower_size),
-                        fs_name == "ext" and "_" or ("{:d}".format(upper_size) if upper_size else "_")
+                        "{:d}".format(int(lower_size)),
+                        fs_name == "ext" and "_" or ("{:d}".format(int(upper_size)) if upper_size else "_")
                     )
                 )
                 if fs_name == "lvm":
@@ -119,17 +127,26 @@ class partition_setup(object):
                     if fs not in fspart_dict:
                         fspart_dict[fs] = []
                     fspart_dict[fs].append(act_part)
-                    fstab.append("%-20s %-10s %-10s %-10s %d %d" % (
-                        act_part,
-                        mp,
-                        fs,
-                        cur_part.mount_options and cur_part.mount_options or "rw",
-                        cur_part.fs_freq,
-                        cur_part.fs_passno))
+                    fstab.append(
+                        "%-20s %-10s %-10s %-10s %d %d" % (
+                            act_part,
+                            mp,
+                            fs,
+                            cur_part.mount_options and cur_part.mount_options or "rw",
+                            cur_part.fs_freq,
+                            cur_part.fs_passno,
+                        )
+                    )
                 old_pnum = act_pnum
-            print("  creating partition info for partition_table '%s' (root_device %s, partition postfix is '%s')" % (pt_name, root_dev, part_pf))
+            self.log(
+                "  creating partition info for partition_table '%s' (root_device %s, partition postfix is '%s')" % (
+                    pt_name,
+                    root_dev,
+                    part_pf,
+                )
+            )
             if part_valid:
-                for sys_part in sys_partition.objects.filter(Q(partition_table=conf.conf_dict["device"].partition_table)):
+                for sys_part in sys_partition.objects.filter(Q(partition_table=self.__config.conf_dict["device"].partition_table)):
                     fstab.append("%-20s %-10s %-10s %-10s %d %d" % (
                         sys_part.name,
                         sys_part.mountpoint,
@@ -143,20 +160,25 @@ class partition_setup(object):
                     root_part_type,
                     fstab,
                     sfdisk,
-                    parted)
+                    parted,
+                )
                 # logging
                 for what, name in [
                     (fstab, "fstab "),
                     (sfdisk, "sfdisk"),
                     (parted, "parted")
                 ]:
-                    print("Content of %s (%s):" % (name, logging_tools.get_plural("line", len(what))))
+                    self.log("Content of %s (%s):" % (name, logging_tools.get_plural("line", len(what))))
                     for line_num, line in zip(range(len(what)), what):
-                        print(" - %3d %s" % (line_num + 1, line))
+                        self.log(" - {:3d} {}".format(line_num + 1, line))
             else:
-                raise ValueError("Partition-table %s is not valid" % (pt_name))
+                _err_str = "Partition-table '{}' is not valid".format(pt_name)
+                self.log(_err_str, logging_tools.LOG_LEVEL_ERROR)
+                raise ValueError(_err_str)
         else:
-            raise ValueError("Partition setup has no partitions on physical discs")
+            _err_str = "Partition setup has no partitions on physical discs"
+            self.log(_err_str, logging_tools.LOG_LEVEL_ERROR)
+            raise ValueError(_err_str)
 
     def create_part_files(self, pinfo_dir):
         if self.fspart_dict:

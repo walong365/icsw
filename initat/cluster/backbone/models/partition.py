@@ -304,7 +304,11 @@ def partition_disc_pre_save(sender, **kwargs):
                 d_name = d_name.replace("!", "/")
                 if not disc_re_unix.match(d_name):
                     raise ValidationError("illegal name '{}'".format(d_name))
-        all_discs = partition_disc.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_table=cur_inst.partition_table)).values_list("disc", flat=True)
+        all_discs = partition_disc.objects.exclude(
+            Q(pk=cur_inst.pk)
+        ).filter(
+            Q(partition_table=cur_inst.partition_table)
+        ).values_list("disc", flat=True)
         if d_name in all_discs:
             raise ValidationError("disc name '{}' already used".format(d_name))
         cur_inst.disc = d_name
@@ -361,7 +365,7 @@ class partition_table(models.Model):
                     logging_tools.LOG_LEVEL_ERROR,
                     "mountpoint '{}' is not unique ({:d})".format(
                         non_unique_mp,
-                        all_mps.count(name),
+                        all_mps.count(non_unique_mp),
                     ),
                     True
                 )

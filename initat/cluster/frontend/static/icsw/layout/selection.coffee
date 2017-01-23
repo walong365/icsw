@@ -247,13 +247,18 @@ angular.module(
             else
                 return _dev.full_name
 
-        resolve_devices: () =>
+        resolve_device_names: () =>
             if @dev_sel.length
                 _list = ((@resolve_dev_name(_ds) for _ds in @dev_sel))
                 _list.sort()
                 return _list.join(", ")
             else
                 return "---"
+
+        resolve_devices: (in_list) ->
+            return (
+                @tree.all_lut[pk] for pk in in_list when @tree.all_lut[pk]?
+            )
 
         resolve_total_devices: () =>
             if @tot_dev_sel.length
@@ -299,11 +304,6 @@ angular.module(
                 else
                     console.warn "device with pk #{_pk} is not resolvable"
             return [dev_pk_list, dev_pk_nmd_list, devg_pk_list, dev_pk_md_list]
-
-        resolve_devices: (in_list) ->
-            return (
-                @tree.all_lut[pk] for pk in in_list when @tree.all_lut[pk]?
-            )
 
         category_selected: (cat_idx) ->
             return cat_idx in @cat_sel
@@ -1144,7 +1144,7 @@ angular.module(
             $scope.struct.selection_for_dropdown = undefined
         # resolve strings
         $scope.struct.resolved_device_groups = $scope.struct.selection.resolve_device_groups()
-        $scope.struct.resolved_devices = $scope.struct.selection.resolve_devices()
+        $scope.struct.resolved_devices = $scope.struct.selection.resolve_device_names()
         $scope.struct.resolved_categories = $scope.struct.selection.resolve_categories()
         $scope.struct.resolved_total_devices = $scope.struct.selection.resolve_total_devices()
         _update_title()

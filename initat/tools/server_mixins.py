@@ -767,6 +767,9 @@ class RemoteCallMixin(object):
                 src_id, data = in_data
             else:
                 src_id, data = (None, in_data[0])
+            # always cast src_id to str
+            if isinstance(src_id, bytes):
+                src_id = src_id.decode("utf-8")
             msg_lut = self.remote_call_lut[com_type]
             if RemoteCallMessageType.xml in msg_lut:
                 # try to interpret as server_command
@@ -783,7 +786,7 @@ class RemoteCallMixin(object):
             com_name = None
             if self.remote_call_id_filter_dict and src_id is not None:
                 _match = [
-                    _value for _key, _value in self.remote_call_id_filter_dict.items() if _key.match(src_id.decode("utf-8"))
+                    _value for _key, _value in self.remote_call_id_filter_dict.items() if _key.match(src_id)
                 ]
                 if _match:
                     com_name = _match[0].func.__name__
@@ -875,12 +878,6 @@ class RemoteCallMixin(object):
         if msg_type == RemoteCallMessageType.xml:
             # set source
             reply.update_source()
-        if isinstance(src_id, bytes):
-            src_id = src_id.decode("utf-8")
-            self.log(
-                "casting src_id to str ({})".format(src_id),
-                logging_tools.LOG_LEVEL_WARN,
-            )
         # send return
         _send_str = str(reply)
         try:

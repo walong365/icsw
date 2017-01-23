@@ -30,16 +30,17 @@ from initat.cluster.backbone.models import device, partition, DeviceBootHistory
 from initat.cluster_config_server.config import global_config
 from initat.cluster_config_server.simple_request import simple_request, var_cache
 from initat.tools import config_tools, logging_tools, module_dependency_tools, process_tools
+from initat.cluster.backbone.server_enums import icswServiceEnum
 
 
-class config_control(object):
+class ConfigControl(object):
     """  struct to handle simple config requests """
     def __init__(self, cur_dev):
         self.__log_template = None
         self.device = cur_dev
         self.create_logger()
         self.dbh = None
-        config_control.update_router()
+        ConfigControl.update_router()
         self.__com_dict = {
             "get_kernel": self._handle_get_kernel,
             "get_kernel_name": self._handle_get_kernel_name,
@@ -78,7 +79,7 @@ class config_control(object):
                            self.device.full_name.replace(".", r"\.")),
                 global_config["LOG_DESTINATION"],
                 zmq=True,
-                context=config_control.srv_process.zmq_context,
+                context=ConfigControl.srv_process.zmq_context,
                 init_logger=True)
             self.log("added client %s (%s)" % (str(self.device), self.device.uuid))
 
@@ -87,8 +88,8 @@ class config_control(object):
 
     def complex_config_request(self, s_req, req_name):
         self.log("routing config_request '%s'" % (req_name))
-        q_id = config_control.queue(self, s_req, req_name)
-        config_control.srv_process.send_to_process(
+        q_id = ConfigControl.queue(self, s_req, req_name)
+        ConfigControl.srv_process.send_to_process(
             "build",
             "complex_request",
             q_id,
@@ -104,7 +105,7 @@ class config_control(object):
                 s_req.node_text,
                 s_req.src_ip,
                 ret_str))
-            config_control.srv_process._send_simple_return(s_req.zmq_id, ret_str)
+            ConfigControl.srv_process._send_simple_return(s_req.zmq_id, ret_str)
         else:
             self.log("got result for delayed '%s' (src_ip %s)" % (
                 s_req.node_text,
@@ -116,7 +117,7 @@ class config_control(object):
         s_req = simple_request(self, src_id, node_text)
         com_call = self.__com_dict.get(s_req.command, None)
         if com_call:
-            config_control.update_router()
+            ConfigControl.update_router()
             try:
                 ret_str = com_call(s_req)
             except:
@@ -138,7 +139,7 @@ class config_control(object):
                 s_req.src_ip,
                 logging_tools.get_diff_time_str(e_time - s_time),
                 ret_str))
-            config_control.srv_process._send_simple_return(s_req.zmq_id, ret_str)
+            ConfigControl.srv_process._send_simple_return(s_req.zmq_id, ret_str)
             del s_req
 
     # command snippets
@@ -161,7 +162,7 @@ class config_control(object):
         return "ok {}".format(" ".join(s_req._get_config_str_vars("STOP_SCRIPTS")))
 
     def _handle_get_root_passwd(self, s_req):
-        var_dict, _var_info = var_cache(config_control.cdg).get_vars(self.device)
+        var_dict, _var_info = var_cache(ConfigControl.cdg).get_vars(self.device)
         if self.device.root_passwd:
             r_pwd, pwd_src = (self.device.root_passwd.strip(), "device struct")
         elif "ROOT_PASSWORD" in var_dict:
@@ -175,11 +176,11 @@ class config_control(object):
         return "ok {}".format(" ".join(s_req._get_config_str_vars("ADDITIONAL_PACKAGES")))
 
     def _handle_ack_config(self, s_req):
-        if self.device.name in config_control.done_config_requests:
-            ret_str = config_control.done_config_requests[self.device.name]
-            del config_control.done_config_requests[self.device.name]
+        if self.device.name in ConfigControl.done_config_requests:
+            ret_str = ConfigControl.done_config_requests[self.device.name]
+            del ConfigControl.done_config_requests[self.device.name]
             return ret_str
-        if self.device.name not in config_control.pending_config_requests:
+        if self.device.name not in ConfigControl.pending_config_requests:
             self.log("strange, got ack but not in done nor pending list", logging_tools.LOG_LEVEL_ERROR)
             self._handle_create_config(s_req)
             return "warn waiting for config"
@@ -187,14 +188,14 @@ class config_control(object):
             return "warn waiting for config"
 
     def _handle_create_config(self, s_req):
-        if self.device.name in config_control.pending_config_requests:
+        if self.device.name in ConfigControl.pending_config_requests:
             return "warn already in pending list"
-        elif self.device.name in config_control.done_config_requests:
+        elif self.device.name in ConfigControl.done_config_requests:
             return "ok config already built"
         else:
-            config_control.pending_config_requests[self.device.name] = True
-            q_id = config_control.queue(self, s_req, "build_config")
-            config_control.srv_process.create_config(q_id, s_req)
+            ConfigControl.pending_config_requests[self.device.name] = True
+            q_id = ConfigControl.queue(self, s_req, "build_config")
+            ConfigControl.srv_process.create_config(q_id, s_req)
             return "ok started building config"
 
     def _handle_modify_bootloader(self, s_req):
@@ -223,7 +224,7 @@ class config_control(object):
             if cur_img.build_lock:
                 return "error image is locked"
             else:
-                vs_struct = s_req._get_valid_server_struct(["tftpboot_export", "image_server"])
+                vs_struct = s_req._get_valid_server_struct([icswServiceEnum.image_server])
                 if vs_struct:
                     self._ensure_dbh()
                     if vs_struct.config_name.startswith("mother"):
@@ -254,10 +255,10 @@ class config_control(object):
         prod_net = self.device.prod_link
         if not prod_net:
             self.log("no prod_link set", logging_tools.LOG_LEVEL_ERROR)
-        vs_struct = s_req._get_valid_server_struct(["tftpboot_export", "mother_server"])
+        vs_struct = s_req._get_valid_server_struct([icswServiceEnum.mother_server])
         if vs_struct:
             # routing ok, get export directory
-            if vs_struct.config_name.startswith("mother"):
+            if icswServiceEnum[vs_struct.config.config_service_enum.enum_name] == icswServiceEnum.mother_server:
                 # is mother_server
                 dir_key = "TFTP_DIR"
             else:
@@ -359,7 +360,7 @@ class config_control(object):
                         pass
                     else:
                         in_parts = _b64_str.strip().split()
-                    pci_list = [_entry.split("::") for _entry in in_parts if _entry.count("::")]
+                    pci_list = [_entry.decode("utf-8").split("::") for _entry in in_parts if _entry.decode("utf-8").count("::")]
                     # apply filter
                     if _filter:
                         self.log("filter is '{}'".format(_filter))
@@ -403,14 +404,14 @@ class config_control(object):
         return s_req.get_partition()
 
     def _handle_get_syslog_server(self, s_req):
-        vs_struct = s_req._get_valid_server_struct(["syslog_server"])
+        vs_struct = s_req._get_valid_server_struct([icswServiceEnum.logcheck_server])
         if vs_struct:
             return "ok {}".format(s_req.server_ip)
         else:
             return "error no syslog-server defined"
 
     def _handle_get_package_server(self, s_req):
-        vs_struct = s_req._get_valid_server_struct(["package_server"])
+        vs_struct = s_req._get_valid_server_struct([icswServiceEnum.package_server])
         if vs_struct:
             return "ok {}".format(s_req.server_ip)
         else:
@@ -419,7 +420,7 @@ class config_control(object):
     def _handle_get_kernel(self, s_req):
         dev_kernel = self.device.new_kernel
         if dev_kernel:
-            vs_struct = s_req._get_valid_server_struct(["tftpboot_export", "kernel_server"])
+            vs_struct = s_req._get_valid_server_struct([icswServiceEnum.kernel_server])
             if not vs_struct:
                 return "error no server found"
             else:
@@ -471,7 +472,7 @@ class config_control(object):
         # returns display name
         dev_kernel = self.device.new_kernel
         if dev_kernel:
-            vs_struct = s_req._get_valid_server_struct(["tftpboot_export", "kernel_server"])
+            vs_struct = s_req._get_valid_server_struct([icswServiceEnum.kernel_server])
             if not vs_struct:
                 return "error no server found"
             else:
@@ -493,65 +494,65 @@ class config_control(object):
 
     @staticmethod
     def close_clients():
-        for cur_c in config_control.__cc_dict.values():
+        for cur_c in ConfigControl.__cc_dict.values():
             cur_c.close()
 
     @staticmethod
     def init(srv_process):
         # cluster device group
-        config_control.cdg = device.objects.get(Q(device_group__cluster_device_group=True))
-        config_control.srv_process = srv_process
-        config_control.cc_log("init config_control")
-        config_control.__cc_dict = {}
-        config_control.__lut_dict = {}
-        config_control.__queue_dict = {}
-        config_control.__queue_num = 0
-        config_control.pending_config_requests = {}
-        config_control.done_config_requests = {}
-        config_control.router_last_update = time.time() - 3600
-        config_control.router_obj = config_tools.RouterObject(config_control.cc_log)
+        ConfigControl.cdg = device.objects.get(Q(device_group__cluster_device_group=True))
+        ConfigControl.srv_process = srv_process
+        ConfigControl.cc_log("init config_control")
+        ConfigControl.__cc_dict = {}
+        ConfigControl.__lut_dict = {}
+        ConfigControl.__queue_dict = {}
+        ConfigControl.__queue_num = 0
+        ConfigControl.pending_config_requests = {}
+        ConfigControl.done_config_requests = {}
+        ConfigControl.router_last_update = time.time() - 3600
+        ConfigControl.router_obj = config_tools.RouterObject(ConfigControl.cc_log)
 
     @staticmethod
     def update_router():
         cur_time = time.time()
-        if abs(cur_time - config_control.router_last_update) > 5:
-            config_control.router_last_update = cur_time
-            config_control.router_obj.check_for_update()
+        if abs(cur_time - ConfigControl.router_last_update) > 5:
+            ConfigControl.router_last_update = cur_time
+            ConfigControl.router_obj.check_for_update()
 
     @staticmethod
     def queue(cc_obj, s_req, req_name):
-        config_control.__queue_num += 1
-        config_control.__queue_dict[config_control.__queue_num] = (cc_obj, s_req, req_name)
-        return config_control.__queue_num
+        ConfigControl.__queue_num += 1
+        ConfigControl.__queue_dict[ConfigControl.__queue_num] = (cc_obj, s_req, req_name)
+        return ConfigControl.__queue_num
 
     @staticmethod
     def complex_result(queue_id, result):
-        cc_obj, s_req, req_name = config_control.__queue_dict[queue_id]
-        del config_control.__queue_dict[queue_id]
+        cc_obj, s_req, req_name = ConfigControl.__queue_dict[queue_id]
+        del ConfigControl.__queue_dict[queue_id]
         cc_obj.complex_config_result(s_req, req_name, result)
 
     @staticmethod
     def cc_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        config_control.srv_process.log("[cc] {}".format(what), log_level)
+        ConfigControl.srv_process.log("[cc] {}".format(what), log_level)
 
     @staticmethod
     def has_client(search_spec):
-        return search_spec in config_control.__lut_dict
+        return search_spec in ConfigControl.__lut_dict
 
     @staticmethod
     def get_client(search_spec):
-        loc_cc = config_control.__lut_dict.get(search_spec, None)
+        loc_cc = ConfigControl.__lut_dict.get(search_spec, None)
         loc_cc.refresh()
         return loc_cc
 
     @staticmethod
     def add_client(new_dev):
-        if new_dev.name not in config_control.__cc_dict:
-            new_c = config_control(new_dev)
-            config_control.__cc_dict[new_dev.name] = new_c
+        if new_dev.name not in ConfigControl.__cc_dict:
+            new_c = ConfigControl(new_dev)
+            ConfigControl.__cc_dict[new_dev.name] = new_c
             for key in ["pk", "name", "uuid"]:
-                config_control.__lut_dict[getattr(new_dev, key)] = new_c
-            config_control.cc_log("added client {}".format(str(new_dev)))
+                ConfigControl.__lut_dict[getattr(new_dev, key)] = new_c
+            ConfigControl.cc_log("added client {}".format(str(new_dev)))
         else:
-            config_control.__cc_dict[new_dev.name].refresh()
-        return config_control.__cc_dict[new_dev.name]
+            ConfigControl.__cc_dict[new_dev.name].refresh()
+        return ConfigControl.__cc_dict[new_dev.name]

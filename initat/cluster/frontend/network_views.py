@@ -253,6 +253,8 @@ class GetFreeIp(View):
     @method_decorator(login_required)
     def post(self, request):
         _post = request.POST
+        import pprint
+        pprint.pprint(_post)
         net_ip = json.loads(_post["netip"])
         cur_nw = network.objects.get(idx=net_ip["network"])
         free_ip = cur_nw.get_free_ip()

@@ -35,15 +35,13 @@ to log database calls set ICSW_DEUBG_SHOW_DB_CALLS
 
 """
 
-
-
 import os
 
 __all__ = [
-    b"ICSW_DEBUG_MODE",
-    b"ICSW_DEBUG_MIN_DB_CALLS",
-    b"ICSW_DEBUG_MIN_RUN_TIME",
-    b"ICSW_DEBUG_SHOW_DB_CALLS",
+    "ICSW_DEBUG_MODE",
+    "ICSW_DEBUG_MIN_DB_CALLS",
+    "ICSW_DEBUG_MIN_RUN_TIME",
+    "ICSW_DEBUG_SHOW_DB_CALLS",
 ]
 
 ICSW_DEBUG_MODE = True if os.environ.get("ICSW_DEBUG_SOFTWARE") else False

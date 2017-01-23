@@ -895,7 +895,7 @@ for mod in $remote_mods ; do
     echo -e "\r\nconnect ${motherserver}\r\n binary\r\n get $mod /lib/modules/`uname -r`/kernel/`basename $mod`" | tftp > /dev/null
 done
 
-depmod -ae || depmod -ave
+depmod -a || depmod -av
 
 # network drivers from e1000 are stored in /.initrd_mods
 intrd_mods=`cat /.initrd_mods`

@@ -610,7 +610,7 @@ angular.module(
 
         sub_scope.network_changed = (obj) ->
             if obj.ip == "0.0.0.0" or not obj._changed_by_user_
-                sub_scope.get_free_ip(obj)
+                sub_scope.get_free_ip(null, obj)
             if not obj._changed_by_user_
                 _nw = $scope.struct.network_tree.nw_lut[obj.network]
                 if _nw.preferred_domain_tree_node
