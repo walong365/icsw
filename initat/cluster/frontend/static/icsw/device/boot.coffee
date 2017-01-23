@@ -740,18 +740,19 @@ angular.module(
                         $scope.struct.boot_helper.update($scope.struct.devices)
                     else
                         $scope.struct.boot_helper = new icswGlobalBootHelper($scope.struct, $scope.struct.devices, salt_devices)
-                    salt_devices()
                     # init boot_helper and fetch device network
                     hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
                     $q.allSettled(
                         [
                             $scope.struct.device_tree.enrich_devices(hs, ["network_info"])
-                            $scope.struct.boot_helper.fetch()
                         ]
                     ).then(
                         (result) ->
-                            # console.log result
-                            $scope.struct.tree_valid = true
+                            $scope.struct.boot_helper.fetch().then(
+                                (ok) ->
+                                    salt_devices()
+                                    $scope.struct.tree_valid = true
+                            )
                     )
         )
 

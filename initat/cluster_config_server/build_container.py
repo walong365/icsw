@@ -31,7 +31,7 @@ from initat.cluster_config_server.base_objects import new_config_object, dir_obj
     link_object, delete_object, file_object
 from initat.cluster_config_server.generators import do_fstab, do_nets, do_routes, do_ssh, do_uuid, \
     do_etc_hosts, do_hosts_equiv, do_uuid_old
-from initat.cluster_config_server.partition_setup import partition_setup
+from initat.cluster_config_server.partition_setup import icswPartitionSetup
 from initat.tools import logging_tools, process_tools
 
 
@@ -449,7 +449,7 @@ class BuildContainer(object):
                             "do_fstab": do_fstab,
                             "do_uuid": do_uuid,
                             "do_uuid_old": do_uuid_old,
-                            "partition_setup": partition_setup,
+                            "partition_setup": icswPartitionSetup,
                         }
                     )
                 except:

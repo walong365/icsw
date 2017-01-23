@@ -24,7 +24,6 @@
 import os
 import shutil
 import stat
-import statvfs
 import subprocess
 import tempfile
 import time
@@ -112,7 +111,7 @@ class PackageCheck(object):
 
     def _call(self, cmd_string):
         self.log("calling '{}'".format(cmd_string))
-        return subprocess.check_output(cmd_string, shell=True)
+        return subprocess.check_output(cmd_string, shell=True).decode("utf-8")
 
 
 class BuildProcess(threading_tools.icswProcessObj):
@@ -192,10 +191,10 @@ class BuildProcess(threading_tools.icswProcessObj):
         self.log("calling '{}' in image".format(cmd))
         cmd_string = "{} 2>&1".format(cmd)
         try:
-            result = subprocess.check_output(cmd_string, shell=True)
+            result = subprocess.check_output(cmd_string, shell=True).decode("utf-8")
         except subprocess.CalledProcessError as what:
             self.log("result ({:d}): {}".format(what.returncode, str(what)), logging_tools.LOG_LEVEL_ERROR)
-            result = what.output
+            result = what.output.decode("utf-8")
         for line_num, line in enumerate(result.strip().split("\n"), 1):
             if line.rstrip():
                 self.log("  line {:2d}: {}".format(line_num, line.rstrip()))
@@ -322,6 +321,8 @@ class ServerProcess(threading_tools.icswProcessPool):
             do_exit = False
         except:
             self._int_error("build failed: {}".format(process_tools.get_except_info()))
+            for line in process_tools.icswExceptionInfo().log_lines:
+                self.log("    {}".format(line), logging_tools.LOG_LEVEL_ERROR)
         else:
             if do_exit:
                 self._int_error("done")
@@ -486,7 +487,7 @@ class ServerProcess(threading_tools.icswProcessPool):
 
     def _check_size(self, cur_img):
         """ check size of target directory """
-        target_free_size = os.statvfs(self.__image_dir)[statvfs.F_BFREE] * os.statvfs(self.__image_dir)[statvfs.F_BSIZE]
+        target_free_size = os.statvfs(self.__image_dir).f_bfree * os.statvfs(self.__image_dir).f_bsize
         orig_size = int(self._call(cur_img, "du -sb {}".format(cur_img.source)).split()[0])
         self.log(
             "size of image is {}, free space is {} (at {})".format(
@@ -612,10 +613,10 @@ class ServerProcess(threading_tools.icswProcessPool):
         if kwargs.get("chroot", False):
             cmd_string = "chroot {} {}".format(cur_img.source, cmd_string)
         try:
-            result = subprocess.check_output(cmd_string, shell=True)
+            result = subprocess.check_output(cmd_string, shell=True).decode("utf-8")
         except subprocess.CalledProcessError as what:
             self.log("result ({:d}): {}".format(what.returncode, str(what)), logging_tools.LOG_LEVEL_ERROR)
-            result = what.output
+            result = what.output.decode("utf-8")
         for line_num, line in enumerate(result.strip().split("\n"), 1):
             if line.rstrip():
                 self.log("  line {:2d}: {}".format(line_num, line.rstrip()))

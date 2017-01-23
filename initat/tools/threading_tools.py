@@ -931,7 +931,10 @@ class icswProcessObj(multiprocessing.Process, TimerBase, PollerBase, icswProcess
         signal.signal(sig_num, self._sig_handler)
 
     def _code(self):
-        self._db_debug = DBDebugBase(self.log)
+        try:
+            self._db_debug = DBDebugBase(self.log)
+        except ModuleNotFoundError:
+            self._db_debug = DBDebugDisabled(self.log)
         try:
             from initat.cluster.backbone import db_tools
             db_tools.close_connection()
@@ -1103,7 +1106,10 @@ class icswProcessPool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingM
         ICSWAutoInit.__init__(self)
         TimerBase.__init__(self)
         PollerBase.__init__(self)
-        self._db_debug = DBDebugBase(self.log)
+        try:
+            self._db_debug = DBDebugBase(self.log)
+        except ModuleNotFoundError:
+            self._db_debug = DBDebugDisabled(self.log)
         ExceptionHandlingMixin.__init__(self)
         self.pid = os.getpid()
         self.__socket_buffer = {}

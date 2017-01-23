@@ -23,12 +23,12 @@ import os
 import shutil
 
 from django.db.models import Q
-from initat.cluster.backbone.models import device
 
+from initat.cluster.backbone.models import device
 from initat.tools import logging_tools, process_tools
 from .build_container import BuildContainer, GeneratedTree
 from .config import global_config
-from .partition_setup import partition_setup
+from .partition_setup import icswPartitionSetup
 
 
 class build_client(object):
@@ -74,7 +74,7 @@ class build_client(object):
             setattr(self, key, kwargs[key])
         for force_int in ["pk", "run_idx"]:
             if hasattr(self, force_int):
-                setattr(self, force_int(getattr(self, force_int)))
+                setattr(self, force_int, int(getattr(self, force_int)))
         self.log_kwargs(only_new=True)
 
     def log_kwargs(self, info_str="", only_new=True):
@@ -170,12 +170,16 @@ class build_client(object):
         success = False
         dummy_cont = BuildContainer(self, {}, {"device": loc_dev}, loc_tree, None)
         try:
-            loc_ps = partition_setup(dummy_cont)
+            loc_ps = icswPartitionSetup(dummy_cont, self.log)
         except:
             self.log(
-                "cannot generate partition info: {}".format(process_tools.get_except_info()),
+                "cannot generate partition info: {}".format(
+                    process_tools.get_except_info()
+                ),
                 logging_tools.LOG_LEVEL_ERROR
             )
+            for _line in process_tools.icswExceptionInfo().log_lines:
+                self.log("    {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
         else:
             base_dir = os.path.join(global_config["CONFIG_DIR"], loc_dev.name)
             pinfo_dir = os.path.join(base_dir, "pinfo")

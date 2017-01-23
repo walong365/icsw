@@ -455,7 +455,7 @@ class list_view(
         if "order_by" in special_dict:
             res = res.order_by(special_dict["order_by"])
         if "num_entries" in special_dict:
-            res = res[0:special_dict["num_entries"]]
+            res = res[0 : int(special_dict["num_entries"])]
         if model_name == "quota_capable_blockdevice":
             res = res.prefetch_related(
                 "device__snmp_schemes__snmp_scheme_vendor",

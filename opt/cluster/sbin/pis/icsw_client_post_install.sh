@@ -19,6 +19,12 @@
 
 source $(dirname $0)/icsw_pis_tools.sh
 
+if is_chroot ; then
+    if [ ! -c /dev/urandom ] ; then
+        mknod /dev/urandom c 1 9
+    fi
+fi
+
 /sbin/ldconfig
 
 # some cleanup tasks

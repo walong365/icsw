@@ -35,7 +35,7 @@ from initat.tools import configfile, logging_tools, process_tools, server_comman
     threading_tools, server_mixins
 from .build_process import build_process
 from .config import global_config
-from .config_control import config_control
+from .config_control import ConfigControl
 
 
 class server_process(server_mixins.ICSWBasePool):
@@ -78,7 +78,7 @@ class server_process(server_mixins.ICSWBasePool):
 
     def _init_subsys(self):
         self.log("init subsystems")
-        config_control.init(self)
+        ConfigControl.init(self)
 
     def _int_error(self, err_cause):
         if self["exit_requested"]:
@@ -99,7 +99,7 @@ class server_process(server_mixins.ICSWBasePool):
         self.CC.process_added(src_process, src_pid)
 
     def loop_end(self):
-        config_control.close_clients()
+        ConfigControl.close_clients()
 
     def loop_post(self):
         for open_sock in self.socket_dict.values():
@@ -162,7 +162,7 @@ class server_process(server_mixins.ICSWBasePool):
                 if srv_com.tree.find("nodeinfo") is not None:
                     node_text = srv_com.tree.findtext("nodeinfo")
                     src_id = data[0].split(":")[0]
-                    if not config_control.has_client(src_id):
+                    if not ConfigControl.has_client(src_id):
                         try:
                             new_dev = device.objects.get(Q(uuid=src_id) | Q(uuid__startswith=src_id[:-5]))
                         except device.DoesNotExist:
@@ -174,9 +174,9 @@ class server_process(server_mixins.ICSWBasePool):
                             zmq_sock.send_unicode(data[0], zmq.SNDMORE)
                             zmq_sock.send_unicode("error unknown UUID")
                         else:
-                            cur_c = config_control.add_client(new_dev)
+                            cur_c = ConfigControl.add_client(new_dev)
                     else:
-                        cur_c = config_control.get_client(src_id)
+                        cur_c = ConfigControl.get_client(src_id)
                     if cur_c is not None:
                         cur_c.handle_nodeinfo(data[0], node_text)
                 else:
@@ -283,7 +283,7 @@ class server_process(server_mixins.ICSWBasePool):
         if cur_com["command"].attrib["source"] == "external":
             self._send_simple_return(cur_com["command"].attrib["uuid"], str(cur_com))
         else:
-            config_control.complex_result(int(cur_com["command"].attrib["uuid"]), str(cur_com))
+            ConfigControl.complex_result(int(cur_com["command"].attrib["uuid"]), str(cur_com))
 
     def _send_simple_return(self, zmq_id, send_str):
         send_sock = self.socket_dict["router"]
@@ -332,4 +332,4 @@ class server_process(server_mixins.ICSWBasePool):
             )
 
     def _complex_result(self, src_proc, src_id, queue_id, result, **kwargs):
-        config_control.complex_result(queue_id, result)
+        ConfigControl.complex_result(queue_id, result)

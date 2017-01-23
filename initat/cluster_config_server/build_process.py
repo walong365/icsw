@@ -315,9 +315,9 @@ class build_process(threading_tools.icswProcessObj):
                                     routing_info, act_server = (act_routing_info[0], actual_server)
                         else:
                             cur_c.log(
-                                "empty routing info for {} to {}" % (
+                                "empty routing info for {} to {}".format(
                                     server_type,
-                                    actual_server.device.name
+                                    actual_server.device.name,
                                 ),
                                 logging_tools.LOG_LEVEL_WARN
                             )

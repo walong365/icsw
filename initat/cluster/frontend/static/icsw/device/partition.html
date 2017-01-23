@@ -1,15 +1,17 @@
-<!-- <script type="text/ng-template" id="icsw/device/partition/overview">
-    <icsw-device-partition-overview icsw-sel-man="0"></icsw-device-partition-overview>
-</script> -->
-
 <script type="text/ng-template" id="icsw/main/partition.html">
     <icsw-device-partition-edit-overview></icsw-device-partition-edit-overview>
 </script>
 
 <script type="text/ng-template" id="icsw.device.partition.overview">
-    <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching Data from Server ...</div>
+    <div
+        uib-alert
+        class="alert-warning"
+        ng-show="struct.loading"
+    >Fetching Data from Server ...</div>
     <div class="container-fluid">
-        <h3 ng-show="struct.devices.length">Disk Information for {{ struct.devices.length }} Devices</h3>
+        <h3 ng-show="struct.devices.length">
+            Disk Information for {{ struct.devices.length }} Devices
+        </h3>
         <icsw-tools-ensure-device-selection dev-list="struct.devices">
             <uib-tabset>
                 <uib-tab ng-repeat="dev in struct.devices">
@@ -25,7 +27,13 @@
                         </span>
                         <!--<icsw-tools-button type="create" size="xs" value="fetch partition info" ng-click="fetch($event, dev)"></icsw-tools-button>
                         <icsw-tools-button type="delete" size="xs" value="clear" ng-show="dev.act_partition_table" ng-click="clear($event, dev)" ng-show="dev.act_partition_table"></icsw-tools-button>-->
-                        <icsw-tools-button type="modify" size="xs" value="use {{ dev.partition_table.name }}" ng-click="use($event, dev)" ng-show="dev.partition_table"></icsw-tools-button>
+                        <icsw-tools-button
+                            type="modify"
+                            size="xs"
+                            value="use {{ dev.partition_table.name }}"
+                            ng-click="use($event, dev)"
+                            ng-show="dev.partition_table"
+                        ></icsw-tools-button>
                     </h4>
                     <table
                         class="table table-condensed table-hover table-bordered"
@@ -42,7 +50,7 @@
                             <tr ng-repeat-end ng-repeat="part in disk.partition_set" ng-show="part.mountpoint">
                                 <td>{{ disk.disc }}{{ part.pnum || '' }}</td>
                                 <td>{{ part.mountpoint }}</td>
-                                <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
+                                <td class="text-right">{{ part.size | get_size:1:1000 }}</td>
                                 <td class="text-right">{{ part.warn_threshold }}%</td>
                                 <td class="text-right">{{ part.crit_threshold }}%</td>
                             </tr>
@@ -139,9 +147,8 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.partition.table.layout">
-
-    <!-- <icsw-config-partition-table></icsw-config-partition-table>-->
-    <h3>Partition Layout '{{ layout.name }}'
+    <h3>
+        Partition Layout '{{ layout.name }}'
         <span ng-show="part.description">({{ layout.description }})</span>
         <span ng-show="struct.messages.lenght" text-class="danger">
             {{  struct.message_str }}
@@ -213,7 +220,7 @@
                 <td>{{ part.mountpoint }}</td>
                 <td>{{ part.mount_options }}</td>
                 <td>{{ part.bootable | yesno1 }}</td>
-                <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
+                <td class="text-right">{{ part.size | get_size:1:1000 }}</td>
                 <td>{{ part.fs_freq }}</td>
                 <td>{{ part.fs_passno }}</td>
                 <td>{{ part_tree.fs_lut[part.partition_fs].name }}</td>

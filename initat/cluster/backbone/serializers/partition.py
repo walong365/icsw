@@ -87,7 +87,7 @@ class partition_disc_serializer_create(serializers.ModelSerializer):
 
 
 class partition_disc_serializer(serializers.ModelSerializer):
-    partition_set = partition_serializer(many=True)
+    partition_set = partition_serializer(many=True, read_only=True)
 
     class Meta:
         fields = "__all__"

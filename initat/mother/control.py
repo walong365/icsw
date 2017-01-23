@@ -1490,7 +1490,7 @@ class NodeControlProcess(threading_tools.icswProcessObj, server_mixins.EggConsum
 
     def _syslog_line(self, *args, **kwargs):
         in_line = args[0]
-        if "DHCP" not in in_line:
+        if "dhcp" not in in_line.lower():
             self.log("got non-DHCP line {}, skip".format(in_line), logging_tools.LOG_LEVEL_WARN)
         else:
             for key, cur_re in self.__dhcp_res.items():

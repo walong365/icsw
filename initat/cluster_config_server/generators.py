@@ -32,7 +32,7 @@ from lxml.builder import E
 
 from initat.cluster.backbone.models import device_variable, domain_tree_node, netdevice
 from initat.cluster_config_server.config import global_config, GATEWAY_THRESHOLD
-from initat.cluster_config_server.partition_setup import partition_setup
+from initat.cluster_config_server.partition_setup import icswPartitionSetup
 from initat.tools import logging_tools, config_store, uuid_tools
 
 
@@ -431,7 +431,7 @@ def do_ssh(conf):
 
 
 def do_fstab(conf):
-    act_ps = partition_setup(conf)
+    act_ps = icswPartitionSetup(conf)
     fstab_co = conf.add_file_object("/etc/fstab")
     fstab_co += act_ps.fstab
 

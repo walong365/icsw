@@ -22,6 +22,7 @@
 from django.db.models import Q
 from initat.cluster.backbone.models import config, config_str, device_variable, net_ip
 from initat.tools import config_tools, logging_tools, server_command
+from initat.cluster.backbone.server_enums import icswServiceEnum
 
 
 # copy from md-config-server
@@ -132,11 +133,11 @@ class simple_request(object):
 
     def _get_valid_server_struct(self, s_list):
         # list of boot-related config names
-        bsl_servers = set(["kernel_server", "image_server", "mother_server"])
+        bsl_servers = set([icswServiceEnum.kernel_server, icswServiceEnum.image_server, icswServiceEnum.mother_server])
         # list of server_types which has to be mapped to the mother-server
-        map_to_mother = set(["kernel_server", "image_server"])
+        map_to_mother = set([icswServiceEnum.kernel_server, icswServiceEnum.image_server])
         for type_name in s_list:
-            conf_list = config_tools.device_with_config(type_name).get(type_name, [])
+            conf_list = config_tools.device_with_config(service_type_enum=type_name).get(type_name, [])
             if conf_list:
                 if type_name in bsl_servers:
                     # config name (from s_list) is in bsl_servers
@@ -158,14 +159,14 @@ class simple_request(object):
         if valid_server_struct and type_name in map_to_mother:
             # remap to mother_server
             valid_server_struct = config_tools.server_check(
-                server_type="mother_server",
+                service_type_enum=icswServiceEnum.mother_server,
                 short_host_name=valid_server_struct.short_host_name,
                 fetch_network_info=True
             )
         if valid_server_struct:
             dev_sc = config_tools.server_check(
                 short_host_name=self.cc.device.name,
-                server_type="node",
+                service_type_enum=None,
                 fetch_network_info=True
             )
             # check if there is a route between us and server
@@ -190,13 +191,20 @@ class simple_request(object):
             else:
                 # print "r", srv_routing
                 self.server_ip = srv_routing[0][2][1][0]
-                self.log("found valid_server_struct {} (device {}) with ip {}".format(
-                    valid_server_struct.server_info_str,
-                    str(valid_server_struct.device),
-                    self.server_ip))
+                self.log(
+                    "found valid_server_struct {} (device {}) with ip {}".format(
+                        valid_server_struct.server_info_str,
+                        str(valid_server_struct.device),
+                        self.server_ip
+                    )
+                )
         else:
-            self.log("no valid server_struct found (search list: {})".format(", ".join(s_list)),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "no valid server_struct found (search list: {})".format(
+                    ", ".join(s_list)
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         return valid_server_struct
 
     def create_config_dir(self):

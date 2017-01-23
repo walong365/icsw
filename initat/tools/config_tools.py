@@ -491,6 +491,10 @@ class server_check(object):
             if not self.host_name.count("."):
                 # host_name is a short_host_name, clear host_name
                 self.host_name = None
+        elif "short_host_name" in kwargs:
+            # deprecated
+            self.host_name = None
+            self.short_host_name = kwargs["short_host_name"]
         else:
             self.host_name = None
             self.short_host_name = kwargs.get("short_host_name", process_tools.get_machine_name())
@@ -531,7 +535,10 @@ class server_check(object):
         # lookup table network_identifier -> ip_list
         self.identifier_ip_lut = {}
         if self.__server_type is None:
-            self.real_server_name = self.__service_type_enum.name
+            if self.__service_type_enum is not None:
+                self.real_server_name = self.__service_type_enum.name
+            else:
+                self.real_server_name = ""
             self.config_name = None
         else:
             # set dummy config_name
@@ -594,26 +601,30 @@ class server_check(object):
                     # get config
                     _co = config.objects
                     if self.__server_type is None:
-                        _queries = [
-                            (
-                                True,
-                                Q(config_service_enum__enum_name=self.__service_type_enum.name) &
-                                Q(device_config__device=self.device) &
-                                Q(config_catalog__system_catalog=True)
-                            ),
-                            (
-                                True,
-                                Q(config_service_enum__enum_name=self.__service_type_enum.name) &
-                                Q(device_config__device=self.device) &
-                                Q(config_catalog__system_catalog=False),
-                            ),
-                            (
-                                False,
-                                Q(config_service_enum__enum_name=self.__service_type_enum.name) &
-                                Q(device_config__device__is_meta_device=True) &
-                                Q(device_config__device__device_group=self.device.device_group_id)
-                            ),
-                        ]
+                        if self.__service_type_enum is None:
+                            # no service type enum specifed, take device (for node selection)
+                            _queries = []
+                        else:
+                            _queries = [
+                                (
+                                    True,
+                                    Q(config_service_enum__enum_name=self.__service_type_enum.name) &
+                                    Q(device_config__device=self.device) &
+                                    Q(config_catalog__system_catalog=True)
+                                ),
+                                (
+                                    True,
+                                    Q(config_service_enum__enum_name=self.__service_type_enum.name) &
+                                    Q(device_config__device=self.device) &
+                                    Q(config_catalog__system_catalog=False),
+                                ),
+                                (
+                                    False,
+                                    Q(config_service_enum__enum_name=self.__service_type_enum.name) &
+                                    Q(device_config__device__is_meta_device=True) &
+                                    Q(device_config__device__device_group=self.device.device_group_id)
+                                ),
+                            ]
                     else:
                         _queries = [
                             (
@@ -636,30 +647,33 @@ class server_check(object):
                             ),
                         ]
                     self.config = None
-                    for _direct_device, _query in _queries:
-                        try:
-                            _config = _co.get(_query)
-                        except config.DoesNotExist:
-                            _config = None
-                        except config.MultipleObjectsReturned:
-                            # take first config
-                            _config = _co.filter(_query)[0]
-                        if _config is not None:
-                            self.config = _config
-                            self.config_name = self.config.name
-                            # found
-                            if _direct_device:
-                                # direct device
-                                self.effective_device = self.device
-                            else:
-                                # via meta device
-                                self.effective_device = device.objects.select_related(
-                                    "domain_tree_node"
-                                ).get(
-                                    Q(device_group=self.device.device_group_id) &
-                                    Q(is_meta_device=True)
-                                )
-                            break
+                    if len(_queries):
+                        for _direct_device, _query in _queries:
+                            try:
+                                _config = _co.get(_query)
+                            except config.DoesNotExist:
+                                _config = None
+                            except config.MultipleObjectsReturned:
+                                # take first config
+                                _config = _co.filter(_query)[0]
+                            if _config is not None:
+                                self.config = _config
+                                self.config_name = self.config.name
+                                # found
+                                if _direct_device:
+                                    # direct device
+                                    self.effective_device = self.device
+                                else:
+                                    # via meta device
+                                    self.effective_device = device.objects.select_related(
+                                        "domain_tree_node"
+                                    ).get(
+                                        Q(device_group=self.device.device_group_id) &
+                                        Q(is_meta_device=True)
+                                    )
+                                break
+                    else:
+                        self.effective_device = self.device
                 else:
                     self.config = None
         # self.num_servers = len(all_servers)
@@ -676,7 +690,9 @@ class server_check(object):
             # no direct config found, check for matching IP
             # we need at least a device to check
             # fetch ip_info
-            self._db_check_ip()
+            if self.__service_type_enum is not None:
+                # hmm ... ? for node selection not necessary
+                self._db_check_ip()
             self._fetch_network_info()
             self.server_info_str = "device {}".format(
                 str(self.device),
@@ -849,7 +865,9 @@ class server_check(object):
         }
         for _ip, _dev_idx, _nw_idx, _nd_idx, _nw_id in ip_list:
             dev_dict[_dev_idx]["nd_list"].add(_nd_idx)
-        res_dict = {dev_idx: [] for dev_idx in dev_dict.keys()}
+        res_dict = {
+            dev_idx: [] for dev_idx in dev_dict.keys()
+        }
         for dev_idx, dev in dev_dict.items():
             if self.netdevice_idx_list and dev["nd_list"]:
                 all_pathes = router_obj.get_ndl_ndl_pathes(self.netdevice_idx_list, list(dev["nd_list"]), add_penalty=True, only_endpoints=True)
