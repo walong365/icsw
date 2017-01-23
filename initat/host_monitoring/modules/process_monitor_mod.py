@@ -23,11 +23,12 @@ import os
 import re
 import signal
 import time
+import psutil
 
 from initat.host_monitoring import hm_classes, limits
 from initat.tools import affinity_tools, logging_tools, process_tools, config_store, \
     server_command
-import psutil
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 MIN_UPDATE_TIME = 10
 
@@ -384,14 +385,22 @@ class procstat_command(hm_classes.hm_command):
         else:
             name_list = []
         _p_dict = {}
+
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+            attr_list = ["pid", "ppid", "name", "exe", "cmdline", "status", "ppid", "cpu_affinity"]
+        elif PLATFORM_SYSTEM_TYPE == PLATFORM_SYSTEM_TYPE.LINUX:
+            attr_list = [
+                            "pid", "ppid", "uids", "gids", "name", "exe",
+                            "cmdline", "status", "ppid", "cpu_affinity",
+                        ]
+        else:
+            attr_list = ["pid", "name"]
+
         for key, value in process_tools.get_proc_list(proc_name_list=name_list).items():
             try:
                 if value.is_running():
                     _p_dict[key] = value.as_dict(
-                        attrs=[
-                            "pid", "ppid", "uids", "gids", "name", "exe",
-                            "cmdline", "status", "ppid", "cpu_affinity",
-                        ]
+                        attrs=attr_list
                     )
             except psutil.NoSuchProcess:
                 pass
