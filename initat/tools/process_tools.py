@@ -39,24 +39,8 @@ import six
 from lxml import etree
 from lxml.builder import E
 
-from enum import Enum
-
-from initat.constants import META_SERVER_DIR
+from initat.constants import META_SERVER_DIR, PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 from initat.tools import logging_tools
-
-
-class PlatformSystemTypeEnum(Enum):
-    LINUX = 1
-    WINDOWS = 2
-    UNKNOWN = 3
-
-if platform.system() == "Linux":
-    PLATFORM_SYSTEM_TYPE = PlatformSystemTypeEnum.LINUX
-elif platform.system() == "Windows":
-    PLATFORM_SYSTEM_TYPE = PlatformSystemTypeEnum.WINDOWS
-else:
-    PLATFORM_SYSTEM_TYPE = PlatformSystemTypeEnum.UNKNOWN
-
 
 if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
     import pwd

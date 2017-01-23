@@ -33,7 +33,7 @@ import platform
 
 import zmq
 
-from initat.tools.process_tools import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 from .logging_tools import LOG_LEVEL_OK, rewrite_log_destination, my_syslog, get_plural, UNIFIED_NAME
 
 CONTEXT_KEY = "__ctx__"

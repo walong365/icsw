@@ -45,7 +45,7 @@ import zmq
 
 from initat.tools import io_stream_helper, logging_tools, process_tools
 from initat.debug import ICSW_DEBUG_MODE
-from initat.tools.process_tools import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 # default stacksize
 DEFAULT_STACK_SIZE = 2 * 1024 * 1024

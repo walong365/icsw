@@ -42,7 +42,7 @@ from initat.host_monitoring.hm_mixins import HMHRMixin
 from initat.tools import logging_tools, process_tools, \
     server_command, threading_tools, uuid_tools, config_store
 from initat.tools.server_mixins import ICSWBasePool
-from initat.tools.process_tools import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 from .constants import TIME_FORMAT, ZMQ_ID_MAP_STORE
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess

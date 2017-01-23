@@ -37,7 +37,7 @@ from initat.host_monitoring import hm_classes, limits
 from initat.host_monitoring.constants import ZMQ_ID_MAP_STORE
 from initat.tools import cpu_database, logging_tools, partition_tools, pci_database, \
     process_tools, server_command, uuid_tools, config_store, dmi_tools
-from initat.tools.process_tools import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 nw_classes = ["ethernet", "network", "infiniband"]
 

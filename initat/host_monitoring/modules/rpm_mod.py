@@ -24,7 +24,7 @@ import platform
 
 from initat.host_monitoring import hm_classes, limits
 from initat.tools import logging_tools, server_command
-from initat.tools.process_tools import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 TEST_OUTPUT_ZYPPER = """Loading repository data...
 Reading installed packages...
