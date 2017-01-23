@@ -27,6 +27,8 @@ system-wide constants for the ICSW
 import os
 import sys
 
+from initat.tools.process_tools import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+
 __all__ = [
 
     # config stores
@@ -84,7 +86,16 @@ if any([_var in os.environ for _var in _os_vars]) and not all([_var in os.enviro
     )
     raise SystemExit
 
-CLUSTER_DIR = os.environ.get("ICSW_CLUSTER_DIR", _cluster_dir)
+if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+    import site
+
+    for _path in site.getsitepackages():
+        opt_path = os.path.join(_path, "opt")
+        if os.path.exists(opt_path):
+            CLUSTER_DIR = os.path.join(opt_path, "cluster")
+            break
+else:
+    CLUSTER_DIR = os.environ.get("ICSW_CLUSTER_DIR", _cluster_dir)
 ICSW_ROOT = os.environ.get("ICSW_ROOT", _icsw_root)
 
 # user extension dir
