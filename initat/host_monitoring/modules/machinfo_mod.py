@@ -1662,24 +1662,30 @@ class sysinfo_command(hm_classes.hm_command):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
-        root_dir = srv_com.get("arguments:arg0", "/")
-        log_lines, sys_dict = process_tools.fetch_sysinfo(root_dir)
-        for log_line, log_lev in log_lines:
-            self.log(log_line, log_lev)
-        imi_file = "/{}/.imageinfo".format(root_dir)
-        if os.path.isfile(imi_file):
-            srv_com["imageinfo"] = {
-                key.strip(): value.strip() for key, value in [
-                    line.strip().lower().split("=", 1) for line in open(imi_file, "r").readlines() if line.count("=")
-                ]
-            }
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+            root_dir = srv_com.get("arguments:arg0", "/")
+            log_lines, sys_dict = process_tools.fetch_sysinfo(root_dir)
+            for log_line, log_lev in log_lines:
+                self.log(log_line, log_lev)
+            imi_file = "/{}/.imageinfo".format(root_dir)
+            if os.path.isfile(imi_file):
+                srv_com["imageinfo"] = {
+                    key.strip(): value.strip() for key, value in [
+                        line.strip().lower().split("=", 1) for line in open(imi_file, "r").readlines() if line.count("=")
+                    ]
+                }
+            # add lstopo output
+            srv_com["lstopo_dump"] = self.module._lstopo_int()
+            # add dmi dump
+            srv_com["dmi_dump"] = self.module._dmiinfo_int()
+            # add pci dump
+            srv_com["pci_dump"] = self.module._pciinfo_int()
+        elif PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+            sys_dict = {"arch": platform.machine(), "vendor": "windows", "version": platform.release()}
+        else:
+            raise NotImplementedError
+
         srv_com["sysinfo"] = sys_dict
-        # add lstopo output
-        srv_com["lstopo_dump"] = self.module._lstopo_int()
-        # add dmi dump
-        srv_com["dmi_dump"] = self.module._dmiinfo_int()
-        # add pci dump
-        srv_com["pci_dump"] = self.module._pciinfo_int()
 
     def interpret(self, srv_com, cur_ns):
         need_keys = {"vendor", "version", "arch"}
