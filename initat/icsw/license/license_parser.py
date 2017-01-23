@@ -71,15 +71,16 @@ class Parser(object):
 
         self._add_ovum_parser(lic_sub_parser)
         install_cluster_parser = lic_sub_parser.add_parser(
-            "install-license",
+            "install-license-file",
             help="install already downloaded license file"
         )
-        install_cluster_parser.set_defaults(subcom="install-license", execute=self._execute)
+        install_cluster_parser.set_defaults(subcom="install-license-file", execute=self._execute)
         install_cluster_parser.add_argument("licensefile", help="License file")
         raw_list_parser = lic_sub_parser.add_parser("raw-license-info", help="Show raw License data")
         raw_list_parser.set_defaults(subcom="raw-license-info", execute=self._execute)
         raw_list_parser.add_argument("--mark-error", default=False, action="store_true", help="Mark all LicenseFiles with error as invalid [%(default)s]")
         raw_list_parser.add_argument("--unmark-all", default=False, action="store_true", help="Unmark all LicenseFiles [%(default)s]")
+        raw_list_parser.add_argument("--only-valid", default=False, action="store_true", help="Show only valid licenses [%(default)s]")
 
     def _add_ovum_parser(self, sub_parser):
         _act = sub_parser.add_parser("ova", help="ova handling")

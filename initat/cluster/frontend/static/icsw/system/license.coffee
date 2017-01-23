@@ -140,40 +140,55 @@ angular.module(
         return if x? then x else 0
 ]).directive("icswSystemLicensePackages",
 [
-    "icswSimpleAjaxCall", "ICSW_URLS",
+    "icswSimpleAjaxCall", "ICSW_URLS", "$templateCache",
 (
-    icswSimpleAjaxCall, ICSW_URLS,
+    icswSimpleAjaxCall, ICSW_URLS, $templateCache,
 ) ->
     return {
         restrict : "EA"
-        controller: 'icswSystemLicenseCtrl'
-        templateUrl : "icsw.system.license.packages"
+        # controller: 'icswSystemLicenseCtrl'
+        scope: {
+            license_tree: "=icswLicenseTree"
+        }
+        template : $templateCache.get("icsw.system.license.packages")
+        controller: "icswSystemLicensePackagesCtrl"
         link: (scope, el, attrs) ->
-            scope.cluster_accordion_open = {
-                0: true  # show first accordion which is the cluster id of this cluster by the ordering below
-            }
-            scope.package_order_fun = (pack) ->
-                return moment(pack.date).unix()
-
-            scope.cluster_order_fun = (data) ->
-                # order by is_this_cluster, cluster_id
-                prio = 0
-                if data[0] == scope.struct.license_tree.cluster_info.CLUSTER_ID
-                    prio -= 1
-                return [prio, data[0]]
-
-            scope.get_list = (obj) ->
-                if !obj.__transformed_list?
-                    # cluster-id, license
-                    obj.__transformed_list = ([k, v] for k, v of obj)
-                return obj.__transformed_list
-
-            scope.get_cluster_title = (cluster_id) ->
-                if cluster_id == scope.struct.license_tree.cluster_info.CLUSTER_ID
-                    return "Current cluster (#{cluster_id})"
-                else
-                    return "Cluster #{cluster_id}"
+            scope.set_license_tree(scope.license_tree)
     }
+]).controller("icswSystemLicensePackagesCtrl",
+[
+    "$scope", "icswTools",
+(
+    $scope, icswTools,
+) ->
+    $scope.struct = {
+        # set by link
+        license_tree: null
+        # ordered license list
+        lic_list: []
+    }
+    $scope.cluster_accordion_open = {
+        0: true
+    }
+
+    $scope.set_license_tree = (lic_tree) ->
+        $scope.struct.license_tree = lic_tree
+        $scope.struct.lic_list.length = 0
+        for entry in $scope.struct.license_tree.pack_list
+            entry.$$mom_date = moment(entry.date).unix()
+            $scope.struct.lic_list.push(entry)
+            entry.$$cluster_list = []
+            for key, value of entry.lic_info
+                value.$$cluster_id = key
+                value.$$local_cluster = value.$$cluster_id == $scope.struct.license_tree.cluster_info.CLUSTER_ID
+                if value.$$local_cluster
+                    value.$$cluster_info = "Local cluster (#{value.$$cluster_id})"
+                else
+                    value.$$cluster_info = "Other cluster #{value.$$clustr_id}"
+                entry.$$cluster_list.push(value)
+            icswTools.order_in_place(entry.$$cluster_list, ["$$local_cluster"], ["asc"])
+        icswTools.order_in_place($scope.struct.lic_list, ["$$mom_date"], ["asc"])
+
 ]).service("icswReactOvaDisplayFactory",
 [
     "$q", "$timeout", "icswSystemOvaCounterService", "$state", "ICSW_URLS",
@@ -370,7 +385,7 @@ angular.module(
                 $scope.struct.base_setting = base_setting
                 _routes = icswAccessLevelService.get_routing_info().routing
                 # console.log _routes
-                if "grapher_server" of _routes
+                if _routes? and "grapher_server" of _routes
                     $scope.struct.to_date = moment()
                     $scope.struct.from_date = moment().subtract(moment.duration(4, "week"))
                     $scope.struct.base_data_set = true

@@ -61,7 +61,8 @@ def get_server_fp(serialize=False):
             "pk": _dev.pk
         }
     if serialize:
-        return HardwareFingerPrint.serialize(_s_dict)
+        # return an ascii-decoded string
+        return HardwareFingerPrint.serialize(_s_dict).decode("ascii")
     else:
         return _s_dict
 

@@ -336,6 +336,10 @@ class _LicenseManager(models.Manager):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
         return LicenseFileReader(lic_obj.license_file, lic_obj.file_name, license=lic_obj).license_info
 
+    def get_raw_license_info(self, lic_obj):
+        from initat.cluster.backbone.license_file_reader import LicenseFileReader
+        return LicenseFileReader(lic_obj.license_file, lic_obj.file_name, license=lic_obj).raw_license_info
+
 
 ########################################
 # actual license documents:

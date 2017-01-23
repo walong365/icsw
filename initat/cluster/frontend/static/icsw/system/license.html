@@ -20,7 +20,9 @@
                     </icsw-tools-accordion-chevron>
                 </uib-accordion-heading>
 
-                <icsw-system-license-local-licenses icsw-license-tree="struct.license_tree"></icsw-system-license-local-licenses>
+                <icsw-system-license-local-licenses
+                    icsw-license-tree="struct.license_tree"
+                ></icsw-system-license-local-licenses>
             </div>
 
 
@@ -37,7 +39,9 @@
                     </icsw-tools-accordion-chevron>
                 </uib-accordion-heading>
 
-                <icsw-system-license-packages></icsw-system-license-packages>
+                <icsw-system-license-packages
+                    icsw-license-tree="struct.license_tree"
+                ></icsw-system-license-packages>
             </div>
 
             <div
@@ -127,7 +131,7 @@
 
 <script type="text/ng-template" id="icsw.system.license.packages">
     <uib-tabset>
-        <uib-tab ng-repeat="pack in struct.license_tree.pack_list | orderBy:package_order_fun:true">
+        <uib-tab ng-repeat="pack in struct.lic_list">
             <uib-tab-heading>
                 {{ pack.name }}
             </uib-tab-heading>
@@ -135,6 +139,7 @@
                 License package {{ pack.name }}
             </h3>
             <table class="table table-condensed table-hover" style="width: auto;">
+                <h4>Package status and source info</h4>
                 <tbody>
                     <tr>
                         <th>Customer</th>
@@ -144,6 +149,10 @@
                         <th>Type</th>
                         <td>{{ pack.type_name }}</td>
                     </tr>
+                    <tr>
+                        <th>Filename</th>
+                        <td>{{ pack.file_name }} ({{ pack.idx }})</td>
+                    </tr>
                 </tbody>
             </table>
             <uib-accordion close-others="true">
@@ -151,21 +160,34 @@
                     uib-accordion-group
                     class="panel-default"
                     is-open="cluster_accordion_open[$index]"
-                    ng-repeat="data in get_list(pack.lic_info) | orderBy:cluster_order_fun"
+                    ng-repeat="data in pack.$$cluster_list"
                 >
                     <!-- workaround for angular bug https://github.com/angular/angular.js/issues/1286 -->
                     <uib-accordion-heading>
                         <!-- data[0] is cluster_id, data[1] is cluster_licenses -->
-                        {{ get_cluster_title(data[0]) }}
+                        {{ data.$$cluster_info }}
                         <i
                             class="pull-right glyphicon"
                             ng-class="{'glyphicon-chevron-down': cluster_accordion_open[$index], 'glyphicon-chevron-right': !cluster_accordion_open[$index]}"
                         ></i>
                     </uib-accordion-heading>
+                    <h4>Fingerprint status</h4>
+                    <table class="table table-condensed table-hover" style="width: auto;">
+                        <tbody>
+                            <tr>
+                                <th>Info</th>
+                                <td>{{ data.fp_info.info }}</td>
+                            </tr>
+                            <tr>
+                                <th>Valid</th>
+                                <td><span ng-bind-html="data.fp_info.valid | yesno4"></span></td>
+                            </tr>
+                        </tbody>
+                    </table>
                     <table
                         st-table="entries_displayed"
-                        st-safe-src="data[1].licenses"
-                        class="table table-condensed table-hover"
+                        st-safe-src="data.licenses"
+                        class="table table-condensed table-hover table-striped"
                         style="width:auto;"
                     >
                         <thead>
