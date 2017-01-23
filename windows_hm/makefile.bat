@@ -54,7 +54,8 @@ XCOPY ..\initat\icsw .\host_monitor_windows\Lib\site-packages\initat\icsw\ /E
 XCOPY ..\initat\host_monitoring .\host_monitor_windows\Lib\site-packages\initat\host_monitoring\ /E
 XCOPY ..\initat\tools .\host_monitor_windows\Lib\site-packages\initat\tools\ /E
 XCOPY ..\initat\*.py .\host_monitor_windows\Lib\site-packages\initat\
-XCOPY ..\opt .\host_monitor_windows\Lib\site-packages\opt /E 
+XCOPY ..\opt .\host_monitor_windows\Lib\site-packages\opt /E
+COPY .\host_monitor_windows\Lib\site-packages\opt\cluster\etc\cstores.d\client_sample_config.xml .\host_monitor_windows\Lib\site-packages\opt\cluster\etc\cstores.d\client_config.xml
 
 RMDIR /s /q .\host_monitor_windows\tcl
 RMDIR /s /q .\host_monitor_windows\Tools
@@ -63,7 +64,7 @@ RMDIR /s /q .\host_monitor_windows\Doc
 XCOPY .\bin\nssm.exe .\host_monitor_windows\
 
 XCOPY .\scripts\dmidecode212.exe .\host_monitor_windows\
-XCOPY .\scripts\lspci.exe .\host_monitor_windows\
+:: XCOPY .\scripts\lspci.exe .\host_monitor_windows\
 :: XCOPY .\scripts\finalize-install.py .\nscp\
 MOVE .\tmp\pciutils-%PCIUTILS_VERSION%-win32 .\host_monitor_windows\pciutils
 
