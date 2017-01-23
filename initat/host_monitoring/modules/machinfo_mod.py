@@ -1772,10 +1772,13 @@ class uptime_command(hm_classes.hm_command):
     info_string = "uptime information"
 
     def __call__(self, srv_com, cur_ns):
-        upt_data = [int(float(value)) for value in open("/proc/uptime", "r").read().strip().split()]
-        srv_com["uptime"] = "%d" % (upt_data[0])
-        if len(upt_data) > 1:
-            srv_com["idle"] = "%d" % (upt_data[1])
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+            srv_com["uptime"] = "{}".format(time.time() - psutil.boot_time())
+        else:
+            upt_data = [int(float(value)) for value in open("/proc/uptime", "r").read().strip().split()]
+            srv_com["uptime"] = "%d" % (upt_data[0])
+            if len(upt_data) > 1:
+                srv_com["idle"] = "%d" % (upt_data[1])
 
     def interpret(self, srv_com, cur_ns):
         uptime_int = int(srv_com["uptime"].text)
