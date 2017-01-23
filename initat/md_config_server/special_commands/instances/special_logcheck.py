@@ -20,7 +20,7 @@
 """ special calls for logcheck-server related commands """
 
 from initat.cluster.backbone.models import SpecialGroupsEnum, SyslogCheck
-from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
+from initat.md_config_server.icinga_log_reader.log_reader import HostServiceIDUtil
 from initat.md_config_server.special_commands.base import SpecialBase
 from initat.tools import logging_tools
 
@@ -73,7 +73,7 @@ class SpecialSyslogGeneral(SpecialBase):
         if SRV_TYPE in _router:
             _srv_address = _router.get_server_address(SRV_TYPE)
             _srv_port = self.build_cache.instance_xml.get_port_dict(SRV_TYPE, ptype="command")
-            _passive_check_prefix = host_service_id_util.create_host_service_description(self.host.pk, self.parent_check, "")
+            _passive_check_prefix = HostServiceIDUtil.create_host_service_description(self.host.pk, self.parent_check, "")
             check_sig = ",".join(["{:d}".format(_check.pk) for _check in _checks])
             sc_array.append(
                 self.get_arg_template(

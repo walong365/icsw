@@ -29,7 +29,7 @@ from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDa
     category
 from initat.cluster.backbone.models.kpi import DataSourceTuple
 from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
-from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
+from initat.md_config_server.icinga_log_reader.log_reader_utils import HostServiceIDUtil
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiRRDObject, \
     KpiServiceObject, KpiSet
 from initat.md_sync_server.common import LiveSocket
@@ -326,7 +326,7 @@ class KpiData(object):
             # "display_name",
             # "current_attempt",
         )
-        description = host_service_id_util.create_host_service_description_direct(
+        description = HostServiceIDUtil.create_host_service_description_direct(
             dev.pk,
             mcc.pk,
             special_check_command_pk=mcc.mon_check_command_special_id,
@@ -341,7 +341,7 @@ class KpiData(object):
         # this is usually only one except in case of special check commands
         for ir in icinga_result:
             try:
-                service_info = host_service_id_util.parse_host_service_description(ir['description'])[2]
+                service_info = HostServiceIDUtil.parse_host_service_description(ir['description'])[2]
             except IndexError:
                 service_info = None
             ret.append(

@@ -34,7 +34,7 @@ from initat.md_config_server.config import global_config, MainConfig, MonAllComm
     MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, \
     MonDeviceTemplates, MonServiceTemplates, MonAllHostDependencies, build_safe_name, StructuredMonBaseConfig, \
     MON_VAR_IP_NAME
-from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
+from initat.md_config_server.icinga_log_reader.log_reader import HostServiceIDUtil
 from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.tools import config_tools, logging_tools, server_mixins, server_command
 from initat.tools.bgnotify import create_bg_job
@@ -1119,7 +1119,7 @@ class BuildProcess(
                                                 s_dep.dependent_mon_check_command_id
                                             )
                                         if all_ok:
-                                            act_service_dep["dependent_service_description"] = host_service_id_util.create_host_service_description(
+                                            act_service_dep["dependent_service_description"] = HostServiceIDUtil.create_host_service_description(
                                                 dev_pk,
                                                 gbc.mcc_lut_3[s_dep.dependent_mon_check_command_id],
                                                 gbc.mcc_lut[s_dep.dependent_mon_check_command_id][1],
@@ -1175,20 +1175,20 @@ class BuildProcess(
                                             # FIXME, TODO, must unroll loops
                                             # act_service_dep["dependent_service_description"] = gbc.mcc_lut[s_dep.dependent_mon_check_command_id][1]
                                             act_service_dep["dependent_service_description"] = [
-                                                host_service_id_util.create_host_service_description(
+                                                HostServiceIDUtil.create_host_service_description(
                                                     dev_pk,
                                                     gbc.mcc_lut_3[s_dep.dependent_mon_check_command_id],
                                                     gbc.mcc_lut[s_dep.dependent_mon_check_command_id][1],
                                                 ) for dev_pk in s_dep.master_list
-                                            ]
+                                                ]
                                             # act_service_dep["service_description"] = gbc.mcc_lut[s_dep.mon_check_command_id][1]
                                             act_service_dep["service_description"] = [
-                                                host_service_id_util.create_host_service_description(
+                                                HostServiceIDUtil.create_host_service_description(
                                                     dev_pk,
                                                     gbc.mcc_lut_3[s_dep.mon_check_command_id],
                                                     gbc.mcc_lut[s_dep.mon_check_command_id][1],
                                                 ) for dev_pk in s_dep.devices_list
-                                            ]
+                                                ]
                                             act_service_dep["host_name"] = [gbc.get_host(dev_pk).full_name for dev_pk in s_dep.devices_list]
                                             act_service_dep["dependent_host_name"] = [gbc.get_host(dev_pk).full_name for dev_pk in s_dep.master_list]
                                             s_dep.feed_config(act_service_dep)
@@ -1465,7 +1465,7 @@ class BuildProcess(
             act_serv["display_name"] = info
             # create identifying string for log
             # print "::", s_check.check_command_pk, s_check.special_command_pk, s_check.mccs_id
-            act_serv["service_description"] = host_service_id_util.create_host_service_description(host.pk, s_check, info)
+            act_serv["service_description"] = HostServiceIDUtil.create_host_service_description(host.pk, s_check, info)
             act_serv["host_name"] = host.full_name
             # volatile
             act_serv["is_volatile"] = "1" if serv_temp.volatile else "0"

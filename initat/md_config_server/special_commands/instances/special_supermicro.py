@@ -23,7 +23,7 @@ from argparse import Namespace
 
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.host_monitoring.modules import supermicro_mod
-from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
+from initat.md_config_server.icinga_log_reader.log_reader import HostServiceIDUtil
 from initat.md_config_server.special_commands.base import SpecialBase
 
 
@@ -133,7 +133,7 @@ class special_supermicro_passive(SpecialBase):
             "counter",
             connect_to_localhost=True
         )
-        _passive_check_prefix = host_service_id_util.create_host_service_description(self.host.pk, self.parent_check, "")
+        _passive_check_prefix = HostServiceIDUtil.create_host_service_description(self.host.pk, self.parent_check, "")
         sc_array = []
         for hint in hint_list:
             sc_array.append(
