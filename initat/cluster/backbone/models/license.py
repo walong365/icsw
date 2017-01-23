@@ -102,19 +102,22 @@ _PRODUCT_FAMILY_MATRIX = collections.OrderedDict(  # ordered dict so we know whi
 )
 
 
+from initat.icsw.service import constants
+
+
 class LicenseState(enum.IntEnum):
     # NOTE: this is ordered in the sense that if multiple licenses are
     # present, the higher one is actually used
-    violated = 120        # license parameters have been violated
-    valid = 100           # license is valid now
-    grace = 80            # license has expired but we still let the software run
-    new_install = 60      # to be defined
-    expired = 40          # license used to be valid but is not valid anymore
-    valid_in_future = 20  # license will be valid in the future
-    none = 0              # license not present
-    not_needed = -1       # license not needed
-    ip_mismatch = 200     # IP mismatch, should not run
-    fp_mismatch = 300     # fingerprint mismatch, should not run
+    violated = constants.LIC_STATE_VIOLATED        # license parameters have been violated
+    valid = constants.LIC_STATE_VALID              # license is valid now
+    grace = constants.LIC_STATE_GRACE              # license has expired but we still let the software run
+    new_install = constants.LIC_STATE_NEW_INSTALL  # to be defined
+    expired = constants.LIC_STATE_EXPIRED          # license used to be valid but is not valid anymore
+    valid_in_future = constants.LIC_STATE_VALID_IN_FUTURE  # license will be valid in the future
+    none = constants.LIC_STATE_NONE                # license not present
+    not_needed = constants.LIC_STATE_NOT_NEEDED    # license not needed
+    ip_mismatch = constants.LIC_STATE_IP_MISMATCH  # IP mismatch, should not run
+    fp_mismatch = constants.LIC_STATE_FP_MISMATCH  # fingerprint mismatch, should not run
 
     def is_valid(self):
         # states where we consider the license to be valid, i.e. the user may access the feature

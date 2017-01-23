@@ -56,6 +56,7 @@ class Parser(object):
         _srvc.add_argument("-p", dest="process", action="store_true", default=False, help="show process info [%(default)s]")
         _srvc.add_argument("-c", dest="config", action="store_true", default=False, help="show config info [%(default)s]")
         _srvc.add_argument("-m", dest="memory", action="store_true", default=False, help="memory consumption [%(default)s]")
+        _srvc.add_argument("-n", dest="numeric", default=False, action="store_true", help="Show states also numeric [%(default)s]")
         _srvc.add_argument("-a", dest="almost_all", action="store_true", default=False, help="almost all of the above, except start and DB info [%(default)s]")
         _srvc.add_argument("-A", dest="all", action="store_true", default=False, help="all of the above [%(default)s]")
         _srvc.add_argument("-v", dest="version", default=False, action="store_true", help="show version info [%(default)s]")

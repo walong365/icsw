@@ -91,7 +91,6 @@ sources = {
         "icsw.css"
         [
             "frontend/static/css/ui.fancytree.css",
-            # "frontend/static/css/luna.css",
             "frontend/static/css/cropper.css",
             "frontend/static/css/angular-datetimepicker.css",
             "frontend/static/css/angular-block-ui.css",
@@ -128,8 +127,8 @@ sources = {
         "css"
         true
     )
-    "js_query_new": new SourceMap(
-        "js_query_new"
+    "js_query": new SourceMap(
+        "js_query"
         "parta.js"
         [
             # no longer needed ... ?

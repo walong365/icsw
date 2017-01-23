@@ -156,6 +156,9 @@ def show_license_info(opts):
 
 
 def raw_license_info(opts):
+    if opts.delete:
+        print("Deleting LicenseFile Entry from database with idx {:d}".format(opts.delete))
+        License.objects.get(Q(idx=opts.delete)).delete()
     out_list = logging_tools.new_form_list()
     _to_save = []
     _query = License.objects.all()
