@@ -1592,8 +1592,16 @@ class mem_command(hm_classes.hm_command):
             )
             _fact = 1024
         else:
-            buffers = mem_dict["buffers"]
-            cached = mem_dict["cached"]
+            if "buffers" in mem_dict:
+                buffers = mem_dict["buffers"]
+            else:
+                buffers = 0
+
+            if "cached" in mem_dict:
+                cached = mem_dict["cached"]
+            else:
+                cached = 0
+
             mem_total, mem_free = (
                 mem_dict["total"],
                 mem_dict["free"],
