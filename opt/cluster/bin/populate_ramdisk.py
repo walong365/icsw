@@ -22,8 +22,6 @@
 
 """ generates the inital ramdisk for clusterboot """
 
-
-
 import os
 import sys
 
@@ -38,7 +36,7 @@ else:
 
     from django.db.models import Q
     from initat.cluster.backbone.models import kernel, initrd_build, PopulateRamdiskCmdLine
-    from initat.cluster.backbone.server_enums import icswServiceEnum#
+    from initat.cluster.backbone.server_enums import icswServiceEnum
     from django.utils import timezone
 
 import argparse

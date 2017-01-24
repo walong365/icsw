@@ -134,7 +134,11 @@ class upload_license_file(View):
         lic_file_content = lic_file.read()
 
         try:
-            reader = LicenseFileReader(lic_file_content, log_com=request.xml_response.log)
+            dummy_lic = License(
+                licese_file=lic_file_content,
+                file_name="uploaded via webfrontend",
+            )
+            reader = LicenseFileReader(dummy_lic, log_com=request.xml_response.log)
         except LicenseFileReader.InvalidLicenseFile as e:
             request.xml_response.error(str(e), logger=logger)
         else:

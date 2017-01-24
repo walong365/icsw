@@ -158,7 +158,11 @@ def show_license_info(opts):
 def raw_license_info(opts):
     if opts.delete:
         print("Deleting LicenseFile Entry from database with idx {:d}".format(opts.delete))
-        License.objects.get(Q(idx=opts.delete)).delete()
+        try:
+            License.objects.get(Q(idx=opts.delete)).delete()
+        except License.DoesNotExist:
+            # ignore
+            pass
     out_list = logging_tools.new_form_list()
     _to_save = []
     _query = License.objects.all()
@@ -232,11 +236,11 @@ def _install_license(content):
             if License.objects.license_exists(lic_file_content):  # and False:
                 print("License file already added.")
             else:
-                license_file_reader.LicenseFileReader(lic_file_content)
                 new_lic = License(
                     file_name="uploaded_via_command_line",
                     license_file=lic_file_content,
                 )
+                license_file_reader.LicenseFileReader(new_lic)
                 new_lic.save()
                 print("Successfully added license file: {}".format(str(new_lic)))
     else:

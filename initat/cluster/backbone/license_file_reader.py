@@ -50,15 +50,12 @@ class LicenseFileReader(object):
                 msg if msg is not None else "Invalid license file format"
             )
 
-    def __init__(self, file_content=None, file_name=None, license=None, cluster_id=None, current_fingerprint=None, log_com=None):
+    def __init__(self, license, cluster_id=None, current_fingerprint=None, log_com=None):
         from initat.cluster.backbone.models import device_variable
         self.__log_com = log_com
-        self.file_name = file_name
+        self.license = license
         # contains the license-file tag, i.e. information relevant for program without signature
-        if license is not None:
-            self.content_xml = self._read_and_parse(license.license_file, license)
-        else:
-            self.content_xml = self._read_and_parse(file_content, license)
+        self.content_xml = self._read_and_parse()
         if cluster_id is None:
             self.cluster_id = device_variable.objects.get_cluster_id()
         else:
@@ -100,13 +97,13 @@ class LicenseFileReader(object):
     def fingerprint_ok(self):
         return self.__fingerprint_valid
 
-    def _read_and_parse(self, file_content, license):
+    def _read_and_parse(self):
         # read content and parse some basic maps, raise an error if
         # - wrong format (decompression problem)
         # - XML not valid
         # - invalid signature
         try:
-            signed_content_str = server_command.decompress(file_content)
+            signed_content_str = server_command.decompress(self.license.license_file)
         except:
             self.log(
                 "Error reading uploaded license file: {}".format(
@@ -126,7 +123,7 @@ class LicenseFileReader(object):
         content_xml = signed_content_xml.find('icsw:license-file', ICSW_XML_NS_MAP)
         signature_xml = signed_content_xml.find('icsw:signature', ICSW_XML_NS_MAP)
 
-        signature_ok = self.verify_signature(content_xml, signature_xml, license)
+        signature_ok = self.verify_signature(content_xml, signature_xml)
 
         if not signature_ok:
             raise LicenseFileReader.InvalidLicenseFile("Invalid signature")
@@ -468,7 +465,7 @@ class LicenseFileReader(object):
             ) for _struct in package_uuid_map.values()
         ]
 
-    def verify_signature(self, lic_file_xml, signature_xml, license):
+    def verify_signature(self, lic_file_xml, signature_xml):
         # import pem
         from cryptography import x509
         from cryptography.exceptions import InvalidSignature
@@ -487,11 +484,11 @@ class LicenseFileReader(object):
 
         def log(what, log_level=logging_tools.LOG_LEVEL_OK):
             log_stat["target"] += 1
-            if license is None:
+            if not self.license.idx:
                 _logit = True
-            elif license.idx not in LICENSE_LOG_CACHE:
+            elif self.license.idx not in LICENSE_LOG_CACHE:
                 _logit = True
-            elif abs(LICENSE_LOG_CACHE[license.idx] - cur_time) > 300:
+            elif abs(LICENSE_LOG_CACHE[self.license.idx] - cur_time) > 300:
                 _logit = True
             else:
                 _logit = False
@@ -566,7 +563,7 @@ class LicenseFileReader(object):
                     log(
                         "Cert file {} verification result for '{}': {}".format(
                             short_cert_file,
-                            str(license) if license else "N/A",
+                            str(self.license),
                             result,
                         ),
                         logging_tools.LOG_LEVEL_WARN,
@@ -577,11 +574,11 @@ class LicenseFileReader(object):
                         logging_tools.LOG_LEVEL_ERROR
                     )
 
-        if license and license.idx:
+        if self.license.idx:
             if log_stat["emitted"]:
-                LICENSE_LOG_CACHE[license.idx] = cur_time
-            elif not log_stat["target"] and license.idx in LICENSE_LOG_CACHE:
-                del LICENSE_LOG_CACHE[license.idx]
+                LICENSE_LOG_CACHE[self.license.idx] = cur_time
+            elif not log_stat["target"] and self.license.idx in LICENSE_LOG_CACHE:
+                del LICENSE_LOG_CACHE[self.license.idx]
         return result == 1
 
     @staticmethod
@@ -601,7 +598,7 @@ class LicenseFileReader(object):
         )
 
     def __repr__(self):
-        return "LicenseFileReader(file_name={})".format(self.file_name)
+        return "LicenseFileReader(file_name={})".format(self.license.file_name)
 
     @property
     def raw_license_info(self):

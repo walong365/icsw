@@ -281,9 +281,7 @@ class _LicenseManager(models.Manager):
             try:
                 readers.append(
                     LicenseFileReader(
-                        lic.license_file,
-                        lic.file_name,
-                        license=lic,
+                        lic,
                         cluster_id=cluster_id,
                         current_fingerprint=cur_fp,
                         log_com=self.cached_log,
@@ -337,11 +335,11 @@ class _LicenseManager(models.Manager):
 
     def get_license_info(self, lic_obj):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
-        return LicenseFileReader(lic_obj.license_file, lic_obj.file_name, license=lic_obj).license_info
+        return LicenseFileReader(lic_obj).license_info
 
     def get_raw_license_info(self, lic_obj):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
-        return LicenseFileReader(lic_obj.license_file, lic_obj.file_name, license=lic_obj).raw_license_info
+        return LicenseFileReader(lic_obj).raw_license_info
 
 
 ########################################
@@ -360,10 +358,15 @@ class License(models.Model):
     license_file = models.TextField()  # contains the exact file content of the respective license files
 
     def __str__(self):
-        return "License {} ({:d})".format(
-            self.file_name,
-            self.idx
-        )
+        if self.idx:
+            return "License {} ({:d})".format(
+                self.file_name,
+                self.idx,
+            )
+        else:
+            return "License {} (non-DB)".format(
+                self.file_name,
+            )
 
     class Meta:
         app_label = "backbone"
