@@ -53,6 +53,13 @@ class DeviceVariableManager(models.Manager):
         except device_variable.DoesNotExist:
             return None
 
+    @memoize_with_expiry(10)
+    def get_cluster_name(self):
+        try:
+            return self.get(name="CLUSTER_NAME").val_str
+        except device_variable.DoesNotExist:
+            return None
+
     def get_device_variable_value(self, device, var_name, default_val=None):
         """ Returns variable considering inheritance. """
         var_value = default_val

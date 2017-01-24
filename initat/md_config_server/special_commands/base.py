@@ -276,7 +276,7 @@ class ArgTemplate(dict):
         # or checks where is_active is False
         self.check_active = kwargs.pop("check_active", None)
         if s_base is not None:
-            if s_base.__class__.__name__ == "CheckCommand":
+            if s_base.__class__.__name__ in ["DBStructuredMonBaseConfig", "CheckCommand"]:
                 self.__arg_lut, self.__arg_list = s_base.arg_ll
             else:
                 self.__arg_lut, self.__arg_list = s_base.s_check.arg_ll

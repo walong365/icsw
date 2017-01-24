@@ -76,7 +76,7 @@ def pretty_print(name, obj, offset):
     return lines
 
 
-class network_tree(dict):
+class NetworkTree(dict):
     def __init__(self):
         all_nets = network.objects.all().select_related("network_type", "master_network")
         for cur_net in all_nets:
@@ -91,7 +91,7 @@ class network_tree(dict):
                         self[cur_net.master_network_id].idx_list.append(net_pk)
 
 
-class build_process(threading_tools.icswProcessObj):
+class BuildProcess(threading_tools.icswProcessObj):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(
@@ -152,7 +152,7 @@ class build_process(threading_tools.icswProcessObj):
                 fetch_network_info=True
             )
             cur_c.log("server_check report(): {}".format(dev_sc.report()))
-            cur_net_tree = network_tree()
+            cur_net_tree = NetworkTree()
             # sanity checks
             if not cur_c.create_config_dir():
                 cur_c.log("creating config_dir", logging_tools.LOG_LEVEL_ERROR, state="done")

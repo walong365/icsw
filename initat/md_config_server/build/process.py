@@ -196,7 +196,7 @@ class BuildProcess(
     def fetch_dyn_configs(self, gbc, pk_list):
         start_time = time.time()
         cur_gc = self.__gen_config
-        cur_gc.add_config(MonAllCommands(cur_gc, logging=False))
+        cur_gc.add_config(MonAllCommands(cur_gc, logging=False, create=False))
         gbc.set_global_config(cur_gc, {}, False)
         ac_filter = Q(dynamic_checks=True)
         if pk_list:
@@ -234,10 +234,10 @@ class BuildProcess(
                 # build lut
                 conf_names = sorted(
                     [
-                        cur_c["command_name"] for cur_c in list(cur_gc["command"].values()) if not cur_c.is_event_handler and (
+                        cur_c.unique_name for cur_c in list(cur_gc["command"].values()) if not cur_c.is_event_handler and (
                             (
-                                (cur_c.get_config() in conf_names) and (host.pk not in cur_c.exclude_devices)
-                            ) or cur_c["command_name"] in cconf_names
+                                (cur_c.config_id and cur_c.config.name in conf_names) and (host.pk not in cur_c.exclude_devices.all().values_list("pk", flat=True))
+                            ) or cur_c.unique_name in cconf_names
                         )
                     ]
                 )
@@ -329,6 +329,13 @@ class BuildProcess(
             full_build=not self.single_build,
             router_obj=self.router_obj,
         )
+        # dump check commands
+        s_time = time.time()
+        self.log("Starting dump of checkcommands")
+        self.__gen_config.add_config(MonAllCommands(self.__gen_config, logging=True, create=True))
+        e_time = time.time()
+        self.log("... took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
+        # misc commands (sending of mails)
         if self.build_mode == BuildModesEnum.all_master:
             # from mixin
             # todo, remove, move to syncer
@@ -503,7 +510,7 @@ class BuildProcess(
     def _create_gen_config_files(self, mode):
         cur_gc = self.__gen_config
         # misc commands (sending of mails)
-        cur_gc.add_config(MonAllCommands(cur_gc, logging=True))
+        cur_gc.add_config(MonAllCommands(cur_gc, logging=False, create=False))
         # servicegroups
         cur_gc.add_config(MonAllServiceGroups(cur_gc))
         # timeperiods
@@ -1025,10 +1032,10 @@ class BuildProcess(
                         # build lut
                         conf_names = sorted(
                             [
-                                cur_c["command_name"] for cur_c in list(cur_gc["command"].values()) if not cur_c.is_event_handler and (
+                                cur_c.unique_name for cur_c in list(cur_gc["command"].values()) if not cur_c.is_event_handler and (
                                     (
-                                        (cur_c.get_config() in conf_names) and (host.pk not in cur_c.exclude_devices)
-                                    ) or cur_c["command_name"] in cconf_names
+                                        (cur_c.config_id and cur_c.config.name in conf_names) and (host.pk not in cur_c.exclude_devices.all().values_list("pk", flat=True))
+                                    ) or cur_c.unique_name in cconf_names
                                 )
                             ]
                         )
@@ -1279,7 +1286,7 @@ class BuildProcess(
                 c_com = cur_gc["command"][msc_check.mon_check_command.name]
                 dev_names = [(gbc.get_host(cur_dev).full_name, c_com.get_description()) for cur_dev in msc_check.devices_list]
                 if len(dev_names):
-                    s_check = cur_gc["command"]["check_service_cluster"]
+                    s_check = cur_gc["command"][MonCheckCommandSystemNames.check_service_cluster.value]
                     serv_temp = gbc.serv_templates[msc_check.mon_service_templ_id]
                     serv_cgs = list(set(serv_temp.contact_groups).intersection(hbc.contact_groups))
                     sub_list = self.get_service(
@@ -1339,7 +1346,7 @@ class BuildProcess(
             hbc.log(
                 "{} ({}) already used, ignoring .... (CHECK CONFIG !)".format(
                     s_check.get_description(),
-                    s_check["command_name"],
+                    s_check.unique_name,
                 ),
                 logging_tools.LOG_LEVEL_WARN
             )
@@ -1430,7 +1437,7 @@ class BuildProcess(
         ev_defined = True if s_check.event_handler else False
         hbc.log(
             "  adding check {:<30s} ({:2d} p), template {}, {}, {}".format(
-                s_check["command_name"],
+                s_check.unique_name,
                 len(sc_array),
                 s_check.get_template(act_def_serv.name),
                 "cg: {}".format(", ".join(sorted(serv_cgs))) if serv_cgs else "no cgs",
@@ -1508,7 +1515,7 @@ class BuildProcess(
                 cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
             # command_name may be altered when using a special-command
             _com_parts = [
-                kwargs.get("command_name", s_check["command_name"])
+                kwargs.get("command_name", s_check.unique_name)
             ] + s_check.correct_argument_list(arg_temp, host.dev_variables)
             if any([_part is None for _part in _com_parts]) and self.gc["DEBUG"]:
                 self.log("none found: {}".format(str(_com_parts)), logging_tools.LOG_LEVEL_CRITICAL)

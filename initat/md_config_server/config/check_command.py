@@ -19,12 +19,8 @@
 #
 """ config part of md-config-server """
 
-import time
-
 from initat.cluster.backbone.models import TOP_MONITORING_CATEGORY, parse_commandline
-from initat.md_config_server.config.mon_base_config import StructuredMonBaseConfig
 from initat.tools import logging_tools
-from .global_config import global_config
 
 __all__ = [
     "CheckCommand",
@@ -113,13 +109,13 @@ class CheckCommand(object):
                 out_list.append(value)
         return out_list
 
-    def get_mon_config(self):
-        return StructuredMonBaseConfig(
-            "command",
-            self.__nag_name,
-            command_name=self.__nag_name,
-            command_line=self.md_command_line
-        )
+    # def get_mon_config(self):
+    #    return StructuredMonBaseConfig(
+    #        "command",
+    #        self.__nag_name,
+    #        command_name=self.__nag_name,
+    #        command_line=self.md_command_line
+    #    )
 
     def __getitem__(self, key):
         if key == "command_name":
@@ -133,8 +129,8 @@ class CheckCommand(object):
         else:
             raise SyntaxError("illegal call to __setitem__ of check_command (key='{}')".format(key))
 
-    def get_config(self):
-        return self.config
+    # def get_config(self):
+    #    return self.config
 
     def get_template(self, default):
         if self.template:
@@ -160,5 +156,5 @@ class CheckCommand(object):
         """
         return (self.__arg_lut, self.__arg_list)
 
-    def __repr__(self):
-        return "{} [{}]".format(self.__name, self.command_line)
+    # def __repr__(self):
+    #    return "{} [{}]".format(self.__name, self.command_line)

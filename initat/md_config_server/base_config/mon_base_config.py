@@ -25,6 +25,7 @@ from lxml.builder import E
 
 from initat.tools import logging_tools
 
+
 __all__ = [
     "MonBaseConfig",
     "build_safe_name",
@@ -237,7 +238,7 @@ class StructuredContentEmitter(object):
                 )
             ) != 1:
                 raise ValueError(
-                    "values in list {} for key {} have different types".format(
+                    "values in list '{}' for key {} have different types".format(
                         str(in_list),
                         _key
                     )
@@ -250,7 +251,7 @@ class StructuredContentEmitter(object):
                 else:
                     if "" in in_list:
                         raise ValueError(
-                            "empty string found in list {} for key {}".format(
+                            "empty string found in list '{}' for key {}".format(
                                 str(in_list),
                                 _key
                             )

@@ -32,6 +32,7 @@ from django.dispatch import receiver
 
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer
 from initat.tools import logging_tools
+from initat.md_config_server.base_config.mon_base_config import StructuredContentEmitter
 
 __all__ = [
     "mon_host_cluster",
@@ -79,6 +80,7 @@ __all__ = [
 
     # Enum
     "MonCheckCommandSystemNames",
+    "DBStructuredMonBaseConfig",
 ]
 
 
@@ -428,12 +430,21 @@ def parse_commandline(com_line):
 
 
 class MonCheckCommandSystemNames(Enum):
+    # process commands
     process_service_perfdata_file = "process-service-perfdata-file"
     process_host_perfdata_file = "process-host-perfdata-file"
+    # oc{h,s}p commands
     ochp_command = "ochp-command"
     ocsp_command = "ocsp-command"
+    # cluster commands
     check_service_cluster = "check_service_cluster"
     check_host_cluster = "check_host_cluster"
+    # notify commands
+    dummy_notify = "dummy-notify"
+    host_notify_by_mail = "host-notify-by-mail"
+    host_notify_by_sms = "host-notify-by-sms"
+    service_notify_by_mail = "service-notify-by-mail"
+    service_notify_by_sms = "service-notify-by-sms"
 
 
 class mon_check_command(models.Model):
@@ -469,26 +480,6 @@ class mon_check_command(models.Model):
     # which tcp port(s) cover this check
     tcp_coverage = models.CharField(default="", max_length=256, blank=True)
 
-    @staticmethod
-    def get_system_check_command(**kwargs):
-        _changed = False
-        try:
-            _obj = mon_check_command.objects.get(Q(system_command=True) & Q(name=kwargs["name"]))
-        except mon_check_command.DoesNotExist:
-            _obj = mon_check_command(
-                name=kwargs["name"],
-                system_command=True,
-            )
-            _changed = True
-        for key, value in kwargs.items():
-            if getattr(_obj, key) != value:
-                setattr(_obj, key, value)
-                _changed = True
-
-        if _changed:
-            _obj.save()
-        return _obj
-
     def get_configured_device_pks(self):
         return [dev_conf.device_id for dev_conf in self.config.device_config_set.all()]
 
@@ -515,10 +506,64 @@ class mon_check_command(models.Model):
             "mon_icinga_log_raw_service_downtime_data",
         ]
 
+    @property
+    def obj_type(self):
+        return "command"
+
     def __str__(self):
         return "mcc_{}".format(self.name)
 
-    __repr__ = __str__
+
+class DBStructuredMonBaseConfig(mon_check_command, StructuredContentEmitter):
+    # proxy class to interface with md-config-server
+    @classmethod
+    def get_system_check_command(cls, **kwargs):
+        # some kind of simple factory ...
+        _create = kwargs.pop("create")
+        _changed = False
+        try:
+            _obj = cls.objects.get(Q(system_command=True) & Q(name=kwargs["name"]))
+        except cls.DoesNotExist:
+            if _create:
+                _obj = cls(
+                    name=kwargs["name"],
+                    system_command=True,
+                )
+                _changed = True
+            else:
+                # this should never happen, trigger an error
+                _obj = None
+        for key, value in kwargs.items():
+            if getattr(_obj, key) != value:
+                setattr(_obj, key, value)
+                _changed = True
+
+        if _changed:
+            _obj.save()
+        return _obj
+
+    def keys(self):
+        return ["command_line", "command_name"]
+
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
+    @property
+    def mccs_id(self):
+        return self.mon_check_command_special_id
+
+    def get_description(self):
+        return self.name
+
+    def __getitem__(self, key):
+        if key == "command_name":
+            return [self.unique_name]
+        else:
+            return [getattr(self, key)]
+
+    class Meta:
+        db_table = 'ng_check_command'
+        proxy = True
 
 
 def _check_unique_name(cur_inst):
