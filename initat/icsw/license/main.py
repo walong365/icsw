@@ -36,7 +36,7 @@ from initat.cluster.backbone.models import License, device_variable, icswEggCrad
     icswEggEvaluationDef
 from initat.constants import VERSION_CS_NAME
 from initat.debug import ICSW_DEBUG_MODE
-from initat.tools import process_tools, hfp_tools, config_store, logging_tools
+from initat.tools import process_tools, hfp_tools, config_store, logging_tools, server_command
 
 __all__ = [
     "main",
@@ -212,40 +212,18 @@ def raw_license_info(opts):
         print("...done")
 
 
-def _install_license(content):
-    try:
-        content_xml = etree.fromstring(content)
-    except:
-        print("Error interpreting license: {}".format(process_tools.get_except_info()))
-        sys.exit(-1)
-
-    for message_xml in content_xml.xpath("//messages/message"):
-        prefix = {
-            20: "",
-            30: "Warning: ",
-            40: "Error: "
-        }.get(int(message_xml.get('log_level')), "")
-        print("{}{}".format(prefix, message_xml.text))
-
-    code = int(content_xml.find("header").get("code"))
-    if code < 40:  # no error
-        lic_file_node = content_xml.xpath("//values/value[@name='license_file']")
-        if len(lic_file_node):
-            lic_file_content = lic_file_node[0].text
-            # validate
-            if License.objects.license_exists(lic_file_content):  # and False:
-                print("License file already added.")
-            else:
-                new_lic = License(
-                    file_name="uploaded_via_command_line",
-                    license_file=lic_file_content,
-                )
-                license_file_reader.LicenseFileReader(new_lic)
-                new_lic.save()
-                print("Successfully added license file: {}".format(str(new_lic)))
+def _install_license(lic_file_content):
+    # validate
+    if License.objects.license_exists(lic_file_content):  # and False:
+        print("License file already added.")
     else:
-        print("Exiting due to errors.")
-        sys.exit(1)
+        new_lic = License(
+            file_name="uploaded_via_command_line",
+            license_file=lic_file_content,
+        )
+        license_file_reader.LicenseFileReader(new_lic)
+        new_lic.save()
+        print("Successfully added license file: {}".format(str(new_lic)))
 
 
 def install_license_file(opts):
@@ -278,7 +256,30 @@ def register_cluster(opts):
         sys.exit(1)
     else:
         content = res.read()
-        _install_license(content)
+        try:
+            content_xml = etree.fromstring(content)
+        except:
+            print("Error interpreting response: {}".format(process_tools.get_except_info()))
+            sys.exit(-1)
+        else:
+            for message_xml in content_xml.xpath("//messages/message"):
+                prefix = {
+                    20: "",
+                    30: "Warning: ",
+                    40: "Error: "
+                }.get(int(message_xml.get('log_level')), "")
+                print("{}{}".format(prefix, message_xml.text))
+
+            code = int(content_xml.find("header").get("code"))
+            if code < 40:  # no error
+                lic_file_node = content_xml.xpath("//values/value[@name='license_file']")
+                if len(lic_file_node):
+                    _install_license(lic_file_node[0].text)
+                else:
+                    print("No license file found in response.")
+            else:
+                print("Exiting due to errors.")
+                sys.exit(1)
 
 
 def show_cluster_id(opts):
