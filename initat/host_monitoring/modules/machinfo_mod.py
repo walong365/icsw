@@ -1770,10 +1770,7 @@ class load_command(hm_classes.hm_command):
             srv_com["load5"] = "{:.2f}".format(cur_load[1])
             srv_com["load15"] = "{:.2f}".format(cur_load[2])
         else:
-            # Todo guess/estimate load for windows
-            srv_com["load1"] = "{:.2f}".format(0)
-            srv_com["load5"] = "{:.2f}".format(0)
-            srv_com["load15"] = "{:.2f}".format(0)
+            raise NotImplementedError
 
     def interpret(self, srv_com, cur_ns):
         load_1, load_5, load_15 = (
