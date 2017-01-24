@@ -17,7 +17,6 @@
 #
 """ network througput and status information """
 
-import subprocess
 import datetime
 import os
 import re
@@ -30,6 +29,7 @@ import psutil
 
 from initat.host_monitoring import hm_classes, limits
 from initat.tools import logging_tools, process_tools, server_command
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 from ..long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
 
@@ -450,7 +450,12 @@ class _general(hm_classes.hm_module):
                 self.__argus_interfaces.remove(_entry)
 
     def init_machine_vector(self, mv):
-        self.act_nds = NetSpeed(self.ethtool_path, self.ibv_devinfo_path)  # self.bonding_devices)
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+            self.act_nds = NetSpeed(self.ethtool_path, self.ibv_devinfo_path)  # self.bonding_devices)
+        elif PLATFORM_SYSTEM_TYPE == PLATFORM_SYSTEM_TYPE.WINDOWS:
+            self.act_nds = None
+        else:
+            raise NotImplementedError
         mv.register_entry("net.count.tcp", 0, "number of TCP connections", "1", 1)
         mv.register_entry("net.count.udp", 0, "number of UDP connections", "1", 1)
 
@@ -1213,13 +1218,42 @@ class net_command(hm_classes.hm_command):
             )
         else:
             net_device = srv_com["arguments:arg0"].text.strip()
-            if net_device in self.module.act_nds:
-                srv_com["device"] = self.module.act_nds[net_device].get_xml(srv_com)
-            else:
-                srv_com.set_result(
-                    "netdevice {} not found".format(net_device),
-                    server_command.SRV_REPLY_STATE_ERROR,
+            if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+                if net_device in self.module.act_nds:
+                    srv_com["device"] = self.module.act_nds[net_device].get_xml(srv_com)
+                else:
+                    srv_com.set_result(
+                        "netdevice {} not found".format(net_device),
+                        server_command.SRV_REPLY_STATE_ERROR,
+                    )
+            elif PLATFORM_SYSTEM_TYPE == PLATFORM_SYSTEM_TYPE.WINDOWS:
+                import wmi
+                c = wmi.WMI()
+
+                # very, very crude mapping from eth{d} to perf_results list
+                # TODO improve this
+                perf_results = c.query("SELECT * FROM Win32_PerfFormattedData_Tcpip_NetworkInterface")
+                index = int(net_device[-1])
+                perf_result = perf_results[index]
+
+                result = srv_com.builder(
+                    "device_{}".format(net_device),
+                    srv_com.builder(
+                        "values",
+                        *[
+                            srv_com.builder("carrier", "0.00"),
+                            srv_com.builder("rxerr", "0.00"),
+                            srv_com.builder("rxdrop", "0.00"),
+                            srv_com.builder("rx", "{0:.2f}".format(int(perf_result.BytesReceivedPersec))),
+                            srv_com.builder("rxerr", "0.00"),
+                            srv_com.builder("tx", "{0:.2f}".format(int(perf_result.BytesSentPersec))),
+                            srv_com.builder("txdrop", "0.00"),
+                        ]
+                    )
                 )
+                srv_com["device"] = result
+            else:
+                raise NotImplementedError
 
     def _parse_duplex_str(self, in_dup):
         if in_dup.lower().count("unk") or in_dup == "-":
