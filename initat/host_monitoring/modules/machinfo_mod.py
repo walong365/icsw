@@ -1229,99 +1229,123 @@ class df_command(hm_classes.hm_command):
                     mapped_disk = "not found"
             else:
                 mapped_disk = disk
-            try:
-                n_dict = self.module._df_int()
-            except:
-                srv_com.set_result(
-                    "error reading mtab: {}".format(process_tools.get_except_info()),
-                    server_command.SRV_REPLY_STATE_ERROR,
-                )
+
+            if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+                try:
+                    n_dict = self.module._df_int()
+                except:
+                    srv_com.set_result(
+                        "error reading mtab: {}".format(process_tools.get_except_info()),
+                        server_command.SRV_REPLY_STATE_ERROR,
+                    )
+                    return
+            elif PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+                n_dict = {}
+                for disk_partition in psutil.disk_partitions():
+                    try:
+                        usage_obj = psutil.disk_usage(disk_partition.device)
+                        disk_name = disk_partition.device[0]
+
+                        n_dict[disk_name] = {"mountpoint": disk_partition.mountpoint,
+                                             "fs": disk_partition.fstype,
+                                             "b_free_perc": int(usage_obj.percent),
+                                             "b_size": usage_obj.total,
+                                             "b_used": usage_obj.used,
+                                             "b_free": usage_obj.total - usage_obj.used,
+                                             "i_size": 0,
+                                             "i_avail": 0,
+                                             "i_free": 0
+                                            }
+                    except OSError:
+                        continue
             else:
-                if disk == "ALL":
-                    srv_com["df_result"] = {
-                        disk: {
-                            "mountpoint": n_dict[disk]["mountpoint"],
-                            "perc": n_dict[disk]["b_free_perc"],
-                            "used": n_dict[disk]["b_used"],
-                            "total": n_dict[disk]["b_size"]
-                        } for disk in list(n_dict.keys())
-                    }
-                else:
-                    store_info = True
-                    if mapped_disk not in n_dict:
-                        # check for dash problems
-                        if mapped_disk.count("-"):
-                            _parts = mapped_disk.split("-")
-                            for _iter in itertools.product("-+", repeat=len(_parts) - 1):
-                                _key = _parts[0]
-                                for _join, _part in zip(_iter, _parts[1:]):
-                                    _key = "{}{}{}".format(
-                                        _key,
-                                        {"+": "--"}.get(_join, _join),
-                                        _part,
-                                    )
-                                if _key in n_dict:
-                                    mapped_disk = _key
-                                    break
-                    if mapped_disk not in n_dict:
-                        # id is just a guess, FIXME
-                        try:
-                            all_maps = self.__disk_lut["id"][mapped_disk]
-                        except KeyError:
+                raise NotImplementedError
+
+            if disk == "ALL":
+                srv_com["df_result"] = {
+                    disk: {
+                        "mountpoint": n_dict[disk]["mountpoint"],
+                        "perc": n_dict[disk]["b_free_perc"],
+                        "used": n_dict[disk]["b_used"],
+                        "total": n_dict[disk]["b_size"]
+                    } for disk in list(n_dict.keys())
+                }
+            else:
+                store_info = True
+                if mapped_disk not in n_dict:
+                    # check for dash problems
+                    if mapped_disk.count("-"):
+                        _parts = mapped_disk.split("-")
+                        for _iter in itertools.product("-+", repeat=len(_parts) - 1):
+                            _key = _parts[0]
+                            for _join, _part in zip(_iter, _parts[1:]):
+                                _key = "{}{}{}".format(
+                                    _key,
+                                    {"+": "--"}.get(_join, _join),
+                                    _part,
+                                )
+                            if _key in n_dict:
+                                mapped_disk = _key
+                                break
+                if mapped_disk not in n_dict:
+                    # id is just a guess, FIXME
+                    try:
+                        all_maps = self.__disk_lut["id"][mapped_disk]
+                    except KeyError:
+                        store_info = False
+                        srv_com.set_result(
+                            "invalid partition {} (key is {})".format(
+                                disk,
+                                mapped_disk
+                            ),
+                            server_command.SRV_REPLY_STATE_ERROR
+                        )
+                    else:
+                        disk_found = False
+                        for mapped_disk in ["/dev/disk/by-id/{}".format(cur_map) for cur_map in all_maps]:
+                            if mapped_disk in n_dict:
+                                disk_found = True
+                                break
+                        if not disk_found:
                             store_info = False
                             srv_com.set_result(
-                                "invalid partition {} (key is {})".format(
-                                    disk,
-                                    mapped_disk
-                                ),
-                                server_command.SRV_REPLY_STATE_ERROR
+                                "invalid partition {}".format(disk),
+                                server_command.SRV_REPLY_STATE_ERROR,
                             )
-                        else:
-                            disk_found = False
-                            for mapped_disk in ["/dev/disk/by-id/{}".format(cur_map) for cur_map in all_maps]:
-                                if mapped_disk in n_dict:
-                                    disk_found = True
-                                    break
-                            if not disk_found:
-                                store_info = False
-                                srv_com.set_result(
-                                    "invalid partition {}".format(disk),
-                                    server_command.SRV_REPLY_STATE_ERROR,
-                                )
-                    if store_info:
-                        mapped_info = n_dict[mapped_disk]
-                        cur_fs = mapped_info["fs"]
-                        res_dict = {
-                            "part": disk,
-                            "mapped_disk": mapped_disk,
-                            "orig_disk": orig_disk,
-                            "mountpoint": mapped_info["mountpoint"],
-                            "perc": mapped_info["b_free_perc"],
-                            "used": mapped_info["b_used"],
-                            "total": mapped_info["b_size"],
-                            "i_size": mapped_info["i_size"],
-                            "i_free": mapped_info["i_free"],
-                            "i_avail": mapped_info["i_avail"],
-                            "fs": cur_fs,
-                        }
-                        if cur_fs == "btrfs" and self.module.btrfs_path:
-                            cur_stat, cur_out = subprocess.getstatusoutput(
-                                "{} fi df {}".format(
-                                    self.module.btrfs_path,
-                                    mapped_info["mountpoint"]
-                                )
+                if store_info:
+                    mapped_info = n_dict[mapped_disk]
+                    cur_fs = mapped_info["fs"]
+                    res_dict = {
+                        "part": disk,
+                        "mapped_disk": mapped_disk,
+                        "orig_disk": orig_disk,
+                        "mountpoint": mapped_info["mountpoint"],
+                        "perc": mapped_info["b_free_perc"],
+                        "used": mapped_info["b_used"],
+                        "total": mapped_info["b_size"],
+                        "i_size": mapped_info["i_size"],
+                        "i_free": mapped_info["i_free"],
+                        "i_avail": mapped_info["i_avail"],
+                        "fs": cur_fs,
+                    }
+                    if cur_fs == "btrfs" and self.module.btrfs_path:
+                        cur_stat, cur_out = subprocess.getstatusoutput(
+                            "{} fi df {}".format(
+                                self.module.btrfs_path,
+                                mapped_info["mountpoint"]
                             )
-                            if not cur_stat:
-                                btrfs_info = {}
-                                for line in cur_out.lower().strip().split("\n"):
-                                    l_type, l_data = line.split(":")
-                                    l_type, l_data = (l_type.split(","), l_data.split(","))
-                                    l_type = [entry.strip() for entry in l_type if entry.strip()]
-                                    l_data = [entry.strip().split("=") for entry in l_data if entry.strip()]
-                                    l_data = {key: logging_tools.interpret_size_str(value) for key, value in l_data}
-                                    btrfs_info[":".join(l_type)] = l_data
-                                res_dict["btrfs_info"] = btrfs_info
-                        srv_com["df_result"] = res_dict
+                        )
+                        if not cur_stat:
+                            btrfs_info = {}
+                            for line in cur_out.lower().strip().split("\n"):
+                                l_type, l_data = line.split(":")
+                                l_type, l_data = (l_type.split(","), l_data.split(","))
+                                l_type = [entry.strip() for entry in l_type if entry.strip()]
+                                l_data = [entry.strip().split("=") for entry in l_data if entry.strip()]
+                                l_data = {key: logging_tools.interpret_size_str(value) for key, value in l_data}
+                                btrfs_info[":".join(l_type)] = l_data
+                            res_dict["btrfs_info"] = btrfs_info
+                    srv_com["df_result"] = res_dict
 
     def interpret(self, srv_com, cur_ns):
         result = srv_com["df_result"]
