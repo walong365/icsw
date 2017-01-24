@@ -281,7 +281,6 @@ class config_str(models.Model):
     idx = models.AutoField(db_column="config_str_idx", primary_key=True)
     name = models.CharField(max_length=192)
     description = models.CharField(db_column="descr", max_length=765)
-    config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
@@ -318,7 +317,6 @@ class config_blob(models.Model):
     name = models.CharField(max_length=192)
     description = models.CharField(max_length=765, db_column="descr")
     # deprecated
-    config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
@@ -350,7 +348,6 @@ class config_bool(models.Model):
     name = models.CharField(max_length=192)
     description = models.CharField(max_length=765, db_column="descr")
     # deprecated
-    config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
@@ -400,7 +397,6 @@ class config_int(models.Model):
     name = models.CharField(max_length=192)
     description = models.CharField(max_length=765, db_column="descr")
     # deprecated
-    config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)

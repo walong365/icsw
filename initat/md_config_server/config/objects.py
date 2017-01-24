@@ -26,7 +26,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone.models import device, device_group, mon_check_command, mon_period, \
     mon_contact, mon_contactgroup, category_tree, TOP_MONITORING_CATEGORY, mon_notification, \
-    host_check_command, mon_check_command_special
+    host_check_command, mon_check_command_special, MonCheckCommandSystemNames
 from initat.constants import CLUSTER_DIR
 from initat.md_config_server.config.check_command import CheckCommand
 from initat.md_config_server.config.mon_base_config import StructuredMonBaseConfig, MonUniqueList, \
@@ -244,7 +244,9 @@ class MonAllCommands(MonFileContainer):
             # self.__dict[cur_nc["command_name"]] = cur_nc
             command_names.add(hc_com.name)
         check_coms = list(
-            mon_check_command.objects.all().prefetch_related(
+            mon_check_command.objects.filter(
+                Q(system_command=False)
+            ).prefetch_related(
                 "categories",
                 "exclude_devices"
             ).select_related(
@@ -255,28 +257,31 @@ class MonAllCommands(MonFileContainer):
         )
         enable_perfd = global_config["ENABLE_COLLECTD"]
         if enable_perfd and gen_conf.master:
-            check_coms += [
-                mon_check_command(
-                    name="process-service-perfdata-file",
-                    command_line="{} {}/service-perfdata".format(
-                        os.path.join(CLUSTER_SBIN, "send_collectd_zmq"),
-                        gen_conf.var_dir,
+            check_coms.extend(
+                [
+                    mon_check_command.get_system_check_command(
+                        name=MonCheckCommandSystemNames.process_service_perfdata_file.value,
+                        command_line="{} {}/service-perfdata".format(
+                            os.path.join(CLUSTER_SBIN, "send_collectd_zmq"),
+                            gen_conf.var_dir,
+                        ),
+                        description="Process service performance data",
                     ),
-                    description="Process service performance data",
-                ),
-                mon_check_command(
-                    name="process-host-perfdata-file",
-                    command_line="{} {}/host-perfdata".format(
-                        os.path.join(CLUSTER_SBIN, "send_collectd_zmq"),
-                        gen_conf.var_dir
+                    mon_check_command.get_system_check_command(
+                        name=MonCheckCommandSystemNames.process_host_perfdata_file.value,
+                        command_line="{} {}/host-perfdata".format(
+                            os.path.join(CLUSTER_SBIN, "send_collectd_zmq"),
+                            gen_conf.var_dir
+                        ),
+                        description="Process host performance data",
                     ),
-                    description="Process host performance data",
-                ),
-            ]
+                ]
+            )
         all_mccs = mon_check_command_special.objects.all()
         for ccs in all_mccs:
+            # todo: this may lead to a race condition when more than one build process is running
             # create a mon_check_command instance for every special command
-            special_cc = mon_check_command(
+            special_cc = mon_check_command.get_system_check_command(
                 name=ccs.md_name,
                 command_line=ccs.command_line or "/bin/true",
                 description=ccs.description,
@@ -286,31 +291,31 @@ class MonAllCommands(MonFileContainer):
             check_coms.append(special_cc)
         check_coms.extend(
             [
-                mon_check_command(
-                    name="ochp-command",
+                mon_check_command.get_system_check_command(
+                    name=MonCheckCommandSystemNames.ochp_command.value,
                     command_line="{} ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"{}\"".format(
                         os.path.join(CLUSTER_SBIN, "csendsyncerzmq"),
                         "$HOSTOUTPUT$|$HOSTPERFDATA$" if enable_perfd else "$HOSTOUTPUT$"
                     ),
                     description="OCHP Command"
                 ),
-                mon_check_command(
-                    name="ocsp-command",
+                mon_check_command.get_system_check_command(
+                    name=MonCheckCommandSystemNames.ocsp_command.value,
                     command_line="{} ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"{}\" ".format(
                         os.path.join(CLUSTER_SBIN, "csendsyncerzmq"),
                         "$SERVICEOUTPUT$|$SERVICEPERFDATA$" if enable_perfd else "$SERVICEOUTPUT$"
                     ),
                     description="OCSP Command"
                 ),
-                mon_check_command(
-                    name="check_service_cluster",
+                mon_check_command.get_system_check_command(
+                    name=MonCheckCommandSystemNames.check_service_cluster.value,
                     command_line="{} --service -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"".format(
                         os.path.join(CLUSTER_BIN, "check_icinga_cluster.py"),
                     ),
                     description="Check Service Cluster"
                 ),
-                mon_check_command(
-                    name="check_host_cluster",
+                mon_check_command.get_system_check_command(
+                    name=MonCheckCommandSystemNames.check_host_cluster.value,
                     command_line="{} --host -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"".format(
                         os.path.join(CLUSTER_BIN, "check_icinga_cluster.py"),
                     ),
@@ -319,7 +324,9 @@ class MonAllCommands(MonFileContainer):
             ]
         )
         safe_names = global_config["SAFE_NAMES"]
-        mccs_dict = {mccs.pk: mccs for mccs in mon_check_command_special.objects.all()}
+        mccs_dict = {
+            mccs.pk: mccs for mccs in mon_check_command_special.objects.all()
+        }
         for ngc in check_coms:
             # pprint.pprint(ngc)
             # build / extract ngc_name
@@ -327,9 +334,10 @@ class MonAllCommands(MonFileContainer):
             _ngc_name = cc_command_names.add(ngc_name)
             if _ngc_name != ngc_name:
                 self.log(
-                    "rewrite {} to {}".format(
+                    "rewrite {} to {} ({})".format(
                         ngc_name,
-                        _ngc_name
+                        _ngc_name,
+                        ngc.unique_name,
                     ),
                     logging_tools.LOG_LEVEL_WARN
                 )
@@ -374,6 +382,11 @@ class MonAllCommands(MonFileContainer):
             nag_conf = cc_s.get_mon_config()
             self.add_object(nag_conf)
             self[ngc_name] = cc_s
+        # print("cc")
+        # print(cc_command_names)
+        # print("--")
+        # print(command_names)
+        # print("done")
 
 
 class MonAllContacts(MonFileContainer):

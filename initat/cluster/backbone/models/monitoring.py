@@ -22,6 +22,7 @@
 import enum
 import json
 import re
+from enum import Enum
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -75,6 +76,9 @@ __all__ = [
 
     # display pipes
     "MonDisplayPipeSpec",
+
+    # Enum
+    "MonCheckCommandSystemNames",
 ]
 
 
@@ -423,15 +427,26 @@ def parse_commandline(com_line):
     # self.__arg_lut, self.__arg_list = (arg_lut, arg_list)
 
 
+class MonCheckCommandSystemNames(Enum):
+    process_service_perfdata_file = "process-service-perfdata-file"
+    process_host_perfdata_file = "process-host-perfdata-file"
+    ochp_command = "ochp-command"
+    ocsp_command = "ocsp-command"
+    check_service_cluster = "check_service_cluster"
+    check_host_cluster = "check_host_cluster"
+
+
 class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
-    config_old = models.IntegerField(null=True, blank=True, db_column="config")
-    config = models.ForeignKey("backbone.config", db_column="new_config_id")
+    config = models.ForeignKey("backbone.config", db_column="new_config_id", null=True, blank=True)
     mon_service_templ = models.ForeignKey("backbone.mon_service_templ", null=True, blank=True)
     # only unique per config
     name = models.CharField(max_length=192)  # , unique=True)
     # link to mon_check_special_command
     mon_check_command_special = models.ForeignKey("backbone.mon_check_command_special", null=True, blank=True)
+    # unique name, this name is local to each installation and will be changed
+    # on import if necessary
+    unique_name = models.CharField(default="", max_length=255)
     # for mon_check_special_command this is empty
     command_line = models.CharField(max_length=765, default="")
     description = models.CharField(max_length=192, blank=True)
@@ -447,10 +462,32 @@ class mon_check_command(models.Model):
     is_event_handler = models.BooleanField(default=False)
     event_handler = models.ForeignKey("self", null=True, default=None, blank=True)
     event_handler_enabled = models.BooleanField(default=True)
+    # internal (==system) command
+    system_command = models.BooleanField(default=False)
     # is an active check
     is_active = models.BooleanField(default=True)
     # which tcp port(s) cover this check
     tcp_coverage = models.CharField(default="", max_length=256, blank=True)
+
+    @staticmethod
+    def get_system_check_command(**kwargs):
+        _changed = False
+        try:
+            _obj = mon_check_command.objects.get(Q(system_command=True) & Q(name=kwargs["name"]))
+        except mon_check_command.DoesNotExist:
+            _obj = mon_check_command(
+                name=kwargs["name"],
+                system_command=True,
+            )
+            _changed = True
+        for key, value in kwargs.items():
+            if getattr(_obj, key) != value:
+                setattr(_obj, key, value)
+                _changed = True
+
+        if _changed:
+            _obj.save()
+        return _obj
 
     def get_configured_device_pks(self):
         return [dev_conf.device_id for dev_conf in self.config.device_config_set.all()]
@@ -484,17 +521,57 @@ class mon_check_command(models.Model):
     __repr__ = __str__
 
 
+def _check_unique_name(cur_inst):
+    if not cur_inst.unique_name:
+        unique_name = cur_inst.name
+    else:
+        unique_name = cur_inst.unique_name
+    _other_uniques = mon_check_command.objects.all().exclude(Q(idx=cur_inst.idx)).values_list("unique_name", flat=True)
+    if cur_inst.system_command:
+        if unique_name in _other_uniques:
+            # print("Q", cur_inst.idx)
+            # print(list(_other_uniques))
+            raise ValidationError("MonCheckName for SystemCommand '{}' already used, please fix ...".format(cur_inst.name))
+    else:
+        while unique_name in _other_uniques:
+            _parts = unique_name.split("_")
+            if _parts[-1].isdigit():
+                # increase unique counter
+                unique_name = "_".join(_parts[:-1] + ["{:d}".format(int(_parts[-1]) + 1)])
+            else:
+                unique_name = "{}_1".format(unique_name)
+    _changed = cur_inst.unique_name != unique_name
+    cur_inst.unique_name = unique_name
+    return _changed
+
+
+@receiver(signals.post_init, sender=mon_check_command)
+def mon_check_command_post_init(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        # only check uniqueness on save or for load of already defined checks without unique_name defined
+        if cur_inst.idx and not cur_inst.unique_name and _check_unique_name(cur_inst):
+            cur_inst.save()
+
+
 @receiver(signals.pre_save, sender=mon_check_command)
 def mon_check_command_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         # cur_inst.is_special_command = True if special_re.match(cur_inst.name) else False
+        if not cur_inst.system_command:
+            try:
+                _ = MonCheckCommandSystemNames[cur_inst.name]
+            except KeyError:
+                pass
+            else:
+                raise ValidationError("'{}' is a reserved system command name".format(cur_inst.name))
         if not cur_inst.name:
             raise ValidationError("name is empty")
         if not cur_inst.command_line:
             raise ValidationError("command_line is empty")
-        if cur_inst.name in cur_inst.config.mon_check_command_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
-            raise ValidationError("name already used")
+        # if cur_inst.name in cur_inst.config.mon_check_command_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
+        #     raise ValidationError("name already used")
         if not cur_inst.is_event_handler:
             mc_refs = cur_inst.mon_check_command_set.all()
             if len(mc_refs):
@@ -507,6 +584,7 @@ def mon_check_command_pre_save(sender, **kwargs):
             cur_inst.event_handler = None
             cur_inst.save()
             raise ValidationError("cannot be an event handler and reference to another event handler")
+        _check_unique_name(cur_inst)
 
 
 class mon_contact(models.Model):

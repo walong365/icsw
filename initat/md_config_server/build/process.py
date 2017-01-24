@@ -28,7 +28,7 @@ from lxml.builder import E
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, mon_contactgroup, network_type, user, \
     config, config_catalog, mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
-    mon_check_command_special, mon_check_command, BackgroundJobState
+    mon_check_command_special, mon_check_command, BackgroundJobState, MonCheckCommandSystemNames
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, MainConfig, MonAllCommands, \
     MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, \
@@ -1124,7 +1124,7 @@ class BuildProcess(
                                                 gbc.mcc_lut_3[s_dep.dependent_mon_check_command_id],
                                                 gbc.mcc_lut[s_dep.dependent_mon_check_command_id][1],
                                             )
-                                            sc_check = cur_gc["command"]["check_service_cluster"]
+                                            sc_check = cur_gc["command"][MonCheckCommandSystemNames.check_service_cluster.value]
                                             # FIXME, my_co.mcc_lut[...][1] should be mapped to check_command().get_description()
                                             act_service_dep["service_description"] = "{} / {}".format(
                                                 sc_check.get_description(),
@@ -1238,7 +1238,7 @@ class BuildProcess(
         for mhc_check in mhc_checks:
             dev_names = [gbc.get_host(cur_dev).full_name for cur_dev in mhc_check.devices_list]
             if len(dev_names):
-                s_check = cur_gc["command"]["check_host_cluster"]
+                s_check = cur_gc["command"][MonCheckCommandSystemNames.check_host_cluster.value]
                 serv_temp = gbc.serv_templates[mhc_check.mon_service_templ_id]
                 serv_cgs = list(set(serv_temp.contact_groups).intersection(hbc.contact_groups))
                 sub_list = self.get_service(

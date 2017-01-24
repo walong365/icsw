@@ -996,6 +996,9 @@ class LicenseCheck(object):
             start_data = " ".join(lparts[7:])
             # remove linger info (if present)
             start_data = (start_data.split("(")[0]).strip()
+            # filter 'Start' string from start_data
+            if start_data.lower().startswith("start"):
+                start_data = start_data.strip().split(None, 1)[1]
             co_datetime = datetime.datetime.strptime(
                 "{:d} {}".format(
                     cur_year,

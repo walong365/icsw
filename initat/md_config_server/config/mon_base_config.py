@@ -109,7 +109,12 @@ class MonUniqueList(object):
                 if _name not in self._list:
                     break
         self._list.add(_name)
+        # if name != _name:
+        #    print("{:40s} -> {:s}".format(name, _name))
         return _name
+
+    def __str__(self):
+        return ", ".join(self._list)
 
 
 class CfgEmitStats(object):
