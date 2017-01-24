@@ -1803,12 +1803,14 @@ class uptime_command(hm_classes.hm_command):
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
-            srv_com["uptime"] = "{}".format(time.time() - psutil.boot_time())
-        else:
+            srv_com["uptime"] = "{}".format(int(time.time() - psutil.boot_time()))
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
             upt_data = [int(float(value)) for value in open("/proc/uptime", "r").read().strip().split()]
             srv_com["uptime"] = "%d" % (upt_data[0])
             if len(upt_data) > 1:
                 srv_com["idle"] = "%d" % (upt_data[1])
+        else:
+            raise NotImplementedError
 
     def interpret(self, srv_com, cur_ns):
         uptime_int = int(srv_com["uptime"].text)
