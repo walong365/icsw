@@ -1764,10 +1764,16 @@ class load_command(hm_classes.hm_command):
         self.parser.add_argument("-c", dest="crit", type=float)
 
     def __call__(self, srv_com, cur_ns):
-        cur_load = self.module._load_int()
-        srv_com["load1"] = "{:.2f}".format(cur_load[0])
-        srv_com["load5"] = "{:.2f}".format(cur_load[1])
-        srv_com["load15"] = "{:.2f}".format(cur_load[2])
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+            cur_load = self.module._load_int()
+            srv_com["load1"] = "{:.2f}".format(cur_load[0])
+            srv_com["load5"] = "{:.2f}".format(cur_load[1])
+            srv_com["load15"] = "{:.2f}".format(cur_load[2])
+        else:
+            # Todo guess/estimate load for windows
+            srv_com["load1"] = "{:.2f}".format(0)
+            srv_com["load5"] = "{:.2f}".format(0)
+            srv_com["load15"] = "{:.2f}".format(0)
 
     def interpret(self, srv_com, cur_ns):
         load_1, load_5, load_15 = (
