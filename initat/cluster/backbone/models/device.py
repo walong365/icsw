@@ -997,6 +997,9 @@ class DeviceLogEntry(models.Model):
             "with user" if self.user_id else "without user",
         )
 
+    class Meta:
+        ordering = ("-idx",)
+
 
 @receiver(signals.post_save, sender=DeviceLogEntry)
 def device_log_entry_post_save(sender, **kwargs):

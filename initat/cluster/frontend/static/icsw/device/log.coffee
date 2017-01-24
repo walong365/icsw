@@ -156,6 +156,7 @@ device_logs = angular.module(
         controller: "icswDeviceLogTableCtrl"
         scope: {
             device_list: "=icswDeviceList"
+            max_days_per_device: "<icswMaxDaysPerDevice"
         }
     }
 ]).controller("icswDeviceLogTableCtrl",
@@ -182,7 +183,11 @@ device_logs = angular.module(
         device_lut: {}
         # fingerprint of dev idxs
         def_fp: ""
+        # max logs per device or 0 for all
+        max_days_per_device: 0
     }
+    if $scope.max_days_per_device?
+        $scope.struct.max_days_per_device = $scope.max_days_per_device
     # init filter
 
     $scope.struct.filter.add(
@@ -202,7 +207,9 @@ device_logs = angular.module(
             if not choice.id
                 return true
             else
-                return entry.$$mom_date.isAfter(choice.value)
+                return entry.$$mom_date.isAfter(choice.$$compare_date)
+        (choice) ->
+            choice.$$compare_date = moment().subtract(choice.value)
     ).add_choice(
         0, "All times", null, true
     ).add_choice(
@@ -210,28 +217,24 @@ device_logs = angular.module(
     ).add_choice(
         2, "1 hour ago", moment.duration(1, "hours"), false
     ).add_choice(
-        3, "10 minutes ago", moment.duration(10, "minutes"), false
+        3, "30 minutes ago", moment.duration(30, "minutes"), false
+    ).add_choice(
+        4, "10 minutes ago", moment.duration(10, "minutes"), false
     )
 
-    $scope.struct.filter.add(
+    $scope.struct.filter.add_mult(
         "users"
         "Select User"
-        (entry, choice) ->
-            if not choice.id
-                return true
-            else
-                return entry.user == choice.value
-    ).add_choice(0, "All users", null, true)
+        (entry, idx_list) ->
+            return entry.user in idx_list
+    ).add_choice(0, "No user", null, true)
 
-    $scope.struct.filter.add(
+    $scope.struct.filter.add_mult(
         "sources"
         "Select Source"
-        (entry, choice) ->
-            if not choice.id
-                return true
-            else
-                return entry.source.idx == choice.value
-    ).add_choice(0, "All Sources", null, true)
+        (entry, idx_list) ->
+            return entry.source.idx in idx_list
+    )
 
     $scope.struct.filter.add(
         "levels"
@@ -276,8 +279,8 @@ device_logs = angular.module(
         # only used once
         if device_log_entry.user
             $scope.struct.filter.get("users").add_choice(device_log_entry.user, device_log_entry.user_resolved, device_log_entry.user, false)
-        $scope.struct.filter.get("sources").add_choice(device_log_entry.source.idx, device_log_entry.source.identifier, device_log_entry.source.idx, false )
-        $scope.struct.filter.get("levels").add_choice(device_log_entry.level.idx, device_log_entry.level.name, device_log_entry.level.idx, false )
+        $scope.struct.filter.get("sources").add_choice(device_log_entry.source.idx, device_log_entry.source.identifier, device_log_entry.source.idx, true)
+        $scope.struct.filter.get("levels").add_choice(device_log_entry.level.idx, device_log_entry.level.name, device_log_entry.level.idx, false)
 
     handle_log_entry = (log_entry) ->
         if log_entry.device in $scope.struct.device_idxs and $scope.struct.device_log_entries_lut[log_entry.idx] == undefined
@@ -312,6 +315,7 @@ device_logs = angular.module(
                 data:
                     device_pks: angular.toJson($scope.struct.device_idxs)
                     excluded_device_log_entry_pks: (entry.idx for entry in $scope.struct.device_log_entries)
+                    max_days_per_device: $scope.struct.max_days_per_device
                 dataType: "json"
             }
         ).then(
@@ -346,6 +350,7 @@ device_logs = angular.module(
                         data:
                             device_pks: angular.toJson($scope.struct.device_idxs)
                             excluded_device_log_entry_pks: []
+                            max_days_per_device: $scope.struct.max_days_per_device
                         dataType: "json"
                     }
                 )

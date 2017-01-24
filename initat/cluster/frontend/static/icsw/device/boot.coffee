@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2016 init.at
+# Copyright (C) 2012-2017 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -26,89 +26,6 @@ angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.deployboot")
-]).service("icswLogTree",
-[
-    "$q",
-(
-    $q,
-) ->
-    class icswLogTree
-        constructor: (source_list, level_list) ->
-            @source_list = []
-            @level_list = []
-            @update(source_list, level_list)
-
-        update: (source_list, level_list) =>
-            @source_list.length = 0
-            for entry in source_list
-                @source_list.push(entry)
-            @level_list.length = 0
-            for entry in level_list
-                @level_list.push(entry)
-            @build_luts()
-
-        build_luts: () =>
-            @source_lut = _.keyBy(@source_list, "idx")
-            @level_lut = _.keyBy(@level_list, "idx")
-
-]).service("icswLogTreeService",
-[
-    "$q", "Restangular", "ICSW_URLS", "icswCachingCall",
-    "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS",
-    "icswLogTree",
-(
-    $q, Restangular, ICSW_URLS, icswCachingCall,
-    icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS,
-    icswLogTree,
-) ->
-    rest_map = [
-        [
-            ICSW_URLS.REST_LOG_SOURCE_LIST, {}
-        ]
-        [
-            ICSW_URLS.REST_LOG_LEVEL_LIST, {}
-        ]
-    ]
-    _fetch_dict = {}
-    _result = undefined
-    # load called
-    load_called = false
-
-    load_data = (client) ->
-        load_called = true
-        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
-        _defer = $q.defer()
-        $q.all(_wait_list).then(
-            (data) ->
-                console.log "*** log tree loaded ***"
-                _result = new icswLogTree(data[0], data[1])
-                _defer.resolve(_result)
-                for client of _fetch_dict
-                    # resolve clients
-                    _fetch_dict[client].resolve(_result)
-                # reset fetch_dict
-                _fetch_dict = {}
-        )
-        return _defer
-
-    fetch_data = (client) ->
-        if client not of _fetch_dict
-            # register client
-            _defer = $q.defer()
-            _fetch_dict[client] = _defer
-        if _result
-            # resolve immediately
-            _fetch_dict[client].resolve(_result)
-        return _fetch_dict[client]
-
-    return {
-        load: (client) ->
-            if load_called
-                # fetch when data is present (after sidebar)
-                return fetch_data(client).promise
-            else
-                return load_data(client).promise
-    }
 ]).service("icswBootStatusTree",
 [
     "$q",
@@ -300,29 +217,6 @@ angular.module(
             @slave_connections = []
             @master_connections = []
 
-            # device logs
-
-            @logs_received = false
-            @show_logs = false
-            @num_logs = 0
-            @logs_present = 0
-            @latest_log = 0
-            @logs = []
-            @set_log_classes()
-
-        toggle_show_log: () =>
-            @show_logs = !@show_logs
-            @set_log_classes()
-            return @show_logs
-
-        set_log_classes: () =>
-            if @show_logs
-                @log_btn_class = "btn btn-xs btn-success"
-                @log_btn_value = "hide"
-            else
-                @log_btn_class = "btn btn-xs btn-default"
-                @log_btn_value = "show"
-
         feed: (data) =>
             # console.log "feed", data
             if data.hoststatus_str
@@ -410,15 +304,6 @@ angular.module(
             else
                 @slave_connections_info = "---"
 
-        feed_logs: (data) =>
-            @logs_received = true
-            @num_logs = data.total
-            for line in data.lines
-                @latest_log = Math.max(line[0], @latest_log)
-                new_line = new icswBootLogLine(line, @g_helper.struct.log_tree, @g_helper.struct.user_group_tree)
-                @logs.splice(0, 0, new_line)
-            @logs_present = @logs.length
-
 ]).service("icswGlobalBootHelper",
 [
     "$q", "$timeout", "icswSimpleAjaxCall", "ICSW_URLS", "icswDeviceBootHelper",
@@ -465,11 +350,6 @@ angular.module(
 
             if not @fetch_running
                 # list of devices with devlog fetch
-                log_fetch_list = []
-                if @struct.boot_options.is_enabled("l")
-                    for dev in @devices
-                        if dev.$$boot_helper.show_logs
-                            log_fetch_list.push([dev.idx, dev.$$boot_helper.latest_log])
                 @fetch_running = true
                 send_data = {
                     sel_list: (dev.idx for dev in @devices)
@@ -481,16 +361,6 @@ angular.module(
                         data: send_data
                     )
                 ]
-                if log_fetch_list.length
-                    wait_list.push(
-                        icswSimpleAjaxCall(
-                            url: ICSW_URLS.BOOT_GET_DEVLOG_INFO
-                            data: {
-                                sel_list: angular.toJson(log_fetch_list)
-                            }
-                            dataType: "json"
-                        )
-                    )
                 $q.all(wait_list).then(
                     (result) =>
                         xml = result[0]
@@ -510,14 +380,6 @@ angular.module(
                         _resp = angular.fromJson($(xml).find("value[name='response']").text())
                         for entry in _resp
                             @device_lut[entry.idx].$$boot_helper.feed(entry)
-
-                        # device logs (optional)
-
-                        if result.length > 1
-                            dev_logs = result[1]
-                            if dev_logs.dev_logs
-                                for dev_id, log_struct of dev_logs.dev_logs
-                                    @device_lut[parseInt(dev_id)].$$boot_helper.feed_logs(log_struct)
 
                         @salt_callback()
                         new_timeout()
@@ -539,18 +401,17 @@ angular.module(
     $q,
 ) ->
     class icswBootDisplayOption
-        constructor: (@short, @name, @type) ->
+        constructor: (@short, @name, @type, @table_display) ->
             # type:
             # 1 ... option to modify globally
             # 2 ... local option
-            # 3 ... appends a new line
             @enabled = false
             @display = false
             @set_class()
 
         set_enabled: (flag) =>
             @enabled = flag
-            @display = @enabled && @type < 3
+            @display = @enabled
             @set_class()
             return @enabled
 
@@ -570,10 +431,13 @@ angular.module(
         constructor: (opts...) ->
             @var_name = "$$icswBootOptions"
             @list = []
+            @table_list = []
             @lut = {}
             @user = undefined
             for entry in opts
                 @list.push(entry)
+                if entry.table_display
+                    @table_list.push(entry)
                 @lut[entry.short] = entry
             @type_1_options = (entry for entry in @list when entry.type == 1)
             @build_selected_info()
@@ -600,7 +464,7 @@ angular.module(
             return _ret
 
         build_selected_info: () =>
-            for _t_idx in [1..3]
+            for _t_idx in [1, 2, 3]
                 _attr_name = "any_type_#{_t_idx}_selected"
                 @[_attr_name] = _.some(entry.type == _t_idx for entry in @list when entry.enabled)
 
@@ -616,20 +480,22 @@ angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "ICSW_SIGNALS",
     "$q", "icswAccessLevelService", "$timeout", "$rootScope", "toaster",
     "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceTreeService",
-    "icswActiveSelectionService", "icswConfigTreeService", "icswLogTreeService",
+    "icswActiveSelectionService", "icswConfigTreeService",
     "icswKernelTreeService", "icswImageTreeService", "icswUserGroupRoleTreeService",
     "icswPartitionTableTreeService", "icswNetworkTreeService", "icswBootStatusTreeService",
     "icswGlobalBootHelper", "icswDeviceTreeHelperService", "icswBootDisplayOption",
     "icswBootDisplayOptions", "blockUI", "icswComplexModalService", "icswUserService",
+    "DeviceOverviewService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, ICSW_SIGNALS,
     $q, icswAccessLevelService, $timeout, $rootScope, toaster,
     icswTools, ICSW_URLS, icswSimpleAjaxCall, icswDeviceTreeService,
-    icswActiveSelectionService, icswConfigTreeService, icswLogTreeService,
+    icswActiveSelectionService, icswConfigTreeService,
     icswKernelTreeService, icswImageTreeService, icswUserGroupRoleTreeService,
     icswPartitionTableTreeService, icswNetworkTreeService, icswBootStatusTreeService,
     icswGlobalBootHelper, icswDeviceTreeHelperService, icswBootDisplayOption,
     icswBootDisplayOptions, blockUI, icswComplexModalService, icswUserService,
+    DeviceOverviewService,
 ) ->
     icswAccessLevelService.install($scope)
 
@@ -673,17 +539,16 @@ angular.module(
         boot_helper: undefined
         # boot options, for icswGlobalBootHelper
         boot_options: new icswBootDisplayOptions(
-            new icswBootDisplayOption("t", "target_state", 1)
-            new icswBootDisplayOption("k", "kernel", 1)
-            new icswBootDisplayOption("i", "image", 1)
-            new icswBootDisplayOption("p", "partition", 1)
-            new icswBootDisplayOption("b", "bootdevice", 1)
-            new icswBootDisplayOption("s", "soft control", 2)
-            new icswBootDisplayOption("h", "hard control", 2)
-            new icswBootDisplayOption("l", "devicelog", 3)
+            new icswBootDisplayOption("t", "target state", 1, true)
+            new icswBootDisplayOption("k", "kernel", 1, true)
+            new icswBootDisplayOption("i", "image", 1, true)
+            new icswBootDisplayOption("p", "partition", 1, true)
+            new icswBootDisplayOption("b", "bootdevice", 1, true)
+            new icswBootDisplayOption("s", "soft control", 2, true)
+            new icswBootDisplayOption("h", "hard control", 2, true)
+            new icswBootDisplayOption("l", "device log", 3, false)
+            new icswBootDisplayOption("m", "MacBootLog", 3, false)
         )
-        # show macbootlog
-        show_mbl: false
         # current user
         user: undefined
     }
@@ -699,7 +564,6 @@ angular.module(
             [
                 icswDeviceTreeService.load($scope.$id)
                 icswConfigTreeService.load($scope.$id)
-                icswLogTreeService.load($scope.$id)
                 icswKernelTreeService.load($scope.$id)
                 icswImageTreeService.load($scope.$id)
                 icswUserGroupRoleTreeService.load($scope.$id)
@@ -712,14 +576,13 @@ angular.module(
             (data) ->
                 $scope.struct.device_tree = data[0]
                 $scope.struct.config_tree = data[1]
-                $scope.struct.log_tree = data[2]
-                $scope.struct.kernel_tree = data[3]
-                $scope.struct.image_tree = data[4]
-                $scope.struct.user_group_tree = data[5]
-                $scope.struct.partition_table_tree = data[6]
-                $scope.struct.network_tree = data[7]
-                $scope.struct.boot_status_tree = data[8]
-                $scope.struct.user = data[9]
+                $scope.struct.kernel_tree = data[2]
+                $scope.struct.image_tree = data[3]
+                $scope.struct.user_group_tree = data[4]
+                $scope.struct.partition_table_tree = data[5]
+                $scope.struct.network_tree = data[6]
+                $scope.struct.boot_status_tree = data[7]
+                $scope.struct.user = data[8]
                 $scope.struct.devices.length = 0
                 for _dev in dev
                     if not _dev.is_meta_device
@@ -990,16 +853,9 @@ angular.module(
 
     # toggle columns and addons
 
-    $scope.toggle_boot_option = (short) ->
+    $scope.toggle_boot_option = ($event, short) ->
         $scope.struct.boot_options.toggle_enabled(short)
         salt_devices()
-
-    $scope.change_devlog_flag = (dev) ->
-        if dev.$$boot_helper.toggle_show_log()
-            $scope.struct.boot_helper.fetch()
-
-    $scope.toggle_show_mbl = () ->
-        $scope.struct.show_mbl = !$scope.struct.show_mbl
 
     # soft / hard control
     
@@ -1228,6 +1084,11 @@ angular.module(
                 sub_scope.$destroy()
         )
 
+    $scope.show_device = ($event, device) ->
+        $event.stopPropagation()
+        $event.preventDefault()
+        DeviceOverviewService($event, [device])
+
 ]).directive("icswDeviceBootRow",
 [
     "$templateCache",
@@ -1237,18 +1098,6 @@ angular.module(
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.device.boot.row")
-    }
-]).directive("icswDeviceBootLogTable",
-[
-    "$templateCache",
-(
-    $templateCache
-) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.device.boot.log.table")
-        scope:
-            device: "=icswDevice"
     }
 ]).directive("icswBootMacBootlogInfo",
 [
@@ -1260,7 +1109,7 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.boot.mac.bootlog.info")
         controller: "icswBootMacBootlogCtrl"
-        scope: false
+        scope: true
     }
 ]).controller("icswBootMacBootlogCtrl",
 [

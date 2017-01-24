@@ -189,7 +189,6 @@ config_patterns = [
 
 boot_patterns = [
     url("^xml/get_boot_infojs$", boot_views.get_boot_info_json.as_view(), name="get_boot_info_json"),
-    url("^xml/get_devlog_info$", boot_views.get_devlog_info.as_view(), name="get_devlog_info"),
     url("^soft_control$", boot_views.soft_control.as_view(), name="soft_control"),
     url("^hard_control$", boot_views.hard_control.as_view(), name="hard_control"),
     url("^update_device$", boot_views.update_device.as_view(), name="update_device"),

@@ -176,7 +176,6 @@ class _LicenseManager(models.Manager):
 
     def get_init_product(self):
         valid_lics = set(self.get_valid_licenses())
-        # print(valid_lics)
         product_licenses = set()
         # all available licenses
         for available_lic in get_available_licenses():

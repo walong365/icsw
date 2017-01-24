@@ -107,35 +107,62 @@ angular.module(
 ) ->
 
     class icswFilterEntry
-        constructor: (@filterObj, @name, @placeholder, @cmp_func) ->
+        constructor: (@multiple, @filterObj, @name, @placeholder, @cmp_func, @pre_sort_func) ->
             @choices = []
-            @selected = undefined
+            # lut for id -> entry
+            @lut = {}
+            if @multiple
+                @selected = []
+            else
+                @selected = undefined
             @clear_choices()
 
         add_choice: (choice_id, choice_str, choice_val, is_def) ->
-            if not _.some(@choices, (entry) -> return entry.id == choice_id)
+            if choice_id not of @lut
                 _new_entry = {
                     id: choice_id
                     string: choice_str
                     value: choice_val
                     default: is_def
                 }
+                @lut[_new_entry.id] = _new_entry
                 @choices.push(_new_entry)
-                if is_def and not @selected
-                    @selected = _new_entry
+                if is_def
+                    if @multiple
+                        @selected.push(_new_entry)
+                    else
+                        if not @selected
+                            @selected = _new_entry
             return @
 
         clear_choices: () ->
             _.remove(@choices, (entry) -> return not entry.default)
+            # rebuild lut
+            @lut = {}
+            for entry in @choices
+                @lut[entry.id] = entry
             _defs = (entry for entry in @choices when entry.default)
-            if _defs.length
-                @selected = _defs[0]
+            if @multiple
+                @selected.length = 0
+                for _e in _defs
+                    @selected.push(_e)
             else
-                @selected = undefined
+                if _defs.length
+                    @selected = _defs[0]
+                else
+                    @selected = undefined
             return @
 
+        pre_sort_call: () ->
+            if @pre_sort_func?
+                @pre_sort_func(@selected)
+            @selected_idxs = (entry.value for entry in @selected)
+
         filter: (entry) ->
-            return @cmp_func(entry, @selected)
+            if @multiple
+                return @cmp_func(entry, @selected_idxs)
+            else
+                return @cmp_func(entry, @selected)
 
     class icswFilter
         constructor: () ->
@@ -146,8 +173,14 @@ angular.module(
             # redraw list trigger counter
             @redraw_list = 0
 
-        add: (name, placeholder, cmp_func) =>
-            _nf = new icswFilterEntry(@, name, placeholder, cmp_func)
+        add: (name, placeholder, cmp_func, pre_sort_func) =>
+            _nf = new icswFilterEntry(false, @, name, placeholder, cmp_func, pre_sort_func)
+            @_filter_list.push(_nf)
+            @_filter_lut[_nf.name] = _nf
+            return _nf
+
+        add_mult: (name, placeholder, cmp_func, pre_sort_func) =>
+            _nf = new icswFilterEntry(true, @, name, placeholder, cmp_func, pre_sort_func)
             @_filter_list.push(_nf)
             @_filter_lut[_nf.name] = _nf
             return _nf
@@ -163,6 +196,8 @@ angular.module(
 
         filter: (in_list) ->
             @source_list.length = 0
+            (_fe.pre_sort_call() for _fe in @_filter_list)
+
             for entry in in_list
                 _add = true
                 for _fe in @_filter_list
@@ -178,16 +213,24 @@ angular.module(
             return new icswFilter()
     }
 ]).component("icswTableFilter", {
-    template: [
-        "$templateCache", "$element", "$attrs", ($templateCache, $element, $attrs) ->
-            return $templateCache.get("icsw.layout.table.filter")
+    template: ["$templateCache", "$element", "$attrs", ($templateCache, $element, $attrs) ->
+        return $templateCache.get("icsw.layout.table.filter")
     ]
     controller: "icswTableFilterCtrl as ctrl"
     bindings: {
         filter: "<icswTableFilter"
         name: "@icswFilterName"
     }
-    # transclude: true
+}).component("icswTableFilterMult", {
+    template: [
+        "$templateCache", "$element", "$attrs", ($templateCache, $element, $attrs) ->
+            return $templateCache.get("icsw.layout.table.filter.mult")
+    ]
+    controller: "icswTableFilterCtrl as ctrl"
+    bindings: {
+        filter: "<icswTableFilter"
+        name: "@icswFilterName"
+    }
 }).controller("icswTableFilterCtrl",
 [
     "$q",

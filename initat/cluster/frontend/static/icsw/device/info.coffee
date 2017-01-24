@@ -184,6 +184,7 @@ angular.module(
                 # number of normal (== non-meta) devices
                 sub_scope.normal_sel = (dev.idx for dev in scope.devicelist when !dev.is_meta_device).length
                 sub_scope.device_nmd_list = (dev for dev in scope.devicelist when !dev.is_meta_device)
+                # sub_scope.do_activate_tab = ()
 
                 sub_scope.activate = (name) ->
                     # remember setting
@@ -208,6 +209,7 @@ angular.module(
                 template_f = []
                 _valid_names = []
                 _disabled_tabs = DeviceOverviewSettings.get_disabled_tabs().split(",")
+                console.log "*", _disabled_tabs
                 for tab in icswDeviceOverviewTabs
                     if tab.with_meta and sub_scope.total_sel
                         _add = true
@@ -222,14 +224,19 @@ angular.module(
                             _add = false
                     if _add
                         _valid_names.push(tab.name)
-                        template_f.push("<uib-tab select='activate(\"#{tab.name}\")'>#{tab.template}</uib-tab>")
+                        template_f.push("<uib-tab select='activate(\"#{tab.name}\")' index='\"#{tab.name}\"'>#{tab.template}</uib-tab>")
 
                 _valid_names.push("$$modify")
+                console.log "**", _valid_names
                 template_f.push($templateCache.get("icsw.device.info.tab.tab_setup"))
 
-                sub_scope.active_tab = _.indexOf(_valid_names, DeviceOverviewSettings.get_mode())
-                if sub_scope.active_tab < 0
-                    sub_scope.active_tab = 0
+                _mode = DeviceOverviewSettings.get_mode()
+                if _mode not in _valid_names
+                    _mode = _valid_names[0]
+                sub_scope.active_tab = _mode
+                #sub_scope.active_tab = _.indexOf(_valid_names, DeviceOverviewSettings.get_mode())
+                #if sub_scope.active_tab < 0
+                #    sub_scope.active_tab = 0
 
                 template = template_f.join("")
                 template = "<uib-tabset active='active_tab'>#{template}</uib-tabset>"

@@ -504,20 +504,6 @@ class DeviceConnectionEnrichment(object):
         return _data
 
 
-# no longer needed, now handled by websocket
-#class ScanLockEnrichment(object):
-#    def fetch(self, pk_list):
-#        _res = DeviceScanLock.objects.filter(
-#            Q(device__in=pk_list) & Q(active=True)
-#        )
-#        _data = [
-#            DeviceScanLockSerializer(
-#                _sl,
-#            ).data for _sl in _res
-#        ]
-#        return _data
-
-
 class SensorThresholdEnrichment(object):
     def fetch(self, pk_list):
         _res = SensorThreshold.objects.filter(
@@ -1524,6 +1510,7 @@ class DeviceLogEntryLoader(View):
     @method_decorator(login_required)
     def post(self, request):
         device_pks = json.loads(request.POST.get("device_pks"))
+        max_days_per_device = int(request.POST.get("max_days_per_device"))
         excluded_device_log_entry_pks = [int(obj) for obj in request.POST.getlist("excluded_device_log_entry_pks[]")]
 
         prefetch_list = [
@@ -1537,7 +1524,10 @@ class DeviceLogEntryLoader(View):
             Q(device__in=device_pks)
         ).exclude(
             idx__in=excluded_device_log_entry_pks
-        )
+        ).order_by("-idx")
+
+        if max_days_per_device:
+            queryset = queryset.filter(Q(date__gte=timezone.now() - datetime.timedelta(days=max_days_per_device)))
 
         serializer = DeviceLogEntrySerializer(queryset, many=True)
 
