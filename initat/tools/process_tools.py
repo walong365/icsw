@@ -49,11 +49,17 @@ else:
     pwd = None
     grp = None
 
-try:
-    import psutil
-except (NotImplementedError, ImportError, IOError):
-    # handle chrooted calls
-    # print("cannot import psutil, running chrooted ? setting psutil to None")
+if (
+    PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX and os.path.exists("/proc/stat")
+) or PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+    # not running chrooted
+    try:
+        import psutil
+    except:
+        # handle chrooted calls
+        # print("cannot import psutil, running chrooted ? setting psutil to None")
+        psutil = None
+else:
     psutil = None
 
 RUN_DIR = "/var/run"
@@ -266,6 +272,8 @@ INIT_ZMQ_DIR_PID = "{:d}".format(os.getpid())
 ALLOW_MULTIPLE_INSTANCES = True
 
 IPC_TO_TCP_PORT_MAP = {}
+
+
 def get_zmq_ipc_name(name, **kwargs):
     if "s_name" in kwargs:
         s_name = kwargs["s_name"]

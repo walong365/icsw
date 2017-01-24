@@ -30,12 +30,12 @@ from initat.tools import config_store, logging_tools, process_tools
 
 
 def log(what, log_level=logging_tools.LOG_LEVEL_OK):
-    print((
+    print(
         "[{}] {}".format(
             logging_tools.get_log_level_str(log_level),
             what,
         )
-    ))
+    )
 
 
 def parse_file(file_name):
