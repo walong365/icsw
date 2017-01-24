@@ -41,6 +41,7 @@ global_config = configfile.get_global_config("build_image")
 SLASH_NAME = "SLASH"
 
 NEEDED_PACKAGES = [
+    # ancient
     [
         "python-init",
         "ethtool-init",
@@ -53,14 +54,23 @@ NEEDED_PACKAGES = [
         "child",
         "modules-init",
     ],
+    # intermediate 1
     [
         "python-init",
         "ethtool-init",
         "icsw-client",
         "modules-init",
     ],
+    # intermediate 2 (pre-python3)
     [
         "python-init",
+        "icsw-binaries",
+        "icsw-client",
+        "modules-init",
+    ],
+    # new style
+    [
+        "python3-init",
         "icsw-binaries",
         "icsw-client",
         "modules-init",
