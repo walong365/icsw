@@ -327,7 +327,16 @@ class ServiceContainer(object):
         }[service.run_state][subcom]
 
     def instance_to_form_list(self, opt_ns, res_xml):
-        print(opt_ns.numeric)
+        def numeric_output(in_dict, state):
+            if opt_ns.numeric:
+                _out = "{} [{:3d}]".format(
+                    in_dict[state][0],
+                    state,
+                )
+            else:
+                _out = in_dict[state][0]
+            return _out
+
         prc_dict = {
             SERVICE_OK: ("running", "ok"),
             SERVICE_DEAD: ("error", "critical"),
@@ -459,47 +468,28 @@ class ServiceContainer(object):
                         )
                     )
                 else:
-                    print(_lic_state)
-                    if opt_ns.numeric:
-                        _out = "{} ({:d})".format(
-                            lic_dict[_lic_state][0],
-                            _lic_state,
-                        )
-                    else:
-                        _out = lic_dict[_lic_state][0]
                     cur_line.append(
                         logging_tools.form_entry(
-                            _out,
+                            numeric_output(lic_dict, _lic_state),
                             header="License",
+                            left=not opt_ns.numeric,
                             display_attribute=lic_dict[_lic_state][1],
                         )
                     )
 
-                if opt_ns.numeric:
-                    _out = "{} ({:d})".format(
-                        prc_dict[p_state][0],
-                        p_state,
-                    )
-                else:
-                    _out = prc_dict[p_state][0]
                 cur_line.append(
                     logging_tools.form_entry(
-                        _out,
+                        numeric_output(prc_dict, p_state),
                         header="PState",
+                        left=not opt_ns.numeric,
                         display_attribute=prc_dict[p_state][1],
                     )
                 )
-                if opt_ns.numeric:
-                    _out = "{} ({:d})".format(
-                        crc_dict[c_state][0],
-                        c_state,
-                    )
-                else:
-                    _out = crc_dict[c_state][0]
                 cur_line.append(
                     logging_tools.form_entry(
-                        _out,
+                        numeric_output(crc_dict, c_state),
                         header="CState",
+                        left=not opt_ns.numeric,
                         display_attribute=crc_dict[c_state][1],
                     )
                 )
@@ -508,17 +498,11 @@ class ServiceContainer(object):
                     if _meta_res is not None:
                         t_state = int(_meta_res.get("target_state"))
                         ignore = int(_meta_res.get("ignore"))
-                        if opt_ns.numeric:
-                            _out = "{} ({:d})".format(
-                                meta_dict["t"][t_state][0],
-                                t_state,
-                            )
-                        else:
-                            _out = meta_dict["t"][t_state][0]
                         cur_line.append(
                             logging_tools.form_entry(
-                                _out,
+                                numeric_output(meta_dict["t"], t_state),
                                 header="TargetState",
+                                left=not opt_ns.numeric,
                                 display_attribute=meta_dict["t"][t_state][1],
                             )
                         )
