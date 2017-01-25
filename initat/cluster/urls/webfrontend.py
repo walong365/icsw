@@ -24,14 +24,11 @@ import os
 import django.contrib.staticfiles.views
 from django.conf import settings
 from django.conf.urls import include, url
-from django.conf.urls.static import static
-
-# from utkik.dispatch import url, include
 
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
     base_views, setup_views, doc_views, license_views, model_history_views, discovery_views, rms_views, \
-    lic_views, auth_views, asset_views, report_views
+    lic_views, asset_views, report_views
 
 # handler404 = main_views.index.as_view()
 report_patterns = [
@@ -380,11 +377,6 @@ discovery_patterns = [
     url(r"^create_schedule_item$", discovery_views.ScheduleItemCreator.as_view(), name="create_schedule_item"),
 ]
 
-auth_patterns = [
-    url(r"^test/auth_user$", auth_views.auth_user.as_view(), name="auth_test"),
-    url(r"^auth/do_login$", auth_views.do_login.as_view(), name="do_login"),
-]
-
 rpl = []
 for src_mod, obj_name in rest_views.REST_LIST:
     is_camelcase = obj_name[0].lower() != obj_name[0] or (obj_name.startswith("icsw") and obj_name.lower() != obj_name)
@@ -477,8 +469,6 @@ my_url_patterns = [
 
 urlpatterns = [
     url(r"^{}/".format(settings.REL_SITE_ROOT), include(my_url_patterns)),
-] + [
-    url(r"^auth/", include(auth_patterns, namespace="auth")),
 ]
 
 # urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
