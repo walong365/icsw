@@ -52,6 +52,7 @@ class _general(hm_classes.hm_module):
         self.lsblk_bin = process_tools.find_file("lsblk")
         self.xrandr_bin = process_tools.find_file("xrandr")
         self.vgs_bin = process_tools.find_file("vgs")
+        self.lvs_bin = process_tools.find_file("lvs")
         self.__lsblk_version = 0
 
     def init_module(self):
@@ -85,6 +86,34 @@ class _general(hm_classes.hm_module):
         )
         return server_command.compress(_lshw_result)
 
+    def _lvs_int(self):
+        lvs_output = subprocess.check_output([self.lvs_bin,
+                                              "-o",
+                                              "lv_name,data_percent",
+                                              "--separator", ":",
+                                              "--units",
+                                              "b"]).decode()
+
+        lvs_output_lines = lvs_output.split("\n")
+
+        header_line = lvs_output_lines.pop(0)
+        headers = header_line.strip().split(":")
+
+        lvs_dict = {}
+
+        for line in lvs_output_lines:
+            line = line.strip()
+            if len(line) > 0:
+                component_dict = {}
+                line_components = line.split(":")
+                for i in range(len(line_components)):
+                    component_dict[headers[i]] = line_components[i]
+
+                    if headers[i] == "LV":
+                        lvs_dict[line_components[i]] = component_dict
+
+        return lvs_dict
+
     def _vgs_int(self):
         vgs_output = subprocess.check_output([self.vgs_bin,
                                               "-o",
@@ -109,7 +138,6 @@ class _general(hm_classes.hm_module):
 
                     if headers[i] == "VG":
                         vg_dict[line_components[i]] = component_dict
-
 
         return vg_dict
 
@@ -1534,6 +1562,33 @@ class vgfree_command(hm_classes.hm_command):
                                                                                        v_free_percentage,
                                                                                        v_free,
                                                                                        v_size)
+
+class lvsdatapercent_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        self.parser.add_argument("-w", dest="warn", type=float)
+        self.parser.add_argument("-c", dest="crit", type=float)
+
+    def __call__(self, srv_com, cur_ns):
+        if "arguments:arg0" not in srv_com:
+            srv_com.set_result(
+                "missing argument",
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
+        else:
+            lv_name = srv_com["arguments:arg0"].text.strip()
+            srv_com["lv_dict"] = server_command.compress(self.module._lvs_int()[lv_name], pickle=True)
+
+    def interpret(self, srv_com, cur_ns):
+        lv_dict = server_command.decompress(srv_com["lv_dict"].text, pickle=True)
+        lv_name = lv_dict["LV"]
+        try:
+            data_percent = float(lv_dict["Data%"])
+
+            ret_state = limits.check_floor(data_percent, cur_ns.warn, cur_ns.crit)
+            return ret_state, "{} - data_percentage is {}".format(lv_name, data_percent)
+        except ValueError:
+            return limits.mon_STATE_CRITICAL, "No data_percent value set for {}".format(lv_name)
 
 class version_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):

@@ -34,7 +34,8 @@ from lxml import etree
 
 from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network, \
     device_variable, AssetRun, RunStatus, BatchStatus, AssetType, ScanType, AssetBatch, RunResult, \
-    DispatcherSettingScheduleEnum, ScheduleItem, DeviceLogEntry, device, DispatcherLink, NmapScan
+    DispatcherSettingScheduleEnum, ScheduleItem, DeviceLogEntry, device, DispatcherLink, NmapScan, BackgroundJobState, \
+    background_job
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
@@ -42,6 +43,7 @@ from initat.tools import logging_tools, process_tools, server_command, ipvx_tool
 from .config import global_config
 from .discovery_struct import ExtCom
 from initat.cluster.backbone.models.asset.dynamic_asset import ASSETTYPE_HM_COMMAND_MAP, ASSETTYPE_NRPE_COMMAND_MAP
+from initat.tools.bgnotify import create_bg_job
 
 DEFAULT_NRPE_PORT = 5666
 
@@ -1040,8 +1042,20 @@ class Dispatcher(object):
         new_nmap_scan = NmapScan.create(network=_network)
         new_nmap_scan.save()
 
+        _background_job = create_bg_job(
+            global_config["SERVER_IDX"],
+            schedule_item.user,
+            "Network scan of {}".format(network_str),
+            "nmap_scan",
+            None,
+            state=BackgroundJobState.pending,
+            # set timeout to 30 minutes for big installs
+            timeout=60*60*24
+        )
+
         callback_dict = {
-            "nmap_scan_id": new_nmap_scan.idx
+            "nmap_scan_id": new_nmap_scan.idx,
+            "background_job_id": _background_job.idx
         }
 
         #timeout for nmap scans needs to be very large, scanning can take a very long time
@@ -1055,6 +1069,8 @@ class Dispatcher(object):
         )
 
     def network_scan_schedule_handler_callback(self, callback_dict, result):
+        _background_job = background_job.objects.get(idx=callback_dict["background_job_id"])
+        _background_job.set_state(BackgroundJobState.done)
         try:
             nmap_scan = NmapScan.objects.get(idx=callback_dict['nmap_scan_id'])
 

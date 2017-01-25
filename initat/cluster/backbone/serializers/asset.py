@@ -240,7 +240,7 @@ class AssetHWCPUEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetHWCPUEntry
         fields = (
-            "idx", "numberofcores", "name"
+            "idx", "numberofcores", "name", "vendor"
         )
 
 

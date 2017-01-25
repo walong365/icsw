@@ -586,13 +586,15 @@
             </tr>
             <tr>
                 <th>CPU Name/Type</th>
+                <th>Vendor</th>
                 <th># Cores</th>
             </tr>
         </thead>
         <tbody>
             <tr ng-repeat="node in assets_shown_cpu_entries">
-                <td>{{ node.name }}</td>
-                <td>{{ node.numberofcores }}</td>
+                <td>{{ node.$$name }}</td>
+                <td>{{ node.$$vendor }}</td>
+                <td>{{ node.$$numberofcores }}</td>
             </tr>
         </tbody>
     </table>
