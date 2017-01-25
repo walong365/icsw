@@ -9,7 +9,7 @@ import initat.md_config_server.base_config.mon_base_config
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('backbone', '1029_auto_20170124_1525'),
+        ('backbone', '1030_auto_20170125_1114'),
     ]
 
     operations = [
