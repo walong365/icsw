@@ -201,7 +201,7 @@ class DBPrefetchMixin(object):
         return ["snmp_schemes__snmp_scheme_vendor", "DeviceSNMPInfo", "snmp_schemes__snmp_scheme_tl_oid_set", "com_capability_list"]
 
     def _mon_check_command_prefetch(self):
-        return ["exclude_devices", "categories"]
+        return ["exclude_devices", "categories", "devices"]
 
     def _mon_host_cluster_prefetch(self):
         return ["devices"]

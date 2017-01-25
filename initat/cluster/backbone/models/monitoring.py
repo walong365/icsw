@@ -372,6 +372,7 @@ class mon_check_command(models.Model):
     categories = models.ManyToManyField("backbone.category", blank=True)
     # device to exclude
     exclude_devices = models.ManyToManyField("backbone.device", related_name="mcc_exclude_devices", blank=True)
+    devices = models.ManyToManyField("backbone.device", related_name="mcc_devices", blank=True)
     # event handler settings
     is_event_handler = models.BooleanField(default=False)
     event_handler = models.ForeignKey("self", null=True, default=None, blank=True)
@@ -578,7 +579,7 @@ class DBStructuredMonBaseConfig(mon_check_command, StructuredContentEmitter):
         else:
             raise KeyError("key '{}' not supported for __getitem__".format(key))
 
-    def generate_md_com_line(self, log_com: object, safe_description: bool):
+    def generate_md_com_line(self, log_com: callable, safe_description: bool):
         if safe_description:
             self.__description = build_safe_name(self.name)
         else:
@@ -658,13 +659,15 @@ class DBStructuredMonBaseConfig(mon_check_command, StructuredContentEmitter):
         proxy = True
 
 
-def _check_unique_name(cur_inst):
+def _check_unique_name(cur_inst: object) -> bool:
     if not cur_inst.unique_name:
         unique_name = cur_inst.name
     else:
         unique_name = cur_inst.unique_name
     _other_uniques = mon_check_command.objects.all().exclude(Q(idx=cur_inst.idx)).values_list("unique_name", flat=True)
     if cur_inst.system_command:
+        if cur_inst.config_id:
+            raise ValidationError("SystemCheckCommand ({}) should not be linked to a config".format(cur_inst.name))
         if unique_name in _other_uniques:
             # print("Q", cur_inst.idx)
             # print(list(_other_uniques))
@@ -707,8 +710,6 @@ def mon_check_command_pre_save(sender, **kwargs):
             raise ValidationError("name is empty")
         if not cur_inst.command_line:
             raise ValidationError("command_line is empty")
-        # if cur_inst.name in cur_inst.config.mon_check_command_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
-        #     raise ValidationError("name already used")
         if not cur_inst.is_event_handler:
             mc_refs = cur_inst.mon_check_command_set.all()
             if len(mc_refs):
@@ -722,6 +723,15 @@ def mon_check_command_pre_save(sender, **kwargs):
             cur_inst.save()
             raise ValidationError("cannot be an event handler and reference to another event handler")
         _check_unique_name(cur_inst)
+
+
+@receiver(signals.pre_save, sender=mon_check_command)
+def mon_check_command_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if cur_inst.config and not cur_inst.system_command:
+            # remove all associated devices
+            cur_inst.devices.clear()
 
 
 class mon_contact(models.Model):

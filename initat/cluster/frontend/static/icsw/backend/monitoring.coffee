@@ -71,7 +71,7 @@ monitoring_basic_module = angular.module(
             for entry in ELIST
                 if entry not in NON_LUT_LIST
                     @["#{entry}_lut"] = _.keyBy(@["#{entry}_list"], "idx")
-            # update icinga_command
+            # update icinga_command (commands to be sent to icinga)
             for entry in @icinga_command_list
                 entry.$$arguments = (_val.name for _val in entry.args)
                 _title = _.startCase(_.lowerCase(entry.name))
@@ -275,13 +275,61 @@ monitoring_basic_module = angular.module(
             )
             return d.promise
 
+        # config create / delete mon_check_commands
+        create_mon_check_command: (new_mcc) =>
+            defer = $q.defer()
+            Restangular.all(ICSW_URLS.REST_MON_CHECK_COMMAND_LIST.slice(1)).post(new_mcc).then(
+                (new_obj) =>
+                    @_fetch_mon_check_command(new_obj.idx, defer, "created mcc")
+                (not_ok) ->
+                    defer.reject("mcc not created")
+            )
+            return defer.promise
+
+        _fetch_mon_check_command: (pk, defer, msg) =>
+            Restangular.one(ICSW_URLS.REST_MON_CHECK_COMMAND_LIST.slice(1)).get({idx: pk}).then(
+                (new_mcc) =>
+                    new_mcc = new_mcc[0]
+                    @mon_check_command_list.push(new_mcc)
+                    @build_luts()
+                    defer.resolve(new_mcc)
+            )
+
+        delete_mon_check_command: (del_mcc) =>
+            # ensure REST hooks
+            Restangular.restangularizeElement(null, del_mcc, ICSW_URLS.REST_MON_CHECK_COMMAND_DETAIL.slice(1).slice(0, -2))
+            defer = $q.defer()
+            del_mcc.remove().then(
+                (ok) =>
+                    _.remove(@mon_check_command_list, (entry) -> return entry.idx == del_mcc.idx)
+                    @build_luts()
+                    defer.resolve("deleted")
+                (error) ->
+                    defer.reject("not deleted")
+            )
+            return defer.promise
+
+        modify_mon_check_command: (mcc) =>
+            # ensure REST hooks
+            Restangular.restangularizeElement(null, mcc, ICSW_URLS.REST_MON_CHECK_COMMAND_DETAIL.slice(1).slice(0, -2))
+            defer = $q.defer()
+            mcc.put().then(
+                (new_mcc) =>
+                    _.remove(@mon_check_command_list, (entry) -> return entry.idx == mcc.idx)
+                    @mon_check_command_list.push(new_mcc)
+                    @build_luts()
+                    defer.resolve(new_mcc)
+                (error) ->
+                    defer.reject("not deleted")
+            )
+            return defer.promise
+
+
 ]).service("icswMonitoringBasicTreeService",
 [
-    "$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswTools", "$rootScope",
-    "ICSW_SIGNALS", "icswMonitoringBasicTree",
+    "icswMonitoringBasicTree", "icswTreeBase", "ICSW_URLS",
 (
-    $q, Restangular, ICSW_URLS, icswCachingCall, icswTools, $rootScope,
-    ICSW_SIGNALS, icswMonitoringBasicTree
+    icswMonitoringBasicTree, icswTreeBase, ICSW_URLS,
 ) ->
     # loads the monitoring tree
     rest_map = [
@@ -319,45 +367,10 @@ monitoring_basic_module = angular.module(
             ICSW_URLS.MON_ALL_ICINGA_CMDS, {}
         ]
     ]
-    _fetch_dict = {}
-    _result = undefined
-    # load called
-    load_called = false
-
-    load_data = (client) ->
-        load_called = true
-        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
-        _defer = $q.defer()
-        $q.all(_wait_list).then(
-            (data) ->
-                console.log "*** basic monitoring tree loaded ***"
-                _result = new icswMonitoringBasicTree(data...)
-                _defer.resolve(_result)
-                for client of _fetch_dict
-                    # resolve clients
-                    _fetch_dict[client].resolve(_result)
-                $rootScope.$emit(ICSW_SIGNALS("ICSW_MON_TREE_LOADED"), _result)
-                # reset fetch_dict
-                _fetch_dict = {}
-        )
-        return _defer
-
-    fetch_data = (client) ->
-        if client not of _fetch_dict
-            # register client
-            _defer = $q.defer()
-            _fetch_dict[client] = _defer
-        if _result
-            # resolve immediately
-            _fetch_dict[client].resolve(_result)
-        return _fetch_dict[client]
-
-    return {
-        "load": (client) ->
-            if load_called
-                # fetch when data is present (after sidebar)
-                return fetch_data(client).promise
-            else
-                return load_data(client).promise
-    }
+    return new icswTreeBase(
+        "MonitoringBasicTree"
+        icswMonitoringBasicTree
+        rest_map
+        "ICSW_MON_TREE_LOADED"
+    )
 ])

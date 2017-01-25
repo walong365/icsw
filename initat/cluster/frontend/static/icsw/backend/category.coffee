@@ -198,7 +198,7 @@ angular.module(
             for config in ct.list
                 for cat in config.categories
                     @lut[cat].reference_dict["config"].push(config.idx)
-                for mcc in config.mon_check_command_set
+                for mcc in config.res_mon_check_command_set
                     for cat in mcc.categories
                         @lut[cat].reference_dict["mon_check_command"].push(mcc.idx)
             @link()

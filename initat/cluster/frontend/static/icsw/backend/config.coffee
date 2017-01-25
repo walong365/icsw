@@ -45,6 +45,8 @@ config_module = angular.module(
                 @[entry] = []
             # monitoring check command list
             @mcc_list = []
+            # free mccs (without a config)
+            @free_mcc_list = []
             @update(list, cse_list, catalog_list, hint_list)
 
         update: (args...) =>
@@ -57,6 +59,7 @@ config_module = angular.module(
         build_luts: () =>
             _start = new Date().getTime()
             @mcc_list.length = 0
+            @free_mcc_list.length = 0
             # new entries added
             @lut = _.keyBy(@list, "idx")
             @cse_lut = _.keyBy(@cse_list, "idx")
@@ -66,11 +69,24 @@ config_module = angular.module(
             for config in @list
                 # links
                 config.$$config_tree = @
-                for mcc in config.mon_check_command_set
+                if config.res_mon_check_command_set?
+                    config.res_mon_check_command_set.length = 0
+                else
+                    config.res_mon_check_command_set = []
+                for mcc_idx in config.mon_check_command_set
+                    mcc = @mon_basic_tree.mon_check_command_lut[mcc_idx]
+                    config.res_mon_check_command_set.push(mcc)
                     mcc.$$config = config
                     mcc.$$config_name = config.name
                     @mcc_to_config_lut[mcc.idx] = config.idx
                     @mcc_list.push(mcc)
+            for entry in @mon_basic_tree.mon_check_command_list
+                if not entry.config
+                    entry.$$config = null
+                    entry.$$config_name = null
+                    entry.$$config_tree = @
+                    @mcc_list.push(entry)
+                    @free_mcc_list.push(entry)
             @mcc_lut = _.keyBy(@mcc_list, "idx")
             @resolve_hints()
             @reorder()
@@ -119,7 +135,7 @@ config_module = angular.module(
                 @_set_config_line_fields(config)
 
         check_config_hint: (config) =>
-            console.log config.name
+            # console.log config.name
             @_check_config_hint(config)
 
         reorder: () =>
@@ -198,6 +214,30 @@ config_module = angular.module(
                 config.$$config_help_text = "---"
                 config.$$config_help_html = ""
 
+        _enrich_mcc: (mcc) =>
+            if not mcc.$selected?
+                mcc.$selected = false
+            mcc.$$info_str = "#{mcc.description} (#{mcc.name})"
+            mcc.$$command_str = mcc.command_line
+            if mcc.mon_service_templ
+                mcc.$$mon_service_templ_name = @mon_basic_tree.mon_service_templ_lut[mcc.mon_service_templ].name
+            else
+                mcc.$$mon_service_templ_name = "-"
+            if mcc.mon_check_command_special
+                mcc.$$command_line = @mon_basic_tree.mon_check_command_special_lut[mcc.mon_check_command_special].command_line
+            else
+                mcc.$$command_line = mcc.command_line
+            ev_idx = mcc.event_handler
+            if ev_idx
+                # not fast but working
+                ev_config = (entry for entry in mcc.$$config_tree.list when ev_idx of entry.mon_check_command_lut)
+                if ev_config.length
+                    mcc.$$event_handler = (entry for entry in ev_config[0].res_mon_check_command_set when entry.idx == ev_idx)[0].name
+                else
+                    mcc.$$event_handler = "???"
+            else
+                mcc.$$event_handler = "---"
+
         _enrich_config: (config) =>
             # console.log @cse_lut
             @_set_config_line_fields(config)
@@ -226,20 +266,15 @@ config_module = angular.module(
             else
                 config.var_list = []
             for script in config.config_script_set
-                script.$$tree = @
+                script.$$config_tree = @
                 if not script.$selected?
                     script.$selected = false
-            for mon in config.mon_check_command_set
-                mon.$$tree = @
+            for mon in config.res_mon_check_command_set
+                mon.$$config_tree = @
                 mon.$$config = config
-                if not mon.$selected?
-                    mon.$selected = false
-                mon.$$info_str = "#{mon.description} (#{mon.name})"
-                mon.$$command_str = mon.command_line
-                # console.log "m=", mon
             for vt in ["str", "int", "bool", "blob"]
                 for el in config["config_#{vt}_set"]
-                    el.$$tree = @
+                    el.$$config_tree = @
                     if not el.$selected?
                         el.$selected = false
                     el.$var_type = vt
@@ -253,9 +288,9 @@ config_module = angular.module(
             config.var_sel = (true for entry in config.var_list when entry.$selected).length
             config.$$num_script = config.config_script_set.length
             config.script_sel = (true for entry in config.config_script_set when entry.$selected).length
-            config.$$num_mon = config.mon_check_command_set.length
-            config.mon_sel = (true for entry in config.mon_check_command_set when entry.$selected).length
-            config.mon_check_command_lut = _.keyBy(config.mon_check_command_set, "idx")
+            config.$$num_mon = config.res_mon_check_command_set.length
+            config.mon_sel = (true for entry in config.res_mon_check_command_set when entry.$selected).length
+            config.mon_check_command_lut = _.keyBy(config.res_mon_check_command_set, "idx")
             # build info strings for device-config
             if @_multi_name_dict[config.name] > 1
                 _name = "#{config.name} [" + @catalog_lut[config.config_catalog].name + "]"
@@ -297,6 +332,8 @@ config_module = angular.module(
                     cat.configs = []
             for config in @list
                 @_enrich_config(config)
+            for mcc in @mcc_list
+                @_enrich_mcc(mcc)
             @_populate_filter_fields()
             @$selected = (entry for entry in @list when entry.$selected).length
             @$mcc_selected = 0
@@ -319,7 +356,7 @@ config_module = angular.module(
                             _local_s.push(cvar[attr_name])
                         cvar.$$filter_string = _local_s.join(" ")
                         s.push(cvar.$$filter_string)
-                for moncc in entry.mon_check_command_set
+                for moncc in entry.res_mon_check_command_set
                     _local_s = []
                     for attr_name in ["name", "description", "check_command", "command_line"]
                         _local_s.push(moncc[attr_name])
@@ -336,6 +373,12 @@ config_module = angular.module(
                 s.push(entry.$$filter_string)
                 # needed ?
                 entry.$$global_filter_string = s.join(" ")
+            for moncc in @free_mcc_list
+                _local_s = []
+                for attr_name in ["name", "description", "check_command", "command_line"]
+                    _local_s.push(moncc[attr_name])
+                moncc.$$filter_string = _local_s.join(" ")
+
 
         update_filtered_list: (search_str, filter_settings, with_server, with_service) =>
             if not search_str?
@@ -366,7 +409,7 @@ config_module = angular.module(
                                 _num_script_found++
                         else
                             scr.$$filter_match = false
-                    for mon in entry.mon_check_command_set
+                    for mon in entry.res_mon_check_command_set
                         if mon.$$filter_string.match(search_re)
                             @filtered_mcc_list.push(mon)
                         if filter_settings.mon
@@ -413,6 +456,15 @@ config_module = angular.module(
                     @_set_config_class(entry, _type)
                 if entry.$$global_filter_match
                     @filtered_list.push(entry)
+            # mon_check_commands without config
+            for mon in @free_mcc_list
+                #     entry.$$config = null
+                if mon.$$filter_string.match(search_re)
+                    @filtered_mcc_list.push(mon)
+                if filter_settings.mon
+                    mon.$$filter_match = if mon.$$filter_string.match(search_re) then true else false
+                else
+                    mon.$$filter_match = false
 
         update_category_tree: () =>
             @cat_tree.feed_config_tree(@)
@@ -503,37 +555,45 @@ config_module = angular.module(
         # config create / delete mon_check_commands
         create_mon_check_command: (config, new_mcc) =>
             defer = $q.defer()
-            Restangular.all(ICSW_URLS.REST_MON_CHECK_COMMAND_LIST.slice(1)).post(new_mcc).then(
-                (new_obj) =>
-                    @_fetch_mon_check_command(config, new_obj.idx, defer, "created mcc")
-                (not_ok) ->
-                    defer.reject("mcc not created")
+            @mon_basic_tree.create_mon_check_command(new_mcc).then(
+                (new_mcc) =>
+                    config.mon_check_command_set.push(new_mcc.idx)
+                    @build_luts()
+                    defer.resolve("done")
+                (error) =>
+                    @build_luts()
+                    defer.reject("error")
+            )
+            return defer.promise
+
+        modify_mon_check_command: (config, mcc) =>
+            defer = $q.defer()
+            @mon_basic_tree.modify_mon_check_command(mcc).then(
+                (new_mcc) =>
+                    # try to remove from current config
+                    if config?
+                        _.remove(config.mon_check_command_set, (entry) -> return entry == mcc.idx)
+                    if new_mcc.config
+                        @lut[new_mcc.config].mon_check_command_set.push(new_mcc.idx)
+                    @build_luts()
+                    defer.resolve("done")
+                (error) =>
+                    @build_luts()
+                    defer.reject("error")
             )
             return defer.promise
 
         delete_mon_check_command: (config, del_mcc) =>
-            # ensure REST hooks
-            Restangular.restangularizeElement(null, del_mcc, ICSW_URLS.REST_MON_CHECK_COMMAND_DETAIL.slice(1).slice(0, -2))
             defer = $q.defer()
-            del_mcc.remove().then(
+            @mon_basic_tree.delete_mon_check_command(del_mcc).then(
                 (ok) =>
-                    _.remove(config.mon_check_command_set, (entry) -> return entry.idx == del_mcc.idx)
+                    _.remove(config.mon_check_command_set, (entry) -> return entry == del_mcc.idx)
                     @build_luts()
                     defer.resolve("deleted")
                 (error) ->
                     defer.reject("not deleted")
             )
             return defer.promise
-
-        _fetch_mon_check_command: (config, pk, defer, msg) =>
-            Restangular.one(ICSW_URLS.REST_MON_CHECK_COMMAND_LIST.slice(1)).get({idx: pk}).then(
-                (new_mcc) =>
-                    new_mcc = new_mcc[0]
-                    config.mon_check_command_set.push(new_mcc)
-                    @build_luts()
-                    defer.resolve(new_mcc)
-            )
-
 
         # config create / delete config_vars
         create_config_var: (config, new_var) =>

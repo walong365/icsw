@@ -19,8 +19,6 @@
 #
 """ database definitions for monitoring """
 
-
-
 from initat.cluster.backbone.models import mon_host_cluster, mon_service_cluster, mon_ext_host, \
     mon_check_command, mon_host_dependency, mon_service_dependency, host_check_command, \
     mon_notification, mon_contact, mon_contactgroup, mon_check_command_special, mon_device_templ, \
@@ -76,14 +74,6 @@ class mon_check_command_special_serializer(serializers.ModelSerializer):
     class Meta:
         fields = "__all__"
         model = mon_check_command_special
-
-
-class mon_check_command_serializer(serializers.ModelSerializer):
-    object_type = serializers.CharField(source="get_object_type", read_only=True)
-
-    class Meta:
-        fields = "__all__"
-        model = mon_check_command
 
 
 class mon_check_command_nat_serializer(serializers.ModelSerializer):
@@ -197,3 +187,11 @@ class MonDisplayPipeSpecSerializer(serializers.ModelSerializer):
     class Meta:
         model = MonDisplayPipeSpec
         fields = "__all__"
+
+
+class mon_check_command_serializer(serializers.ModelSerializer):
+    object_type = serializers.CharField(source="get_object_type", read_only=True)
+
+    class Meta:
+        fields = "__all__"
+        model = mon_check_command

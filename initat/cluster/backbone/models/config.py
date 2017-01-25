@@ -268,13 +268,6 @@ class device_config(models.Model):
 @receiver(signals.post_save, sender=device_config)
 def device_config_post_save(sender, instance, raw, **kwargs):
     pass
-    # if not raw:
-    #    log_usage_data = collections.defaultdict(lambda: [])
-    #
-    #    for mcc in instance.config.mon_check_command_set.all().select_related("mon_service_templ"):
-    #        if mcc.mon_service_templ is not None and mcc.mon_service_templ.any_notification_enabled():
-    #            log_usage_data[instance.device_id].append(mcc)
-    #    LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
 
 
 class config_str(models.Model):

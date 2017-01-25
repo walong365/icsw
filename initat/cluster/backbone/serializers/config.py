@@ -107,7 +107,7 @@ class config_serializer(serializers.ModelSerializer):
     config_blob_set = config_blob_serializer(many=True, read_only=True)
     config_bool_set = config_bool_serializer(many=True, read_only=True)
     config_script_set = config_script_serializer(many=True, read_only=True)
-    mon_check_command_set = mon_check_command_serializer(many=True, read_only=True)
+    mon_check_command_set = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     device_config_set = device_config_serializer(many=True, read_only=True)
     # categories only as flat list, no nesting
 
@@ -122,7 +122,7 @@ class config_dump_serializer(serializers.ModelSerializer):
     config_blob_set = config_blob_serializer(many=True, allow_null=True)
     config_bool_set = config_bool_serializer(many=True, allow_null=True)
     config_script_set = config_script_serializer(many=True, allow_null=True)
-    mon_check_command_set = mon_check_command_serializer(many=True, allow_null=True)
+    # mon_check_command_set = mon_check_command_serializer(many=True, allow_null=True)
     # categories only as flat list, no nesting
 
     def create(self, validated_data):
@@ -141,5 +141,5 @@ class config_dump_serializer(serializers.ModelSerializer):
         fields = (
             "idx", "name", "description", "priority", "enabled", "categories",
             "config_str_set", "config_int_set", "config_blob_set", "config_bool_set",
-            "config_script_set", "mon_check_command_set", "server_config", # "system_config",
+            "config_script_set", "mon_check_command_set", "server_config",
         )
