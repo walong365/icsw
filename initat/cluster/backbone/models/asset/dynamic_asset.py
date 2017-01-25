@@ -103,6 +103,7 @@ class AssetHWMemoryEntry(models.Model):
 class AssetHWCPUEntry(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.TextField(null=True)
+    vendor = models.TextField(null=True)
     numberofcores = models.IntegerField(null=True)
     created = models.DateTimeField(auto_now_add=True)
 
@@ -1245,7 +1246,8 @@ class AssetBatch(models.Model):
         for cpu in hw.cpus:
             new_cpu = AssetHWCPUEntry(
                 name=cpu.product,
-                numberofcores=cpu.number_of_cores
+                numberofcores=cpu.number_of_cores,
+                vendor=cpu.vendor
             )
             new_cpu.save()
             self.cpus.add(new_cpu)
