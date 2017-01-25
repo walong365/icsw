@@ -125,7 +125,7 @@ class DispatcherSetting(models.Model):
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             ("setup", "Change Dispatch settings", False),
         )

@@ -153,9 +153,9 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
     :param simple_tuples: If True, return a set of tuples (object_name, object_pk)
     """
     used_objs = [] if (detail or simple_tuples) else 0
-    if hasattr(in_obj, "CSW_Meta"):
+    if hasattr(in_obj, "ICSW_Meta"):
         # copy list because we remove entries as we iterate over foreign models
-        fk_ignore_list = [entry for entry in getattr(in_obj.CSW_Meta, "fk_ignore_list", [])]
+        fk_ignore_list = [entry for entry in getattr(in_obj.ICSW_Meta, "fk_ignore_list", [])]
     else:
         fk_ignore_list = []
     if check_all:

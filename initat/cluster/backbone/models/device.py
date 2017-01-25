@@ -433,7 +433,7 @@ class device(models.Model):
             " ({})".format(self.comment) if self.comment else ""
         )
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             ("all_devices", "Access all devices", False),
             ("show_graphs", "Access to device graphs", True),
@@ -814,7 +814,7 @@ class device_group(models.Model):
         ordering = ("-cluster_device_group", "name",)
         verbose_name = "Device group"
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             # also referenced in migration 0983
             ("access_device_group", "Access to Device Group", True),

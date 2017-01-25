@@ -100,7 +100,7 @@ class StaticAssetTemplate(models.Model):
             nt.staticassettemplatefield_set.add(_field.copy(nt, create_user))
         return nt
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             ("setup", "Change StaticAsset templates", False),
         )

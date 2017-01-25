@@ -293,7 +293,7 @@ class SensorThreshold(models.Model):
             str(self.mv_value_entry),
         )
 
-    class CSW_Meta:
+    class ICSW_Meta:
         fk_ignore_list = [
             "SensorThresholdAction",
         ]

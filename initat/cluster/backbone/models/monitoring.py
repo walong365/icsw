@@ -225,7 +225,7 @@ class mon_build_unreachable(models.Model):
     devicegroup_name = models.CharField(max_length=256, default="")
     date = models.DateTimeField(auto_now_add=True)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -394,7 +394,7 @@ class mon_check_command(models.Model):
         unique_together = (("name", "config"))
         verbose_name = "Check command"
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             ("setup_monitoring", "Change monitoring settings", False),
             ("show_monitoring_dashboard", "Show monitoring dashboard", False),
@@ -655,7 +655,6 @@ class DBStructuredMonBaseConfig(mon_check_command, StructuredContentEmitter):
         return out_list
 
     class Meta:
-        db_table = 'ng_check_command'
         proxy = True
 
 

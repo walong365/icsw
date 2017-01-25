@@ -142,7 +142,7 @@ class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
     # whether this is an entry after icinga restart
     initial_state = models.BooleanField(default=False)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -231,7 +231,7 @@ class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     # whether this is an entry after icinga restart
     initial_state = models.BooleanField(default=False)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -242,7 +242,7 @@ class mon_icinga_log_full_system_dump(models.Model):
     idx = models.AutoField(primary_key=True)
     date = models.DateTimeField(db_index=True, unique=True)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -252,14 +252,14 @@ class mon_icinga_log_raw_service_flapping_data(mon_icinga_log_raw_base):
 
     flapping_state = models.CharField(**mon_icinga_log_raw_base._start_stop_field_args)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
 class mon_icinga_log_raw_host_flapping_data(mon_icinga_log_raw_base):
     flapping_state = models.CharField(**mon_icinga_log_raw_base._start_stop_field_args)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -271,7 +271,7 @@ class mon_icinga_log_raw_service_notification_data(mon_icinga_log_raw_base):
     user = models.TextField()
     notification_type = models.TextField()
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -280,7 +280,7 @@ class mon_icinga_log_raw_host_notification_data(mon_icinga_log_raw_base):
     user = models.TextField()
     notification_type = models.TextField()
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -296,7 +296,7 @@ class mon_icinga_log_raw_service_downtime_data(mon_icinga_log_raw_base):
         self.state = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
         self.state_type = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -309,7 +309,7 @@ class mon_icinga_log_raw_host_downtime_data(mon_icinga_log_raw_base):
         self.state = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
         self.state_type = mon_icinga_log_raw_base.STATE_PLANNED_DOWN
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -317,7 +317,7 @@ class mon_icinga_log_file(models.Model):
     idx = models.AutoField(primary_key=True)
     filepath = models.TextField()
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -340,7 +340,7 @@ class mon_icinga_log_last_read(models.Model):
 
     objects = _last_read_manager()
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -375,7 +375,7 @@ class mon_icinga_log_aggregated_host_data(models.Model):
     # ratio of time span spent in this (state_type, state)
     value = models.FloatField()
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -559,7 +559,7 @@ class mon_icinga_log_aggregated_service_data(models.Model):
     # ratio of time span spent in this (state_type, state)
     value = models.FloatField()
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 

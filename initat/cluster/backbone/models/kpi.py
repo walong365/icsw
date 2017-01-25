@@ -131,7 +131,7 @@ class Kpi(models.Model):
         ordering = ('idx', )  # rest view in order of creation
         verbose_name = "KPI"
 
-    class CSW_Meta:
+    class ICSW_Meta:
         fk_ignore_list = ["KpiDataSourceTuple", "KpiStoredResult"]
         permissions = (
             ("kpi", "define and access key performance indicators (kpis)", False),

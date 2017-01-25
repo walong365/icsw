@@ -530,7 +530,7 @@ class ext_license(ext_license_base):
 
     __repr__ = __str__
 
-    class CSW_Meta:
+    class ICSW_Meta:
         fk_ignore_list = [
             "LicenseUsageExtLicense", "LicenseLockListExtLicense",
         ]
@@ -564,7 +564,7 @@ class ext_license_check(ext_license_base):
     ext_license_site = models.ForeignKey("backbone.ext_license_site", null=True)
     run_time = models.FloatField(default=0.0)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -577,7 +577,7 @@ class ext_license_state(models.Model):
     free = models.IntegerField(default=0)
     issued = models.IntegerField(default=0)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -589,7 +589,7 @@ class ext_license_version_state(models.Model):
     is_floating = models.BooleanField(default=False)
     vendor = models.ForeignKey("backbone.ext_license_vendor")
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -600,7 +600,7 @@ class ext_license_client_version(ext_license_base):
     ext_license = models.ForeignKey("backbone.ext_license")
     client_version = models.CharField(default="", max_length=64)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -613,7 +613,7 @@ class ext_license_usage(models.Model):
     checkout_time = models.IntegerField(default=0)
     num = models.IntegerField(default=0)  # number of licenses of a single instance of a program
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -636,7 +636,7 @@ class ext_license_check_coarse(models.Model):
         # border values easily create problems with timezones etc, hence use central values
         return klass.get_display_date(self.start_date + ((self.end_date - self.start_date) / 2))  # @IgnorePep8
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -655,7 +655,7 @@ class ext_license_state_coarse(models.Model):
     issued_max = models.IntegerField(default=0)
     data_points = models.IntegerField()  # number of measurements used for calculating this
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
     def get_display_date(self):
@@ -672,7 +672,7 @@ class ext_license_version_state_coarse(models.Model):
 
     frequency = models.IntegerField()  # number of actual usages of this combination of license_version and vendor occurred, grouped by check and state
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
     def get_display_date(self):
@@ -691,7 +691,7 @@ class ext_license_usage_coarse(models.Model):
 
     frequency = models.IntegerField()  # number of times this client/user/num combination occurred for this version_state
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 

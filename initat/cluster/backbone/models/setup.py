@@ -131,7 +131,7 @@ class image(models.Model):
         )
         return _kdh
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             ("modify_images", "modify images", False),
         )
@@ -276,7 +276,7 @@ class kernel(models.Model):
     def __str__(self):
         return "Kernel {} (is {}, {})".format(self.display_name, self.name, self.full_version)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             ("modify_kernels", "modify kernels", False),
         )
