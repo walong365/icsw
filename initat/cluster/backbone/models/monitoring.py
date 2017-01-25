@@ -32,7 +32,8 @@ from django.dispatch import receiver
 
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer
 from initat.tools import logging_tools
-from initat.md_config_server.base_config.mon_base_config import StructuredContentEmitter
+from initat.md_config_server.base_config.mon_base_config import StructuredContentEmitter, \
+    build_safe_name
 
 __all__ = [
     "mon_host_cluster",
@@ -68,7 +69,6 @@ __all__ = [
     # unreachable info
 
     "mon_build_unreachable",  # track unreachable devices
-    "parse_commandline",  # commandline parsing
     "SpecialGroupsEnum",
 
     # syslog check object
@@ -332,103 +332,6 @@ class mon_check_command_special(models.Model):
         return "mccs_{}".format(self.name)
 
 
-def parse_commandline(com_line):
-    """
-    parses command line, also builds argument lut
-    lut format: commandline switch -> ARG#
-    list format : ARG#, ARG#, ...
-    """
-    _num_args, _default_values = (0, {})
-    arg_lut, arg_list = ({}, [])
-    """
-    handle the various input formats:
-
-    ${ARG#:var_name:default}
-    ${ARG#:var_name:default}$
-    ${ARG#:*var_name}
-    ${ARG#:*var_name}$
-    ${ARG#:default}
-    ${ARG#:default}$
-    $ARG#$
-
-    """
-    com_re = re.compile(
-        "".join(
-            [
-                "^(?P<pre_text>.*?)",
-                "((\${ARG(?P<arg_num_1>\d+):(((?P<var_name>[^:^}]+?)\:(?P<default_vn>[^}]+?)}\$*)|",
-                "(?P<default>[^}]+?)}\$*))|(\$ARG(?P<arg_num_2>\d+)\$))+",
-                "(?P<post_text>.*)$",
-            ]
-        )
-    )
-    cur_line = com_line
-    # where to start the match to avoid infinite loop
-    s_idx = 0
-    while True:
-        cur_m = com_re.match(cur_line[s_idx:])
-        if cur_m:
-            m_dict = cur_m.groupdict()
-            # check for -X or --Y switch
-            prev_part = m_dict["pre_text"].strip().split()
-            if prev_part and prev_part[-1].startswith("-"):
-                prev_part = prev_part[-1]
-            else:
-                prev_part = None
-            if m_dict["arg_num_2"] is not None:
-                # short form
-                arg_name = "ARG{}".format(m_dict["arg_num_2"])
-            else:
-                arg_name = "ARG{}".format(m_dict["arg_num_1"])
-                if m_dict["var_name"]:
-                    _default_values[arg_name] = (m_dict["var_name"], m_dict["default_vn"])
-                elif m_dict["default"]:
-                    _default_values[arg_name] = m_dict["default"]
-            pre_text, post_text = (
-                m_dict["pre_text"] or "",
-                m_dict["post_text"] or ""
-            )
-            cur_line = "{}{}${}${}".format(
-                cur_line[:s_idx],
-                pre_text,
-                arg_name,
-                post_text
-            )
-            s_idx += len(pre_text) + len(arg_name) + 2
-            if prev_part:
-                arg_lut[prev_part] = arg_name
-            else:
-                arg_list.append(arg_name)
-            _num_args += 1
-        else:
-            break
-    _parsed_com_line = cur_line
-    log_lines = []
-    if com_line == _parsed_com_line:
-        log_lines.append("command_line in/out is '{}'".format(com_line))
-    else:
-        log_lines.append("command_line in     is '{}'".format(com_line))
-        log_lines.append("command_line out    is '{}'".format(_parsed_com_line))
-    if arg_lut:
-        log_lines.append("lut : %s; %s" % (
-            logging_tools.get_plural("key", len(arg_lut)),
-            ", ".join(["'%s' => '%s'" % (key, value) for key, value in arg_lut.items()])
-        ))
-    if arg_list:
-        log_lines.append("list: %s; %s" % (
-            logging_tools.get_plural("item", len(arg_list)),
-            ", ".join(arg_list)
-        ))
-    return {
-        "arg_lut": arg_lut,
-        "arg_list": arg_list,
-        "parsed_com_line": _parsed_com_line,
-        "num_args": _num_args,
-        "default_values": _default_values,
-    }, log_lines
-    # self.__arg_lut, self.__arg_list = (arg_lut, arg_list)
-
-
 class MonCheckCommandSystemNames(Enum):
     # process commands
     process_service_perfdata_file = "process-service-perfdata-file"
@@ -542,6 +445,117 @@ class DBStructuredMonBaseConfig(mon_check_command, StructuredContentEmitter):
             _obj.save()
         return _obj
 
+    @classmethod
+    def parse_commandline(cls, com_line):
+        """
+        parses command line, also builds argument lut
+        lut format: commandline switch -> ARG#
+        list format : ARG#, ARG#, ...
+        """
+        """
+        handle the various input formats:
+
+        ${ARG#:var_name:default}
+        ${ARG#:var_name:default}$
+        ${ARG#:*var_name}
+        ${ARG#:*var_name}$
+        ${ARG#:default}
+        ${ARG#:default}$
+        $ARG#$
+
+        """
+        _num_args, _default_values = (0, {})
+        arg_lut, arg_list = ({}, [])
+        log_lines = []
+        if not com_line.strip():
+            com_line = "/bin/true"
+            log_lines.append(
+                (
+                    "commandline is empty, replacing with '{}'".format(com_line),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+            )
+        com_re = re.compile(
+            "".join(
+                [
+                    "^(?P<pre_text>.*?)",
+                    "((\${ARG(?P<arg_num_1>\d+):(((?P<var_name>[^:^}]+?)\:(?P<default_vn>[^}]+?)}\$*)|",
+                    "(?P<default>[^}]+?)}\$*))|(\$ARG(?P<arg_num_2>\d+)\$))+",
+                    "(?P<post_text>.*)$",
+                ]
+            )
+        )
+        cur_line = com_line
+        # where to start the match to avoid infinite loop
+        s_idx = 0
+        while True:
+            cur_m = com_re.match(cur_line[s_idx:])
+            if cur_m:
+                m_dict = cur_m.groupdict()
+                # check for -X or --Y switch
+                prev_part = m_dict["pre_text"].strip().split()
+                if prev_part and prev_part[-1].startswith("-"):
+                    prev_part = prev_part[-1]
+                else:
+                    prev_part = None
+                if m_dict["arg_num_2"] is not None:
+                    # short form
+                    arg_name = "ARG{}".format(m_dict["arg_num_2"])
+                else:
+                    arg_name = "ARG{}".format(m_dict["arg_num_1"])
+                    if m_dict["var_name"]:
+                        _default_values[arg_name] = (m_dict["var_name"], m_dict["default_vn"])
+                    elif m_dict["default"]:
+                        _default_values[arg_name] = m_dict["default"]
+                pre_text, post_text = (
+                    m_dict["pre_text"] or "",
+                    m_dict["post_text"] or ""
+                )
+                cur_line = "{}{}${}${}".format(
+                    cur_line[:s_idx],
+                    pre_text,
+                    arg_name,
+                    post_text
+                )
+                s_idx += len(pre_text) + len(arg_name) + 2
+                if prev_part:
+                    arg_lut[prev_part] = arg_name
+                else:
+                    arg_list.append(arg_name)
+                _num_args += 1
+            else:
+                break
+        _parsed_com_line = cur_line
+        if com_line == _parsed_com_line:
+            log_lines.append("commandline in/out is '{}'".format(com_line))
+        else:
+            log_lines.append("commandline in     is '{}'".format(com_line))
+            log_lines.append("commandline out    is '{}'".format(_parsed_com_line))
+        if arg_lut:
+            log_lines.append(
+                "lut : {}; {}".format(
+                    logging_tools.get_plural("key", len(arg_lut)),
+                    ", ".join(
+                        ["'{}' => '{}'".format(key, value) for key, value in arg_lut.items()]
+                    )
+                )
+            )
+        if arg_list:
+            log_lines.append(
+                "list: {}; {}".format(
+                    logging_tools.get_plural("item", len(arg_list)),
+                    ", ".join(arg_list)
+                )
+            )
+        return {
+                   "arg_lut": arg_lut,
+                   "arg_list": arg_list,
+                   "parsed_com_line": _parsed_com_line,
+                   "num_args": _num_args,
+                   "default_values": _default_values,
+               }, log_lines
+        # self.__arg_lut, self.__arg_list = (arg_lut, arg_list)
+
     def keys(self):
         return ["command_line", "command_name"]
 
@@ -556,10 +570,89 @@ class DBStructuredMonBaseConfig(mon_check_command, StructuredContentEmitter):
         return self.name
 
     def __getitem__(self, key):
+        # for config generation
         if key == "command_name":
             return [self.unique_name]
+        elif key == "command_line":
+            return [self.__md_com_line]
         else:
-            return [getattr(self, key)]
+            raise KeyError("key '{}' not supported for __getitem__".format(key))
+
+    def generate_md_com_line(self, log_com: object, safe_description: bool):
+        if safe_description:
+            self.__description = build_safe_name(self.name)
+        else:
+            self.__description = self.name
+        if self.mon_check_command_special_id:
+            arg_info, log_lines = DBStructuredMonBaseConfig.parse_commandline(
+                self.mon_check_command_special.command_line
+            )
+        else:
+            arg_info, log_lines = DBStructuredMonBaseConfig.parse_commandline(
+                self.command_line
+            )
+        # print arg_info, log_lines
+        self.__arg_lut = arg_info["arg_lut"]
+        self.__arg_list = arg_info["arg_list"]
+        self.__num_args = arg_info["num_args"]
+        self.__default_values = arg_info["default_values"]
+        self.__md_com_line = arg_info["parsed_com_line"]
+        if log_com:
+            log_com(
+                "command '{}' maps to '{}'".format(
+                    self.name,
+                    self.unique_name,
+                )
+            )
+            for _line in log_lines:
+                if isinstance(_line, tuple):
+                    _line, _level = _line
+                else:
+                    _level = logging_tools.LOG_LEVEL_OK
+                log_com("[cc {}] {}".format(self.name, _line), _level)
+
+    @property
+    def arg_ll(self) -> tuple:
+        """
+        returns lut and list
+        """
+        return (self.__arg_lut, self.__arg_list)
+
+    @property
+    def servicegroup_names(self):
+        return [cur_cat.full_name for cur_cat in self.categories.all()]
+
+    @property
+    def servicegroup_pks(self):
+        return [cur_cat.pk for cur_cat in self.categories.all()]
+
+    def get_template(self, default: str) -> str:
+        if self.mon_service_templ_id:
+            return self.mon_service_templ.name
+        else:
+            return default
+
+    def correct_argument_list(self, arg_temp, dev_variables):
+        out_list = []
+        for arg_name in arg_temp.argument_names:
+            value = arg_temp[arg_name]
+            if arg_name in self.__default_values and not value:
+                dv_value = self.__default_values[arg_name]
+                if isinstance(dv_value, tuple):
+                    # var_name and default_value
+                    var_name = self.__default_values[arg_name][0]
+                    if var_name in dev_variables:
+                        value = dev_variables[var_name]
+                    else:
+                        value = self.__default_values[arg_name][1]
+                else:
+                    # only default_value
+                    value = self.__default_values[arg_name]
+            if isinstance(value, int):
+                out_list.append("{:d}".format(value))
+            else:
+                out_list.append(value)
+        return out_list
 
     class Meta:
         db_table = 'ng_check_command'

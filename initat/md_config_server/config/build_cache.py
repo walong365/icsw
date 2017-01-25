@@ -19,8 +19,6 @@
 #
 """ cache of various settings and luts for md-config-server """
 
-
-
 import time
 
 from django.db.models import Q
@@ -39,8 +37,8 @@ from .global_config import global_config
 from ..config import SimpleCounter, MonFileContainer
 
 __all__ = [
-    b"BuildCache",
-    b"HostBuildCache",
+    "BuildCache",
+    "HostBuildCache",
 ]
 
 
@@ -173,8 +171,9 @@ class BuildCache(object):
         self.mcc_lut_3 = {_check.pk: _check for _check in mon_check_command.objects.all()}
         # add dummy entries
         for _value in self.mcc_lut_3.values():
+            # why ? FIXME
             _value.mccs_id = None
-            _value.check_command_pk = _value.pk
+            # _value.check_command_pk = _value.pk
         self.mcc_lut = {
             key: (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config__name")
         }

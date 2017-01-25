@@ -25,16 +25,14 @@ import os
 from django.db.models import Q
 
 from initat.cluster.backbone.models import device_group, mon_period, \
-    mon_contact, mon_contactgroup, category_tree, TOP_MONITORING_CATEGORY, mon_notification, \
+    mon_contact, mon_contactgroup, category_tree, mon_notification, \
     host_check_command, mon_check_command_special, MonCheckCommandSystemNames, device_variable, \
     DBStructuredMonBaseConfig
 from initat.constants import CLUSTER_DIR
 from initat.tools import logging_tools
-# from .check_command import CheckCommand
 from .global_config import global_config
 from .mon_config_containers import MonFileContainer
-from ..base_config.mon_base_config import StructuredMonBaseConfig, MonUniqueList, \
-    build_safe_name
+from ..base_config.mon_base_config import StructuredMonBaseConfig
 
 __all__ = [
     "MonAllHostDependencies",
@@ -132,7 +130,6 @@ class MonAllCommands(MonFileContainer):
         self.refresh(gen_conf)
 
     def refresh(self, gen_conf):
-        # CheckCommand.gen_conf = gen_conf
         self.clear()
         self._add_notify_commands()
         self._add_commands_from_db(gen_conf)
@@ -211,20 +208,22 @@ class MonAllCommands(MonFileContainer):
                     send_sms_prog,
                     self._expand_str(cur_not.content),
                 )
-            self.add_object(
-                StructuredMonBaseConfig(
-                    "command",
-                    MonCheckCommandSystemNames[cur_not.name.replace("-", "_")].value,
-                    command_name=MonCheckCommandSystemNames[cur_not.name.replace("-", "_")].value,
-                    command_line=command_line.replace("\n", "\\n"),
+            _cn_l_name = cur_not.name.replace("-", "_")
+            try:
+                _cn_name = MonCheckCommandSystemNames[_cn_l_name].value
+            except KeyError:
+                self.log("Unknown notification command '{}' ({}), ignoring".format(_cn_name, _cn_l_name), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.add_object(
+                    StructuredMonBaseConfig(
+                        "command",
+                        _cn_name,
+                        command_name=_cn_name,
+                        command_line=command_line.replace("\n", "\\n"),
+                    )
                 )
-            )
 
     def _add_commands_from_db(self, gen_conf):
-        # set of names of configs which point to a full check_config
-        cc_command_names = MonUniqueList()
-        # set of all names
-        command_names = MonUniqueList()
         for hc_com in host_check_command.objects.all():
             cur_nc = StructuredMonBaseConfig(
                 "command",
@@ -235,7 +234,6 @@ class MonAllCommands(MonFileContainer):
             self.add_object(cur_nc)
             # simple mon_config, we do not add this to the command dict
             # self.__dict[cur_nc["command_name"]] = cur_nc
-            command_names.add(hc_com.name)
         check_coms = list(
             DBStructuredMonBaseConfig.objects.filter(
                 Q(system_command=False)
@@ -277,12 +275,10 @@ class MonAllCommands(MonFileContainer):
             # create a mon_check_command instance for every special command
             special_cc = DBStructuredMonBaseConfig.get_system_check_command(
                 name=ccs.md_name,
-                command_line=ccs.command_line or "/bin/true",
+                command_line=ccs.command_line.strip() or "/bin/true",
                 description=ccs.description,
                 create=self.__create,
             )
-            # set pk of special command
-            special_cc.spk = ccs.pk
             check_coms.append(special_cc)
         check_coms.extend(
             [
@@ -322,72 +318,16 @@ class MonAllCommands(MonFileContainer):
                 ),
             ]
         )
-        safe_names = global_config["SAFE_NAMES"]
-        mccs_dict = {
-            mccs.pk: mccs for mccs in mon_check_command_special.objects.all()
-        }
+        safe_descr = global_config["SAFE_NAMES"]
+        # to log or not to log ...
+        if self.__logging:
+            log_com = gen_conf.log
+        else:
+            log_com = None
         for ngc in check_coms:
-            # pprint.pprint(ngc)
-            # build / extract ngc_name
-            ngc_name = ngc.name
-            _ngc_name = cc_command_names.add(ngc_name)
-            if _ngc_name != ngc_name:
-                self.log(
-                    "rewrite {} to {} ({})".format(
-                        ngc_name,
-                        _ngc_name,
-                        ngc.unique_name,
-                    ),
-                    logging_tools.LOG_LEVEL_WARN
-                )
-                ngc_name = _ngc_name
-            _nag_name = command_names.add(ngc_name)
-            if ngc.pk:
-                # print ngc.categories.all()
-                cats = [cur_cat.full_name for cur_cat in ngc.categories.all()]  # .values_list("full_name", flat=True)
-                cat_pks = [cur_cat.pk for cur_cat in ngc.categories.all()]
-            else:
-                cats = ["/{}".format(TOP_MONITORING_CATEGORY)]
-                cat_pks = []
-            if ngc.mon_check_command_special_id:
-                com_line = mccs_dict[ngc.mon_check_command_special_id].command_line
-            else:
-                com_line = ngc.command_line
-            if False:
-                cc_s = CheckCommand(
-                    ngc_name,
-                    com_line,
-                    ngc.config.name if ngc.config_id else None,
-                    ngc.mon_service_templ.name if ngc.mon_service_templ_id else None,
-                    build_safe_name(ngc.description) if safe_names else ngc.description,
-                    exclude_devices=ngc.exclude_devices.all() if ngc.pk else [],
-                    icinga_name=_nag_name,
-                    # link to mon_check_command_special
-                    mccs_id=ngc.mon_check_command_special_id,
-                    servicegroup_names=cats,
-                    servicegroup_pks=cat_pks,
-                    enable_perfdata=ngc.enable_perfdata,
-                    is_event_handler=ngc.is_event_handler,
-                    event_handler=ngc.event_handler,
-                    event_handler_enabled=ngc.event_handler_enabled,
-                    # id of check_command
-                    check_command_pk=ngc.pk,
-                    # id of mon_check_command_special
-                    special_command_pk=getattr(ngc, "spk", None),
-                    db_entry=ngc,
-                    is_active=ngc.is_active,
-                    volatile=ngc.volatile,
-                    show_log=self.__log_counter % 10 == 0 and global_config["DEBUG"] and self.__logging,
-                )
-                nag_conf = cc_s.get_mon_config()
-            # self.add_object(nag_conf)
-            self.add_object(ngc)  # nag_conf)
-            self[ngc_name] = ngc  # cc_s
-        # print("cc")
-        # print(cc_command_names)
-        # print("--")
-        # print(command_names)
-        # print("done")
+            ngc.generate_md_com_line(log_com, safe_descr)
+            self.add_object(ngc)
+            self[ngc.unique_name] = ngc
 
 
 class MonAllContacts(MonFileContainer):

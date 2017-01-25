@@ -30,7 +30,6 @@ __all__ = [
     "MonBaseConfig",
     "build_safe_name",
     "SimpleCounter",
-    "MonUniqueList",
     "StructuredMonBaseConfig",
     "FlatMonBaseConfig",
     "CfgEmitStats",
@@ -92,30 +91,6 @@ class MonBaseConfig(dict):
             return self.name
         else:
             return super(MonBaseConfig, self).__getitem__(key)
-
-
-class MonUniqueList(object):
-    def __init__(self):
-        self._list = set()
-
-    def add(self, name):
-        if name not in self._list:
-            _name = name
-        else:
-            # create new unique name with an integer postfix
-            add_idx = 0
-            while True:
-                add_idx += 1
-                _name = "{}_{:d}".format(name, add_idx)
-                if _name not in self._list:
-                    break
-        self._list.add(_name)
-        # if name != _name:
-        #    print("{:40s} -> {:s}".format(name, _name))
-        return _name
-
-    def __str__(self):
-        return ", ".join(self._list)
 
 
 class CfgEmitStats(object):

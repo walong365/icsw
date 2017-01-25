@@ -236,7 +236,11 @@ class BuildProcess(
                     [
                         cur_c.unique_name for cur_c in list(cur_gc["command"].values()) if not cur_c.is_event_handler and (
                             (
-                                (cur_c.config_id and cur_c.config.name in conf_names) and (host.pk not in cur_c.exclude_devices.all().values_list("pk", flat=True))
+                                (
+                                    cur_c.config_id and cur_c.config.name in conf_names
+                                ) and (
+                                    host.pk not in cur_c.exclude_devices.all().values_list("pk", flat=True)
+                                )
                             ) or cur_c.unique_name in cconf_names
                         )
                     ]
@@ -1034,7 +1038,11 @@ class BuildProcess(
                             [
                                 cur_c.unique_name for cur_c in list(cur_gc["command"].values()) if not cur_c.is_event_handler and (
                                     (
-                                        (cur_c.config_id and cur_c.config.name in conf_names) and (host.pk not in cur_c.exclude_devices.all().values_list("pk", flat=True))
+                                        (
+                                            cur_c.config_id and cur_c.config.name in conf_names
+                                        ) and (
+                                            host.pk not in cur_c.exclude_devices.all().values_list("pk", flat=True)
+                                        )
                                     ) or cur_c.unique_name in cconf_names
                                 )
                             ]
@@ -1341,6 +1349,7 @@ class BuildProcess(
         act_def_serv,
     ):
         cur_gc = gbc.global_config
+        # print("*", conf_name, cur_gc["command"].keys())
         s_check = cur_gc["command"][conf_name]
         if s_check.name in used_checks:
             hbc.log(
