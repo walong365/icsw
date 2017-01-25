@@ -1002,7 +1002,7 @@ class user(models.Model):
 
     is_active = property(get_is_active)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             ("admin", "Administrator", True),
             ("server_control", "start and stop server processes", True),
@@ -1198,7 +1198,7 @@ class group(models.Model):
         return self.active
     is_active = property(get_is_active)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             ("group_admin", "Group administrator", True),
         )
@@ -1617,7 +1617,7 @@ class Role(models.Model):
     class Meta:
         ordering = ("name",)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         fk_ignore_list = [
             "RolePermission", "RoleObjectPermission",
         ]

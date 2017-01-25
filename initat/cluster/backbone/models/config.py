@@ -162,7 +162,7 @@ class config(models.Model):
         unique_together = (("name", "config_catalog"),)
         verbose_name = "Configuration"
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             ("modify_config", "modify global configurations", False),
         )

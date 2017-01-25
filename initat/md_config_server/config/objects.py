@@ -24,16 +24,15 @@ import os
 
 from django.db.models import Q
 
-from initat.cluster.backbone.models import device, device_group, mon_check_command, mon_period, \
-    mon_contact, mon_contactgroup, category_tree, TOP_MONITORING_CATEGORY, mon_notification, \
-    host_check_command, mon_check_command_special, MonCheckCommandSystemNames
+from initat.cluster.backbone.models import device_group, mon_period, \
+    mon_contact, mon_contactgroup, category_tree, mon_notification, \
+    host_check_command, mon_check_command_special, MonCheckCommandSystemNames, device_variable, \
+    DBStructuredMonBaseConfig
 from initat.constants import CLUSTER_DIR
-from initat.md_config_server.config.check_command import CheckCommand
-from initat.md_config_server.config.mon_base_config import StructuredMonBaseConfig, MonUniqueList, \
-    build_safe_name
-from initat.md_config_server.config.mon_config_containers import MonFileContainer
-from initat.tools import cluster_location, logging_tools
+from initat.tools import logging_tools
 from .global_config import global_config
+from .mon_config_containers import MonFileContainer
+from ..base_config.mon_base_config import StructuredMonBaseConfig
 
 __all__ = [
     "MonAllHostDependencies",
@@ -123,14 +122,14 @@ class MonAllServiceGroups(MonFileContainer):
 
 
 class MonAllCommands(MonFileContainer):
-    def __init__(self, gen_conf, logging):
+    def __init__(self, gen_conf: object, logging: bool, create: bool):
         self.__logging = logging
+        self.__create = create
         MonFileContainer.__init__(self, "command")
         self.__log_counter = 0
         self.refresh(gen_conf)
 
     def refresh(self, gen_conf):
-        CheckCommand.gen_conf = gen_conf
         self.clear()
         self._add_notify_commands()
         self._add_commands_from_db(gen_conf)
@@ -148,17 +147,8 @@ class MonAllCommands(MonFileContainer):
         return in_str
 
     def _add_notify_commands(self):
-        try:
-            cdg = device.objects.get(Q(device_group__cluster_device_group=True))
-        except device.DoesNotExist:
-            cluster_name = "N/A"
-        else:
-            # cluster_name has to be set, otherwise something went seriously wrong while setting up the cluster
-            cluster_name = cluster_location.db_device_variable(
-                cdg,
-                "CLUSTER_NAME",
-                description="name of the cluster"
-            ).get_value()
+        # get cluster_name
+        cluster_name = device_variable.objects.get_cluster_name()
         md_vers = global_config["MD_VERSION_STRING"]
         md_type = global_config["MD_TYPE"]
         send_mail_prog = os.path.join(
@@ -184,8 +174,8 @@ class MonAllCommands(MonFileContainer):
         self.add_object(
             StructuredMonBaseConfig(
                 "command",
-                "dummy-notify",
-                command_name="dummy-notify",
+                MonCheckCommandSystemNames.dummy_notify.value,
+                command_name=MonCheckCommandSystemNames.dummy_notify.value,
                 command_line="/usr/bin/true",
             )
         )
@@ -218,20 +208,22 @@ class MonAllCommands(MonFileContainer):
                     send_sms_prog,
                     self._expand_str(cur_not.content),
                 )
-            self.add_object(
-                StructuredMonBaseConfig(
-                    "command",
-                    cur_not.name,
-                    command_name=cur_not.name,
-                    command_line=command_line.replace("\n", "\\n"),
+            _cn_l_name = cur_not.name.replace("-", "_")
+            try:
+                _cn_name = MonCheckCommandSystemNames[_cn_l_name].value
+            except KeyError:
+                self.log("Unknown notification command '{}' ({}), ignoring".format(_cn_name, _cn_l_name), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.add_object(
+                    StructuredMonBaseConfig(
+                        "command",
+                        _cn_name,
+                        command_name=_cn_name,
+                        command_line=command_line.replace("\n", "\\n"),
+                    )
                 )
-            )
 
     def _add_commands_from_db(self, gen_conf):
-        # set of names of configs which point to a full check_config
-        cc_command_names = MonUniqueList()
-        # set of all names
-        command_names = MonUniqueList()
         for hc_com in host_check_command.objects.all():
             cur_nc = StructuredMonBaseConfig(
                 "command",
@@ -242,9 +234,8 @@ class MonAllCommands(MonFileContainer):
             self.add_object(cur_nc)
             # simple mon_config, we do not add this to the command dict
             # self.__dict[cur_nc["command_name"]] = cur_nc
-            command_names.add(hc_com.name)
         check_coms = list(
-            mon_check_command.objects.filter(
+            DBStructuredMonBaseConfig.objects.filter(
                 Q(system_command=False)
             ).prefetch_related(
                 "categories",
@@ -259,134 +250,84 @@ class MonAllCommands(MonFileContainer):
         if enable_perfd and gen_conf.master:
             check_coms.extend(
                 [
-                    mon_check_command.get_system_check_command(
+                    DBStructuredMonBaseConfig.get_system_check_command(
                         name=MonCheckCommandSystemNames.process_service_perfdata_file.value,
                         command_line="{} {}/service-perfdata".format(
                             os.path.join(CLUSTER_SBIN, "send_collectd_zmq"),
                             gen_conf.var_dir,
                         ),
                         description="Process service performance data",
+                        create=self.__create,
                     ),
-                    mon_check_command.get_system_check_command(
+                    DBStructuredMonBaseConfig.get_system_check_command(
                         name=MonCheckCommandSystemNames.process_host_perfdata_file.value,
                         command_line="{} {}/host-perfdata".format(
                             os.path.join(CLUSTER_SBIN, "send_collectd_zmq"),
                             gen_conf.var_dir
                         ),
                         description="Process host performance data",
+                        create=self.__create,
                     ),
                 ]
             )
         all_mccs = mon_check_command_special.objects.all()
         for ccs in all_mccs:
-            # todo: this may lead to a race condition when more than one build process is running
             # create a mon_check_command instance for every special command
-            special_cc = mon_check_command.get_system_check_command(
+            special_cc = DBStructuredMonBaseConfig.get_system_check_command(
                 name=ccs.md_name,
-                command_line=ccs.command_line or "/bin/true",
+                command_line=ccs.command_line.strip() or "/bin/true",
                 description=ccs.description,
+                create=self.__create,
             )
-            # set pk of special command
-            special_cc.spk = ccs.pk
             check_coms.append(special_cc)
         check_coms.extend(
             [
-                mon_check_command.get_system_check_command(
+                DBStructuredMonBaseConfig.get_system_check_command(
                     name=MonCheckCommandSystemNames.ochp_command.value,
                     command_line="{} ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"{}\"".format(
                         os.path.join(CLUSTER_SBIN, "csendsyncerzmq"),
                         "$HOSTOUTPUT$|$HOSTPERFDATA$" if enable_perfd else "$HOSTOUTPUT$"
                     ),
-                    description="OCHP Command"
+                    description="OCHP Command",
+                    create=self.__create,
                 ),
-                mon_check_command.get_system_check_command(
+                DBStructuredMonBaseConfig.get_system_check_command(
                     name=MonCheckCommandSystemNames.ocsp_command.value,
                     command_line="{} ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"{}\" ".format(
                         os.path.join(CLUSTER_SBIN, "csendsyncerzmq"),
                         "$SERVICEOUTPUT$|$SERVICEPERFDATA$" if enable_perfd else "$SERVICEOUTPUT$"
                     ),
-                    description="OCSP Command"
+                    description="OCSP Command",
+                    create=self.__create,
                 ),
-                mon_check_command.get_system_check_command(
+                DBStructuredMonBaseConfig.get_system_check_command(
                     name=MonCheckCommandSystemNames.check_service_cluster.value,
                     command_line="{} --service -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"".format(
                         os.path.join(CLUSTER_BIN, "check_icinga_cluster.py"),
                     ),
-                    description="Check Service Cluster"
+                    description="Check Service Cluster",
+                    create=self.__create,
                 ),
-                mon_check_command.get_system_check_command(
+                DBStructuredMonBaseConfig.get_system_check_command(
                     name=MonCheckCommandSystemNames.check_host_cluster.value,
                     command_line="{} --host -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"".format(
                         os.path.join(CLUSTER_BIN, "check_icinga_cluster.py"),
                     ),
-                    description="Check Host Cluster"
+                    description="Check Host Cluster",
+                    create=self.__create,
                 ),
             ]
         )
-        safe_names = global_config["SAFE_NAMES"]
-        mccs_dict = {
-            mccs.pk: mccs for mccs in mon_check_command_special.objects.all()
-        }
+        safe_descr = global_config["SAFE_NAMES"]
+        # to log or not to log ...
+        if self.__logging:
+            log_com = gen_conf.log
+        else:
+            log_com = None
         for ngc in check_coms:
-            # pprint.pprint(ngc)
-            # build / extract ngc_name
-            ngc_name = ngc.name
-            _ngc_name = cc_command_names.add(ngc_name)
-            if _ngc_name != ngc_name:
-                self.log(
-                    "rewrite {} to {} ({})".format(
-                        ngc_name,
-                        _ngc_name,
-                        ngc.unique_name,
-                    ),
-                    logging_tools.LOG_LEVEL_WARN
-                )
-                ngc_name = _ngc_name
-            _nag_name = command_names.add(ngc_name)
-            if ngc.pk:
-                # print ngc.categories.all()
-                cats = [cur_cat.full_name for cur_cat in ngc.categories.all()]  # .values_list("full_name", flat=True)
-                cat_pks = [cur_cat.pk for cur_cat in ngc.categories.all()]
-            else:
-                cats = ["/{}".format(TOP_MONITORING_CATEGORY)]
-                cat_pks = []
-            if ngc.mon_check_command_special_id:
-                com_line = mccs_dict[ngc.mon_check_command_special_id].command_line
-            else:
-                com_line = ngc.command_line
-            cc_s = CheckCommand(
-                ngc_name,
-                com_line,
-                ngc.config.name if ngc.config_id else None,
-                ngc.mon_service_templ.name if ngc.mon_service_templ_id else None,
-                build_safe_name(ngc.description) if safe_names else ngc.description,
-                exclude_devices=ngc.exclude_devices.all() if ngc.pk else [],
-                icinga_name=_nag_name,
-                # link to mon_check_command_special
-                mccs_id=ngc.mon_check_command_special_id,
-                servicegroup_names=cats,
-                servicegroup_pks=cat_pks,
-                enable_perfdata=ngc.enable_perfdata,
-                is_event_handler=ngc.is_event_handler,
-                event_handler=ngc.event_handler,
-                event_handler_enabled=ngc.event_handler_enabled,
-                # id of check_command
-                check_command_pk=ngc.pk,
-                # id of mon_check_command_special
-                special_command_pk=getattr(ngc, "spk", None),
-                db_entry=ngc,
-                is_active=ngc.is_active,
-                volatile=ngc.volatile,
-                show_log=self.__log_counter % 10 == 0 and global_config["DEBUG"] and self.__logging,
-            )
-            nag_conf = cc_s.get_mon_config()
-            self.add_object(nag_conf)
-            self[ngc_name] = cc_s
-        # print("cc")
-        # print(cc_command_names)
-        # print("--")
-        # print(command_names)
-        # print("done")
+            ngc.generate_md_com_line(log_com, safe_descr)
+            self.add_object(ngc)
+            self[ngc.unique_name] = ngc
 
 
 class MonAllContacts(MonFileContainer):
@@ -401,17 +342,34 @@ class MonAllContacts(MonFileContainer):
     def _add_contacts_from_db(self, gen_conf):
         all_nots = mon_notification.objects.all()
         for contact in mon_contact.objects.all().prefetch_related("notifications").select_related("user"):
-            full_name = ("{} {}".format(contact.user.first_name, contact.user.last_name)).strip().replace(" ", "_")
+            full_name = (
+                "{} {}".format(
+                    contact.user.first_name,
+                    contact.user.last_name
+                )
+            ).strip().replace(" ", "_")
             if not full_name:
                 full_name = contact.user.login
-            not_h_list = [entry for entry in all_nots if entry.channel == "mail" and entry.not_type == "host" and entry.enabled]
+            not_h_list = [
+                entry for entry in all_nots if entry.channel == "mail" and entry.not_type == "host" and entry.enabled
+            ]
             # not_s_list = list(contact.notifications.filter(Q(channel="mail") & Q(not_type="service") & Q(enabled=True)))
-            not_s_list = [entry for entry in all_nots if entry.channel == "mail" and entry.not_type == "service" and entry.enabled]
+            not_s_list = [
+                entry for entry in all_nots if entry.channel == "mail" and entry.not_type == "service" and entry.enabled
+            ]
             not_pks = [_not.pk for _not in contact.notifications.all()]
             if len(contact.user.pager) > 5:
                 # check for pager number
-                not_h_list.extend([entry for entry in all_nots if entry.channel == "sms" and entry.not_type == "host" and entry.enabled])
-                not_s_list.extend([entry for entry in all_nots if entry.channel == "sms" and entry.not_type == "service" and entry.enabled])
+                not_h_list.extend(
+                    [
+                        entry for entry in all_nots if entry.channel == "sms" and entry.not_type == "host" and entry.enabled
+                    ]
+                )
+                not_s_list.extend(
+                    [
+                        entry for entry in all_nots if entry.channel == "sms" and entry.not_type == "service" and entry.enabled
+                    ]
+                )
             # filter
             not_h_list = [entry for entry in not_h_list if entry.pk in not_pks]
             not_s_list = [entry for entry in not_s_list if entry.pk in not_pks]

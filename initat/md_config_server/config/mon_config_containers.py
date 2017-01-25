@@ -34,7 +34,7 @@ from lxml.builder import E
 
 from initat.tools import logging_tools, process_tools
 from .global_config import global_config
-from .mon_base_config import LogBufferMixin
+from ..base_config.mon_base_config import LogBufferMixin
 
 __all__ = [
     "MonFileContainer",
