@@ -42,6 +42,7 @@ MOVE .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64 .\host_monitor_wi
 .\host_monitor_windows\python.exe -m pip install zmq
 .\host_monitor_windows\python.exe -m pip install psutil
 .\host_monitor_windows\python.exe -m pip install wmi
+.\host_monitor_windows\python.exe -m pip install inflection
 
 XCOPY .\syslog.py .\host_monitor_windows\Lib\site-packages\
 
