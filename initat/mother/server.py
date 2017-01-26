@@ -108,7 +108,9 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
             self.add_process(initat.mother.control.NodeControlProcess("control"), start=True)
             self.add_process(initat.mother.control.ICMPProcess("icmp"), start=True)
             db_tools.close_connection()
-            conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}
+            conf_dict = {
+                key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]
+            }
             self.add_process(SNMPProcess("snmp_process", conf_dict=conf_dict), start=True)
             # send initial commands
             self.send_to_process(

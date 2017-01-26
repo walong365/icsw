@@ -35,28 +35,13 @@ def main():
         process_tools.get_programm_name(),
         single_process_mode=True,
     )
-    prog_name = global_config.name()
-    global_config.add_config_entries(
-        [
-            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ]
-    )
-    _options = global_config.handle_commandline(
-        description="{}, version is {}".format(
-            prog_name,
-            VERSION_STRING
-        ),
-        positional_arguments=False,
-        partial=False
-    )
     ret_code = 0
     ps_file_name = "/etc/packageserver"
     if not os.path.isfile(ps_file_name):
         try:
             open(ps_file_name, "w").write("localhost\n")
         except:
-            print(("error writing to {}: {}".format(ps_file_name, process_tools.get_except_info())))
+            print("error writing to {}: {}".format(ps_file_name, process_tools.get_except_info()))
             ret_code = 5
         else:
             pass
@@ -68,7 +53,7 @@ def main():
             ]
         )
     except:
-        print(("error reading from {}: {}".format(ps_file_name, process_tools.get_except_info())))
+        print("error reading from {}: {}".format(ps_file_name, process_tools.get_except_info()))
         ret_code = 5
     if not ret_code:
         global_config.add_config_entries([("DEBIAN", configfile.bool_c_var(os.path.isfile("/etc/debian_version")))])

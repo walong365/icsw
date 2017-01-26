@@ -75,7 +75,6 @@ def main():
     _parser.add_argument("--nice", type=int, default=0, help="set nice level of new process [%(default)d]")
     _parser.add_argument("--debug", default=False, action="store_true", help="enable debug mode (modify sys.path), [%(default)s]")
     _parser.add_argument("--debug-flag", default=False, action="store_true", help="enable debug flag via environment (modify sys.path), [%(default)s]")
-    _parser.add_argument("extra_args", nargs="*", type=str, help="extra  arguments")
     opts = _parser.parse_args()
     if opts.exename:
         _mode = "exe"
@@ -128,11 +127,13 @@ def main():
             abs_path = os.path.dirname(__file__)
             abs_path = os.path.split(os.path.split(abs_path)[0])[0]
             sys.path.insert(0, abs_path)
-            _args.append("-d")
+            # we no longer accept commandline arguments
+            # _args.append("-d")
             if opts.debug_flag:
                 os.environ["DEBUG_WEBFRONTEND"] = "yes"
-        if opts.extra_args:
-            _args.extend(opts.extra_args)
+        # we no longer accept commandline arguments
+        # if opts.extra_args:
+        #     _args.extend(opts.extra_args)
         sys.argv = _args
         setproctitle.setproctitle(opts.proctitle)
         main_module = importlib.import_module(opts.modname)

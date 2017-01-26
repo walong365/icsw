@@ -1,6 +1,6 @@
 # Copyright (C) 2001-2009,2011-2017 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of python-modules-base
+# this file is part of icsw-client
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,14 +19,13 @@
 #
 """ module for handling config files, now implemented using MemCache """
 
-import argparse
+import array
 import base64
 import bz2
 import datetime
 import functools
 import json
 import os
-import re
 import uuid
 
 from initat.icsw.service import instance
@@ -38,7 +37,6 @@ class _conf_var(object):
 
     def __init__(self, def_val, **kwargs):
         self.__default_val = def_val
-        self.__info = kwargs.get("info", "")
         if not self.check_type(def_val):
             raise TypeError(
                 "Type of Default-value differs from given type ({}, {})".format(
@@ -47,20 +45,12 @@ class _conf_var(object):
                 )
             )
         self.source = kwargs.get("source", "default")
-        self.fixed = kwargs.get("fixed", False)
-        self.is_global = kwargs.get("is_global", True)
         self.value = self.__default_val
-        # for commandline options
-        self._help_string = kwargs.get("help_string", None)
-        self._short_opts = kwargs.get("short_options", None)
-        self._choices = kwargs.get("choices", None)
-        self._nargs = kwargs.get("nargs", None)
-        self._database_set = "database" in kwargs
-        self._database = kwargs.get("database", False)
-        self._only_commandline = kwargs.get("only_commandline", False)
+        self.__help_string = kwargs.get("help_string", None)
+        self.__database = kwargs.get("database", False)
+        self.__database_flag_set = "database" in kwargs
         kw_keys = set(kwargs) - {
-            "only_commandline", "info", "source", "fixed", "action", "is_global",
-            "help_string", "short_options", "choices", "nargs", "database",
+            "source", "help_string", "database",
         }
         if kw_keys:
             print(
@@ -78,6 +68,14 @@ class _conf_var(object):
         else:
             _val = self.value
             _def_val = self.__default_val
+        _kwargs = {
+            "source": self.source,
+            "help_string": self.__help_string,
+        }
+        if self.__database_flag_set:
+            # add database value only if the database_flag was set from the __init__ kwargs
+            # (not only via the default value)
+            _kwargs["database"] = self.database
         return json.dumps(
             {
                 # to determine type
@@ -87,80 +85,29 @@ class _conf_var(object):
                 # current value
                 "value": _val,
                 # kwargs
-                "kwargs": {
-                    "info": self.__info,
-                    "source": self.source,
-                    "fixed": self.fixed,
-                    "is_global": self.is_global,
-                    "help_string": self._help_string,
-                    "short_options": self._short_opts,
-                    "choices": self._choices,
-                    "nargs": self._nargs,
-                    "database": self.database,
-                    "only_commandline": self._only_commandline,
-                }
+                "kwargs": _kwargs,
             }
         )
 
-    def is_commandline_option(self):
-        return True if self._help_string else False
+    @property
+    def help_string(self):
+        return self.__help_string
 
-    def get_commandline_info(self):
-        if self._help_string:
-            return "is commandline option, help_string is '{}'".format(self._help_string)
-        else:
-            return "no commandline option"
-
-    def add_argument(self, name, arg_parser):
-        if self._short_opts:
-            if len(self._short_opts) > 1:
-                opts = ["--{}".format(self._short_opts)]
-            else:
-                opts = ["-{}".format(self._short_opts)]
-        else:
-            opts = ["--{}".format(name.lower())]
-            if name.lower().count("_"):
-                opts.append("--{}".format(name.lower().replace("_", "-")))
-        kwargs = {
-            "dest": name,
-            "help": self._help_string,
-        }
-        if self._choices:
-            kwargs["choices"] = self._choices
-        if self._nargs:
-            kwargs["nargs"] = self._nargs
-        if self.argparse_type is None:
-            if self.short_type == "b":
-                # bool
-                arg_parser.add_argument(*opts, action="store_{}".format("false" if self.__default_val else "true"), default=self.__default_val, **kwargs)
-            else:
-                print("*? unknown short_type in _conf_var ?*", self.short_type, name, self.argparse_type)
-        else:
-            arg_parser.add_argument(*opts, type=self.argparse_type, default=self.value, **kwargs)
+    @help_string.setter
+    def help_string(self, value):
+        self.__help_string = value
 
     @property
     def database(self):
-        return self._database
+        return self.__database
 
     @database.setter
     def database(self, database):
-        self._database = database
+        self.__database = database
 
     @property
-    def is_global(self):
-        return self.__is_global
-
-    @is_global.setter
-    def is_global(self, is_global):
-        self.__is_global = is_global
-
-    @property
-    def fixed(self):
-        return self.__fixed
-
-    @fixed.setter
-    def fixed(self, fixed):
-        self.__fixed = fixed
+    def database_flag_set(self):
+        return self.__database_flag_set
 
     @property
     def source(self):
@@ -198,29 +145,16 @@ class _conf_var(object):
                 _c_val = set(r_val)
             else:
                 _c_val = set([r_val])
-            if self._choices and _c_val - set(self._choices):
-                print(
-                    "ignoring value {} for {} (not in choices: {})".format(
-                        r_val,
-                        self.descr,
-                        str(self._choices),
-                    )
-                )
-            else:
-                self.value = r_val
-                if source and (source != "default" or self.source == "default"):
-                    self.source = source
+            self.value = r_val
+            if source and (source != "default" or self.source == "default"):
+                self.source = source
 
     def __str__(self):
-        return "{} (source {}, {}) : {}".format(
+        return "{} (source {}) : {}".format(
             self.descr,
             self.source,
-            "global" if self.__is_global else "local",
             self.pretty_print()
         )
-
-    def get_info(self):
-        return self.__info
 
 
 class int_c_var(_conf_var):
@@ -554,7 +488,6 @@ class Configuration(object):
         self.__name = name
         self.__backend_init = False
         self.mc_prefix = ""
-        self.__verbose = kwargs.get("verbose", False)
         self.__spm = kwargs.pop("single_process_mode", False)
         self._reopen_mc(True)
         self.clear_log()
@@ -628,7 +561,7 @@ class Configuration(object):
         return self.__spm
 
     def help_string(self, key):
-        return self.__c_dict[key]._help_string
+        return self.__c_dict[key].help_string
 
     def get_var(self, key):
         return self.__c_dict[key]
@@ -639,15 +572,9 @@ class Configuration(object):
         self.__c_dict.update_mode = True
         for key, value in entries:
             # check for override of database flag
-            if not value._database_set and "database" in kwargs:
-                if self.__verbose:
-                    self.log("override database flag for '{}', setting to '{}'".format(key, str(kwargs["database"])))
+            if "database" in kwargs and not value.database_flag_set:
                 value.database = kwargs["database"]
-            if key in self.__c_dict and self.__verbose:
-                self.log("Replacing config for key {}".format(key))
             self.__c_dict[key] = value
-            if self.__verbose:
-                self.log("Setting config for key {} to {}".format(key, value))
         self.__c_dict.update_mode = False
 
     @property
@@ -698,7 +625,6 @@ class Configuration(object):
                         f_obj.append(
                             [
                                 logging_tools.form_entry(""),
-                                logging_tools.form_entry(""),
                                 logging_tools.form_entry(entry),
                                 logging_tools.form_entry(str(idx)),
                                 logging_tools.form_entry("---"),
@@ -708,7 +634,6 @@ class Configuration(object):
                     f_obj.append(
                         [
                             logging_tools.form_entry(key, header="key"),
-                            logging_tools.form_entry(self.is_global(key) and "global" or "local", post_str=" : ", header="global"),
                             logging_tools.form_entry(self.pretty_print(key), header="value"),
                             logging_tools.form_entry(self.get_type(key), pre_str=", (", post_str=" from ", header="type"),
                             logging_tools.form_entry(self.get_source(key), post_str=")", header="source"),
@@ -742,18 +667,6 @@ class Configuration(object):
         return self.__c_dict[key].source
 
     @ConfigKeyError
-    def fixed(self, key):
-        return self.__c_dict[key].fixed
-
-    @ConfigKeyError
-    def is_global(self, key):
-        return self.__c_dict[key].is_global
-
-    @ConfigKeyError
-    def set_global(self, key, value):
-        self.__c_dict[key].is_global = value
-
-    @ConfigKeyError
     def database(self, key):
         return self.__c_dict[key].database
 
@@ -761,166 +674,140 @@ class Configuration(object):
     def get_type(self, key):
         return self.__c_dict[key].short_type
 
-    def parse_file(self, *args, **kwargs):
-        # only used in proepilogue, to be removed ...
-        # TODO, Fixme
-        if len(args):
-            file_name = args[0]
-        else:
-            file_name = os.path.join("/etc", "sysconfig", self.__name)
-        # kwargs:
-        # section ... only read arugments from the given section (if found)
-        scan_section = kwargs.get("section", "global")
-        act_section = "global"
-        pf1 = re.compile("^(?P<key>\S+)\s*=\s*(?P<value>.+)\s*$")
-        pf2 = re.compile("^(?P<key>\S+)\s+(?P<value>.+)\s*$")
-        sec_re = re.compile("^\[(?P<section>\S+)\]$")
-        if os.path.isfile(file_name):
-            try:
-                lines = [line.strip() for line in open(file_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")]
-            except:
-                self.log(
-                    "Error while reading file {}: {}".format(
-                        file_name,
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-            else:
-                for line in lines:
-                    sec_m = sec_re.match(line)
-                    if sec_m:
-                        act_section = sec_m.group("section")
-                    else:
-                        for mo in [pf1, pf2]:
-                            ma = mo.match(line)
-                            if ma:
-                                break
-                        if act_section == scan_section:
-                            if ma:
-                                key, value = (ma.group("key"), ma.group("value"))
-                                try:
-                                    cur_type = self.get_type(key)
-                                except KeyError:
-                                    self.log(
-                                        "Error: key {} not defined in dictionary for get_type".format(
-                                            key
-                                        ),
-                                        logging_tools.LOG_LEVEL_ERROR
-                                    )
-                                else:
-                                    # interpret using eval
-                                    if cur_type == "s":
-                                        if value not in ["\"\""]:
-                                            if value[0] == value[-1] and value[0] in ['"', "'"]:
-                                                pass
-                                            else:
-                                                # escape strings
-                                                value = "\"{}\"".format(value)
-                                    try:
-                                        self[key] = (
-                                            eval("{}".format(value)),
-                                            "{}, sec {}".format(file_name, act_section)
-                                        )
-                                    except KeyError:
-                                        self.log(
-                                            "Error: key {} not defined in dictionary".format(
-                                                key
-                                            ),
-                                            logging_tools.LOG_LEVEL_ERROR
-                                        )
-                                    else:
-                                        if self.__verbose:
-                                            self.log(
-                                                "Changing value of key {} to {}".format(
-                                                    key,
-                                                    self.__c_dict[key]
-                                                )
-                                            )
-                            else:
-                                self.log(
-                                    "Error parsing line '{}'".format(
-                                        str(line)
-                                    ),
-                                    logging_tools.LOG_LEVEL_ERROR
-                                )
-        else:
-            self.log(
-                "Cannot find file {}".format(
-                    file_name
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-
-    def _argparse_exit(self, status=0, message=None):
-        if message:
-            print(message)
-        self.exit_code = status
-
-    def _argparse_error(self, message):
-        if message:
-            print("_argparse_error:", message)
-        self.exit_code = 2
-
-    def get_argument_stuff(self):
-        return {
-            "positional_arguments": self.positional_arguments,
-            "other_arguments": self.other_arguments,
-            "arg_list": self.positional_arguments + self.other_arguments
+    def from_database(self, sql_info, init_list=[]):
+        from django.db.models import Q
+        from initat.tools import configfile
+        from initat.cluster.backbone.models import config_blob, \
+            config_bool, config_int, config_str
+        _VAR_LUT = {
+            "int": config_int,
+            "str": config_str,
+            "blob": config_blob,
+            "bool": config_bool,
         }
 
-    def handle_commandline(self, *opt_args, **kwargs):
-        if len(opt_args):
-            opt_args = list(opt_args)
-        else:
-            opt_args = None
-        proxy_call = kwargs.pop("proxy_call", False)
-        pos_arguments = kwargs.pop("positional_arguments", False)
-        pos_arguments_optional = kwargs.pop("positional_arguments_optional", False)
-        partial = kwargs.pop("partial", False)
-        self.exit_code = None
-        my_parser = argparse.ArgumentParser(**kwargs)
-        if proxy_call:
-            # monkey-patch argparser if called from proxy
-            my_parser.exit = self._argparse_exit
-            my_parser.error = self._argparse_error
-        argparse_entries = []
-        for key in list(self.keys()):
-            c_var = self.get_cvar(key)
-            if c_var.is_commandline_option():
-                argparse_entries.append(key)
-                c_var.add_argument(key, my_parser)
-        if argparse_entries:
-            if pos_arguments:
-                my_parser.add_argument(
-                    "arguments",
-                    nargs="*" if pos_arguments_optional else "+",
-                    help="additional arguments"
+        self.add_config_entries(init_list, database=True)
+        if sql_info.effective_device:
+            # dict of local vars without specified host
+            for short in [
+                "str",
+                "int",
+                "blob",
+                "bool",
+            ]:
+                # very similiar code appears in config_tools.py
+                src_sql_obj = _VAR_LUT[short].objects
+                if init_list:
+                    src_sql_obj = src_sql_obj.filter(
+                        Q(name__in=[var_name for var_name, _var_value in init_list])
+                    )
+                for db_rec in src_sql_obj.filter(
+                    Q(config=sql_info.config) &
+                    Q(config__device_config__device=sql_info.effective_device)
+                ).order_by("name"):
+                    var_name = db_rec.name
+                    source = "{}_table (pk={})".format(short, db_rec.pk)
+                    if isinstance(db_rec.value, array.array):
+                        new_val = configfile.str_c_var(db_rec.value.tostring(), source=source)
+                    elif short == "int":
+                        new_val = configfile.int_c_var(int(db_rec.value), source=source)
+                    elif short == "bool":
+                        new_val = configfile.bool_c_var(bool(db_rec.value), source=source)
+                    else:
+                        new_val = configfile.str_c_var(db_rec.value, source=source)
+                    _present_in_config = var_name in self
+                    if _present_in_config:
+                        # copy settings from config
+                        new_val.database = self.database(var_name)
+                        new_val.help_string = self.help_string(var_name)
+                    self.add_config_entries([(var_name.upper(), new_val)])
+
+    def to_database(self, sql_info):
+        from django.db.models import Q
+        from initat.cluster.backbone.models import config_blob, \
+            config_bool, config_int, config_str
+
+        def strip_description(descr):
+            if descr:
+                descr = " ".join(
+                    [
+                        entry for entry in descr.strip().split() if not entry.count("(default)")
+                        ]
                 )
-            try:
-                if partial:
-                    options, rest_args = my_parser.parse_known_args()
+            return descr
+
+        type_dict = {
+            "i": config_int,
+            "s": config_str,
+            "b": config_bool,
+            "B": config_blob,
+        }
+        if sql_info.effective_device and sql_info.config:
+            for key in sorted(self.keys()):
+                # print k,config.get_source(k)
+                # print "write", k, config.get_source(k)
+                # if config.get_source(k) == "default":
+                # only deal with int and str-variables
+                var_obj = type_dict.get(self.get_type(key), None)
+                # print key, var_obj, self.database(key)
+                if var_obj is not None and self.database(key):
+                    other_types = set([value for _key, value in list(type_dict.items()) if _key != self.get_type(key)])
+                    # var global / local
+                    var_range_name = "global"
+                    # build real var name
+                    real_k_name = key
+                    try:
+                        cur_var = var_obj.objects.get(
+                            Q(name=real_k_name) &
+                            Q(config=sql_info.config) &
+                            (Q(device=0) | Q(device=None) | Q(device=sql_info.effective_device.pk))
+                        )
+                    except var_obj.DoesNotExist:
+                        # check other types
+                        other_var = None
+                        for other_var_obj in other_types:
+                            try:
+                                other_var = other_var_obj.objects.get(
+                                    Q(name=real_k_name) & Q(config=sql_info.config) & (
+                                        Q(device=0) | Q(device=None) | Q(device=sql_info.effective_device.pk)
+                                    )
+                                )
+                            except other_var_obj.DoesNotExist:
+                                pass
+                            else:
+                                break
+                        if other_var is not None:
+                            # other var found, delete
+                            other_var.delete()
+                        # description
+                        _new_var = var_obj(
+                            name=real_k_name,
+                            description="",
+                            config=sql_info.config,
+                            device=None,
+                            value=self[key],
+                        )
+                        _new_var.save()
+                    else:
+                        if self[key] != cur_var.value:
+                            cur_var.value = self[key]
+                            cur_var.save()
+                    # update description
+                    _cur_descr = cur_var.description or ""
+                    if self.help_string(key):
+                        new_descr = strip_description(self.help_string(key))
+                    else:
+                        new_descr = "{} default value from {} on {}".format(
+                            var_range_name,
+                            sql_info.config_name,
+                            sql_info.short_host_name,
+                        )
+                    if new_descr and new_descr != _cur_descr and _cur_descr.count("default value from"):
+                        cur_var.description = new_descr
+                        cur_var.save(update_fields=["description"])
                 else:
-                    options, rest_args = (my_parser.parse_args(opt_args), [])
-            except:
-                # catch parse errors
-                if self.exit_code is not None:
-                    # set dummy values
-                    options, rest_args = (argparse.Namespace(), [])
-                else:
-                    raise
-            self.other_arguments = rest_args
-            if not self.exit_code:
-                # only handle options if exit_code is None
-                for key in argparse_entries:
-                    self[key] = getattr(options, key)
-                self.positional_arguments = options.arguments if pos_arguments else []
-        else:
-            options = argparse.Namespace()
-        if proxy_call:
-            return options, self.exit_code
-        else:
-            return options
+                    # print "X", key
+                    pass
 
 
 def get_global_config(c_name, single_process_mode=False, mc_enabled=True):

@@ -39,7 +39,7 @@ from .license_checker import LicenseChecker
 
 
 class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServerMixin, ServerBackgroundNotifyMixin):
-    def __init__(self, options):
+    def __init__(self):
         threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
         long_host_name, mach_name = process_tools.get_fqdn()
         self.__run_command = True if global_config["COMMAND"].strip() else False
@@ -74,16 +74,16 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
                 ("FROM_ADDR", configfile.str_c_var(long_host_name)),
                 ("VERSION", configfile.str_c_var(VERSION_STRING, database=False)),
                 ("QUOTA_ADMINS", configfile.str_c_var("cluster@init.at")),
-                ("MONITOR_QUOTA_USAGE", configfile.bool_c_var(False, info="enabled quota usage tracking")),
-                ("TRACK_ALL_QUOTAS", configfile.bool_c_var(False, info="also track quotas without limit")),
+                ("MONITOR_QUOTA_USAGE", configfile.bool_c_var(False, help_string="enabled quota usage tracking")),
+                ("TRACK_ALL_QUOTAS", configfile.bool_c_var(False, help_string="also track quotas without limit")),
                 ("QUOTA_CHECK_TIME_SECS", configfile.int_c_var(3600)),
-                ("USER_MAIL_SEND_TIME", configfile.int_c_var(3600, info="time in seconds between two mails")),
+                ("USER_MAIL_SEND_TIME", configfile.int_c_var(3600, help_string="time in seconds between two mails")),
                 ("SERVER_FULL_NAME", configfile.str_c_var(long_host_name, database=False)),
                 ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name, database=False)),
                 ("DATABASE_DUMP_DIR", configfile.str_c_var("/opt/cluster/share/db_backup")),
                 ("DATABASE_KEEP_DAYS", configfile.int_c_var(30)),
-                ("USER_SCAN_TIMER", configfile.int_c_var(7200, info="time in seconds between two user_scan runs")),
-                ("NEED_ALL_NETWORK_BINDS", configfile.bool_c_var(True, info="raise an error if not all bind() calls are successfull")),
+                ("USER_SCAN_TIMER", configfile.int_c_var(7200, help_string="time in seconds between two user_scan runs")),
+                ("NEED_ALL_NETWORK_BINDS", configfile.bool_c_var(True, help_string="raise an error if not all bind() calls are successfull")),
             ]
         )
         if not self.__run_command:
@@ -94,7 +94,6 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
         self._log_config()
         self._check_uuid()
         self._load_modules()
-        self.__options = options
         self._set_next_backup_time(True)
         if self.__run_command:
             self.register_timer(self._run_command, 3600, instant=True)
@@ -249,7 +248,7 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
         self.log("direct command {}".format(global_config["COMMAND"]))
         cur_com = server_command.srv_command(command=global_config["COMMAND"])
         cur_com["command"].attrib["via_comline"] = "1"
-        for keyval in self.__options.OPTION_KEYS:
+        for keyval in global_config["OPTION_KEYS"]:
             try:
                 key, value = keyval.split(":", 1)
             except:

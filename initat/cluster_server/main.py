@@ -26,63 +26,39 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from django.conf import settings
 from initat.tools import configfile
 from initat.cluster_server.config import global_config
 
-from initat.server_version import VERSION_STRING
 
-
-def run_code(options):
+def run_code():
     from initat.cluster_server.server import ServerProcess
-    ServerProcess(options).loop()
+    ServerProcess().loop()
 
 
-def main(opt_args=None):
-    prog_name = global_config.name()
+def main(options=None):
     global_config.add_config_entries(
         [
-            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("DATABASE_DEBUG", configfile.bool_c_var(False, help_string="enable database debug mode [%(default)s]", only_commandline=True)),
-            ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-            ("CONTACT", configfile.bool_c_var(False, only_commandline=True, help_string="directly connect cluster-server on localhost [%(default)s]")),
             (
                 "COMMAND", configfile.str_c_var(
-                    "", short_options="c",  # choices=[""] + initat.cluster_server.modules.command_names, only_commandline=True,
-                    help_string="command to execute",
+                    options.COMMAND if options else "",
                 )
             ),
             (
                 "BACKUP_DATABASE", configfile.bool_c_var(
-                    False, only_commandline=True,
-                    help_string="start backup of database immediately [%(default)s], only works in DEBUG mode"
+                    options.BACKUP_DATABASE if options else False,
                 )
             ),
             (
                 "OPTION_KEYS", configfile.array_c_var(
-                    [],
-                    short_options="D",
-                    action="append",
-                    only_commandline=True,
-                    nargs="*",
-                    help_string="optional key:value pairs (command dependent)"
+                    options.OPTION_KEYS if options else [],
                 )
             ),
             (
                 "SHOW_RESULT", configfile.bool_c_var(
-                    False, only_commandline=True, help_string="show full XML result [%(default)s]"
+                    options.SHOW_RESULT if options else False,
                 )
             ),
         ]
     )
-    options = global_config.handle_commandline(
-        *opt_args or [],
-        description="{}, version is {}".format(
-            prog_name,
-            VERSION_STRING
-        ),
-        positional_arguments=False
-    )
-    # enable connection debugging
-    run_code(options)
+    run_code()
     return 0
