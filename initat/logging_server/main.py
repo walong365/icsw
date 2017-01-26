@@ -30,10 +30,5 @@ def main():
         process_tools.get_programm_name(),
         single_process_mode=True
     )
-    global_config.add_config_entries(
-        [
-            ("DEBUG", configfile.bool_c_var(False, help_string="enable ebugging [%(default)s]", only_commandline=True, short_options="d")),
-        ]
-    )
     MainProcess(global_config).loop()
     return 0

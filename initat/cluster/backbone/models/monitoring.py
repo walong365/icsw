@@ -381,6 +381,8 @@ class mon_check_command(models.Model):
     system_command = models.BooleanField(default=False)
     # is an active check
     is_active = models.BooleanField(default=True)
+    # is enabled
+    enabled = models.BooleanField(default=True)
     # which tcp port(s) cover this check
     tcp_coverage = models.CharField(default="", max_length=256, blank=True)
 
@@ -729,7 +731,7 @@ def mon_check_command_pre_save(sender, **kwargs):
 def mon_check_command_post_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        if cur_inst.config and not cur_inst.system_command:
+        if cur_inst.config and not cur_inst.system_command and cur_inst.idx:
             # remove all associated devices
             cur_inst.devices.clear()
 

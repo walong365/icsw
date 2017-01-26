@@ -1055,7 +1055,8 @@ class BuildProcess(
                         for conf_name in conf_names:
                             _num_checks += 1
                             self.add_host_config(
-                                gbc, hbc,
+                                gbc,
+                                hbc,
                                 conf_name, used_checks,
                                 act_def_serv,
                             )
@@ -1135,7 +1136,7 @@ class BuildProcess(
                                             )
                                         if all_ok:
                                             act_service_dep["dependent_service_description"] = HostServiceIDUtil.create_host_service_description(
-                                                dev_pk,
+                                                hbc.device.pk,
                                                 gbc.mcc_lut_3[s_dep.dependent_mon_check_command_id],
                                                 gbc.mcc_lut[s_dep.dependent_mon_check_command_id][1],
                                             )
@@ -1146,7 +1147,7 @@ class BuildProcess(
                                                 gbc.mcc_lut[s_dep.mon_service_cluster.mon_check_command_id][1]
                                             )
                                             act_service_dep["host_name"] = gbc.get_host(s_dep.mon_service_cluster.main_device_id).full_name
-                                            act_service_dep["dependent_host_name"] = [gbc.get_host(dev_pk).full_name for cur_dev in s_dep.master_list]
+                                            act_service_dep["dependent_host_name"] = [gbc.get_host(cur_dev.idx).full_name for cur_dev in s_dep.master_list]
                                             s_dep.feed_config(act_service_dep)
                                             hbc.host_config_list.append(act_service_dep)
                                         else:
