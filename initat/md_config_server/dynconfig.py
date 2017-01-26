@@ -68,12 +68,22 @@ class DynConfigProcess(threading_tools.icswProcessObj):
             try:
                 _check = mon_check_command.objects.get(Q(name=_check_name))
             except:
-                self.log("no valid mon_check_command with name '{}' found".format(_check_name), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "no valid mon_check_command with name '{}' found".format(
+                        _check_name
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 if _check.is_active:
-                    self.log("mon_check_command {} is active".format(str(_check)), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "mon_check_command {} is active".format(
+                            str(_check)
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                 else:
-                    _check.check_command_pk = _check.pk
+                    # _check.check_command_pk = _check.pk
                     _check.mccs_id = None
                     # print _check, _dev
                     _ocsp_prefix = HostServiceIDUtil.create_host_service_description(_dev.pk, _check, "")
@@ -206,7 +216,7 @@ class DynConfigProcess(threading_tools.icswProcessObj):
                         text="unhandled IPMI result chunk",
                     )
                 else:
-                    _mc.check_command_pk = _mc.pk
+                    # _mc.check_command_pk = _mc.pk
                     _mc.mccs_id = _mcs.pk
                     _prefix = HostServiceIDUtil.create_host_service_description(cur_dev.pk, _mc, "")
             except mon_check_command.MultipleObjectsReturned:
@@ -219,7 +229,7 @@ class DynConfigProcess(threading_tools.icswProcessObj):
                     logging_tools.LOG_LEVEL_ERROR
                 )
             else:
-                _mc.check_command_pk = _mc.pk
+                # _mc.check_command_pk = _mc.pk
                 _mc.mccs_id = _mcs.pk
                 _prefix = HostServiceIDUtil.create_host_service_description(cur_dev.pk, _mc, "")
         return _prefix

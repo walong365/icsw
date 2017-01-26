@@ -25,6 +25,7 @@
 
 import os
 import sys
+import argparse
 
 if not __file__.startswith("/opt/cluster"):
     _add_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -32,5 +33,41 @@ if not __file__.startswith("/opt/cluster"):
         sys.path.insert(0, _add_path)
 
 from initat.host_monitoring import main
+from initat.icsw.service.instance import InstanceXML
 
-sys.exit(main.main())
+my_parser = argparse.ArgumentParser()
+my_parser.add_argument(
+    "-i",
+    dest="IDENTITY_STRING",
+    type=str,
+    default="collclient",
+    help="identity string [%(default)s]"
+)
+my_parser.add_argument(
+    "--timeout",
+    dest="TIMEOUT",
+    default=10,
+    type=int,
+    help="set timeout [%(default)d]"
+)
+my_parser.add_argument(
+    "-p",
+    dest="COMMAND_PORT",
+    default=InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True),
+    type=int,
+    help="set comport [%(default)d]"
+)
+my_parser.add_argument(
+    "--host",
+    dest="HOST",
+    type=str,
+    default="localhost",
+    help="set target host [%(default)s]"
+)
+my_parser.add_argument(
+    dest="ARGUMENTS",
+    nargs="+",
+    help="additional arguments"
+)
+
+sys.exit(main.main(options=my_parser.parse_args()))

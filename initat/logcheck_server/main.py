@@ -28,17 +28,9 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from initat.tools import configfile
-from initat.logcheck_server.config import global_config
 from initat.logcheck_server.server import ServerProcess
 
 
 def main():
-    global_config.add_config_entries(
-        [
-            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ]
-    )
     ServerProcess().loop()
     os._exit(0)

@@ -349,6 +349,12 @@ class Hardware(object):
         self._lsblk_dump = lsblk_dump
         entries = _parse_lsblk(lsblk_dump)
         type_entries = defaultdict(list)
+
+        disc_re_unix = re.compile(
+            "^/dev/([shv]d[a-z]{1,2}|dm-(\d+)|md\d+|mapper/.*|ida/(.*)|"
+            "cciss/(.*))$"
+        )
+
         for e in entries:
             if "TYPE" in e:
                 type_entries[e['TYPE']].append(e)
@@ -356,14 +362,20 @@ class Hardware(object):
                 # old lsblk, try to guess
                 # sles11sp3 (Liebherr)
                 type_entries["disk"].append(e)
+            elif "GROUP" in e and e["GROUP"] == "disk" and "FSTYPE" in e and len(e["FSTYPE"]) == 0 and \
+                            "SIZE" in e and e["SIZE"] and e["SIZE"] > 0:
+                if "KNAME" in e:
+                    if disc_re_unix.match(e["KNAME"]) or disc_re_unix.match("/dev/{}".format(e["KNAME"])):
+                        type_entries["disk"].append(e)
             elif "FSTYPE" in e and len(e["FSTYPE"]) > 0:
                 type_entries["part"].append(e)
 
         name_object = {}
         for disk_entry in type_entries['disk']:
             hdd = HardwareHdd(lsblk_entry=disk_entry)
-            self.hdds.append(hdd)
-            name_object[hdd.device_name] = hdd
+            if hdd not in self.hdds:
+                self.hdds.append(hdd)
+                name_object[hdd.device_name] = hdd
         # disk, partitions
         for part_entry in type_entries['part']:
             #print(part_entry)
@@ -375,9 +387,10 @@ class Hardware(object):
                 parent_hdd = name_object.get(partition._parent)
                 if parent_hdd:
                     parent_hdd.partitions.append(partition)
-            elif partition._maj and partition._min:
+            else:
                 for hdd in self.hdds:
-                    if hdd._maj == hdd._maj:
+                    if len(partition.device_name) > len(hdd.device_name) and \
+                            partition.device_name.startswith(hdd.device_name):
                         hdd.partitions.append(partition)
 
         # logical disk
@@ -705,9 +718,12 @@ class HardwareBase(object):
 
     def _populate_dmi(self):
         for (prop_name, (handle_key, func)) in list(self.DMI_ELEMENTS.items()):
-            value = self._tree[handle_key]['value']
-            if value is not None and func:
-                value = func(value)
+            if handle_key in self._tree:
+                value = self._tree[handle_key]['value']
+                if value is not None and func:
+                    value = func(value)
+            else:
+                value = "N/A"
             setattr(self, prop_name, value)
 
 
@@ -720,6 +736,7 @@ class HardwareCPU(HardwareBase):
         'version': ('version', str),
         'serial': ('serial', str),
         'number_of_cores': ("configuration/setting[@id='cores']/@value", int),
+        'vendor': ('vendor', str)
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394373%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
@@ -736,6 +753,7 @@ class HardwareCPU(HardwareBase):
         self.version = None
         self.serial = None
         self.number_of_cores = None
+        self.vendor = None
         super(HardwareCPU, self).__init__(lshw_dump, win32_tree, dmi_handle)
 
 
@@ -840,8 +858,6 @@ class HardwareHdd(HardwareBase):
         self.serial = None
         self.size = None
         self._lsblk_entry = lsblk_entry
-        self._maj = None
-        self._min = None
 
         self.partitions = []
 
@@ -850,16 +866,22 @@ class HardwareHdd(HardwareBase):
 
         super(HardwareHdd, self).__init__(lshw_dump, win32_tree, dmi_handle)
 
+    def __eq__(self, other):
+        cmp_items = ["description", "product", "device_name", "serial", "size"]
+        for cmp_item in cmp_items:
+            if getattr(self, cmp_item) != getattr(other, cmp_item):
+                return False
+        return True
+
     def _populate_lsblk(self):
         entry = self._lsblk_entry
         self.device_name = entry['KNAME']
-        self.product = entry['MODEL']
+        if 'MODEL' in entry:
+            self.product = entry['MODEL']
         if 'SERIAL' in entry:
             self.serial = entry['SERIAL']
         if 'SIZE' in entry:
             self.size = int(entry['SIZE'])
-        if "MAJ:MIN" in entry:
-            self._maj, self._min = entry["MAJ:MIN"].split(":")
 
 class Partition(HardwareBase):
     """Represents the partition information as available from the partition
@@ -894,8 +916,6 @@ class Partition(HardwareBase):
         self.device_name = None
         self.type = None
         self._lsblk_entry = lsblk_entry
-        self._maj = None
-        self._min = None
 
         self.logical = None
 
@@ -915,8 +935,6 @@ class Partition(HardwareBase):
         self._parent = None
         if "PKNAME" in entry:
             self._parent = entry['PKNAME']
-        if "MAJ:MIN" in entry:
-            self._maj, self._min = entry["MAJ:MIN"].split(":")
 
     def _set_from_logical_win32(self, logical_disc):
         self.free_space = logical_disc.free_space

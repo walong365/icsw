@@ -23,16 +23,10 @@ import zmq
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device, DeviceScanLock, DeviceLogEntry
-from initat.cluster.backbone.models.asset.asset_functions import RunResult, \
-    BatchStatus
-from initat.cluster.backbone.models.asset.dynamic_asset import AssetRun, \
-    AssetBatch
+from initat.cluster.backbone.models import device, DeviceScanLock
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.discovery_server.event_log.event_log_poller import \
     EventLogPollerProcess
-from initat.discovery_server.generate_assets_process import \
-    GenerateAssetsProcess
 from initat.snmp.process import SNMPProcessContainer
 from initat.tools import configfile, logging_tools, process_tools, \
     server_command, server_mixins, threading_tools, net_tools
@@ -61,21 +55,9 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.CC.log_config()
         self.add_process(DiscoveryProcess("discovery"), start=True)
         self.add_process(EventLogPollerProcess(EventLogPollerProcess.PROCESS_NAME), start=True)
-        self.add_process(GenerateAssetsProcess("generate_assets"), start=True)
         self._init_network_sockets()
         self.register_func("snmp_run", self._snmp_run)
-        self.register_func("generate_assets", self._generate_assets)
-        self.register_func(
-            "process_assets_finished",
-            self._process_assets_finished,
-        )
-        self.register_func(
-            "process_batch_assets_finished",
-            self._process_batch_assets_finished,
-        )
-        self.register_func("send_msg", self.send_msg)
         self.register_func("send_host_monitor_command", self.send_host_monitor_command)
-        self.register_func("timeout_handler", self.timeout_handler)
         self.register_func("host_monitoring_command_timeout_handler", self.host_monitoring_command_timeout_handler)
         db_tools.close_connection()
         self.__max_calls = global_config["MAX_CALLS"] if not global_config["DEBUG"] else 5
@@ -158,14 +140,6 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             pollin=self.remote_call,
         )
         # dict for external connections
-        self.__ext_con_dict = {}
-
-    def timeout_handler(self, *args, **kwargs):
-        _from_name, _from_pid, run_idx = args
-
-        if run_idx in self.__ext_con_dict:
-            self.__ext_con_dict[run_idx].close()
-            del self.__ext_con_dict[run_idx]
 
     def host_monitoring_command_timeout_handler(self, *args, **kwargs):
         _from_name, _from_pid, run_index = args
@@ -173,30 +147,6 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         if run_index in self.__pending_host_monitoring_commands:
             self.__pending_host_monitoring_commands[run_index].close()
             del self.__pending_host_monitoring_commands[run_index]
-
-    def send_msg(self, *args, **kwargs):
-        _from_name, _from_pid, run_idx, conn_str, srv_com = args
-        srv_com = server_command.srv_command(source=srv_com)
-        srv_com["discovery_run_idx"] = "{:d}".format(run_idx)
-        _new_con = net_tools.ZMQConnection(
-            "ext_con_discovery_{:d}".format(run_idx),
-            context=self.zmq_context,
-            poller_base=self,
-            callback=self._ext_receive,
-        )
-        self.__ext_con_dict[run_idx] = _new_con
-        _new_con.add_connection(conn_str, srv_com)
-
-    def _ext_receive(self, *args):
-        srv_reply = args[0]
-        run_idx = None
-        if srv_reply:
-            run_idx = int(srv_reply["*discovery_run_idx"])
-        if run_idx in self.__ext_con_dict:
-            self.__ext_con_dict[run_idx].close()
-            del self.__ext_con_dict[run_idx]
-        if srv_reply and run_idx:
-            self.send_to_process("discovery", "ext_con_result", run_idx, str(srv_reply))
 
     def send_host_monitor_command(self, *args, **kwargs):
         _from_name, _from_pid, run_index, conn_str, srv_com = args
@@ -273,33 +223,3 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         _src_proc, _src_pid = args[0:2]
         self.spc.start_batch(*args[2:], **kwargs)
 
-    def _generate_assets(self, process, src_process, asset_run_id):
-        # trigger the run-level asset generation in the generate_assets process
-        self.send_to_process("generate_assets", "process_assets", asset_run_id)
-
-    def _process_assets_finished(self, process, src_process, asset_run_id):
-        asset_run = AssetRun.objects.get(idx=asset_run_id)
-        asset_run.state_finished(RunResult.SUCCESS)
-        asset_batch = asset_run.asset_batch
-        if asset_batch.run_status == BatchStatus.FINISHED_RUNS:
-            asset_batch.state_start_generation()
-            asset_batch.save()
-            self.send_to_process(
-                "generate_assets",
-                "process_batch_assets",
-                asset_batch.idx,
-            )
-
-    def _process_batch_assets_finished(self, process, src_process,
-                                       asset_batch_id):
-        asset_batch = AssetBatch.objects.get(idx=asset_batch_id)
-        asset_batch.state_finished()
-        asset_batch.save()
-        self.log("Finished asset batch {}.".format(asset_batch.idx))
-
-        log_entry = DeviceLogEntry.new(
-            device=asset_batch.device,
-            source=global_config["LOG_SOURCE_IDX"],
-            text="AssetScan with BatchId:[{}] completed".format(asset_batch.idx),
-            user=asset_batch.user
-        )

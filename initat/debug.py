@@ -39,12 +39,17 @@ import os
 
 __all__ = [
     "ICSW_DEBUG_MODE",
+    "ICSW_DEBUG_LEVEL",
     "ICSW_DEBUG_MIN_DB_CALLS",
     "ICSW_DEBUG_MIN_RUN_TIME",
     "ICSW_DEBUG_SHOW_DB_CALLS",
 ]
 
 ICSW_DEBUG_MODE = True if os.environ.get("ICSW_DEBUG_SOFTWARE") else False
+if ICSW_DEBUG_MODE:
+    ICSW_DEBUG_LEVEL = int(os.environ.get("ICSW_DEBUG_LEVEL", "0"))
+else:
+    ICSW_DEBUG_LEVEL = 0
 ICSW_DEBUG_MIN_RUN_TIME = float(os.environ.get("ICSW_DEBUG_MIN_RUN_TIME", "10000.0"))
 ICSW_DEBUG_MIN_DB_CALLS = int(os.environ.get("ICSW_DEBUG_MIN_DB_CALLS", "100"))
 ICSW_DEBUG_SHOW_DB_CALLS = True if os.environ.get("ICSW_DEBUG_SHOW_DB_CALLS") else False

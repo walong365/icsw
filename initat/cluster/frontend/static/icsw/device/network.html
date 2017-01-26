@@ -569,8 +569,18 @@
                                     </td>
                                 </tr>
                                 <tr>
+                                    <td>Filter Actions:</td>
+                                    <td colspan="99">
+                                        <div class="btn-group btn-group-xs">
+                                            <input type="button" value="All Scans" ng-class="tab.all_scans_filter_class" ng-click="tab.apply_all_scans_filter()"></input>
+                                            <input type="button" value="Successful Scans" ng-class="tab.successful_scans_filter_class" ng-click="tab.apply_successful_scans_filter_class()"></input>
+                                            <input type="button" value="Unsuccessful Scans" ng-class="tab.unsuccessful_filter_class" ng-click="tab.apply_unsuccessful_scans_filter_class()"></input>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
                                     <td>
-                                        Selector Actions:
+                                        Selection Actions:
                                     </td>
                                     <td colspan="99">
                                         <button type="button" ng-click="tab.select_all_nmap_scans()" class="btn btn-success btn-xs">Select All</button>
@@ -586,11 +596,12 @@
                                     <th st-sort="devices_ignored" class="text-center">Devices Ignored</th>
                                     <th st-sort="devices_scanned" class="text-center">Devices Scanned</th>
                                     <th class="text-center">Runtime</th>
+                                    <th class="text-center">Error</th>
                                     <th class="text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr ng-repeat="obj in nmap_scans_displayed">
+                                <tr ng-repeat="obj in nmap_scans_displayed" ng-show="obj.$$displayed == true">
                                     <td class="text-center">{{ obj.$$created }}</td>
 
                                     <td class="text-center">
@@ -604,21 +615,26 @@
                                     <td class="text-center">{{ obj.devices_scanned }}</td>
                                     <td class="text-center">{{ obj.runtime }}</td>
                                     <td class="text-center">
-                                        <icsw-tools-button ng-show="obj.in_progress == false && obj.error_string == null"
+                                        <button
+                                            type="button"
+                                            class="btn btn-xs btn-success"
+                                            tooltip-placement="right"
+                                            uib-tooltip-html="tab.build_nmap_scan_error_tooltip(obj)"
+                                            ng-disabled="obj.in_progress == true || obj.error_string == null">
+                                            <span class="glyphicon glyphicon-info-sign"></span>
+                                        </button>
+                                    </td>
+                                    <td class="text-center">
+                                        <icsw-tools-button ng-show="obj.in_progress == false"
                                             type="create"
                                             size="xs"
                                             ng-click="struct.icsw_network_list_service.create_new_host_discovery_detail_sub_tab(tab, obj.idx)"
                                             value="Show Details"
+                                            icsw-disabled="obj.error_string != null"
                                         ></icsw-tools-button>
                                         <div ng-show="obj.in_progress == true">
                                             In Progress...
                                         </div>
-                                        <icsw-tools-button ng-show="obj.in_progress == false && obj.error_string != null"
-                                            type="create"
-                                            size="xs"
-                                            ng-click="struct.icsw_network_list_service.display_nmap_scan_error_messsage(obj)"
-                                            value="Show Error"
-                                        ></icsw-tools-button>
                                     </td>
                                 </tr>
                             </tbody>

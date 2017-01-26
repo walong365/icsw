@@ -54,14 +54,14 @@ class HostServiceIDUtil(object):
         :param s_check: initat.md_config_server.config.check_command.check_command
         '''
         if s_check.mccs_id is not None:
-            check_command_pk = s_check.check_command_pk
+            check_command_pk = s_check.idx
             special_check_command_pk = s_check.mccs_id
-        elif s_check.check_command_pk is not None:
-            check_command_pk = s_check.check_command_pk
-            special_check_command_pk = None
         else:
-            check_command_pk = None
+            check_command_pk = s_check.idx
             special_check_command_pk = None
+        # else:
+        #    check_command_pk = None
+        #    special_check_command_pk = None
 
         return cls.create_host_service_description_direct(
             host_pk,

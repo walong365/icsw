@@ -19,25 +19,46 @@
 #
 """ cluster-server """
 
-
-
+import os
 import sys
+import argparse
+
+if not __file__.startswith("/opt/cluster"):
+    _add_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    if _add_path not in sys.path:
+        sys.path.insert(0, _add_path)
 
 from initat.cluster_server import main
 
-if not any(
-    [
-        _check in sys.argv for _check in [
-            "-c",
-            "-h",
-            "--help",
-            "--show-commands",
-            "--show_commands",
-            "--backup-database",
-            "--backup_database"
-        ]
-    ]
-):
-    print("need command (specified via -c)")
-    sys.exit(-1)
-sys.exit(main.main())
+my_parser = argparse.ArgumentParser()
+my_parser.add_argument(
+    "-c",
+    dest="COMMAND",
+    default="version",
+    type=str,
+    help="Command to execute [%(default)s]",
+)
+my_parser.add_argument(
+    "--backup-database",
+    default=False,
+    action="store_true",
+    dest="BACKUP_DATABASE",
+    help="backup database [%(default)s]",
+)
+my_parser.add_argument(
+    "-D",
+    action="append",
+    default=[],
+    nargs="*",
+    help="optional key:value paris (command dependent)",
+    dest="OPTION_KEYS",
+)
+my_parser.add_argument(
+    "--show-result",
+    dest="SHOW_RESULT",
+    default=False,
+    action="store_true",
+    help="show full XML result [%(default)s]",
+)
+
+sys.exit(main.main(options=my_parser.parse_args()))

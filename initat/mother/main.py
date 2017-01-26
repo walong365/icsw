@@ -29,21 +29,9 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from django.conf import settings
-from initat.tools import configfile
 import initat.mother.server
-from initat.mother.config import global_config
 
 
 def main():
-    global_config.add_config_entries(
-        [
-            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("DATABASE_DEBUG", configfile.bool_c_var(False, help_string="enable database debug mode [%(default)s]", only_commandline=True)),
-            ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ]
-    )
-    settings.DEBUG = global_config["DATABASE_DEBUG"]
-    settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
     initat.mother.server.ServerProcess().loop()
     sys.exit(0)

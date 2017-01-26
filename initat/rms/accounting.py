@@ -220,7 +220,7 @@ class AccountingProcess(threading_tools.icswProcessObj, server_mixins.EggConsume
                 self._enable_cache()
                 self._call_qacct("-j")
                 self._disable_cache(log=True)
-            elif global_config["FORCE_SCAN"] and not self.__full_scan_done:
+            elif "ICSW_FORCE_ACCOUTING_SCAN" in os.environ and not self.__full_scan_done:
                 self.__full_scan_done = True
                 self.log("full scan forced, checking accounting info", logging_tools.LOG_LEVEL_WARN)
                 self._enable_cache()

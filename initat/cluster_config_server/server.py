@@ -33,7 +33,7 @@ from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
     threading_tools, server_mixins
-from .build_process import build_process
+from .build_process import BuildProcess
 from .config import global_config
 from .config_control import ConfigControl
 
@@ -69,7 +69,7 @@ class server_process(server_mixins.ICSWBasePool):
         self._log_config()
         self._init_subsys()
         self._init_network_sockets()
-        self.add_process(build_process("build"), start=True)
+        self.add_process(BuildProcess("build"), start=True)
         db_tools.close_connection()
         self.register_func("client_update", self._client_update)
         self.register_func("complex_result", self._complex_result)

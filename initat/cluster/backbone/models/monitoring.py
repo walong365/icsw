@@ -22,6 +22,7 @@
 import enum
 import json
 import re
+from enum import Enum
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -31,6 +32,8 @@ from django.dispatch import receiver
 
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer
 from initat.tools import logging_tools
+from initat.md_config_server.base_config.mon_base_config import StructuredContentEmitter, \
+    build_safe_name
 
 __all__ = [
     "mon_host_cluster",
@@ -66,7 +69,6 @@ __all__ = [
     # unreachable info
 
     "mon_build_unreachable",  # track unreachable devices
-    "parse_commandline",  # commandline parsing
     "SpecialGroupsEnum",
 
     # syslog check object
@@ -75,6 +77,10 @@ __all__ = [
 
     # display pipes
     "MonDisplayPipeSpec",
+
+    # Enum
+    "MonCheckCommandSystemNames",
+    "DBStructuredMonBaseConfig",
 ]
 
 
@@ -219,7 +225,7 @@ class mon_build_unreachable(models.Model):
     devicegroup_name = models.CharField(max_length=256, default="")
     date = models.DateTimeField(auto_now_add=True)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         backup = False
 
 
@@ -326,112 +332,35 @@ class mon_check_command_special(models.Model):
         return "mccs_{}".format(self.name)
 
 
-def parse_commandline(com_line):
-    """
-    parses command line, also builds argument lut
-    lut format: commandline switch -> ARG#
-    list format : ARG#, ARG#, ...
-    """
-    _num_args, _default_values = (0, {})
-    arg_lut, arg_list = ({}, [])
-    """
-    handle the various input formats:
-
-    ${ARG#:var_name:default}
-    ${ARG#:var_name:default}$
-    ${ARG#:*var_name}
-    ${ARG#:*var_name}$
-    ${ARG#:default}
-    ${ARG#:default}$
-    $ARG#$
-
-    """
-    com_re = re.compile(
-        "".join(
-            [
-                "^(?P<pre_text>.*?)",
-                "((\${ARG(?P<arg_num_1>\d+):(((?P<var_name>[^:^}]+?)\:(?P<default_vn>[^}]+?)}\$*)|",
-                "(?P<default>[^}]+?)}\$*))|(\$ARG(?P<arg_num_2>\d+)\$))+",
-                "(?P<post_text>.*)$",
-            ]
-        )
-    )
-    cur_line = com_line
-    # where to start the match to avoid infinite loop
-    s_idx = 0
-    while True:
-        cur_m = com_re.match(cur_line[s_idx:])
-        if cur_m:
-            m_dict = cur_m.groupdict()
-            # check for -X or --Y switch
-            prev_part = m_dict["pre_text"].strip().split()
-            if prev_part and prev_part[-1].startswith("-"):
-                prev_part = prev_part[-1]
-            else:
-                prev_part = None
-            if m_dict["arg_num_2"] is not None:
-                # short form
-                arg_name = "ARG{}".format(m_dict["arg_num_2"])
-            else:
-                arg_name = "ARG{}".format(m_dict["arg_num_1"])
-                if m_dict["var_name"]:
-                    _default_values[arg_name] = (m_dict["var_name"], m_dict["default_vn"])
-                elif m_dict["default"]:
-                    _default_values[arg_name] = m_dict["default"]
-            pre_text, post_text = (
-                m_dict["pre_text"] or "",
-                m_dict["post_text"] or ""
-            )
-            cur_line = "{}{}${}${}".format(
-                cur_line[:s_idx],
-                pre_text,
-                arg_name,
-                post_text
-            )
-            s_idx += len(pre_text) + len(arg_name) + 2
-            if prev_part:
-                arg_lut[prev_part] = arg_name
-            else:
-                arg_list.append(arg_name)
-            _num_args += 1
-        else:
-            break
-    _parsed_com_line = cur_line
-    log_lines = []
-    if com_line == _parsed_com_line:
-        log_lines.append("command_line in/out is '{}'".format(com_line))
-    else:
-        log_lines.append("command_line in     is '{}'".format(com_line))
-        log_lines.append("command_line out    is '{}'".format(_parsed_com_line))
-    if arg_lut:
-        log_lines.append("lut : %s; %s" % (
-            logging_tools.get_plural("key", len(arg_lut)),
-            ", ".join(["'%s' => '%s'" % (key, value) for key, value in arg_lut.items()])
-        ))
-    if arg_list:
-        log_lines.append("list: %s; %s" % (
-            logging_tools.get_plural("item", len(arg_list)),
-            ", ".join(arg_list)
-        ))
-    return {
-        "arg_lut": arg_lut,
-        "arg_list": arg_list,
-        "parsed_com_line": _parsed_com_line,
-        "num_args": _num_args,
-        "default_values": _default_values,
-    }, log_lines
-    # self.__arg_lut, self.__arg_list = (arg_lut, arg_list)
+class MonCheckCommandSystemNames(Enum):
+    # process commands
+    process_service_perfdata_file = "process-service-perfdata-file"
+    process_host_perfdata_file = "process-host-perfdata-file"
+    # oc{h,s}p commands
+    ochp_command = "ochp-command"
+    ocsp_command = "ocsp-command"
+    # cluster commands
+    check_service_cluster = "check_service_cluster"
+    check_host_cluster = "check_host_cluster"
+    # notify commands
+    dummy_notify = "dummy-notify"
+    host_notify_by_mail = "host-notify-by-mail"
+    host_notify_by_sms = "host-notify-by-sms"
+    service_notify_by_mail = "service-notify-by-mail"
+    service_notify_by_sms = "service-notify-by-sms"
 
 
 class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
-    config_old = models.IntegerField(null=True, blank=True, db_column="config")
-    config = models.ForeignKey("backbone.config", db_column="new_config_id")
+    config = models.ForeignKey("backbone.config", db_column="new_config_id", null=True, blank=True)
     mon_service_templ = models.ForeignKey("backbone.mon_service_templ", null=True, blank=True)
     # only unique per config
     name = models.CharField(max_length=192)  # , unique=True)
     # link to mon_check_special_command
     mon_check_command_special = models.ForeignKey("backbone.mon_check_command_special", null=True, blank=True)
+    # unique name, this name is local to each installation and will be changed
+    # on import if necessary
+    unique_name = models.CharField(default="", max_length=255)
     # for mon_check_special_command this is empty
     command_line = models.CharField(max_length=765, default="")
     description = models.CharField(max_length=192, blank=True)
@@ -443,10 +372,13 @@ class mon_check_command(models.Model):
     categories = models.ManyToManyField("backbone.category", blank=True)
     # device to exclude
     exclude_devices = models.ManyToManyField("backbone.device", related_name="mcc_exclude_devices", blank=True)
+    devices = models.ManyToManyField("backbone.device", related_name="mcc_devices", blank=True)
     # event handler settings
     is_event_handler = models.BooleanField(default=False)
     event_handler = models.ForeignKey("self", null=True, default=None, blank=True)
     event_handler_enabled = models.BooleanField(default=True)
+    # internal (==system) command
+    system_command = models.BooleanField(default=False)
     # is an active check
     is_active = models.BooleanField(default=True)
     # which tcp port(s) cover this check
@@ -463,7 +395,7 @@ class mon_check_command(models.Model):
         unique_together = (("name", "config"))
         verbose_name = "Check command"
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             ("setup_monitoring", "Change monitoring settings", False),
             ("show_monitoring_dashboard", "Show monitoring dashboard", False),
@@ -478,10 +410,288 @@ class mon_check_command(models.Model):
             "mon_icinga_log_raw_service_downtime_data",
         ]
 
+    @property
+    def obj_type(self):
+        return "command"
+
     def __str__(self):
         return "mcc_{}".format(self.name)
 
-    __repr__ = __str__
+
+class DBStructuredMonBaseConfig(mon_check_command, StructuredContentEmitter):
+    # proxy class to interface with md-config-server
+    @classmethod
+    def get_system_check_command(cls, **kwargs):
+        # some kind of simple factory ...
+        _create = kwargs.pop("create")
+        _changed = False
+        try:
+            _obj = cls.objects.get(Q(system_command=True) & Q(name=kwargs["name"]))
+        except cls.DoesNotExist:
+            if _create:
+                _obj = cls(
+                    name=kwargs["name"],
+                    system_command=True,
+                )
+                _changed = True
+            else:
+                # this should never happen, trigger an error
+                _obj = None
+        for key, value in kwargs.items():
+            if getattr(_obj, key) != value:
+                setattr(_obj, key, value)
+                _changed = True
+
+        if _changed:
+            _obj.save()
+        return _obj
+
+    @classmethod
+    def parse_commandline(cls, com_line):
+        """
+        parses command line, also builds argument lut
+        lut format: commandline switch -> ARG#
+        list format : ARG#, ARG#, ...
+        """
+        """
+        handle the various input formats:
+
+        ${ARG#:var_name:default}
+        ${ARG#:var_name:default}$
+        ${ARG#:*var_name}
+        ${ARG#:*var_name}$
+        ${ARG#:default}
+        ${ARG#:default}$
+        $ARG#$
+
+        """
+        _num_args, _default_values = (0, {})
+        arg_lut, arg_list = ({}, [])
+        log_lines = []
+        if not com_line.strip():
+            com_line = "/bin/true"
+            log_lines.append(
+                (
+                    "commandline is empty, replacing with '{}'".format(com_line),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+            )
+        com_re = re.compile(
+            "".join(
+                [
+                    "^(?P<pre_text>.*?)",
+                    "((\${ARG(?P<arg_num_1>\d+):(((?P<var_name>[^:^}]+?)\:(?P<default_vn>[^}]+?)}\$*)|",
+                    "(?P<default>[^}]+?)}\$*))|(\$ARG(?P<arg_num_2>\d+)\$))+",
+                    "(?P<post_text>.*)$",
+                ]
+            )
+        )
+        cur_line = com_line
+        # where to start the match to avoid infinite loop
+        s_idx = 0
+        while True:
+            cur_m = com_re.match(cur_line[s_idx:])
+            if cur_m:
+                m_dict = cur_m.groupdict()
+                # check for -X or --Y switch
+                prev_part = m_dict["pre_text"].strip().split()
+                if prev_part and prev_part[-1].startswith("-"):
+                    prev_part = prev_part[-1]
+                else:
+                    prev_part = None
+                if m_dict["arg_num_2"] is not None:
+                    # short form
+                    arg_name = "ARG{}".format(m_dict["arg_num_2"])
+                else:
+                    arg_name = "ARG{}".format(m_dict["arg_num_1"])
+                    if m_dict["var_name"]:
+                        _default_values[arg_name] = (m_dict["var_name"], m_dict["default_vn"])
+                    elif m_dict["default"]:
+                        _default_values[arg_name] = m_dict["default"]
+                pre_text, post_text = (
+                    m_dict["pre_text"] or "",
+                    m_dict["post_text"] or ""
+                )
+                cur_line = "{}{}${}${}".format(
+                    cur_line[:s_idx],
+                    pre_text,
+                    arg_name,
+                    post_text
+                )
+                s_idx += len(pre_text) + len(arg_name) + 2
+                if prev_part:
+                    arg_lut[prev_part] = arg_name
+                else:
+                    arg_list.append(arg_name)
+                _num_args += 1
+            else:
+                break
+        _parsed_com_line = cur_line
+        if com_line == _parsed_com_line:
+            log_lines.append("commandline in/out is '{}'".format(com_line))
+        else:
+            log_lines.append("commandline in     is '{}'".format(com_line))
+            log_lines.append("commandline out    is '{}'".format(_parsed_com_line))
+        if arg_lut:
+            log_lines.append(
+                "lut : {}; {}".format(
+                    logging_tools.get_plural("key", len(arg_lut)),
+                    ", ".join(
+                        ["'{}' => '{}'".format(key, value) for key, value in arg_lut.items()]
+                    )
+                )
+            )
+        if arg_list:
+            log_lines.append(
+                "list: {}; {}".format(
+                    logging_tools.get_plural("item", len(arg_list)),
+                    ", ".join(arg_list)
+                )
+            )
+        return {
+                   "arg_lut": arg_lut,
+                   "arg_list": arg_list,
+                   "parsed_com_line": _parsed_com_line,
+                   "num_args": _num_args,
+                   "default_values": _default_values,
+               }, log_lines
+        # self.__arg_lut, self.__arg_list = (arg_lut, arg_list)
+
+    def keys(self):
+        return ["command_line", "command_name"]
+
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
+    @property
+    def mccs_id(self):
+        return self.mon_check_command_special_id
+
+    def get_description(self):
+        return self.name
+
+    def __getitem__(self, key):
+        # for config generation
+        if key == "command_name":
+            return [self.unique_name]
+        elif key == "command_line":
+            return [self.__md_com_line]
+        else:
+            raise KeyError("key '{}' not supported for __getitem__".format(key))
+
+    def generate_md_com_line(self, log_com: callable, safe_description: bool):
+        if safe_description:
+            self.__description = build_safe_name(self.name)
+        else:
+            self.__description = self.name
+        if self.mon_check_command_special_id:
+            arg_info, log_lines = DBStructuredMonBaseConfig.parse_commandline(
+                self.mon_check_command_special.command_line
+            )
+        else:
+            arg_info, log_lines = DBStructuredMonBaseConfig.parse_commandline(
+                self.command_line
+            )
+        # print arg_info, log_lines
+        self.__arg_lut = arg_info["arg_lut"]
+        self.__arg_list = arg_info["arg_list"]
+        self.__num_args = arg_info["num_args"]
+        self.__default_values = arg_info["default_values"]
+        self.__md_com_line = arg_info["parsed_com_line"]
+        if log_com:
+            log_com(
+                "command '{}' maps to '{}'".format(
+                    self.name,
+                    self.unique_name,
+                )
+            )
+            for _line in log_lines:
+                if isinstance(_line, tuple):
+                    _line, _level = _line
+                else:
+                    _level = logging_tools.LOG_LEVEL_OK
+                log_com("[cc {}] {}".format(self.name, _line), _level)
+
+    @property
+    def arg_ll(self) -> tuple:
+        """
+        returns lut and list
+        """
+        return (self.__arg_lut, self.__arg_list)
+
+    @property
+    def servicegroup_names(self):
+        return [cur_cat.full_name for cur_cat in self.categories.all()]
+
+    @property
+    def servicegroup_pks(self):
+        return [cur_cat.pk for cur_cat in self.categories.all()]
+
+    def get_template(self, default: str) -> str:
+        if self.mon_service_templ_id:
+            return self.mon_service_templ.name
+        else:
+            return default
+
+    def correct_argument_list(self, arg_temp, dev_variables):
+        out_list = []
+        for arg_name in arg_temp.argument_names:
+            value = arg_temp[arg_name]
+            if arg_name in self.__default_values and not value:
+                dv_value = self.__default_values[arg_name]
+                if isinstance(dv_value, tuple):
+                    # var_name and default_value
+                    var_name = self.__default_values[arg_name][0]
+                    if var_name in dev_variables:
+                        value = dev_variables[var_name]
+                    else:
+                        value = self.__default_values[arg_name][1]
+                else:
+                    # only default_value
+                    value = self.__default_values[arg_name]
+            if isinstance(value, int):
+                out_list.append("{:d}".format(value))
+            else:
+                out_list.append(value)
+        return out_list
+
+    class Meta:
+        proxy = True
+
+
+def _check_unique_name(cur_inst: object) -> bool:
+    if not cur_inst.unique_name:
+        unique_name = cur_inst.name
+    else:
+        unique_name = cur_inst.unique_name
+    _other_uniques = mon_check_command.objects.all().exclude(Q(idx=cur_inst.idx)).values_list("unique_name", flat=True)
+    if cur_inst.system_command:
+        if cur_inst.config_id:
+            raise ValidationError("SystemCheckCommand ({}) should not be linked to a config".format(cur_inst.name))
+        if unique_name in _other_uniques:
+            # print("Q", cur_inst.idx)
+            # print(list(_other_uniques))
+            raise ValidationError("MonCheckName for SystemCommand '{}' already used, please fix ...".format(cur_inst.name))
+    else:
+        while unique_name in _other_uniques:
+            _parts = unique_name.split("_")
+            if _parts[-1].isdigit():
+                # increase unique counter
+                unique_name = "_".join(_parts[:-1] + ["{:d}".format(int(_parts[-1]) + 1)])
+            else:
+                unique_name = "{}_1".format(unique_name)
+    _changed = cur_inst.unique_name != unique_name
+    cur_inst.unique_name = unique_name
+    return _changed
+
+
+@receiver(signals.post_init, sender=mon_check_command)
+def mon_check_command_post_init(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        # only check uniqueness on save or for load of already defined checks without unique_name defined
+        if cur_inst.idx and not cur_inst.unique_name and _check_unique_name(cur_inst):
+            cur_inst.save()
 
 
 @receiver(signals.pre_save, sender=mon_check_command)
@@ -489,12 +699,17 @@ def mon_check_command_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         # cur_inst.is_special_command = True if special_re.match(cur_inst.name) else False
+        if not cur_inst.system_command:
+            try:
+                _ = MonCheckCommandSystemNames[cur_inst.name]
+            except KeyError:
+                pass
+            else:
+                raise ValidationError("'{}' is a reserved system command name".format(cur_inst.name))
         if not cur_inst.name:
             raise ValidationError("name is empty")
         if not cur_inst.command_line:
             raise ValidationError("command_line is empty")
-        if cur_inst.name in cur_inst.config.mon_check_command_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
-            raise ValidationError("name already used")
         if not cur_inst.is_event_handler:
             mc_refs = cur_inst.mon_check_command_set.all()
             if len(mc_refs):
@@ -507,6 +722,16 @@ def mon_check_command_pre_save(sender, **kwargs):
             cur_inst.event_handler = None
             cur_inst.save()
             raise ValidationError("cannot be an event handler and reference to another event handler")
+        _check_unique_name(cur_inst)
+
+
+@receiver(signals.pre_save, sender=mon_check_command)
+def mon_check_command_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if cur_inst.config and not cur_inst.system_command:
+            # remove all associated devices
+            cur_inst.devices.clear()
 
 
 class mon_contact(models.Model):

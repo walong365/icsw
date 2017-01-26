@@ -86,6 +86,7 @@ setup(
         "initat.logging_server",
         "initat.md_config_server",
         "initat.md_config_server.config",
+        "initat.md_config_server.base_config",
         "initat.md_config_server.build",
         "initat.md_config_server.mixins",
         "initat.md_config_server.icinga_log_reader",

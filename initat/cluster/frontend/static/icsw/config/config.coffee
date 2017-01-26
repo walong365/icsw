@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2016 init.at
+# Copyright (C) 2012-2017 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -48,8 +48,8 @@ config_module = angular.module(
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.moncheck.overview")
-        # controller: "icswConfigConfigCtrl"
         scope: true
+        # controller: "icswConfigConfigCtrl"
     }
 ]).directive("icswConfigCatalogTable",
 [
@@ -170,45 +170,26 @@ config_module = angular.module(
         link: (scope, el, attr) ->
             scope.select = (obj) ->
                 obj.isSelected = !obj.isSelected
-            scope.set_mode("config")
-    }
-]).directive("icswConfigMoncheckTable",
-[
-    "$templateCache",
-(
-    $templateCache
-) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.config.moncheck.table")
-        scope: true
-        controller: "icswConfigConfigTableCtrl"
-        link: (scope, el, attr) ->
-            scope.select = (obj) ->
-                obj.isSelected = !obj.isSelected
-            scope.set_mode("moncheck")
     }
 ]).controller("icswConfigConfigTableCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$uibModal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS",
-    "icswToolsButtonConfigService", "icswConfigTreeService",
+    "icswToolsButtonConfigService", "icswConfigTreeService", "icswConfigMonTableService",
     "icswSimpleAjaxCall", "icswMonitoringBasicTreeService", "$rootScope",
     "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswConfigBackup",
-    "icswComplexModalService", "icswBackupTools", "$timeout", "icswConfigMonCheckCommandListService",
+    "icswComplexModalService", "icswBackupTools", "$timeout",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, FileUploader, $http, blockUI, icswTools, ICSW_URLS,
-    icswToolsButtonConfigService, icswConfigTreeService,
+    icswToolsButtonConfigService, icswConfigTreeService, icswConfigMonTableService,
     icswSimpleAjaxCall, icswMonitoringBasicTreeService, $rootScope,
     ICSW_SIGNALS, icswToolsSimpleModalService, icswConfigBackup,
-    icswComplexModalService, icswBackupTools, $timeout, icswConfigMonCheckCommandListService,
+    icswComplexModalService, icswBackupTools, $timeout,
 ) ->
 
     # used for config and monitoring check setup
     $scope.struct = {
-        # overall mode
-        mode: undefined
         # data valid
         data_valid: undefined
         # config tree
@@ -241,20 +222,12 @@ config_module = angular.module(
 
     $scope.update_search = () ->
         if $scope.struct.config_tree?
-            if $scope.struct.mode == "config"
-                $scope.struct.config_tree.update_filtered_list(
-                    $scope.struct.search_str
-                    $scope.struct.filter_settings
-                    $scope.struct.with_server
-                    $scope.struct.with_service
-                )
-            else
-                $scope.struct.config_tree.update_filtered_list(
-                    $scope.struct.search_str
-                    {config: false, mon: true, script: false, var: false}
-                    0
-                    0
-                )
+            $scope.struct.config_tree.update_filtered_list(
+                $scope.struct.search_str
+                $scope.struct.filter_settings
+                $scope.struct.with_server
+                $scope.struct.with_service
+            )
 
     _update_filter_settings = () ->
         for _fltr in ["config", "script", "mon", "var"]
@@ -294,23 +267,7 @@ config_module = angular.module(
                 _update_filter_settings()
         )
 
-    $scope.set_mode = (mode) ->
-        $scope.struct.mode = mode
-        if $scope.struct.mode == "moncheck"
-            $scope.config_service = icswConfigMonCheckCommandListService
-
-            # see icsw.mon.check.command.line
-
-            $scope.delete = ($event, mon) ->
-                $scope.config_service.delete(null, $event, mon)
-
-            $scope.edit = ($event, mon) ->
-                $scope.config_service.create_or_edit($scope, $event, false, mon)
-
-            $scope.create_mon_check = ($event) =>
-                $scope.config_service.create_or_edit($scope, $event, true, $scope.struct.config_tree)
-
-        _fetch()
+    _fetch()
 
     $scope.modify_config = ($event, config, prevent_jump) =>
         $event.stopPropagation()
@@ -393,12 +350,12 @@ config_module = angular.module(
             for obj in $scope.struct.selected_objects
                 conf = (entry for entry in $scope.entries when entry.idx == obj.config)[0]
                 if obj.object_type == "mon"
-                    ref_f = conf.mon_check_command_set
+                    ref_f = conf.res_mon_check_command_set
                 else
                     ref_f = conf["config_#{obj.object_type}_set"]
                 ref_f = (_rv for _rv in ref_f when _rv.idx != obj.idx)
                 if obj.object_type == "mon"
-                    conf.mon_check_command_set = ref_f
+                    conf.res_mon_check_command_set = ref_f
                 else
                     conf["config_#{obj.object_type}_set"] = ref_f
                 $scope._set_fields(conf)
@@ -493,12 +450,12 @@ config_module = angular.module(
 ]).controller("icswConfigModifyCtrl",
 [
     "$q", "$scope", "icswBackupTools", "ICSW_SIGNALS", "blockUI",
-    "icswConfigScriptListService", "icswConfigMonCheckCommandListService", "icswConfigVarListService",
-    "icswMonitoringBasicTreeService",
+    "icswConfigScriptListService", "icswConfigVarListService",
+    "icswMonitoringBasicTreeService", "icswConfigMonTableService",
 (
     $q, $scope, icswBackupTools, ICSW_SIGNALS, blockUI,
-    icswConfigScriptListService, icswConfigMonCheckCommandListService, icswConfigVarListService,
-    icswMonitoringBasicTreeService,
+    icswConfigScriptListService, icswConfigVarListService,
+    icswMonitoringBasicTreeService, icswConfigMonTableService,
 ) ->
     _set_object_from_src = () ->
         $scope.edit_obj = $scope.config.$$_ICSW_backup_data
@@ -580,7 +537,7 @@ config_module = angular.module(
         )
 
     $scope.create_mon_check_command = (event, config) ->
-        icswConfigMonCheckCommandListService.create_or_edit($scope, event, true, config)
+        icswConfigMonTableService.create_or_edit($scope, event, true, config, true)
 
     $scope.create_var = (event, config, var_type) ->
         icswConfigVarListService.create_or_edit($scope, event, true, config, $scope.config_tree, var_type)
@@ -659,7 +616,7 @@ config_module = angular.module(
 
         select: (obj) ->
             obj.$selected = !obj.$selected
-            obj.$$tree.link()
+            obj.$$config_tree.link()
 
         create_or_edit: (scope, event, create, obj_or_parent, ext_config_tree, var_type) ->
             if create
@@ -786,7 +743,7 @@ config_module = angular.module(
 
         select: (obj) ->
             obj.$selected = !obj.$selected
-            obj.$$tree.link()
+            obj.$$config_tree.link()
 
         create_or_edit: (scope, event, create, obj_or_parent, ext_config_tree) ->
             if create
@@ -889,7 +846,22 @@ config_module = angular.module(
             config: "=config"
             configTree: "=configTree"
     }
-]).service('icswConfigMonCheckCommandListService',
+]).directive("icswConfigMonTable",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.config.mon.table")
+        scope: {
+            config: "=icswConfig"
+            config_tree: "=icswConfigTree"
+        }
+        controller: "icswConfigMonTableCtrl"
+    }
+]).service("icswConfigMonTableService",
 [
     "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster",
     "icswTools", "Restangular", "ICSW_URLS",  "$q", "blockUI", "icswFormTools",
@@ -901,253 +873,285 @@ config_module = angular.module(
     icswConfigTreeService, icswMonitoringBasicTreeService, icswMonCheckCommandBackup,
     icswComplexModalService, $compile, $templateCache
 ) ->
-    config_tree = undefined
-    mon_tree = undefined
-    return {
-        fetch: (scope) ->
-            defer = $q.defer()
-            $q.all(
-                [
-                    icswConfigTreeService.load(scope.$id)
-                    icswMonitoringBasicTreeService.load(scope.$id)
-                ]
-            )
-            .then(
-                (data) ->
-                    config_tree = data[0]
-                    mon_tree = data[1]
-                    scope.mon_tree = mon_tree
-                    defer.resolve(scope.config.mon_check_command_set)
-            )
-            return defer.promise
-
-        select: (obj) ->
-            obj.$selected = !obj.$selected
-            obj.$$tree.link()
-
-        get_mon_command_line: (mon) ->
-            if mon.mon_check_command_special
-                return mon.$$config.$$config_tree.mon_basic_tree.mon_check_command_special_lut[mon.mon_check_command_special].command_line
+    create_or_edit = (scope, event, create, obj_or_parent, fixed_config) ->
+        # may also be called from assign config checks, scope is then the $rootScope
+        r_defer = $q.defer()
+        sub_scope = scope.$new(true)
+        sub_scope.fixed_config = fixed_config
+        # console.log "*", ext_config_tree, ext_mon_tree
+        if create
+            if obj_or_parent.$$config_tree?
+                config = obj_or_parent
+                config_idx = config.idx
+                config_tree = config.$$config_tree
             else
-                return mon.command_line
-
-        get_event_handler: (mon) ->
-            ev_idx = mon.event_handler
-            if ev_idx
-                # not fast but working
-                ev_config = (entry for entry in mon.$$config.$$config_tree.list when ev_idx of entry.mon_check_command_lut)
-                if ev_config.length
-                    return (entry for entry in ev_config[0].mon_check_command_set when entry.idx == ev_idx)[0].name
-                else
-                    return "???"
-            else
-                return "---"
-
-        create_or_edit: (scope, event, create, obj_or_parent) ->
-            # may also be called from assign config checks, scope is then the $rootScope
-            r_defer = $q.defer()
-            sub_scope = scope.$new(true)
-            # console.log "*", ext_config_tree, ext_mon_tree
-            if create
-                if obj_or_parent.$$config_tree?
-                    config = obj_or_parent
-                    config_tree = config.$$config_tree
-                    sub_scope.fixed_config = true
-                else
-                    # config not set, use first one
-                    config_tree = obj_or_parent
+                # config not set, use first one
+                config_tree = obj_or_parent
+                if fixed_config
                     config = config_tree.list[0]
-                    sub_scope.fixed_config = false
+                    config_idx = config.idx
+                else
+                    config = null
+                    config_idx = null
 
+            if config
                 c_name = "cc_#{config.name}"
-                c_idx = 1
-                cc_names = (cc.name for cc in config.mon_check_command_set)
-                while true
-                    if "#{c_name}_#{c_idx}" in cc_names
-                        c_idx++
-                    else
-                        break
-                c_name = "#{c_name}_#{c_idx}"
-                obj_or_parent = {
-                    config: config.idx
-                    name: c_name
-                    is_active: true
-                    description: "Check command"
-                    command_line: "$USER2$ -m $HOSTADDRESS$ uptime"
-                    categories: []
-                    arg_name: "argument"
-                    arg_value: "80"
-                }
             else
-                config_tree = obj_or_parent.$$config.$$config_tree
-                dbu = new icswMonCheckCommandBackup()
-                dbu.create_backup(obj_or_parent)
-                sub_scope.fixed_config = true
-            mon_tree = config_tree.mon_basic_tree
-            sub_scope.config_tree = config_tree
-            sub_scope.create = create
-            sub_scope.edit_obj = obj_or_parent
-            sub_scope.mccs_list = mon_tree.mon_check_command_special_list
-            sub_scope.template_list = mon_tree.mon_service_templ_list
-
-            sub_scope.get_mccs_info = (edit_obj) ->
-                cur_mccs = edit_obj.mon_check_command_special
-                if cur_mccs
-                    return mon_tree.mon_check_command_special_lut[cur_mccs].description
+                c_name = "cc_new"
+            cc_names = (cc.name for cc in config_tree.mcc_list)
+            c_idx = 1
+            while true
+                if "#{c_name}_#{c_idx}" in cc_names
+                    c_idx++
                 else
-                    return ""
+                    break
+            c_name = "#{c_name}_#{c_idx}"
+            obj_or_parent = {
+                config: config_idx
+                name: c_name
+                is_active: true
+                description: "Check command"
+                command_line: "$USER2$ -m $HOSTADDRESS$ uptime"
+                categories: []
+                arg_name: "argument"
+                arg_value: "80"
+            }
+        else
+            config_tree = obj_or_parent.$$config_tree
+            dbu = new icswMonCheckCommandBackup()
+            dbu.create_backup(obj_or_parent)
+        mon_tree = config_tree.mon_basic_tree
+        sub_scope.config_tree = config_tree
+        sub_scope.create = create
+        sub_scope.edit_obj = obj_or_parent
+        sub_scope.mccs_list = mon_tree.mon_check_command_special_list
+        sub_scope.template_list = mon_tree.mon_service_templ_list
 
-            sub_scope.get_mccs_cmdline = (edit_obj) ->
-                cur_mccs = edit_obj.mon_check_command_special
-                if cur_mccs
-                    if mon_tree.mon_check_command_special_lut[cur_mccs].is_active
-                        return mon_tree.mon_check_command_special_lut[cur_mccs].command_line
+        sub_scope.get_mccs_info = (edit_obj) ->
+            cur_mccs = edit_obj.mon_check_command_special
+            if cur_mccs
+                return mon_tree.mon_check_command_special_lut[cur_mccs].description
+            else
+                return ""
+
+        sub_scope.get_mccs_cmdline = (edit_obj) ->
+            cur_mccs = edit_obj.mon_check_command_special
+            if cur_mccs
+                if mon_tree.mon_check_command_special_lut[cur_mccs].is_active
+                    return mon_tree.mon_check_command_special_lut[cur_mccs].command_line
+                else
+                    return "passive check"
+            else
+                return ""
+
+        sub_scope.get_mccs_already_used_warning=  (edit_obj) ->
+            cur_mccs = edit_obj.mon_check_command_special
+            warning = ""
+            if cur_mccs?
+                problem_list = []
+                for config in config_tree.list
+                    for mcc in config.res_mon_check_command_set
+                        if mcc.idx != edit_obj.idx and mcc.mon_check_command_special == cur_mccs
+                            problem_list.push(mcc.name)
+                if problem_list.length
+                    warning += ""
+                    warning += "This special check command is already used in " + problem_list.join(",") + "."
+                    warning += "Multiple assignments of special check commands to check commands are not supported and may result in undefined behavior."
+            return warning
+
+        sub_scope.add_argument = (edit_obj) ->
+            cur_cl = edit_obj.command_line
+            max_argn = 0
+            match_list = cur_cl.match(/arg(\d+)/ig)
+            if match_list?
+                for cur_match in match_list
+                    max_argn = Math.max(max_argn, parseInt(cur_match.substring(3)))
+            max_argn++
+            if edit_obj.arg_name?
+                if edit_obj.arg_value?
+                    edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}:#{edit_obj.arg_name.toUpperCase()}:#{edit_obj.arg_value}}"
+                else
+                    edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}:#{edit_obj.arg_name.toUpperCase()}}"
+            else
+                edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}}"
+
+        sub_scope.get_moncc_info = (edit_obj) ->
+            cur_cl = edit_obj.command_line
+            complex_re = new RegExp("\\$\\{arg(\\d+):([^\\}^:]+):*(\\S+)*\\}\\$*|\\$\\arg(\\d+)\\$", "ig")
+            if cur_cl
+                simple_list = []
+                default_list = []
+                complex_list = []
+                while cur_m = complex_re.exec(cur_cl)
+                    if cur_m[4]
+                        # simple $ARG##$
+                        simple_list.push([parseInt(cur_m[4])])
+                    else if cur_m[3]
+                        # complex ${ARG##:NAME:DEFAULT}
+                        complex_list.push([parseInt(cur_m[1]), cur_m[2], cur_m[3]])
                     else
-                        return "passive check"
-                else
-                    return ""
+                        # form with default #{ARG##:DEFAULT}
+                        default_list.push([parseInt(cur_m[1]), cur_m[2]])
+                info_field = ["#{simple_list.length} simple args, #{default_list.length} args with default and #{complex_list.length} complex args"]
+                for entry in simple_list
+                    info_field.push("simple argument $ARG#{entry[0]}$")
+                for entry in default_list
+                    info_field.push("argument $ARG#{entry[0]}$ with default value #{entry[1]}")
+                for entry in complex_list
+                    info_field.push("argument $ARG#{entry[0]}$ from DeviceVar '#{entry[1]}' (default value #{entry[2]})")
+                return info_field
+            else
+                return ["no args parsed"]
 
-            sub_scope.get_mccs_already_used_warning=  (edit_obj) ->
-                cur_mccs = edit_obj.mon_check_command_special
-                warning = ""
-                if cur_mccs?
-                    problem_list = []
-                    for config in config_tree.list
-                        for mcc in config.mon_check_command_set
-                            if mcc.idx != edit_obj.idx and mcc.mon_check_command_special == cur_mccs
-                                problem_list.push(mcc.name)
-                    if problem_list.length
-                        warning += ""
-                        warning += "This special check command is already used in " + problem_list.join(",") + "."
-                        warning += "Multiple assignments of special check commands to check commands are not supported and may result in undefined behavior."
-                return warning
+        sub_scope.get_event_handlers = (edit_obj) ->
+            ev_handlers = []
+            for entry in config_tree.list
+                for cc in entry.res_mon_check_command_set
+                    if cc.is_event_handler and cc.idx != edit_obj.idx
+                        ev_handlers.push(cc)
+            return ev_handlers
 
-            sub_scope.add_argument = (edit_obj) ->
-                cur_cl = edit_obj.command_line
-                max_argn = 0
-                match_list = cur_cl.match(/arg(\d+)/ig)
-                if match_list?
-                    for cur_match in match_list
-                        max_argn = Math.max(max_argn, parseInt(cur_match.substring(3)))
-                max_argn++
-                if edit_obj.arg_name?
-                    if edit_obj.arg_value?
-                        edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}:#{edit_obj.arg_name.toUpperCase()}:#{edit_obj.arg_value}}"
+        cur_config = config_tree.lut[sub_scope.edit_obj.config]
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.mon.check.command.form"))(sub_scope)
+                title: "MonitorCheck Command"
+                # css_class: "modal-wide"
+                ok_label: if create then "Create" else "Modify"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        icswFormTools.show_form_error(sub_scope.form_data)
+                        d.reject("form not valid")
                     else
-                        edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}:#{edit_obj.arg_name.toUpperCase()}}"
-                else
-                    edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}}"
-
-            sub_scope.get_moncc_info = (edit_obj) ->
-                cur_cl = edit_obj.command_line
-                complex_re = new RegExp("\\$\\{arg(\\d+):([^\\}^:]+):*(\\S+)*\\}\\$*|\\$\\arg(\\d+)\\$", "ig")
-                if cur_cl
-                    simple_list = []
-                    default_list = []
-                    complex_list = []
-                    while cur_m = complex_re.exec(cur_cl)
-                        if cur_m[4]
-                            # simple $ARG##$
-                            simple_list.push([parseInt(cur_m[4])])
-                        else if cur_m[3]
-                            # complex ${ARG##:NAME:DEFAULT}
-                            complex_list.push([parseInt(cur_m[1]), cur_m[2], cur_m[3]])
+                        if create
+                            config_tree.create_mon_check_command(cur_config, sub_scope.edit_obj).then(
+                                (ok) ->
+                                    d.resolve("created")
+                                (notok) ->
+                                    d.reject("not created")
+                            )
                         else
-                            # form with default #{ARG##:DEFAULT}
-                            default_list.push([parseInt(cur_m[1]), cur_m[2]])
-                    info_field = ["#{simple_list.length} simple args, #{default_list.length} args with default and #{complex_list.length} complex args"]
-                    for entry in simple_list
-                        info_field.push("simple argument $ARG#{entry[0]}$")
-                    for entry in default_list
-                        info_field.push("argument $ARG#{entry[0]}$ with default value #{entry[1]}")
-                    for entry in complex_list
-                        info_field.push("argument $ARG#{entry[0]}$ from DeviceVar '#{entry[1]}' (default value #{entry[2]})")
-                    return info_field
-                else
-                    return ["no args parsed"]
+                            config_tree.modify_mon_check_command(cur_config, sub_scope.edit_obj).then(
+                                (ok) ->
+                                    d.resolve("updated")
+                                (not_ok) ->
+                                    d.reject("not updated")
+                            )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    if not create
+                        dbu.restore_backup(obj_or_parent)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                console.log "finish"
+                sub_scope.$destroy()
+                r_defer.resolve("done")
+        )
+        return r_defer.promise
 
-            sub_scope.get_event_handlers = (edit_obj) ->
-                ev_handlers = []
-                for entry in config_tree.list
-                    for cc in entry.mon_check_command_set
-                        if cc.is_event_handler and cc.idx != edit_obj.idx
-                            ev_handlers.push(cc)
-                return ev_handlers
+    delete_entry = (scope, event, mon) ->
+        icswToolsSimpleModalService("Really delete MonCheckCommand #{mon.name} ?").then(
+            () =>
+                blockUI.start()
+                mon.$$config.$$config_tree.delete_mon_check_command(mon.$$config, mon).then(
+                    () ->
+                        blockUI.stop()
+                        console.log "mon deleted"
+                    () ->
+                        blockUI.stop()
+                )
+        )
 
-            icswComplexModalService(
-                {
-                    message: $compile($templateCache.get("icsw.mon.check.command.form"))(sub_scope)
-                    title: "MonitorCheck Command"
-                    css_class: "modal-wide"
-                    ok_label: if create then "Create" else "Modify"
-                    closable: true
-                    ok_callback: (modal) ->
-                        d = $q.defer()
-                        if sub_scope.form_data.$invalid
-                            icswFormTools.show_form_error(sub_scope.form_data)
-                            d.reject("form not valid")
-                        else
-                            if create
-
-                                config_tree.create_mon_check_command(config_tree.lut[sub_scope.edit_obj.config], sub_scope.edit_obj).then(
-                                    (ok) ->
-                                        d.resolve("created")
-                                    (notok) ->
-                                        d.reject("not created")
-                                )
-                            else
-                                Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_MON_CHECK_COMMAND_DETAIL.slice(1).slice(0, -2))
-                                sub_scope.edit_obj.put().then(
-                                    (ok) ->
-                                        config_tree.build_luts()
-                                        d.resolve("updated")
-                                    (not_ok) ->
-                                        d.reject("not updated")
-                                )
-                        return d.promise
-                    cancel_callback: (modal) ->
-                        if not create
-                            dbu.restore_backup(obj_or_parent)
-                        d = $q.defer()
-                        d.resolve("cancel")
-                        return d.promise
-                }
-            ).then(
-                (fin) ->
-                    console.log "finish"
-                    sub_scope.$destroy()
-                    r_defer.resolve("done")
-            )
-            return r_defer.promise
-
-        delete: (scope, event, mon) ->
-            icswToolsSimpleModalService("Really delete MonCheckCommand #{mon.name} ?").then(
-                () =>
-                    blockUI.start()
-                    mon.$$config.$$config_tree.delete_mon_check_command(mon.$$config, mon).then(
-                        () ->
-                            blockUI.stop()
-                            console.log "mon deleted"
-                        () ->
-                            blockUI.stop()
-                    )
-            )
-
-    }
-]).directive("icswConfigMonTable",
-[
-    "$templateCache",
-(
-    $templateCache
-) ->
     return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.config.mon.table")
-        scope: {
-            config: "="
-            configTree: "="
-        }
+        create_or_edit: create_or_edit
+        delete: delete_entry
     }
+
+]).controller("icswConfigMonTableCtrl",
+[
+    "$scope", "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster",
+    "icswTools", "Restangular", "ICSW_URLS",  "$q", "blockUI", "icswFormTools",
+    "icswConfigTreeService", "icswMonitoringBasicTreeService", "icswMonCheckCommandBackup",
+    "icswComplexModalService", "$compile", "$templateCache", "icswConfigMonTableService",
+(
+    $scope, icswSimpleAjaxCall, icswToolsSimpleModalService, toaster,
+    icswTools, Restangular, ICSW_URLS, $q, blockUI, icswFormTools,
+    icswConfigTreeService, icswMonitoringBasicTreeService, icswMonCheckCommandBackup,
+    icswComplexModalService, $compile, $templateCache, icswConfigMonTableService,
+) ->
+    $scope.struct = {
+        # mode, subtable true or false
+        is_sub_table: true
+        # data loaded
+        data_loaded: false
+        # config tree
+        config_tree: undefined
+        # config
+        config: undefined
+        # monccs list, to be set on init
+        monccs_list: undefined
+        # table redraw
+        redraw_table: 0
+    }
+    _load = () ->
+        $q.all(
+            [
+                icswConfigTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.config_tree = data[0]
+                # for entry in $scope.struct.config_tree
+                $scope.struct.monccs_list = $scope.struct.config_tree.filtered_mcc_list
+                $scope.struct.data_loaded = true
+        )
+
+    #   else
+    #            $scope.struct.config_tree.update_filtered_list(
+    #               $scope.struct.search_str
+    #               {config: false, mon: true, script: false, var: false}
+    #               0
+    #               0
+    #           )
+
+    if $scope.config_tree?
+        # is subtable
+        $scope.struct.is_sub_table = true
+        $scope.struct.data_loaded = true
+        $scope.struct.config_tree = $scope.config_tree
+        $scope.struct.config = $scope.config
+        $scope.struct.monccs_list = $scope.struct.config.res_mon_check_command_set
+    else
+        $scope.struct.is_sub_table = false
+        $scope.struct.data_loaded = false
+        _load()
+
+    $scope.select = ($event, obj) ->
+        obj.$selected = !obj.$selected
+        obj.$$config_tree.link()
+
+    $scope.edit = ($event, obj) ->
+        if $scope.struct.config?
+            _fixed = true
+        else
+            _fixed = false
+        icswConfigMonTableService.create_or_edit($scope, $event, false, obj, _fixed).then(
+            (fin) ->
+                $scope.struct.redraw_table++
+        )
+
+    $scope.delete = ($event, obj) ->
+        icswConfigMonTableService.delete($scope, $event, obj)
+
+    $scope.create_mon_check = ($event) =>
+        icswConfigMonTableService.create_or_edit($scope, $event, true, $scope.struct.config_tree, false)
+
 ]).directive("icswConfigDownload",
 [
     "$templateCache", "icswConfigTreeService", "ICSW_URLS",
@@ -1275,8 +1279,8 @@ config_module = angular.module(
                     return 0
 
             scope.get_num_check_commands = (config) ->
-                if config.mon_check_command_set
-                    return config.mon_check_command_set.length
+                if config.res_mon_check_command_set
+                    return config.res_mon_check_command_set.length
                 else
                     return 0
 

@@ -14,6 +14,9 @@ class TestAssetManagement(TestCase):
     BASE_PATH = os.path.join(os.path.dirname(__file__), 'data')
     TEST_DATA = pickle.load(open(os.path.join(BASE_PATH, "asset_management_test_data"), "rb"))
     CHECKABLE_ASSET_BATCH_PROPERTIES = ["cpus", "memory_modules", "gpus", "displays", "network_devices"]
+    IGNORE_TESTS = {
+        "zarafa.oekotex_25.01.2017": [AssetType.PCI, AssetType.UPDATE]
+    }
 
     assetbatch_dict = {}
 
@@ -185,6 +188,9 @@ class TestAssetManagement(TestCase):
         idx = 0
         for result_obj in self.TEST_DATA:
             identifier = result_obj.identifier
+
+            if identifier in self.IGNORE_TESTS and asset_type in self.IGNORE_TESTS[identifier]:
+                continue
 
             result_dict = result_obj.result_dict
             idx += 1

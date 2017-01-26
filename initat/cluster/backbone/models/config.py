@@ -162,7 +162,7 @@ class config(models.Model):
         unique_together = (("name", "config_catalog"),)
         verbose_name = "Configuration"
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             ("modify_config", "modify global configurations", False),
         )
@@ -268,20 +268,12 @@ class device_config(models.Model):
 @receiver(signals.post_save, sender=device_config)
 def device_config_post_save(sender, instance, raw, **kwargs):
     pass
-    # if not raw:
-    #    log_usage_data = collections.defaultdict(lambda: [])
-    #
-    #    for mcc in instance.config.mon_check_command_set.all().select_related("mon_service_templ"):
-    #        if mcc.mon_service_templ is not None and mcc.mon_service_templ.any_notification_enabled():
-    #            log_usage_data[instance.device_id].append(mcc)
-    #    LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
 
 
 class config_str(models.Model):
     idx = models.AutoField(db_column="config_str_idx", primary_key=True)
     name = models.CharField(max_length=192)
     description = models.CharField(db_column="descr", max_length=765)
-    config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
@@ -318,7 +310,6 @@ class config_blob(models.Model):
     name = models.CharField(max_length=192)
     description = models.CharField(max_length=765, db_column="descr")
     # deprecated
-    config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
@@ -350,7 +341,6 @@ class config_bool(models.Model):
     name = models.CharField(max_length=192)
     description = models.CharField(max_length=765, db_column="descr")
     # deprecated
-    config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
@@ -400,7 +390,6 @@ class config_int(models.Model):
     name = models.CharField(max_length=192)
     description = models.CharField(max_length=765, db_column="descr")
     # deprecated
-    config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)

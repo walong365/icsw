@@ -139,7 +139,7 @@ class background_job(models.Model):
         ordering = ("-date",)
         verbose_name = "Background jobs"
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             ("show_background", "Show background jobs", False),
         )

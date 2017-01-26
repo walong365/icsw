@@ -24,16 +24,10 @@
 
 import sys
 
-from initat.client_version import VERSION_STRING
-from initat.icsw.service.instance import InstanceXML
 from initat.tools import configfile, process_tools
-
-COLLCLIENT = False
 
 
 def run_code(prog_name, global_config):
-    if COLLCLIENT:
-        prog_name = "collclient"
     if prog_name in ["collserver"]:
         from initat.host_monitoring.server import ServerCode
         ret_state = ServerCode(global_config).loop()
@@ -49,49 +43,25 @@ def run_code(prog_name, global_config):
     return ret_state
 
 
-def main():
+def main(options=None):
     global_config = configfile.get_global_config(
         process_tools.get_programm_name(),
         single_process_mode=True
     )
     prog_name = global_config.name()
-    if COLLCLIENT:
-        prog_name = "collclient"
-    global_config.add_config_entries(
-        [
-            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ]
-    )
     if prog_name == "collclient":
         global_config.add_config_entries(
             [
-                ("IDENTITY_STRING", configfile.str_c_var("collclient", help_string="identity string", short_options="i")),
-                ("TIMEOUT", configfile.int_c_var(10, help_string="set timeout [%(default)d", only_commandline=True)),
-                (
-                    "COMMAND_PORT",
-                    configfile.int_c_var(
-                        InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True),
-                        info="listening Port",
-                        help_string="port to communicate [%(default)d]",
-                        short_options="p"
-                    )
-                ),
-                ("HOST", configfile.str_c_var("localhost", help_string="host to connect to")),
+                ("IDENTITY_STRING", configfile.str_c_var(options.IDENTITY_STRING)),
+                ("TIMEOUT", configfile.int_c_var(options.TIMEOUT)),
+                ("COMMAND_PORT", configfile.int_c_var(options.COMMAND_PORT)),
+                ("HOST", configfile.str_c_var(options.HOST)),
+                ("ARGUMENTS", configfile.array_c_var(options.ARGUMENTS)),
             ]
         )
-    options = global_config.handle_commandline(
-        description="{}, version is {}".format(
-            prog_name,
-            VERSION_STRING
-        ),
-        positional_arguments=prog_name in ["collclient"],
-        partial=prog_name in ["collclient"],
-    )
     ret_state = run_code(prog_name, global_config)
     return ret_state
 
 
 if __name__ == "__main__":
-    COLLCLIENT = True
     sys.exit(main())

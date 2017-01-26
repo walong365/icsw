@@ -187,7 +187,13 @@ class write_etc_hosts(cs_base_class.icswCSServerCom):
         for pen_value in pen_list:
             act_out_list = logging_tools.NewFormList()
             for entry in sorted(loc_dict[pen_value]):
-                act_out_list.append([logging_tools.form_entry(entry[0])] + [logging_tools.form_entry(cur_e) for cur_e in entry[1:]])
+                act_out_list.append(
+                    [
+                        logging_tools.form_entry(entry[0])
+                    ] + [
+                        logging_tools.form_entry(cur_e) for cur_e in entry[1:]
+                    ]
+                )
             host_lines = str(act_out_list).split("\n")
             out_file.extend(
                 [
@@ -226,7 +232,11 @@ class write_etc_hosts(cs_base_class.icswCSServerCom):
             for dev_name, dg_name in all_devs:
                 dg_dict.setdefault(dg_name, []).append(dev_name)
             for file_name, content in dg_dict.items():
-                codecs.open(os.path.join(GROUP_DIR, file_name), "w", "utf-8").write("\n".join(sorted(set(content)) + [""]))
+                codecs.open(
+                    os.path.join(GROUP_DIR, file_name),
+                    "w",
+                    "utf-8"
+                ).write("\n".join(sorted(set(content)) + [""]))
         file_list.append(ETC_HOSTS_FILENAME)
         codecs.open(ETC_HOSTS_FILENAME, "w+", "utf-8").write(
             "\n".join(

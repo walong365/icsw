@@ -20,8 +20,8 @@
 """ structures and functions for the grapher part of rrd-grapher service """
 
 import datetime
-import os
 import math
+import os
 import rrdtool
 import stat
 

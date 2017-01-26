@@ -251,7 +251,7 @@ class network(models.Model):
     network_device_type = models.ManyToManyField("backbone.network_device_type", blank=True)
     enforce_unique_ips = models.BooleanField(default=False)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             ("modify_network", "modify global network settings", False),
             ("show_clusters", "show network clustering", False),
@@ -741,7 +741,7 @@ class netdevice(models.Model):
     def get_dummy_macaddr(self):
         return ":".join(["00"] * self.network_device_type.mac_bytes)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         fk_ignore_list = ["net_ip", "peer_information"]
 
     class Meta:

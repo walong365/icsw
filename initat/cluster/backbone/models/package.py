@@ -184,7 +184,7 @@ class package_search(models.Model):
     def __str__(self):
         return self.search_string
 
-    class CSW_Meta:
+    class ICSW_Meta:
         fk_ignore_list = ["package_search_result"]
 
     class Meta:
@@ -285,7 +285,7 @@ class package(models.Model):
         else:
             return "{}-{}".format(self.name, self.version)
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             ("package_install", "access package install site", False),
         )

@@ -591,6 +591,19 @@ device_asset_module = angular.module(
                 tab.asset_batch = result[0][0]
                 tab.tab_heading_text = "Scan (ID:" + asset_batch.idx + ")"
 
+                for cpu_entry in tab.asset_batch.cpus
+                    cpu_entry.$$name = "N/A"
+                    if cpu_entry.name
+                        cpu_entry.$$name = cpu_entry.name
+
+                    cpu_entry.$$numberofcores = "N/A"
+                    if cpu_entry.numberofcores
+                        cpu_entry.$$numberofcores = cpu_entry.numberofcores
+
+                    cpu_entry.$$vendor = "N/A"
+                    if cpu_entry.vendor
+                        cpu_entry.$$vendor = cpu_entry.vendor
+
                 for memory_entry in tab.asset_batch.memory_modules
                     memory_entry.$$capacity = "N/A"
                     if memory_entry.capacity

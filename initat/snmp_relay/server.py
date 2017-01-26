@@ -24,19 +24,18 @@ import time
 
 import zmq
 
-from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.host_monitoring import limits
+from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.snmp.process import SNMPProcessContainer
 from initat.snmp.sink import SNMPSink
 from initat.snmp_relay.config import global_config, IPC_SOCK_SNMP
 from initat.snmp_relay.schemes import SNMPNetObject, SNMPGeneralScheme, snmp_schemes, import_errors
-from initat.tools import configfile, logging_tools, process_tools, \
+from initat.tools import logging_tools, process_tools, \
     server_command, threading_tools, server_mixins
 
 
 class server_process(server_mixins.ICSWBasePool):
     def __init__(self):
-        self.__verbose = global_config["VERBOSE"]
         threading_tools.icswProcessPool.__init__(
             self,
             "main",
@@ -50,7 +49,6 @@ class server_process(server_mixins.ICSWBasePool):
         self.register_exception("hup_error", self._hup_error)
         self.register_func("int_error", self._int_error)
         self.register_func("snmp_finished", self._snmp_finished)
-        self.__verbose = global_config["VERBOSE"]
         self.__max_calls = global_config["MAX_CALLS"]
         self.CC.log_config()
         # init luts
@@ -93,7 +91,7 @@ class server_process(server_mixins.ICSWBasePool):
             global_config["SNMP_PROCESSES"],
             self.__max_calls,
             {
-                "VERBOSE": global_config["VERBOSE"],
+                "VERBOSE": global_config["DEBUG"],
                 "LOG_NAME": global_config["LOG_NAME"],
                 "LOG_DESTINATION": global_config["LOG_DESTINATION"],
             },
@@ -120,7 +118,7 @@ class server_process(server_mixins.ICSWBasePool):
     def _get_host_object(self, host_name, snmp_community, snmp_version):
         host_tuple = (host_name, snmp_community, snmp_version)
         if host_tuple not in self.__host_objects:
-            self.__host_objects[host_tuple] = SNMPNetObject(self.log, self.__verbose, host_name, snmp_community, snmp_version)
+            self.__host_objects[host_tuple] = SNMPNetObject(self.log, global_config["DEBUG"], host_name, snmp_community, snmp_version)
         return self.__host_objects[host_tuple]
 
     def _int_error(self, err_cause):
@@ -239,7 +237,7 @@ class server_process(server_mixins.ICSWBasePool):
 
     def _start_snmp_fetch(self, scheme):
         _cache_ok, num_cached, num_refresh, num_pending, num_hot_enough = scheme.pre_snmp_start(self.log)
-        if self.__verbose:
+        if global_config["DEBUG_LEVEL"]:
             self.log("{}info for {}: {}".format(
                 "[F] " if num_refresh else "[I] ",
                 scheme.net_obj.name,
@@ -265,7 +263,7 @@ class server_process(server_mixins.ICSWBasePool):
             self._snmp_end(scheme)
 
     def _snmp_end(self, scheme):
-        if self.__verbose > 3:
+        if global_config["DEBUG_LEVEL"] > 3:
             self.log(
                 "snmp_end for {}, return_sent is {}, xml_input is {}".format(
                     scheme.net_obj.name,
@@ -288,7 +286,7 @@ class server_process(server_mixins.ICSWBasePool):
             body = zmq_sock.recv()
         parameter_ok = False
         xml_input = body.startswith("<")
-        if self.__verbose > 3:
+        if global_config["DEBUG_LEVEL"] > 3:
             self.log("received {:d} bytes, xml_input is {}".format(len(body), str(xml_input)))
         if xml_input:
             srv_com = server_command.srv_command(source=body)
@@ -395,7 +393,7 @@ class server_process(server_mixins.ICSWBasePool):
                 if s_type:
                     host = self._resolve_address(host)
                     host_obj = self._get_host_object(host, snmp_community, snmp_version)
-                    if self.__verbose:
+                    if global_config["DEBUG_LEVEL"]:
                         self.log(
                             "got request for scheme {} (host {}, community {}, version {:d}, envelope  {}, timeout {:d})".format(
                                 scheme,
@@ -447,7 +445,7 @@ class server_process(server_mixins.ICSWBasePool):
         elif not xml_input:
             self._send_return(envelope, limits.mon_STATE_CRITICAL, "message format error")
         self.__num_messages += 1
-        if self.__verbose > 3:
+        if global_config["DEBUG_LEVEL"] > 3:
             self.log("recv() done")
         if not self.__num_messages % 100:
             cur_mem = process_tools.get_mem_info(self.CC.msi_block.get_unique_pids() if self.CC.msi_block else 0)
@@ -462,7 +460,7 @@ class server_process(server_mixins.ICSWBasePool):
             self.log(self.spc.get_usage())
 
     def _send_return(self, envelope, ret_state, ret_str):
-        if self.__verbose > 3:
+        if global_config["DEBUG_LEVEL"] > 3:
             self.log(
                 "_send_return, envelope is {} ({:d}, {})".format(
                     envelope,
@@ -488,7 +486,7 @@ class server_process(server_mixins.ICSWBasePool):
         if env_str in self.__ret_dict:
             cur_time = time.time()
             if cur_time - self.__ret_dict[env_str] < max_sto:
-                if self.__verbose > 2:
+                if global_config["DEBUG_LEVEL"] > 2:
                     self.log(
                         "sleeping to avoid too fast resending ({:.5f} < {:.5f}) for {}".format(
                             cur_time - self.__ret_dict[env_str],
@@ -499,7 +497,7 @@ class server_process(server_mixins.ICSWBasePool):
                 time.sleep(max_sto)
             del_keys = [key for key, value in self.__ret_dict.items() if abs(value - cur_time) > 60 and key != env_str]
             if del_keys:
-                if self.__verbose > 2:
+                if global_config["DEBUG_LEVEL"] > 2:
                     self.log(
                         "removing {}".format(
                             logging_tools.get_plural("timed-out key", len(del_keys))

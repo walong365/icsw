@@ -22,8 +22,6 @@
 
 """ scan all apps in backbone for new ICSW rights """
 
-
-
 import pprint
 import time
 
@@ -90,14 +88,15 @@ class Command(BaseCommand):
     def modify(self, **options):
         verbosity = int(options.get("verbosity"))
 
-        excluded_apps = set()
         excluded_models = set()
         app_list = apps.get_app_configs()
         present_perms = self._get_perms()
         found_perms = set()
         found_perms_list = []
         full_dict = {
-            (cur_perm.content_type.app_label, cur_perm.codename, cur_perm.content_type.model): cur_perm for cur_perm in present_perms
+            (
+                cur_perm.content_type.app_label, cur_perm.codename, cur_perm.content_type.model
+            ): cur_perm for cur_perm in present_perms
         }
         created = 0
         for app_config in app_list:
@@ -108,12 +107,15 @@ class Command(BaseCommand):
                 start_time = time.time()
                 _local_created = 0
                 errors = []
-                if hasattr(model, "CSW_Meta") and hasattr(model.CSW_Meta, "permissions"):
+                if hasattr(model, "ICSW_Meta") and hasattr(model.ICSW_Meta, "permissions"):
+                    if model._meta.proxy:
+                        # ignore proxy models
+                        continue
                     app_label = model._meta.app_label
                     cur_ct = ContentType.objects.get_for_model(model)
                     model_name = cur_ct.model
                     # print app_label, cur_ct, dir(model._meta), model._meta.model_name
-                    for code_name, name, valid_for_object_level in model.CSW_Meta.permissions:
+                    for code_name, name, valid_for_object_level in model.ICSW_Meta.permissions:
                         # print "found", app_label, code_name
                         found_perms_list.append((app_label, code_name, cur_ct.model))
                         found_perms.add((app_label, code_name, model_name))
@@ -158,7 +160,9 @@ class Command(BaseCommand):
                     )
                     if verbosity > 1:
                         pprint.pprint(errors)
-        dup_keys = {key for key in found_perms if found_perms_list.count(key) > 1}
+        dup_keys = {
+            key for key in found_perms if found_perms_list.count(key) > 1
+        }
         unique_keys = {key for key in found_perms}
         print("Permissions found: {:d}".format(len(unique_keys)))
         if dup_keys:

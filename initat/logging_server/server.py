@@ -41,8 +41,7 @@ from initat.tools.server_mixins import ICSWBasePool
 
 
 class MainProcess(ICSWBasePool):
-    def __init__(self, options, global_config):
-        self.__options = options
+    def __init__(self, global_config):
         # log structures
         self.__log_cache = []
         self.__handles = {}

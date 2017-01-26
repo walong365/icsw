@@ -1494,6 +1494,7 @@ angular.module(
         return parseInt((dots[0] * 16777216) + (dots[1] * 65536) + (dots[2] * 256) + (dots[3]))
 
     salt_nmap_scan = (nmap_scan) ->
+        nmap_scan.$$displayed = true
         nmap_scan.$$created = moment(nmap_scan.date).format("YYYY-MM-DD HH:mm:ss")
 
         if nmap_scan.devices_found == null
@@ -1549,6 +1550,9 @@ angular.module(
     nmap_scan_to_network_lut = {}
     nmap_scan_lut = {}
     nmap_scans_websocket = undefined
+
+    selected_button_class = "btn btn-success"
+    unselected_button_class = "btn btn-default"
 
     return {
         get_tabs: () ->
@@ -1860,7 +1864,57 @@ angular.module(
                         show_difference_text: "Show Difference (select two scans)"
                         show_difference_disabled: true
                         selected_nmap_scans: 0
+                        all_scans_filter_class: selected_button_class
+                        successful_scans_filter_class: unselected_button_class
+                        unsuccessful_filter_class: unselected_button_class
                     }
+
+                    reset_selection = () ->
+                        tab.selected_nmap_scans = 0
+                        for nmap_scan in tab.nmap_scans
+                            nmap_scan.$$selected = false
+
+                    select_filter_button = (class_name) ->
+                        tab.all_scans_filter_class = unselected_button_class
+                        tab.successful_scans_filter_class = unselected_button_class
+                        tab.unsuccessful_filter_class = unselected_button_class
+
+                        tab[class_name] = selected_button_class
+
+                    tab.apply_all_scans_filter = () ->
+                        select_filter_button("all_scans_filter_class")
+                        reset_selection()
+
+                        for nmap_scan in tab.nmap_scans
+                            nmap_scan.$$displayed = true
+
+                    tab.apply_successful_scans_filter_class = () ->
+                        select_filter_button("successful_scans_filter_class")
+                        reset_selection()
+
+                        for nmap_scan in tab.nmap_scans
+                            nmap_scan.$$displayed = false
+                            if nmap_scan.error_string == null
+                                nmap_scan.$$displayed = true
+
+                    tab.apply_unsuccessful_scans_filter_class = () ->
+                        select_filter_button("unsuccessful_filter_class")
+                        reset_selection()
+
+                        for nmap_scan in tab.nmap_scans
+                            nmap_scan.$$displayed = false
+                            if nmap_scan.error_string != null
+                                nmap_scan.$$displayed = true
+
+                    tab.build_nmap_scan_error_tooltip = (nmap_scan) ->
+                        if nmap_scan.error_string != null
+                            info_f = [
+                                "<div class='text-left'>",
+                                nmap_scan.error_string,
+                                "<div>"
+                            ]
+                            return info_f.join("")
+                        return ""
 
                     tab.close_sub_tab = (to_be_closed_tab) ->
                         $timeout(
@@ -2050,9 +2104,6 @@ angular.module(
                     salt_nmap_device(device, ip_to_device_lut)
                     if device.mac
                         mac_device_lut[device.mac] = device
-
-                selected_button_class = "btn btn-success"
-                unselected_button_class = "btn btn-default"
 
                 sub_tab = {
                     nmap_scan: {
@@ -2330,9 +2381,6 @@ angular.module(
             }
 
             tab.sub_tabs.push(sub_tab)
-
-        display_nmap_scan_error_messsage: (nmap_scan) ->
-            toaster.pop("error", "", nmap_scan.error_string)
 
         # range functions
         autorange_set : (edit_obj) ->

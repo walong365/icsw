@@ -30,9 +30,11 @@ sys.path = [
     entry for entry in sys.path if entry.startswith("/opt")
 ]
 
+import argparse
 import grp
 import os
 import pprint
+import re
 import pwd
 import socket
 import stat
@@ -68,6 +70,81 @@ def sec_to_str(in_sec):
     dt -= diff_m * 60
     out_f = "%2d:%02d:%02d:%02d" % (diff_d, diff_h, diff_m, dt)
     return out_f
+
+
+def parse_file(global_config, file_name, scan_section="global"):
+    act_section = "global"
+    pf1 = re.compile("^(?P<key>\S+)\s*=\s*(?P<value>.+)\s*$")
+    pf2 = re.compile("^(?P<key>\S+)\s+(?P<value>.+)\s*$")
+    sec_re = re.compile("^\[(?P<section>\S+)\]$")
+    if os.path.isfile(file_name):
+        try:
+            lines = [line.strip() for line in open(file_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")]
+        except:
+            global_config.log(
+                "Error while reading file {}: {}".format(
+                    file_name,
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+        else:
+            for line in lines:
+                sec_m = sec_re.match(line)
+                if sec_m:
+                    act_section = sec_m.group("section")
+                else:
+                    for mo in [pf1, pf2]:
+                        ma = mo.match(line)
+                        if ma:
+                            break
+                    if act_section == scan_section:
+                        if ma:
+                            key, value = (ma.group("key"), ma.group("value"))
+                            try:
+                                cur_type = global_config.get_type(key)
+                            except KeyError:
+                                global_config.log(
+                                    "Error: key {} not defined in dictionary for get_type".format(
+                                        key
+                                    ),
+                                    logging_tools.LOG_LEVEL_ERROR
+                                )
+                            else:
+                                # interpret using eval
+                                if cur_type == "s":
+                                    if value not in ["\"\""]:
+                                        if value[0] == value[-1] and value[0] in ['"', "'"]:
+                                            pass
+                                        else:
+                                            # escape strings
+                                            value = "\"{}\"".format(value)
+                                try:
+                                    global_config[key] = (
+                                        eval("{}".format(value)),
+                                        "{}, sec {}".format(file_name, act_section)
+                                    )
+                                except KeyError:
+                                    global_config.log(
+                                        "Error: key {} not defined in dictionary".format(
+                                            key
+                                        ),
+                                        logging_tools.LOG_LEVEL_ERROR
+                                    )
+                        else:
+                            global_config.log(
+                                "Error parsing line '{}'".format(
+                                    str(line)
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
+    else:
+        global_config.log(
+            "Cannot find file {}".format(
+                file_name
+            ),
+            logging_tools.LOG_LEVEL_ERROR
+        )
 
 
 class RMSJob(object):
@@ -731,7 +808,8 @@ class RMSJob(object):
             )
             for section in sections:
                 try:
-                    global_config.parse_file(
+                    parse_file(
+                        global_config,
                         global_config["CONFIG_FILE"],
                         section=section
                     )
@@ -1493,7 +1571,7 @@ class ProcessPool(threading_tools.icswProcessPool):
             else:
                 global_config.add_config_entries([("CONFIG_FILE", configfile.str_c_var(conf_file))])
                 self.log("reading config from {}".format(conf_file))
-                global_config.parse_file(global_config["CONFIG_FILE"])
+                global_config.parse_file(global_config, global_config["CONFIG_FILE"])
 
     def show_cnf(self):
         print("[global]")
@@ -1517,11 +1595,10 @@ except:
     global_config = configfile.get_global_config(process_tools.get_programm_name(), single_process=True)
 
 
-def zmq_main_code():
+def main_code():
     # brand new 0MQ-based code
     global_config.add_config_entries(
         [
-            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
             ("LOG_NAME", configfile.str_c_var("proepilogue")),
             ("MAX_RUN_TIME", configfile.int_c_var(60)),
@@ -1536,11 +1613,10 @@ def zmq_main_code():
             ("UMOUNT_CALL", configfile.bool_c_var(True)),
         ]
     )
-    global_config.parse_file()
-    options = global_config.handle_commandline(
-        positional_arguments=True,
-        positional_arguments_optional=True,
-    )
+
+    my_parser = argparse.ArgumentParser()
+    my_parser.add_argument("arguments", nargs="*")
+    options = my_parser.parse_args()
     _exit = False
     if len(options.arguments) in [5, 8]:
         global_config.add_config_entries(
@@ -1596,4 +1672,4 @@ def zmq_main_code():
         return -1
 
 if __name__ == "__main__":
-    sys.exit(zmq_main_code())
+    sys.exit(main_code())

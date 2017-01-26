@@ -32,7 +32,8 @@ from initat.tools import net_tools, server_command
 
 def ClientCode(global_config):
     from initat.host_monitoring import modules
-    if global_config["VERBOSE"] > 1:
+    from initat.debug import ICSW_DEBUG_MODE
+    if ICSW_DEBUG_MODE:
         print("{:d} import errors:".format(len(modules.IMPORT_ERRORS)))
         for mod, com, _str in modules.IMPORT_ERRORS:
             print("{:<30s} {:<20s} {}".format(com, mod.split(".")[-1], _str))
@@ -40,8 +41,7 @@ def ClientCode(global_config):
         global_config["HOST"],
         global_config["COMMAND_PORT"]
     )
-    arg_stuff = global_config.get_argument_stuff()
-    arg_list = arg_stuff["arg_list"]
+    arg_list = global_config["ARGUMENTS"]
     com_name = arg_list.pop(0)
     if com_name in modules.command_dict:
         srv_com = server_command.srv_command(command=com_name)

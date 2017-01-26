@@ -60,7 +60,6 @@ RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 
 class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRemoteServerMixin):
     def __init__(self):
-        self.__verbose = global_config["VERBOSE"]
         long_host_name, _mach_name = process_tools.get_fqdn()
         threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
         self.CC.init(icswServiceEnum.collectd_server, global_config)
@@ -72,6 +71,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                 ("MEMCACHE_PORT", configfile.int_c_var(self.CC.Instance.get_port_dict("memcached", command=True))),
             ]
         )
+        self.__verbose = global_config["VERBOSE"]
         # close connection (daemonizing)
         # db_tools.close_connection()
         self.CC.read_config_from_db(

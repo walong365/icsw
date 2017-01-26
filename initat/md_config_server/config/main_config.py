@@ -24,7 +24,7 @@ import shutil
 
 from django.db.models import Q
 
-from initat.cluster.backbone.models import device, user
+from initat.cluster.backbone.models import device, user, MonCheckCommandSystemNames
 from initat.md_config_server.config import FlatMonBaseConfig, MonFileContainer, MonDirContainer, \
     CfgEmitStats
 from initat.tools import logging_tools, process_tools
@@ -374,22 +374,32 @@ class MainConfig(dict, NagVisMixin):
                 # general data:
                 main_values.extend(
                     [
-                        # ("host_perfdata_command"   , "process-host-perfdata"),
-                        # ("service_perfdata_command", "process-service-perfdata"),
                         ("service_perfdata_file_mode", "a"),
                         ("service_perfdata_file_processing_interval", "15"),
-                        ("service_perfdata_file_processing_command", "process-service-perfdata-file"),
+                        (
+                            "service_perfdata_file_processing_command",
+                            MonCheckCommandSystemNames.process_service_perfdata_file.value,
+                        ),
                         ("host_perfdata_file_mode", "a"),
                         ("host_perfdata_file_processing_interval", "15"),
-                        ("host_perfdata_file_processing_command", "process-host-perfdata-file"),
+                        (
+                            "host_perfdata_file_processing_command",
+                            MonCheckCommandSystemNames.process_host_perfdata_file.value,
+                        ),
                     ]
                 )
         else:
             # add global event handlers
             main_values.extend(
                 [
-                    ("ochp_command", "ochp-command"),
-                    ("ocsp_command", "ocsp-command"),
+                    (
+                        "ochp_command",
+                        MonCheckCommandSystemNames.ochp_command.value,
+                    ),
+                    (
+                        "ocsp_command",
+                        MonCheckCommandSystemNames.ocsp_command.value,
+                    ),
                     ("stalking_event_handlers_for_hosts", 1),
                     ("stalking_event_handlers_for_services", 1),
                 ]

@@ -27,8 +27,8 @@ from lxml import etree
 from lxml.builder import E
 
 from initat.cluster.backbone.models import MachineVector, MVStructEntry
-from initat.rrd_grapher.config import global_config
 from initat.tools import logging_tools, process_tools, server_command
+from .config import global_config
 
 
 class CompoundEntry(object):

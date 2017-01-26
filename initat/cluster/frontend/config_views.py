@@ -130,9 +130,6 @@ class alter_config(View):
                 mc_obj = mon_check_command.objects.get(Q(pk=mc_pk))
             else:
                 mc_obj = None
-            config_pks.add(conf_pk)
-            # checked = bool(int(_post["value"]))
-            config_obj = config.objects.get(Q(pk=conf_pk))
             device_obj = device.objects.get(Q(pk=dev_pk))
             if dev_pk == meta_pk:
                 meta_obj = device_obj
@@ -141,125 +138,185 @@ class alter_config(View):
                 meta_obj = device.objects.get(Q(pk=meta_pk))
                 is_meta = False
             devs_in_group = meta_obj.device_group.device_group.all().count()
-            try:
-                local_dc = device_config.objects.get(Q(config=config_obj) & Q(device=device_obj))
-            except device_config.DoesNotExist:
-                local_dc = None
-                local_checked = False
-            except device_config.MultipleObjectsReturned:
-                # hm, fix internal structure error
-                all_local_dcs = device_config.objects.filter(Q(config=config_obj) & Q(device=device_obj))
-                local_dc = all_local_dcs.pop(0)
-                all_local_dcs.delete()
-                local_checked = True
-            else:
-                local_checked = True
-            if is_meta:
-                meta_checked = local_checked
-                meta_dc = local_dc
-            else:
+            if conf_pk:
+                # config handling
+                config_pks.add(conf_pk)
+                # checked = bool(int(_post["value"]))
+                config_obj = config.objects.get(Q(pk=conf_pk))
                 try:
-                    meta_dc = device_config.objects.get(Q(config=config_obj) & Q(device=meta_obj))
+                    local_dc = device_config.objects.get(Q(config=config_obj) & Q(device=device_obj))
                 except device_config.DoesNotExist:
-                    meta_dc = None
-                    meta_checked = False
+                    local_dc = None
+                    local_checked = False
+                except device_config.MultipleObjectsReturned:
+                    # hm, fix internal structure error
+                    all_local_dcs = device_config.objects.filter(Q(config=config_obj) & Q(device=device_obj))
+                    local_dc = all_local_dcs.pop(0)
+                    all_local_dcs.delete()
+                    local_checked = True
                 else:
-                    meta_checked = True
-            logger.info(
-                "device {}{} / config {}: {} / {}, {} in device_group{}".format(
-                    str(device_obj),
-                    " [MD]" if is_meta else "",
-                    str(config_obj),
-                    "local set" if local_checked else "local unset",
-                    "meta set" if local_checked else "meta unset",
-                    logging_tools.get_plural("device", devs_in_group),
-                    "mc is {}".format(str(mc_obj)) if mc_obj else "",
+                    local_checked = True
+                if is_meta:
+                    meta_checked = local_checked
+                    meta_dc = local_dc
+                else:
+                    try:
+                        meta_dc = device_config.objects.get(Q(config=config_obj) & Q(device=meta_obj))
+                    except device_config.DoesNotExist:
+                        meta_dc = None
+                        meta_checked = False
+                    else:
+                        meta_checked = True
+                logger.info(
+                    "device {}{} / config {}: {} / {}, {} in device_group{}".format(
+                        str(device_obj),
+                        " [MD]" if is_meta else "",
+                        str(config_obj),
+                        "local set" if local_checked else "local unset",
+                        "meta set" if meta_checked else "meta unset",
+                        logging_tools.get_plural("device", devs_in_group),
+                        "mc is {}".format(str(mc_obj)) if mc_obj else "",
+                    )
                 )
-            )
-            if is_meta:
-                # local and meta are ident
-                if local_checked:
-                    # check if we can safely remove the config
-                    delete_object(request, meta_dc, xml_log=False)
-                    request.xml_response.info("removed meta config {}".format(str(config_obj)), logger)
+                if is_meta:
+                    # local and meta are ident
+                    if local_checked:
+                        # check if we can safely remove the config
+                        delete_object(request, meta_dc, xml_log=False)
+                        request.xml_response.info("removed meta config {}".format(str(config_obj)), logger)
+                    else:
+                        to_remove = device_config.objects.filter(Q(config=config_obj) & Q(device__device_group=meta_obj.device_group))
+                        # check if we can safely set the meta device_config
+                        set_meta = True
+                        if len(to_remove):
+                            if any([True for del_obj in to_remove if get_related_models(del_obj)]):
+                                request.xml_response.error("device configs are in use (hence protected)", logger)
+                                set_meta = False
+                            else:
+                                _to_del = len(to_remove)
+                                to_remove.delete()
+                                request.xml_response.info(
+                                    "removed config {} from {}".format(
+                                        str(config_obj),
+                                        logging_tools.get_plural("device", _to_del),
+                                    ),
+                                    logger
+                                )
+                        if set_meta:
+                            _meta_dc = device_config(
+                                device=device_obj,
+                                config=config_obj
+                            ).save()
+                            request.xml_response.info("added meta config {}".format(str(config_obj)), logger)
                 else:
-                    to_remove = device_config.objects.filter(Q(config=config_obj) & Q(device__device_group=meta_obj.device_group))
-                    # check if we can safely set the meta device_config
-                    set_meta = True
-                    if len(to_remove):
-                        if any([True for del_obj in to_remove if get_related_models(del_obj)]):
-                            request.xml_response.error("device configs are in use (hence protected)", logger)
-                            set_meta = False
-                        else:
-                            _to_del = len(to_remove)
-                            to_remove.delete()
-                            request.xml_response.info(
-                                "removed config {} from {}".format(
-                                    str(config_obj),
-                                    logging_tools.get_plural("device", _to_del),
-                                ),
-                                logger
-                            )
-                    if set_meta:
-                        _meta_dc = device_config(
+                    # handling of actions for non-meta devices
+                    if not local_checked and not meta_checked:
+                        local_dc = device_config(
                             device=device_obj,
                             config=config_obj
                         ).save()
-                        request.xml_response.info("added meta config {}".format(str(config_obj)), logger)
-            else:
-                # handling of actions for non-meta devices
-                if not local_checked and not meta_checked:
-                    local_dc = device_config(
-                        device=device_obj,
-                        config=config_obj
-                    ).save()
-                    request.xml_response.info("added config {}".format(str(config_obj)), logger)
-                elif local_checked:
-                    # delete local config
-                    # check if we can safely remove the config
-                    if _mode == "mon":
-                        mc_pks.add(mc_obj.idx)
-                        toggle_exclude_mon_device(request, mc_obj, device_obj)
-                    else:
-                        delete_object(request, local_dc, xml_log=False)
-                        request.xml_response.info("removed config {}".format(str(config_obj)), logger)
-                elif meta_checked and not local_checked:
-                    # create local config, remove meta config, set all other device configs
-                    if _mode == "mon":
-                        mc_pks.add(mc_obj.idx)
-                        toggle_exclude_mon_device(request, mc_obj, device_obj)
-                    else:
-                        if get_related_models(meta_dc):
-                            request.xml_response.error("meta config {} is in use".format(str(config_obj)), logger)
+                        request.xml_response.info("added config {}".format(str(config_obj)), logger)
+                    elif local_checked:
+                        # delete local config
+                        # check if we can safely remove the config
+                        if _mode == "mon":
+                            mc_pks.add(mc_obj.idx)
+                            toggle_exclude_mon_device(request, mc_obj, device_obj)
                         else:
-                            delete_object(request, meta_dc, xml_log=False)
-                            for set_dev in meta_obj.device_group.device_group.all().exclude(Q(pk__in=[meta_obj.pk, device_obj.pk])):
-                                device_config(
-                                    device=set_dev,
-                                    config=config_obj,
-                                ).save()
-                            request.xml_response.warn(
-                                "removed meta config {} and added {}".format(
-                                    str(config_obj),
-                                    logging_tools.get_plural("device", devs_in_group - 1)
-                                ),
-                                logger
-                            )
-                else:
-                    # meta and local checked, should never happen ...
-                    request.xml_response.warn(
-                        "both local and meta set, removing local config",
-                        logger
+                            delete_object(request, local_dc, xml_log=False)
+                            request.xml_response.info("removed config {}".format(str(config_obj)), logger)
+                    elif meta_checked and not local_checked:
+                        # create local config, remove meta config, set all other device configs
+                        if _mode == "mon":
+                            mc_pks.add(mc_obj.idx)
+                            toggle_exclude_mon_device(request, mc_obj, device_obj)
+                        else:
+                            if get_related_models(meta_dc):
+                                request.xml_response.error("meta config {} is in use".format(str(config_obj)), logger)
+                            else:
+                                delete_object(request, meta_dc, xml_log=False)
+                                for set_dev in meta_obj.device_group.device_group.all().exclude(Q(pk__in=[meta_obj.pk, device_obj.pk])):
+                                    device_config(
+                                        device=set_dev,
+                                        config=config_obj,
+                                    ).save()
+                                request.xml_response.warn(
+                                    "removed meta config {} and added {}".format(
+                                        str(config_obj),
+                                        logging_tools.get_plural("device", devs_in_group - 1)
+                                    ),
+                                    logger
+                                )
+                    else:
+                        # meta and local checked, should never happen ...
+                        request.xml_response.warn(
+                            "both local and meta set, removing local config",
+                            logger
+                        )
+                        local_dc.remove()
+            else:
+                # moncheck_command handling
+                mc_sel = mc_obj.devices.all().values_list("idx", flat=True)
+                mc_pks.add(mc_obj.idx)
+                local_checked = device_obj.idx in mc_sel
+                meta_checked = meta_obj.idx in mc_sel
+                logger.info(
+                    "device {}{} / MonCheck {}: {} / {}, {} in device_group".format(
+                        str(device_obj),
+                        " [MD]" if is_meta else "",
+                        str(mc_obj),
+                        "local set" if local_checked else "local unset",
+                        "meta set" if meta_checked else "meta unset",
+                        logging_tools.get_plural("device", devs_in_group),
                     )
-                    local_dc.remove()
+                )
+                if is_meta:
+                    if local_checked:
+                        # check if we can safely remove the config
+                        mc_obj.devices.remove(meta_obj)
+                        request.xml_response.info("removed meta MonCheck {}".format(str(mc_obj)), logger)
+                    else:
+                        mc_obj.devices.remove(*device.objects.filter(Q(device_group=meta_obj.device_group)))
+                        mc_obj.devices.add(meta_obj)
+                        request.xml_response.info("added meta MonCheck {}".format(str(mc_obj)), logger)
+                else:
+                    if not local_checked and not meta_checked:
+                        # add m2m
+                        mc_obj.devices.add(device_obj)
+                        request.xml_response.info("added MonCheck {}".format(str(mc_obj)), logger)
+                    elif local_checked:
+                        # delete m2m
+                        mc_obj.devices.remove(device_obj)
+                        request.xml_response.info("removed MonCheck {}".format(str(mc_obj)), logger)
+                    elif meta_checked and not local_checked:
+                        mc_obj.devices.remove(meta_obj)
+                        for set_dev in meta_obj.device_group.device_group.all().exclude(Q(pk__in=[meta_obj.pk, device_obj.pk])):
+                            mc_obj.devices.add(set_dev)
+                        request.xml_response.warn(
+                            "removed meta MonCheck {} and added {}".format(
+                                str(mc_obj),
+                                logging_tools.get_plural("device", devs_in_group - 1)
+                            ),
+                            logger
+                        )
+                    else:
+                        # meta and local checked, should never happen ...
+                        request.xml_response.warn(
+                            "both local and meta MonCheck set, removing local MonCheck",
+                            logger
+                        )
+                        mc_obj.devices.remove(device_obj)
 
         # check exclusion lists
         changeset = E.changeset()
+
+        # excluded monchecks
+
         for mc in mon_check_command.objects.filter(
             Q(config__in=config_pks) | Q(idx__in=mc_pks)
         ).prefetch_related("exclude_devices"):
             changeset.append(
-                E.mon_check_command(
+                E.mon_check_command_excl(
                     *[
                         E.exclude(
                             dev_idx="{:d}".format(dev_idx)
@@ -268,6 +325,25 @@ class alter_config(View):
                     pk="{:d}".format(mc.idx)
                 )
             )
+
+        # moncheck devices
+
+        for mc in mon_check_command.objects.filter(
+            Q(idx__in=mc_pks)
+        ).prefetch_related("devices"):
+            changeset.append(
+                E.mon_check_command(
+                    *[
+                        E.device(
+                            dev_idx="{:d}".format(dev_idx)
+                        ) for dev_idx in mc.devices.all().values_list("idx", flat=True)
+                    ],
+                    pk="{:d}".format(mc.idx)
+                )
+            )
+
+        # selected configs
+
         for pk in config_pks:
             changeset.append(
                 E.config(

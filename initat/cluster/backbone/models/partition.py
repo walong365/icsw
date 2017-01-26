@@ -64,7 +64,7 @@ class partition_fs(models.Model):
     def __str__(self):
         return self.descr
 
-    class CSW_Meta:
+    class ICSW_Meta:
         permissions = (
             ("modify_partitions", "modify partitions", False),
         )
@@ -403,7 +403,7 @@ class partition_table(models.Model):
         db_table = 'partition_table'
         verbose_name = "Partition: Table"
 
-    class CSW_Meta:
+    class ICSW_Meta:
         fk_ignore_list = ["partition_disc", "sys_partition", "lvm_lv", "lvm_vg"]
 
 
