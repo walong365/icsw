@@ -42,6 +42,7 @@ MOVE .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64 .\host_monitor_wi
 .\host_monitor_windows\python.exe -m pip install zmq
 .\host_monitor_windows\python.exe -m pip install psutil
 .\host_monitor_windows\python.exe -m pip install wmi
+.\host_monitor_windows\python.exe -m pip install inflection
 
 XCOPY .\syslog.py .\host_monitor_windows\Lib\site-packages\
 
@@ -62,10 +63,7 @@ RMDIR /s /q .\host_monitor_windows\Tools
 RMDIR /s /q .\host_monitor_windows\Doc
 
 XCOPY .\bin\nssm.exe .\host_monitor_windows\
-
-XCOPY .\scripts\dmidecode212.exe .\host_monitor_windows\
-:: XCOPY .\scripts\lspci.exe .\host_monitor_windows\
-:: XCOPY .\scripts\finalize-install.py .\nscp\
+XCOPY .\bin\dmidecode212.exe .\host_monitor_windows\
 MOVE .\tmp\pciutils-%PCIUTILS_VERSION%-win32 .\host_monitor_windows\pciutils
 
 MOVE .\host_monitor_windows .\nscp

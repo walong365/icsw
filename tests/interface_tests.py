@@ -1,4 +1,4 @@
-#!/usr/bin/python3.4 -Ot
+#!/usr/bin/python3-init -Ot
 
 import sys
 import unittest
