@@ -23,7 +23,6 @@
 
 import os
 
-from initat.client_version import VERSION_STRING
 from initat.meta_server.config import global_config
 from initat.meta_server.server import MainProcess
 from initat.tools import configfile
@@ -34,9 +33,6 @@ def main():
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ]
-    )
-    options = global_config.handle_commandline(
-        description="meta-server, version is {}".format(VERSION_STRING),
     )
     MainProcess().loop()
     os._exit(0)

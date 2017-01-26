@@ -22,10 +22,11 @@
 import re
 import sys
 import time
-
-import zmq
 from enum import IntEnum
 
+import zmq
+
+from initat.debug import ICSW_DEBUG_MODE, ICSW_DEBUG_LEVEL
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, threading_tools, server_command, \
     configfile, config_store, uuid_tools, logging_functions
@@ -208,6 +209,29 @@ class ConfigCheckObject(object):
                     ]
                 )
 
+            if "DEBUG" not in global_config:
+                global_config.add_config_entries(
+                    [
+                        (
+                            "DEBUG",
+                            configfile.bool_c_var(
+                                ICSW_DEBUG_MODE,
+                            )
+                        ),
+                        (
+                            "DEBUG_LEVEL",
+                            configfile.bool_c_var(
+                                ICSW_DEBUG_LEVEL,
+                            )
+                        ),
+                        (
+                            "VERBOSE",
+                            configfile.bool_c_var(
+                                ICSW_DEBUG_LEVEL,
+                            )
+                        ),
+                    ]
+                )
             if "LOG_NAME" not in global_config:
                 _log_name = self._inst_xml[self.srv_type_enum.value.instance_name].attrib["name"]
                 if log_name_postfix:

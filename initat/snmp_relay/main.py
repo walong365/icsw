@@ -17,8 +17,6 @@
 #
 """ SNMP relayer """
 
-
-
 import os
 
 from initat.snmp_relay.config import global_config
@@ -36,13 +34,9 @@ def main():
     global_config.add_config_entries(
         [
             ("BASEDIR_NAME", configfile.str_c_var("/etc/sysconfig/snmp-relay.d")),
-            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("SNMP_PROCESSES", configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]", short_options="n")),
+            ("SNMP_PROCESSES", configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]")),
             ("MAIN_TIMER", configfile.int_c_var(60, help_string="main timer [%(default)d]")),
-            ("LOG_NAME", configfile.str_c_var("snmp-relay")),
-            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
             ("MAX_CALLS", configfile.int_c_var(100, help_string="number of calls per helper process [%(default)d]")),
-            ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
             (
                 "PID_NAME",
                 configfile.str_c_var(
@@ -53,10 +47,6 @@ def main():
                 )
             ),
         ]
-    )
-    _options = global_config.handle_commandline(
-        positional_arguments=False,
-        partial=False,
     )
     process_tools.ALLOW_MULTIPLE_INSTANCES = False
     run_code()

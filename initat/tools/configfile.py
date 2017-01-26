@@ -1,6 +1,6 @@
 # Copyright (C) 2001-2009,2011-2017 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of python-modules-base
+# this file is part of icsw-client
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,14 +19,12 @@
 #
 """ module for handling config files, now implemented using MemCache """
 
-import argparse
 import base64
 import bz2
 import datetime
 import functools
 import json
 import os
-import re
 import uuid
 
 from initat.icsw.service import instance
@@ -47,20 +45,14 @@ class _conf_var(object):
                 )
             )
         self.source = kwargs.get("source", "default")
-        self.fixed = kwargs.get("fixed", False)
-        self.is_global = kwargs.get("is_global", True)
         self.value = self.__default_val
         # for commandline options
         self._help_string = kwargs.get("help_string", None)
-        self._short_opts = kwargs.get("short_options", None)
-        self._choices = kwargs.get("choices", None)
-        self._nargs = kwargs.get("nargs", None)
         self._database_set = "database" in kwargs
         self._database = kwargs.get("database", False)
-        self._only_commandline = kwargs.get("only_commandline", False)
         kw_keys = set(kwargs) - {
-            "only_commandline", "info", "source", "fixed", "action", "is_global",
-            "help_string", "short_options", "choices", "nargs", "database",
+            "info", "source", "action",
+            "help_string", "database",
         }
         if kw_keys:
             print(
@@ -90,14 +82,8 @@ class _conf_var(object):
                 "kwargs": {
                     "info": self.__info,
                     "source": self.source,
-                    "fixed": self.fixed,
-                    "is_global": self.is_global,
                     "help_string": self._help_string,
-                    "short_options": self._short_opts,
-                    "choices": self._choices,
-                    "nargs": self._nargs,
                     "database": self.database,
-                    "only_commandline": self._only_commandline,
                 }
             }
         )
@@ -111,33 +97,6 @@ class _conf_var(object):
         else:
             return "no commandline option"
 
-    def add_argument(self, name, arg_parser):
-        if self._short_opts:
-            if len(self._short_opts) > 1:
-                opts = ["--{}".format(self._short_opts)]
-            else:
-                opts = ["-{}".format(self._short_opts)]
-        else:
-            opts = ["--{}".format(name.lower())]
-            if name.lower().count("_"):
-                opts.append("--{}".format(name.lower().replace("_", "-")))
-        kwargs = {
-            "dest": name,
-            "help": self._help_string,
-        }
-        if self._choices:
-            kwargs["choices"] = self._choices
-        if self._nargs:
-            kwargs["nargs"] = self._nargs
-        if self.argparse_type is None:
-            if self.short_type == "b":
-                # bool
-                arg_parser.add_argument(*opts, action="store_{}".format("false" if self.__default_val else "true"), default=self.__default_val, **kwargs)
-            else:
-                print("*? unknown short_type in _conf_var ?*", self.short_type, name, self.argparse_type)
-        else:
-            arg_parser.add_argument(*opts, type=self.argparse_type, default=self.value, **kwargs)
-
     @property
     def database(self):
         return self._database
@@ -145,22 +104,6 @@ class _conf_var(object):
     @database.setter
     def database(self, database):
         self._database = database
-
-    @property
-    def is_global(self):
-        return self.__is_global
-
-    @is_global.setter
-    def is_global(self, is_global):
-        self.__is_global = is_global
-
-    @property
-    def fixed(self):
-        return self.__fixed
-
-    @fixed.setter
-    def fixed(self, fixed):
-        self.__fixed = fixed
 
     @property
     def source(self):
@@ -198,24 +141,14 @@ class _conf_var(object):
                 _c_val = set(r_val)
             else:
                 _c_val = set([r_val])
-            if self._choices and _c_val - set(self._choices):
-                print(
-                    "ignoring value {} for {} (not in choices: {})".format(
-                        r_val,
-                        self.descr,
-                        str(self._choices),
-                    )
-                )
-            else:
-                self.value = r_val
-                if source and (source != "default" or self.source == "default"):
-                    self.source = source
+            self.value = r_val
+            if source and (source != "default" or self.source == "default"):
+                self.source = source
 
     def __str__(self):
-        return "{} (source {}, {}) : {}".format(
+        return "{} (source {}) : {}".format(
             self.descr,
             self.source,
-            "global" if self.__is_global else "local",
             self.pretty_print()
         )
 
@@ -554,7 +487,6 @@ class Configuration(object):
         self.__name = name
         self.__backend_init = False
         self.mc_prefix = ""
-        self.__verbose = kwargs.get("verbose", False)
         self.__spm = kwargs.pop("single_process_mode", False)
         self._reopen_mc(True)
         self.clear_log()
@@ -640,14 +572,8 @@ class Configuration(object):
         for key, value in entries:
             # check for override of database flag
             if not value._database_set and "database" in kwargs:
-                if self.__verbose:
-                    self.log("override database flag for '{}', setting to '{}'".format(key, str(kwargs["database"])))
                 value.database = kwargs["database"]
-            if key in self.__c_dict and self.__verbose:
-                self.log("Replacing config for key {}".format(key))
             self.__c_dict[key] = value
-            if self.__verbose:
-                self.log("Setting config for key {} to {}".format(key, value))
         self.__c_dict.update_mode = False
 
     @property
@@ -698,7 +624,6 @@ class Configuration(object):
                         f_obj.append(
                             [
                                 logging_tools.form_entry(""),
-                                logging_tools.form_entry(""),
                                 logging_tools.form_entry(entry),
                                 logging_tools.form_entry(str(idx)),
                                 logging_tools.form_entry("---"),
@@ -708,7 +633,6 @@ class Configuration(object):
                     f_obj.append(
                         [
                             logging_tools.form_entry(key, header="key"),
-                            logging_tools.form_entry(self.is_global(key) and "global" or "local", post_str=" : ", header="global"),
                             logging_tools.form_entry(self.pretty_print(key), header="value"),
                             logging_tools.form_entry(self.get_type(key), pre_str=", (", post_str=" from ", header="type"),
                             logging_tools.form_entry(self.get_source(key), post_str=")", header="source"),
@@ -742,185 +666,12 @@ class Configuration(object):
         return self.__c_dict[key].source
 
     @ConfigKeyError
-    def fixed(self, key):
-        return self.__c_dict[key].fixed
-
-    @ConfigKeyError
-    def is_global(self, key):
-        return self.__c_dict[key].is_global
-
-    @ConfigKeyError
-    def set_global(self, key, value):
-        self.__c_dict[key].is_global = value
-
-    @ConfigKeyError
     def database(self, key):
         return self.__c_dict[key].database
 
     @ConfigKeyError
     def get_type(self, key):
         return self.__c_dict[key].short_type
-
-    def parse_file(self, *args, **kwargs):
-        # only used in proepilogue, to be removed ...
-        # TODO, Fixme
-        if len(args):
-            file_name = args[0]
-        else:
-            file_name = os.path.join("/etc", "sysconfig", self.__name)
-        # kwargs:
-        # section ... only read arugments from the given section (if found)
-        scan_section = kwargs.get("section", "global")
-        act_section = "global"
-        pf1 = re.compile("^(?P<key>\S+)\s*=\s*(?P<value>.+)\s*$")
-        pf2 = re.compile("^(?P<key>\S+)\s+(?P<value>.+)\s*$")
-        sec_re = re.compile("^\[(?P<section>\S+)\]$")
-        if os.path.isfile(file_name):
-            try:
-                lines = [line.strip() for line in open(file_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")]
-            except:
-                self.log(
-                    "Error while reading file {}: {}".format(
-                        file_name,
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-            else:
-                for line in lines:
-                    sec_m = sec_re.match(line)
-                    if sec_m:
-                        act_section = sec_m.group("section")
-                    else:
-                        for mo in [pf1, pf2]:
-                            ma = mo.match(line)
-                            if ma:
-                                break
-                        if act_section == scan_section:
-                            if ma:
-                                key, value = (ma.group("key"), ma.group("value"))
-                                try:
-                                    cur_type = self.get_type(key)
-                                except KeyError:
-                                    self.log(
-                                        "Error: key {} not defined in dictionary for get_type".format(
-                                            key
-                                        ),
-                                        logging_tools.LOG_LEVEL_ERROR
-                                    )
-                                else:
-                                    # interpret using eval
-                                    if cur_type == "s":
-                                        if value not in ["\"\""]:
-                                            if value[0] == value[-1] and value[0] in ['"', "'"]:
-                                                pass
-                                            else:
-                                                # escape strings
-                                                value = "\"{}\"".format(value)
-                                    try:
-                                        self[key] = (
-                                            eval("{}".format(value)),
-                                            "{}, sec {}".format(file_name, act_section)
-                                        )
-                                    except KeyError:
-                                        self.log(
-                                            "Error: key {} not defined in dictionary".format(
-                                                key
-                                            ),
-                                            logging_tools.LOG_LEVEL_ERROR
-                                        )
-                                    else:
-                                        if self.__verbose:
-                                            self.log(
-                                                "Changing value of key {} to {}".format(
-                                                    key,
-                                                    self.__c_dict[key]
-                                                )
-                                            )
-                            else:
-                                self.log(
-                                    "Error parsing line '{}'".format(
-                                        str(line)
-                                    ),
-                                    logging_tools.LOG_LEVEL_ERROR
-                                )
-        else:
-            self.log(
-                "Cannot find file {}".format(
-                    file_name
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-
-    def _argparse_exit(self, status=0, message=None):
-        if message:
-            print(message)
-        self.exit_code = status
-
-    def _argparse_error(self, message):
-        if message:
-            print("_argparse_error:", message)
-        self.exit_code = 2
-
-    def get_argument_stuff(self):
-        return {
-            "positional_arguments": self.positional_arguments,
-            "other_arguments": self.other_arguments,
-            "arg_list": self.positional_arguments + self.other_arguments
-        }
-
-    def handle_commandline(self, *opt_args, **kwargs):
-        if len(opt_args):
-            opt_args = list(opt_args)
-        else:
-            opt_args = None
-        proxy_call = kwargs.pop("proxy_call", False)
-        pos_arguments = kwargs.pop("positional_arguments", False)
-        pos_arguments_optional = kwargs.pop("positional_arguments_optional", False)
-        partial = kwargs.pop("partial", False)
-        self.exit_code = None
-        my_parser = argparse.ArgumentParser(**kwargs)
-        if proxy_call:
-            # monkey-patch argparser if called from proxy
-            my_parser.exit = self._argparse_exit
-            my_parser.error = self._argparse_error
-        argparse_entries = []
-        for key in list(self.keys()):
-            c_var = self.get_cvar(key)
-            if c_var.is_commandline_option():
-                argparse_entries.append(key)
-                c_var.add_argument(key, my_parser)
-        if argparse_entries:
-            if pos_arguments:
-                my_parser.add_argument(
-                    "arguments",
-                    nargs="*" if pos_arguments_optional else "+",
-                    help="additional arguments"
-                )
-            try:
-                if partial:
-                    options, rest_args = my_parser.parse_known_args()
-                else:
-                    options, rest_args = (my_parser.parse_args(opt_args), [])
-            except:
-                # catch parse errors
-                if self.exit_code is not None:
-                    # set dummy values
-                    options, rest_args = (argparse.Namespace(), [])
-                else:
-                    raise
-            self.other_arguments = rest_args
-            if not self.exit_code:
-                # only handle options if exit_code is None
-                for key in argparse_entries:
-                    self[key] = getattr(options, key)
-                self.positional_arguments = options.arguments if pos_arguments else []
-        else:
-            options = argparse.Namespace()
-        if proxy_call:
-            return options, self.exit_code
-        else:
-            return options
 
 
 def get_global_config(c_name, single_process_mode=False, mc_enabled=True):

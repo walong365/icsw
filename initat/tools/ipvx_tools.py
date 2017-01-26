@@ -88,6 +88,9 @@ class IPv4(object):
     def __repr__(self):
         return self.__str_rep
 
+    def __format__(self, format):
+        return "{{:{}}}".format(format).format(str(self))
+
     def __len__(self):
         return len(str(self))
 

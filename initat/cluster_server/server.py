@@ -39,7 +39,7 @@ from .license_checker import LicenseChecker
 
 
 class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServerMixin, ServerBackgroundNotifyMixin):
-    def __init__(self, options):
+    def __init__(self):
         threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
         long_host_name, mach_name = process_tools.get_fqdn()
         self.__run_command = True if global_config["COMMAND"].strip() else False
@@ -94,7 +94,6 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
         self._log_config()
         self._check_uuid()
         self._load_modules()
-        self.__options = options
         self._set_next_backup_time(True)
         if self.__run_command:
             self.register_timer(self._run_command, 3600, instant=True)
@@ -249,7 +248,7 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
         self.log("direct command {}".format(global_config["COMMAND"]))
         cur_com = server_command.srv_command(command=global_config["COMMAND"])
         cur_com["command"].attrib["via_comline"] = "1"
-        for keyval in self.__options.OPTION_KEYS:
+        for keyval in global_config["OPTION_KEYS"]:
             try:
                 key, value = keyval.split(":", 1)
             except:

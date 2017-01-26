@@ -58,12 +58,7 @@ def read_config_from_db(g_config, sql_info, init_list=[]):
                 Q(config=sql_info.config) &
                 Q(config__device_config__device=sql_info.effective_device)
             ).order_by("name"):
-                if db_rec.name.count(":"):
-                    var_global = False
-                    local_host_name, var_name = db_rec.name.split(":", 1)
-                else:
-                    var_global = True
-                    local_host_name, var_name = (sql_info.short_host_name, db_rec.name)
+                local_host_name, var_name = (sql_info.short_host_name, db_rec.name)
                 source = "{}_table::{}".format(short, db_rec.pk)
                 if isinstance(db_rec.value, array.array):
                     new_val = configfile.str_c_var(db_rec.value.tostring(), source=source)
@@ -73,19 +68,13 @@ def read_config_from_db(g_config, sql_info, init_list=[]):
                     new_val = configfile.bool_c_var(bool(db_rec.value), source=source)
                 else:
                     new_val = configfile.str_c_var(db_rec.value, source=source)
-                new_val.is_global = var_global
                 present_in_config = var_name in g_config
                 if present_in_config:
                     # copy settings from config
                     new_val.database = g_config.database(var_name)
-                    new_val.is_global = var_global
                     new_val._help_string = g_config.help_string(var_name)
                 if local_host_name == sql_info.short_host_name:
-                    if var_name.upper() in g_config and g_config.fixed(var_name.upper()):
-                        # present value is fixed, keep value, only copy global / local status
-                        g_config.set_global(var_name.upper(), new_val.is_global)
-                    else:
-                        g_config.add_config_entries([(var_name.upper(), new_val)])
+                    g_config.add_config_entries([(var_name.upper(), new_val)])
                 elif local_host_name == "":
                     l_var_wo_host[var_name.upper()] = new_val
         # check for vars to insert
@@ -204,9 +193,9 @@ def write_config_to_db(g_config, sql_info):
             if var_obj is not None and g_config.database(key):
                 other_types = set([value for _key, value in list(type_dict.items()) if _key != g_config.get_type(key)])
                 # var global / local
-                var_range_name = g_config.is_global(key) and "global" or "local"
+                var_range_name = "global"
                 # build real var name
-                real_k_name = g_config.is_global(key) and key or "{}:{}".format(sql_info.short_host_name, key)
+                real_k_name = key
                 try:
                     cur_var = var_obj.objects.get(
                         Q(name=real_k_name) &
@@ -257,7 +246,7 @@ def write_config_to_db(g_config, sql_info):
                         cur_var.save()
                     _cur_descr = cur_var.description or ""
                     new_descr = strip_description(g_config.help_string(key))
-                    if new_descr and _cur_descr and _cur_descr.count("default value from") and _cur_descr.strip().split()[0] in ["global", "local"]:
+                    if new_descr and _cur_descr and _cur_descr.count("default value from") and _cur_descr.strip().split()[0] in ["global"]:
                         cur_var.description = new_descr
                         cur_var.save()
             else:
