@@ -729,7 +729,7 @@ def mon_check_command_pre_save(sender, **kwargs):
 def mon_check_command_post_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        if cur_inst.config and not cur_inst.system_command:
+        if cur_inst.config and not cur_inst.system_command and cur_inst.idx:
             # remove all associated devices
             cur_inst.devices.clear()
 
