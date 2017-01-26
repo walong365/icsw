@@ -20,7 +20,6 @@
 """ asset database, models for dynamic assets """
 
 
-
 import ast
 import base64
 import bz2
@@ -34,9 +33,8 @@ from django.utils import timezone, dateparse
 from django.dispatch import receiver
 from lxml import etree
 
-from initat.cluster.backbone.models.asset.asset_functions import \
-    PackageTypeEnum, ScanType, BaseAssetPackage, BatchStatus, RunStatus, \
-    RunResult, AssetType, sizeof_fmt
+from initat.cluster.backbone.models.asset.asset_functions import PackageTypeEnum, ScanType, BatchStatus, \
+    RunStatus, RunResult, AssetType, sizeof_fmt
 from initat.cluster.backbone.models.partition import partition_disc, \
     partition_table, partition, partition_fs, LogicalDisc
 from initat.cluster.backbone.models.asset.asset_functions import get_packages_for_ar
@@ -468,27 +466,6 @@ class AssetRun(models.Model):
     def device(self):
         return self.asset_batch.device.idx
 
-    def state_start_scan(self):
-        self._change_state(RunStatus.SCANNING)
-        self.run_start_time = timezone.now()
-        self.save()
-
-    def state_finished_scan(self, result, error_string, raw_result_str):
-        self._change_state(RunStatus.FINISHED_SCANNING)
-        self.run_result = result
-        self.error_string = error_string
-        self.raw_result_str = raw_result_str
-        if self.run_start_time:
-            self.run_end_time = timezone.now()
-            self.run_duration = int(
-                (self.run_end_time - self.run_start_time).seconds
-            )
-        self.save()
-
-    def state_start_generation(self):
-        self._change_state(RunStatus.GENERATING_ASSETS)
-        self.save()
-
     def state_finished(self, result, error_string=""):
         self._change_state(RunStatus.FINISHED)
         self.run_result = result
@@ -524,8 +501,8 @@ class AssetRun(models.Model):
 
     def generate_assets(self):
         function_name = '_generate_assets_{}_{}'.format(
-            AssetType(self.run_type)._name_.lower(),
-            ScanType(self.scan_type)._name_.lower()
+            AssetType(self.run_type).name.lower(),
+            ScanType(self.scan_type).name.lower()
         )
         if not self.raw_result_interpreted:
             # call the appropriate _generate_assets_... method
@@ -1192,6 +1169,7 @@ class AssetBatch(models.Model):
             arg_name = runs[run.run_type]
 
             if run.run_status == RunStatus.FINISHED and run.run_result == RunResult.SUCCESS:
+                arg_value = None
                 if run.run_type == AssetType.DMI:
                     arg_value = run.assetdmihead_set.get()
                 else:
@@ -1221,7 +1199,8 @@ class AssetBatch(models.Model):
                             if arg_name in ["lsblk_dump"]:
                                 try:
                                     blob = server_command.decompress(blob, json=True)
-                                except:
+                                except Exception as e:
+                                    _ = e
                                     blob = {
                                         "version": 0,
                                         "result": server_command.decompress(blob),
@@ -1232,7 +1211,8 @@ class AssetBatch(models.Model):
                             if run.run_type == AssetType.LSHW:
                                 try:
                                     arg_value = etree.fromstring(blob)
-                                except:
+                                except Exception as e:
+                                    _ = e
                                     continue
                             else:
                                 arg_value = blob
@@ -1402,20 +1382,9 @@ ASSETTYPE_HM_COMMAND_MAP = {
     AssetType.PRETTYWINHW: "windowshardware",
 }
 
-
-ASSETTYPE_NRPE_COMMAND_MAP = {
-    AssetType.PACKAGE: "list-software-py3",
-    AssetType.HARDWARE: "list-hardware-lstopo-py3",
-    AssetType.PENDING_UPDATE: "list-pending-updates-py3",
-    AssetType.UPDATE: "list-updates-alt-py3",
-    AssetType.DMI: "dmiinfo",
-    AssetType.PCI: "pciinfo",
-    AssetType.PRETTYWINHW: "list-hardware-py3",
-}
-
-
 @receiver(models.signals.post_save, sender=AssetBatch)
 def asset_batch_post_save(sender, **kwargs):
+    _ = sender
     if "instance" in kwargs:
         from initat.cluster.backbone.serializers import SimpleAssetBatchSerializer
 

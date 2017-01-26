@@ -20,7 +20,6 @@
 """ discovery-server, base scan functions """
 
 
-
 import collections
 import datetime
 import time
@@ -33,8 +32,8 @@ from django.utils import timezone
 from lxml import etree
 
 from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network, \
-    device_variable, AssetRun, RunStatus, BatchStatus, AssetType, ScanType, AssetBatch, RunResult, \
-    DispatcherSettingScheduleEnum, ScheduleItem, DeviceLogEntry, device, DispatcherLink, NmapScan, BackgroundJobState, \
+    device_variable, AssetRun, RunStatus, BatchStatus, ScanType, AssetBatch, RunResult, \
+    DispatcherSettingScheduleEnum, ScheduleItem, device, DispatcherLink, NmapScan, BackgroundJobState, \
     background_job
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.icsw.service.instance import InstanceXML
@@ -42,7 +41,7 @@ from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools, process_tools, server_command, ipvx_tools
 from .config import global_config
 from .discovery_struct import ExtCom
-from initat.cluster.backbone.models.asset.dynamic_asset import ASSETTYPE_HM_COMMAND_MAP, ASSETTYPE_NRPE_COMMAND_MAP
+from initat.cluster.backbone.models.asset.dynamic_asset import ASSETTYPE_HM_COMMAND_MAP
 from initat.tools.bgnotify import create_bg_job
 
 DEFAULT_NRPE_PORT = 5666
@@ -58,7 +57,6 @@ SERVER_RESULT_RUN_RESULT = {
 }
 
 HM_CMD_TUPLES = [(asset_type, hm_command, 60) for asset_type, hm_command in list(ASSETTYPE_HM_COMMAND_MAP.items())]
-NRPE_CMD_TUPLES = list(ASSETTYPE_NRPE_COMMAND_MAP.items())
 
 
 class ScanBatch(object):
@@ -78,6 +76,7 @@ class ScanBatch(object):
         self.dev_com = dev_com
         self.device = scan_dev
         self.id = self.next_batch_id(self)
+        self.end_time = None
 
         if "scan_address" in dev_com.attrib:
             self.device.target_ip = dev_com.attrib["scan_address"]
@@ -148,7 +147,8 @@ class BaseScanBatch(ScanBatch):
                     _port = _port[:-1]
                 _num, _type = _port.split("/")
                 if _com.name == "NRPE":
-                    nrpe_port = device_variable.objects.get_device_variable_value(self.device, "NRPE_PORT", DEFAULT_NRPE_PORT)
+                    nrpe_port = device_variable.objects.get_device_variable_value(self.device, "NRPE_PORT",
+                                                                                  DEFAULT_NRPE_PORT)
                     _port = "{:d}/{}".format(nrpe_port, _type)
                 if _type == "tcp":
                     _tcp_list.append(int(_num))
@@ -295,7 +295,7 @@ class WmiScanBatch(ScanBatch):
                     outputs[self.NETWORK_ADAPTER_CONFIGURATION_MODEL][0]
                 )
 
-                ND_SPEED_LUT = netdevice_speed.build_lut()
+                nd_speed_lut = netdevice_speed.build_lut()
                 updated_nds, created_nds, created_ips, existing_ips = [], [], [], []
 
                 # iterate by adapter since only adapters are filtered
@@ -336,7 +336,7 @@ class WmiScanBatch(ScanBatch):
                         nd.macaddr = adapter['MACAddress'] or ""  # must not be None
                         nd.mtu = adapter_configuration['MTU']
                         nd.speed = int(adapter['Speed'])
-                        nd.netdevice_speed = ND_SPEED_LUT.get(int(adapter['Speed']), ND_SPEED_LUT.get(0))
+                        nd.netdevice_speed = nd_speed_lut.get(int(adapter['Speed']), nd_speed_lut.get(0))
                         nd.save()
 
                         for ip_found in WmiUtils.WmiList.handle(adapter_configuration['IPAddress']):
@@ -409,6 +409,8 @@ class WmiScanBatch(ScanBatch):
 
 
 class _ExtComScanMixin(object):
+    log = None
+    register_timer = None
     """ Base class for all scan mixins """
     def _register_timer(self):
         if not hasattr(self, "_timer_registered"):
@@ -416,7 +418,8 @@ class _ExtComScanMixin(object):
             self._timer_registered = True
             self.register_timer(self._check_commands, 2)
 
-    def _check_commands(self):
+    @staticmethod
+    def _check_commands():
         ScanBatch.g_check_ext_com()
 
 
@@ -533,197 +536,22 @@ def get_time_inc_from_ds(ds):
         time_inc = datetime.timedelta(weeks=(4 * 1 * ds.mult))
     elif ds.run_schedule.baseline == DispatcherSettingScheduleEnum.year:
         time_inc = datetime.timedelta(weeks=(52 * 1 * ds.mult))
+    else:
+        time_inc = None
 
     return time_inc
-
-
-class PlannedRunState(object):
-    run_idx = 0
-
-    def __init__(self, pdrf, run_db_obj, ext_com, timeout):
-        # mirrors AssetRuns
-        self.__pdrf = pdrf
-        # for external ref
-        self.run_idx = 0
-        self.run_db_obj = run_db_obj
-        self.ext_com = ext_com
-        self.timeout = timeout
-        # state diagram: (started, running) :
-        # (False, False) -> (True, True) -> (True, False)
-        # started
-        self.started = False
-        # is running
-        self.running = False
-        self.is_zmq_connection = not isinstance(self.ext_com, ExtCom)
-        # zmq connection parameters
-        self.zmq_conn_str = None
-        self.zmq_command = None
-
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__pdrf.log(
-            "[{:d}] {}".format(self.run_db_obj.batch_index, what),
-            log_level
-        )
-
-    def set_zmq_parameters(self, conn_str):
-        self.zmq_conn_str = conn_str
-        self.zmq_command = server_command.srv_command(command=self.ext_com)
-        self.log(
-            "connection_str is {} ({})".format(
-                self.zmq_conn_str,
-                self.ext_com,
-            )
-        )
-
-    def get_send_parameters(self):
-        return self.run_idx, self.zmq_conn_str, str(self.zmq_command)
-
-    def start(self):
-        self.started = True
-        self.running = True
-        PlannedRunState.run_idx += 1
-        self.run_idx = PlannedRunState.run_idx
-        _db_obj = self.run_db_obj
-        _db_obj.state_start_scan()
-        if _db_obj.asset_batch.run_status != BatchStatus.RUNNING:
-            _db_obj.asset_batch.state_start_runs()
-            _db_obj.asset_batch.save()
-
-            DeviceLogEntry.new(
-                device=_db_obj.asset_batch.device,
-                source=global_config["LOG_SOURCE_IDX"],
-                user=_db_obj.asset_batch.user,
-                text="AssetScan with BatchId:[{}] started".format(_db_obj.asset_batch.idx),
-            )
-
-        self.__pdrf.num_running += 1
-
-    def store_nrpe_result(self, state, result):
-        _stdout, _stderr = result
-        self.log(
-            "stdout has {}, stderr has {} [{:d}]".format(
-                logging_tools.get_size_str(len(_stdout)),
-                logging_tools.get_size_str(len(_stderr)),
-                state,
-            )
-        )
-        s = _stdout
-        if s is None or state != 0:
-            res = RunResult.FAILED
-        else:
-            res = RunResult.SUCCESS
-        self._store_result(res, "", s)
-
-    def store_zmq_result(self, result):
-        raw_result_str = ""
-        error_string = ""
-        (status_string, server_result_code) = result.get_result()
-
-        res = SERVER_RESULT_RUN_RESULT[server_result_code]
-        if res != RunResult.SUCCESS:
-            error_string = status_string
-        else:
-            # store the whole XML tree
-            raw_result_str = etree.tostring(result.tree)
-
-        self._store_result(res, error_string, raw_result_str)
-
-    def _store_result(self, result, error_string, raw_result_str):
-        self._stop()
-        if result == RunResult.SUCCESS:
-            self.run_db_obj.state_finished_scan(
-                result,
-                error_string,
-                raw_result_str,
-            )
-            self.generate_assets()
-        else:
-            self.run_db_obj.state_finished(
-                result,
-                error_string,
-            )
-
-    def cancel(self, error_string):
-        self._stop()
-        self.generate_assets()
-
-    def _stop(self):
-        self.running = False
-        self.__pdrf.remove_planned_run(self)
-
-    def generate_assets(self):
-        self.run_db_obj.state_start_generation()
-        self.__pdrf.disp.discovery_process.send_pool_message(
-            "generate_assets",
-            self.run_db_obj.idx,
-        )
-
-
-class PlannedRunsForDevice(object):
-
-    def __init__(self, disp, device, ip, user):
-        # mirrors AssetBatch
-        self.disp = disp
-        self.device = device
-        self.planned_runs = []
-        self.ip = ip
-        # numbers of jobs running
-        self.num_running = 0
-        self.to_delete = False
-        self.asset_batch = AssetBatch(device=self.device, user=user)
-        self.asset_batch.state_init()
-        self.asset_batch.save()
-        self.zmq_connections = []
-
-    def start_feed(self, cmd_tuples):
-        self.asset_batch.num_runs = len(cmd_tuples)
-        self.asset_batch.save()
-
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.disp.log(
-            "[PR] [{}] {}".format(
-                str(self.device),
-                what
-            ),
-            log_level
-        )
-
-    def cancel(self, err_cause):
-        self.log(
-            "canceling because of '{}'".format(err_cause),
-            logging_tools.LOG_LEVEL_ERROR
-        )
-        # make copy of list
-        for _run in [_x for _x in self.planned_runs]:
-            _run.cancel(error_string="run canceled")
-        self.asset_batch.error_string = err_cause
-        self.asset_batch.state_finished()
-        self.asset_batch.save()
-        # canceled, delete
-        self.to_delete = True
-
-    def add_planned_run(self, run_db_obj, ext_com, timeout):
-        self.planned_runs.append(
-            PlannedRunState(self, run_db_obj, ext_com, timeout)
-        )
-
-    def remove_planned_run(self, pdrf):
-        self.num_running -= 1
-        self.planned_runs = [entry for entry in self.planned_runs if entry.run_db_obj.idx != pdrf.run_db_obj.idx]
-        if not self.num_running and not self.planned_runs:
-            # no more running, delete
-            self.to_delete = True
 
 
 class HostMonitoringCommand:
     host_monitoring_commands = {}
 
-    def __init__(self, callback, callback_dict, timeout=60):
+    def __init__(self, callback, callback_dict, timeout=60, always_call_callback=False):
         self.callback = callback
         self.callback_dict = callback_dict
         self.run_index = self.__get_free_run_index()
         self.host_monitoring_commands[self.run_index] = self
         self.timeout_date = timezone.now() + datetime.timedelta(seconds=timeout)
+        self.always_call_callback = always_call_callback
 
     def __get_free_run_index(self):
         run_index = 1
@@ -733,7 +561,7 @@ class HostMonitoringCommand:
             run_index += 1
 
     def handle(self, result=None):
-        if result:
+        if result or self.always_call_callback:
             self.callback(self.callback_dict, result)
         del self.host_monitoring_commands[self.run_index]
 
@@ -741,20 +569,14 @@ class HostMonitoringCommand:
 class Dispatcher(object):
     def __init__(self, discovery_process):
         self.discovery_process = discovery_process
-        # runs per device
-        self.__device_planned_runs = {}
-        # lut for external connection commands (0MQ)
-        self.__ext_con_lut = {}
-        # lut for external background commands
-        self.__ext_bg_lut = {}
-        self.log("init Dispatcher")
         # quasi-static constants
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.discovery_process.log("[Disp] {}".format(what), log_level)
 
-    def schedule_call(self):
+    @staticmethod
+    def schedule_call():
         # called every 10 seconds
         _now = timezone.now().replace(microsecond=0)
 
@@ -807,11 +629,7 @@ class Dispatcher(object):
                 )
 
     def dispatch_call(self):
-        # called every second, way too often...
         _now = timezone.now().replace(microsecond=0)
-
-        # prestep: close all pending scans
-        _pending = 0
 
         for asset_batch in AssetBatch.objects.filter(
             run_status__in=[
@@ -821,14 +639,12 @@ class Dispatcher(object):
             if asset_batch.run_start_time:
                 diff_time = (_now - asset_batch.run_start_time).total_seconds()
                 if diff_time > 86400:
-                    self.log("Closing pending/processing AssetBatch now={}".format(_now), logging_tools.LOG_LEVEL_ERROR)
-                    self.log("Closing pending/processing AssetBatch run_start_time={}".format(asset_batch.run_start_time), logging_tools.LOG_LEVEL_ERROR)
-                    self.log("Closing pending/processing AssetBatch diff_time={}".format(diff_time), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("Closing pending/processing AssetBatch [now={}, run_start_time={}, diff_time={}]".format(
+                        _now, asset_batch.run_start_time, diff_time), logging_tools.LOG_LEVEL_ERROR)
 
                     asset_batch.run_end_time = _now
                     asset_batch.run_status = BatchStatus.FINISHED
                     asset_batch.save()
-                    _pending += 1
 
         for schedule_item in ScheduleItem.objects.all():
             if schedule_item.run_now or schedule_item.planned_date < _now:
@@ -836,198 +652,136 @@ class Dispatcher(object):
                 schedule_handler_function(schedule_item)
                 schedule_item.delete()
 
-        # step 1: init commands
-        for _dev_idx, prfd_list in self.__device_planned_runs.items():
-            for prfd in prfd_list:
-                if prfd.ip:
-                    for prs in prfd.planned_runs:
-                        if not prs.started:
-                            if prs.is_zmq_connection:
-                                prs.start()
-                                conn_str = "tcp://{}:{:d}".format(
-                                    prfd.ip,
-                                    self.__hm_port,
-                                )
-                                # set parameters
-                                prs.set_zmq_parameters(conn_str)
-                                self.discovery_process.send_pool_message("send_msg", *prs.get_send_parameters())
-                                self.__ext_con_lut[prs.run_idx] = prs
-                                # store zmq connection idx
-                                # prs.zmq_con_idx = zmq_con.add_connection(
-                                #     conn_str,
-                                #     server_command.srv_command(command=prs.ext_com),
-                                #     multi=True
-                                # )
-                            else:
-                                prs.start()
-                                prs.ext_com.run()
-                                self.__ext_bg_lut[prs.run_idx] = prs
-                else:
-                    prfd.cancel("no IP")
-        # check for finished ext coms
-        cur_time = timezone.now()
-        _to_remove = set()
-        for key, prd in self.__ext_bg_lut.items():
-            _ext_com_state = prd.ext_com.finished()
-            if _ext_com_state is not None:
-                _output = prd.ext_com.communicate()
-                prd.store_nrpe_result(_ext_com_state, _output)
-                _to_remove.add(key)
-            else:
-                diff_time = (cur_time - prd.run_db_obj.run_start_time).seconds
-                if diff_time > prd.timeout:
-                    try:
-                        prd.ext_com.terminate()
-                    except:
-                        self.log(
-                            "error terminating external process (timeout): {}".format(
-                                process_tools.get_except_info()
-                            ),
-                            logging_tools.LOG_LEVEL_ERROR
-                        )
-                    else:
-                        self.log("external command terminated due to timeout")
-                    prd.cancel("timeout")
-                    _to_remove.add(key)
-        for _key in _to_remove:
-            del self.__ext_bg_lut[_key]
-
-        # check for finished hm connections
-        cur_time = timezone.now()
-        _to_remove = set()
-        for key, planned_run_state in self.__ext_con_lut.items():
-            diff_time = (cur_time - planned_run_state.run_db_obj.run_start_time).seconds
-
-            if diff_time > planned_run_state.timeout:
-                planned_run_state.cancel("timeout")
-                _to_remove.add(key)
-                self.discovery_process.send_pool_message("timeout_handler", planned_run_state.run_idx)
-
-        for _key in _to_remove:
-            del self.__ext_con_lut[_key]
-
-        self._check_for_finished_runs()
-
+        # timeout handling
         _now = timezone.now()
         for run_index, host_monitoring_command in list(HostMonitoringCommand.host_monitoring_commands.items()):
             if _now > host_monitoring_command.timeout_date:
                 host_monitoring_command.handle()
                 self.discovery_process.send_pool_message("host_monitoring_command_timeout_handler", run_index)
 
-
-    def got_result(self, run_idx, srv_reply):
-        if run_idx in self.__ext_con_lut:
-            prs = self.__ext_con_lut[run_idx]
-            prs.store_zmq_result(srv_reply)
-            del self.__ext_con_lut[run_idx]
-        self._check_for_finished_runs()
-
-    def _check_for_finished_runs(self):
-        # remove PlannedRuns which should be deleted
-        _removed = 0
-        for _dev_idx, pdrf_list in self.__device_planned_runs.items():
-            _keep = []
-            for entry in pdrf_list:
-                if not entry.to_delete:
-                    _keep.append(entry)
-
-            _removed += len(pdrf_list) - len(_keep)
-            self.__device_planned_runs[_dev_idx] = _keep
-        if _removed:
-            self.log("Removed {}".format(logging_tools.get_plural("PlannedRunsForDevice", _removed)))
-
-    def _do_hm_scan(self, schedule_item, planned_run):
-        planned_run.start_feed(HM_CMD_TUPLES)
-        for _idx, (runtype, _command, timeout) in enumerate(HM_CMD_TUPLES):
-            run_index = len(planned_run.asset_batch.assetrun_set.all())
-            new_asset_run = AssetRun(
-                run_index=run_index,
-                run_type=runtype,
-                run_status=RunStatus.PLANNED,
-                scan_type=ScanType.HM,
-                batch_index=_idx,
-                asset_batch=planned_run.asset_batch,
-            )
-            new_asset_run.save()
-
-            planned_run.add_planned_run(
-                new_asset_run,
-                _command,
-                timeout,
-            )
-
-    def _do_nrpe_scan(self, schedule_item, planned_run):
-        planned_run.start_feed(NRPE_CMD_TUPLES)
-        for _idx, (runtype, _command) in enumerate(NRPE_CMD_TUPLES):
-            timeout = 30
-            if runtype == AssetType.PENDING_UPDATE:
-                timeout = 3600
-
-            _com = "/opt/cluster/sbin/check_nrpe -H{} -2 -P1048576 -p{} -n -c{} -t{}".format(
-                planned_run.ip,
-                planned_run.nrpe_port,
-                _command,
-                timeout
-            )
-            ext_com = ExtCom(self.log, _com)
-
-            run_index = len(planned_run.asset_batch.assetrun_set.all())
-            new_asset_run = AssetRun(
-                run_index=run_index,
-                run_type=runtype,
-                run_status=RunStatus.PLANNED,
-                scan_type=ScanType.NRPE,
-                batch_index=_idx,
-                asset_batch=planned_run.asset_batch,
-            )
-            new_asset_run.save()
-
-            planned_run.add_planned_run(
-                new_asset_run,
-                ext_com,
-                timeout
-            )
-
     def asset_schedule_handler(self, schedule_item):
         # check for allowed
         try:
-            _device = device.objects.get(idx=schedule_item.object_id)
+            target_device = device.objects.get(idx=schedule_item.object_id)
         except device.DoesNotExist:
             self.log(
                 "device with id {:d} does not exist".format(schedule_item.object_id),
                 logging_tools.LOG_LEVEL_ERROR
             )
         else:
-            if self.discovery_process.EC.consume("asset", _device):
+            if self.discovery_process.EC.consume("asset", target_device):
                 cap_dict = {
-                    _com.matchcode: True for _com in _device.com_capability_list.all()
+                    _com.matchcode: True for _com in target_device.com_capability_list.all()
                     }
 
-                _dev = _device
-                _user = schedule_item.user
-                if _dev.idx not in self.__device_planned_runs:
-                    self.__device_planned_runs[_dev.idx] = []
+                self.discovery_process.get_route_to_devices([target_device])
 
-                self.discovery_process.get_route_to_devices([_dev])
-                self.log("Address of device {} is {}".format(str(_dev), _dev.target_ip))
-                new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip, _user)
-                new_pr.nrpe_port = device_variable.objects.get_device_variable_value(_dev, "NRPE_PORT", DEFAULT_NRPE_PORT)
+                if cap_dict.get("hm", False) and target_device.target_ip:
+                    self.log("Starting asset scan of device {} [ip: {}]".format(target_device.name,
+                             target_device.target_ip))
+                    new_asset_batch = AssetBatch(device=target_device, user=schedule_item.user)
+                    new_asset_batch.state_init()
+                    new_asset_batch.save()
 
-                if cap_dict.get("hm", False):
-                    self.__device_planned_runs[_dev.idx].append(new_pr)
-                    self._do_hm_scan(schedule_item, new_pr)
-                elif cap_dict.get("nrpe", False):
-                    self.__device_planned_runs[_dev.idx].append(new_pr)
-                    self._do_nrpe_scan(schedule_item, new_pr)
+                    for _idx, (runtype, _command, timeout) in enumerate(HM_CMD_TUPLES):
+                        run_index = len(new_asset_batch.assetrun_set.all())
+                        new_asset_run = AssetRun(
+                            run_index=run_index,
+                            run_type=runtype,
+                            run_status=RunStatus.PLANNED,
+                            scan_type=ScanType.HM,
+                            batch_index=_idx,
+                            asset_batch=new_asset_batch
+                        )
+                        new_asset_run.save()
+
+                        callback_dict = {
+                            "asset_batch_id": new_asset_batch.idx,
+                            "asset_run_id": run_index
+                        }
+
+                        hm_command = HostMonitoringCommand(self.asset_schedule_handler_callback, callback_dict,
+                                                           timeout=timeout, always_call_callback=True)
+                        conn_str = "tcp://{}:{:d}".format(target_device.target_ip, self.__hm_port)
+                        new_srv_com = server_command.srv_command(command=_command)
+
+                        self.discovery_process.send_pool_message(
+                            "send_host_monitor_command",
+                            hm_command.run_index,
+                            conn_str,
+                            str(new_srv_com)
+                        )
                 else:
                     self.log(
                         "Skipping non-capable device {}".format(
-                            str(_device)
+                            str(target_device)
                         ),
                         logging_tools.LOG_LEVEL_ERROR
                     )
-                    new_pr.asset_batch.state_finished()
-                    new_pr.asset_batch.save()
+
+    def asset_schedule_handler_callback(self, callback_dict, result):
+        asset_batch_id = callback_dict["asset_batch_id"]
+        asset_batch = AssetBatch.objects.get(idx=callback_dict["asset_batch_id"])
+        asset_run = asset_batch.assetrun_set.get(run_index=callback_dict["asset_run_id"])
+
+        run_result = RunResult.SUCCESS if result else RunResult.FAILED
+
+        self.log("start processing of assetrun [AssetBatch.idx={:d}]".format(callback_dict["asset_batch_id"]))
+        asset_run.raw_result_str = etree.tostring(result.tree) if result else None
+        asset_run.save()
+        s_time = time.time()
+        try:
+            asset_run.generate_assets()
+        except Exception as e:
+            _ = e
+            _exc = process_tools.icswExceptionInfo()
+            _err = process_tools.get_except_info()
+            self.log(
+                "error in asset_run.generate_assets: {}".format(_err),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            for line in _exc.log_lines:
+                self.log(line, logging_tools.LOG_LEVEL_ERROR)
+            asset_run.interpret_error_string = _err
+            asset_run.save()
+        finally:
+            e_time = time.time()
+            self.log(
+                "generate_asset_run for [AssetBatch.idx={:d}] took {}".format(
+                    asset_batch_id,
+                    logging_tools.get_diff_time_str(e_time - s_time),
+                )
+            )
+            asset_run.generate_duration = e_time - s_time
+            asset_run.state_finished(run_result)
+            asset_run.save()
+
+        if asset_batch.run_status == BatchStatus.FINISHED_RUNS:
+            self.log("start processing of assetbatch {:d}".format(asset_batch_id))
+            s_time = time.time()
+            try:
+                asset_batch.generate_assets()
+            except Exception as e:
+                _ = e
+                _exc = process_tools.icswExceptionInfo()
+                _err = process_tools.get_except_info()
+                self.log(
+                    "error in asset_batch.generate_assets: {}".format(_err),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                for line in _exc.log_lines:
+                    self.log(line, logging_tools.LOG_LEVEL_ERROR)
+            finally:
+                e_time = time.time()
+                self.log(
+                    "processing of assetbatch {:d} took {}".format(
+                        asset_batch_id,
+                        logging_tools.get_diff_time_str(e_time - s_time),
+                    )
+                )
+                asset_batch.state_finished()
+                asset_batch.save()
+                self.log("Finished asset batch {}.".format(asset_batch.idx))
 
     def network_scan_schedule_handler(self, schedule_item):
         target_device = device.objects.get(idx=int(schedule_item.schedule_handler_data))
@@ -1058,7 +812,7 @@ class Dispatcher(object):
             "background_job_id": _background_job.idx
         }
 
-        #timeout for nmap scans needs to be very large, scanning can take a very long time
+        # timeout for nmap scans needs to be very large, scanning can take a very long time
         hm_command = HostMonitoringCommand(self.network_scan_schedule_handler_callback, callback_dict, timeout=60*60*24)
 
         self.discovery_process.send_pool_message(
@@ -1068,7 +822,8 @@ class Dispatcher(object):
             str(new_srv_com)
         )
 
-    def network_scan_schedule_handler_callback(self, callback_dict, result):
+    @staticmethod
+    def network_scan_schedule_handler_callback(callback_dict, result):
         _background_job = background_job.objects.get(idx=callback_dict["background_job_id"])
         _background_job.set_state(BackgroundJobState.done)
         try:
@@ -1087,7 +842,8 @@ class Dispatcher(object):
             # Happens if "in progress" nmap scan gets deleted via webinterface, simply discard return value and continue
             pass
 
-    def handle_hm_result(self, run_index, srv_result):
+    @staticmethod
+    def handle_hm_result(run_index, srv_result):
         if run_index in HostMonitoringCommand.host_monitoring_commands:
             host_monitoring_command = HostMonitoringCommand.host_monitoring_commands[run_index]
             host_monitoring_command.handle(result=srv_result)

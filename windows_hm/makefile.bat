@@ -62,10 +62,7 @@ RMDIR /s /q .\host_monitor_windows\Tools
 RMDIR /s /q .\host_monitor_windows\Doc
 
 XCOPY .\bin\nssm.exe .\host_monitor_windows\
-
-XCOPY .\scripts\dmidecode212.exe .\host_monitor_windows\
-:: XCOPY .\scripts\lspci.exe .\host_monitor_windows\
-:: XCOPY .\scripts\finalize-install.py .\nscp\
+XCOPY .\bin\dmidecode212.exe .\host_monitor_windows\
 MOVE .\tmp\pciutils-%PCIUTILS_VERSION%-win32 .\host_monitor_windows\pciutils
 
 MOVE .\host_monitor_windows .\nscp
