@@ -32,22 +32,6 @@ def main():
         process_tools.get_programm_name(),
         single_process_mode=True
     )
-    global_config.add_config_entries(
-        [
-            (
-                "DEBUG",
-                configfile.bool_c_var(
-                    False,
-                )
-            ),
-            (
-                "VERBOSE",
-                configfile.int_c_var(
-                    0,
-                )
-            ),
-        ]
-    )
     from initat.host_monitoring.server import ServerCode
     ret_state = ServerCode(global_config).loop()
 

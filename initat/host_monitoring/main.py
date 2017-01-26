@@ -49,11 +49,6 @@ def main(options=None):
         single_process_mode=True
     )
     prog_name = global_config.name()
-    global_config.add_config_entries(
-        [
-            ("DEBUG", configfile.bool_c_var(False)),
-        ]
-    )
     if prog_name == "collclient":
         global_config.add_config_entries(
             [

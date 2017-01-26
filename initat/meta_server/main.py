@@ -23,16 +23,9 @@
 
 import os
 
-from initat.meta_server.config import global_config
 from initat.meta_server.server import MainProcess
-from initat.tools import configfile
 
 
 def main():
-    global_config.add_config_entries(
-        [
-            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ]
-    )
     MainProcess().loop()
     os._exit(0)

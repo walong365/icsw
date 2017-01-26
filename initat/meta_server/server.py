@@ -40,7 +40,6 @@ from .servicestate import ServiceState
 
 class MainProcess(ICSWBasePoolClient):
     def __init__(self):
-        self.__debug = global_config["DEBUG"]
         threading_tools.icswProcessPool.__init__(self, "main")
         self.CC.init(icswServiceEnum.meta_server, global_config, native_logging=True)
         self.CC.check_config()
@@ -56,6 +55,7 @@ class MainProcess(ICSWBasePoolClient):
                 ("STATE_DIR", configfile.str_c_var(os.path.join(self.CC.CS["meta.maindir"], ".srvstate"), source="dynamic")),
             ]
         )
+        self.__debug = global_config["DEBUG"]
         # check for correct rights
         self._check_dirs()
         self._init_network_sockets()
