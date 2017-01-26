@@ -30,10 +30,10 @@ from initat.cluster.backbone.models import device, mon_contactgroup, network_typ
     config, config_catalog, mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
     mon_check_command_special, mon_check_command, BackgroundJobState, MonCheckCommandSystemNames
 from initat.md_config_server import special_commands, constants
-from initat.md_config_server.config import global_config, MainConfig, MonAllCommands, \
+from ..config import global_config, MainConfig, MonAllCommands, \
     MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, \
     MonDeviceTemplates, MonServiceTemplates, MonAllHostDependencies, build_safe_name, StructuredMonBaseConfig, \
-    MON_VAR_IP_NAME
+    MON_VAR_IP_NAME, SpecialTypesEnum
 from initat.md_config_server.icinga_log_reader.log_reader import HostServiceIDUtil
 from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.tools import config_tools, logging_tools, server_mixins, server_command
@@ -230,7 +230,7 @@ class BuildProcess(
                 # get config names
                 conf_names = set(all_configs.get(host.full_name, []))
                 # cluster config names
-                cconf_names = set([_sc.mon_check_command.name for _sc in gbc.get_cluster("sc", host.pk)])
+                cconf_names = set([_sc.mon_check_command.name for _sc in gbc.get_cluster(SpecialTypesEnum.mon_service_cluster, host.pk)])
                 # build lut
                 conf_names = sorted(
                     [
@@ -1032,7 +1032,7 @@ class BuildProcess(
                         # get check_commands and templates
                         conf_names = set(all_configs.get(host.full_name, []))
                         # cluster config names
-                        cconf_names = set([_sc.mon_check_command.name for _sc in gbc.get_cluster("sc", host.pk)])
+                        cconf_names = set([_sc.mon_check_command.name for _sc in gbc.get_cluster(SpecialTypesEnum.mon_service_cluster, host.pk)])
                         # build lut
                         conf_names = sorted(
                             [
@@ -1047,6 +1047,7 @@ class BuildProcess(
                                 )
                             ]
                         )
+                        print("-", conf_name)
                         # list of already used checks
                         used_checks = set()
                         # print "*", conf_names
@@ -1063,16 +1064,16 @@ class BuildProcess(
                         if gbc.consumer and _num_checks:
                             gbc.consumer.consume("monconfig", host.pk, _num_checks)
                         # add cluster checks
-                        mhc_checks = gbc.get_cluster("hc", host.pk)
+                        mhc_checks = gbc.get_cluster(SpecialTypesEnum.mon_host_cluster, host.pk)
                         if len(mhc_checks):
                             hbc.host_config_list.extend(self.add_host_cluster_checks(gbc, hbc, mhc_checks, act_def_serv))
                         # add cluster service checks
-                        msc_checks = gbc.get_cluster("sc", host.pk)
+                        msc_checks = gbc.get_cluster(SpecialTypesEnum.mon_service_cluster, host.pk)
                         if len(msc_checks):
                             hbc.host_config_list.extend(self.add_service_cluster_checks(gbc, hbc, msc_checks, act_def_serv))
                         # add host dependencies
                         if use_host_deps:
-                            for h_dep in gbc.get_dependencies("hd", host.pk):
+                            for h_dep in gbc.get_dependencies(SpecialTypesEnum.mon_host_dependecy, host.pk):
                                 # check reachability
                                 _unreachable = [
                                     gbc.get_host(_dev_pk) for _dev_pk in h_dep.devices_list + h_dep.master_list if not gbc.get_host(_dev_pk).reachable
@@ -1109,7 +1110,7 @@ class BuildProcess(
                                         )
                         # add service dependencies
                         if use_service_deps:
-                            for s_dep in gbc.get_dependencies("sd", host.pk):
+                            for s_dep in gbc.get_dependencies(SpecialTypesEnum.mon_service_dependency, host.pk):
                                 act_service_dep = StructuredMonBaseConfig("servicedependency", "")
                                 if s_dep.mon_service_cluster_id:
                                     # check reachability

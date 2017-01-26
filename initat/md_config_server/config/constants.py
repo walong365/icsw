@@ -19,8 +19,18 @@
 #
 """ constants for md-config-server """
 
+from enum import Enum
+
 __all__ = [
     "MON_VAR_IP_NAME",
+    "SpecialTypesEnum",
 ]
 
 MON_VAR_IP_NAME = "__$$ICSW$$__MON_VAR_IP"
+
+
+class SpecialTypesEnum(Enum):
+    mon_host_cluster = "hc"
+    mon_service_cluster = "sc"
+    mon_host_dependecy = "hd"
+    mon_service_dependency = "sd"

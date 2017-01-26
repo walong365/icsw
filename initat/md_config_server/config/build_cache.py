@@ -34,7 +34,7 @@ from initat.icsw.service.instance import InstanceXML
 from initat.snmp.sink import SNMPSink
 from initat.tools import logging_tools, process_tools, server_mixins
 from .global_config import global_config
-from ..config import SimpleCounter, MonFileContainer
+from ..config import SimpleCounter, MonFileContainer, SpecialTypesEnum
 
 __all__ = [
     "BuildCache",
@@ -227,17 +227,23 @@ class BuildCache(object):
         # pprint.pprint(self.__host_traces)
         # host / service clusters
         clusters = {}
-        for _obj, _name in [(mon_host_cluster, "hc"), (mon_service_cluster, "sc")]:
+        for _obj, _name in [
+            (
+                mon_host_cluster, SpecialTypesEnum.mon_host_cluster
+            ), (
+                mon_service_cluster, SpecialTypesEnum.mon_service_cluster
+            )
+        ]:
             _lut = {}
             _query = _obj.objects.all()
-            if _name == "sc":
+            if _name == SpecialTypesEnum.mon_service_cluster:
                 _query = _query.select_related("mon_check_command")
             for _co in _query:
                 _lut[_co.pk] = _co.main_device_id
                 _co.devices_list = []
                 clusters.setdefault(_name, {}).setdefault(_co.main_device_id, []).append(_co)
             for _entry in _obj.devices.through.objects.all():
-                if _name == "hc":
+                if _name == SpecialTypesEnum.mon_host_cluster:
                     _pk = _entry.mon_host_cluster_id
                 else:
                     _pk = _entry.mon_service_cluster_id
@@ -247,10 +253,16 @@ class BuildCache(object):
         self.__clusters = clusters
         # host / service dependencies
         deps = {}
-        for _obj, _name in [(mon_host_dependency, "hd"), (mon_service_dependency, "sd")]:
+        for _obj, _name in [
+            (
+                mon_host_dependency, SpecialTypesEnum.mon_host_dependecy
+            ), (
+                mon_service_dependency, SpecialTypesEnum.mon_service_dependency
+            )
+        ]:
             _lut = {}
             _query = _obj.objects.all().prefetch_related("devices", "dependent_devices")
-            if _name == "hd":
+            if _name == SpecialTypesEnum.mon_service_dependency:
                 _query = _query.select_related(
                     "mon_host_dependency_templ",
                     "mon_host_dependency_templ__dependency_period",
@@ -273,7 +285,7 @@ class BuildCache(object):
                     _lut[_do.pk].append(_dd.pk)
                     deps.setdefault(_name, {}).setdefault(_dd.pk, []).append(_do)
             for _entry in _obj.devices.through.objects.all():
-                if _name == "hd":
+                if _name == SpecialTypesEnum.mon_host_dependecy:
                     _pk = _entry.mon_host_dependency_id
                 else:
                     _pk = _entry.mon_service_dependency_id
@@ -281,7 +293,7 @@ class BuildCache(object):
                     _tdo = [_do for _do in deps[_name][_devpk] if _do.pk == _pk][0]
                     _tdo.devices_list.append(_entry.device_id)
             for _entry in _obj.dependent_devices.through.objects.all():
-                if _name == "hd":
+                if _name == SpecialTypesEnum.mon_host_dependecy:
                     _pk = _entry.mon_host_dependency_id
                 else:
                     _pk = _entry.mon_service_dependency_id

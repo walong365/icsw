@@ -910,6 +910,7 @@ config_module = angular.module(
                 config: config_idx
                 name: c_name
                 is_active: true
+                enabled: true
                 description: "Check command"
                 command_line: "$USER2$ -m $HOSTADDRESS$ uptime"
                 categories: []
