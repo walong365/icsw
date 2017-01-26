@@ -381,6 +381,8 @@ class mon_check_command(models.Model):
     system_command = models.BooleanField(default=False)
     # is an active check
     is_active = models.BooleanField(default=True)
+    # is enabled
+    enabled = models.BooleanField(default=True)
     # which tcp port(s) cover this check
     tcp_coverage = models.CharField(default="", max_length=256, blank=True)
 
