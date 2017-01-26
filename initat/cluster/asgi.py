@@ -4,8 +4,6 @@ ASGI config for cluster project.
 
 """
 
-
-
 import os
 
 from channels.asgi import get_channel_layer

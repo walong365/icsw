@@ -244,7 +244,6 @@ install: install_webcontent
 	# filewatcher
 	${INSTALL} ${INSTALL_OPTS} scripts/register_file_watch ${DESTDIR}/${SCRIPTDIR}
 	${INSTALL} ${INSTALL_OPTS} scripts/unregister_file_watch ${DESTDIR}/${SCRIPTDIR}
-	./init_proprietary.py ${DESTDIR}
 	# icsw
 	${LN} -s ${PYTHON3_SITE}/initat/icsw/main.py ${DESTDIR}/${ICSW_SBIN}/icsw
 	# remove deprecated

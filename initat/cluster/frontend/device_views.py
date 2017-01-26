@@ -41,7 +41,7 @@ from initat.cluster.backbone.models import device_group, device, \
     partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
     domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
     SensorThreshold, package_device_connection, DispatcherLink, AssetRun, \
-    DeviceScanLock, device_variable_scope, StaticAsset, DeviceClass, \
+    device_variable_scope, StaticAsset, DeviceClass, \
     dvs_allowed_name
 from initat.cluster.backbone.models import get_change_reset_list, DeviceLogEntry
 from initat.cluster.backbone.models.functions import can_delete_obj
@@ -50,8 +50,7 @@ from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabil
     partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, \
     snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer, \
     SensorThresholdSerializer, package_device_connection_serializer, DispatcherLinkSerializer, \
-    AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer, DeviceScanLockSerializer, \
-    device_variable_scope_serializer, StaticAssetSerializer, DeviceClassSerializer, \
+    AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer, device_variable_scope_serializer, StaticAssetSerializer, DeviceClassSerializer, \
     dvs_allowed_name_serializer, DeviceLogEntrySerializer
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
