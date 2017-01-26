@@ -45,6 +45,7 @@ MOVE .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64 .\host_monitor_wi
 .\host_monitor_windows\python.exe -m pip install inflection
 
 XCOPY .\syslog.py .\host_monitor_windows\Lib\site-packages\
+XCOPY .\service_manager.py .\host_monitor_windows\
 
 MKDIR .\host_monitor_windows\Lib\site-packages\initat
 MKDIR .\host_monitor_windows\Lib\site-packages\initat\host_monitoring
