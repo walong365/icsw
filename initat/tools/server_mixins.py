@@ -220,13 +220,13 @@ class ConfigCheckObject(object):
                         ),
                         (
                             "DEBUG_LEVEL",
-                            configfile.bool_c_var(
+                            configfile.int_c_var(
                                 ICSW_DEBUG_LEVEL,
                             )
                         ),
                         (
                             "VERBOSE",
-                            configfile.bool_c_var(
+                            configfile.int_c_var(
                                 ICSW_DEBUG_LEVEL,
                             )
                         ),

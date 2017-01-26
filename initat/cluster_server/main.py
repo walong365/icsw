@@ -40,22 +40,22 @@ def main(options=None):
         [
             (
                 "COMMAND", configfile.str_c_var(
-                    options.COMMAND,
+                    options.COMMAND if options else "",
                 )
             ),
             (
                 "BACKUP_DATABASE", configfile.bool_c_var(
-                    options.BACKUP_DATABASE,
+                    options.BACKUP_DATABASE if options else False,
                 )
             ),
             (
                 "OPTION_KEYS", configfile.array_c_var(
-                    options.OPTION_KEYS,
+                    options.OPTION_KEYS if options else [],
                 )
             ),
             (
                 "SHOW_RESULT", configfile.bool_c_var(
-                    options.SHOW_RESULT,
+                    options.SHOW_RESULT if options else False,
                 )
             ),
         ]
