@@ -107,7 +107,7 @@ class Command(BaseCommand):
                 start_time = time.time()
                 _local_created = 0
                 errors = []
-                if hasattr(model, "ICSW_Meta") and hasattr(model.CSW_Meta, "permissions"):
+                if hasattr(model, "ICSW_Meta") and hasattr(model.ICSW_Meta, "permissions"):
                     if model._meta.proxy:
                         # ignore proxy models
                         continue
@@ -115,7 +115,7 @@ class Command(BaseCommand):
                     cur_ct = ContentType.objects.get_for_model(model)
                     model_name = cur_ct.model
                     # print app_label, cur_ct, dir(model._meta), model._meta.model_name
-                    for code_name, name, valid_for_object_level in model.CSW_Meta.permissions:
+                    for code_name, name, valid_for_object_level in model.ICSW_Meta.permissions:
                         # print "found", app_label, code_name
                         found_perms_list.append((app_label, code_name, cur_ct.model))
                         found_perms.add((app_label, code_name, model_name))

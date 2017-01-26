@@ -29,9 +29,8 @@ urlpatterns = []
 
 path_name = os.path.dirname(__file__)
 
-# for testing
-# _BLACKLIST = ["webfrontend"]
-_BLACKLIST = ["__init__"]
+# do not load (deleted) webfrontend_min because the file was written for an older django version
+_BLACKLIST = ["webfrontend_min", "__init__"]
 Z800_MIGRATION = "ICSW_0800_MIGRATION" in os.environ
 
 if settings.ICSW_INCLUDE_URLS and not Z800_MIGRATION:
