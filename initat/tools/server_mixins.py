@@ -428,9 +428,7 @@ class ConfigCheckObject(object):
             self.log("Config : {}".format(conf))
 
     def read_config_from_db(self, default_list=[]):
-        from initat.tools import cluster_location
-        cluster_location.read_config_from_db(
-            self.global_config,
+        self.global_config.from_database(
             self.__sql_info,
             default_list,
         )
@@ -444,8 +442,7 @@ class ConfigCheckObject(object):
                     self.__sql_info.config_name,
                 )
             )
-            cluster_location.write_config_to_db(
-                self.global_config,
+            self.global_config.to_database(
                 self.__sql_info,
             )
         else:

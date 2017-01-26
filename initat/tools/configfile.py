@@ -19,6 +19,7 @@
 #
 """ module for handling config files, now implemented using MemCache """
 
+import array
 import base64
 import bz2
 import datetime
@@ -36,7 +37,6 @@ class _conf_var(object):
 
     def __init__(self, def_val, **kwargs):
         self.__default_val = def_val
-        self.__info = kwargs.get("info", "")
         if not self.check_type(def_val):
             raise TypeError(
                 "Type of Default-value differs from given type ({}, {})".format(
@@ -46,13 +46,11 @@ class _conf_var(object):
             )
         self.source = kwargs.get("source", "default")
         self.value = self.__default_val
-        # for commandline options
-        self._help_string = kwargs.get("help_string", None)
-        self._database_set = "database" in kwargs
-        self._database = kwargs.get("database", False)
+        self.__help_string = kwargs.get("help_string", None)
+        self.__database = kwargs.get("database", False)
+        self.__database_flag_set = "database" in kwargs
         kw_keys = set(kwargs) - {
-            "info", "source", "action",
-            "help_string", "database",
+            "source", "help_string", "database",
         }
         if kw_keys:
             print(
@@ -70,6 +68,14 @@ class _conf_var(object):
         else:
             _val = self.value
             _def_val = self.__default_val
+        _kwargs = {
+            "source": self.source,
+            "help_string": self.__help_string,
+        }
+        if self.__database_flag_set:
+            # add database value only if the database_flag was set from the __init__ kwargs
+            # (not only via the default value)
+            _kwargs["database"] = self.database
         return json.dumps(
             {
                 # to determine type
@@ -79,31 +85,29 @@ class _conf_var(object):
                 # current value
                 "value": _val,
                 # kwargs
-                "kwargs": {
-                    "info": self.__info,
-                    "source": self.source,
-                    "help_string": self._help_string,
-                    "database": self.database,
-                }
+                "kwargs": _kwargs,
             }
         )
 
-    def is_commandline_option(self):
-        return True if self._help_string else False
+    @property
+    def help_string(self):
+        return self.__help_string
 
-    def get_commandline_info(self):
-        if self._help_string:
-            return "is commandline option, help_string is '{}'".format(self._help_string)
-        else:
-            return "no commandline option"
+    @help_string.setter
+    def help_string(self, value):
+        self.__help_string = value
 
     @property
     def database(self):
-        return self._database
+        return self.__database
 
     @database.setter
     def database(self, database):
-        self._database = database
+        self.__database = database
+
+    @property
+    def database_flag_set(self):
+        return self.__database_flag_set
 
     @property
     def source(self):
@@ -151,9 +155,6 @@ class _conf_var(object):
             self.source,
             self.pretty_print()
         )
-
-    def get_info(self):
-        return self.__info
 
 
 class int_c_var(_conf_var):
@@ -560,7 +561,7 @@ class Configuration(object):
         return self.__spm
 
     def help_string(self, key):
-        return self.__c_dict[key]._help_string
+        return self.__c_dict[key].help_string
 
     def get_var(self, key):
         return self.__c_dict[key]
@@ -571,7 +572,7 @@ class Configuration(object):
         self.__c_dict.update_mode = True
         for key, value in entries:
             # check for override of database flag
-            if not value._database_set and "database" in kwargs:
+            if "database" in kwargs and not value.database_flag_set:
                 value.database = kwargs["database"]
             self.__c_dict[key] = value
         self.__c_dict.update_mode = False
@@ -672,6 +673,141 @@ class Configuration(object):
     @ConfigKeyError
     def get_type(self, key):
         return self.__c_dict[key].short_type
+
+    def from_database(self, sql_info, init_list=[]):
+        from django.db.models import Q
+        from initat.tools import configfile
+        from initat.cluster.backbone.models import config_blob, \
+            config_bool, config_int, config_str
+        _VAR_LUT = {
+            "int": config_int,
+            "str": config_str,
+            "blob": config_blob,
+            "bool": config_bool,
+        }
+
+        self.add_config_entries(init_list, database=True)
+        if sql_info.effective_device:
+            # dict of local vars without specified host
+            for short in [
+                "str",
+                "int",
+                "blob",
+                "bool",
+            ]:
+                # very similiar code appears in config_tools.py
+                src_sql_obj = _VAR_LUT[short].objects
+                if init_list:
+                    src_sql_obj = src_sql_obj.filter(
+                        Q(name__in=[var_name for var_name, _var_value in init_list])
+                    )
+                for db_rec in src_sql_obj.filter(
+                    Q(config=sql_info.config) &
+                    Q(config__device_config__device=sql_info.effective_device)
+                ).order_by("name"):
+                    var_name = db_rec.name
+                    source = "{}_table (pk={})".format(short, db_rec.pk)
+                    if isinstance(db_rec.value, array.array):
+                        new_val = configfile.str_c_var(db_rec.value.tostring(), source=source)
+                    elif short == "int":
+                        new_val = configfile.int_c_var(int(db_rec.value), source=source)
+                    elif short == "bool":
+                        new_val = configfile.bool_c_var(bool(db_rec.value), source=source)
+                    else:
+                        new_val = configfile.str_c_var(db_rec.value, source=source)
+                    _present_in_config = var_name in self
+                    if _present_in_config:
+                        # copy settings from config
+                        new_val.database = self.database(var_name)
+                        new_val.help_string = self.help_string(var_name)
+                    self.add_config_entries([(var_name.upper(), new_val)])
+
+    def to_database(self, sql_info):
+        from django.db.models import Q
+        from initat.cluster.backbone.models import config_blob, \
+            config_bool, config_int, config_str
+
+        def strip_description(descr):
+            if descr:
+                descr = " ".join(
+                    [
+                        entry for entry in descr.strip().split() if not entry.count("(default)")
+                        ]
+                )
+            return descr
+
+        type_dict = {
+            "i": config_int,
+            "s": config_str,
+            "b": config_bool,
+            "B": config_blob,
+        }
+        if sql_info.effective_device and sql_info.config:
+            for key in sorted(self.keys()):
+                # print k,config.get_source(k)
+                # print "write", k, config.get_source(k)
+                # if config.get_source(k) == "default":
+                # only deal with int and str-variables
+                var_obj = type_dict.get(self.get_type(key), None)
+                # print key, var_obj, self.database(key)
+                if var_obj is not None and self.database(key):
+                    other_types = set([value for _key, value in list(type_dict.items()) if _key != self.get_type(key)])
+                    # var global / local
+                    var_range_name = "global"
+                    # build real var name
+                    real_k_name = key
+                    try:
+                        cur_var = var_obj.objects.get(
+                            Q(name=real_k_name) &
+                            Q(config=sql_info.config) &
+                            (Q(device=0) | Q(device=None) | Q(device=sql_info.effective_device.pk))
+                        )
+                    except var_obj.DoesNotExist:
+                        # check other types
+                        other_var = None
+                        for other_var_obj in other_types:
+                            try:
+                                other_var = other_var_obj.objects.get(
+                                    Q(name=real_k_name) & Q(config=sql_info.config) & (
+                                        Q(device=0) | Q(device=None) | Q(device=sql_info.effective_device.pk)
+                                    )
+                                )
+                            except other_var_obj.DoesNotExist:
+                                pass
+                            else:
+                                break
+                        if other_var is not None:
+                            # other var found, delete
+                            other_var.delete()
+                        # description
+                        _new_var = var_obj(
+                            name=real_k_name,
+                            description="",
+                            config=sql_info.config,
+                            device=None,
+                            value=self[key],
+                        )
+                        _new_var.save()
+                    else:
+                        if self[key] != cur_var.value:
+                            cur_var.value = self[key]
+                            cur_var.save()
+                    # update description
+                    _cur_descr = cur_var.description or ""
+                    if self.help_string(key):
+                        new_descr = strip_description(self.help_string(key))
+                    else:
+                        new_descr = "{} default value from {} on {}".format(
+                            var_range_name,
+                            sql_info.config_name,
+                            sql_info.short_host_name,
+                        )
+                    if new_descr and new_descr != _cur_descr and _cur_descr.count("default value from"):
+                        cur_var.description = new_descr
+                        cur_var.save(update_fields=["description"])
+                else:
+                    # print "X", key
+                    pass
 
 
 def get_global_config(c_name, single_process_mode=False, mc_enabled=True):

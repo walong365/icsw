@@ -74,16 +74,16 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
                 ("FROM_ADDR", configfile.str_c_var(long_host_name)),
                 ("VERSION", configfile.str_c_var(VERSION_STRING, database=False)),
                 ("QUOTA_ADMINS", configfile.str_c_var("cluster@init.at")),
-                ("MONITOR_QUOTA_USAGE", configfile.bool_c_var(False, info="enabled quota usage tracking")),
-                ("TRACK_ALL_QUOTAS", configfile.bool_c_var(False, info="also track quotas without limit")),
+                ("MONITOR_QUOTA_USAGE", configfile.bool_c_var(False, help_string="enabled quota usage tracking")),
+                ("TRACK_ALL_QUOTAS", configfile.bool_c_var(False, help_string="also track quotas without limit")),
                 ("QUOTA_CHECK_TIME_SECS", configfile.int_c_var(3600)),
-                ("USER_MAIL_SEND_TIME", configfile.int_c_var(3600, info="time in seconds between two mails")),
+                ("USER_MAIL_SEND_TIME", configfile.int_c_var(3600, help_string="time in seconds between two mails")),
                 ("SERVER_FULL_NAME", configfile.str_c_var(long_host_name, database=False)),
                 ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name, database=False)),
                 ("DATABASE_DUMP_DIR", configfile.str_c_var("/opt/cluster/share/db_backup")),
                 ("DATABASE_KEEP_DAYS", configfile.int_c_var(30)),
-                ("USER_SCAN_TIMER", configfile.int_c_var(7200, info="time in seconds between two user_scan runs")),
-                ("NEED_ALL_NETWORK_BINDS", configfile.bool_c_var(True, info="raise an error if not all bind() calls are successfull")),
+                ("USER_SCAN_TIMER", configfile.int_c_var(7200, help_string="time in seconds between two user_scan runs")),
+                ("NEED_ALL_NETWORK_BINDS", configfile.bool_c_var(True, help_string="raise an error if not all bind() calls are successfull")),
             ]
         )
         if not self.__run_command:

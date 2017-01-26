@@ -47,9 +47,9 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, s
                 ("KEEP_LOGS_TOTAL", configfile.int_c_var(30)),
                 ("KEEP_LOGS_TOTDDAL", configfile.int_c_var(30)),
                 # maximum time in days to track logs
-                ("LOGS_TRACKING_DAYS", configfile.int_c_var(4, info="time to track logs in days")),
+                ("LOGS_TRACKING_DAYS", configfile.int_c_var(4, help_string="time to track logs in days")),
                 # cachesize for lineinfo (per file)
-                ("LINECACHE_ENTRIES_PER_FILE", configfile.int_c_var(50, info="line cache per file")),
+                ("LINECACHE_ENTRIES_PER_FILE", configfile.int_c_var(50, help_string="line cache per file")),
             ]
         )
         # close connection (daemonizing)

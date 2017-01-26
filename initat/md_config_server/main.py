@@ -27,7 +27,6 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from django.conf import settings
 from initat.tools import configfile
 from initat.md_config_server.config import global_config
 
@@ -44,8 +43,6 @@ def main():
             ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1", help_string="memcache address")),
         ]
     )
-    # enable connection debugging
-    global_config["DEBUG"] = settings.DEBUG
     run_code()
     # exit
     os._exit(0)
