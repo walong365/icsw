@@ -40,6 +40,17 @@ class DynamicCheckServer(Enum):
     collrelay = "collrelay"
 
 
+class DynamicCheckResultType(Enum):
+    # do nothing, error
+    none = "none"
+    # fetch result
+    fetch = "fetch"
+    # iterate: valid for meta checks (reiterate)
+    iterate = "iterate"
+    # check, we got some check result
+    check = "check"
+
+
 class DynamicCheckAction(object):
     def __init__(self, srv_enum, command, *args, **kwargs):
         self.srv_enum = srv_enum
@@ -79,7 +90,7 @@ class DynamicCheckMode(Enum):
 class DynamicCheckResult(object):
     def __init__(self):
         # none, config, check or fetch
-        self.r_type = "none"
+        self.r_type = DynamicCheckResultType.none
         self.errors = []
         self.check_list = []
         self.config_list = []
@@ -91,11 +102,11 @@ class DynamicCheckResult(object):
 
     def set_configs(self, lines):
         self.config_list.extend(lines)
-        self.r_type = "config"
+        self.r_type = DynamicCheckResultType.iterate
 
     def set_checks(self, lines):
         self.check_list.extend(lines)
-        self.r_type = "check"
+        self.r_type = DynamicCheckResultType.check
 
     def dump_errors(self, log_com):
         if self.errors:
@@ -103,7 +114,7 @@ class DynamicCheckResult(object):
                 log_com(_line, logging_tools.LOG_LEVEL_CRITICAL)
 
     def set_server_contact(self, s_instance):
-        self.r_type = "fetch"
+        self.r_type = DynamicCheckResultType.fetch
         self.special_instance = s_instance
 
     def __unicode__(self):
@@ -148,34 +159,40 @@ class DynamicCheckDict(object):
         return self._class_dict[_key]
 
     def handle(self, gbc, hbc, cur_gc, s_check, mode):
-        #
+        # import reverse lut for meta subcommands
+        from . import META_SUB_REVERSE_LUT
+        # init Dynamic Check Result
         rv = DynamicCheckResult()
         # mccs .... mon_check_command_special
-        mccs = gbc.mccs_dict[s_check.mccs_id]
+        # mccs = gbc.mccs_dict[s_check.mccs_id]
+        mccs = s_check.mon_check_command_special
+        # mccs to be called
+        call_mccs = mccs
         # store name of mccs (for parenting)
         mccs_name = mccs.name
         if mccs.parent_id:
             # to get the correct command_line
-            com_mccs = mccs
             # link to parent
-            mccs = gbc.mccs_dict[mccs.parent_id]
+            mccs = mccs.parent
+            check_has_parent = True
         else:
-            com_mccs = mccs
+            check_has_parent = False
         # create lut entry to rewrite command name to mccs
-        rv.rewrite_lut["check_command"] = mccs.md_name
+        rv.rewrite_lut["check_command"] = mccs.dummy_mcc.unique_name
         # print("***", _rewrite_lut)
         try:
+            # create special check instance
             cur_special = self[mccs.name](
                 hbc.log,
                 self,
                 # get mon_check_command (we need arg_ll)
-                s_check=cur_gc["command"][com_mccs.md_name],
+                s_check=cur_gc["command"][call_mccs.dummy_mcc.unique_name],
+                # monitoring check command
                 parent_check=s_check,
                 host=hbc.device,
                 build_cache=gbc,
             )
         except:
-            # print(mccs.name, com_mccs.md_name)
             rv.feed_error(
                 "unable to initialize special '{}': {}".format(
                     mccs.name,
@@ -187,10 +204,11 @@ class DynamicCheckDict(object):
             # [(description, [ARG1, ARG2, ARG3, ...]), (...)]
             try:
                 if mode == DynamicCheckMode.create:
-                    if mccs_name != mccs.name:
+                    if check_has_parent:
                         # for meta specials
                         sc_array = cur_special(mode, instance=mccs_name)
                     else:
+                        # sc array is the list of instances to be called
                         sc_array = cur_special(mode)
                 else:
                     # fetch mode, currently not supported for meta checks
@@ -218,20 +236,26 @@ class DynamicCheckDict(object):
             finally:
                 cur_special.cleanup()
             if mode == DynamicCheckMode.create:
-                if cur_special.Meta.meta and sc_array and mccs_name == mccs.name:
+                if cur_special.Meta.meta and sc_array and not check_has_parent:
                     # dive in subcommands, for instance 'all SNMP checks'
                     # check for configs not really configured
-                    _dead_coms = [_entry for _entry in sc_array if not hasattr(gbc.mccs_dict[_entry], "check_command_name")]
+                    print("-" * 50)
+                    print("*", sc_array)
+                    # this has to be fixed, check lines 329 ff. from build_cache.py
+                    _dead_coms = [
+                        # _entry for _entry in sc_array if not hasattr(gbc.mccs_dict[_entry], "check_command_name")
+                    ]
                     if _dead_coms:
                         rv.feed_error(
                             "unconfigured checks: {}".format(
                                 ", ".join(sorted(_dead_coms))
                             ),
                         )
-                    # we return a list of config (to be iterated again)
+                    # we return a list of config names (to be iterated over)
+
                     rv.set_configs(
                         [
-                            gbc.mccs_dict[_entry].check_command_name for _entry in sc_array if _entry not in _dead_coms
+                            META_SUB_REVERSE_LUT[_entry] for _entry in sc_array if _entry not in _dead_coms
                         ]
                     )
                 else:

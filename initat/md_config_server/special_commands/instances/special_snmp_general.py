@@ -31,13 +31,15 @@ class SpecialSnmpGeneral(SpecialBase):
         description = "Enable all checks related to found SNMP schemes"
         meta = True
 
-    def _call(self, instance=None):
+    def call(self, instance: str=None):
+        # instance is the SNMP-instance to be called
         if not instance:
             _retf = []
             for _scheme in self.host.snmp_schemes.filter(Q(mon_check=True)):
                 _handler = self.build_cache.snmp_sink.get_handler(_scheme)
                 if _handler:
                     _retf.extend([_com.Meta.name for _com in _handler.config_mon_check()])
+            print("r=", _retf)
             return _retf
         else:
             return self.build_cache.snmp_sink.get_handler_from_mon(instance).config_call(self)

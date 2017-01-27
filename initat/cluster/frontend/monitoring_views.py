@@ -658,7 +658,6 @@ class get_hist_device_data(ListAPIView):
         device_ids = json.loads(request.GET.get("device_ids"))
 
         timespans_db = _device_status_history_util.get_timespans_db_from_request(request)
-
         data = []
         if len(timespans_db):
             data = mon_icinga_log_aggregated_host_data.objects.filter(
@@ -677,7 +676,8 @@ class get_hist_device_data(ListAPIView):
             if _eco.consume("dashboard", device_id):
                 data_merged_state_types[device_id] = mon_icinga_log_aggregated_service_data.objects.merge_state_types(
                     device_data,
-                    mon_icinga_log_raw_base.STATE_UNDETERMINED
+                    mon_icinga_log_raw_base.STATE_UNDETERMINED,
+                    normalize=True,
                 )
 
         return Response([data_merged_state_types])  # fake a list, see coffeescript

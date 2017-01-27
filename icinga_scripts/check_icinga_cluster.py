@@ -92,8 +92,8 @@ def main():
                         )
                     )
             info_str = ", ".join(info_f) or "---"
-            print((
-                "CLUSTER {}: {}{}".format(
+            print(
+                "Cluster {}: {}{}".format(
                     {
                         0: "OK",
                         1: "WARNING",
@@ -102,7 +102,7 @@ def main():
                     "{}: ".format(opts.label) if opts.label else "",
                     info_str,
                 )
-            ))
+            )
     return ret_value
 
 

@@ -28,21 +28,21 @@ from lxml.builder import E
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, mon_contactgroup, network_type, user, \
     config, config_catalog, mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
-    mon_check_command_special, mon_check_command, BackgroundJobState, MonCheckCommandSystemNames
+    mon_check_command_special, BackgroundJobState, MonCheckCommandSystemNames, DBStructuredMonBaseConfig
 from initat.md_config_server import special_commands, constants
-from ..config import global_config, MainConfig, MonAllCommands, \
-    MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, \
-    MonDeviceTemplates, MonServiceTemplates, MonAllHostDependencies, build_safe_name, StructuredMonBaseConfig, \
-    MON_VAR_IP_NAME, SpecialTypesEnum
 from initat.md_config_server.icinga_log_reader.log_reader import HostServiceIDUtil
 from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.tools import config_tools, logging_tools, server_mixins, server_command
 from initat.tools.bgnotify import create_bg_job
 from .ipc_comtool import IPCClientHandler
+from ..config import global_config, MainConfig, MonAllCommands, \
+    MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, \
+    MonDeviceTemplates, MonServiceTemplates, MonAllHostDependencies, build_safe_name, StructuredMonBaseConfig, \
+    MON_VAR_IP_NAME, SpecialTypesEnum
 from ..config.build_cache import BuildCache, HostBuildCache
 from ..constants import BuildModesEnum
 from ..mixins import ImageMapMixin, DistanceMapMixin, NagVisMixin
-from ..special_commands.struct import DynamicCheckMode
+from ..special_commands.struct import DynamicCheckMode, DynamicCheckResultType
 
 
 class BuildProcess(
@@ -122,9 +122,10 @@ class BuildProcess(
                 ).get_commands()
             ]
         )
+        # create snmp monitoring entries for all SNMP-based configs
         _to_create = set(_specials.keys()) & (_new - _present_coms)
         for _name in _to_create:
-            _new_mcc = mon_check_command.objects.create(
+            DBStructuredMonBaseConfig.objects.create(
                 name=_name,
                 description="auto created SNMP check entry",
                 config=_container,
@@ -249,7 +250,7 @@ class BuildProcess(
                 for conf_name in conf_names:
                     s_check = cur_gc["command"][conf_name]
                     # check for special check
-                    if s_check.mccs_id:
+                    if s_check.mon_check_command_special_id:
                         _count_dict["special_found"] += 1
                         if hbc is None:
                             # init
@@ -264,7 +265,7 @@ class BuildProcess(
                             DynamicCheckMode.fetch,
                         )
                         # print("*", _res.r_type)
-                        if _res.r_type == "fetch":
+                        if _res.r_type == DynamicCheckResultType.fetch:
                             if not _dev_added:
                                 fetch_list.append(hbc)
                                 _dev_added = True
@@ -1047,7 +1048,7 @@ class BuildProcess(
                                 )
                             ]
                         )
-                        print("-", conf_name)
+                        print("-", conf_names)
                         # list of already used checks
                         used_checks = set()
                         # print "*", conf_names
@@ -1058,7 +1059,8 @@ class BuildProcess(
                             self.add_host_config(
                                 gbc,
                                 hbc,
-                                conf_name, used_checks,
+                                conf_name,
+                                used_checks,
                                 act_def_serv,
                             )
                         if gbc.consumer and _num_checks:
@@ -1073,7 +1075,7 @@ class BuildProcess(
                             hbc.host_config_list.extend(self.add_service_cluster_checks(gbc, hbc, msc_checks, act_def_serv))
                         # add host dependencies
                         if use_host_deps:
-                            for h_dep in gbc.get_dependencies(SpecialTypesEnum.mon_host_dependecy, host.pk):
+                            for h_dep in gbc.get_dependencies(SpecialTypesEnum.mon_host_dependency, host.pk):
                                 # check reachability
                                 _unreachable = [
                                     gbc.get_host(_dev_pk) for _dev_pk in h_dep.devices_list + h_dep.master_list if not gbc.get_host(_dev_pk).reachable
@@ -1347,24 +1349,28 @@ class BuildProcess(
         return ret_list
 
     def add_host_config(
-        self, gbc, hbc, conf_name, used_checks,
+        self,
+        gbc,
+        hbc,
+        conf_name,
+        used_checks,
         act_def_serv,
     ):
         cur_gc = gbc.global_config
         # print("*", conf_name, cur_gc["command"].keys())
         s_check = cur_gc["command"][conf_name]
-        if s_check.name in used_checks:
+        if s_check.unique_name in used_checks:
             hbc.log(
-                "{} ({}) already used, ignoring .... (CHECK CONFIG !)".format(
+                "{} ({}) already used, ignoring .... (please check config)".format(
                     s_check.get_description(),
                     s_check.unique_name,
                 ),
                 logging_tools.LOG_LEVEL_WARN
             )
         else:
-            used_checks.add(s_check.name)
+            used_checks.add(s_check.unique_name)
             # s_check: instance of check_command
-            if s_check.mccs_id:
+            if s_check.mon_check_command_special_id:
                 hbc.add_dynamic_check(s_check)
                 dc_rv = special_commands.dynamic_checks.handle(
                     gbc,
@@ -1374,21 +1380,30 @@ class BuildProcess(
                     DynamicCheckMode.create,
                 )
                 dc_rv.dump_errors(self.log)
-                if dc_rv.r_type == "none":
+                if dc_rv.r_type == DynamicCheckResultType.none:
                     # an error occured, do nothing
                     sc_array = []
-                elif dc_rv.r_type == "config":
+                elif dc_rv.r_type == DynamicCheckResultType.iterate:
                     # iterate into add_host_config again
                     for _com_name in dc_rv.config_list:
                         self.add_host_config(
-                            gbc, hbc,
-                            _com_name, used_checks,
+                            gbc,
+                            hbc,
+                            _com_name,
+                            used_checks,
                             act_def_serv,
                         )
+                    # nothing to do
                     sc_array = []
-                else:
+                elif dc_rv.r_type == DynamicCheckResultType.check:
                     # we got a valid list of sc_array
                     sc_array = dc_rv.check_list
+                else:
+                    hbc.log(
+                        "Unknown DynamicCheckResultType {}".foramt(dc_rv.r_type),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                    sc_array = []
                 _rewrite_lut = dc_rv.rewrite_lut
             else:
                 # no special command, empty rewrite_lut, simple templating
@@ -1416,7 +1431,12 @@ class BuildProcess(
         # configure mon check commands
         # import pprint
         # pprint.pprint(all_configs.get(device.full_name, []))
-        ccoms = sum([mcc_lut_2.get(key, []) for key in all_configs.get(device.full_name, [])], [])
+        ccoms = sum(
+            [
+                mcc_lut_2.get(key, []) for key in all_configs.get(device.full_name, [])
+            ],
+            []
+        )
         # needed checkcommand
         nccom = mcc_lut[moncc_id]
         if nccom[0] in ccoms:
@@ -1482,7 +1502,6 @@ class BuildProcess(
             info = arg_temp.info.replace("(", "[").replace(")", "]")
             act_serv["display_name"] = info
             # create identifying string for log
-            # print "::", s_check.check_command_pk, s_check.special_command_pk, s_check.mccs_id
             act_serv["service_description"] = HostServiceIDUtil.create_host_service_description(host.pk, s_check, info)
             act_serv["host_name"] = host.full_name
             # volatile

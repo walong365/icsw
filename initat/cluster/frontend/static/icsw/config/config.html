@@ -751,6 +751,7 @@
     <th st-sort="description">Description</th>
     <th>Enabled</th>
     <th>System</th>
+    <th>Shadow</th>
     <th>Special</th>
     <th>Command Line</th>
     <!-- <th>active</th> -->
@@ -770,6 +771,7 @@
     <td>{{ obj.description }}</td>
     <td class="text-center"><span ng-bind-html="obj.enabled | yesno4"></span></td>
     <td class="text-center"><span ng-bind-html="obj.system_command | yesno3"></span></td>
+    <td class="text-center"><span ng-bind-html="obj.special_shadow | yesno3"></span></td>
     <td class="text-center"><span ng-bind-html="obj.mon_check_command_special | yesno3"></span></td>
     <td title="{{ obj.$$command_line }}" ng-if="obj.is_active">
         <input
@@ -873,14 +875,14 @@
             <uib-tab heading="Basic setup">
                 <fieldset>
                     <legend>Basic Settings</legend>
-                    <div class="form-group" ng-if="!fixed_config">
+                    <div class="form-group">
                         <label class="control-label col-sm-3 icsw-formlabel">
                             Configuration
                         </label>
 
-                        <div class="controls col-sm-9">
+                        <div class="controls col-sm-9" ng-if="!fixed_config">
                             <div class="input-group">
-                                <ui-select ng-model="edit_obj.config" ng-disabled="false">
+                                <ui-select ng-model="edit_obj.config">
                                     <ui-select-match class="ui-select-match" placeholder="Please select a Configuration">
                                         {{ $select.selected.name }}
                                     </ui-select-match>
@@ -896,6 +898,9 @@
                                     </button>
                                 </span>
                             </div>
+                        </div>
+                        <div class="controls col-sm-9" ng-if="fixed_config">
+                            {{ config_tree.lut[edit_obj.config].name || "---" }}
                         </div>
                     </div>
                     <div class="form-group">
@@ -932,7 +937,7 @@
 
                         <div class="controls col-sm-9">
                             <div class="input-group">
-                                <ui-select ng-model="edit_obj.mon_check_command_special" ng-disabled="false">
+                                <ui-select ng-model="edit_obj.mon_check_command_special">
                                     <ui-select-match class="ui-select-match" placeholder="Please select a Special Command">
                                         {{$select.selected.info}}
                                     </ui-select-match>
@@ -1003,7 +1008,7 @@
                         </label>
                         <div class="controls col-sm-9">
                             <div class="input-group">
-                                <ui-select ng-model="edit_obj.mon_service_templ" ng-disabled="false">
+                                <ui-select ng-model="edit_obj.mon_service_templ">
                                     <ui-select-match class="ui-select-match" placeholder="please select a service template">
                                         {{ $select.selected.name }}
                                     </ui-select-match>
@@ -1026,7 +1031,7 @@
 
                         <div class="controls col-sm-9">
                             <div class="input-group">
-                                <ui-select ng-model="edit_obj.event_handler" ng-disabled="false">
+                                <ui-select ng-model="edit_obj.event_handler">
                                     <ui-select-match class="ui-select-match" placeholder="please select an event handler">
                                         {{ $select.selected.name }}
                                     </ui-select-match>

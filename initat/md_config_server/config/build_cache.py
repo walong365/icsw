@@ -172,8 +172,9 @@ class BuildCache(object):
         # add dummy entries
         for _value in self.mcc_lut_3.values():
             # why ? FIXME
-            _value.mccs_id = None
+            # _value.mccs_id = None
             # _value.check_command_pk = _value.pk
+            pass
         self.mcc_lut = {
             key: (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config__name")
         }
@@ -181,6 +182,8 @@ class BuildCache(object):
         self.mcc_lut_2 = {}
         for v_list in mon_check_command.objects.all().values_list("name", "config__name"):
             self.mcc_lut_2.setdefault(v_list[1], []).append(v_list[0])
+        import pprint
+        pprint.pprint(self.mcc_lut)
         # host list, set from caller
         self.host_list = []
         self.dev_templates = None
@@ -255,14 +258,14 @@ class BuildCache(object):
         deps = {}
         for _obj, _name in [
             (
-                mon_host_dependency, SpecialTypesEnum.mon_host_dependecy
+                mon_host_dependency, SpecialTypesEnum.mon_host_dependency
             ), (
                 mon_service_dependency, SpecialTypesEnum.mon_service_dependency
             )
         ]:
             _lut = {}
             _query = _obj.objects.all().prefetch_related("devices", "dependent_devices")
-            if _name == SpecialTypesEnum.mon_service_dependency:
+            if _name == SpecialTypesEnum.mon_host_dependency:
                 _query = _query.select_related(
                     "mon_host_dependency_templ",
                     "mon_host_dependency_templ__dependency_period",
@@ -285,7 +288,7 @@ class BuildCache(object):
                     _lut[_do.pk].append(_dd.pk)
                     deps.setdefault(_name, {}).setdefault(_dd.pk, []).append(_do)
             for _entry in _obj.devices.through.objects.all():
-                if _name == SpecialTypesEnum.mon_host_dependecy:
+                if _name == SpecialTypesEnum.mon_host_dependency:
                     _pk = _entry.mon_host_dependency_id
                 else:
                     _pk = _entry.mon_service_dependency_id
@@ -293,7 +296,7 @@ class BuildCache(object):
                     _tdo = [_do for _do in deps[_name][_devpk] if _do.pk == _pk][0]
                     _tdo.devices_list.append(_entry.device_id)
             for _entry in _obj.dependent_devices.through.objects.all():
-                if _name == SpecialTypesEnum.mon_host_dependecy:
+                if _name == SpecialTypesEnum.mon_host_dependency:
                     _pk = _entry.mon_host_dependency_id
                 else:
                     _pk = _entry.mon_service_dependency_id
@@ -323,17 +326,17 @@ class BuildCache(object):
         # host dependency from topology
         self.hdep_from_topo = hdep_from_topo
         # mon check special command lut (mccs_dict)
-        mccs_dict = {
-            mccs.pk: mccs for mccs in mon_check_command_special.objects.all()
-        }
-        for _value in list(mccs_dict.values()):
-            mccs_dict[_value.name] = _value
+        # mccs_dict = {
+        #     mccs.pk: mccs for mccs in mon_check_command_special.objects.all()
+        #  }
+        # for _value in list(mccs_dict.values()):
+        #     mccs_dict[_value.name] = _value
 
-        for value in list(self.global_config["command"].values()):
-            if value.mccs_id:
-                # add links back to check_command_names
-                mccs_dict[value.mccs_id].check_command_name = value.name
-        self.mccs_dict = mccs_dict
+        # for value in list(self.global_config["command"].values()):
+        #     if value.mccs_id:
+        #         # add links back to check_command_names
+        #         mccs_dict[value.mccs_id].check_command_name = value.name
+        # self.mccs_dict = mccs_dict
         # set settings for local monitor server (== master or slave)
         server_idxs = [self.global_config.monitor_server.pk]
         # get netip-idxs of own host
@@ -364,7 +367,7 @@ class BuildCache(object):
     def set_variable(self, dev, var_name, var_value):
         self.__var_cache.set_variable(dev, var_name, var_value)
 
-    def get_cluster(self, c_type, main_device_id):
+    def get_cluster(self, c_type: enumerate, main_device_id: int) -> list:
         if main_device_id in self.__clusters.get(c_type, {}):
             return self.__clusters[c_type][main_device_id]
         else:
@@ -376,7 +379,7 @@ class BuildCache(object):
         else:
             return []
 
-    def get_mon_host_trace(self, host, dev_net_idxs, srv_net_idxs):
+    def get_mon_host_trace(self, host, dev_net_idxs, srv_net_idxs) -> list:
         _traces = self.__host_traces.get(host.pk, [])
         if _traces:
             _dev_fp, _srv_fp = (

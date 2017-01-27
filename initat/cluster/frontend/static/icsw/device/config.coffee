@@ -805,7 +805,7 @@ angular.module(
                                                 event
                                                 false
                                                 @props.rowElement
-                                                true
+                                                true   # do not allow config changes
                                             ).then(
                                                 (done) =>
                                                     @props.configHelper.link()

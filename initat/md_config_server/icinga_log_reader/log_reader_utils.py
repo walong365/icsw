@@ -53,15 +53,14 @@ class HostServiceIDUtil(object):
         Use create_host_service_description_direct if you don't have a check_command object
         :param s_check: initat.md_config_server.config.check_command.check_command
         '''
-        if s_check.mccs_id is not None:
+        # todo: move to new unique shadow mon_check_command objects for special_commands
+        if s_check.mon_check_command_special_id is not None:
+            # special command
             check_command_pk = s_check.idx
-            special_check_command_pk = s_check.mccs_id
+            special_check_command_pk = s_check.mon_check_command_special_id
         else:
             check_command_pk = s_check.idx
             special_check_command_pk = None
-        # else:
-        #    check_command_pk = None
-        #    special_check_command_pk = None
 
         return cls.create_host_service_description_direct(
             host_pk,

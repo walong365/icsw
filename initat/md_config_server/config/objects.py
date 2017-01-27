@@ -33,6 +33,7 @@ from initat.tools import logging_tools
 from .global_config import global_config
 from .mon_config_containers import MonFileContainer
 from ..base_config.mon_base_config import StructuredMonBaseConfig
+from ..special_commands import META_SUB_REVERSE_LUT
 
 __all__ = [
     "MonAllHostDependencies",
@@ -274,11 +275,12 @@ class MonAllCommands(MonFileContainer):
         for ccs in all_mccs:
             # create a mon_check_command instance for every special command
             special_cc = DBStructuredMonBaseConfig.get_system_check_command(
-                name=ccs.md_name,
-                command_line=ccs.command_line.strip() or "/bin/true",
-                description=ccs.description,
+                special_command=ccs,
                 create=self.__create,
             )
+            if ccs.parent_id:
+                # this is a subcommand (meta=True in parent), store linkage information
+                META_SUB_REVERSE_LUT[ccs.name] = special_cc.unique_name
             check_coms.append(special_cc)
         check_coms.extend(
             [

@@ -56,7 +56,7 @@ class SpecialBase(object):
         # identifier
         identifier = ""
         # name in database
-        db_name = ""
+        database_name = ""
 
     def __init__(self, log_com, build_proc=None, s_check=None, host=None, build_cache=None, parent_check=None, **kwargs):
         self.__log_com = log_com
@@ -70,7 +70,8 @@ class SpecialBase(object):
         elif _name.startswith("Special"):
             _name = _name[7:]
         self.Meta.name = _name
-        self.Meta.db_name = inflection.underscore(self.Meta.name)
+        # set a meaningfull, well-formatted database name
+        self.Meta.database_name = inflection.underscore(self.Meta.name)
         self.ds_name = self.Meta.name
         # print "ds_name=", self.ds_name
         self.build_process = build_proc
@@ -245,7 +246,7 @@ class SpecialBase(object):
             "starting {}@{} for {}".format(
                 mode.name,
                 s_name,
-                self.host.name,
+                self.host.full_name,
             )
         )
         s_time = time.time()

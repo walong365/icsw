@@ -32,5 +32,5 @@ MON_VAR_IP_NAME = "__$$ICSW$$__MON_VAR_IP"
 class SpecialTypesEnum(Enum):
     mon_host_cluster = "hc"
     mon_service_cluster = "sc"
-    mon_host_dependecy = "hd"
+    mon_host_dependency = "hd"
     mon_service_dependency = "sd"

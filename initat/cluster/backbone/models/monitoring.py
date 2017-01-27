@@ -304,6 +304,15 @@ class host_check_command(models.Model):
         return "hcc_{}".format(self.name)
 
 
+"""
+possible combinations:
+1) - mon_check_command alone
+2) - mon_check_command points to
+     - mon_check_command_special which in turn references a
+       - dummy_mcc to have a unique name
+"""
+
+
 class mon_check_command_special(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(max_length=64, unique=True)
@@ -319,17 +328,29 @@ class mon_check_command_special(models.Model):
     parent = models.ForeignKey("self", null=True)
     # identifier, to find certain checks, for internal use only
     identifier = models.CharField(max_length=64, default="")
+    # link to mon_chck_command_command created from this special commands
+    # -> sytem_command is True
+    # -> special_shaodw is True
+    # should alays be set
+    dummy_mcc = models.ForeignKey("backbone.mon_check_command", null=True, blank=True, related_name="mccs_ref")
 
     @property
-    def md_name(self):
-        return "special_{:d}_{}".format(self.idx, self.name)
+    def _md_name(self):
+        if self.dummy_mcc_id:
+            return self.dummy_mcc.name
+        else:
+            # this property is private and only used to create an initial unique name
+            return "special_{:d}_{}".format(
+                self.idx,
+                self.name.replace(" ", "_").replace("__", "_").replace("__", "_")
+            )
 
     class Meta:
         verbose_name = "Special check command"
         ordering = ("group", "name",)
 
     def __str__(self):
-        return "mccs_{}".format(self.name)
+        return "MonCheckCommandSpecial {}".format(self.name)
 
 
 class MonCheckCommandSystemNames(Enum):
@@ -379,6 +400,8 @@ class mon_check_command(models.Model):
     event_handler_enabled = models.BooleanField(default=True)
     # internal (==system) command
     system_command = models.BooleanField(default=False)
+    # shadow of special command
+    special_shadow = models.BooleanField(default=False)
     # is an active check
     is_active = models.BooleanField(default=True)
     # is enabled
@@ -417,7 +440,7 @@ class mon_check_command(models.Model):
         return "command"
 
     def __str__(self):
-        return "mcc_{}".format(self.name)
+        return "MonCheckCommand {}".format(self.name)
 
 
 class DBStructuredMonBaseConfig(mon_check_command, StructuredContentEmitter):
@@ -426,24 +449,50 @@ class DBStructuredMonBaseConfig(mon_check_command, StructuredContentEmitter):
     def get_system_check_command(cls, **kwargs):
         # some kind of simple factory ...
         _create = kwargs.pop("create")
+        _special = kwargs.pop("special_command", None)
         _changed = False
         try:
-            _obj = cls.objects.get(Q(system_command=True) & Q(name=kwargs["name"]))
+            if _special:
+                _obj = cls.objects.get(Q(system_command=True) & Q(name=_special._md_name))
+            else:
+                _obj = cls.objects.get(Q(system_command=True) & Q(name=kwargs["name"]))
         except cls.DoesNotExist:
             if _create:
-                _obj = cls(
-                    name=kwargs["name"],
-                    system_command=True,
-                )
+                if _special:
+                    _obj = cls(
+                        name=_special._md_name,
+                        command_line=_special.command_line.strip() or "/bin/true",
+                        description=_special.description,
+                        special_shadow=True,
+                    )
+                else:
+                    _obj = cls(
+                        name=kwargs["name"],
+                        system_command=True,
+                    )
                 _changed = True
             else:
                 # this should never happen, trigger an error
                 _obj = None
+        else:
+            if _special:
+                # copy some attributes from special
+                _obj.command_line = _special.command_line.strip() or "/bin/true"
+                _obj.description = _special.description
+                _obj.special_shadow = True
+                _changed = True
+        if _special and _obj:
+            if not _special.dummy_mcc_id:
+                _special.dummy_mcc = _obj
+                _special.save(update_fields=["dummy_mcc"])
+                _changed = True
+            if not _obj.mon_check_command_special_id:
+                _obj.mon_check_command_special = _special
+                _changed = True
         for key, value in kwargs.items():
             if getattr(_obj, key) != value:
                 setattr(_obj, key, value)
                 _changed = True
-
         if _changed:
             _obj.save()
         return _obj

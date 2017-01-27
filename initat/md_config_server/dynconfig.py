@@ -84,7 +84,7 @@ class DynConfigProcess(threading_tools.icswProcessObj):
                     )
                 else:
                     # _check.check_command_pk = _check.pk
-                    _check.mccs_id = None
+                    # _check.mccs_id = None
                     # print _check, _dev
                     _ocsp_prefix = HostServiceIDUtil.create_host_service_description(_dev.pk, _check, "")
                     ocsp_line = "[{:d}] PROCESS_SERVICE_CHECK_RESULT;{};{};{:d};{}".format(
@@ -217,7 +217,7 @@ class DynConfigProcess(threading_tools.icswProcessObj):
                     )
                 else:
                     # _mc.check_command_pk = _mc.pk
-                    _mc.mccs_id = _mcs.pk
+                    # _mc.mccs_id = _mcs.pk
                     _prefix = HostServiceIDUtil.create_host_service_description(cur_dev.pk, _mc, "")
             except mon_check_command.MultipleObjectsReturned:
                 # more than one check command found
@@ -230,7 +230,7 @@ class DynConfigProcess(threading_tools.icswProcessObj):
                 )
             else:
                 # _mc.check_command_pk = _mc.pk
-                _mc.mccs_id = _mcs.pk
+                # _mc.mccs_id = _mcs.pk
                 _prefix = HostServiceIDUtil.create_host_service_description(cur_dev.pk, _mc, "")
         return _prefix
 
