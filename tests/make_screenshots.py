@@ -15,29 +15,46 @@ def main(args):
     d.screenshot_dir = args.outdir
     d.maximize_window()
 
-    d.log_in('admin', 'abc123')
+    d.log_in('screenshot', 'init4u')
 
     # select the theme according to the CSS property "color"
     body = d.find_element_by_xpath('/html/body')
-    while body.value_of_css_property('color') != 'rgba(85, 85, 85, 1)':
-        ActionChains(d).send_keys(Keys.F2).perform()
-        time.sleep(1)
-    time.sleep(6)
+    #print(body.value_of_css_property)
+
+    #while body.value_of_css_property('color') != 'rgba(85, 85, 85, 1)':
+    #    ActionChains(d).send_keys(Keys.F2).perform()
+    #    time.sleep(1)
+    #    print('whileschleife')
+
+    body.send_keys(Keys.F2)
+    time.sleep(1)
+    d.refresh()
+    time.sleep(1)
+
+    body = d.find_element_by_xpath('/html/body')
+    body.send_keys(Keys.CONTROL, 's')
 
     # open the device selection dialog
-    visible(
-        d.find_elements_by_xpath(
-            '//span[@ng-click="device_selection($event)"]'
-            )
-        ).click()
+    #visible(
+    #    d.find_elements_by_xpath(
+    #       '//span[@ng-click="device_selection($event)"]'
+    #        )
+    #    ).click()
     # wait to be loaded
-    d.find_element_by_xpath('//span[text()="server_group"]')
+
+    #d.find_element_by_xpath('//span[text()="server_group"]')
+    print('do shot')
+
     d.save_shot('device_selection', '//div[@class="modal-content"]')
-    d.find_element_by_xpath('//button[@class="close"]').click()
-
+    print('shot done')
+    #d.find_element_by_xpath('//button[@class="close"]').click()
+    #print('closed window')
     # only select the server device and group
-    d.select_device('server|centos7-test')
 
+    # TODO select device by name not by specific path
+    d.find_element_by_xpath('//*/div/div/div[2]/div/div/icsw-selection-modal/div/div/div/div[1]/div[3]/div/div[1]/icsw-react-tree/ul/li[4]/span/div').click()
+    #d.select_device('server_group|centos7-test')
+    d.find_element_by_xpath('//button[@class="close"]').click()
     # device tree
     d.get_('/main/devtree')
     d.find_element_by_xpath('//thead/tr/th[text()="Name"]')
@@ -54,12 +71,16 @@ def main(args):
 
     # network setup
     d.get_('/main/network')
+    body.send_keys(Keys.CONTROL, 's')
+    # TODO find element by name not by path...
+    d.find_element_by_xpath('//*/div/div/div[2]/div/div/icsw-selection-modal/div/div/div/div[1]/div[3]/div/div[1]/icsw-react-tree/ul/li[4]/span/div').click()
+    d.find_element_by_xpath('//*/div/div/div[2]/div/div/icsw-selection-modal/div/div/div/div[1]/div[2]/span[1]/button[1]').click()
     # wait to be loaded
-    d.find_element_by_xpath('//tbody/tr/td[text()="centos7-test"]')
+    #d.find_element_by_xpath('//tbody/tr/td[text()="centos7-test"]')
     # un-collapse "IP Addresses"
-    d.find_element_by_xpath(
-        '//a/span/span[contains(., "IP Addresses")]/preceding::i[1]'
-        ).click()
+    #d.find_element_by_xpath(
+    #    '//a/span/span[contains(., "IP Addresses")]/preceding::i[1]'
+    #    ).click()
     d.save_shot('network_configuration', '//div[@class="tab-content"]')
 
     # create device dialog

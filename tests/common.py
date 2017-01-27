@@ -1,4 +1,4 @@
-from io import StringIO
+from io import StringIO,BytesIO
 import time
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -98,7 +98,7 @@ class Webdriver(webdriver.Remote):
         self.shot_names.add(name)
         self.wait_overlay()
         image = Image.open(
-            StringIO(base64.decodestring(self.get_screenshot_as_base64()))
+            BytesIO(base64.decodebytes(self.get_screenshot_as_base64().encode("ascii")))
             )
         if xpath:
             element = self.find_element_by_xpath(xpath)
@@ -120,7 +120,10 @@ class Webdriver(webdriver.Remote):
     def wait_staleness_of(self, element):
         WebDriverWait(self, self.timeout).until(EC.staleness_of(element))
 
+
+
     def select_device(self, expression):
+        print('select following')
         self.wait_overlay()
         visible(
             self.find_elements_by_xpath(
