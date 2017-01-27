@@ -841,12 +841,12 @@
                 <menuEntry icon="fa-table" routeName="main.categorytree" name="Categories"/>
                 <menuEntry icon="fa-list-alt" routeName="main.domaintree" name="Domain Names"/>
                 <menuEntry icon="fa-map-marker" routeName="main.monitorlocation" name="Show Locations"/>
-                <menuEntry icon="fa-map-marker" routeName="main.devlocation" name="Edit Locations"/>
+                <menuEntry icon="fa-map-pin" routeName="main.devlocation" name="Edit Locations"/>
             </routeSubGroup>
             <routeSubGroup name="Properties">
-                <menuEntry icon="fa-check-square-o" routeName="main.moncheckoverview" name="Edit Checks"/>
-                <menuEntry icon="fa-check-square-o" routeName="main.configoverview" name="Edit Configurations"/>
-                <menuEntry icon="fa-check-square" routeName="main.devicemonconfig" name="Assign Checks"/>
+                <menuEntry icon="fa-th-list" routeName="main.moncheckoverview" name="Edit Checks"/>
+                <menuEntry icon="fa-th" routeName="main.configoverview" name="Edit Configurations"/>
+                <menuEntry icon="fa-check-square-o" routeName="main.devicemonconfig" name="Assign Checks"/>
                 <menuEntry icon="fa-check-square" routeName="main.deviceconfig" name="Assign Configurations"/>
                 <menuEntry icon="fa-info" routeName="main.monitordynamic" name="Dynamic Monitoring"/>
             </routeSubGroup>
