@@ -72,28 +72,27 @@ class MonCheckEmitter(object):
             "pk", flat=True
         )
         import pprint
-        # dict of all check_commands for per device_group
-        cc_per_devg = defaultdict(set)
         # dict of all check_commands per device
         cc_per_dev = defaultdict(set)
         _DEBUG = False
-        # meta devices, check_commands via config
+        # meta devices, check_commands via config, resolve devices via device_group
         for _entry in device.objects.filter(
-                Q(is_meta_device=True)
+            Q(is_meta_device=True)
         ).filter(
             Q(
                 device_config__config__mon_check_command__isnull=False,
                 device_config__config__mon_check_command__enabled=True,
             )
         ).values_list(
-            "device_group",
+            "device_group__device_group",
             "device_config__config__mon_check_command"
         ):
-            cc_per_devg[_entry[0]].add(_entry[1])
+            cc_per_dev[_entry[0]].add(_entry[1])
         if _DEBUG:
             print("s0")
-            pprint.pprint(cc_per_devg)
-        # meta devices, check_commands via direct mon_check
+            pprint.pprint(cc_per_dev)
+        # meta devices, check_commands via direct mon_check, resolve
+        # devices via deivce_group
         for _entry in device.objects.filter(
             Q(is_meta_device=True)
         ).filter(
@@ -102,13 +101,13 @@ class MonCheckEmitter(object):
                 mcc_devices__enabled=True,
             )
         ).values_list(
-            "device_group",
+            "device_group__device_group",
             "mcc_devices",
         ).distinct():
-            cc_per_devg[_entry[0]].add(_entry[1])
+            cc_per_dev[_entry[0]].add(_entry[1])
         if _DEBUG:
             print("s1")
-            pprint.pprint(cc_per_devg)
+            pprint.pprint(cc_per_dev)
         # check commands per device via configs
         for _entry in device.objects.filter(
             ac_filter
@@ -119,22 +118,18 @@ class MonCheckEmitter(object):
             )
         ).values_list(
             "idx",
-            "device_group",
             "device_config__config__mon_check_command",
             "device_config__config__mon_check_command__exclude_devices",
         ):  # .distinct():
-            # set from device_group
-            if _entry[1] in cc_per_devg:
-                cc_per_dev[_entry[0]] |= cc_per_devg[_entry[1]]
             # check for exclusion
-            if _entry[0] == _entry[3]:
-                if _entry[2] in cc_per_dev[_entry[0]]:
+            if _entry[0] == _entry[2]:
+                if _entry[1] in cc_per_dev[_entry[0]]:
                     # remove excluded device, should normally not happen
                     # (should have never been added)
-                    cc_per_dev[_entry[0]].remove(_entry[2])
+                    cc_per_dev[_entry[0]].remove(_entry[1])
                 # otherwise we simply do not add the check_command to the device
             else:
-                cc_per_dev[_entry[0]].add(_entry[2])
+                cc_per_dev[_entry[0]].add(_entry[1])
         if _DEBUG:
             print("s2")
             pprint.pprint(cc_per_dev)

@@ -28,11 +28,11 @@ angular.module(
     icswRouteExtensionProvider.add_route("main.syslicenseoverview")
 ]).controller("icswSystemLicenseCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$uibModal",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal",
     "ICSW_URLS", 'FileUploader', "icswCSRFService", "blockUI", "icswParseXMLResponseService",
     "icswSystemLicenseDataService", "icswAccessLevelService", "icswSystemOvaCounterService",
 (
-    $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $uibModal,
+    $scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal,
     ICSW_URLS, FileUploader, icswCSRFService, blockUI, icswParseXMLResponseService,
     icswSystemLicenseDataService, icswAccessLevelService, icswSystemOvaCounterService,
 ) ->
@@ -191,9 +191,9 @@ angular.module(
 
 ]).service("icswReactOvaDisplayFactory",
 [
-    "$q", "$timeout", "icswSystemOvaCounterService", "$state", "ICSW_URLS",
+    "$q", "icswSystemOvaCounterService", "$state", "ICSW_URLS",
 (
-    $q, $timeout, icswSystemOvaCounterService, $state, ICSW_URLS,
+    $q, icswSystemOvaCounterService, $state, ICSW_URLS,
 ) ->
     {ul, li, a, span, div, p, strong, h3, hr, img, button, table, tr, td, tbody} = React.DOM
     return React.createClass(
