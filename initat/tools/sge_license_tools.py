@@ -906,7 +906,7 @@ class LicenseCheck(object):
         found_server = set()
         cur_lic, cur_srv = (None, None)
         # populate structure
-        for line_num, line in enumerate(ext_lines.split("\n")):
+        for line_num, line in enumerate(ext_lines.decode("utf-8").split("\n")):
             if not line.strip():
                 continue
             lline = line.lower()

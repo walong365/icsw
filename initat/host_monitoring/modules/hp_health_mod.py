@@ -35,7 +35,7 @@ class HPDimm(object):
     def process(self, hph):
         dimm_list = []
         cur_dimm = None
-        for line in hph.read().split("\n"):
+        for line in hph.read().decode("utf-8").split("\n"):
             if line.count(":"):
                 key, value = line.split(":", 1)
                 key = key.strip().lower()
@@ -80,7 +80,7 @@ class HPPsu(object):
     def process(self, hph):
         psu_list = []
         cur_ps = None
-        for line in hph.read().split("\n"):
+        for line in hph.read().decode("utf-8").split("\n"):
             if line.lower().startswith("power supply"):
                 if cur_ps:
                     psu_list.append(cur_ps)

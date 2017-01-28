@@ -307,6 +307,7 @@ class GlobalBuildCache(object):
             MonHostTrace.objects.exclude(Q(generation=self.__trace_gen)).delete()
 
         # global luts
+        # print("i0")
         self.mcc_lut_3 = {_check.pk: _check for _check in mon_check_command.objects.all()}
         # add dummy entries
         for _value in self.mcc_lut_3.values():
@@ -321,6 +322,7 @@ class GlobalBuildCache(object):
         self.mcc_lut_2 = {}
         for v_list in mon_check_command.objects.all().values_list("name", "config__name"):
             self.mcc_lut_2.setdefault(v_list[1], []).append(v_list[0])
+        # print("i1")
         # import pprint
         # pprint.pprint(self.mcc_lut)
         # host list, set from caller

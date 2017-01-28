@@ -135,7 +135,7 @@ class upload_license_file(View):
 
         try:
             dummy_lic = License(
-                licese_file=lic_file_content,
+                license_file=lic_file_content,
                 file_name="uploaded via webfrontend",
             )
             reader = LicenseFileReader(dummy_lic, log_com=request.xml_response.log)
@@ -160,12 +160,11 @@ class upload_license_file(View):
                     )
                     request.xml_response.error(msg)
                 else:
-                    new_lic = License(
-                        file_name=lic_file.name,
-                        license_file=lic_file_content
+                    dummy_lic.save()
+                    request.xml_response.info(
+                        "Successfully uploaded license file: {}".format(
+                            str(dummy_lic)
+                        )
                     )
-                    new_lic.save()
-                    request.xml_response.info("Successfully uploaded license file: {}".format(str(new_lic)))
-
                     # srv_com = server_command.srv_command(command="check_license_violations")
                     # contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=60, log_error=True, log_result=False)

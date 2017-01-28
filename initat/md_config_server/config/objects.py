@@ -271,8 +271,7 @@ class MonAllCommands(MonFileContainer):
                     ),
                 ]
             )
-        all_mccs = mon_check_command_special.objects.all()
-        for ccs in all_mccs:
+        for ccs in mon_check_command_special.objects.all():
             # create a mon_check_command instance for every special command
             special_cc = DBStructuredMonBaseConfig.get_system_check_command(
                 special_command=ccs,
@@ -327,6 +326,7 @@ class MonAllCommands(MonFileContainer):
         else:
             log_com = None
         for ngc in check_coms:
+            # print("*", ngc, type(ngc))
             ngc.generate_md_com_line(log_com, safe_descr)
             self.add_object(ngc)
             self[ngc.unique_name] = ngc

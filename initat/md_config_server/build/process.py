@@ -125,6 +125,8 @@ class BuildProcess(
         # create snmp monitoring entries for all SNMP-based configs
         _to_create = set(_specials.keys()) & (_new - _present_coms)
         for _name in _to_create:
+            # this is not the same as the shadow mon_check_commands,
+            # the ones created here are user selectable
             DBStructuredMonBaseConfig.objects.create(
                 name=_name,
                 description="auto created SNMP check entry",
@@ -353,7 +355,7 @@ class BuildProcess(
         )
         # dump check commands
         s_time = time.time()
-        self.log("Starting dump of checkcommands")
+        self.log("Starting dump of CheckCommands")
         self.__gen_config.add_config(MonAllCommands(self.__gen_config, logging=True, create=True))
         e_time = time.time()
         self.log("... took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))

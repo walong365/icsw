@@ -21,8 +21,8 @@
 
 import os
 import shutil
-from lxml import etree
 
+from lxml import etree
 from lxml.builder import E
 
 SHARE_DIR = "/opt/cluster/share"
@@ -79,7 +79,12 @@ def main():
         print(("content of version file {}:".format(_vers_file)))
         for _vers, _entry in _entries:
             print(("    {} -> {}".format(_vers, _entry)))
-    open(os.path.join(VERS_DIR, "versions.xml"), "w").write(etree.tostring(xml, pretty_print=True))
+    open(
+        os.path.join(VERS_DIR, "versions.xml"),
+        "w"
+    ).write(
+        etree.tostring(xml, pretty_print=True, encoding="utf-8").decode("utf-8")
+    )
 
 if __name__ == "__main__":
     main()

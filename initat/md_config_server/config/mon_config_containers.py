@@ -117,8 +117,19 @@ class MonFileContainer(dict, LogBufferMixin):
                 if self.ignore_content(act_le):
                     continue
                 _types.setdefault(act_le.obj_type, []).append(True)
-                self._content.extend(act_le.emit_content())
-            [cur_hash.update(_line.encode("utf8")) for _line in self._content]
+                try:
+                    self._content.extend(act_le.emit_content())
+                except ValueError:
+                    print(act_le["command_line"], act_le["command_name"])
+                    raise ValueError(
+                        "error emitting object '{}': {}".format(
+                            str(act_le),
+                            process_tools.get_except_info(),
+                        )
+                    )
+            [
+                cur_hash.update(_line.encode("utf8")) for _line in self._content
+            ]
             _info_str = "created {} for {}: {}".format(
                 logging_tools.get_plural("entry", len(act_list)),
                 logging_tools.get_plural("object_type", len(_types)),
