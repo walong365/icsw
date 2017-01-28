@@ -162,9 +162,18 @@ class GeneralTreeNode(object):
         cur_tn.save()
         cur_tn.node = self
         # print "wn", self.path, "**", "".join(self.content_node.content)
-        _c = "".join(self.content_node.content)
         if self.content_node.binary:
-            _c = base64.b64encode(_c)
+            _c = base64.b64encode(b"".join(self.content_node.content))
+        # fix binary content
+        elif self.content_node.content and isinstance(self.content_node.content[0], bytes):
+            self.content_node.binary = True
+            _c = base64.b64encode(b"".join(self.content_node.content))
+        else:
+            try:
+                _c = "".join(self.content_node.content)
+            except:
+                print("*", self.content_node.content)
+                raise
         cur_wc = WrittenConfigFile(
             device=cur_bc.conf_dict["device"],
             dest=self.path,
@@ -402,7 +411,7 @@ class BuildContainer(object):
                 code_obj = compile(
                     cur_script.value.replace("\r\n", "\n") + "\n",
                     "<script {}>".format(cur_script.name),
-                    "exec"
+                    "exec",
                 )
             except:
                 exc_info = process_tools.icswExceptionInfo()

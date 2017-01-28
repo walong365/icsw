@@ -387,7 +387,11 @@ class ConfigStore(object):
                 logging_tools.LOG_LEVEL_ERROR
             )
         if not self.tree_valid and self.__raise_exception_on_read:
-            raise ConfigStoreError("Store is not valid, please check logs")
+            raise ConfigStoreError(
+                "Store '{}' is not valid, please check logs".format(
+                    _read_name
+                )
+            )
 
     def _generate(self):
         _root = E("config-store", name=self.name)
@@ -411,7 +415,11 @@ class ConfigStore(object):
 
     def show(self):
         if self.tree_valid:
-            return etree.tostring(self._generate(), pretty_print=True)
+            return etree.tostring(
+                self._generate(),
+                pretty_print=True,
+                encoding="utf-8"
+            ).decode("utf-8")
 
     @property
     def info(self):

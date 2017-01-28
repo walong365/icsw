@@ -118,6 +118,8 @@ lic_module = angular.module("icsw.license.overview",
         servers: []
         licenses: []
         lic_overview: []
+        # current timeout
+        cur_timeout: undefined
     }
     $scope.server_open = false
     $scope.overview_open = true
@@ -164,9 +166,9 @@ lic_module = angular.module("icsw.license.overview",
                 _.remove($scope.struct.lic_overview, (entry) -> return entry.name in _to_remove)
                 for _ov in $scope.struct.lic_overview
                     $scope.build_stack(_ov)
-                $scope.cur_timeout = $timeout($scope.update, 30000)
+                $scope.struct.cur_timeout = $timeout($scope.update, 30000)
             (error) ->
-                $scope.cur_timeout = $timeout($scope.update, 30000)
+                $scope.struct.cur_timeout = $timeout($scope.update, 30000)
         )
 
     $scope.build_stack = (lic) ->
@@ -201,6 +203,11 @@ lic_module = angular.module("icsw.license.overview",
                 }
             )
     $scope.update()
+    $scope.$on("$destroy", () ->
+        if $scope.struct.cur_timeout?
+            $timeout.cancel($scope.struct.cur_timeout)
+            $scope.struct.cur_timeout = undefined
+    )
 ]).directive("icswRmsLicenseGraph",
 [
     "$compile", "$templateCache",

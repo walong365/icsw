@@ -98,7 +98,7 @@ class new_config_object(object):
             self.content.append(in_bytes)
 
     def write_object(self, t_file):
-        return "__override__ write_object (%s)" % (t_file)
+        return "__override__ write_object ({})".format(t_file)
 
 
 class file_object(new_config_object):
@@ -125,12 +125,17 @@ class file_object(new_config_object):
         self.gid = ref_config.gid
 
     def write_object(self, t_file):
-        open(t_file, "w").write("".join(self.content))
-        return "%d %d %s %s" % (
+        # check if the content is bytes or str
+        if self.content and isinstance(self.content[0], bytes):
+            open(t_file, "wb").write(b"".join(self.content))
+        else:
+            open(t_file, "w").write("".join(self.content))
+        return "{:d} {:d} 0{:o} {}".format(
             self.uid,
             self.gid,
-            oct(self.mode),
-            self.dest)
+            self.mode,
+            self.dest
+        )
 
 
 class link_object(new_config_object):
@@ -143,9 +148,10 @@ class link_object(new_config_object):
         self.gid = ref_config.gid
 
     def write_object(self, t_file):
-        return "%s %s" % (
+        return "{} {}".format(
             self.source,
-            self.dest)
+            self.dest
+        )
 
 
 class dir_object(new_config_object):
@@ -158,11 +164,12 @@ class dir_object(new_config_object):
         self.gid = ref_config.gid
 
     def write_object(self, t_file):
-        return "%d %d %s %s" % (
+        return "{:d} {:d} 0{:o} {}".format(
             self.uid,
             self.gid,
-            oct(self.mode),
-            self.dest)
+            self.mode,
+            self.dest
+        )
 
 
 class delete_object(new_config_object):
@@ -174,20 +181,24 @@ class delete_object(new_config_object):
         new_config_object.set_config(self, ref_config)
 
     def write_object(self, t_file):
-        return "%d %s" % (
+        return "{:d} {}".format(
             self.recursive,
-            self.dest)
+            self.dest
+        )
 
 
 class copy_object(new_config_object):
     def __init__(self, destination, source, **kwargs):
         new_config_object.__init__(self, destination, "c", source=source, **kwargs)
-        self.content = [file(self.source, "r").read()]
+        self.content = [
+            open(self.source, "rb").read()
+        ]
         orig_stat = os.stat(self.source)
         self.uid, self.gid, self.mode = (
             orig_stat[stat.ST_UID],
             orig_stat[stat.ST_GID],
-            stat.S_IMODE(orig_stat[stat.ST_MODE]))
+            stat.S_IMODE(orig_stat[stat.ST_MODE])
+        )
 
     def get_effective_type(self):
         return "f"
@@ -199,10 +210,11 @@ class copy_object(new_config_object):
         self.set_gid(ref_config.get_gid())
 
     def write_object(self, t_file):
-        open(t_file, "w").write("".join(self.content))
+        open(t_file, "wb").write(b"".join(self.content))
         os.chmod(t_file, 0o644)
-        return "%d %d %s %s" % (
+        return "{:d} {:d} 0{:o} {}".format(
             self.uid,
             self.gid,
-            oct(self.mode),
-            self.dest)
+            self.mode,
+            self.dest
+        )

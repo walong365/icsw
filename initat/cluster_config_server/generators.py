@@ -122,7 +122,7 @@ def do_nets(conf):
         log_str = "netdevice {:<10s} (mac {})".format(cur_nd.devname, cur_nd.macaddr)
         if sys_dict["vendor"] == "suse":
             # suse-mode
-            if ((sys_dict["version"] >= 9 and sys_dict["release"] > 0) or sys_dict["version"] > 9):
+            if True:
                 act_filename = None
                 if any([cur_nd.devname.startswith(cur_pf) for cur_pf in ["eth", "myri", "ib"]]):
                     mn = re.match("^(?P<devname>.+):(?P<virtual>\d+)$", cur_nd.devname)
@@ -138,11 +138,7 @@ def do_nets(conf):
                         # FIXME; take netdevice even with zero macaddr
                         if int(cur_nd.macaddr.replace(":", ""), 16) != 0 or True:
                             dev_dict[cur_nd.devname] = cur_nd.macaddr
-                            if sys_dict["vendor"] == "suse" and (
-                                (
-                                    sys_dict["version"] == 10 and sys_dict["release"] == 3
-                                ) or sys_dict["version"] > 10 or (sys_dict["version"], sys_dict["release"]) == (10, 10)
-                            ):
+                            if sys_dict["vendor"] == "suse":
                                 # openSUSE 10.3, >= 11.0
                                 if cur_nd.vlan_id:
                                     act_filename = "ifcfg-vlan{:d}".format(cur_nd.vlan_id)
@@ -321,7 +317,7 @@ def do_routes(conf):
                 net_dev_name = cur_nd.devname
             if cur_ip.network.network_type.identifier != "l":
                 if sys_dict["vendor"] == "suse":
-                    if sys_dict["vendor"] == "suse" and ((sys_dict["version"] == 10 and sys_dict["release"] == 3) or sys_dict["version"] > 10):
+                    if sys_dict["vendor"] == "suse":
                         # openSUSE 10.3, >= 11.0
                         new_co += "{} 0.0.0.0 {} {}".format(cur_nw.network, cur_nw.netmask, net_dev_name)
                     else:
@@ -332,7 +328,7 @@ def do_routes(conf):
         if def_ip:
             if sys_dict["vendor"] == "suse":
                 new_co += "# from {}".format(gw_source)
-                if sys_dict["vendor"] == "suse" and ((sys_dict["version"] == 10 and sys_dict["release"] == 3) or sys_dict["version"] > 10):
+                if sys_dict["vendor"] == "suse":
                     # openSUSE 10.3
                     new_co += "default {} - {}".format(def_ip, boot_dev)
                 else:
@@ -431,7 +427,9 @@ def do_ssh(conf):
 
 
 def do_fstab(conf):
-    act_ps = icswPartitionSetup(conf)
+    def _local_log(what, log_level=logging_tools.LOG_LEVEL_OK):
+        print("{}".format(what))
+    act_ps = icswPartitionSetup(conf, _local_log)
     fstab_co = conf.add_file_object("/etc/fstab")
     fstab_co += act_ps.fstab
 
