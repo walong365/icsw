@@ -23,13 +23,12 @@
 #
 """ modify license settings """
 
-
-
 import argparse
 import os
 import sys
 import tempfile
 import time
+
 from lxml import etree
 
 if os.path.realpath(sys.argv[0]).startswith("/usr/local/share"):
@@ -165,9 +164,11 @@ def _lic_config(opts, act_conf):
     )
     current_lics = sge_license_tools.parse_license_lines(current_lics_file.lines, opts.site)
     sge_license_tools.handle_complex_licenses(current_lics)
-    _lics_to_use = [_lic.name for _lic in current_lics.values() if _lic.is_used]
+    _lics_to_use = [
+        _lic.name for _lic in current_lics.values() if _lic.is_used
+    ]
     # modify complexes
-    with tempfile.NamedTemporaryFile() as _tmpfile:
+    with tempfile.NamedTemporaryFile("w") as _tmpfile:
         form_str = "{} {} INT <= YES YES 0 0\n"
         changed = False
         for new_lic_name in _lics_to_use:
