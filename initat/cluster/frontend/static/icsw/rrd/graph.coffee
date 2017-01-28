@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2016 init.at
+# Copyright (C) 2012-2017 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -351,6 +351,8 @@ angular.module(
                     else
                         # in case of more than one GraphResult awaiting data
                         console.error "unknown graph with name '#{graph.name}'"
+                        for _name, _value of @name_lut
+                            console.warn " - #{_name}"
 
     class icswRRDGraphReactTree extends icswReactTreeConfig
         constructor: (@_refresh_call, @_selection_changed, args) ->

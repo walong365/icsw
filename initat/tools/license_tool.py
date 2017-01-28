@@ -50,7 +50,7 @@ def main():
     xml_res = my_lc.check()
     ret_code = 0
     if opts.mode == "xml":
-        print(etree.tostring(xml_res, pretty_print=True))
+        print(etree.tostring(xml_res, pretty_print=True, encoding="utf-8").decode("utf-8"))
     elif opts.mode == "check":
         glob_dict = {}
         for cur_lic in xml_res.findall(".//license"):

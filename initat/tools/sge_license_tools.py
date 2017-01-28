@@ -453,16 +453,25 @@ class LicenseTextFile(object):
 
     def write(self, content, mode="w"):
         if isinstance(content, dict):
-            open(self.__name, mode).write(
+            open(
+                self.__name, mode
+            ).write(
                 "\n".join(
                     [
                         "{}={}".format(key, value) for key, value in content.items()
-                    ] + [""]
+                    ] + [
+                        ""
+                    ]
                 )
             )
+        elif isinstance(content, bytes):
+            # bytes
+            open(self.__name, mode).write(content.decode("utf-8"))
         elif isinstance(content, str):
+            # string
             open(self.__name, mode).write(content)
         else:
+            # list
             open(self.__name, mode).write("\n".join(content + [""]))
 
     @property
@@ -781,6 +790,7 @@ class LicenseCheck(object):
         if DEBUG:
             from initat.tools.mock.license_mock import mock_license_call
             ret_code, out = mock_license_call(com_line)
+            out = out.encode("utf-8")
         else:
             popen = subprocess.Popen(com_line, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             ret_code = popen.wait()
@@ -1006,13 +1016,18 @@ class LicenseCheck(object):
                 ),
                 "%Y %a %m/%d %H:%M"
             )
+            # determine client version idx
+            if lparts[3].isdigit() and lparts[4].startswith("("):
+                _client_idx = 4
+            else:
+                _client_idx = 3
             cur_lic_version.find("usages").append(
                 E.usage(
                     num="{:d}".format(num_lics),
                     user=lparts[0],
                     client_long=lparts[1],
                     client_short=lparts[2].split(".")[0],
-                    client_version=lparts[3][1:-1],
+                    client_version=lparts[_client_idx][1:-1],
                     checkout_time="{:.2f}".format(time.mktime(co_datetime.timetuple())),
                     server_info=server_info,
                 )

@@ -2218,7 +2218,7 @@ rms_module = angular.module(
 (
     $q,
 ) ->
-    {div, g, text, line, polyline, path, svg, h3, rect} = React.DOM
+    {div, g, svg, rect} = React.DOM
     return React.createClass(
         propTypes: {
             # memory from SGE
@@ -2274,7 +2274,11 @@ rms_module = angular.module(
                                     y: 0
                                     width: _w
                                     height: @props.height
-                                    style: {fill: _color, strokeWidth: "0.5px", stroke: "black"}
+                                    style: {
+                                        fill: _color
+                                        strokeWidth: "0.5px"
+                                        stroke: "black"
+                                    }
                                 }
                             )
                         )

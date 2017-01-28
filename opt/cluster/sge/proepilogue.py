@@ -1571,7 +1571,7 @@ class ProcessPool(threading_tools.icswProcessPool):
             else:
                 global_config.add_config_entries([("CONFIG_FILE", configfile.str_c_var(conf_file))])
                 self.log("reading config from {}".format(conf_file))
-                global_config.parse_file(global_config, global_config["CONFIG_FILE"])
+                parse_file(global_config, global_config["CONFIG_FILE"])
 
     def show_cnf(self):
         print("[global]")

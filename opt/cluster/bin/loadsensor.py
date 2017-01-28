@@ -23,8 +23,6 @@
 #
 """ python interface to emulate a loadsensor for SGE """
 
-
-
 import os
 import stat
 import sys

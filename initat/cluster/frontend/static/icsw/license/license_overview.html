@@ -50,11 +50,19 @@
                     <icsw-tools-accordion-chevron icsw-left="true" icsw-flag="licenses_open"></icsw-tools-accordion-chevron>
                     Licenses from Licenseserver: {{ struct.licenses.length }}
                 </uib-accordion-heading>
-                <div uib-accordion-group class="panel-default" ng-repeat="license in struct.licenses" is-open="license.open">
+                <div
+                    uib-accordion-group
+                    class="panel-default"
+                    ng-repeat="license in struct.licenses"
+                    is-open="license.open"
+                >
                     <uib-accordion-heading>
                         <div class="row">
                             <div class="col-md-2">
-                                <icsw-tools-accordion-chevron icsw-left="true" icsw-flag="license.open"></icsw-tools-accordion-chevron>
+                                <icsw-tools-accordion-chevron
+                                    icsw-left="true"
+                                    icsw-flag="license.open"
+                                ></icsw-tools-accordion-chevron>
                                 {{ license.name }}
                             </div>
                             <div class="col-md-4">
@@ -69,7 +77,11 @@
                         </div>
                     </uib-accordion-heading>
                     <h4 ng-show="!license.used">No licenses in use</h4>
-                    <table class="table table-condensed table-hover table-striped" style="width:auto;" ng-show="license.used">
+                    <table
+                        class="table table-condensed table-hover table-striped"
+                        style="width:auto;"
+                        ng-show="license.used"
+                    >
                         <thead>
                             <tr class="info">
                                 <th>Server</th>
