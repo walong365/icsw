@@ -292,7 +292,7 @@ class Host(APIObject, metaclass=XpathPropertyMeta):
         _sds = E.hosts()
         for _node in srv_com.xpath(".//ns:hosts"):
             for _entry in _node:
-                _sds.append(etree.fromstring(server_command.decompress_struct(_entry.text, json=True)))
+                _sds.append(etree.fromstring(server_command.decompress(_entry.text, json=True)))
         return _sds
 
 

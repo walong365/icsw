@@ -20,6 +20,7 @@
 """ cache of various settings and luts for md-config-server """
 
 import time
+from collections import defaultdict
 
 from django.db.models import Q
 from lxml.builder import E
@@ -27,7 +28,7 @@ from lxml.builder import E
 from initat.cluster.backbone import routing
 from initat.cluster.backbone.models import device, device_group, mon_check_command, user, \
     mon_host_cluster, mon_service_cluster, MonHostTrace, mon_host_dependency, mon_service_dependency, \
-    MonHostTraceGeneration, mon_check_command_special, netdevice
+    MonHostTraceGeneration, netdevice
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.var_cache import VarCache
 from initat.icsw.service.instance import InstanceXML
@@ -37,9 +38,147 @@ from .global_config import global_config
 from ..config import SimpleCounter, MonFileContainer, SpecialTypesEnum
 
 __all__ = [
-    "BuildCache",
+    "GlobalBuildCache",
     "HostBuildCache",
+    "MonCheckEmitter",
 ]
+
+
+class MonCheckEmitter(object):
+    # holds the mon_checks to generate
+    def __init__(
+        self,
+        master_build: bool,
+        host_filter: object,
+        monitor_server: int=0,
+        single_build: bool=False,
+    ):
+        # filter for all configs, wider than the h_filter
+        ac_filter = Q()
+        if master_build:
+            # need all devices for master
+            pass
+        else:
+            host_filter &= Q(monitor_server=monitor_server)
+            ac_filter &= Q(monitor_server=monitor_server)
+        if not single_build:
+            host_filter &= Q(enabled=True) & Q(device_group__enabled=True)
+            ac_filter &= Q(enabled=True) & Q(device_group__enabled=True)
+        self.host_pk_list = device.objects.exclude(
+            Q(is_meta_device=True)
+        ).filter(
+            host_filter
+        ).values_list(
+            "pk", flat=True
+        )
+        import pprint
+        # dict of all check_commands for per device_group
+        cc_per_devg = defaultdict(set)
+        # dict of all check_commands per device
+        cc_per_dev = defaultdict(set)
+        _DEBUG = False
+        # meta devices, check_commands via config
+        for _entry in device.objects.filter(
+                Q(is_meta_device=True)
+        ).filter(
+            Q(
+                device_config__config__mon_check_command__isnull=False,
+                device_config__config__mon_check_command__enabled=True,
+            )
+        ).values_list(
+            "device_group",
+            "device_config__config__mon_check_command"
+        ):
+            cc_per_devg[_entry[0]].add(_entry[1])
+        if _DEBUG:
+            print("s0")
+            pprint.pprint(cc_per_devg)
+        # meta devices, check_commands via direct mon_check
+        for _entry in device.objects.filter(
+            Q(is_meta_device=True)
+        ).filter(
+            Q(
+                mcc_devices__isnull=False,
+                mcc_devices__enabled=True,
+            )
+        ).values_list(
+            "device_group",
+            "mcc_devices",
+        ).distinct():
+            cc_per_devg[_entry[0]].add(_entry[1])
+        if _DEBUG:
+            print("s1")
+            pprint.pprint(cc_per_devg)
+        # check commands per device via configs
+        for _entry in device.objects.filter(
+            ac_filter
+        ).filter(
+            Q(
+                device_config__config__mon_check_command__isnull=False,
+                device_config__config__mon_check_command__enabled=True,
+            )
+        ).values_list(
+            "idx",
+            "device_group",
+            "device_config__config__mon_check_command",
+            "device_config__config__mon_check_command__exclude_devices",
+        ):  # .distinct():
+            # set from device_group
+            if _entry[1] in cc_per_devg:
+                cc_per_dev[_entry[0]] |= cc_per_devg[_entry[1]]
+            # check for exclusion
+            if _entry[0] == _entry[3]:
+                if _entry[2] in cc_per_dev[_entry[0]]:
+                    # remove excluded device, should normally not happen
+                    # (should have never been added)
+                    cc_per_dev[_entry[0]].remove(_entry[2])
+                # otherwise we simply do not add the check_command to the device
+            else:
+                cc_per_dev[_entry[0]].add(_entry[2])
+        if _DEBUG:
+            print("s2")
+            pprint.pprint(cc_per_dev)
+        # check commands per device vi mcc_device
+        for _entry in device.objects.filter(
+            ac_filter
+        ).filter(
+            Q(
+                mcc_devices__isnull=False,
+                mcc_devices__enabled=True,
+            )
+        ).values_list(
+            "idx",
+            "mcc_devices",
+        ).distinct():
+            # add check
+            cc_per_dev[_entry[0]].add(_entry[1])
+        if _DEBUG:
+            print("s3")
+            pprint.pprint(cc_per_dev)
+        if _DEBUG:
+            # dump result
+            for _key, _values in cc_per_dev.items():
+                _dev = device.objects.get(Q(idx=_key))
+                if _values:
+                    print(
+                        "Checks for device {} ({:d}, count={:d})".format(
+                            str(_dev),
+                            _dev.idx,
+                            len(_values)
+                        )
+                    )
+                    for _val in _values:
+                        print(
+                            "   [{:d}] {}".format(
+                                _val,
+                                mon_check_command.objects.filter(Q(idx=_val))
+                            )
+                        )
+        # result
+        self._result = cc_per_dev
+
+    def __getitem__(self, key):
+        return self._result[key]
 
 
 class HostBuildCache(object):
@@ -137,7 +276,7 @@ class HostBuildCache(object):
         self.host_config_list.append(d_file)
 
 
-class BuildCache(object):
+class GlobalBuildCache(object):
     # cache for build (all hosts)
     def __init__(self, log_com, full_build, routing_fingerprint=None, router_obj=None):
         s_time = time.time()
@@ -182,8 +321,8 @@ class BuildCache(object):
         self.mcc_lut_2 = {}
         for v_list in mon_check_command.objects.all().values_list("name", "config__name"):
             self.mcc_lut_2.setdefault(v_list[1], []).append(v_list[0])
-        import pprint
-        pprint.pprint(self.mcc_lut)
+        # import pprint
+        # pprint.pprint(self.mcc_lut)
         # host list, set from caller
         self.host_list = []
         self.dev_templates = None

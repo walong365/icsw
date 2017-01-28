@@ -330,6 +330,7 @@ class MonAllCommands(MonFileContainer):
             ngc.generate_md_com_line(log_com, safe_descr)
             self.add_object(ngc)
             self[ngc.unique_name] = ngc
+            self[ngc.idx] = ngc
 
 
 class MonAllContacts(MonFileContainer):

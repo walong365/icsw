@@ -759,7 +759,7 @@ angular.module(
     $q, blockUI, icswConfigMonTableService, icswMonitoringBasicTreeService,
     $rootScope, $window,
 )->
-    {table, thead, div, tr, span, th, td, tbody, button, tbody} = React.DOM
+    {table, thead, div, tr, span, th, td, tbody, button, tbody, del} = React.DOM
 
     rot_header = React.createFactory(
         React.createClass(
@@ -767,6 +767,7 @@ angular.module(
                 rowElement: React.PropTypes.object
                 configHelper: React.PropTypes.object
                 focus: React.PropTypes.bool
+                enabled: React.PropTypes.bool
             }
             getInitialState: () ->
                 return {
@@ -819,7 +820,7 @@ angular.module(
                                 key: "text1"
                                 className: _classname
                             }
-                            _info_str
+                            if @props.enabled then _info_str else del({}, _info_str)
                         )
                     )
                 )
@@ -844,9 +845,11 @@ angular.module(
                 for row_el in @props.configHelper.active_rows
                     if @props.configHelper.mode in ["gen", "srv"]
                         _conf = row_el
+                        _enabled = true
                     else
                         # may be null for free mccs
                         _conf = row_el.$$config
+                        _enabled = row_el.enabled
                     if @props.focusElement
                         if _conf
                             _focus = _conf.idx == @props.focusElement
@@ -881,6 +884,7 @@ angular.module(
                                 rowElement: row_el
                                 configHelper: @props.configHelper
                                 focus: _focus
+                                enabled: _enabled
                             }
                         )
                     )

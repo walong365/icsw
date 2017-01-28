@@ -39,7 +39,7 @@ from ..config import global_config, MainConfig, MonAllCommands, \
     MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, \
     MonDeviceTemplates, MonServiceTemplates, MonAllHostDependencies, build_safe_name, StructuredMonBaseConfig, \
     MON_VAR_IP_NAME, SpecialTypesEnum
-from ..config.build_cache import BuildCache, HostBuildCache
+from ..config.build_cache import GlobalBuildCache, HostBuildCache, MonCheckEmitter
 from ..constants import BuildModesEnum
 from ..mixins import ImageMapMixin, DistanceMapMixin, NagVisMixin
 from ..special_commands.struct import DynamicCheckMode, DynamicCheckResultType
@@ -147,7 +147,7 @@ class BuildProcess(
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-        build_cache = BuildCache(
+        build_cache = GlobalBuildCache(
             self.log,
             full_build=not self.single_build,
             routing_fingerprint=self.routing_fingerprint,
@@ -164,7 +164,7 @@ class BuildProcess(
         self.single_build = True if len(args) > 0 else False
         # print("*", self.single_build, args)
         self.router_obj = config_tools.RouterObject(self.log)
-        build_cache = BuildCache(
+        build_cache = GlobalBuildCache(
             self.log,
             full_build=True,
             router_obj=self.router_obj,
@@ -198,16 +198,29 @@ class BuildProcess(
         start_time = time.time()
         cur_gc = self.__gen_config
         cur_gc.add_config(MonAllCommands(cur_gc, logging=False, create=False))
-        gbc.set_global_config(cur_gc, {}, False)
-        ac_filter = Q(dynamic_checks=True)
+        h_filter = Q(dynamic_checks=True)
         if pk_list:
-            ac_filter &= Q(pk__in=pk_list)
-        gbc.set_host_list(device.all_enabled.exclude(Q(is_meta_device=True)).filter(
-            ac_filter
-        ).values_list(
-            "pk", flat=True)
+            h_filter &= Q(pk__in=pk_list)
+        gbc.set_global_config(cur_gc, {}, False)
+        mc_emitter = MonCheckEmitter(
+            master_build=True,
+            host_filter=h_filter,
         )
-        all_configs = self.get_all_configs(ac_filter)
+        if False:
+            ac_filter = Q(dynamic_checks=True)
+            if pk_list:
+                ac_filter &= Q(pk__in=pk_list)
+            gbc.set_host_list(
+                device.all_enabled.exclude(
+                    Q(is_meta_device=True)
+                ).filter(
+                    ac_filter
+                ).values_list(
+                    "pk", flat=True
+                )
+            )
+            # all_configs = self.get_all_configs(ac_filter)
+        gbc.set_host_list(mc_emitter.host_pk_list)
         # import pprint
         # pprint.pprint(all_configs)
         _count_dict = {
@@ -229,26 +242,30 @@ class BuildProcess(
                 )
             else:
                 # get config names
-                conf_names = set(all_configs.get(host.full_name, []))
+                # conf_names = set(all_configs.get(host.full_name, []))
                 # cluster config names
-                cconf_names = set([_sc.mon_check_command.name for _sc in gbc.get_cluster(SpecialTypesEnum.mon_service_cluster, host.pk)])
+                # cconf_names = set(
+                #    [
+                #        _sc.mon_check_command.name for _sc in gbc.get_cluster(SpecialTypesEnum.mon_service_cluster, host.pk)
+                #    ]
+                # )
                 # build lut
-                conf_names = sorted(
-                    [
-                        cur_c.unique_name for cur_c in list(cur_gc["command"].values()) if not cur_c.is_event_handler and (
-                            (
-                                (
-                                    cur_c.config_id and cur_c.config.name in conf_names
-                                ) and (
-                                    host.pk not in cur_c.exclude_devices.all().values_list("pk", flat=True)
-                                )
-                            ) or cur_c.unique_name in cconf_names
-                        )
-                    ]
-                )
+                # conf_names = sorted(
+                #    [
+                #        cur_c.unique_name for cur_c in list(cur_gc["command"].values()) if not cur_c.is_event_handler and (
+                #            (
+                #                (
+                #                    cur_c.config_id and cur_c.config.name in conf_names
+                #                ) and (
+                #                    host.pk not in cur_c.exclude_devices.all().values_list("pk", flat=True)
+                #                )
+                #            ) or cur_c.unique_name in cconf_names
+                #        )
+                #    ]
+                # )
                 _dev_added = False
-                for conf_name in conf_names:
-                    s_check = cur_gc["command"][conf_name]
+                for mcc_conf_pk in mc_emitter[host_pk]:  #conf_names:
+                    s_check = cur_gc["command"][mcc_conf_pk]
                     # check for special check
                     if s_check.mon_check_command_special_id:
                         _count_dict["special_found"] += 1
@@ -329,7 +346,7 @@ class BuildProcess(
         self.router_obj = config_tools.RouterObject(self.log)
         self.send_pool_message("build_step", "routing_ok", self.router_obj.fingerprint)
         self.routing_fingerprint = self.router_obj.fingerprint
-        build_cache = BuildCache(
+        build_cache = GlobalBuildCache(
             self.log,
             full_build=not self.single_build,
             router_obj=self.router_obj,
@@ -566,24 +583,36 @@ class BuildProcess(
             h_filter = Q(pk__in=pk_list)
         else:
             h_filter = Q()
-        # filter for all configs, wider than the h_filter
-        ac_filter = Q()
-        # add master/slave related filters
-        if cur_gc.master:
-            # need all devices for master
-            pass
-        else:
-            h_filter &= Q(monitor_server=cur_gc.monitor_server)
-            ac_filter &= Q(monitor_server=cur_gc.monitor_server)
-        if not gbc.single_build:
-            h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
-            ac_filter &= Q(enabled=True) & Q(device_group__enabled=True)
-        gbc.set_host_list(device.objects.exclude(Q(is_meta_device=True)).filter(
-            h_filter
-        ).values_list(
-            "pk", flat=True)
+        mc_emitter = MonCheckEmitter(
+            master_build=cur_gc.master,
+            host_filter=h_filter,
+            monitor_server=cur_gc.monitor_server,
+            single_build=gbc.single_build,
         )
-        all_configs = self.get_all_configs(ac_filter)
+        if False:
+            # filter for all configs, wider than the h_filter
+            ac_filter = Q()
+            # add master/slave related filters
+            if cur_gc.master:
+                # need all devices for master
+                pass
+            else:
+                h_filter &= Q(monitor_server=cur_gc.monitor_server)
+                ac_filter &= Q(monitor_server=cur_gc.monitor_server)
+            if not gbc.single_build:
+                h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
+                ac_filter &= Q(enabled=True) & Q(device_group__enabled=True)
+            gbc.set_host_list(
+                device.objects.exclude(
+                    Q(is_meta_device=True)
+                ).filter(
+                    h_filter
+                ).values_list(
+                    "pk", flat=True
+                )
+            )
+        gbc.set_host_list(mc_emitter.host_pk_list)
+        # all_configs = self.get_all_configs(ac_filter)
         # get config variables
         if not list(cur_gc["contactgroup"].keys()):
             self.log(
@@ -652,7 +681,7 @@ class BuildProcess(
                 host,
                 all_access,
                 contact_group_dict,
-                all_configs,
+                mc_emitter,  # all_configs,
                 nagvis_maps,
             )
             hbcs_created.append(_hbc_result)
@@ -687,7 +716,10 @@ class BuildProcess(
         )
         return hbcs_created
 
-    def get_all_configs(self, ac_filter):
+    def _get_all_configs(self, ac_filter: object) -> dict:
+        # deprecated
+        print("DEPRECATED")
+        sys.exit(0)
         meta_devices = {
             md.device_group.pk: md for md in device.objects.filter(
                 Q(is_meta_device=True)
@@ -709,6 +741,8 @@ class BuildProcess(
             if cur_dev.device_group_id in meta_devices:
                 loc_config.extend([cur_dc.config.name for cur_dc in meta_devices[cur_dev.device_group_id].device_config_set.all()])
             all_configs[cur_dev.full_name] = loc_config
+        import pprint
+        pprint.pprint(all_configs)
         return all_configs
 
     def parenting_run(self, gbc):
@@ -806,7 +840,7 @@ class BuildProcess(
         host,
         all_access,
         contact_group_dict,
-        all_configs,
+        mc_emitter,   # all_configs,
         nagvis_maps,
     ):
         hbc = HostBuildCache(host)
@@ -1030,36 +1064,37 @@ class BuildProcess(
                                 act_host[key] = getattr(gbc.ng_ext_hosts[host.mon_ext_host_id], key)
                         # clear host from servicegroups
                         cur_gc["servicegroup"].clear_host(host.full_name)
+                        mc_conf_pks = mc_emitter[host.pk]
                         # get check_commands and templates
-                        conf_names = set(all_configs.get(host.full_name, []))
+                        # conf_names = set(all_configs.get(host.full_name, []))
                         # cluster config names
-                        cconf_names = set([_sc.mon_check_command.name for _sc in gbc.get_cluster(SpecialTypesEnum.mon_service_cluster, host.pk)])
+                        # cconf_names = set([_sc.mon_check_command.name for _sc in gbc.get_cluster(SpecialTypesEnum.mon_service_cluster, host.pk)])
                         # build lut
-                        conf_names = sorted(
-                            [
-                                cur_c.unique_name for cur_c in list(cur_gc["command"].values()) if not cur_c.is_event_handler and (
-                                    (
-                                        (
-                                            cur_c.config_id and cur_c.config.name in conf_names
-                                        ) and (
-                                            host.pk not in cur_c.exclude_devices.all().values_list("pk", flat=True)
-                                        )
-                                    ) or cur_c.unique_name in cconf_names
-                                )
-                            ]
-                        )
-                        print("-", conf_names)
+                        # conf_names = sorted(
+                        #    [
+                        #        cur_c.unique_name for cur_c in list(cur_gc["command"].values()) if not cur_c.is_event_handler and (
+                        #            (
+                        #                (
+                        #                    cur_c.config_id and cur_c.config.name in conf_names
+                        #                ) and (
+                        #                    host.pk not in cur_c.exclude_devices.all().values_list("pk", flat=True)
+                        #                )
+                        #            ) or cur_c.unique_name in cconf_names
+                        #        )
+                        #    ]
+                        # )
+                        # print("-", conf_names)
                         # list of already used checks
                         used_checks = set()
                         # print "*", conf_names
                         # print gbc.get_vars(host)
                         _num_checks = 0
-                        for conf_name in conf_names:
+                        for mc_conf_pk in mc_conf_pks:
                             _num_checks += 1
                             self.add_host_config(
                                 gbc,
                                 hbc,
-                                conf_name,
+                                mc_conf_pk,   # conf_name,
                                 used_checks,
                                 act_def_serv,
                             )
@@ -1199,7 +1234,7 @@ class BuildProcess(
                                                     gbc.mcc_lut_3[s_dep.dependent_mon_check_command_id],
                                                     gbc.mcc_lut[s_dep.dependent_mon_check_command_id][1],
                                                 ) for dev_pk in s_dep.master_list
-                                                ]
+                                            ]
                                             # act_service_dep["service_description"] = gbc.mcc_lut[s_dep.mon_check_command_id][1]
                                             act_service_dep["service_description"] = [
                                                 HostServiceIDUtil.create_host_service_description(
@@ -1207,7 +1242,7 @@ class BuildProcess(
                                                     gbc.mcc_lut_3[s_dep.mon_check_command_id],
                                                     gbc.mcc_lut[s_dep.mon_check_command_id][1],
                                                 ) for dev_pk in s_dep.devices_list
-                                                ]
+                                            ]
                                             act_service_dep["host_name"] = [gbc.get_host(dev_pk).full_name for dev_pk in s_dep.devices_list]
                                             act_service_dep["dependent_host_name"] = [gbc.get_host(dev_pk).full_name for dev_pk in s_dep.master_list]
                                             s_dep.feed_config(act_service_dep)
@@ -1352,13 +1387,13 @@ class BuildProcess(
         self,
         gbc,
         hbc,
-        conf_name,
+        mc_conf_pk,  # conf_name,
         used_checks,
         act_def_serv,
     ):
         cur_gc = gbc.global_config
         # print("*", conf_name, cur_gc["command"].keys())
-        s_check = cur_gc["command"][conf_name]
+        s_check = cur_gc["command"][mc_conf_pk]
         if s_check.unique_name in used_checks:
             hbc.log(
                 "{} ({}) already used, ignoring .... (please check config)".format(

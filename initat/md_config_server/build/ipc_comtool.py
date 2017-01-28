@@ -157,6 +157,8 @@ class IPCClientHandler(threading_tools.PollerBase):
             self.feed_result(_msg_id, None)
 
     def loop(self):
+        # wait for 60 seconds
+        MAX_TIMEOUT =60
         while self.__pending_messages:
             self.log(
                 "{}".format(
@@ -164,10 +166,32 @@ class IPCClientHandler(threading_tools.PollerBase):
                 )
             )
             self._do_select(1000)
+            cur_time = time.time()
+            # todo, use for logging
+            diff_times = {
+                _key: abs(cur_time - _action.start_time) for _key, _action in self.__pending_messages.items()
+            }
+            # check for timeout
+            to_del = set()
+            for _key, _action in self.__pending_messages.items():
+                _diff_time = abs(cur_time - _action.start_time)
+                if _diff_time > MAX_TIMEOUT:
+                    self.log(
+                        "action '{}' took too long ({:.2f} > {:.2f}), terminating".format(
+                            _key,
+                            _diff_time,
+                            MAX_TIMEOUT,
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                    to_del.add(_key)
+            for _del_key in to_del:
+                del self.__pending_messages[_del_key]
 
     def _handle_message(self, zmq_socket):
         id_str = zmq_socket.recv()
         if id_str and zmq_socket.getsockopt(zmq.RCVMORE):
+            id_str = id_str.decode("utf-8")
             data = zmq_socket.recv()
         else:
             id_str = None
