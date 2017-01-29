@@ -227,7 +227,6 @@ angular.module(
                         template_f.push("<uib-tab select='activate(\"#{tab.name}\")' index='\"#{tab.name}\"'>#{tab.template}</uib-tab>")
 
                 _valid_names.push("$$modify")
-                console.log "**", _valid_names
                 template_f.push($templateCache.get("icsw.device.info.tab.tab_setup"))
 
                 _mode = DeviceOverviewSettings.get_mode()

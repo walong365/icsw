@@ -205,9 +205,14 @@ device_logs = angular.module(
         "Select timeframe"
         (entry, choice) ->
             if not choice.id
+                entry.$$date_from_now = entry.$$mom_date.fromNow(true)
                 return true
             else
-                return entry.$$mom_date.isAfter(choice.$$compare_date)
+                _disp = entry.$$mom_date.isAfter(choice.$$compare_date)
+                if _disp
+                    # update date_from_now
+                    entry.$$date_from_now = entry.$$mom_date.fromNow(true)
+                return _disp
         (choice) ->
             choice.$$compare_date = moment().subtract(choice.value)
     ).add_choice(
@@ -286,7 +291,6 @@ device_logs = angular.module(
         if log_entry.device in $scope.struct.device_idxs and $scope.struct.device_log_entries_lut[log_entry.idx] == undefined
             log_entry.$$mom_date = moment(log_entry.date)
             log_entry.$$pretty_date = log_entry.$$mom_date.format("YYYY-MM-DD HH:mm:ss")
-            log_entry.$$date_from_now = log_entry.$$mom_date.fromNow(true)
             if log_entry.user != null
                 log_entry.user_resolved = $scope.struct.user_tree.user_lut[log_entry.user].$$long_name
             else

@@ -32,7 +32,6 @@
                     </td>
                 </tr>
                 <tr>
-                    <th>Group</th>
                     <th>Device</th>
                     <th class="text-center">Selection</th>
                     <th>State</th>
@@ -46,11 +45,14 @@
                 </tr>
             </thead>
             <tbody>
-                <tr icsw-device-boot-row ng-repeat="dev in entries_displayed" ng-class="dev.$$row_class"></tr>
+                <tr
+                    icsw-device-boot-row ng-repeat="dev in entries_displayed"
+                    ng-class="dev.$$row_class"
+                ></tr>
             </tbody>
             <tfoot ng-show="struct.devices.length > 1">
                 <tr>
-                    <th colspan="2">Global Actions</th>
+                    <th colspan="1">Global Actions</th>
                     <td>
                         <div class="btn-group btn-group-xs">
                             <input type="button" class="btn btn-success" value="S" ng-click="toggle_dev_sel(null, 1)" title="Select all Devices"/>
@@ -118,7 +120,6 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.boot.row">
-    <td>{{ dev.device_group_name }}</td>
     <td ng-class="dev.$$boot_name_class">
         <button
             type="button"

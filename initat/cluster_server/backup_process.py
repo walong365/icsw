@@ -58,7 +58,12 @@ class BackupProcess(threading_tools.icswProcessObj):
                         if table_name:
                             ignore_list.append(_model._meta.db_table)
                         else:
-                            ignore_list.append("{}.{}".format(_model._meta.app_label, _model._meta.model_name))
+                            ignore_list.append(
+                                "{}.{}".format(
+                                    _model._meta.app_label,
+                                    _model._meta.model_name
+                                )
+                            )
         return ignore_list
 
     def _start_backup(self, *args, **kwargs):
@@ -130,7 +135,7 @@ class BackupProcess(threading_tools.icswProcessObj):
             "wb"
         ).write(
             bz2.compress(
-                open(full_path, "r").read().encode("utf-8")
+                open(full_path, "rb").read()
             )
         )
         os.unlink(full_path)
@@ -222,7 +227,12 @@ class BackupProcess(threading_tools.icswProcessObj):
                             else:
                                 os.unlink(_pgpassfile)
             else:
-                self.log("unsupported engine '{}' for database backup".format(_engine), logging_tools.LOG_LEVEL_WARN)
+                self.log(
+                    "unsupported engine '{}' for database backup".format(
+                        _engine
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
 
     def loop_post(self):
         self.__log_template.close()

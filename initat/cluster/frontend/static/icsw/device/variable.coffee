@@ -365,7 +365,10 @@ device_variable_module = angular.module(
         "devices"
         "Select device"
         (entry, choice) ->
-            return true
+            if not choice.id
+                return true
+            else
+                return entry.device == choice.value
     ).add_choice(0, "All Devices", null, true)
     $scope.struct.filter.add(
         "sources"
