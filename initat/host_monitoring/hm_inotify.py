@@ -41,7 +41,7 @@ class HMFileWatcher(object):
         self.mode = kwargs.get("mode", "content")
         self.comment = kwargs.get("comment", "")
         # verbose flag
-        self.__verbose = self.global_config["VERBOSE"]
+        self.__verbose = self.__process.global_config["VERBOSE"]
         # exit flag
         self.__exit_flag = False
         # check for valid id, target_server and target_port
