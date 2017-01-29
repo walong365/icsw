@@ -247,16 +247,6 @@ angular.module(
                 return new_list
             return in_list
 
-        init_ws: () =>
-            # start websocket
-            @close_ws()
-            @ws = icswWebSocketService.register_ws("rrd_graph")
-            if @ws
-                @ws.onmessage = (msg) =>
-                    data = angular.fromJson(msg.data)
-                    # console.log "d", data
-                    @feed_result(data)
-
         close_ws: () =>
             # close websocket
             if @ws? and @ws
@@ -296,7 +286,20 @@ angular.module(
             # faster than we are to process the draw request
             @__feeding = true
             @__cache = []
-            @init_ws()
+            # start websocket
+            @close_ws()
+            _q = $q.defer()
+            return icswWebSocketService.get_ws(
+                "rrd_graph"
+                @feed_result
+            ).then(
+                (ws) =>
+                    @ws = ws
+                    _q.resolve("go")
+                (notok) =>
+                    _q.reject("notok")
+            )
+            return _q.promise
 
         end_feed: () =>
             @__feeding = false
@@ -734,46 +737,55 @@ angular.module(
             else
                 graph_result.clear_for_redraw()
             # open websocket
-            graph_result.start_feed()
-            gfx = $q.defer()
-            # get keys
-            _keys = graph_result.filter_keys((_key for _key in @cur_selected))
-            icswSimpleAjaxCall(
-                url: ICSW_URLS.RRD_GRAPH_RRDS
-                data: {
-                    keys: angular.toJson((_get_node_keys(@_lut[key]) for key in _keys))
-                    pks: angular.toJson((dev.idx for dev in @devices))
-                    start_time: moment(@timeframe.from_date_mom).format(DT_FORM)
-                    end_time: moment(@timeframe.to_date_mom).format(DT_FORM)
-                    # job_mode: $scope.struct.job_mode.short
-                    # selected_job: $scope.selected_job
-                    ordering: @base_setting.ordering
-                    graph_setting: angular.toJson(@user_settings.resolve(_setting))
-                }
-                parse_response: false
-            ).then(
-                (xml) ->
-                    gfx.resolve(xml)
-                (xml) ->
-                    gfx.resolve(xml)
-            )
-            gfx.promise.then(
-                (result) =>
-                    xml = result
-                    # reorder sensor threshold entries
+            graph_result.start_feed().then(
+                (done) =>
+                    # ws init, start drawing
+                    # get keys
+                    _keys = graph_result.filter_keys((_key for _key in @cur_selected))
+                    $q.allSettled(
+                        [
+                            icswSimpleAjaxCall(
+                                url: ICSW_URLS.RRD_GRAPH_RRDS
+                                data: {
+                                    keys: angular.toJson((_get_node_keys(@_lut[key]) for key in _keys))
+                                    pks: angular.toJson((dev.idx for dev in @devices))
+                                    start_time: moment(@timeframe.from_date_mom).format(DT_FORM)
+                                    end_time: moment(@timeframe.to_date_mom).format(DT_FORM)
+                                    # job_mode: $scope.struct.job_mode.short
+                                    # selected_job: $scope.selected_job
+                                    ordering: @base_setting.ordering
+                                    graph_setting: angular.toJson(@user_settings.resolve(_setting))
+                                }
+                                parse_response: false
+                            )
+                        ]
+                    ).then(
+                        (result) =>
+                            $timeout(
+                                () =>
+                                    xml = result[0].value
+                                    # reorder sensor threshold entries
 
-                    @num_drawing--
-                    @_set_drawing()
-                    if icswParseXMLResponseService(xml, 40, false, true)
-                        # num_graph = 0
-                        for graph in $(xml).find("graph_list > graph")
-                            graph = $(graph)
-                            graph_result.feed_graph(graph, clear_current)
-                        graph_result.end_feed()
-                    else
-                        graph_result.clear()
-                        graph_result.close_ws()
-                    defer.resolve("drawn")
+                                    @num_drawing--
+                                    @_set_drawing()
+                                    if icswParseXMLResponseService(xml, 40, false, true)
+                                        # num_graph = 0
+                                        for graph in $(xml).find("graph_list > graph")
+                                            graph = $(graph)
+                                            graph_result.feed_graph(graph, clear_current)
+                                        graph_result.end_feed()
+                                    else
+                                        graph_result.clear()
+                                        graph_result.close_ws()
+                                    defer.resolve("drawn")
+                                0
+                            )
+                    )
+                (error) =>
+                    # ws not established
+                    graph_result.clear()
+                    graph_result.close_ws()
+                    defer.reject("nothing drawn")
             )
             return defer.promise
 

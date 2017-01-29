@@ -2016,7 +2016,23 @@ angular.module(
             ws = null
         return ws
 
+    get_ws = (model_name, msg_func) ->
+        _defer = $q.defer()
+        try
+            ws = new WebSocket(get_url(model_name))
+            ws.onopen = (_open_msg) =>
+                ws.onmessage = (msg) =>
+                    data = angular.fromJson(msg.data)
+                    msg_func(data)
+                _defer.resolve(ws)
+            ws.onerror = (_close_msg) =>
+                _defer.reject("ws connection error for #{model_name}")
+        catch error
+            _defer.reject("WebSocket error: #{error}")
+        return _defer.promise
+
     return {
         register_ws: register_ws
+        get_ws: get_ws
     }
 ])

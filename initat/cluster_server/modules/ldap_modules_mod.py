@@ -16,6 +16,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ tools for modifying LDAP servers """
+"""
+ToDo: Fixme, test for new ldap3
+"""
 
 import subprocess
 import os
