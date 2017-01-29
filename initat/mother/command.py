@@ -171,7 +171,7 @@ class HardControlCommand(object):
         return com_str
 
     def hc_done(self, hc_sc):
-        cur_out = hc_sc.read()
+        cur_out = hc_sc.read().decode("utf-8")
         self.log(
             "hc_com finished with stat {:d} ({:d} bytes)".format(
                 hc_sc.result,

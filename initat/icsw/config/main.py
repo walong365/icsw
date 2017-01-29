@@ -29,7 +29,6 @@ import stat
 import sys
 
 from initat.tools import logging_tools, process_tools
-from initat.icsw.config.create_role_fixtures import create_noctua_fixtures
 from initat.icsw import icsw_logging
 from initat.icsw.service import instance
 from initat.icsw.service.tools import query_local_meta_server
@@ -247,7 +246,7 @@ def show_command(options):
                     print()
                     sys.exit(3)
             out_lines.append(
-                "{}.mode = 0{:o}".format(
+                "{}.mode = 0o{:o}".format(
                     obj_name,
                     stat.S_IMODE(f_stat[stat.ST_MODE])
                 )
@@ -256,6 +255,7 @@ def show_command(options):
 
 
 def role_command(options):
+    from initat.icsw.config.create_role_fixtures import create_noctua_fixtures
     basic_services = [
         'logging-server',
         'meta-server'

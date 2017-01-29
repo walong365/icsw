@@ -21,16 +21,11 @@
 #
 """ show and follow cluster logs """
 
-
-
 import argparse
 import os
 import re
 
-from initat.constants import LOG_ROOT
-from initat.tools import process_tools
-
-LOGSERVER_ROOT = os.path.join(LOG_ROOT, "logging-server")
+from initat.tools import process_tools, config_store
 
 
 class Parser(object):
@@ -38,10 +33,12 @@ class Parser(object):
         return self._add_lw_parser(sub_parser)
 
     def _add_lw_parser(self, sub_parser):
+        client_cs = config_store.ConfigStore("client", quiet=True)
         _mach_name = process_tools.get_machine_name(short=True)
         parser = sub_parser.add_parser("logwatch", help="watch icsw logs")
         parser.set_defaults(subcom="status", execute=self._execute)
-        parser.add_argument("--root", type=str, default=LOGSERVER_ROOT, help="root directory [%(default)s]")
+        # get logroot from config_store
+        parser.add_argument("--root", type=str, default=client_cs["log.logdir"], help="root directory [%(default)s]")
         parser.add_argument("--machine", type=str, default=_mach_name, help="machine to use [%(default)s]")
         parser.add_argument("-n", type=int, default=400, help="show latest [%(default)d] lines")
         parser.add_argument("--format", type=str, default="%a %b %d %H:%M:%S %Y", help="argument for parsing loglines [%(default)s]")
@@ -62,6 +59,12 @@ class Parser(object):
 
     def _execute(self, opt_ns):
         from .main import main
+        if not os.path.isdir(opt_ns.root):
+            raise ValueError(
+                "LogRoot '{}' not found".format(
+                    opt_ns.root
+                )
+            )
         rd = os.path.join(opt_ns.root, opt_ns.machine)
         if not os.path.isdir(rd):
             raise ValueError(

@@ -54,7 +54,12 @@ class MainProcess(ICSWBasePool):
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("startup_error", self._startup_error)
-        self.CC.init(icswServiceEnum.logging_server, self.global_config, init_logging=False, native_logging=True)
+        self.CC.init(
+            icswServiceEnum.logging_server,
+            self.global_config,
+            init_logging=False,
+            native_logging=True
+        )
         self.CC.check_config()
         self.change_resource()
         self.CC.log_config()
@@ -306,8 +311,7 @@ class MainProcess(ICSWBasePool):
                 msg_body = "\n".join(
                     [
                         "Processinfo {}".format(self._get_process_info(es))
-                    ] +
-                    [
+                    ] + [
                         "{:3d} {}".format(line_num + 1, line) for line_num, line in enumerate(err_lines)
                     ]
                 )
