@@ -431,9 +431,9 @@ class init_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin)
             base_dn = par_dict["base_dn"]
             self.log("will modify ldap_tree below {}".format(base_dn))
             try:
-                ld_read = ldap.initialize("ldap://localhost")
-                ld_read.simple_bind_s("", "")
-            except ldap.LDAPError:
+                _srv = ldap3.Server("localhost", get_info=ldap3.ALL)
+                ld_read = ldap3.Connection(_srv, user="", password="")
+            except ldap3.core.exceptions.LLDAPException:
                 ldap_err_str = self._get_ldap_err_str("read_access")
                 self.log(
                     "cannot initialize read_cursor: {}".format(ldap_err_str),
@@ -443,15 +443,16 @@ class init_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin)
                 ld_read = None
             else:
                 try:
-                    ld_write = ldap.initialize("ldap://localhost")
-                    ld_write.simple_bind_s(
+                    _srv = ldap3.Server("localhost", get_info=ldap3.ALL)
+                    ld_write = ldap3.Connection(
+                        _srv,
                         "cn={},{}".format(
                             par_dict["admin_cn"],
                             par_dict["base_dn"]
                         ),
-                        par_dict["root_passwd"]
+                        password=par_dict["root_passwd"],
                     )
-                except ldap.LDAPError:
+                except ldap3.core.exceptions.LLDAPException:
                     ldap_err_str = self._get_ldap_err_str("write_access")
                     self.log(
                         "cannot initialize write_cursor: {}".format(ldap_err_str),
@@ -464,8 +465,8 @@ class init_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin)
                 root_ok = True
                 # init root
                 try:
-                    ld_read.search_s(par_dict["base_dn"], ldap.SCOPE_SUBTREE, "objectclass=*")
-                except ldap.NO_SUCH_OBJECT:
+                    ld_read.search_s(par_dict["base_dn"], ldap3.SUBTREE, "objectclass=*")
+                except ldap3.core.exceptions.LDAPNoSuchObjectResult:
                     ok, err_str = self._add_entry(
                         ld_write,
                         par_dict["base_dn"],
@@ -505,7 +506,7 @@ class init_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin)
                             if _dn.endswith(base_dn) and _dn != base_dn and _dn not in _add_dns:
                                 _add_dns.append(_dn)
                     needed_dns = [_entry for _entry in _add_dns if _entry not in needed_dns] + needed_dns
-                    for dn, _attrs in ld_read.search_s(base_dn, ldap.SCOPE_SUBTREE, "objectclass=organizationalUnit"):
+                    for dn, _attrs in ld_read.search_s(base_dn, ldap3.SUBTREE, "objectclass=organizationalUnit"):
                         if dn in needed_dns:
                             needed_dns.remove(dn)
                     if needed_dns:
@@ -535,7 +536,7 @@ class init_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin)
                                 )
                     if "sambadomain" in par_dict:
                         samba_dn = "sambaDomainName={},{}".format(par_dict["sambadomain"], base_dn)
-                        for dn, _attrs in ld_read.search_s(base_dn, ldap.SCOPE_SUBTREE, "objectclass=sambaDomain"):
+                        for dn, _attrs in ld_read.search_s(base_dn, ldap3.SUBTREE, "objectclass=sambaDomain"):
                             ok, err_str = self._delete_entry(ld_write,
                                                              dn)
                             self.log("removed previous sambaDomain '{}'".format(dn))
