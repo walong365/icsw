@@ -844,12 +844,12 @@ class Client(object):
             _pre_del_xml = etree.fromstring(
                 XMLRenderer().render(
                     package_device_connection_wp_serializer(pre_delete_list, many=True).data
-                )
+                ).encode("utf-8")
             )
             resp = etree.fromstring(
                 XMLRenderer().render(
                     package_device_connection_wp_serializer(send_list, many=True).data
-                )
+                ).encode("utf-8")
             )
             for _entry in resp:
                 _entry.append(E.pre_delete("False"))
@@ -879,7 +879,7 @@ class Client(object):
             resp = etree.fromstring(
                 XMLRenderer().render(
                     package_repo_serializer(send_ok, many=True).data
-                )
+                ).encode("utf-8")
             )
         else:
             resp = srv_com.builder(
