@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2015,2017 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2017 Andreas Lang-Nevyjel
 #
 # this file is part of package-client
 #
@@ -93,21 +93,8 @@ def get_repo_str(_type, in_repo):
     return "\n".join(_vf)
 
 
-class InstallProcess(threading_tools.icswProcessObj):
+class InstallProcess(threading_tools.icswProcessObj, threading_tools.ICSWAutoNoInit):
     """ handles all install and external command stuff """
-    def __init__(self, name):
-        threading_tools.icswProcessObj.__init__(
-            self,
-            name,
-            loop_timer=1000.0
-        )
-        self.commands = []
-        self.register_func("command_batch", self._command_batch)
-        # commands pending becaus of missing package list
-        self.pending_commands = []
-        # list of pending package commands
-        self.package_commands = []
-        self.register_timer(self._check_commands, 10)
 
     @property
     def packages(self):
@@ -134,6 +121,13 @@ class InstallProcess(threading_tools.icswProcessObj):
             init_logger=True
         )
         self.CS = config_store.ConfigStore("client", self.log)
+        self.commands = []
+        self.register_func("command_batch", self._command_batch)
+        # commands pending becaus of missing package list
+        self.pending_commands = []
+        # list of pending package commands
+        self.package_commands = []
+        self.register_timer(self._check_commands, 10)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -660,6 +654,9 @@ class YumInstallProcess(InstallProcess):
 
 class ZypperInstallProcess(InstallProcess):
     response_type = "zypper_xml"
+
+    def __init__(self, *args, **kwargs):
+        super(InstallProcess, self).__init__(*args, **kwargs)
 
     def build_command(self, cur_pdc):
         # print etree.tostring(cur_pdc, pretty_print=True)

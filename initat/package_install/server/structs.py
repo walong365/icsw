@@ -841,8 +841,16 @@ class Client(object):
         )
         if self.__client_gen == 1:
             # new generation
-            _pre_del_xml = etree.fromstring(XMLRenderer().render(package_device_connection_wp_serializer(pre_delete_list, many=True).data))
-            resp = etree.fromstring(XMLRenderer().render(package_device_connection_wp_serializer(send_list, many=True).data))
+            _pre_del_xml = etree.fromstring(
+                XMLRenderer().render(
+                    package_device_connection_wp_serializer(pre_delete_list, many=True).data
+                )
+            )
+            resp = etree.fromstring(
+                XMLRenderer().render(
+                    package_device_connection_wp_serializer(send_list, many=True).data
+                )
+            )
             for _entry in resp:
                 _entry.append(E.pre_delete("False"))
             if len(_pre_del_xml):
@@ -868,7 +876,11 @@ class Client(object):
             )
         )
         if self.__client_gen == 1:
-            resp = etree.fromstring(XMLRenderer().render(package_repo_serializer(send_ok, many=True).data))
+            resp = etree.fromstring(
+                XMLRenderer().render(
+                    package_repo_serializer(send_ok, many=True).data
+                )
+            )
         else:
             resp = srv_com.builder(
                 "repos",

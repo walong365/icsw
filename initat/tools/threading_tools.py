@@ -368,15 +368,15 @@ class TimerBase(object):
 
 
 class DBDebugBase(object):
-    def __new__(cls, log_com):
-        if ICSW_DEBUG_MODE:
+    def __new__(cls, log_com, force_disable=False):
+        if ICSW_DEBUG_MODE and not force_disable:
             return super(DBDebugBase, DBDebugEnabled).__new__(DBDebugEnabled)
         else:
             return super(DBDebugBase, DBDebugDisabled).__new__(DBDebugDisabled)
 
 
 class DBDebugDisabled(DBDebugBase):
-    def __init__(self, log_com):
+    def __init__(self, log_com, force_disable=False):
         pass
 
     def start_call(self, _name):
@@ -387,7 +387,7 @@ class DBDebugDisabled(DBDebugBase):
 
 
 class DBDebugEnabled(DBDebugBase):
-    def __init__(self, log_com):
+    def __init__(self, log_com, force_disable=False):
         self.__counter = 0
         self.__log_com = log_com
         from django.conf import settings
@@ -609,6 +609,10 @@ class icswProcessBase(object):
             self.log("setting stack_size to {}".format(logging_tools.get_size_str(s_size, long_format=True)))
 
 
+class ICSWAutoNoInit(object):
+    pass
+
+
 class ICSWAutoInit(object):
     def __init__(self):
         for _idx, _cl in enumerate(inspect.getmro(self.__class__)):
@@ -616,7 +620,9 @@ class ICSWAutoInit(object):
             # ... is not the first class
             # ... is subclass of ICSWAutoInit
             # ... is not process_pool or process_base
-            if _idx > 0 and issubclass(_cl, ICSWAutoInit) and _cl not in [ICSWAutoInit, icswProcessPool, icswProcessObj]:
+            if issubclass(_cl, ICSWAutoNoInit):
+                pass
+            elif _idx > 0 and issubclass(_cl, ICSWAutoInit) and _cl not in [ICSWAutoInit, icswProcessPool, icswProcessObj]:
                 _cl.__init__(self)
 
 
@@ -939,9 +945,9 @@ class icswProcessObj(multiprocessing.Process, TimerBase, PollerBase, icswProcess
 
     def _code(self):
         try:
-            self._db_debug = DBDebugBase(self.log)
+            self._db_debug = DBDebugBase(self.log, force_disable=False)
         except ModuleNotFoundError:
-            self._db_debug = DBDebugDisabled(self.log)
+            self._db_debug = DBDebugDisabled(self.log, force_disable=True)
         try:
             from initat.cluster.backbone import db_tools
             db_tools.close_connection()
@@ -1114,9 +1120,9 @@ class icswProcessPool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingM
         TimerBase.__init__(self)
         PollerBase.__init__(self)
         try:
-            self._db_debug = DBDebugBase(self.log)
+            self._db_debug = DBDebugBase(self.log, force_disable=False)
         except ModuleNotFoundError:
-            self._db_debug = DBDebugDisabled(self.log)
+            self._db_debug = DBDebugDisabled(self.log, force_disable=True)
         ExceptionHandlingMixin.__init__(self)
         self.pid = os.getpid()
         self.__socket_buffer = {}
