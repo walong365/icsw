@@ -1354,10 +1354,12 @@ angular.module(
     }
 ]).controller("icswNetworkListCtrl", [
     "$scope", "$compile", "$templateCache", "$q", "icswComplexModalService", "icswConfigTreeService",
-    "icswDeviceTreeService", "icswDeviceTreeHelperService", "icswUserService", "icswSimpleAjaxCall", "ICSW_URLS"
+    "icswDeviceTreeService", "icswDeviceTreeHelperService", "icswUserService", "icswSimpleAjaxCall", "ICSW_URLS",
+    "toaster"
 (
     $scope, $compile, $templateCache, $q, icswComplexModalService, icswConfigTreeService,
-    icswDeviceTreeService, icswDeviceTreeHelperService, icswUserService, icswSimpleAjaxCall, ICSW_URLS
+    icswDeviceTreeService, icswDeviceTreeHelperService, icswUserService, icswSimpleAjaxCall, ICSW_URLS,
+    toaster
 ) ->
     $scope.perform_host_discovery_scan = (network_obj) ->
         $q.all(
@@ -1410,6 +1412,10 @@ angular.module(
                                             }
                                         ).then(
                                             (result) ->
+                                                toaster.pop("success", "", "Scan of network '" + network_obj.identifier + "' was successfully scheduled.")
+                                                if result.discovery_server_state > 0
+                                                    toaster.pop("warning", "", "Could not contact discovery server.")
+
                                                 d.resolve("ok")
                                         )
                                         return d.promise
@@ -1609,13 +1615,16 @@ angular.module(
                         nmap_scan_to_network_lut[nmap_scan.network].push(nmap_scan)
                         nmap_scan_lut[nmap_scan.idx] = nmap_scan
 
-                    nmap_scans_websocket = icswWebSocketService.register_ws("nmap_scans")
-                    nmap_scans_websocket.onmessage = (data) ->
-                        nmap_scan = JSON.parse(data.data)
+                    nmap_scan_websocket_func = (nmap_scan) ->
                         salt_nmap_scan(nmap_scan)
 
                         $timeout(
                             () ->
+                                if nmap_scan.manual_scan == true
+                                    if nmap_scan.in_progress
+                                        toaster.pop("success", "", "Scan for network '" + nw_tree.nw_lut[nmap_scan.network].identifier + "' started.")
+                                    else
+                                        toaster.pop("success", "", "Scan for network '" + nw_tree.nw_lut[nmap_scan.network].identifier + "' finished.")
                                 if nmap_scan_to_network_lut[nmap_scan.network] == undefined
                                     nmap_scan_to_network_lut[nmap_scan.network] = []
 
@@ -1626,6 +1635,8 @@ angular.module(
                                     _.extend(nmap_scan_lut[nmap_scan.idx], nmap_scan)
                             0
                         )
+
+                    nmap_scans_websocket = icswWebSocketService.get_ws("nmap_scans", nmap_scan_websocket_func)
 
                     scope.$on("$destroy", () ->
                         if nmap_scans_websocket?

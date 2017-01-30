@@ -1150,6 +1150,8 @@ class NmapScan(models.Model):
 
     in_progress = models.BooleanField(default=True)
 
+    manual_scan = models.BooleanField(default=False)
+
     def initialize(self, raw_result=raw_result):
         parser = etree.XMLParser(encoding='utf-8')
 
@@ -1175,38 +1177,39 @@ class NmapScan(models.Model):
         self.devices_ignored = len([_device for _device in self.get_nmap_devices() if _device.ignored])
 
     @classmethod
-    def create(cls, network=network):
-        return cls(network=network)
+    def create(cls, network=network, manual_scan=False):
+        return cls(network=network, manual_scan=manual_scan)
 
     def get_nmap_devices(self):
-        parser = etree.XMLParser(encoding='utf-8')
-
-        root = etree.fromstring(self.raw_result.encode('utf-8'), parser=parser)
-
         devices = []
 
-        ignored_macs = [nsid.mac for nsid in NmapScanIgnoredDevice.objects.all()]
+        if self.raw_result:
+            parser = etree.XMLParser(encoding='utf-8')
 
-        for host in root.findall('host'):
-            status_element = host.find("status")
-            if status_element.attrib["state"] == "down":
-                continue
+            root = etree.fromstring(self.raw_result.encode('utf-8'), parser=parser)
 
-            mac = None
-            ipv4 = None
-            hostname = None
-            for address in host.findall('address'):
-                if address.attrib['addrtype'] == 'mac':
-                    mac = address.attrib['addr']
-                elif address.attrib['addrtype'] == 'ipv4':
-                    ipv4 = address.attrib['addr']
+            ignored_macs = [nsid.mac for nsid in NmapScanIgnoredDevice.objects.all()]
 
-            hostnames = host.find('hostnames')
-            for hostname_elem in hostnames.findall('hostname'):
-                hostname = hostname_elem.attrib['name']
+            for host in root.findall('host'):
+                status_element = host.find("status")
+                if status_element.attrib["state"] == "down":
+                    continue
 
-            if ipv4:
-                devices.append(NmapDevice(ipv4, mac, hostname, mac in ignored_macs))
+                mac = None
+                ipv4 = None
+                hostname = None
+                for address in host.findall('address'):
+                    if address.attrib['addrtype'] == 'mac':
+                        mac = address.attrib['addr']
+                    elif address.attrib['addrtype'] == 'ipv4':
+                        ipv4 = address.attrib['addr']
+
+                hostnames = host.find('hostnames')
+                for hostname_elem in hostnames.findall('hostname'):
+                    hostname = hostname_elem.attrib['name']
+
+                if ipv4:
+                    devices.append(NmapDevice(ipv4, mac, hostname, mac in ignored_macs))
 
         return devices
 
@@ -1260,9 +1263,8 @@ class NmapScan(models.Model):
             for b in sorted(found_hosts[a].keys()):
                 for c in sorted(found_hosts[a][b].keys()):
                     for d in sorted(found_hosts[a][b][c].keys()):
-                        ipv4 = "{}.{}.{}.{}".format(a,b,c,d)
+                        ipv4 = "{}.{}.{}.{}".format(a, b, c, d)
                         host = found_hosts[a][b][c][d]
-
 
                         if (matrix_element_counter % num_matrix_rows_columns) == 0:
                             current_matrix_row = []
@@ -1280,15 +1282,13 @@ class NmapScan(models.Model):
                                     mac = address.attrib['addr']
                                     break
 
-                            if ipv4 and ipv4 in ip_to_device_lut :
-                                #matrix_element_state = 1
+                            if ipv4 and ipv4 in ip_to_device_lut:
                                 matrix_class = "alert-success"
                             else:
                                 matrix_class = "alert-danger"
 
                             if mac in ignored_macs:
                                 matrix_class = "alert-warning"
-
 
                         current_matrix_row.append((ipv4, matrix_class))
 
@@ -1306,6 +1306,7 @@ class NmapScanIgnoredDevice(models.Model):
 
 @receiver(signals.post_save, sender=NmapScan)
 def nmap_scan_post_save(sender, **kwargs):
+    _ = sender
     if "instance" in kwargs:
         from initat.cluster.backbone.serializers import NmapScanSerializerSimple
 

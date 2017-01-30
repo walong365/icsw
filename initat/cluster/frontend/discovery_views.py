@@ -587,6 +587,10 @@ class DispatcherLinkSyncer(View):
 class ScheduleItemCreator(View):
     @method_decorator(login_required)
     def post(self, request):
+        from initat.cluster.backbone.server_enums import icswServiceEnum
+        from initat.cluster.frontend.helper_functions import contact_server
+        from initat.tools import server_command
+
         model_name = request.POST.get("model_name")
         object_id = request.POST.get("object_id")
         schedule_handler = request.POST.get("schedule_handler")
@@ -606,4 +610,13 @@ class ScheduleItemCreator(View):
 
         new_schedule_item.save()
 
-        return HttpResponse(json.dumps(0))
+        srv_com = server_command.srv_command(command="status")
+        (result, _) = contact_server(
+            request,
+            icswServiceEnum.discovery_server,
+            srv_com,
+        )
+
+        discovery_server_state = int(result.tree.xpath("ns0:result", namespaces=result.tree.nsmap)[0].attrib["state"])
+
+        return HttpResponse(json.dumps({"discovery_server_state": discovery_server_state}))

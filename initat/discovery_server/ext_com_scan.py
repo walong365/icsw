@@ -793,7 +793,7 @@ class Dispatcher(object):
         conn_str = "tcp://{}:{:d}".format(target_device.target_ip, self.__hm_port)
         new_srv_com = server_command.srv_command(command="nmap_scan", network=network_str)
 
-        new_nmap_scan = NmapScan.create(network=_network)
+        new_nmap_scan = NmapScan.create(network=_network, manual_scan=schedule_item.run_now)
         new_nmap_scan.save()
 
         _background_job = create_bg_job(

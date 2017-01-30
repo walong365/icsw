@@ -131,7 +131,7 @@ class NmapScanSerializerSimple(serializers.ModelSerializer):
         model = NmapScan
         fields = (
             "idx", "network", "date", "devices_found", "devices_scanned", "devices_ignored", "runtime", "in_progress",
-            "error_string"
+            "error_string", "manual_scan"
         )
 
 
@@ -172,5 +172,5 @@ class NmapScanSerializerDetailed(serializers.ModelSerializer):
         model = NmapScan
         fields = (
             "idx", "network", "date", "devices", "devices_found", "devices_ignored", "devices_scanned", "runtime",
-            "matrix"
+            "matrix", "manual_scan"
         )
