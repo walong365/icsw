@@ -72,7 +72,7 @@ def sec_to_str(in_sec):
     return out_f
 
 
-def parse_file(global_config, file_name, scan_section="global"):
+def parse_file(global_config, file_name, section="global"):
     act_section = "global"
     pf1 = re.compile("^(?P<key>\S+)\s*=\s*(?P<value>.+)\s*$")
     pf2 = re.compile("^(?P<key>\S+)\s+(?P<value>.+)\s*$")
@@ -98,7 +98,7 @@ def parse_file(global_config, file_name, scan_section="global"):
                         ma = mo.match(line)
                         if ma:
                             break
-                    if act_section == scan_section:
+                    if act_section == section:
                         if ma:
                             key, value = (ma.group("key"), ma.group("value"))
                             try:
@@ -1368,7 +1368,8 @@ class RMSJob(object):
         self._send_to_rms_server(server_command.srv_command(command="pe_end"))
         self._show_pe_hosts()
         self._write_hosts_file("keep")
-        self._flight_check("postflight/PE")
+        # not working for Liebherr, check
+        # self._flight_check("postflight/PE")
         self._write_hosts_file("delete")
         yield False
 

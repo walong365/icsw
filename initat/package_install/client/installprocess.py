@@ -190,12 +190,15 @@ class InstallProcess(threading_tools.icswProcessObj, threading_tools.ICSWAutoNoI
             self.handle_pending_commands()
 
     def _command_done(self, hc_sc):
-        cur_out = hc_sc.read()
-        self.log("hc_com '{}' (stage {}) finished with stat {:d} ({:d} bytes)".format(
-            hc_sc.com_str.replace("\n", "\\n"),
-            hc_sc.command_stage,
-            hc_sc.result,
-            len(cur_out)))
+        cur_out = hc_sc.read().decode("utf-8")
+        self.log(
+            "hc_com '{}' (stage {}) finished with stat {:d} ({:d} bytes)".format(
+                hc_sc.com_str.replace("\n", "\\n"),
+                hc_sc.command_stage,
+                hc_sc.result,
+                len(cur_out)
+            )
+        )
         for line_num, line in enumerate(cur_out.split("\n")):
             self.log(" {:3d} {}".format(line_num + 1, line))
         hc_sc.terminate()
