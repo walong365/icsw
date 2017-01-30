@@ -23,7 +23,8 @@ angular.module(
     [
         "toaster"
         "uiGmapgoogle-maps"
-        "icsw.menu"
+        "icsw.menu",
+        "smart-table",
     ]
 ).service("icswBaseMixinClass", [() ->
     # hm, not really needed ... ?
@@ -267,6 +268,13 @@ angular.module(
         "toast-info": 5000
         "toast-success": 5000
     }
+]).config([
+    "stConfig",
+(
+    stConfig,
+) ->
+    # set sort delay to 0ms
+    stConfig.sort.delay = 0
 ]).config([
     "$httpProvider",
 (
@@ -814,6 +822,8 @@ angular.module(
         _ICSW_DEVICE_INFO_ACTIVATE_TAB: "_icsw.device.info.activate.tab"
         # tab has changed (also used for fairshare selection)
         _ICSW_RMS_MAIN_TAB_CHANGED: "_icsw.rms.main.tab.changed"
+        # propagate devices for package install
+        _ICSW_PROPAGATE_DEVICES: "_icsw.propagate.devices"
     }
     _rev_dict = {}
     for key, value of _dict

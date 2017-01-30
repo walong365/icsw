@@ -32,8 +32,8 @@ from initat.tools import configfile
 
 
 def run_code():
-    from initat.package_install.server.server import server_process
-    server_process().loop()
+    from initat.package_install.server.server import ServerProcess
+    ServerProcess().loop()
 
 
 def main():

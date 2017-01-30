@@ -135,17 +135,23 @@ class RepoProcess(threading_tools.icswProcessObj):
             )
         )
 
-    def _reload_searches(self, *args, **kwargs):
-        self.log("reloading searches")
-        if len(args):
-            srv_com = server_command.srv_command(source=args[0])
-            srv_com.set_result("ok reloading searches")
-            self.send_pool_message("remote_call_async_result", str(srv_com))
+    def check_for_searches(self):
         search_list = []
-        for cur_search in package_search.objects.filter(Q(deleted=False) & Q(current_state__in=["ini", "wait"])):
-            search_list.append((self.repo_type.search_package(cur_search.search_string), cur_search))
+        for cur_search in package_search.objects.filter(
+            Q(deleted=False) & Q(current_state__in=["ini", "wait"])
+        ):
+            search_list.append(
+                (
+                    self.repo_type.search_package(cur_search.search_string),
+                    cur_search
+                )
+            )
         if search_list:
-            self.log("{} found".format(logging_tools.get_plural("search", len(search_list))))
+            self.log(
+                "{} found".format(
+                    logging_tools.get_plural("search", len(search_list))
+                )
+            )
             self.__background_commands.append(
                 SubprocessStruct(
                     self,
@@ -159,3 +165,11 @@ class RepoProcess(threading_tools.icswProcessObj):
             )
         else:
             self.log("nothing to search", logging_tools.LOG_LEVEL_WARN)
+
+    def _reload_searches(self, *args, **kwargs):
+        self.log("reloading searches")
+        if len(args):
+            srv_com = server_command.srv_command(source=args[0])
+            srv_com.set_result("ok reloading searches")
+            self.send_pool_message("remote_call_async_result", str(srv_com))
+        self.check_for_searches()

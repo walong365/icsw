@@ -90,71 +90,22 @@ package_module = angular.module(
 
 ]).service("icswPackageInstallRepositoryTreeService",
 [
-    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
-    "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS",
-    "icswPackageInstallRepositoryTree",
+    "$q", "Restangular", "ICSW_URLS",
+    "icswPackageInstallRepositoryTree", "icswTreeBase",
 (
-    $q, Restangular, ICSW_URLS, $window, icswCachingCall,
-    icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS,
-    icswPackageInstallRepositoryTree,
+    $q, Restangular, ICSW_URLS,
+    icswPackageInstallRepositoryTree, icswTreeBase,
 ) ->
     rest_map = [
-        [
-            ICSW_URLS.REST_PACKAGE_REPO_LIST
-            {}
-        ]
-        [
-            ICSW_URLS.REST_PACKAGE_SERVICE_LIST
-            {}
-        ]
+        ICSW_URLS.REST_PACKAGE_REPO_LIST
+        ICSW_URLS.REST_PACKAGE_SERVICE_LIST
     ]
-    _fetch_dict = {}
-    _result = undefined
-    # load called
-    load_called = false
-
-    load_data = (client, reload) ->
-        load_called = true
-        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
-        _defer = $q.defer()
-        $q.all(_wait_list).then(
-            (data) ->
-                console.log "*** PackageRepoList tree loaded ***"
-                if _result?
-                    _result.update(data[0], data[1])
-                else
-                    _result = new icswPackageInstallRepositoryTree(data[0], data[1])
-                _defer.resolve(_result)
-                for client of _fetch_dict
-                    # resolve clients
-                    _fetch_dict[client].resolve(_result)
-                # reset fetch_dict
-                _fetch_dict = {}
-        )
-        return _defer
-
-    fetch_data = (client) ->
-        if client not of _fetch_dict
-            # register client
-            _defer = $q.defer()
-            _fetch_dict[client] = _defer
-        if _result
-            # resolve immediately
-            _fetch_dict[client].resolve(_result)
-        return _fetch_dict[client]
-
-    return {
-        load: (client) ->
-            if load_called
-                # fetch when data is present (after sidebar)
-                return fetch_data(client).promise
-            else
-                return load_data(client).promise
-
-        reload: (client) ->
-            return load_data(client).promise
-    }
-
+    return new icswTreeBase(
+        "PackageRepositoryTree"
+        icswPackageInstallRepositoryTree
+        rest_map
+        ""
+    )
 ]).service("icswPackageInstallSearchTree",
 [
     "Restangular", "ICSW_URLS", "$q", "icswSimpleAjaxCall",
@@ -179,7 +130,8 @@ package_module = angular.module(
 
         check_pending: () =>
             # check for pending searches
-            if (obj.current_state for obj in @list when obj.current_state != "done").length
+            @num_pending = (obj.current_state for obj in @list when obj.current_state != "done").length
+            if @num_pending
                 @any_pending = true
             else
                 @any_pending = false
@@ -255,66 +207,19 @@ package_module = angular.module(
 
 ]).service("icswPackageInstallSearchTreeService",
 [
-    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
-    "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS",
-    "icswPackageInstallSearchTree",
+    "ICSW_URLS", "icswPackageInstallSearchTree", "icswTreeBase",
 (
-    $q, Restangular, ICSW_URLS, $window, icswCachingCall,
-    icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS,
-    icswPackageInstallSearchTree,
+    ICSW_URLS, icswPackageInstallSearchTree, icswTreeBase,
 ) ->
     rest_map = [
-        [
-            ICSW_URLS.REST_PACKAGE_SEARCH_LIST
-            {}
-        ]
+        ICSW_URLS.REST_PACKAGE_SEARCH_LIST
     ]
-    _fetch_dict = {}
-    _result = undefined
-    # load called
-    load_called = false
-
-    load_data = (client, reload) ->
-        load_called = true
-        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
-        _defer = $q.defer()
-        $q.all(_wait_list).then(
-            (data) ->
-                console.log "*** PackageSearchList tree loaded ***"
-                if _result?
-                    _result.update(data[0])
-                else
-                    _result = new icswPackageInstallSearchTree(data[0], data[1])
-                _defer.resolve(_result)
-                for client of _fetch_dict
-                    # resolve clients
-                    _fetch_dict[client].resolve(_result)
-                # reset fetch_dict
-                _fetch_dict = {}
-        )
-        return _defer
-
-    fetch_data = (client) ->
-        if client not of _fetch_dict
-            # register client
-            _defer = $q.defer()
-            _fetch_dict[client] = _defer
-        if _result
-            # resolve immediately
-            _fetch_dict[client].resolve(_result)
-        return _fetch_dict[client]
-
-    return {
-        load: (client) ->
-            if load_called
-                # fetch when data is present (after sidebar)
-                return fetch_data(client).promise
-            else
-                return load_data(client).promise
-
-        reload: (client) ->
-            return load_data(client).promise
-    }
+    return new icswTreeBase(
+        "PackageInstallTree"
+        icswPackageInstallSearchTree
+        rest_map
+        ""
+    )
 
 ]).service("icswPackageInstallTree",
 [
@@ -369,66 +274,19 @@ package_module = angular.module(
 
 ]).service("icswPackageInstallTreeService",
 [
-    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
-    "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS",
-    "icswPackageInstallTree",
+    "ICSW_URLS", "icswPackageInstallTree", "icswTreeBase",
 (
-    $q, Restangular, ICSW_URLS, $window, icswCachingCall,
-    icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS,
-    icswPackageInstallTree,
+    ICSW_URLS, icswPackageInstallTree, icswTreeBase,
 ) ->
     rest_map = [
-        [
-            ICSW_URLS.REST_PACKAGE_LIST
-            {}
-        ]
+        ICSW_URLS.REST_PACKAGE_LIST
     ]
-    _fetch_dict = {}
-    _result = undefined
-    # load called
-    load_called = false
-
-    load_data = (client, reload) ->
-        load_called = true
-        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
-        _defer = $q.defer()
-        $q.all(_wait_list).then(
-            (data) ->
-                console.log "*** PackageList tree loaded ***"
-                if _result?
-                    _result.update(data[0])
-                else
-                    _result = new icswPackageInstallTree(data[0])
-                _defer.resolve(_result)
-                for client of _fetch_dict
-                    # resolve clients
-                    _fetch_dict[client].resolve(_result)
-                # reset fetch_dict
-                _fetch_dict = {}
-        )
-        return _defer
-
-    fetch_data = (client) ->
-        if client not of _fetch_dict
-            # register client
-            _defer = $q.defer()
-            _fetch_dict[client] = _defer
-        if _result
-            # resolve immediately
-            _fetch_dict[client].resolve(_result)
-        return _fetch_dict[client]
-
-    return {
-        load: (client) ->
-            if load_called
-                # fetch when data is present (after sidebar)
-                return fetch_data(client).promise
-            else
-                return load_data(client).promise
-
-        reload: (client) ->
-            return load_data(client).promise
-    }
+    return new icswTreeBase(
+        "InstalledPackageTree"
+        icswPackageInstallTree
+        rest_map
+        ""
+    )
 
 ]).directive("icswPackageInstallOverview",
 [
@@ -447,10 +305,12 @@ package_module = angular.module(
     "$scope", "$injector", "$compile", "$filter", "$templateCache", "icswToolsSimpleModalService",
     "Restangular", "$q", "$timeout", "blockUI", "icswTools", "icswDeviceTreeService",
     "ICSW_URLS", "icswUserService", "icswSimpleAjaxCall", "icswPackageInstallRepositoryTreeService",
+    "ICSW_SIGNALS",
 (
     $scope, $injector, $compile, $filter, $templateCache, icswToolsSimpleModalService,
     Restangular, $q, $timeout, blockUI, icswTools, icswDeviceTreeService,
     ICSW_URLS, icswUserService, icswSimpleAjaxCall, icswPackageInstallRepositoryTreeService,
+    ICSW_SIGNALS,
 ) ->
     # structure
     $scope.struct = {
@@ -468,6 +328,9 @@ package_module = angular.module(
     # image / kernel list
     $scope.srv_image_list = []
     $scope.srv_kernel_list = []
+
+    $scope.new_devsel = (devs) ->
+        $scope.$broadcast(ICSW_SIGNALS("_ICSW_PROPAGATE_DEVICES"), devs)
 
     load = (reload) ->
         $scope.struct.tree_loaded = false
@@ -504,7 +367,7 @@ package_module = angular.module(
         )
 
     $scope.rescan_repos = ($event) ->
-        blockUI.start()
+        blockUI.start("Rescanning Repositories ...")
         icswSimpleAjaxCall(
             url: ICSW_URLS.PACK_REPO_OVERVIEW
             data: {
@@ -512,7 +375,7 @@ package_module = angular.module(
             }
         ).then(
             (xml) ->
-                load(true)
+                check_for_reload(true)
                 blockUI.stop()
             (xml) ->
                 blockUI.stop()
@@ -527,7 +390,7 @@ package_module = angular.module(
         $scope.package_list_scope = scope
 
     $scope.sync_repos = () ->
-        blockUI.start()
+        blockUI.start("Syncing Repositories ...")
         icswSimpleAjaxCall(
             url: ICSW_URLS.PACK_REPO_OVERVIEW
             data: {
@@ -540,8 +403,8 @@ package_module = angular.module(
                 blockUI.stop()
         )
 
-    $scope.clear_caches = () ->
-        blockUI.start()
+    $scope.clear_caches = ($event) ->
+        blockUI.start("Clearing Caches...")
         icswSimpleAjaxCall(
             url: ICSW_URLS.PACK_REPO_OVERVIEW
             data: {
@@ -660,13 +523,17 @@ package_module = angular.module(
         if $scope.struct.active_search? and $scope.struct.active_search.idx == search.idx
             $scope.struct.active_search = undefined
         
-    check_for_reload = () ->
+    check_for_reload = (force) ->
         _stop = false
-        if $scope.struct.search_tree.any_pending
+        if $scope.struct.search_tree.any_pending or force
             if not $scope.struct.reload_timeout?
                 $scope.struct.reload_timeout = $timeout(
                     () ->
-                        load(true)
+                        icswPackageInstallSearchTreeService.reload($scope.$id).then(
+                            () ->
+                                $scope.struct.reload_timeout = undefined
+                                check_for_reload(false)
+                        )
                     5000
                 )
         else
@@ -676,35 +543,32 @@ package_module = angular.module(
                 $timeout.cancel($scope.struct.reload_timeout)
                 $scope.struct.reload_timeout = undefined
 
-    load = (reload) ->
+    load = () ->
         _w_list = [
             icswUserService.load($scope.$id)
             icswUserGroupRoleTreeService.load($scope.$id)
+            icswPackageInstallSearchTreeService.load($scope.$id)
         ]
-        if reload
-            _w_list.push(icswPackageInstallSearchTreeService.reload($scope.$id))
-        else
-            _w_list.push(icswPackageInstallSearchTreeService.load($scope.$id))
         $q.all(_w_list).then(
             (data) ->
                 $scope.struct.user = data[0].user
                 $scope.struct.user_group_tree = data[1]
                 $scope.struct.search_tree = data[2]
                 $scope.struct.tree_valid = true
-                check_for_reload()
+                check_for_reload(true)
         )
         
-    load(false)
+    load()
 
     # create new search
 
-    $scope.create_search = () ->
+    $scope.create_search = ($event) ->
         if $scope.struct.search_string
             blockUI.start()
             $scope.struct.search_tree.create_search($scope.struct.search_string, $scope.struct.user).then(
                 (ok) ->
-                    load(true)
                     $scope.struct.search_string = ""
+                    check_for_reload(true)
                     blockUI.stop()
                 (notok) ->
                     blockUI.stop()
@@ -718,7 +582,7 @@ package_module = angular.module(
         blockUI.start()
         $scope.struct.search_tree.retry_search(obj).then(
             (ok) ->
-                load(true)
+                check_for_reload(true)
                 blockUI.stop()
             (notok) ->
                 blockUI.stop()
@@ -755,7 +619,7 @@ package_module = angular.module(
                     else
                         $scope.struct.search_tree.update_search(sub_scope.edit_obj).then(
                             (ok) ->
-                                load(true)
+                                check_for_reload(true)
                                 d.resolve("updated")
                             (not_ok) ->
                                 d.reject("not updated")
@@ -1116,30 +980,40 @@ package_module = angular.module(
         package_filter: ""
     }
 
-    load = (reload) ->
+    # manual resolving because icsw-sel-man is not working due to isolated scope
+
+    $scope.$on(ICSW_SIGNALS("_ICSW_PROPAGATE_DEVICES"), (event, devs) ->
+        $scope.struct.devices.length = 0
+        for dev in devs
+            if not dev.is_meta_device
+                $scope.struct.devices.push(dev)
+        if $scope.struct.device_tree_loaded
+            update_pdc()
+    )
+
+    _load = () ->
         $scope.struct.package_info_str = "loading package list"
+        $scope.device_info_str = "loading devices from server"
         w_list = [
             icswUserService.load($scope.$id)
             icswPackageInstallRepositoryTreeService.load($scope.$id)
+            icswPackageInstallTreeService.load($scope.$id)
+            icswDeviceTreeService.load($scope.$id)
         ]
-        if reload
-            w_list.push(icswPackageInstallTreeService.reload($scope.$id))
-        else
-            w_list.push(icswPackageInstallTreeService.load($scope.$id))
         $q.all(w_list).then(
             (data) ->
                 $scope.struct.package_info_str = ""
+                $scope.device_info_str = ""
                 $scope.struct.user = data[0].user
                 $scope.struct.repo_tree = data[1]
                 $scope.struct.package_tree = data[2]
+                $scope.struct.device_tree = data[3]
                 $scope.struct.package_tree_loaded = true
                 $scope.struct.package_tree.set_filter($scope.struct.package_filter)
-                if $scope.struct.device_tree_loaded
-                    init_pdc()
+                update_pdc()
         )
 
-
-    load(false)
+    _load()
 
     $scope.$on("$destroy", () ->
         stop_pdc_update()
@@ -1160,23 +1034,23 @@ package_module = angular.module(
     )
 
     # pdc functions
-    init_pdc = () ->
-        # init new pdc structure
-        stop_pdc_update()
-        new_pdc = new icswPDCStruct($scope.struct.devices, $scope.struct.package_tree)
-        $scope.struct.pdc_struct = new_pdc
-        update_pdc()
 
     stop_pdc_update = () ->
         if $scope.struct.pdc_udpate_timeout
             $timeout.cancel($scope.struct.pdc_update_timeout)
 
     update_pdc = () ->
+        if not $scope.struct.pdc_struct
+            $scope.struct.pdc_struct = new icswPDCStruct($scope.struct.devices, $scope.struct.package_tree)
         if not $scope.struct.pdc_updating
             stop_pdc_update()
             $scope.struct.pdc_updating = true
             hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.device_tree.get_device_trace($scope.struct.devices))
-            $scope.struct.device_tree.enrich_devices(hs, ["package_info", "variable_info"], true).then(
+            $scope.struct.device_tree.enrich_devices(
+                hs
+                ["package_info", "variable_info"]
+                true
+            ).then(
                 (done) ->
                     for dev in $scope.struct.devices
                         # set variables
@@ -1203,45 +1077,6 @@ package_module = angular.module(
         console.log "pl changed"
     )
     
-    # manual resolving because icsw-sel-man is not working due to isolated scope
-
-    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION_DTL"), (event) ->
-        # console.log "icsw_overview_emit_selection received"
-        if $scope.struct.device_tree?
-            $scope.new_devsel()
-        else
-            $scope.device_info_str = "loading devices from server"
-            icswDeviceTreeService.load($scope.$id).then(
-                (data) ->
-                    $scope.struct.device_tree = data
-                    $scope.device_info_str = ""
-                    $scope.new_devsel()
-            )
-    )
-
-    # hm, not needed ?
-    # icswActiveSelectionService.register_receiver()
-
-    $scope.new_devsel = () ->
-        devs = ($scope.struct.device_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel when $scope.struct.device_tree.all_lut[pk]?)
-        # console.log "nds", devs
-        $scope.struct.device_info_str = "Loading devices"
-        $q.all(
-            [
-                icswDeviceTreeService.load($scope.$id)
-            ]
-        ).then(
-            (data) ->
-                $scope.struct.device_info_str = ""
-                $scope.struct.device_tree = data[0]
-                $scope.struct.devices.length = 0
-                for entry in devs
-                    if not entry.is_meta_device
-                        $scope.struct.devices.push(entry)
-                if $scope.struct.package_tree_loaded
-                    init_pdc()
-        )
-
     # delete package
 
     $scope.delete = ($event, pack) ->

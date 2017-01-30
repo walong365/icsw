@@ -36,7 +36,7 @@ from .structs import Client
 
 
 @server_mixins.RemoteCallProcess
-class server_process(
+class ServerProcess(
     server_mixins.ICSWBasePool,
     server_mixins.RemoteCallMixin,
     server_mixins.EggConsumeMixin,

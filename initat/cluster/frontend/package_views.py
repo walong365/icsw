@@ -69,7 +69,13 @@ class repo_overview(permission_required_mixin, View):
 
 def reload_searches(request):
     srv_com = server_command.srv_command(command="reload_searches")
-    return contact_server(request, icswServiceEnum.package_server, srv_com, timeout=5, log_result=False)
+    return contact_server(
+        request,
+        icswServiceEnum.package_server,
+        srv_com,
+        timeout=15,
+        log_result=False
+    )
 
 
 class retry_search(View):
@@ -88,9 +94,15 @@ class retry_search(View):
                 with transaction.atomic():
                     cur_search.current_state = "wait"
                     cur_search.save(update_fields=["current_state"])
+                print("R")
                 reload_searches(request)
             else:
-                request.xml_response.warn("search is in wrong state '%s'" % (cur_search.current_state), logger)
+                request.xml_response.warn(
+                    "search is in wrong state '{}'".format(
+                        cur_search.current_state,
+                    ),
+                    logger
+                )
 
 
 class use_package(View):

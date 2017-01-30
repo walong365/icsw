@@ -74,7 +74,12 @@ class RepoType(object):
         cur_search.num_searches += 1
         cur_search.results = 0
         cur_search.current_state = "run"
-        cur_search.save(update_fields=["last_search_string", "current_state", "num_searches", "results"])
+        cur_search.save(
+            update_fields=["last_search_string", "current_state", "num_searches", "results"]
+        )
+
+    def post_search(self):
+        self.master_process.check_for_searches()
 
 
 class RepoTypeRpmYum(RepoType):
@@ -212,7 +217,13 @@ class RepoTypeRpmYum(RepoType):
                 version = parts.pop(-1)
                 name = "-".join(parts)
             except:
-                self.log("cannot parse package name {}: {}".format(p_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "cannot parse package name {}: {}".format(
+                        p_name,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 _found += 1
                 new_sr = package_search_result(
@@ -226,7 +237,13 @@ class RepoTypeRpmYum(RepoType):
                 new_sr.save()
         cur_search.results = _found
         cur_search.save(update_fields=["results"])
-        self.log("found for {}: {:d}".format(cur_search.search_string, cur_search.results))
+        self.log(
+            "packages found for '{}': {:d}".format(
+                cur_search.search_string,
+                cur_search.results
+            )
+        )
+        self.post_search()
 
 
 class RepoTypeDebDebian(RepoType):
@@ -284,6 +301,7 @@ class RepoTypeDebDebian(RepoType):
         cur_search.results = _found
         cur_search.save(update_fields=["results"])
         self.log("found for {}: {:d}".format(cur_search.search_string, cur_search.results))
+        self.post_search()
 
     def rescan_repos(self, srv_com):
         def _read_file(f_name):
@@ -472,17 +490,27 @@ class RepoTypeRpmZypper(RepoType):
         self.master_process._reload_searches()
 
     def search_result(self, s_struct):
-        res_xml = etree.fromstring(s_struct.read())
+        _res = s_struct.read()
+        res_xml = etree.fromstring(_res)
         cur_search = s_struct.run_info["stuff"]
         cur_search.current_state = "done"
         cur_search.results = len(res_xml.xpath(".//solvable", smart_strings=False))
         cur_search.last_search = cluster_timezone.localize(datetime.datetime.now())
-        cur_search.save(update_fields=["last_search", "current_state", "results"])
+        cur_search.save(
+            update_fields=["last_search", "current_state", "results"]
+        )
         # all repos
-        repo_dict = dict([(cur_repo.name, cur_repo) for cur_repo in package_repo.objects.all()])
+        repo_dict = {
+            cur_repo.name: cur_repo for cur_repo in package_repo.objects.all()
+        }
         # delete previous search results
         cur_search.package_search_result_set.all().delete()
-        self.log("found for {}: {:d}".format(cur_search.search_string, cur_search.results))
+        self.log(
+            "found for {}: {:d}".format(
+                cur_search.search_string,
+                cur_search.results
+            )
+        )
         for result in res_xml.xpath(".//solvable", smart_strings=False):
             if result.attrib["repository"] in repo_dict:
                 new_sr = package_search_result(
@@ -503,6 +531,7 @@ class RepoTypeRpmZypper(RepoType):
                     ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
+        self.post_search()
 
 
 class SubprocessStruct(object):
@@ -563,11 +592,19 @@ class SubprocessStruct(object):
             self.current_stdout = ""
             if self.pre_cb_func:
                 self.pre_cb_func(self)
-            self.popen = subprocess.Popen(run_info["comline"], shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+            self.popen = subprocess.Popen(
+                run_info["comline"],
+                shell=True,
+                stderr=subprocess.STDOUT,
+                stdout=subprocess.PIPE
+            )
 
     def read(self):
         if self.popen:
-            self.current_stdout = "{}{}".format(self.current_stdout, self.popen.stdout.read().decode("utf-8"))
+            self.current_stdout = "{}{}".format(
+                self.current_stdout,
+                self.popen.stdout.read().decode("utf-8")
+            )
             return self.current_stdout
         else:
             return None
@@ -601,7 +638,10 @@ class SubprocessStruct(object):
                 else:
                     fin = True
             else:
-                self.current_stdout = "{}{}".format(self.current_stdout, self.popen.stdout.read())
+                self.current_stdout = "{}{}".format(
+                    self.current_stdout,
+                    self.popen.stdout.read().decode("utf-8")
+                )
         return fin
 
 

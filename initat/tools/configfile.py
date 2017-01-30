@@ -780,14 +780,14 @@ class Configuration(object):
                             # other var found, delete
                             other_var.delete()
                         # description
-                        _new_var = var_obj(
+                        cur_var = var_obj(
                             name=real_k_name,
                             description="",
                             config=sql_info.config,
                             device=None,
                             value=self[key],
                         )
-                        _new_var.save()
+                        cur_var.save()
                     else:
                         if self[key] != cur_var.value:
                             cur_var.value = self[key]
