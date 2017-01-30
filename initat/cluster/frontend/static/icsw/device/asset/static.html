@@ -28,30 +28,63 @@
             </h3>
             <div class="panel panel-default">
                 <div class="panel-body" style="padding: 6px 15px">
-                    <h3>
-                        Devices
-                    </h3>
+                    <br ng-show="struct.categories.length > 0"/>
                     <table
                         class="table table-condensed table-striped simple-border"
                         style="width:auto;"
+                        ng-show="struct.categories.length > 0"
                     >
                         <thead>
                             <tr>
-                                <th>Device Type</th>
-                                <th>Devices (Sum)</th>
+                                <th class="text-center">Device Type</th>
+                                <th class="text-center">Devices (Sum)</th>
+                                <th class="text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr ng-repeat="obj in struct.categories">
-                                <td>
+                            <tr ng-repeat-start="obj in struct.categories">
+                                <td class="text-center">
                                    {{ obj.name }}
                                 </td>
-                                <td class="text-right">
+                                <td class="text-center">
                                     {{ obj.devices.length }}
+                                </td>
+                                <td class="text-center">
+                                    <button
+                                        ng-disabled="obj.devices.length == 0"
+                                        type="button"
+                                        class="btn btn-xs btn-success"
+                                        ng-click="show_category_devices(obj)"
+                                    >
+                                        {{ obj.show_category_devices ? 'Hide' : 'Show' }} Devices
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr ng-repeat-end ng-if="obj.show_category_devices == true">
+                                <td colspan="99">
+                                    <table class="table table-condensed table-striped simple-border">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Group</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr ng-repeat="device in obj.devices">
+                                                <td><button type="button" class="btn btn-xs btn-success" ng-click="show_device_modal_view($event, device)">{{ device.full_name }}</button></td>
+                                                <td>{{ device.$$group.description }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+                    <div ng-show="struct.categories.length == 0">
+                        <h4>
+                            No asset categories. Create and manage them <a href="main#!/main/categorytree">here</a>.
+                        </h4>
+                    </div>
                 </div>
             </div>
             <h3>
@@ -146,7 +179,7 @@
                         </div>
                     </div>
                 </uib-tab>
-                <uib-tab ng-show="struct.hidden_static_asset_template_types.length > 0">
+                <uib-tab ng-if="struct.hidden_static_asset_template_types.length > 0">
                     <uib-tab-heading>
                         <span>
                             Hidden Tabs/Types ({{ struct.hidden_static_asset_template_types.length }})

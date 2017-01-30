@@ -194,18 +194,6 @@ device_asset_module = angular.module(
         stop_timer()
     )
 
-#    $scope.load_package_tree = () ->
-#        blockUI.start("Loading Data ...")
-#        $q.all(
-#            [
-#                icswAssetPackageTreeService.load($scope.$id)
-#            ]
-#        ).then(
-#            (data) ->
-#                $scope.struct.package_tree = data[0]
-#                blockUI.stop()
-#        )
-
     $scope.load_package_tree = () ->
         blockUI.start("Loading Data ...")
         icswSimpleAjaxCall(

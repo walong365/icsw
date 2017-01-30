@@ -84,14 +84,13 @@ static_inventory_overview = angular.module(
                     $scope.struct.staticasset_tree = data[2]
                     $scope.struct.hidden_static_asset_template_types = (obj.type for obj in data[3])
 
-                    console.log($scope.hidden_static_asset_template_types)
-
                     $scope.struct.categories.length = 0
 
                     for category in $scope.struct.category_tree.asset_list
                         o = {
                             name: category.name
                             devices: []
+                            show_category_devices: false
                         }
 
                         for device_id in category.reference_dict.device
@@ -174,6 +173,12 @@ static_inventory_overview = angular.module(
                             console.log(not_ok)
                     )
         )
+
+    $scope.show_device_modal_view = ($event, device) ->
+        DeviceOverviewService($event, [device])
+
+    $scope.show_category_devices = (obj) ->
+        obj.show_category_devices = !obj.show_category_devices
 
     $scope.show_devices = ($event, obj) ->
         obj.$$show_devices_inventory_static_overview = !obj.$$show_devices_inventory_static_overview

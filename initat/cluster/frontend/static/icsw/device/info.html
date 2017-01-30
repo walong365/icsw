@@ -10,6 +10,40 @@
     <icsw-device-livestatus icsw-var-name="'$$livestatus_dashboard_pipe'"></icsw-device-livestatus>
 </script>
 
+<script type="text/ng-template" id="icsw.device.info.tab.assets">
+    <uib-tab-heading>
+        Assets{{ addon_text }}
+    </uib-tab-heading>
+    <uib-tabset>
+        <uib-tab>
+            <uib-tab-heading>
+                <span>Dynamic</span>
+            </uib-tab-heading>
+            <icsw-device-asset-dynamic-overview-reduced icsw-sel-man="1" icsw-select-device="devicelist[0].idx"></icsw-device-asset-dynamic-overview-reduced>
+        </uib-tab>
+        <uib-tab>
+            <uib-tab-heading>
+                <span>Static</span>
+            </uib-tab-heading>
+            <uib-tabset>
+                <uib-tab>
+                    <uib-tab-heading>
+                        <span>Assignment</span>
+                    </uib-tab-heading>
+                    <icsw-device-static-asset-overview
+                        icsw-device="devicelist[0]"
+                    ></icsw-device-static-asset-overview>
+                </uib-tab>
+                <uib-tab>
+                    <uib-tab-heading>
+                        <span>Evaluation</span>
+                    </uib-tab-heading>
+                    <h3>Not yet implemented.</h3>
+                </uib-tab>
+            </uib-tabset>
+        </uib-tab>
+    </uib-tabset>
+</script>
 
 <script type="text/ng-template" id="icsw.device.info.tab.devicelogs">
     <uib-tab-heading>
