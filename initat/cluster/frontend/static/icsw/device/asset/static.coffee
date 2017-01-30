@@ -27,6 +27,68 @@ static_inventory_overview = angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.assetstaticoverview")
+]).directive("icswDeviceAssetStaticCategoryOverview",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.asset.static.category.overview")
+        controller: "icswDeviceAssetStaticCategoryOverviewCtrl"
+        scope: true
+    }
+]).controller("icswDeviceAssetStaticCategoryOverviewCtrl",
+[
+    "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
+    "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",
+    "icswDeviceTreeService", "icswDeviceTreeHelperService", "$timeout",
+    "icswDispatcherSettingTreeService", "Restangular", "icswCategoryTreeService",
+(
+    $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
+    icswTools, icswSimpleAjaxCall, ICSW_URLS, icswAssetHelperFunctions,
+    icswDeviceTreeService, icswDeviceTreeHelperService, $timeout,
+    icswDispatcherSettingTreeService, Restangular, icswCategoryTreeService,
+) ->
+        $scope.struct = {
+            device_tree: undefined
+            category_tree: undefined
+            data_loaded: false
+            categories: []
+        }
+
+        $q.all(
+            [
+                icswDeviceTreeService.load($scope.$id)
+                icswCategoryTreeService.load($scope.$id)
+            ]).then(
+                (data) ->
+                    $scope.struct.device_tree = data[0]
+                    $scope.struct.category_tree = data[1]
+
+                    $scope.struct.categories.length = 0
+
+                    for category in $scope.struct.category_tree.asset_list
+                        o = {
+                            name: category.name
+                            devices: []
+                            show_category_devices: false
+                        }
+
+                        for device_id in category.reference_dict.device
+                            o.devices.push(data[0].all_lut[device_id])
+
+                        $scope.struct.categories.push(o)
+
+                    $scope.struct.data_loaded = true
+            )
+
+        $scope.show_device_modal_view = ($event, device) ->
+            DeviceOverviewService($event, [device])
+
+        $scope.show_category_devices = (obj) ->
+            obj.show_category_devices = !obj.show_category_devices
 ]).directive("icswDeviceAssetStaticOverview",
 [
     "$templateCache",
@@ -55,13 +117,9 @@ static_inventory_overview = angular.module(
 ) ->
     $scope.struct = {
         device_tree: undefined
-        category_tree: undefined
         staticasset_tree: undefined
         hidden_static_asset_template_types: undefined
         data_loaded: false
-
-        # easier to handle data structures
-        categories: []
 
         static_asset_tabs: {}
     }
@@ -69,7 +127,6 @@ static_inventory_overview = angular.module(
     $q.all(
         [
             icswDeviceTreeService.load($scope.$id)
-            icswCategoryTreeService.load($scope.$id)
             icswStaticAssetTemplateTreeService.load($scope.$id)
             icswSimpleAjaxCall({
                 url: ICSW_URLS.ASSET_HIDDEN_STATIC_ASSET_TEMPLATE_TYPE_MANAGER
@@ -80,23 +137,8 @@ static_inventory_overview = angular.module(
         ]).then(
                 (data) ->
                     $scope.struct.device_tree = data[0]
-                    $scope.struct.category_tree = data[1]
-                    $scope.struct.staticasset_tree = data[2]
-                    $scope.struct.hidden_static_asset_template_types = (obj.type for obj in data[3])
-
-                    $scope.struct.categories.length = 0
-
-                    for category in $scope.struct.category_tree.asset_list
-                        o = {
-                            name: category.name
-                            devices: []
-                            show_category_devices: false
-                        }
-
-                        for device_id in category.reference_dict.device
-                            o.devices.push(data[0].all_lut[device_id])
-
-                        $scope.struct.categories.push(o)
+                    $scope.struct.staticasset_tree = data[1]
+                    $scope.struct.hidden_static_asset_template_types = (obj.type for obj in data[2])
 
                     idx_list = []
 
@@ -173,12 +215,6 @@ static_inventory_overview = angular.module(
                             console.log(not_ok)
                     )
         )
-
-    $scope.show_device_modal_view = ($event, device) ->
-        DeviceOverviewService($event, [device])
-
-    $scope.show_category_devices = (obj) ->
-        obj.show_category_devices = !obj.show_category_devices
 
     $scope.show_devices = ($event, obj) ->
         obj.$$show_devices_inventory_static_overview = !obj.$$show_devices_inventory_static_overview

@@ -138,8 +138,8 @@ angular.module(
         new icswDeviceOverviewTabTemplate("category", false, "backbone.device.change_category", "Categories")
         new icswDeviceOverviewTabTemplate("location", false, "backbone.device.change_location", "Locations")
         new icswDeviceOverviewTabTemplate("variable", true, "backbone.device.change_variables", "Device Variables")
-        new icswDeviceOverviewTabTemplate("devicelogs", true, "", "Device Logs")
-        new icswDeviceOverviewTabTemplate("assets", true, "", "Assets")
+        new icswDeviceOverviewTabTemplate("devicelogs", false, "", "Device Logs")
+        new icswDeviceOverviewTabTemplate("assets", false, "", "Assets")
     ]
     return _list
 ]).directive("icswDeviceOverview",

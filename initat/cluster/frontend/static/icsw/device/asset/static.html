@@ -3,21 +3,28 @@
         <uib-tab>
             <!-- overview with respect to device -->
             <uib-tab-heading>
-                Overview
+                Asset Categories
+            </uib-tab-heading>
+            <icsw-device-asset-static-category-overview icsw-sel-man="0"></icsw-device-asset-static-category-overview>
+        </uib-tab>
+        <uib-tab>
+            <!-- overview with respect to device -->
+            <uib-tab-heading>
+                Static Assets
             </uib-tab-heading>
             <icsw-device-asset-static-overview icsw-sel-man="0"></icsw-device-asset-static-overview>
         </uib-tab>
         <uib-tab>
             <!-- templates -->
             <uib-tab-heading>
-                Templates
+                Static Asset Templates
             </uib-tab-heading>
             <icsw-static-asset-template-overview></icsw-static-asset-template-overview>
         </uib-tab>
     </uib-tabset>
 </script>
 
-<script type="text/ng-template" id="icsw.device.asset.static.overview">
+<script type="text/ng-template" id="icsw.device.asset.static.category.overview">
     <div class="container-fluid">
         <div uib-alert class="alert-warning" ng-show="!struct.data_loaded">
             Fetching Data from Server ...
@@ -87,6 +94,16 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.asset.static.overview">
+    <div class="container-fluid">
+        <div uib-alert class="alert-warning" ng-show="!struct.data_loaded">
+            Fetching Data from Server ...
+        </div>
+        <div ng-if="struct.data_loaded">
             <h3>
                 Static Asset Overview
             </h3>
