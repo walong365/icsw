@@ -435,6 +435,7 @@ class icswEggCradle(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def consume(self, consumer, to_consume):
+        # print("*", consumer.license_id_name)
         self.available_ghost -= to_consume
         if not consumer.ghost:
             self.available -= to_consume
@@ -640,7 +641,8 @@ class icswEggEvaluationDef(models.Model):
                     Q(action=_entry["action"].action) &
                     Q(content_type=_entry["action"].content_type) &
                     Q(config_service_enum=_entry["db_enum"]) &
-                    Q(egg_cradle=self.egg_cradle)
+                    Q(egg_cradle=self.egg_cradle),
+                    Q(license_id_name=_entry["action"].license_id_name),
                 )
             except icswEggConsumer.DoesNotExist:
                 # create new
@@ -653,6 +655,7 @@ class icswEggEvaluationDef(models.Model):
                     action=_entry["action"].action,
                     config_service_enum=_entry["db_enum"],
                     ghost=_entry["action"].ghost,
+                    license_id_name=_entry["action"].license_id_name,
                     valid=False,
                 )
             else:
@@ -660,6 +663,8 @@ class icswEggEvaluationDef(models.Model):
                 if _cur_consum.ghost != _entry["action"].ghost:
                     _cur_consum.ghost = _entry["action"].ghost
                     _cur_consum.valid = False
+                if _cur_consum.license_id_name != _entry["action"].license_id_name:
+                    _cur_consum.license_id_name = _entry["action"].license_id_name
                 # print(_entry["action"].content_type)
                 if _cur_consum.egg_evaluation_def.idx != self.idx:
                     _cur_consum.valid = False
@@ -671,6 +676,21 @@ class icswEggEvaluationDef(models.Model):
                 _cur_consum.timeframe_secs = _entry["action"].timeframe_secs
                 _cur_consum.valid = False
             _cur_consum.save()
+            # check for consumers with inverse license_id_name (to remove old entries)
+            _prev_cons = icswEggConsumer.objects.filter(
+                Q(action=_entry["action"].action) &
+                Q(content_type=_entry["action"].content_type) &
+                Q(config_service_enum=_entry["db_enum"]) &
+                Q(egg_cradle=self.egg_cradle)
+            ).exclude(
+                Q(idx=_cur_consum.idx)
+            )
+            if len(_prev_cons):
+                if not _cur_consum.consumed:
+                    # copy from previous
+                    _cur_consum.consumed = _prev_cons[0].consumed
+                    _cur_consum.save(update_fields=["consumed"])
+                _prev_cons.delete()
 
     class Meta:
         abstract = False
@@ -792,6 +812,7 @@ class icswEggConsumer(models.Model):
             logging_tools.form_entry_right(self.multiplier, header="Weight"),
             logging_tools.form_entry_center("yes" if self.ghost else "no", header="Ghost"),
             logging_tools.form_entry_center(str(self.content_type), header="ContentType"),
+            logging_tools.form_entry_center(self.license_id_name or "global", header="License"),
             logging_tools.form_entry_right(
                 logging_tools.get_diff_time_str(self.timeframe_secs) if self.timeframe_secs else "---",
                 header="timeframe",

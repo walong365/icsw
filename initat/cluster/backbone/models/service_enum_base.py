@@ -22,19 +22,18 @@
 """ serviceEnum Base for 'global' configenum object, for servers """
 
 
-
 from django.db.models import Q
 from initat.host_monitoring.service_enum_base import icswServiceEnumBaseClient
 from django.contrib.contenttypes.models import ContentType
 
 __all__ = [
-    b"icswServiceEnumBase",
-    b"EggAction",
+    "icswServiceEnumBase",
+    "EggAction",
 ]
 
 
 class EggAction(object):
-    def __init__(self, action, content_type, weight=1, timeframe=0, ghost=False):
+    def __init__(self, action, content_type, weight=1, timeframe=0, ghost=False, license_enum=None):
         # timeframe is in days
         self.action = action
         if isinstance(content_type, str):
@@ -52,7 +51,15 @@ class EggAction(object):
         self.content_type = content_type
         self.weight = weight
         self.timeframe_secs = 24 * 3600 * timeframe
+        self.license_enum = license_enum
         self.ghost = ghost
+
+    @property
+    def license_id_name(self):
+        if self.license_enum:
+            return self.license_enum.name
+        else:
+            return ""
 
     def __str__(self):
         return "{} {}".format(self.action, str(self.content_type))

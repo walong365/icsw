@@ -21,12 +21,11 @@
 #
 """ enums for config to create a app-spanning 'global' configenum object """
 
-
-
 from enum import Enum
 
 from initat.cluster.backbone.models.service_enum_base import icswServiceEnumBase, EggAction
 from initat.cluster.backbone.models.functions import register_service_enum
+from initat.cluster.backbone.available_licenses import LicenseEnum
 
 
 class AppEnum(Enum):
@@ -51,7 +50,7 @@ class AppEnum(Enum):
         "enables basic nodeboot via PXE functionalities",
         msi_block_name="mother",
         egg_actions=[
-            EggAction("handle", "device", ghost=True),
+            EggAction("handle", "device", ghost=False, license_enum=LicenseEnum.netboot),
         ]
     )
     monitor_server = icswServiceEnumBase(
@@ -61,7 +60,7 @@ class AppEnum(Enum):
         egg_actions=[
             EggAction("dashboard", "device", timeframe=60, ghost=True),
             EggAction("history", "device", timeframe=60, ghost=True),
-            EggAction("monconfig", "device", ghost=False),
+            EggAction("monconfig", "device", ghost=False, license_enum=LicenseEnum.md_config_server),
         ]
     )
     discovery_server = icswServiceEnumBase(
