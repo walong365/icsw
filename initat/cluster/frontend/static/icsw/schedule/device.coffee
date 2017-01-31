@@ -561,22 +561,30 @@ monitoring_device_module = angular.module(
         stop_timeout()
     )
 
-    $scope.run_now = ($event, obj) ->
+    $scope.run_now = ($event, device) ->
         $event.preventDefault()
         $event.stopPropagation()
         blockUI.start("Init AssetRun")
-        icswSimpleAjaxCall(
-            {
-                url: ICSW_URLS.ASSET_RUN_ASSETRUN_FOR_DEVICE_NOW
-                data:
-                    pk: obj.idx
-                dataType: "json"
-            }
-        ).then(
-            (done) ->
-                blockUI.stop()
-            (error) ->
-                blockUI.stop()
+        icswUserService.load($scope.$id).then(
+            (user_tree) ->
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.DISCOVERY_CREATE_SCHEDULE_ITEM
+                        data:
+                            model_name: "device"
+                            object_id: device.idx
+                            schedule_handler: "asset_schedule_handler"
+                            schedule_handler_data: null
+                            user_id: user_tree.user.idx
+                        dataType: "json"
+                    }
+                ).then(
+                    (result) ->
+                        toaster.pop("success", "", "Dynamic asset scan of  '" + device.full_name + "' was successfully scheduled.")
+                        if result.discovery_server_state > 0
+                            toaster.pop("warning", "", "Could not contact discovery server.")
+                        blockUI.stop()
+                )
         )
 
     $scope.edit = ($event, obj) ->

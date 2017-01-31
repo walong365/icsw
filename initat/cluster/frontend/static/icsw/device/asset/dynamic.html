@@ -176,6 +176,7 @@
                 <th class="text-center">Display Info</th>
                 <th class="text-center">NIC Info</th>
                 <th class="text-center">HDD Info</th>
+                <th class="text-center">Error</th>
                 <th class="text-center">Action</th>
             </tr>
         </thead>
@@ -198,6 +199,16 @@
                 <td class="text-center"><div ng-class="assetbatch.$$displays_availability_class"><strong>{{ assetbatch.$$displays_availability_text }}</strong></div></td>
                 <td class="text-center"><div ng-class="assetbatch.$$network_devices_availability_class"><strong>{{ assetbatch.$$network_devices_availability_text }}</strong></div></td>
                 <td class="text-center"><div ng-class="assetbatch.$$partition_table_availability_class"><strong>{{ assetbatch.$$partition_table_availability_text }}</strong></div></td>
+                <td class="text-center">
+                    <button
+                        type="button"
+                        class="btn btn-xs btn-success"
+                        tooltip-placement="right"
+                        uib-tooltip-html="build_error_tooltip(assetbatch)"
+                        ng-disabled="assetbatch.is_finished_processing == false || assetbatch.error_string.length == 0">
+                        <span class="glyphicon glyphicon-info-sign"></span>
+                    </button>
+                </td>
                 <td class="text-center">
                     <div>
                         <button type="button" class="btn btn-sm btn-primary" ng-disabled="!assetbatch.is_finished_processing" ng-click="open_in_new_tab(assetbatch, -1)">{{ assetbatch.is_finished_processing ? "Open in new Tab" : "Still Processing..." }}</button>

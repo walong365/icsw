@@ -416,4 +416,4 @@ class SimpleAssetBatchSerializer(serializers.ModelSerializer):
         fields = ("idx", "run_start_time", "run_end_time", "run_time", "run_status", "device", "installed_packages_status",
                   "pending_updates_status", "installed_updates_status", "cpus_status",
                   "memory_modules_status", "gpus_status", "network_devices_status", "is_finished_processing",
-                  "partition_table_status", "displays_status")
+                  "partition_table_status", "displays_status", "error_string", "manual_scan")

@@ -58,26 +58,20 @@ device_asset_module = angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",
     "icswDeviceTreeService", "icswDeviceTreeHelperService", "$timeout",
-    "icswDispatcherSettingTreeService", "Restangular", "icswAssetPackageTreeService", "icswWebSocketService"
+    "icswDispatcherSettingTreeService", "Restangular", "icswAssetPackageTreeService", "icswWebSocketService", "toaster"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, icswAssetHelperFunctions,
     icswDeviceTreeService, icswDeviceTreeHelperService, $timeout,
-    icswDispatcherSettingTreeService, Restangular, icswAssetPackageTreeService, icswWebSocketService
+    icswDispatcherSettingTreeService, Restangular, icswAssetPackageTreeService, icswWebSocketService, toaster
 ) ->
     # struct to hand over to VarCtrl
     $scope.struct = {
-        # list of devices
         devices: []
-        # device tree
         device_tree: undefined
-        # data loaded
         data_loaded: false
-        # dispatcher setting tree
         disp_setting_tree: undefined
-        # package tree
         package_tree: undefined
-        # num_selected
         num_selected: 0
 
         # AssetRun tab properties
@@ -99,11 +93,10 @@ device_asset_module = angular.module(
         package_list: []
     }
 
-    $scope.struct.websocket = icswWebSocketService.register_ws("asset_batch")
-    $scope.struct.websocket.onmessage = (data) ->
-        asset_batch = JSON.parse(data.data)
+    ws_handle_func = (asset_batch) ->
         salt_asset_batch(asset_batch)
-
+        if asset_batch.manual_scan == true && asset_batch.error_string.length > 0
+            toaster.pop("error", "", asset_batch.error_string)
         if $scope.struct.asset_batch_lookup_cache[asset_batch.idx] == undefined
             $scope.struct.asset_batch_lookup_cache[asset_batch.idx] = asset_batch
             $timeout(
@@ -115,12 +108,26 @@ device_asset_module = angular.module(
             )
         else
             old_obj = $scope.struct.asset_batch_lookup_cache[asset_batch.idx]
-            if old_obj.run_status < asset_batch.run_status
-                $timeout(
-                    () ->
-                        _.extend(old_obj, asset_batch)
-                    0
-                )
+            $timeout(
+                () ->
+                    _.extend(old_obj, asset_batch)
+                0
+            )
+        $timeout(
+            () ->
+                dupes_idx = []
+                dupes_asset_batch = []
+                if asset_batch.$$device.asset_batch_list != undefined
+                    for asset_batch in asset_batch.$$device.asset_batch_list
+                        if asset_batch.idx in dupes_idx
+                            dupes_idx.push(asset_batch.idx)
+                            dupes_asset_batch.push(asset_batch)
+
+                _.pullAll(asset_batch.$$device.asset_batch_list, dupes_asset_batch)
+            500
+        )
+
+    $scope.struct.websocket = icswWebSocketService.get_ws("asset_batch", ws_handle_func)
 
     reload_data = () ->
         idx_list = (idx for idx in Object.keys($scope.struct.asset_batch_lookup_cache) when $scope.struct.asset_batch_lookup_cache[idx].is_finished_processing == true)
@@ -205,7 +212,6 @@ device_asset_module = angular.module(
             }
         ).then((result) ->
             blockUI.stop()
-            console.log(result)
             $scope.struct.package_list.length = 0
             for entry in result
                 entry.$$package_type = icswAssetHelperFunctions.resolve("package_type", entry.package_type)
@@ -330,32 +336,6 @@ device_asset_module = angular.module(
                 moreFilteredARItems.push(asset_run)
 
         return moreFilteredARItems
-
-    $scope.scan_device = (_device) ->
-        _device.$$scan_device_button_disabled = true
-        icswSimpleAjaxCall(
-            {
-                url: ICSW_URLS.ASSET_RUN_ASSETRUN_FOR_DEVICE_NOW
-                data:
-                    pk: _device.idx
-                dataType: "json"
-            }
-        ).then(
-            (ok) ->
-                $timeout(
-                    () ->
-                        _device.$$scan_device_button_disabled = false
-                        reload_data()
-                    5000
-                )
-            (not_ok) ->
-                $timeout(
-                    () ->
-                        _device.$$scan_device_button_disabled = false
-                        reload_data()
-                    5000
-                )
-        )
 
     $scope.close_tab = (to_be_closed_tab, _device) ->
         $timeout(
@@ -548,6 +528,16 @@ device_asset_module = angular.module(
 ) ->
     for asset_batch in $scope.asset_batch_list
         asset_batch.$$selected = false
+
+    $scope.build_error_tooltip = (asset_batch) ->
+        if asset_batch.error_string.length > 0
+            info_f = [
+                "<div class='text-left'>",
+                asset_batch.error_string,
+                "<div>"
+            ]
+            return info_f.join("")
+        return ""
 
     $scope.select_assetbatch = (asset_batch) ->
         asset_batch.$$selected = !asset_batch.$$selected
@@ -863,33 +853,45 @@ device_asset_module = angular.module(
     }
 ]).controller("icswAssetScanHistoryTabCtrl",
 [
-    "$scope", "icswSimpleAjaxCall", "ICSW_URLS", "$timeout", "icswToolsSimpleModalService", "blockUI"
+    "$scope", "icswSimpleAjaxCall", "ICSW_URLS", "$timeout", "icswToolsSimpleModalService", "blockUI", "toaster",
+    "icswUserService"
 (
-    $scope, icswSimpleAjaxCall, ICSW_URLS, $timeout, icswToolsSimpleModalService, blockUI
+    $scope, icswSimpleAjaxCall, ICSW_URLS, $timeout, icswToolsSimpleModalService, blockUI, toaster,
+    icswUserService
 ) ->
+
     $scope.scan_device = () ->
         $scope.device.$$scan_device_button_disabled = true
-        icswSimpleAjaxCall(
-            {
-                url: ICSW_URLS.ASSET_RUN_ASSETRUN_FOR_DEVICE_NOW
-                data:
-                    pk: $scope.device.idx
-                dataType: "json"
-            }
-        ).then(
-            (ok) ->
-                $timeout(
-                    () ->
-                        $scope.device.$$scan_device_button_disabled = false
-                    5000
-                )
-            (not_ok) ->
-                $timeout(
-                    () ->
-                        $scope.device.$$scan_device_button_disabled = false
-                    5000
+
+        icswUserService.load($scope.$id).then(
+            (user_tree) ->
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.DISCOVERY_CREATE_SCHEDULE_ITEM
+                        data:
+                            model_name: "device"
+                            object_id: $scope.device.idx
+                            schedule_handler: "asset_schedule_handler"
+                            schedule_handler_data: null
+                            user_id: user_tree.user.idx
+                        dataType: "json"
+                    }
+                ).then(
+                    (result) ->
+                        toaster.pop("success", "", "Dynamic asset scan of  '" + $scope.device.full_name + "' was successfully scheduled.")
+                        if result.discovery_server_state > 0
+                            toaster.pop("warning", "", "Could not contact discovery server.")
+
+                        $timeout(
+                            () ->
+                                $scope.device.$$scan_device_button_disabled = false
+                            5000
+                        )
                 )
         )
+
+
+
 
     $scope.delete_selected = () ->
         icswToolsSimpleModalService("Delete selected items?").then(
