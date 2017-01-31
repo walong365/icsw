@@ -56,7 +56,10 @@ class DeviceVariableManager(models.Manager):
     @memoize_with_expiry(10)
     def get_cluster_name(self):
         try:
-            return self.get(name="CLUSTER_NAME").val_str
+            return self.get(
+                Q(name="CLUSTER_NAME") &
+                Q(device__device_group__cluster_device_group=True)
+            ).val_str
         except device_variable.DoesNotExist:
             return None
 
