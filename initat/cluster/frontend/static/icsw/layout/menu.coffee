@@ -450,6 +450,7 @@ menu_module = angular.module(
             overall_style = icswOverallStyle.get()
             items_added = 0
             _items = []
+            _ul_break_keys = []
             for sg_state in @props.menu.entries
                 menu_entry = sg_state.data
                 # if sg_state.data.hidden?
@@ -458,17 +459,20 @@ menu_module = angular.module(
                 # else
                 #    _hidden = false
                 # if not _hidden
+                _head_key = "#{sg_state.$$menu_key}_li"
+                if menu_entry.newcol == "true"
+                    _ul_break_keys.push(_head_key)
                 if overall_style != "condensed"
                     _head = li(
                         {
-                            key: "#{sg_state.$$menu_key}_li"
+                            key: _head_key
                         }
                         p({key: "p"}, strong({key: "strong"}, menu_entry.name))
                     )
                 else
                     _head = li(
                         {
-                            key: "#{sg_state.$$menu_key}_li"
+                            key: _head_key
                         }
                         h3({key: "h3"}, menu_entry.name)
                     )
@@ -518,7 +522,9 @@ menu_module = angular.module(
                 key= @props.menu.$$menu_key
 
                 _num_items = _items.length
+
                 # get number of rows
+                """ request SR
                 if _num_items > 8
                     _num_cols = 3
                     _col_style = "col-sm-4"
@@ -528,8 +534,18 @@ menu_module = angular.module(
                 else
                     _num_cols = 1
                     _col_style = "col-sm-12"
+                """
+
+                _num_cols = 0
+                for _item in _items
+                    if _item.key in _ul_break_keys
+                        _num_cols++
+                _num_cols = if _num_cols == 0 then 1 else _num_cols
+                _bootstrap_col = Math.ceil(12/_num_cols)
+                _col_style = "col-sm-#{_bootstrap_col}"
                 # entries per col
-                _max_per_col = parseInt(_num_items / _num_cols) + 1
+                # _max_per_col = parseInt(_num_items / _num_cols) + 1
+                _max_per_col = _num_items
 
                 # balance items
 
@@ -555,7 +571,8 @@ menu_module = angular.module(
                         _item_stream = []
                     if item.type == "li"
                         # element is a header
-                        if _count + 1 == _max_per_col
+                        # if _count + 1 == _max_per_col
+                        if item.key in _ul_break_keys
                             # cannot be last in stream
                             add_stream(_item_stream)
                             _item_stream = []
