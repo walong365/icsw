@@ -620,7 +620,7 @@ class SyncConfig(object):
                         _take = True
                     if _take:
                         self.__file_dict[full_w_path] = FileInfo(full_w_path, self.config_version_send)
-                        _content = open(full_r_path, "r").read()
+                        _content = open(full_r_path, "rb").read().decode()
                         _size_data += len(_content)
                         _num_files += 1
                         if _send_size + len(_content) > MAX_SEND_SIZE:
