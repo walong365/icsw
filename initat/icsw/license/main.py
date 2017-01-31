@@ -50,6 +50,7 @@ else:
 
 def ova_show(opts):
     print("Recalc ova info")
+    License.objects.check_ova_baskets()
     _sys_c = icswEggCradle.objects.get_system_cradle()
     _sys_c.calc()
     print("System cradle info: {}".format(str(_sys_c)))

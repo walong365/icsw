@@ -227,17 +227,13 @@ class _LicenseManager(models.Manager):
         # fix for above problem: build a map dict where only the latest license files
         # are referenced
         merged_maps = LicenseFileReader.merge_license_maps(self._license_readers)
-        # import pprint
+        import pprint
         # pprint.pprint(merged_maps)
-        res = set()
+        res = {}
         for _struct in merged_maps.values():
             _idx = _struct["idx"]
             # pprint.pprint(_struct)
-            for _val in _struct["reader"].get_valid_parameters():
-                # import pprint
-                # pprint.pprint(_struct)
-                # print(_val)
-                res.add((_idx, _val))
+            res.update(_struct["reader"].get_valid_parameters())
         return res
 
     def get_license_packages(self):
@@ -302,11 +298,15 @@ class _LicenseManager(models.Manager):
         # cluster id
         c_id = device_variable.objects.get_cluster_id()
         if c_id:
-            valid_params = dict(self.get_valid_parameters())
-            _present_lics = set(valid_params.keys())
+            valid_params = self.get_valid_parameters()
+            # rewrite params to use only the license_id_name (or None) as partial key
+            valid_params = {
+                (_idx, _lic.id if _lic else None): _value for (_idx, _lic), _value in valid_params.items()
+            }
+            _present_lics = valid_params.keys()
             # read all baskets
             bk_dict = {
-                _basket.license_id: _basket for _basket in icswEggBasket.objects.exclude(Q(license=None))
+                (_basket.license_id, _basket.license_id_name or None): _basket for _basket in icswEggBasket.objects.exclude(Q(license=None))
             }
             # delete baskets where the license has vanished
             for _del_bk in set(bk_dict.keys()) - _present_lics:
@@ -322,14 +322,15 @@ class _LicenseManager(models.Manager):
                 #     _basket.eggs = valid_params[_ok_bk]
                 #    _basket.save()
             # new pks
-            for _new_bk in _present_lics - set(bk_dict.keys()):
-                _data = valid_params[_new_bk]
+            for _new_bk, _new_lic_name in _present_lics - set(bk_dict.keys()):
+                _data = valid_params[(_new_bk, _new_lic_name)]
                 # print("add", _data)
                 new_basket = icswEggBasket.objects.create_basket(
                     eggs=_data[0],
                     valid_from=cluster_timezone.localize(_data[1]),
                     valid_to=cluster_timezone.localize(_data[2]),
                     license=License.objects.get(Q(pk=_new_bk)),
+                    license_id_name=_new_lic_name or None,
                 )
 
     def get_license_info(self, lic_obj):
@@ -523,8 +524,10 @@ class icswEggBasket(models.Model):
     valid_to = models.DateField()
     # valid flag
     is_valid = models.BooleanField(default=True)
-    # link to license, null for default basket
+    # link to license file, null for default basket
     license = models.ForeignKey(License, null=True)
+    # license id name, used for license-bound ova
+    license_id_name = models.CharField(default="", max_length=63)
     # eggs defined
     eggs = models.IntegerField(default=0)
     # creation date
@@ -539,12 +542,14 @@ class icswEggBasket(models.Model):
 
     class Meta:
         abstract = False
+        unique_together = (("license", "license_id_name"), )
 
     def get_info_line(self):
         return [
-            logging_tools.form_entry(self.dummy, header="Dummy"),
+            logging_tools.form_entry_center("yes" if self.dummy else "no", header="Dummy"),
             logging_tools.form_entry(str(self.valid_from), header="valid from"),
-            logging_tools.form_entry(str(self.valid_to), header="valdi to"),
+            logging_tools.form_entry(str(self.valid_to), header="valid to"),
+            logging_tools.form_entry(self.license_id_name or "global", header="License"),
             logging_tools.form_entry_center("yes" if self.is_valid else "no", header="valid"),
             logging_tools.form_entry_right(self.eggs, header="eggs"),
         ]

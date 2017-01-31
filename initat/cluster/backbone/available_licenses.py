@@ -69,10 +69,6 @@ LicenseEnum.id_string_to_user_name = classmethod(id_string_to_user_name)
 
 LicenseParameterTypeEnum = Enum('LicenseParameterTypeEnum', 'service device user ext_license ovum')
 LicenseParameterTypeEnum.to_user_name = lambda x: dict((
-    (LicenseParameterTypeEnum.service, 'Service'), 
-    (LicenseParameterTypeEnum.device, 'Device'), 
-    (LicenseParameterTypeEnum.user, 'User'), 
-    (LicenseParameterTypeEnum.ext_license, 'External license'), 
     (LicenseParameterTypeEnum.ovum, 'ICSW Egg')
 )).get(x, None)
 LicenseParameterTypeEnum.id_string_to_user_name = classmethod(id_string_to_user_name)

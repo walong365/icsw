@@ -30,7 +30,7 @@ import time
 import dateutil.parser
 from lxml import etree
 
-from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
+from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum, get_available_licenses
 from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, \
     ICSW_XML_NS_MAP, LICENSE_USAGE_GRACE_PERIOD
 from initat.constants import CLUSTER_DIR
@@ -298,37 +298,71 @@ class LicenseFileReader(object):
         return ret
 
     def get_valid_parameters(self):
+
         """
         :return:
-         Returns all package-parameters (==ova) which are currently
+         Returns all global and local parameters (==ova) which are currently
          valid as list (num, from_date, to_date)
+         format:
+         (key) -> (value) where
+         (key) is (license.idx, license_id)
+         (value) is (num, from, to)
         """
-        ret = []
-        for para_xml in [
+        lic_lut = {lic.id: lic for lic in get_available_licenses()}
+
+        ret = {}
+        # global parameters
+        for g_para_xml in [
             _el_xml for _el_xml in self.content_xml.xpath(
                 "//icsw:package-parameter",
                 namespaces=ICSW_XML_NS_MAP
             ) if self._get_state_from_license_xml(_el_xml).is_valid()
         ]:
-            if para_xml is not None:
+            if g_para_xml is not None:
                 # print("*", etree.tostring(para_xml))
                 _from = datetime.datetime.strptime(
-                    para_xml.findtext(".//icsw:valid-from", namespaces=ICSW_XML_NS_MAP),
+                    g_para_xml.findtext(".//icsw:valid-from", namespaces=ICSW_XML_NS_MAP),
                     "%Y-%m-%d"
                 )
                 _to = datetime.datetime.strptime(
-                    para_xml.findtext(".//icsw:valid-to", namespaces=ICSW_XML_NS_MAP),
+                    g_para_xml.findtext(".//icsw:valid-to", namespaces=ICSW_XML_NS_MAP),
                     "%Y-%m-%d"
                 )
-                ret.append(
-                    (
+                ret[(self.license.idx, None)] = (
+                    int(
+                        g_para_xml.findtext(".//icsw:value", namespaces=ICSW_XML_NS_MAP)
+                    ),
+                    _from,
+                    _to,
+                )
+        # local parameters
+        for l_para_xml in [
+            _el_xml for _el_xml in self.content_xml.xpath(
+                "//icsw:license[icsw:parameters/icsw:parameter[@id='ovum']]",
+                namespaces=ICSW_XML_NS_MAP
+            ) if self._get_state_from_license_xml(_el_xml).is_valid()
+        ]:
+            if l_para_xml is not None:
+                _from = datetime.datetime.strptime(
+                    l_para_xml.findtext(".//icsw:valid-from", namespaces=ICSW_XML_NS_MAP),
+                    "%Y-%m-%d"
+                )
+                _to = datetime.datetime.strptime(
+                    l_para_xml.findtext(".//icsw:valid-to", namespaces=ICSW_XML_NS_MAP),
+                    "%Y-%m-%d"
+                )
+                for _para in l_para_xml.xpath(
+                    ".//icsw:parameter[@id='ovum']/text()",
+                    namespaces=ICSW_XML_NS_MAP
+                ):
+                    lic_id = str(l_para_xml.xpath(".//icsw:id/text()", namespaces=ICSW_XML_NS_MAP)[0])
+                    ret[(self.license.idx, lic_lut[lic_id])] = (
                         int(
-                            para_xml.findtext(".//icsw:value", namespaces=ICSW_XML_NS_MAP)
+                            _para,
                         ),
                         _from,
                         _to,
                     )
-                )
         return ret
 
     @classmethod
@@ -435,10 +469,11 @@ class LicenseFileReader(object):
                     return None
 
             def parse_parameters(parameters_xml):
+                # ignore or non-ovum parameters
                 return {
-                    LicenseParameterTypeEnum.id_string_to_user_name(
-                        param_xml.get('id')
-                    ): int_or_none(param_xml.text) for param_xml in parameters_xml.xpath("icsw:parameter", namespaces=ICSW_XML_NS_MAP)
+                    param_xml.get('id'): int_or_none(param_xml.text) for param_xml in parameters_xml.xpath(
+                        "icsw:parameter", namespaces=ICSW_XML_NS_MAP
+                    ) if int_or_none(param_xml.text) and param_xml.get("id") in {"ovum"}
                 }
 
             def get_cluster_id(_xml):
@@ -451,7 +486,7 @@ class LicenseFileReader(object):
                     'id': get_cluster_id(lic_xml),
                     'valid_from': dateutil.parser.parse(lic_xml.findtext("icsw:valid-from", namespaces=ICSW_XML_NS_MAP)),
                     'valid_to': dateutil.parser.parse(lic_xml.findtext("icsw:valid-to", namespaces=ICSW_XML_NS_MAP)),
-                    'parameters': parse_parameters(lic_xml.find("icsw:parameters", namespaces=ICSW_XML_NS_MAP)),
+                    "parameters": parse_parameters(lic_xml.find("icsw:parameters", namespaces=ICSW_XML_NS_MAP)),
                     # "state": cls._get_state_from_license_xml(lic_xml).name
                 } for lic_xml in cluster_xml.xpath("icsw:license", namespaces=ICSW_XML_NS_MAP)
             ]
@@ -607,23 +642,38 @@ class LicenseFileReader(object):
     @property
     def license_info(self):
         _lic_info = self.raw_license_info
-        _num_packs = len(_lic_info)
         _cluster_ids = set()
         # not unique
-        _num = {"lics": 0, "paras": 0}
+        _num = {
+            "lics": 0,
+            # global parameters
+            "gparas": 0,
+            # local parameters
+            "lparas": 0,
+            "packs": len(_lic_info),
+        }
         for _list in [_lic_info]:
             for _lic_entry in _list:
                 _cl_info = list(_lic_entry["lic_info"].keys())
                 for _cl_name in _cl_info:
                     _cluster_ids.add(_cl_name)
                     _cl_struct = _lic_entry["lic_info"][_cl_name]
-                    for _skey, _dkey in [("licenses", "lics"), ("parameters", "paras")]:
+                    for _skey, _dkey in [("licenses", "lics"), ("parameters", "gparas")]:
                         for _entry in _cl_struct.get(_skey, []):
-                            # print _entry
                             _num[_dkey] += 1
-        return "{} and {} in {} for {}".format(
-            logging_tools.get_plural("license", _num["lics"]),
-            logging_tools.get_plural("global parameter", _num["paras"]),
-            logging_tools.get_plural("package", _num_packs),
-            logging_tools.get_plural("Cluster", len(_cluster_ids)),
+                        for _lic in _cl_struct.get("licenses", []):
+                            _num["lparas"] += len(_lic["parameters"].keys())
+        _num["cluster_ids"] = len(_cluster_ids)
+        return "{} in {} for {}".format(
+            ", ".join(
+                [
+                    logging_tools.get_plural(_long, _num[_short]) for _long, _short in [
+                        ("License", "lics"),
+                        ("Global Parameter", "gparas"),
+                        ("Local Parameter", "lparas"),
+                    ] if _num[_short]
+                ]
+            ) or "nothing",
+            logging_tools.get_plural("Package", _num["packs"]),
+            logging_tools.get_plural("Cluster", _num["cluster_ids"]),
         )

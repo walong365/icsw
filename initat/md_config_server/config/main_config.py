@@ -19,6 +19,7 @@
 #
 """ config part of md-config-server """
 
+import codecs
 import os
 import shutil
 
@@ -546,7 +547,7 @@ class MainConfig(dict, NagVisMixin):
         self.log("creating http_users.cfg file")
         # create htpasswd
         http_file = os.path.join(self.__w_dir_dict["etc"], "http_users.cfg")
-        open(http_file, "w").write(
+        codecs.open(http_file, "w", "utf-8").write(
             "\n".join(
                 [
                     "{}:{{SSHA}}{}".format(
