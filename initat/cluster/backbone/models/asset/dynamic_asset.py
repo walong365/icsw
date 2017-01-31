@@ -1045,13 +1045,12 @@ class AssetBatch(models.Model):
     idx = models.AutoField(primary_key=True)
     run_start_time = models.DateTimeField(null=True, blank=True)
     run_end_time = models.DateTimeField(null=True, blank=True)
-    # status
     run_status = models.IntegerField(
         choices=[(status.value, status.name) for status in BatchStatus],
         default=BatchStatus.PLANNED.value,
     )
-    # error string
     error_string = models.TextField(default="")
+    manual_scan = models.BooleanField(default=False)
 
     user = models.ForeignKey("backbone.user", null=True)
     device = models.ForeignKey("backbone.device")
@@ -1128,15 +1127,12 @@ class AssetBatch(models.Model):
             )
         )
         self.run_status = new_state
-        self.save()
 
     def run_done(self):
         if self.run_status < BatchStatus.GENERATING_ASSETS:
-            if all(r.run_status == RunStatus.FINISHED
-                   for r in self.assetrun_set.all()):
+            if all(r.run_status == RunStatus.FINISHED for r in self.assetrun_set.all()):
                 self.state_finished_runs()
-                if all(r.run_result == RunResult.SUCCESS
-                       for r in self.assetrun_set.all()):
+                if all(r.run_result == RunResult.SUCCESS for r in self.assetrun_set.all()):
                     self.run_result = RunResult.SUCCESS
                 self.save()
 

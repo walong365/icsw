@@ -676,11 +676,13 @@ class Dispatcher(object):
 
                 self.discovery_process.get_route_to_devices([target_device])
 
+                new_asset_batch = AssetBatch(device=target_device, user=schedule_item.user)
+                new_asset_batch.manual_scan = schedule_item.run_now
+                new_asset_batch.state_init()
                 if cap_dict.get("hm", False) and target_device.target_ip:
                     self.log("Starting asset scan of device {} [ip: {}]".format(target_device.name,
                              target_device.target_ip))
-                    new_asset_batch = AssetBatch(device=target_device, user=schedule_item.user)
-                    new_asset_batch.state_init()
+
                     new_asset_batch.save()
 
                     for _idx, (runtype, _command, timeout) in enumerate(HM_CMD_TUPLES):
@@ -712,6 +714,10 @@ class Dispatcher(object):
                             str(new_srv_com)
                         )
                 else:
+                    new_asset_batch.state_finished()
+                    new_asset_batch.error_string = "No hostmonitor communication capability found!"
+                    new_asset_batch.save()
+
                     self.log(
                         "Skipping non-capable device {}".format(
                             str(target_device)

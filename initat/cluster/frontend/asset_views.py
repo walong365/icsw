@@ -109,31 +109,6 @@ class AssetBatchViewSet(viewsets.ViewSet):
         return Response(serializer.data)
 
 
-class AssetScanRunner(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        import json
-        from django.utils import timezone
-        from django.http import HttpResponse
-        from initat.cluster.backbone.models import device
-        from initat.cluster.backbone.models.dispatch import ScheduleItem
-
-        _dev = device.objects.get(pk=int(request.POST['pk']))
-        ScheduleItem.objects.create(
-            model_name="device",
-            object_id=_dev.idx,
-            planned_date=timezone.now(),
-            run_now=True,
-            dispatch_setting=None,
-            user=request.user,
-            schedule_handler="asset_schedule_handler"
-        )
-        return HttpResponse(
-            json.dumps({"state": "started run"}),
-            content_type="application/json"
-        )
-
-
 class ScheduledRunViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
     def list(self, request):

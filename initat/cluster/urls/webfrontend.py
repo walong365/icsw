@@ -54,7 +54,6 @@ asset_patterns = [
     url("^get_fieldvalues_for_template$", asset_views.GetFieldvaluesForTemplate.as_view(), name="get_fieldvalues_for_template"),
     url("^simple_asset_batch_loader$", asset_views.SimpleAssetBatchLoader.as_view(), name="simple_asset_batch_loader"),
     url("^get_assetbatch_list$", asset_views.AssetBatchViewSet.as_view({"get": "list"}), name="get_assetbatch_list"),
-    url("^run_assetrun_for_device_now$", asset_views.AssetScanRunner.as_view(), name="run_assetrun_for_device_now"),
     url("^get_schedule_list$", asset_views.ScheduledRunViewSet.as_view({"get": "list"}), name="get_schedule_list"),
     url("^get_static_templates$", asset_views.StaticAssetTemplateViewSet.as_view({"get": "get_all"}), name="get_static_templates"),
     url("^get_static_template_refs$", asset_views.StaticAssetTemplateViewSet.as_view({"get": "get_refs"}), name="get_static_template_references"),

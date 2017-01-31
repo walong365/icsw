@@ -213,7 +213,7 @@ class MonAllCommands(MonFileContainer):
             try:
                 _cn_name = MonCheckCommandSystemNames[_cn_l_name].value
             except KeyError:
-                self.log("Unknown notification command '{}' ({}), ignoring".format(_cn_name, _cn_l_name), logging_tools.LOG_LEVEL_ERROR)
+                self.log("Unknown notification command '{}', ignoring".format(_cn_l_name), logging_tools.LOG_LEVEL_ERROR)
             else:
                 self.add_object(
                     StructuredMonBaseConfig(
