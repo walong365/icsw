@@ -977,7 +977,16 @@ class LicenseCheck(object):
                     cur_lic.append(cur_lic_version)
                 else:
                     if cur_lic_version is not None:
-                        self._feed_license_version(cur_lic, cur_lic_version, lparts, server_info)
+                        try:
+                            self._feed_license_version(cur_lic, cur_lic_version, lparts, server_info)
+                        except:
+                            self.log(
+                                "error feed license info {}: {}".format(
+                                    line,
+                                    process_tools.get_except_info()
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
         return line_num
 
     def _feed_license_version(self, cur_lic, cur_lic_version, lparts, server_info):
