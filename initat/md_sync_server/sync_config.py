@@ -26,6 +26,7 @@ import os
 import signal
 import stat
 import time
+import codecs
 
 from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.server_version import VERSION_MAJOR, VERSION_MINOR
@@ -459,7 +460,7 @@ class SyncConfig(object):
                 [
                     entry["content"] for entry in send_list
                 ]
-            )
+            ).encode("utf-8")
         )
         return srv_com
 
@@ -620,7 +621,7 @@ class SyncConfig(object):
                         _take = True
                     if _take:
                         self.__file_dict[full_w_path] = FileInfo(full_w_path, self.config_version_send)
-                        _content = open(full_r_path, "r").read()
+                        _content = codecs.open(full_r_path, "r", "utf-8").read()
                         _size_data += len(_content)
                         _num_files += 1
                         if _send_size + len(_content) > MAX_SEND_SIZE:
@@ -684,7 +685,7 @@ class SyncConfig(object):
 
     def handle_direct_file_content_bulk(self, srv_com):
         new_vers = int(srv_com["*config_version_send"])
-        _bulk = bz2.decompress(base64.b64decode(srv_com["*bulk"]))
+        _bulk = bz2.decompress(base64.b64decode(srv_com["*bulk"])).decode("utf-8")
         cur_offset = 0
         self.log(
             "got {} (version {:d})".format(
@@ -694,7 +695,7 @@ class SyncConfig(object):
         )
         for _entry in srv_com.xpath(".//ns:file_list/ns:file"):
             _size = int(_entry.get("size"))
-            self._store_file(_entry.text, new_vers, _bulk[cur_offset:cur_offset + _size].decode("utf-8"))
+            self._store_file(_entry.text, new_vers, _bulk[cur_offset:cur_offset + _size])
             cur_offset += _size
         self.send_satellite_info()
 
@@ -726,7 +727,7 @@ class SyncConfig(object):
                         self.log("created directory {}".format(t_dir))
                 if os.path.exists(t_dir):
                     try:
-                        open(t_file, "w").write(content)
+                        codecs.open(t_file, "w", "utf-8").write(content)
                         # we no longer chown because we are not running as root
                     except:
                         self.log(

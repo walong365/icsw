@@ -344,7 +344,14 @@ class MonAllContacts(MonFileContainer):
 
     def _add_contacts_from_db(self, gen_conf):
         all_nots = mon_notification.objects.all()
-        for contact in mon_contact.objects.all().prefetch_related("notifications").select_related("user"):
+        for contact in mon_contact.objects.filter(
+            Q(user__active=True) &
+            Q(user__group__active=True)
+        ).prefetch_related(
+            "notifications"
+        ).select_related(
+            "user"
+        ):
             full_name = (
                 "{} {}".format(
                     contact.user.first_name,
@@ -443,7 +450,9 @@ class MonAllContactGroups(MonFileContainer):
                 alias="None group"
             )
         )
-        for cg_group in mon_contactgroup.objects.all().prefetch_related("members"):
+        for cg_group in mon_contactgroup.objects.all().prefetch_related(
+            "members"
+        ):
             nag_conf = StructuredMonBaseConfig(
                 "contactgroup",
                 cg_group.name,

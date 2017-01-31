@@ -39,7 +39,7 @@ class SpecialSnmpGeneral(SpecialBase):
                 _handler = self.build_cache.snmp_sink.get_handler(_scheme)
                 if _handler:
                     _retf.extend([_com.Meta.name for _com in _handler.config_mon_check()])
-            print("r=", _retf)
+            # print("r=", _retf)
             return _retf
         else:
             return self.build_cache.snmp_sink.get_handler_from_mon(instance).config_call(self)

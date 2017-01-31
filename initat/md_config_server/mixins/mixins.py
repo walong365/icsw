@@ -261,7 +261,7 @@ class NagVisMixin(object):
         try:
             map_h = codecs.open(map_file, "w", "utf-8")
         except:
-            self.mach_log(
+            self.log(
                 "cannot open {}: {}".format(
                     map_file,
                     process_tools.get_except_info()

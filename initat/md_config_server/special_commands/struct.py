@@ -239,8 +239,8 @@ class DynamicCheckDict(object):
                 if cur_special.Meta.meta and sc_array and not check_has_parent:
                     # dive in subcommands, for instance 'all SNMP checks'
                     # check for configs not really configured
-                    print("-" * 50)
-                    print("*", sc_array)
+                    # print("-" * 50)
+                    # print("*", sc_array)
                     # this has to be fixed, check lines 329 ff. from build_cache.py
                     _dead_coms = [
                         # _entry for _entry in sc_array if not hasattr(gbc.mccs_dict[_entry], "check_command_name")
