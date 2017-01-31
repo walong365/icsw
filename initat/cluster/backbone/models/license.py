@@ -712,6 +712,8 @@ class icswEggConsumer(models.Model):
     ghost = models.BooleanField(default=False)
     # valid, parameters have not changed (after installing a new XML file)
     valid = models.BooleanField(default=False)
+    # bound to a given license
+    license_id_name = models.CharField(default="", max_length=63)
     # timeframe in seconds
     timeframe_secs = models.IntegerField(default=0)
     # creation date
