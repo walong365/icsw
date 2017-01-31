@@ -1100,6 +1100,7 @@ class BuildProcess(
                                 used_checks,
                                 act_def_serv,
                             )
+                        # print("*", gbc.consumer, _num_checks)
                         if gbc.consumer and _num_checks:
                             gbc.consumer.consume("monconfig", host.pk, _num_checks)
                         # add cluster checks

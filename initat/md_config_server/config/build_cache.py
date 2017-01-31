@@ -289,7 +289,7 @@ class GlobalBuildCache(object):
             self.__trace_gen = MonHostTraceGeneration.objects.get(Q(fingerprint=self.routing_fingerprint))
         else:
             # master, install the egg consumer
-            self.consumer = server_mixins.EggConsumeObject(log_com)
+            self.consumer = server_mixins.EggConsumeObject(self)
             self.consumer.init({"SERVICE_ENUM_NAME": icswServiceEnum.monitor_server.name})
             self.routing_fingerprint = router_obj.fingerprint
             # get generation

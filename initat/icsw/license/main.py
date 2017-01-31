@@ -23,6 +23,7 @@
 
 import os
 import sys
+import time
 import traceback
 import urllib.error
 import urllib.parse
@@ -36,7 +37,7 @@ from initat.cluster.backbone.models import License, device_variable, icswEggCrad
     icswEggEvaluationDef
 from initat.constants import VERSION_CS_NAME
 from initat.debug import ICSW_DEBUG_MODE
-from initat.tools import process_tools, hfp_tools, config_store, logging_tools, server_command
+from initat.tools import process_tools, hfp_tools, config_store, logging_tools
 
 __all__ = [
     "main",
@@ -49,10 +50,14 @@ else:
 
 
 def ova_show(opts):
-    print("Recalc ova info")
+    s_time = time.time()
+    print("Recalc ova info ..", flush=True, end="")
     License.objects.check_ova_baskets()
     _sys_c = icswEggCradle.objects.get_system_cradle()
-    _sys_c.calc()
+    _sys_c.recalc()
+    e_time = time.time()
+    print(".. took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
+    print("")
     print("System cradle info: {}".format(str(_sys_c)))
     print("")
     print("Baskets defined: {:d}".format(icswEggBasket.objects.all().count()))
@@ -69,6 +74,7 @@ def ova_show(opts):
 
 
 def ova_init(opts):
+    DUMMY_OVA = 500
     _sys_c = icswEggCradle.objects.get_system_cradle()
     if False:
         _sys_c.delete()
@@ -78,8 +84,13 @@ def ova_init(opts):
         print("created System cradle '{}'".format(str(_sys_c)))
     # icswEggBasket.objects.all().delete()
     if not icswEggBasket.objects.num_valid_baskets():
-        _sys_b = icswEggBasket.objects.create_dummy_basket(eggs=500)
+        _sys_b = icswEggBasket.objects.create_dummy_basket(installed=DUMMY_OVA)
         print("Added dummy basket '{}'".format(str(_sys_b)))
+    else:
+        for _dummy_basket in icswEggBasket.objects.filter(Q(dummy=True)):
+            _dummy_basket.installed = DUMMY_OVA
+            # trigger recalc of values
+            _dummy_basket.save()
     License.objects.check_ova_baskets()
     if not icswEggEvaluationDef.objects.get_active_def():
         _dummy_d = icswEggEvaluationDef.objects.create_dummy_def()
