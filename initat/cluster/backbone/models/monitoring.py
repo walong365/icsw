@@ -305,11 +305,16 @@ class host_check_command(models.Model):
 
 
 """
+
 possible combinations:
 1) - mon_check_command alone
 2) - mon_check_command points to
-     - mon_check_command_special which in turn references a
+     - mon_check_command_special via mccs_ref which in turn references a
        - dummy_mcc to have a unique name
+
+The shadow mon_check_command between special_commands and mon_check_commands exists
+to ensure a unique_name for special_commands
+
 """
 
 
@@ -378,6 +383,7 @@ class MonCheckCommandSystemNames(Enum):
 
 class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
+    # must be zero for system-commands (also for shadow commands)
     config = models.ForeignKey("backbone.config", db_column="new_config_id", null=True, blank=True)
     mon_service_templ = models.ForeignKey("backbone.mon_service_templ", null=True, blank=True)
     # only unique per config
@@ -420,6 +426,17 @@ class mon_check_command(models.Model):
     def get_object_type(self):
         return "mon"
 
+    @property
+    def command_type(self):
+        if self.system_command and self.special_shadow:
+            return "shadow"
+        elif self.system_command:
+            return "pure system"
+        elif self.special_shadow:
+            return "ILLEGAL"
+        else:
+            return "normal"
+
     class Meta:
         db_table = 'ng_check_command'
         unique_together = (("name", "config"))
@@ -454,7 +471,7 @@ class DBStructuredMonBaseConfig(mon_check_command, StructuredContentEmitter):
     # - mon_check_command
     # - notificaton
     # - special commands
-    # have mon_check_command entries, only the first type has system_command=False set
+    # has a mon_check_command entries, only the first type has system_command=False set
 
     @classmethod
     def get_system_check_command(cls, **kwargs):
@@ -755,19 +772,31 @@ def _check_unique_name(cur_inst: object) -> bool:
     _other_uniques = mon_check_command.objects.all().exclude(Q(idx=cur_inst.idx)).values_list("unique_name", flat=True)
     if cur_inst.system_command:
         if cur_inst.config_id:
-            raise ValidationError("SystemCheckCommand ({}) should not be linked to a config".format(cur_inst.name))
-        if unique_name in _other_uniques:
-            # print("Q", cur_inst.idx)
-            # print(list(_other_uniques))
-            raise ValidationError("MonCheckName for SystemCommand '{}' already used, please fix ...".format(cur_inst.name))
-    else:
-        while unique_name in _other_uniques:
-            _parts = unique_name.split("_")
-            if _parts[-1].isdigit():
-                # increase unique counter
-                unique_name = "_".join(_parts[:-1] + ["{:d}".format(int(_parts[-1]) + 1)])
-            else:
-                unique_name = "{}_1".format(unique_name)
+            raise ValidationError(
+                "{} mon_check_command ({}) should not be linked to a config".format(
+                    cur_inst.command_type,
+                    cur_inst.name,
+                )
+            )
+        if not cur_inst.special_shadow:
+            # pure system commands need unique names and have no possibility to alter their names
+            if unique_name in _other_uniques:
+                # print("Q", cur_inst.idx)
+                # print(list(_other_uniques))
+                raise ValidationError(
+                    "MonCheckName for {} '{}' (pk={}) already used, please fix ...".format(
+                        cur_inst.command_type,
+                        cur_inst.name,
+                        cur_inst.idx,
+                    )
+                )
+    while unique_name in _other_uniques:
+        _parts = unique_name.split("_")
+        if _parts[-1].isdigit():
+            # increase unique counter
+            unique_name = "_".join(_parts[:-1] + ["{:d}".format(int(_parts[-1]) + 1)])
+        else:
+            unique_name = "{}_1".format(unique_name)
     _changed = cur_inst.unique_name != unique_name
     cur_inst.unique_name = unique_name
     return _changed
