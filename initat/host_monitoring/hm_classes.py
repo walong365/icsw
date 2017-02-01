@@ -389,7 +389,7 @@ class mvect_entry(object):
         self.unit = kwargs.get("unit", "1")
         # base, 1, 1000 or 1024
         self.base = int(kwargs.get("base", 1))
-        # factor to mulitply value with to get real value
+        # factor to multiply value with to get real value
         self.factor = int(kwargs.get("factor", 1))
         if "v_type" in kwargs:
             self.factor = int(self.factor)
