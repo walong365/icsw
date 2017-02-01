@@ -156,6 +156,7 @@ rms_module = angular.module(
             entry.messages.total = "#{entry.messages.value}"
             if gwi.length
                 entry.messages.total = "#{entry.messages.total} + #{gwi.length}"
+            entry.messages.all_msg_count = entry.messages.value + gwi.length
             for _line in gwi
                 sub_scope.msgs.push([_line.value, "global", "label label-danger"])
             for _line in entry.messages.raw

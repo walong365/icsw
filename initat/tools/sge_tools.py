@@ -1673,7 +1673,7 @@ def build_waiting_list(s_info, options, **kwargs):
                 )
             )
         else:
-            cur_job.append(E.messages("0", type="int"))
+            cur_job.append(E.messages("0", type="int", raw=json.dumps([])))
         # print("D",
         dep_list = sorted(act_job.xpath(".//predecessor_jobs_req/text()", smart_strings=False))
         # print etree.tostring(act_job, pretty_print=True)
