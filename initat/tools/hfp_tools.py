@@ -119,6 +119,7 @@ def get_local_net_hfp():
         hw_fp_dev = _gw_dev
     else:
         hw_fp_dev = sorted(_if_dict.keys())[0]
+    # print("*", _gw_dev, _if_dict)
     if hw_fp_dev:
         fp = {
             "name": hw_fp_dev,

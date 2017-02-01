@@ -34,8 +34,6 @@ class Parser(object):
         return self._add_lw_parser(sub_parser)
 
     def _add_lw_parser(self, sub_parser):
-        _old_parser = sub_parser.add_parser("lse", help="show cluster error log")
-        _old_parser.set_defaults(subcom="lse", execute=self._old_execute)
         parser = sub_parser.add_parser("error", help="show cluster error log")
         parser.set_defaults(subcom="error", execute=self._execute)
         parser.add_argument("--stat", default=False, action="store_true", help="show statistis (error per UID, [%(default)s]")

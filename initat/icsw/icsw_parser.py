@@ -154,9 +154,16 @@ class ICSWParser(object):
             try:
                 opt_ns = self._parser.parse_args()
             except ParseError as pe:
-                print("ParseError: {}\n".format(str(pe)))
+                print(
+                    "ParseError: {}\n".format(
+                        str(pe)
+                    )
+                )
                 sub_parser.print_help()
                 sys.exit(2)
             finally:
                 self._parser.error = _prev_error
+        if not hasattr(opt_ns, "execute"):
+            self._parser.print_help()
+            sys.exit(0)
         return opt_ns

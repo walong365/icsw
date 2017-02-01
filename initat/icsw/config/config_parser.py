@@ -29,7 +29,8 @@ class Parser(object):
 
     def _add_config_parser(self, sub_parser):
         parser = sub_parser.add_parser("config", help="config handling (update, create, compare)")
-        parser.set_defaults(subcom="config", execute=self._execute)
+        parser.set_defaults(childcom="", execute=self._execute)
+        self.parser = parser
         child_parser = parser.add_subparsers(help="config subcommands")
         self._add_enum_parser(child_parser)
         self._add_show_parser(child_parser)
@@ -39,7 +40,7 @@ class Parser(object):
     def _add_enum_parser(self, child_parser):
         if self.__server_mode:
             parser = child_parser.add_parser("enum", help="show enumerated server configs")
-            parser.set_defaults(childcom="enum_show")
+            parser.set_defaults(childcom="enum_show", execute=self._execute)
             parser.add_argument(
                 "--sync",
                 default=False,
@@ -75,4 +76,7 @@ class Parser(object):
 
     def _execute(self, opt_ns):
         from .main import main
-        main(opt_ns)
+        if not opt_ns.childcom:
+            self.parser.print_help()
+        else:
+            main(opt_ns)

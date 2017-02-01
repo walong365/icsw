@@ -28,8 +28,6 @@ class Parser(object):
         self._add_service_parser(sub_parser)
 
     def _add_service_parser(self, sub_parser):
-        _old_parser = sub_parser.add_parser("state", help="service state control")
-        _old_parser.set_defaults(subcom="state", execute=self._old_execute)
         parser = sub_parser.add_parser("service", help="control icsw services")
         parser.set_defaults(subcom="service", execute=self._service_execute)
         child_parser = parser.add_subparsers(help="service subcommands")
