@@ -47,13 +47,13 @@ def main():
     _xml = {}
     for xml_type, name in zip(["group", "user"], sys.argv[1:3]):
         _xml[xml_type] = etree.fromstring(codecs.open(name, "r", "utf-8").read())
-        print((
+        print(
             "read {} from {}, found {}".format(
                 xml_type,
                 name,
                 logging_tools.get_plural("entry", len(_xml[xml_type])),
             )
-        ))
+        )
     # integer / boolean fields
     int_fields = ["uid", "gid", "ggroup_idx", "user_idx", "ggroup"]
     boolean_fields = ["active"]
@@ -105,11 +105,13 @@ def main():
             try:
                 db_obj = new_ot.objects.get(Q(**{prim_field: prim_value}))
             except new_ot.DoesNotExist:
-                print(("%s with %s='%s' not found, creating new" % (
-                    c_type,
-                    prim_field,
-                    prim_value)
-                ))
+                print(
+                    "%s with %s='%s' not found, creating new" % (
+                        c_type,
+                        prim_field,
+                        prim_value
+                    )
+                )
                 db_obj = new_ot()
                 if c_type == "user":
                     db_obj.group = group_lut[src_dict["ggroup"]]

@@ -91,7 +91,7 @@ def main():
         try:
             cur_group = group.objects.get(Q(groupname=_user.group.name))
         except group.DoesNotExist:
-            print(("creating new group for {}".format(str(_user.group))))
+            print("creating new group for {}".format(str(_user.group)))
             cur_group = group.objects.create(
                 groupname=_user.group.name,
                 homestart=opts.homestart,
@@ -100,7 +100,7 @@ def main():
         try:
             cur_user = user.objects.get(Q(login=_user.name))
         except user.DoesNotExist:
-            print(("creating new user for {}".format(str(_user))))
+            print("creating new user for {}".format(str(_user)))
             cur_user = user.objects.create(
                 group=cur_group,
                 login=_user.name,
@@ -111,7 +111,7 @@ def main():
                 password="{}123".format(_user.name),
             )
         else:
-            print(("user {} already present".format(str(cur_user))))
+            print("user {} already present".format(str(cur_user)))
 
 if __name__ == "__main__":
     main()

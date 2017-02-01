@@ -49,7 +49,7 @@ def main():
         try:
             opts.data = [int(_value) for _value in opts.data.split(",")]
         except:
-            print(("cannot parse data '{}'".format(opts.data)))
+            print("cannot parse data '{}'".format(opts.data))
         else:
             if opts.names.strip():
                 opts.names = [_value.strip() for _value in opts.names.split(",") if _value.strip()]

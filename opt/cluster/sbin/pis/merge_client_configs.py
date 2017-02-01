@@ -80,19 +80,19 @@ def parse_file(file_name):
                         try:
                             _dict[key] = eval("{}".format(value))
                         except KeyError:
-                            print((
+                            print(
                                 "Error: key {} not defined in dictionary".format(
                                     key
                                 ),
                                 logging_tools.LOG_LEVEL_ERROR
-                            ))
+                            )
                     else:
-                        print((
+                        print(
                             "Error parsing line '{}'".format(
                                 str(line)
                             ),
                             logging_tools.LOG_LEVEL_ERROR
-                        ))
+                        )
     return _dict
 
 

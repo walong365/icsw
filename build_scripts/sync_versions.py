@@ -29,7 +29,7 @@ from helper import parser
 def main():
     args = parser.parse()
     if args.increase_release_on_build:
-        print(("specfile is at {}".format(args.specfile)))
+        print("specfile is at {}".format(args.specfile))
         _lines = open(args.specfile).read().split("\n")
         _new_lines = []
         _modified = 0
@@ -49,7 +49,7 @@ def main():
                                 _modified += 1
             _new_lines.append(_line)
         if _modified:
-            print(("Modified {:d} line(s), rewriting specfile".format(_modified)))
+            print("Modified {:d} line(s), rewriting specfile".format(_modified))
             open(args.specfile, "w").write("\n".join(_new_lines))
     else:
         print("rebuild run, not modify specfile")

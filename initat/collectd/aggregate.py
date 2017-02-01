@@ -389,7 +389,7 @@ class KeySink(object):
             else:
                 return 0
         else:
-            print(("action '{}' not implemented for key_sink, return 0".format(self.action)))
+            print("action '{}' not implemented for key_sink, return 0".format(self.action))
             return 0
 
     @staticmethod

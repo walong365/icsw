@@ -1,6 +1,6 @@
 #!/usr/bin/python3-init -Otu
 #
-# Copyright (C) 2014 Andreas Lang-Nevyjel
+# Copyright (C) 2014,2017 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone
 #
@@ -27,7 +27,7 @@ from initat.tools import logging_tools, module_dependency_tools
 
 
 def log_com(what, log_level=logging_tools.LOG_LEVEL_OK):
-    print(("[{:2d}] {}".format(log_level, what)))
+    print("[{:2d}] {}".format(log_level, what))
 
 
 def main():

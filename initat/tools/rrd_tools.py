@@ -123,7 +123,7 @@ class RRA(object):
         if self.log_com:
             self.log_com("[RRA] {}".format(what), log_level)
         else:
-            print(("[RRA {}] {}".format(logging_tools.get_log_level_str(log_level), what)))
+            print("[RRA {}] {}".format(logging_tools.get_log_level_str(log_level), what))
 
     @property
     def popcount(self):
@@ -765,21 +765,19 @@ class RRD(dict):
 
     def show_info(self, **args):
         if args.get("full_info", False):
-            print((
+            print(
                 "{}:".format(
                     logging_tools.get_plural("RRA", len(self["rra_list"]))
                 )
-            ))
+            )
             for rra_key in sorted(self["rra_list"]):
-                print((
+                print(
                     self["rra_dict"][rra_key].show_info()
-                ))
+                )
         else:
             print(
-                (
-                    "{}: {}".format(
-                        logging_tools.get_plural("RRA", len(self["rra_list"])),
-                        ", ".join(sorted(self["rra_list"]))
-                    )
+                "{}: {}".format(
+                    logging_tools.get_plural("RRA", len(self["rra_list"])),
+                    ", ".join(sorted(self["rra_list"]))
                 )
             )

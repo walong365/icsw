@@ -79,11 +79,13 @@ def do_nets(conf):
                 check_for_bootdevice and not cur_ip.netdevice_id == conf_dict["device"].bootnetdevice_id
             ):
                 if int(cur_ip.netdevice.macaddr.replace(":", ""), 16) != 0 and cur_ip.netdevice.macaddr.lower() in list(macs_used.keys()):
-                    print("*** error, macaddress %s on netdevice %s already used for netdevice %s" % (
-                        cur_ip.netdevice.macaddr,
-                        cur_ip.netdevice.devname,
-                        macs_used[cur_ip.netdevice.macaddr.lower()]
-                    ))
+                    print(
+                        "*** error, macaddress %s on netdevice %s already used for netdevice %s" % (
+                            cur_ip.netdevice.macaddr,
+                            cur_ip.netdevice.devname,
+                            macs_used[cur_ip.netdevice.macaddr.lower()]
+                        )
+                    )
                 else:
                     macs_used[cur_ip.netdevice.macaddr.lower()] = cur_ip.netdevice.devname
                     write_order_list.append(cur_ip.netdevice_id)
@@ -360,12 +362,12 @@ def do_ssh(conf):
             pass
         else:
             found_keys_dict[cur_var.name] = cur_val
-    print((
+    print(
         "found {} in database: {}".format(
             logging_tools.get_plural("key", len(list(found_keys_dict.keys()))),
             ", ".join(sorted(found_keys_dict.keys()))
         )
-    ))
+    )
     new_keys = []
     for ssh_type, key_size in ssh_types:
         privfn = "ssh_host_{}_key".format(ssh_type)

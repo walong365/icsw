@@ -1,6 +1,6 @@
 #!/usr/bin/python3-init -Otu
 #
-# Copyright (C) 2007-2008,2015 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2008,2017 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -183,12 +183,12 @@ class hpl_i_loader(object):
                 try:
                     act_file = hpl_file(f_name, self.__opts)
                 except:
-                    print((
+                    print(
                         "error reading file {}: {}".format(
                             f_name,
                             process_tools.get_except_info()
                         )
-                    ))
+                    )
                 else:
                     if self.__opts.merge_same_hosts:
                         nn_dict = dict([(value.node_name, value) for value in self.__file_dict.values()])
@@ -199,12 +199,12 @@ class hpl_i_loader(object):
                     else:
                         self.__file_dict[f_name] = act_file
             if self.__opts.verbose:
-                print((
+                print(
                     "loaded {} from list with {}".format(
                         logging_tools.get_plural("file", len(list(self.__file_dict.keys()))),
                         logging_tools.get_plural("file_name", len(self.__file_names)),
                     )
-                ))
+                )
 
     def show_info(self):
         for hpl_f in self.__file_dict.values():

@@ -29,6 +29,7 @@ VLAN_BASE = "1.3.6.1.4.1.9.9.46"
 
 # todo: add port/ etherchannel stuff via 192.168.2.14 1.2.840.10006.300.43
 
+
 class handler(SNMPHandler):
     class Meta:
         # oids = ["generic.netip"]
@@ -52,14 +53,14 @@ class handler(SNMPHandler):
                 if _key in [4, 10, 17, 18, 19]:
                     if _key == 4:
                         allowed_vlans = [_id for _id in _vlan_ids if ord(_value[int(_id / 8)]) & (_id & 7)]
-                        print((
+                        print(
                             "{:<6d} ts={:d} vlan={:d} {}".format(
                                 _port,
                                 _pd[14],
                                 _pd[5],
                                 allowed_vlans,
                             )
-                        ))
+                        )
                         # print _port, _key, _port_dict[_port][5], allowed_vlans, "".join(["{:02x}".format(ord(_v)) for _v in _value[:4]])
         # pprint.pprint(_port_dict)
         # if _added:
