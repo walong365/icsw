@@ -81,6 +81,9 @@
                 <rights>
                     <value>backbone.device.change_config</value>
                 </rights>
+                <licenses>
+                    <value>md_config_server</value>
+                </licenses>
                 <description>
                     <infoText language="en">Perform monitoring checks on particular devices</infoText>
                 </description>
@@ -110,7 +113,7 @@
         </route>
         <route name="main.devvars">
             <stateData url="/variables" templateUrl="icsw/device/variable.html"/>
-            <icswData pageTitle="Device variables">
+            <icswData pageTitle="Device Variables">
                 <rights>
                     <value>backbone.device.change_variables</value>
                 </rights>
@@ -132,10 +135,13 @@
         </route>
         <route name="main.moncheckoverview">
             <stateData url="/moncheckoverview" templateUrl="icsw/main/moncheck/overview.html"/>
-            <icswData pageTitle="Monitoring checks Setup">
+            <icswData pageTitle="Monitoring Checks Setup">
                 <rights>
                     <value>backbone.device.change_config</value>
                 </rights>
+                <licenses>
+                    <value>md_config_server</value>
+                </licenses>
                 <description>
                     <infoText language="en">Add and modify assignable monitoring checks</infoText>
                 </description>
@@ -218,6 +224,9 @@
                 <rights>
                     <value>backbone.mon_check_command.setup_monitoring</value>
                 </rights>
+                <licenses>
+                    <value>md_config_server</value>
+                </licenses>
                 <description>
                     <infoText language="en">Visualize the chronological evolution of the device availability</infoText>
                 </description>
@@ -307,6 +316,9 @@
         <route name="main.monitorlocation">
             <stateData url="/monitorlocation" templateUrl="icsw/device/location/monitoring"/>
             <icswData pageTitle="Location Service">
+                <licenses>
+                    <value>md_config_server</value>
+                </licenses>
                 <description>
                     <infoText language="en">TODO: Show monitoring data at Google maps and with location images</infoText>
                 </description>
@@ -393,6 +405,9 @@
                 <rights>
                     <value>backbone.device.assets</value>
                 </rights>
+                <licenses>
+                    <value>asset</value>
+                </licenses>
                 <description>
                     <infoText language="en">Show the result of asset runs</infoText>
                 </description>
@@ -404,6 +419,9 @@
                 <rights>
                     <value>backbone.dispatchersetting.setup</value>
                 </rights>
+                <licenses>
+                    <value>asset</value>
+                </licenses>
                 <description>
                     <infoText language="en">Manage scheduling settings for asset runs</infoText>
                 </description>
@@ -415,6 +433,9 @@
                 <rights>
                     <value>backbone.device.dispatch_settings</value>
                 </rights>
+                <licenses>
+                    <value>asset</value>
+                </licenses>
                 <description>
                     <infoText language="en">Show the time of the next scheduled assets runs</infoText>
                 </description>
@@ -449,6 +470,9 @@
                 <rights>
                     <value>backbone.staticassettemplate.setup</value>
                 </rights>
+                <licenses>
+                    <value>asset</value>
+                </licenses>
                 <description>
                     <infoText language="en">An overview of the assignment of custom asset types</infoText>
                 </description>
@@ -456,7 +480,7 @@
         </route>
         <route name="main.deployboot">
             <stateData url="/deployboot" templateUrl="icsw/main/deploy/boot.html"/>
-            <icswData pageTitle="Boot nodes">
+            <icswData pageTitle="Boot Nodes">
                 <serviceTypes>
                     <value>mother_server</value>
                 </serviceTypes>
