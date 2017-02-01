@@ -155,6 +155,9 @@ device_asset_module = angular.module(
 
                 update_asset_batch_list(result[1])
 
+                for dev in $scope.struct.devices
+                    dev.$$assetbatch_data_loaded = true
+
                 start_timer()
         )
 
@@ -235,6 +238,8 @@ device_asset_module = angular.module(
                     if not dev.is_meta_device
                         if not dev.asset_batch_list?
                             dev.asset_batch_list = []
+                        else
+                            dev.asset_batch_list.length = 0
 
                         if not dev.info_tabs?
                             dev.info_tabs = []
@@ -248,11 +253,11 @@ device_asset_module = angular.module(
 
                         dev.$$scan_device_button_disabled = false
                         dev.$$assetbatch_ids_selected_for_delete = []
+                        dev.$$assetbatch_data_loaded = false
 
                         $scope.struct.devices.push(dev)
 
                 reload_data()
-                start_timer()
                 $scope.struct.data_loaded = true
         )
 

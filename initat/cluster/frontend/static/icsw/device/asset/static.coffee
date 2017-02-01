@@ -51,44 +51,44 @@ static_inventory_overview = angular.module(
     icswDeviceTreeService, icswDeviceTreeHelperService, $timeout,
     icswDispatcherSettingTreeService, Restangular, icswCategoryTreeService,
 ) ->
-        $scope.struct = {
-            device_tree: undefined
-            category_tree: undefined
-            data_loaded: false
-            categories: []
-        }
+    $scope.struct = {
+        device_tree: undefined
+        category_tree: undefined
+        data_loaded: false
+        categories: []
+    }
 
-        $q.all(
-            [
-                icswDeviceTreeService.load($scope.$id)
-                icswCategoryTreeService.load($scope.$id)
-            ]).then(
-                (data) ->
-                    $scope.struct.device_tree = data[0]
-                    $scope.struct.category_tree = data[1]
+    $q.all(
+        [
+            icswDeviceTreeService.load($scope.$id)
+            icswCategoryTreeService.load($scope.$id)
+        ]).then(
+            (data) ->
+                $scope.struct.device_tree = data[0]
+                $scope.struct.category_tree = data[1]
 
-                    $scope.struct.categories.length = 0
+                $scope.struct.categories.length = 0
 
-                    for category in $scope.struct.category_tree.asset_list
-                        o = {
-                            name: category.name
-                            devices: []
-                            show_category_devices: false
-                        }
+                for category in $scope.struct.category_tree.asset_list
+                    o = {
+                        name: category.name
+                        devices: []
+                        show_category_devices: false
+                    }
 
-                        for device_id in category.reference_dict.device
-                            o.devices.push(data[0].all_lut[device_id])
+                    for device_id in category.reference_dict.device
+                        o.devices.push(data[0].all_lut[device_id])
 
-                        $scope.struct.categories.push(o)
+                    $scope.struct.categories.push(o)
 
-                    $scope.struct.data_loaded = true
-            )
+                $scope.struct.data_loaded = true
+        )
 
-        $scope.show_device_modal_view = ($event, device) ->
-            DeviceOverviewService($event, [device])
+    $scope.show_device_modal_view = ($event, device) ->
+        DeviceOverviewService($event, [device])
 
-        $scope.show_category_devices = (obj) ->
-            obj.show_category_devices = !obj.show_category_devices
+    $scope.show_category_devices = (obj) ->
+        obj.show_category_devices = !obj.show_category_devices
 ]).directive("icswDeviceAssetStaticOverview",
 [
     "$templateCache",
@@ -99,7 +99,9 @@ static_inventory_overview = angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.device.asset.static.overview")
         controller: "icswDeviceAssetStaticOverviewCtrl"
-        scope: true
+        scope: {
+            device: "=icswDevice"
+        }
     }
 ]).controller("icswDeviceAssetStaticOverviewCtrl",
 [
@@ -135,86 +137,92 @@ static_inventory_overview = angular.module(
                 dataType: 'json'
             })
         ]).then(
-                (data) ->
-                    $scope.struct.device_tree = data[0]
-                    $scope.struct.staticasset_tree = data[1]
-                    $scope.struct.hidden_static_asset_template_types = (obj.type for obj in data[2])
+            (data) ->
+                $scope.struct.device_tree = data[0]
+                $scope.struct.staticasset_tree = data[1]
+                $scope.struct.hidden_static_asset_template_types = (obj.type for obj in data[2])
+                $scope.struct.static_asset_tabs = {}
 
-                    idx_list = []
+                idx_list = []
 
-                    for obj in $scope.struct.staticasset_tree.list
-                        idx_list.push(obj.idx)
+                for obj in $scope.struct.staticasset_tree.list
+                    idx_list.push(obj.idx)
 
-                    icswSimpleAjaxCall({
-                        url: ICSW_URLS.ASSET_GET_FIELDVALUES_FOR_TEMPLATE
-                        data:
-                            idx_list: idx_list
-                        dataType: 'json'
-                    }).then(
-                        (result) ->
-                            static_assets = []
+                icswSimpleAjaxCall({
+                    url: ICSW_URLS.ASSET_GET_FIELDVALUES_FOR_TEMPLATE
+                    data:
+                        idx_list: idx_list
+                    dataType: 'json'
+                }).then(
+                    (result) ->
+                        for device in $scope.struct.device_tree.all_list
+                            device.$$static_field_values = {}
+                            device.$$inventory_static_status = {}
 
-                            for obj in $scope.struct.staticasset_tree.list
-                                static_assets.push(obj)
-                                obj.$$show_devices_inventory_static_overview = false
+                        for static_asset in $scope.struct.staticasset_tree.list
+                            static_asset.$$fields = result.data[static_asset.idx]
+                            static_asset.$$devices = {}
+                            static_asset.$$inventory_static_status = 0
+                            relevant_asset = false
 
-                                if $scope.struct.static_asset_tabs[obj.type] == undefined
-                                    $scope.struct.static_asset_tabs[obj.type] = []
+                            # if there is no relevant_device_id defined, all assets are relevant
+                            if $scope.device == undefined
+                                relevant_asset = true
 
-                                $scope.struct.static_asset_tabs[obj.type].push(obj)
+                            for ordering_num in Object.getOwnPropertyNames(static_asset.$$fields)
+                                for field_value in static_asset.$$fields[ordering_num]["list"]
+                                    if static_asset.$$fields[ordering_num].status > static_asset.$$inventory_static_status
+                                        static_asset.$$inventory_static_status = static_asset.$$fields[ordering_num].status
 
+                                    device = $scope.struct.device_tree.all_lut[field_value.device_idx]
+                                    if device.$$static_field_values == undefined
+                                        device.$$static_field_values = {}
 
-                            for static_asset in static_assets
-                                static_asset.$$fields = result.data[static_asset.idx]
-                                static_asset.$$devices = {}
-                                static_asset.$$inventory_static_status = 0
+                                    if device.$$static_field_values[static_asset.idx] == undefined
+                                        device.$$static_field_values[static_asset.idx] = {}
 
-                                for ordering_num in Object.getOwnPropertyNames(static_asset.$$fields)
-                                    for field_value in static_asset.$$fields[ordering_num]["list"]
-                                        if static_asset.$$fields[ordering_num].status > static_asset.$$inventory_static_status
-                                            static_asset.$$inventory_static_status = static_asset.$$fields[ordering_num].status
+                                    device.$$static_field_values[static_asset.idx][ordering_num] = field_value
+                                    if !(field_value.device_idx in static_asset.$$devices)
+                                        static_asset.$$devices[field_value.device_idx] = device
+                                        if $scope.device != undefined && field_value.device_idx == $scope.device.idx
+                                            relevant_asset = true
 
-                                        device = $scope.struct.device_tree.all_lut[field_value.device_idx]
-                                        if device.$$static_field_values == undefined
-                                            device.$$static_field_values = {}
+                                        field_value.$$device = $scope.struct.device_tree.all_lut[field_value.device_idx]
 
-                                        if device.$$static_field_values[static_asset.idx] == undefined
-                                            device.$$static_field_values[static_asset.idx] = {}
-
-                                        device.$$static_field_values[static_asset.idx][ordering_num] = field_value
-                                        if !(field_value.device_idx in static_asset.$$devices)
-                                            static_asset.$$devices[field_value.device_idx] = device
-
-                                            field_value.$$device = $scope.struct.device_tree.all_lut[field_value.device_idx]
-
-                                for ordering_num in Object.getOwnPropertyNames(static_asset.$$fields)
-                                    for device_num in Object.getOwnPropertyNames(static_asset.$$devices)
-                                        if static_asset.$$devices[device_num].$$static_field_values[static_asset.idx][ordering_num] == undefined
-                                            o = {
-                                                value: static_asset.$$fields[ordering_num].aggregate
-                                            }
-
-                                            static_asset.$$devices[device_num].$$static_field_values[ordering_num] = o
-
-                                static_asset.$$expand_devices_button_disabled = true
+                            for ordering_num in Object.getOwnPropertyNames(static_asset.$$fields)
                                 for device_num in Object.getOwnPropertyNames(static_asset.$$devices)
-                                    static_asset.$$expand_devices_button_disabled = false
-                                    device = static_asset.$$devices[device_num]
-                                    if device.$$inventory_static_status == undefined
-                                        device.$$inventory_static_status = {}
-                                    device.$$inventory_static_status[static_asset.idx] = 0
+                                    if static_asset.$$devices[device_num].$$static_field_values[static_asset.idx][ordering_num] == undefined
+                                        o = {
+                                            value: static_asset.$$fields[ordering_num].aggregate
+                                        }
 
-                                    for ordering_num in Object.getOwnPropertyNames(device.$$static_field_values[static_asset.idx])
-                                        if device.$$static_field_values[static_asset.idx][ordering_num].status > device.$$inventory_static_status[static_asset.idx]
-                                            device.$$inventory_static_status[static_asset.idx] = device.$$static_field_values[static_asset.idx][ordering_num].status
+                                        static_asset.$$devices[device_num].$$static_field_values[ordering_num] = o
+
+                            static_asset.$$expand_devices_button_disabled = true
+                            for device_num in Object.getOwnPropertyNames(static_asset.$$devices)
+                                static_asset.$$expand_devices_button_disabled = false
+                                device = static_asset.$$devices[device_num]
+                                if device.$$inventory_static_status == undefined
+                                    device.$$inventory_static_status = {}
+                                device.$$inventory_static_status[static_asset.idx] = 0
+
+                                for ordering_num in Object.getOwnPropertyNames(device.$$static_field_values[static_asset.idx])
+                                    if device.$$static_field_values[static_asset.idx][ordering_num].status > device.$$inventory_static_status[static_asset.idx]
+                                        device.$$inventory_static_status[static_asset.idx] = device.$$static_field_values[static_asset.idx][ordering_num].status
 
 
-                            $scope.struct.data_loaded = true
+                            if relevant_asset
+                                static_asset.$$show_devices_inventory_static_overview = false
+                                if $scope.struct.static_asset_tabs[static_asset.type] == undefined
+                                    $scope.struct.static_asset_tabs[static_asset.type] = []
 
-                        (not_ok) ->
-                            console.log(not_ok)
-                    )
-        )
+                                $scope.struct.static_asset_tabs[static_asset.type].push(static_asset)
+
+                        $scope.struct.data_loaded = true
+                    (not_ok) ->
+                        console.log(not_ok)
+                )
+    )
 
     $scope.show_devices = ($event, obj) ->
         obj.$$show_devices_inventory_static_overview = !obj.$$show_devices_inventory_static_overview
