@@ -279,6 +279,96 @@ class get_rms_done_json(View):
 
 
 class get_rms_current_json(View):
+    def optimize_list(self, in_list: list) -> list:
+        def shorten_node_list(n_list: list) -> str:
+            if len(n_list) == 1:
+                return n_list[0]
+            else:
+                # check for unique domainname
+                dn_dict = {}
+                for name in n_list:
+                    if name.count("."):
+                        _s, _d = name.split(".", 1)
+                        dn_dict.setdefault(_d, []).append(_s)
+                    else:
+                        dn_dict.setdefault(None, []).append(_s)
+                dn_dict = {
+                    _domain: "{{{}}}".format(
+                        logging_tools.reduce_list(_names)
+                    ) if len(_names) > 1 else _names[0] for _domain, _names in dn_dict.items()
+                }
+            _opt_list = [
+                "{}{}".format(
+                    _opt_names,
+                    ".{}".format(_domain) if _domain else ""
+                ) for _domain, _opt_names in dn_dict.items()
+            ]
+            if len(_opt_list) == 1:
+                return _opt_list[0]
+            else:
+                return "[{}]".format(
+                    ", ".join(_opt_list)
+                )
+
+        _list = [_el["value"] for _el in in_list]
+        out_list = []
+        queue_dict = {}
+        simple_dict = {}
+        for entry in _list:
+
+            _parts = entry.strip().split()
+            _simple_part = [_part for _part in _parts if _part[0] == _part[1] and _part[0] in {"\"", "'"}]
+            if len(_simple_part) == 1:
+                _simple_part = _simple_part[0]
+                _index = _parts.index(_simple_part)
+                _pre, _post = (
+                    " ".join(_parts[0:_index]),
+                    " ".join(_parts[_index + 1:])
+                )
+                _simple_part = _simple_part[1:-1]
+                if _simple_part.count("@"):
+                    # is a queue specifier
+                    queue_dict.setdefault((_pre, _post), []).append(_simple_part)
+                else:
+                    simple_dict.setdefault((_pre, _post), []).append(_simple_part)
+            else:
+                out_list.append(" ".join(_parts))
+        # import pprint
+        # pprint.pprint(_list)
+        # pprint.pprint(out_list)
+        # pprint.pprint(queue_dict)
+        for key, s_list in simple_dict.items():
+            out_list.append(
+                "{} {} {}".format(
+                    key[0],
+                    ", ".join(s_list),
+                    key[1],
+                )
+            )
+        # add optimized queue entries
+        for key, n_list in queue_dict.items():
+            local_q_dict = {}
+            for q_spec in n_list:
+                q_name, n_name = q_spec.split("@", 1)
+                local_q_dict.setdefault(q_name, []).append(n_name)
+            res_list = []
+            for q_name, node_names in local_q_dict.items():
+                res_list.append(
+                    "{}@{}".format(
+                        q_name,
+                        shorten_node_list(node_names),
+                    )
+                )
+            out_list.append(
+                "{} {} {}".format(
+                    key[0],
+                    ", ".join(res_list),
+                    key[1],
+                )
+            )
+
+        return [{"value": line} for line in out_list]
+
     @method_decorator(login_required)
     def post(self, request):
         import memcache
@@ -320,7 +410,9 @@ class get_rms_current_json(View):
             ).values_list("name", "uuid", "idx")
         }
         # reverse lut (idx -> name)
-        _rev_lut = {_value["idx"]: _key for _key, _value in _dev_dict.items()}
+        _rev_lut = {
+            _value["idx"]: _key for _key, _value in _dev_dict.items()
+        }
         for _name, _struct in _dev_dict.items():
             if _struct["uuid"] in h_dict:
                 try:
@@ -373,9 +465,10 @@ class get_rms_current_json(View):
                             _dev_dict[_dn]["pinning"].setdefault(_core_id, []).append(job_id)
         _gsi = my_sge_info.tree.find(".//global_waiting_info")
         if _gsi is not None:
-            _g_msgs = [_node_to_value(el) for el in _gsi.findall(".//message")]
+            _g_msgs = self.optimize_list([_node_to_value(el) for el in _gsi.findall(".//message")])
         else:
             _g_msgs = []
+        print(_g_msgs)
         json_resp = {
             "run_table": _sort_list(rms_info.run_job_list),
             "wait_table": _sort_list(rms_info.wait_job_list),

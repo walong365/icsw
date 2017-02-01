@@ -89,19 +89,33 @@ def get_log_level_str(level):
 
 def get_relative_dt(dt_struct):
     act_time = datetime.datetime.now()
-    diff_days = (
-        datetime.date(act_time.year, act_time.month, act_time.day) -
-        datetime.date(dt_struct.year, dt_struct.month, dt_struct.day)
-    ).days
-    if diff_days < 2:
-        if diff_days == 1:
-            return dt_struct.strftime("yesterday %H:%M:%S")
-        elif diff_days == 0:
-            return dt_struct.strftime("today %H:%M:%S")
-        else:
-            return dt_struct.strftime("%a, {:d} days ago %H:%M:%S".format(int(diff_days)))
+    if dt_struct < act_time:
+        # in past
+        diff_days = (
+            datetime.date(act_time.year, act_time.month, act_time.day) -
+            datetime.date(dt_struct.year, dt_struct.month, dt_struct.day)
+        ).days
+        if diff_days < 2:
+            if diff_days == 1:
+                return dt_struct.strftime("yesterday %H:%M:%S")
+            elif diff_days == 0:
+                return dt_struct.strftime("today %H:%M:%S")
+            else:
+                return dt_struct.strftime("%a, {:d} days ago %H:%M:%S".format(int(diff_days)))
     else:
-        return dt_struct.strftime("%a, %d. %b %Y %H:%M:%S")
+        # in future
+        diff_days = (
+            datetime.date(dt_struct.year, dt_struct.month, dt_struct.day) -
+            datetime.date(act_time.year, act_time.month, act_time.day)
+        ).days
+        if diff_days < 2:
+            if diff_days == 1:
+                return dt_struct.strftime("tomorrow %H:%M:%S")
+            elif diff_days == 0:
+                return dt_struct.strftime("today %H:%M:%S")
+            else:
+                return dt_struct.strftime("%a, in {:d} days %H:%M:%S".format(int(diff_days)))
+    return dt_struct.strftime("%a, %d. %b %Y %H:%M:%S")
 
 
 def only_printable(in_str):
