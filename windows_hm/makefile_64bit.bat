@@ -1,20 +1,20 @@
 SET PCIUTILS_VERSION=3.4.0
-SET WINPYTH_MAJOR=5
-SET WINPYTH_MINOR=2
-SET WINPYTH_MINORFIX=3
+SET WINPYTH_MAJOR=6
+SET WINPYTH_MINOR=0
+SET WINPYTH_MINORFIX=1
 SET WIX_BIN_PATH=C:\Program Files (x86)\WiX Toolset v3.10\bin\
 
 :: Fetch pciutils and move into script directory
-bin\wget -nc https://eternallybored.org/misc/pciutils/releases/pciutils-%PCIUTILS_VERSION%-win32.zip
-bin\7z -o.\tmp\ x pciutils-%PCIUTILS_VERSION%-win32.zip
+bin\wget -nc https://eternallybored.org/misc/pciutils/releases/pciutils-%PCIUTILS_VERSION%-win64.zip
+bin\7z -o.\tmp\ x pciutils-%PCIUTILS_VERSION%-win64.zip
 
 :: Fetch full and zero version of (portable) python
-bin\wget -nc https://sourceforge.net/projects/winpython/files/WinPython_3.%WINPYTH_MAJOR%/3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%/WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%.exe
+bin\wget -nc https://sourceforge.net/projects/winpython/files/WinPython_3.%WINPYTH_MAJOR%/3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%/WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%Qt5.exe
 bin\wget -nc https://sourceforge.net/projects/winpython/files/WinPython_3.%WINPYTH_MAJOR%/3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%/WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%Zero.exe
 
 
 bin\7z -o.\tmp\zero x WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%Zero.exe
-bin\7z -o.\tmp\full x WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%.exe
+bin\7z -o.\tmp\full x WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%Qt5.exe
 
 
 COPY .\tmp\full\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\pywintypes3%WINPYTH_MAJOR%.dll  .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64\
@@ -40,10 +40,10 @@ MOVE .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64 .\host_monitor_wi
 .\host_monitor_windows\python.exe -m pip install netifaces
 .\host_monitor_windows\python.exe -m pip install setproctitle
 .\host_monitor_windows\python.exe -m pip install zmq
-.\host_monitor_windows\python.exe -m pip install psutil
+.\host_monitor_windows\python.exe -m pip install psutil==5.0.0
 .\host_monitor_windows\python.exe -m pip install wmi
-.\host_monitor_windows\python.exe -m pip install inflection
 
+XCOPY .\inflection.py .\host_monitor_windows\Lib\site-packages\
 XCOPY .\syslog.py .\host_monitor_windows\Lib\site-packages\
 XCOPY .\service_manager.py .\host_monitor_windows\
 
@@ -63,9 +63,9 @@ RMDIR /s /q .\host_monitor_windows\tcl
 RMDIR /s /q .\host_monitor_windows\Tools
 RMDIR /s /q .\host_monitor_windows\Doc
 
-XCOPY .\bin\nssm.exe .\host_monitor_windows\
+XCOPY .\bin\win64\nssm.exe .\host_monitor_windows\
 XCOPY .\bin\dmidecode212.exe .\host_monitor_windows\
-MOVE .\tmp\pciutils-%PCIUTILS_VERSION%-win32 .\host_monitor_windows\pciutils
+MOVE .\tmp\pciutils-%PCIUTILS_VERSION%-win64 .\host_monitor_windows\pciutils
 
 MOVE .\host_monitor_windows .\nscp
 
@@ -73,7 +73,6 @@ SET nscp_path=nscp
 "%WIX_BIN_PATH%heat.exe" dir nscp -cg NscpFiles -dr INSTALLDIR -gg -scom -sreg -sfrag -srd -var env.nscp_path -out "Components.wxs"
 "%WIX_BIN_PATH%candle.exe" ICSW_Windows_Client.wxs
 "%WIX_BIN_PATH%candle.exe" Components.wxs
-::"%WIX_BIN_PATH%candle.exe" HostEditingDlg.wxs
 "%WIX_BIN_PATH%light.exe" -ext WixUIExtension -dWixUILicenseRtf=legal_text.rtf -dWixUIBannerBmp=WixUIBannerBmp.bmp -dWixUIExclamationIco=WixUIExclamationIco.ico -dWixUIDialogBmp=WixUIDialogBmp.bmp ICSW_Windows_Client.wixobj Components.wixobj -o ICSW_Windows_Client.msi
 
 :: Cleanup temporary files
@@ -83,6 +82,5 @@ DEL .\Components.wixobj
 DEL .\Components.wxs
 DEL .\ICSW_Windows_Client.wixobj
 DEL .\ICSW_Windows_Client.wixpdb
-:: DEL .\HostEditingDlg.wixobj
 
 @pause
