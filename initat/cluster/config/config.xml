@@ -840,8 +840,7 @@
             <routeSubGroup name="Categories" newcol="true">
                 <menuEntry icon="fa-table" routeName="main.categorytree" name="Categories"/>
                 <menuEntry icon="fa-list-alt" routeName="main.domaintree" name="Domain Names"/>
-                <menuEntry icon="fa-map-marker" routeName="main.monitorlocation" name="Show Locations"/>
-                <menuEntry icon="fa-map-pin" routeName="main.devlocation" name="Edit Locations"/>
+                <menuEntry icon="fa-map-pin" routeName="main.devlocation" name="Locations"/>
             </routeSubGroup>
             <routeSubGroup name="Properties" newcol="true">
                 <menuEntry icon="fa-th" routeName="main.moncheckoverview" name="Edit Checks"/>
@@ -859,6 +858,7 @@
                 <menuEntry icon="fa-pie-chart" routeName="main.statushistory" name="Availability Detail"/>
                 <menuEntry icon="fa-line-chart" routeName="main.graph" name="Graphs"/>
                 <menuEntry icon="fa-code-fork" routeName="main.kpievaluation" name="KPI"/>
+                <menuEntry icon="fa-map-marker" routeName="main.monitorlocation" name="Locations"/>
                 <menuEntry icon="fa-book" routeName="main.report" name="Report History"/>
             </routeSubGroup>
         </menuHeader>
