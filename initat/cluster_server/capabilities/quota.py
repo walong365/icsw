@@ -19,9 +19,9 @@
 #
 """ cluster-server, quota handling """
 
-import subprocess
 import grp
 import pwd
+import subprocess
 import time
 
 import psutil
@@ -32,6 +32,7 @@ from initat.cluster.backbone.models import user, group, quota_capable_blockdevic
 from initat.cluster_server.capabilities.base import BackgroundBase
 from initat.cluster_server.config import global_config
 from initat.host_monitoring import hm_classes
+from initat.icsw.service import clusterid
 from initat.tools import logging_tools, process_tools
 
 
@@ -544,13 +545,12 @@ class quota_stuff(BackgroundBase):
             else:
                 to_addrs = [self._get_gid_info(email_target)["email"]]
             for to_addr in to_addrs:
-                c_name, c_id = process_tools.get_cluster_name_and_id()
                 log_lines = self.send_mail(
                     to_addr,
                     "quota warning from {}@{} [{}]".format(
                         global_config["SERVER_FULL_NAME"],
-                        c_name,
-                        c_id,
+                        clusterid.get_safe_cluster_name("N/A"),
+                        clusterid.get_safe_cluster_id("N/A"),
                     ),
                     mail_lines[(_type, email_target)]
                 )
