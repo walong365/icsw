@@ -91,12 +91,15 @@
 
 <script type="text/ng-template" id="icsw.asset.scan.history.tab">
     <h3>
-        <span ng-show="device.asset_batch_list.length">
-            Scans for device '{{ device.full_name }}' (group {{ device.device_group_name }})
-        </span>
-        <span ng-show="!device.asset_batch_list.length">
-            No scan(s) for this device yet.
-        </span>
+        <div ng-show="device.$$assetbatch_data_loaded == false " uib-alert class="alert-warning" ng-show="!struct.data_loaded">Fetching Data from Server ...</div>
+        <div ng-show="device.$$assetbatch_data_loaded == true">
+            <span ng-show="device.asset_batch_list.length">
+                Scans for device '{{ device.full_name }}' (group {{ device.device_group_name }})
+            </span>
+            <span ng-show="!device.asset_batch_list.length">
+                No scan(s) for this device yet.
+            </span>
+        </div>
     </h3>
     <div>
         <button type="button" class="btn btn-xs btn-warning" ng-disabled="device.$$scan_device_button_disabled" ng-click="scan_device()">{{ device.$$scan_device_button_disabled ? "Please wait..." : "Scan this device now" }}</button>
