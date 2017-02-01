@@ -89,6 +89,16 @@ class LicenseFileReader(object):
         )
         fp_node = self.content_xml.xpath(fp_q, namespaces=ICSW_XML_NS_MAP)
         if len(fp_node):
+            # debug fingerprint
+            if False:
+                from initat.cluster.backbone.models import HardwareFingerPrint
+                import pprint
+                print("")
+                print("License_idx={}, match is {}".format(self.license.idx, fp_node[0] == self.current_fingerprint))
+                print("   fp from file:")
+                pprint.pprint(HardwareFingerPrint.deserialize(fp_node[0], deep=True))
+                print("   fp current:")
+                pprint.pprint(HardwareFingerPrint.deserialize(self.current_fingerprint, deep=True))
             self.__fingerprint_valid = fp_node[0] == self.current_fingerprint
         else:
             self.__fingerprint_valid = True

@@ -114,7 +114,7 @@ def get_local_net_hfp():
         _gw_dev = _inet_gw[1]
     else:
         _gw_dev = None
-    if _gw_dev in _if_dict and False:
+    if _gw_dev in _if_dict:
         # hfp is mac of gateway
         hw_fp_dev = _gw_dev
     else:

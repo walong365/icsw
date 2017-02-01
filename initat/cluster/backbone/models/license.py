@@ -538,6 +538,12 @@ class icswEggBasketManager(models.Manager):
             eggs=eggs,
         )
 
+    def get_values_per_license_name(self):
+        ova_per_lic = {}
+        for _basket in self.filter(Q(is_valid=True)):
+            ova_per_lic.setdefault(_basket.license_id_name, {}).update(_basket.values())
+        return ova_per_lic
+
 
 class icswEggBasket(models.Model):
     objects = icswEggBasketManager()
@@ -571,14 +577,21 @@ class icswEggBasket(models.Model):
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
+    def values(self):
+        return {
+            _key: getattr(self, _key) for _key in {"installed", "available", "available_ghost"}
+        }
+
     def reset(self, cradle=None):
         self.available = self.installed
         self.available_ghost = self.installed
         if not cradle:
             self.egg_cradle.available += self.available
             self.egg_cradle.available_ghost += self.available_ghost
-            self.egg_cradle.save(update_fields=["available", "available_ghost"])
+            self.egg_cradle.installed += self.installed
+            self.egg_cradle.save(update_fields=["available", "available_ghost", "installed"])
         else:
+            cradle.installed += self.installed
             cradle.available += self.available
             cradle.available_ghost += self.available_ghost
         self.save(update_fields=["available", "available_ghost"])

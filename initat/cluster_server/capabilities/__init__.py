@@ -18,7 +18,6 @@
 """ cluster-server, capability process """
 
 
-
 import importlib
 import inspect
 import os
@@ -29,7 +28,7 @@ from django.db.models import Q
 from lxml import etree
 
 from initat.cluster.backbone import factories
-from initat.cluster.backbone.models import config_catalog, icswEggConsumer
+from initat.cluster.backbone.models import config_catalog, icswEggConsumer, icswEggBasket
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster_server.capabilities import base
 from initat.cluster_server.config import global_config
@@ -191,6 +190,22 @@ class CapabilityProcess(threading_tools.icswProcessObj):
                 valid_until=cur_time + 3600,
             ).build_xml(_bldr)
         )
+        # add ova per license
+        ova_per_lic = icswEggBasket.objects.get_values_per_license_name()
+        for lic_id_name, values in ova_per_lic.items():
+            lic_id_name = lic_id_name or "global"
+            for v_name, v_value in values.items():
+                my_vector.append(
+                    hm_classes.mvect_entry(
+                        "icsw.ova.license.{}.{}".format(lic_id_name, v_name),
+                        info="Ova {} for license {}".format(v_name, lic_id_name),
+                        default=0,
+                        value=v_value,
+                        factor=1,
+                        base=1,
+                        valid_until=cur_time + 3600,
+                    ).build_xml(_bldr)
+                )
         drop_com["vector_ova"] = my_vector
         drop_com["vector_ova"].attrib["type"] = "vector"
 

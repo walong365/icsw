@@ -380,6 +380,7 @@ angular.module(
                 base_setting.ordering = "AVERAGE"
                 base_setting.auto_select_keys = [
                     "compound.icsw.ova.consume"
+                    "compound.icsw.ova.license"
                 ]
                 $scope.struct.local_setting = local_setting
                 $scope.struct.base_setting = base_setting
