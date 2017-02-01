@@ -173,44 +173,139 @@ class get_header_xml(View):
         request.xml_response["headers"] = res
 
 
-def _node_to_value(in_node):
-    _attrs = {
-        key: value for key, value in in_node.attrib.items()
-    }
-    if "raw" in _attrs:
-        _attrs["raw"] = json.loads(_attrs["raw"])
-    if in_node.get("type", "string") == "float":
-        _attrs["value"] = _attrs["format"].format(float(in_node.text))
-    elif in_node.get("type", "string") == "int":
-        _attrs["value"] = int(in_node.text)
-    else:
-        _attrs["value"] = in_node.text
-    return _attrs
+class RMSJsonMixin(object):
+    def optimize_list(self, in_list: list) -> list:
+        def shorten_node_list(n_list: list) -> str:
+            if len(n_list) == 1:
+                return n_list[0]
+            else:
+                # check for unique domainname
+                dn_dict = {}
+                for name in n_list:
+                    if name.count("."):
+                        _s, _d = name.split(".", 1)
+                        dn_dict.setdefault(_d, []).append(_s)
+                    else:
+                        dn_dict.setdefault(None, []).append(_s)
+                dn_dict = {
+                    _domain: "{{{}}}".format(
+                        logging_tools.reduce_list(_names)
+                    ) if len(_names) > 1 else _names[0] for _domain, _names in dn_dict.items()
+                }
+            _opt_list = [
+                "{}{}".format(
+                    _opt_names,
+                    ".{}".format(_domain) if _domain else ""
+                ) for _domain, _opt_names in dn_dict.items()
+            ]
+            if len(_opt_list) == 1:
+                return _opt_list[0]
+            else:
+                return "[{}]".format(
+                    ", ".join(_opt_list)
+                )
 
+        # print("I", in_list)
+        out_list = []
+        queue_dict = {}
+        simple_dict = {}
+        for entry in in_list:
 
-def _sort_list(in_list):
-    # interpret nodes according to optional type attribute, reformat if needed, preserve attributes
-    return [
-        [_node_to_value(sub_node) for sub_node in row] for row in in_list
-    ]
-
-
-def _xml_to_json(in_list):
-    def _get_id(in_dict):
-        if in_dict["task_id"]["value"]:
-            return "{}.{}".format(
-                in_dict["job_id"]["value"],
-                in_dict["task_id"]["value"],
+            _parts = entry.strip().split()
+            _simple_part = [_part for _part in _parts if _part[0] == _part[-1] and _part[0] in {"\"", "'"}]
+            if len(_simple_part) > 0:
+                # take first match, todo: handle multiple occurances
+                _simple_part = _simple_part[0]
+                _index = _parts.index(_simple_part)
+                _pre, _post = (
+                    " ".join(_parts[0:_index]),
+                    " ".join(_parts[_index + 1:])
+                )
+                _simple_part = _simple_part[1:-1]
+                if _simple_part.count("@"):
+                    # is a queue specifier
+                    queue_dict.setdefault((_pre, _post), []).append(_simple_part)
+                else:
+                    simple_dict.setdefault((_pre, _post), []).append(_simple_part)
+            else:
+                out_list.append(" ".join(_parts))
+        # import pprint
+        # pprint.pprint(_list)
+        # pprint.pprint(out_list)
+        # pprint.pprint(queue_dict)
+        for key, s_list in simple_dict.items():
+            out_list.append(
+                "{} \"{}\" {}".format(
+                    key[0],
+                    ", ".join(s_list),
+                    key[1],
+                )
             )
+        # add optimized queue entries
+        for key, n_list in queue_dict.items():
+            local_q_dict = {}
+            for q_spec in n_list:
+                q_name, n_name = q_spec.split("@", 1)
+                local_q_dict.setdefault(q_name, []).append(n_name)
+            res_list = []
+            for q_name, node_names in local_q_dict.items():
+                res_list.append(
+                    "{}@{}".format(
+                        q_name,
+                        shorten_node_list(node_names),
+                    )
+                )
+            out_list.append(
+                "{} {} {}".format(
+                    key[0],
+                    ", ".join(res_list),
+                    key[1],
+                )
+            )
+
+        return out_list
+
+    def node_to_value(self, in_node):
+        _attrs = {
+            key: value for key, value in in_node.attrib.items()
+        }
+        if "raw" in _attrs:
+            _raw = json.loads(_attrs["raw"])
+            if in_node.tag == "messages":
+                _raw = self.optimize_list(_raw)
+            _attrs["raw"] = _raw
+        if in_node.get("type", "string") == "float":
+            _attrs["value"] = _attrs["format"].format(float(in_node.text))
+        elif in_node.get("type", "string") == "int":
+            _attrs["value"] = int(in_node.text)
         else:
-            return "{}".format(
-                in_dict["job_id"]["value"],
-            )
-    _res_dict = {}
-    for row in in_list:
-        _dict = {sub_node.tag: _node_to_value(sub_node) for sub_node in row}
-        _res_dict[_get_id(_dict)] = _dict
-    return _res_dict
+            _attrs["value"] = in_node.text
+        return _attrs
+
+    def xml_to_json(self, in_list):
+        def _get_id(in_dict):
+            if in_dict["task_id"]["value"]:
+                return "{}.{}".format(
+                    in_dict["job_id"]["value"],
+                    in_dict["task_id"]["value"],
+                )
+            else:
+                return "{}".format(
+                    in_dict["job_id"]["value"],
+                )
+        _res_dict = {}
+        for row in in_list:
+            _dict = {sub_node.tag: self.node_to_value(sub_node) for sub_node in row}
+            _res_dict[_get_id(_dict)] = _dict
+        return _res_dict
+
+    def sort_list(self, in_list: list) -> list:
+        # interpret nodes according to optional type attribute, reformat if needed, preserve attributes
+        return [
+            [
+                self.node_to_value(sub_node) for sub_node in row
+            ] for row in in_list
+        ]
 
 
 def _salt_addons(request):
@@ -278,97 +373,7 @@ class get_rms_done_json(View):
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
 
-class get_rms_current_json(View):
-    def optimize_list(self, in_list: list) -> list:
-        def shorten_node_list(n_list: list) -> str:
-            if len(n_list) == 1:
-                return n_list[0]
-            else:
-                # check for unique domainname
-                dn_dict = {}
-                for name in n_list:
-                    if name.count("."):
-                        _s, _d = name.split(".", 1)
-                        dn_dict.setdefault(_d, []).append(_s)
-                    else:
-                        dn_dict.setdefault(None, []).append(_s)
-                dn_dict = {
-                    _domain: "{{{}}}".format(
-                        logging_tools.reduce_list(_names)
-                    ) if len(_names) > 1 else _names[0] for _domain, _names in dn_dict.items()
-                }
-            _opt_list = [
-                "{}{}".format(
-                    _opt_names,
-                    ".{}".format(_domain) if _domain else ""
-                ) for _domain, _opt_names in dn_dict.items()
-            ]
-            if len(_opt_list) == 1:
-                return _opt_list[0]
-            else:
-                return "[{}]".format(
-                    ", ".join(_opt_list)
-                )
-
-        _list = [_el["value"] for _el in in_list]
-        out_list = []
-        queue_dict = {}
-        simple_dict = {}
-        for entry in _list:
-
-            _parts = entry.strip().split()
-            _simple_part = [_part for _part in _parts if _part[0] == _part[1] and _part[0] in {"\"", "'"}]
-            if len(_simple_part) == 1:
-                _simple_part = _simple_part[0]
-                _index = _parts.index(_simple_part)
-                _pre, _post = (
-                    " ".join(_parts[0:_index]),
-                    " ".join(_parts[_index + 1:])
-                )
-                _simple_part = _simple_part[1:-1]
-                if _simple_part.count("@"):
-                    # is a queue specifier
-                    queue_dict.setdefault((_pre, _post), []).append(_simple_part)
-                else:
-                    simple_dict.setdefault((_pre, _post), []).append(_simple_part)
-            else:
-                out_list.append(" ".join(_parts))
-        # import pprint
-        # pprint.pprint(_list)
-        # pprint.pprint(out_list)
-        # pprint.pprint(queue_dict)
-        for key, s_list in simple_dict.items():
-            out_list.append(
-                "{} {} {}".format(
-                    key[0],
-                    ", ".join(s_list),
-                    key[1],
-                )
-            )
-        # add optimized queue entries
-        for key, n_list in queue_dict.items():
-            local_q_dict = {}
-            for q_spec in n_list:
-                q_name, n_name = q_spec.split("@", 1)
-                local_q_dict.setdefault(q_name, []).append(n_name)
-            res_list = []
-            for q_name, node_names in local_q_dict.items():
-                res_list.append(
-                    "{}@{}".format(
-                        q_name,
-                        shorten_node_list(node_names),
-                    )
-                )
-            out_list.append(
-                "{} {} {}".format(
-                    key[0],
-                    ", ".join(res_list),
-                    key[1],
-                )
-            )
-
-        return [{"value": line} for line in out_list]
-
+class get_rms_current_json(View, RMSJsonMixin):
     @method_decorator(login_required)
     def post(self, request):
         import memcache
@@ -431,7 +436,7 @@ class get_rms_current_json(View):
 
         fc_dict = {}
         cur_time = time.time()
-        job_ids = my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]/@full_id", smart_strings=False)
+        # job_ids = my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]/@full_id", smart_strings=False)
         for file_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]", smart_strings=False):
             file_contents = file_el.findall(".//file_content")
             if len(file_contents):
@@ -465,14 +470,24 @@ class get_rms_current_json(View):
                             _dev_dict[_dn]["pinning"].setdefault(_core_id, []).append(job_id)
         _gsi = my_sge_info.tree.find(".//global_waiting_info")
         if _gsi is not None:
-            _g_msgs = self.optimize_list([_node_to_value(el) for el in _gsi.findall(".//message")])
+            _g_msgs = [
+                {
+                    "value": _line
+                } for _line in self.optimize_list(
+                    [
+                        self.node_to_value(el)["value"] for el in _gsi.findall(".//message")
+                    ]
+                )
+            ]
+
         else:
             _g_msgs = []
-        print(_g_msgs)
+        # import pprint
+        # pprint.pprint(self.sort_list(rms_info.wait_job_list))
         json_resp = {
-            "run_table": _sort_list(rms_info.run_job_list),
-            "wait_table": _sort_list(rms_info.wait_job_list),
-            "node_table": _sort_list(node_list),
+            "run_table": self.sort_list(rms_info.run_job_list),
+            "wait_table": self.sort_list(rms_info.wait_job_list),
+            "node_table": self.sort_list(node_list),
             "sched_conf": sge_tools.build_scheduler_info(my_sge_info),
             "files": fc_dict,
             "fstree": sge_tools.build_fstree_info(my_sge_info),
@@ -508,7 +523,7 @@ class get_rms_jobinfo(View):
 
 
 # liebherr
-class RmsJobViewSet(viewsets.ViewSet):
+class RmsJobViewSet(viewsets.ViewSet, RMSJsonMixin):
     @csrf_exempt
     def simple_get(self, request):
         my_sge_info = get_sge_info()
@@ -519,8 +534,8 @@ class RmsJobViewSet(viewsets.ViewSet):
         rms_info = _fetch_rms_info(request)
 
         json_resp = {
-            "jobs_running": _xml_to_json(rms_info.run_job_list),
-            "jobs_waiting": _xml_to_json(rms_info.wait_job_list),
+            "jobs_running": self.xml_to_json(rms_info.run_job_list),
+            "jobs_waiting": self.xml_to_json(rms_info.wait_job_list),
         }
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
