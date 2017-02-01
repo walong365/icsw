@@ -26,8 +26,7 @@ from django.core.mail import send_mail
 from django.db.models import Q
 
 from initat.cluster.backbone.models import SensorThreshold, \
-    SensorThresholdAction, device
-from initat.icsw.service import clusterid
+    SensorThresholdAction, device, device_variable
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import logging_tools, process_tools, server_command
 from initat.tools.bgnotify.create import create_bg_job, notify_command
@@ -196,7 +195,7 @@ class Threshold(object):
             for _user in self.th.notify_users.all():
                 new_sta.notify_users.add(_user)
         if _mail and (_enabled or triggered):
-            _cluster_id = clusterid.get_cluster_id() or "N/A"
+            _cluster_id = device_variable.objects.get_cluster_id("N/A")
             _from = "{}@{}".format(
                 global_config["FROM_NAME"],
                 global_config["FROM_ADDRESS"]

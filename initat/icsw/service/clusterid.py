@@ -25,11 +25,11 @@ from initat.constants import GEN_CS_NAME
 from initat.tools import config_store
 
 
-def get_cluster_id():
+def get_safe_cluster_var(var_name, default=None):
     import os
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-    cluster_id = None
+    var_value = default
     try:
         from django.conf import settings
     except:
@@ -50,18 +50,19 @@ def get_cluster_id():
             except:
                 pass
             else:
-                from django.db.models import Q
                 from initat.cluster.backbone.models import device_variable
-                try:
-                    _vars = device_variable.objects.all().count()
-                except:
-                    # database not initialised
-                    pass
+                if var_name == "name":
+                    var_value = device_variable.objects.get_cluster_name(default)
+                elif var_name == "id":
+                    var_value = device_variable.objects.get_cluster_id(default)
                 else:
-                    _vars = device_variable.objects.values_list("val_str", flat=True).filter(
-                        Q(name="CLUSTER_ID") &
-                        Q(device__device_group__cluster_device_group=True)
-                    )
-                    if len(_vars):
-                        cluster_id = _vars[0]
-    return cluster_id
+                    var_value = "unknown attribute '{}'".format(var_name)
+    return var_value
+
+
+def get_safe_cluster_id(default=None):
+    return get_safe_cluster_var("id", default)
+
+
+def get_safe_cluster_name(default=None):
+    return get_safe_cluster_var("name", default)

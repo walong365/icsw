@@ -47,21 +47,24 @@ __all__ = [
 class DeviceVariableManager(models.Manager):
 
     @memoize_with_expiry(10)
-    def get_cluster_id(self):
+    def get_cluster_id(self, default=None):
         try:
-            return self.get(name="CLUSTER_ID").val_str
+            return self.get(
+                Q(name="CLUSTER_ID") &
+                Q(device__device_group__cluster_device_group=True)
+            ).val_str
         except device_variable.DoesNotExist:
-            return None
+            return default
 
     @memoize_with_expiry(10)
-    def get_cluster_name(self):
+    def get_cluster_name(self, default=None):
         try:
             return self.get(
                 Q(name="CLUSTER_NAME") &
                 Q(device__device_group__cluster_device_group=True)
             ).val_str
         except device_variable.DoesNotExist:
-            return None
+            return default
 
     def get_device_variable_value(self, device, var_name, default_val=None):
         """ Returns variable considering inheritance. """

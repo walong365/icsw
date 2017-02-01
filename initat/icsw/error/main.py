@@ -22,11 +22,12 @@
 #
 """ shows error recorded in the error file """
 
-
-
-import subprocess
+import base64
+import bz2
 import datetime
+import json
 import os
+import subprocess
 import sys
 import time
 
@@ -144,7 +145,7 @@ def main(options):
             os.unlink(err_file_name)
         sys.exit(c_stat)
     try:
-        err_lines = [line.strip() for line in open(err_file_name, "r").read().split("\n") if line.count("from pid")]
+        err_lines = [line.strip() for line in open(err_file_name, "r").read().split("\n") if line.count("[ES ")]
     except IOError:
         print(
             "Cannot read '{}': {}".format(
@@ -163,6 +164,7 @@ def main(options):
     act_idx, idx_dict, prev_dt = (0, {}, None)
     for line in err_lines:
         line_parts = line.split(":")
+        _chunk = line_parts[-1].split()[-1]
         # date is always the first 4 parts
         line_date = ":".join(line_parts[0:3]).strip()
         info_part = line_parts[3].strip()
@@ -183,20 +185,16 @@ def main(options):
             print("Error pre-parsing line '{}': {}".format(line, process_tools.get_except_info()))
         else:
             try:
+                _struct = json.loads(bz2.decompress(base64.b64decode(_chunk)))
                 # get pid
-                line_pid = int(info_parts.pop(0))
+                line_pid = _struct["pid"]
                 # unknown or full source
-                if len(info_parts) == 7:
-                    # full source
-                    line_s_name = info_parts[0][1:]
-                    line_uid = int(info_parts[2])
-                    line_uname = info_parts[3][1:-2]
-                    line_gid = int(info_parts[5])
-                    line_gname = info_parts[6][1:-3]
-                else:
-                    line_s_name = info_parts[0][1:-1]
-                    line_uid, line_gid = (-1, -1)
-                    line_uname, line_gname = ("unknown", "unknown")
+                line_s_name = _struct["name"]
+                line_uid = _struct["uid"]
+                line_gid = _struct["gid"]
+                line_uname = _struct["uname"]
+                line_gname = _struct["gname"]
+                err_line = _struct["line"]
                 cur_dt = datetime.datetime.strptime(line_date, "%a %b %d %H:%M:%S %Y")
                 if prev_dt:
                     dt_change = abs(cur_dt - prev_dt).seconds > 5
@@ -220,7 +218,12 @@ def main(options):
                     act_err.add_line(line_date, line_state, err_line)
             except:
                 print("Error parsing line '%s': %s" % (line, process_tools.get_except_info()))
-    print("Found {}".format(logging_tools.get_plural("error record", len(errs_found))))
+
+    print(
+        "Found {}".format(
+            logging_tools.get_plural("error record", len(errs_found))
+        )
+    )
     if options.overview:
         if errs_found:
             out_list = logging_tools.NewFormList()
@@ -242,13 +245,13 @@ def main(options):
                     diff_sources.append(err.source_name)
             diff_sources.sort()
             out_list.append(
-                (
+                [
                     logging_tools.form_entry(uid, header="uid"),
                     logging_tools.form_entry(uid_stuff[0].uname, header="uname"),
                     logging_tools.form_entry(len(uid_stuff), header="# err"),
                     logging_tools.form_entry(len(diff_sources), header="# sources"),
                     logging_tools.form_entry(", ".join(diff_sources), header="sources"),
-                )
+                ]
             )
         print(str(out_list))
     elif options.num:

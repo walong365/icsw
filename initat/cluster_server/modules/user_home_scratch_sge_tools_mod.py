@@ -150,7 +150,13 @@ class create_user_home(cs_base_class.icswCSServerCom):
                                 pass
                     if create_hdir:
                         os.chown(full_home, uid, gid)
-                        os.path.walk(full_home, change_own, (uid, gid))
+                        for _dir, _dirs, _files in os.walk(full_home):
+                            os.chown(_dir, uid, gid)
+                            for f_name in _files:
+                                try:
+                                    os.chown(os.path.join(_dir, f_name), uid, gid)
+                                except:
+                                    pass
                         try:
                             os.chmod(full_home, 0o755)
                         except:

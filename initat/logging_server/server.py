@@ -22,7 +22,10 @@
 
 """ logging server, central logging facility, server-part """
 
+import base64
+import bz2
 import grp
+import json
 import logging
 import os
 import pickle
@@ -30,6 +33,7 @@ import pwd
 import resource
 import stat
 import time
+from enum import Enum
 
 import zmq
 
@@ -38,6 +42,95 @@ from initat.icsw.service import clusterid
 from initat.tools import io_stream_helper, logging_tools, mail_tools, process_tools, threading_tools, \
     uuid_tools, logging_functions
 from initat.tools.server_mixins import ICSWBasePool
+
+
+class icswLogTypes(Enum):
+    log = "log"
+    log_py = "log_py"
+    err_py = "err_py"
+
+
+class ErrorStructure(object):
+    def __init__(self, process, in_dict):
+        self.process = process
+        self.last_update = 0
+        self.error_str = ""
+        self.__num_feeds = 0
+        self.__num_logged = 0
+        self.in_dict = in_dict
+        self.pid = in_dict.get("pid", 0)
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, dst=icswLogTypes.log):
+        # [ES  is used as parser
+        self.process.log("[ES {:d}] {}".format(self.pid, what), log_level, dst)
+
+    def feed(self, in_dict):
+        error_str = "{}{}".format(
+            in_dict.get("exc_text", "") or "",
+            in_dict.get("error_str", "") or "",
+        )
+        if not error_str:
+            self.log("cannot extract error_str, using dump of error_dict", logging_tools.LOG_LEVEL_ERROR)
+            error_f = []
+            for key in sorted(in_dict.keys()):
+                try:
+                    error_f.append("  {:<20s} : {}".format(key, str(in_dict[key])))
+                except:
+                    error_f.append(
+                        "  error logging key '{}' : {}".format(
+                            key,
+                            process_tools.get_except_info(),
+                        )
+                    )
+            error_str = "\n".join(error_f)
+        self.__num_feeds += 1
+        self.error_str = "{}{}".format(
+            self.error_str,
+            error_str,
+        )
+        self.last_update = time.time()
+
+        self.log_lines()
+
+    def get_process_info(self):
+        p_dict = self.in_dict
+        return "name {}, ppid {:d}, uid {:d}, gid {:d}".format(
+            p_dict.get("name", "N/A"),
+            p_dict.get("ppid", 0),
+            p_dict.get("uid", -1),
+            p_dict.get("gid", -1)
+        )
+
+    def log_lines(self):
+        # log to err_py
+        # build structure
+        try:
+            uname = pwd.getpwuid(self.in_dict.get("uid", -1))[0]
+        except:
+            uname = "<unknown>"
+        try:
+            gname = grp.getgrgid(self.in_dict.get("gid", -1))[0]
+        except:
+            gname = "<unknown>"
+
+        _struct = {
+            "name": self.in_dict.get("name", "N/A"),
+            "pid": self.pid,
+            "uid": self.in_dict.get("uid", 0),
+            "gid": self.in_dict.get("gid", 0),
+            "uname": uname,
+            "gname": gname,
+        }
+        _lines = self.error_str[self.__num_logged:].split("\n")
+        # never log the last line, this line is either incomplete (\n missing) or empty (\n present)
+        for err_line in _lines:
+            _struct["line"] = err_line.rstrip()
+            self.log(
+                base64.b64encode(bz2.compress(json.dumps(_struct).encode("utf-8"))).decode("utf-8"),
+                logging_tools.LOG_LEVEL_ERROR,
+                icswLogTypes.err_py
+            )
+        self.__num_logged = len(self.error_str)
 
 
 class MainProcess(ICSWBasePool):
@@ -69,10 +162,13 @@ class MainProcess(ICSWBasePool):
         self.__num_write, self.__num_close, self.__num_open = (0, 0, 0)
         self.__num_forward_ok, self.__num_forward_error = (0, 0)
         self.log("logging_process {} is now awake (pid {:d})".format(self.name, self.pid))
-        int_names = ["log", "log_py", "err_py"]
-        for name in int_names:
-            _handle = self.get_python_handle(name)
-        self.log("opened handles for {}".format(", ".join(list(self.__handles.keys()))))
+        for _enum in icswLogTypes:
+            _handle = self.get_python_handle(_enum)
+        self.log(
+            "opened handles for {}".format(
+                ", ".join(sorted(list(self.__handles.keys())))
+            )
+        )
         self._flush_log_cache()
         self.__last_stat_time = time.time()
         # error gather dict
@@ -92,18 +188,18 @@ class MainProcess(ICSWBasePool):
         )
         resource.setrlimit(resource.RLIMIT_OFILE, new_files)
 
-    def log(self, what, level=logging_tools.LOG_LEVEL_OK, dst="log", **kwargs):
+    def log(self, what, level=logging_tools.LOG_LEVEL_OK, dst=icswLogTypes.log, **kwargs):
         if not self["exit_requested"]:
-            if dst in self.__handles:
-                cur_dst = self.__handles[dst]
+            if dst.value in self.__handles:
+                cur_dst = self.__handles[dst.value]
                 # check for open handles
-                if dst != "log":
+                if dst != icswLogTypes.log:
                     for cur_handle in cur_dst.handlers:
                         if not os.path.exists(cur_handle.baseFilename):
                             self.log(
                                 "reopening file {} for {}".format(
                                     cur_handle.baseFilename,
-                                    dst
+                                    dst.value
                                 )
                             )
                             cur_handle.stream = cur_handle._open()
@@ -121,7 +217,7 @@ class MainProcess(ICSWBasePool):
                     )
                     cur_dst.handle(cur_record)
                 else:
-                    cur_dst.log(level, what)  # , extra={"threadName" : kwargs.get("src_thread", "bla")})
+                    cur_dst.log(level, what)
             else:
                 self.__log_cache.append((dst, what, level))
         else:
@@ -155,7 +251,7 @@ class MainProcess(ICSWBasePool):
 
     def _init_network_sockets(self):
         _log_base = "/var/lib/logging-server"
-        _handle_names = [os.path.join(_log_base, "py_{}".format(_type)) for _type in ["out", "err", "log"]]
+        _handle_names = [os.path.join(_log_base, "py_{}".format(_type.value)) for _type in icswLogTypes]
         self.__open_handles = [
             io_stream_helper.icswIOStream.zmq_socket_name(h_name) for h_name in _handle_names
         ] + [
@@ -215,66 +311,11 @@ class MainProcess(ICSWBasePool):
     def _feed_error(self, in_dict):
         try:
             # error_str is set in io_stream_helper.io_stream
-            error_str = "{}{}".format(
-                in_dict.get("exc_text", "") or "",
-                in_dict.get("error_str", "") or "",
-            )
-            if not error_str:
-                self.log("cannot extract error_str, using dump of error_dict", logging_tools.LOG_LEVEL_ERROR)
-                error_f = []
-                for key in sorted(in_dict.keys()):
-                    try:
-                        error_f.append("  {:<20s} : {}".format(key, str(in_dict[key])))
-                    except:
-                        error_f.append(
-                            "  error logging key '{}' : {}".format(
-                                key,
-                                process_tools.get_except_info(),
-                            )
-                        )
-                error_str = "\n".join(error_f)
-            cur_dict = self.__eg_dict.setdefault(
-                in_dict["pid"], {
-                    "last_update": time.time(),
-                    # error as unicode
-                    "error_str": "",
-                    # how many lines we have already logged
-                    "lines_logged": 0,
-                    "proc_dict": in_dict
-                }
-            )
-            # append line to errors
-            cur_dict["error_str"] = "{}{}".format(cur_dict["error_str"], error_str)
+            if in_dict["pid"] not in self.__eg_dict:
+                self.__eg_dict[in_dict["pid"]] = ErrorStructure(self, in_dict)
+            cur_error = self.__eg_dict[in_dict["pid"]]
+            cur_error.feed(in_dict)
             # log to err_py
-            try:
-                uname = pwd.getpwuid(in_dict.get("uid", -1))[0]
-            except:
-                uname = "<unknown>"
-            try:
-                gname = grp.getgrgid(in_dict.get("gid", -1))[0]
-            except:
-                gname = "<unknown>"
-            pid_str = "{} (uid {:d} [{}], gid {:d} [{}])".format(
-                in_dict.get("name", "N/A"),
-                in_dict.get("uid", 0),
-                uname,
-                in_dict.get("gid", 0),
-                gname
-            )
-            # log to err_py
-            _lines = cur_dict["error_str"].split("\n")
-            # never log the last line, this line is either incomplete (\n missing) or empty (\n present)
-            for err_line in _lines[cur_dict["lines_logged"]:-1]:
-                self.log(
-                    "from pid {:d} ({}): {}".format(
-                        in_dict.get("pid", 0),
-                        pid_str,
-                        err_line.rstrip()
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR,
-                    "err_py"
-                )
-            cur_dict["lines_logged"] = len(_lines) - 1
         except:
             self.log(
                 "error in handling error_dict: {}".format(
@@ -283,36 +324,25 @@ class MainProcess(ICSWBasePool):
                 logging_tools.LOG_LEVEL_ERROR
             )
 
-    def _get_process_info(self, es_dict):
-        p_dict = es_dict.get("proc_dict", {})
-        return "name {}, ppid {:d}, uid {:d}, gid {:d}".format(
-            p_dict.get("name", "N/A"),
-            p_dict.get("ppid", 0),
-            p_dict.get("uid", -1),
-            p_dict.get("gid", -1)
-        )
-
     def _check_error_dict(self, force=False):
-        c_name = process_tools.get_cluster_name()
         mails_sent = 0
         s_time = time.time()
         ep_dels = []
         for ep, es in list(self.__eg_dict.items()):
-            t_diff = s_time - es["last_update"]
+            t_diff = s_time - es.last_update
             if force or (t_diff < 0 or t_diff > 60):
-                subject = "Python error for pid {:d} on {}@{} ({}, {})".format(
-                    ep,
+                subject = "An error occured, PID={:d} on {}@{} ({})".format(
+                    es.pid,
                     process_tools.get_fqdn()[0],
-                    c_name,
-                    process_tools.get_machine_name(),
-                    clusterid.get_cluster_id() or "N/A",
+                    clusterid.get_safe_cluster_id("N/A"),
+                    clusterid.get_safe_cluster_name("N/A"),
                 )
-                err_lines = "".join(es["error_str"]).split("\n")
+                err_lines = es.error_str.split("\n")
                 msg_body = "\n".join(
                     [
-                        "Processinfo {}".format(self._get_process_info(es))
+                        "Processinfo {}".format(es.get_process_info())
                     ] + [
-                        "{:3d} {}".format(line_num + 1, line) for line_num, line in enumerate(err_lines)
+                        "{:3d} {}".format(line_num, line) for line_num, line in enumerate(err_lines, 1)
                     ]
                 )
                 if self.CC.CS["log.send.errormails"]:
@@ -424,12 +454,12 @@ class MainProcess(ICSWBasePool):
         # pprint.pprint(s_dict)
 
     def get_python_handle(self, record):
-        if isinstance(record, str):
+        if isinstance(record, icswLogTypes):
             # special type for direct handles (log, log_py, err_py)
             sub_dirs = []
             record_host = "localhost"
             record_name, record_process, record_parent_process = (
-                "init.at.{}".format(record),
+                "init.at.{}".format(record.value),
                 os.getpid(),
                 os.getppid()
             )
@@ -560,6 +590,7 @@ class MainProcess(ICSWBasePool):
             # pprint.pprint(in_dict)
             if "IOS_type" in in_dict:
                 self.log("got error_dict (pid {:d}, {})".format(in_dict["pid"], logging_tools.get_plural("key", len(in_dict))))
+                # print("*", in_dict)
                 self._feed_error(in_dict)
             else:
                 self._handle_log_com(logging.makeLogRecord(in_dict))

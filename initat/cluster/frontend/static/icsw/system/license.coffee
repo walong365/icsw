@@ -196,6 +196,67 @@ angular.module(
     $q, icswSystemOvaCounterService, $state, ICSW_URLS,
 ) ->
     {ul, li, a, span, div, p, strong, h3, hr, img, button, table, tr, td, tbody} = React.DOM
+    egg_display = React.createFactory(
+        React.createClass(
+            propTypes: {
+                element: React.PropTypes.object
+            }
+
+            render: () ->
+                lic_info = @props.element
+                return button(
+                    {
+                        type: "button"
+                        className: "ova-statusbutton cursorpointer btn btn-xs btn-default"
+                        onClick: (event) ->
+                            $state.go("main.syslicenseoverview")
+                        title: "Ova usage counter for #{lic_info.name} (#{lic_info.available} available, #{lic_info.installed} installed)"
+                    }
+                    table(
+                        {
+                        className: "condensed"
+                        }
+                        tbody(
+                            {}
+                            tr(
+                                {}
+                                td(
+                                    {
+                                        rowSpan: 2
+                                    }
+                                    img(
+                                        {
+                                            key: "ova"
+                                            src: "#{ICSW_URLS.STATIC_URL}/egg_#{lic_info.status_class}.svg"
+                                            height: "30"
+                                            className: "pull-left"
+                                            style: { marginRight: 5}
+                                        }
+                                    )
+                                )
+                                td(
+                                    {
+                                        className: "text-right"
+                                    }
+                                    lic_info.available
+                                )
+                            )
+                            tr(
+                                {}
+                                td(
+                                    {
+                                        className: "text-right"
+                                        style: { borderTop: "1px solid #666666" }
+                                    }
+                                    lic_info.installed
+                                )
+                            )
+                        )
+                    )
+                )
+        )
+    )
+
     return React.createClass(
         displayName: "icswOvaDisplay"
 
@@ -237,57 +298,19 @@ angular.module(
             console.log "stop ovadisplay"
 
         render: () ->
-            if @struct.data_ok
+            if @struct.data_ok and @struct.ocs.license_list.length and @struct.ocs.any_used
                 return li(
                     {}
-                    button(
-                        {
-                            type: "button"
-                            className: "ova-statusbutton cursorpointer btn btn-xs btn-default"
-                            onClick: (event) ->
-                                $state.go("main.syslicenseoverview")
-                            title: "Ova usage counter (#{@struct.ocs.system_cradle.available} available, #{@struct.ocs.system_cradle.installed} installed)"
-                        }
-                        table(
-                            {
-                            className: "condensed"
-                            }
-                            tbody(
-                                {}
-                                tr(
-                                    {}
-                                    td(
-                                        {
-                                            rowSpan: 2
-                                        }
-                                        img(
-                                            {
-                                                key: "ova"
-                                                src: "#{ICSW_URLS.STATIC_URL}/egg_#{@struct.ocs.status_class}.svg"
-                                                height: "30"
-                                                className: "pull-left"
-                                                style: { marginRight: 5}
-                                            }
-                                        )
-                                    )
-                                    td(
-                                        {
-                                            className: "text-right"
-                                        }
-                                        @struct.ocs.system_cradle.available
-                                    )
-                                )
-                                tr(
-                                    {}
-                                    td(
-                                        {
-                                            className: "text-right"
-                                            style: { borderTop: "1px solid #666666" }
-                                        }
-                                        @struct.ocs.system_cradle.installed
-                                    )
-                                )
-                            )
+                    div(
+                        {}
+                        (
+                            egg_display(
+                                {
+                                    key: "lic.#{_element.name}"
+                                    element: _element
+                                }
+                            ) for _element in @struct.ocs.license_list when _element.any_used
+
                         )
                     )
                 )

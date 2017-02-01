@@ -35,7 +35,10 @@ angular.module(
         constructor: (c_list) ->
             @counter = 0
             @system_cradle = null
-            @basket_list = []
+            # usage per license
+            @license_list = []
+            # usage per license lut
+            @license_lut = {}
             @on_update = $q.defer()
             @update(c_list)
 
@@ -53,12 +56,33 @@ angular.module(
 
         update_plain: (cradle) =>
             @system_cradle = cradle
+            @license_list.length = 0
+            @license_lut = {}
+            for basket in cradle.icsweggbasket_set
+                _ln = basket.license_id_name or "global"
+                if _ln not of @license_lut
+                    new_usage = {
+                        name: _ln
+                        installed: 0
+                        available: 0
+                        available_ghost: 0
+                    }
+                    @license_lut[_ln] = new_usage
+                    @license_list.push(new_usage)
+                _usage = @license_lut[_ln]
+                for _attr in ["installed", "available", "available_ghost"]
+                    _usage[_attr] += basket[_attr]
+            for _usage in @license_list
+                _usage.used = _usage.installed - _usage.available
+                _usage.used_ghost = _usage.installed - _usage.available_ghost
+                @build_info_str(_usage)
+            @any_used = _.some(usage.any_used for usage in @license_list)
             @system_cradle.used = @system_cradle.installed - @system_cradle.available
-            @build_info_str()
 
-        build_info_str: () ->
-            _in = @system_cradle.installed
-            _av = @system_cradle.available
+        build_info_str: (usage) ->
+            usage.any_used = usage.installed != usage.available
+            _in = usage.installed
+            _av = usage.available
             _used = _in - _av
             _perc = parseInt(100 * _used / _av)
             @info_str = "#{_used} / #{_in}"
@@ -68,8 +92,8 @@ angular.module(
                 _class = "warning"
             else
                 _class = "success"
-            @info_class = "label label-#{_class}"
-            @status_class = _class
+            usage.info_class = "label label-#{_class}"
+            usage.status_class = _class
 
         close_web_socket: () =>
             if @ws? and @ws
@@ -78,13 +102,15 @@ angular.module(
         setup_web_socket: () ->
             @close_web_socket()
             if icswUserService.user_present() and icswUserService.get().is_authenticated()
-                @ws = icswWebSocketService.register_ws("ova_counter")
-                if @ws
-                    @ws.onmessage = (msg) =>
-                        # console.log "n=", msg
-                        data = angular.fromJson(msg.data)
+                icswWebSocketService.get_ws(
+                    "ova_counter"
+                    (data) =>
                         @update_plain(data)
                         @on_update.notify(@system_cradle)
+                ).then(
+                    (ws) ->
+                        @ws = ws
+                )
 
 ]).service("icswSystemOvaCounterService",
 [

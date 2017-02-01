@@ -375,7 +375,7 @@ class MainProcess(ICSWBasePoolClient):
         if trans_list:
             self._new_transitions(trans_list)
             if self.__loopcount > 1 and not force:
-                _cluster_id = clusterid.get_cluster_id() or "N/A"
+                _cluster_id = clusterid.get_safe_cluster_id("N/A")
                 mail_subject, mail_text = self.service_state.get_mail_text(trans_list)
                 self.__new_mail.init_text()
                 self.__new_mail.set_subject(

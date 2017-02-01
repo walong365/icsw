@@ -62,7 +62,6 @@ class LicenseFileReader(object):
             self.cluster_id = cluster_id
         self.current_fp = current_fingerprint
         self._check_fingerprint()
-        self._check_eggs()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_com:
@@ -76,12 +75,6 @@ class LicenseFileReader(object):
             from initat.tools import hfp_tools
             self.current_fp = hfp_tools.get_server_fp(serialize=True)
         return self.current_fp
-
-    def _check_eggs(self):
-        gp_q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']/icsw:package-parameter".format(
-            self.cluster_id,
-        )
-        _g_paras = self.content_xml.xpath(gp_q, namespaces=ICSW_XML_NS_MAP)
 
     def _check_fingerprint(self):
         fp_q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']/icsw:hardware-finger-print/text()".format(
@@ -155,6 +148,7 @@ class LicenseFileReader(object):
 
         for pack_xml in content_xml.xpath("//icsw:package-list/icsw:package", namespaces=ICSW_XML_NS_MAP):
             _uuid = pack_xml.findtext("icsw:package-meta/icsw:package-uuid", namespaces=ICSW_XML_NS_MAP)
+            _name = pack_xml.findtext("icsw:package-meta/icsw:package-name", namespaces=ICSW_XML_NS_MAP)
             _version = int(
                 pack_xml.findtext(
                     "icsw:package-meta/icsw:package-version",
@@ -182,6 +176,7 @@ class LicenseFileReader(object):
             else:
                 package_uuid_map[_uuid] = {
                     "pack_xml": pack_xml,
+                    "name": _name,
                     "version": _version,
                     "date": _date,
                     "idx": self.license.idx if self.license.idx else 0,
@@ -653,6 +648,11 @@ class LicenseFileReader(object):
     def license_info(self):
         _lic_info = self.raw_license_info
         _cluster_ids = set()
+        # print("-" * 50)
+        # import pprint
+        # for _li in _lic_info:
+        #    print("*")
+        #    pprint.pprint(_li["date"])
         # not unique
         _num = {
             "lics": 0,

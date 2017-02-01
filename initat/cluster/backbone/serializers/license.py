@@ -23,7 +23,6 @@
 """ Serializers for license related objects (ova) """
 
 
-
 import logging
 
 from rest_framework import serializers
@@ -45,7 +44,7 @@ class icswEggBasketSerializer(serializers.ModelSerializer):
 
 
 class icswEggCradleSerializer(serializers.ModelSerializer):
-    icsweggbaset_set = icswEggBasketSerializer(read_only=True, many=True)
+    icsweggbasket_set = icswEggBasketSerializer(read_only=True, many=True)
 
     class Meta:
         fields = "__all__"

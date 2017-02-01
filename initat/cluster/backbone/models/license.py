@@ -304,6 +304,7 @@ class _LicenseManager(models.Manager):
             valid_params = {
                 (_idx, _lic.id if _lic else None): _value for (_idx, _lic), _value in valid_params.items()
             }
+            # print(valid_params)
             _present_lics = valid_params.keys()
             # read all baskets
             bk_dict = {
@@ -988,4 +989,3 @@ class icswEggRequest(models.Model):
 
     class Meta:
         abstract = False
-

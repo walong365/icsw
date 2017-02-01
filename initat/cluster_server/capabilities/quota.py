@@ -544,11 +544,13 @@ class quota_stuff(BackgroundBase):
             else:
                 to_addrs = [self._get_gid_info(email_target)["email"]]
             for to_addr in to_addrs:
+                c_name, c_id = process_tools.get_cluster_name_and_id()
                 log_lines = self.send_mail(
                     to_addr,
-                    "quota warning from {}@{}".format(
+                    "quota warning from {}@{} [{}]".format(
                         global_config["SERVER_FULL_NAME"],
-                        process_tools.get_cluster_name()
+                        c_name,
+                        c_id,
                     ),
                     mail_lines[(_type, email_target)]
                 )

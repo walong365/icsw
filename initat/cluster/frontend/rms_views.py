@@ -107,7 +107,7 @@ def get_sge_info():
             def update(self):
                 self.lock.acquire()
                 try:
-                    sge_tools.SGEInfo.update(self)
+                    sge_tools.SGEInfo.update(self, timeout=15)
                     sge_tools.SGEInfo.build_luts(self)
                 finally:
                     self.lock.release()

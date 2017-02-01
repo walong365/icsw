@@ -1238,19 +1238,9 @@ def kill_running_processes(p_name=None, **kwargs):
     return log_lines
 
 
-def fd_change(uid_gid_tuple, d_name, files):
-    uid, gid = uid_gid_tuple
-    os.chown("{}".format(d_name), uid, gid)
-    for f_name in files:
-        try:
-            os.chown(os.path.join(d_name, f_name), uid, gid)
-        except:
-            pass
-
-
 def fix_directories(user, group, f_list):
     try:
-        if not isinstance(user, str):
+        if isinstance(user, int):
             named_uid = user
         else:
             named_uid = pwd.getpwnam(user)[2]
@@ -1258,14 +1248,14 @@ def fix_directories(user, group, f_list):
         named_uid = 0
         logging_tools.my_syslog("Cannot find user '{}', using root (0)".format(user))
     try:
-        if not isinstance(group, str):
+        if isinstance(group, int):
             named_gid = group
         else:
             named_gid = grp.getgrnam(group)[2]
     except KeyError:
         named_gid = 0
         logging_tools.my_syslog("Cannot find group '{}', using root (0)".format(group))
-    if isinstance(f_list, str):
+    if not isinstance(f_list, list):
         f_list = [f_list]
     for act_dir in f_list:
         if isinstance(act_dir, dict):
@@ -1301,7 +1291,13 @@ def fix_directories(user, group, f_list):
                     )
                 )
             try:
-                os.path.walk(dir_name, fd_change, (named_uid, named_gid))
+                for _dir, _dirs, _files in os.walk(dir_name):
+                    os.chown(_dir, named_uid, named_gid)
+                    for f_name in _files:
+                        try:
+                            os.chown(os.path.join(_dir, f_name), named_uid, named_gid)
+                        except:
+                            pass
             except:
                 logging_tools.my_syslog(
                     "Something went wrong while walking() '{}' (uid {:d}, gid {:d}): {}".format(
@@ -1353,17 +1349,6 @@ def get_machine_name(short=True):
         return m_name.split(".")[0]
     else:
         return m_name
-
-
-def get_cluster_name(f_name="/etc/sysconfig/cluster/cluster_name"):
-    if os.path.isfile(f_name):
-        try:
-            c_name = open(f_name, "r").read().strip().split()[0]
-        except:
-            c_name = "error reading: {}".format(get_except_info())
-    else:
-        c_name = "not set"
-    return c_name
 
 
 def get_arp_dict():
