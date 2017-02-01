@@ -421,7 +421,9 @@ class mon_check_command(models.Model):
     tcp_coverage = models.CharField(default="", max_length=256, blank=True)
 
     def get_configured_device_pks(self):
-        return [dev_conf.device_id for dev_conf in self.config.device_config_set.all()]
+        if self.config:
+            return [dev_conf.device_id for dev_conf in self.config.device_config_set.all()]
+        return []
 
     def get_object_type(self):
         return "mon"

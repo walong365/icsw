@@ -375,68 +375,90 @@ class _general(hm_classes.hm_module):
         return psutil.virtual_memory(), psutil.swap_memory()
 
     def _df_int(self, mvect=None):
-        act_time, update_dict = (time.time(), False)
-        if mvect or abs(self.disk_dict_last_update - act_time) > 90:
-            update_dict = True
-        if update_dict:
-            self.disk_dict_last_update = act_time
-            ram_match = re.compile("^.*/ram\d+$")
-            smount_lines = [line.strip().split() for line in open("/etc/mtab", "r").readlines()]
-            link_set, mount_list = (set(), [])
-            for line in smount_lines:
-                if line[2] not in ["none"] and line[0].startswith("/") and not ram_match.match(line[0]) and line[0].startswith("/dev/"):
-                    mount_list.append(line)
-                    if os.path.islink(line[0]):
-                        link_set.add(
-                            (
-                                os.path.normpath(
-                                    os.path.join(
-                                        os.path.dirname(line[0]),
-                                        os.readlink(line[0])
-                                    )
-                                ),
-                                line[0]
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+            act_time, update_dict = (time.time(), False)
+            if mvect or abs(self.disk_dict_last_update - act_time) > 90:
+                update_dict = True
+            if update_dict:
+                self.disk_dict_last_update = act_time
+                ram_match = re.compile("^.*/ram\d+$")
+                smount_lines = [line.strip().split() for line in open("/etc/mtab", "r").readlines()]
+                link_set, mount_list = (set(), [])
+                for line in smount_lines:
+                    if line[2] not in ["none"] and line[0].startswith("/") and not ram_match.match(line[0]) and line[0].startswith("/dev/"):
+                        mount_list.append(line)
+                        if os.path.islink(line[0]):
+                            link_set.add(
+                                (
+                                    os.path.normpath(
+                                        os.path.join(
+                                            os.path.dirname(line[0]),
+                                            os.readlink(line[0])
+                                        )
+                                    ),
+                                    line[0]
+                                )
                             )
-                        )
-            # print self.disk_dict
-            n_dict = {}
-            for mnt in mount_list:
-                try:
-                    osres = os.statvfs(mnt[1])
-                except:
-                    pass
-                else:
-                    fact = float(osres.f_frsize) / 1024.
+                # print self.disk_dict
+                n_dict = {}
+                for mnt in mount_list:
                     try:
-                        blocks, bfree, bavail = int(osres.f_blocks), int(osres.f_bfree), int(osres.f_bavail)
-                        inodes, ifree, iavail = int(osres.f_files), int(osres.f_ffree), int(osres.f_favail)
+                        osres = os.statvfs(mnt[1])
                     except:
                         pass
                     else:
-                        if blocks:
-                            sizetot = blocks * fact
-                            sizeused = (blocks - bfree) * fact
-                            _sizeavail = bavail * fact
-                            sizefree = sizetot - sizeused
-                            proc = int((100. * float(blocks - bfree)) / float(blocks - bfree + bavail))
-                            # print mnt, proc
-                            n_dict[mnt[0]] = {
-                                "mountpoint": mnt[1],
-                                "fs": mnt[2],
-                                "b_free_perc": proc,
-                                "b_size": int(sizetot),
-                                "b_used": int(sizeused),
-                                "b_free": int(sizefree),
-                                "i_size": int(inodes),
-                                # "i_used"      : int(inodes) - int(ifree),
-                                "i_avail": int(iavail),
-                                "i_free": int(ifree),
-                            }
-                            # [mnt[1], proc, int(sizetot), int(sizeused), int(sizefree), mnt[2]]
-            for link_dst, link_src in link_set:
-                n_dict[link_dst] = n_dict[link_src]
+                        fact = float(osres.f_frsize) / 1024.
+                        try:
+                            blocks, bfree, bavail = int(osres.f_blocks), int(osres.f_bfree), int(osres.f_bavail)
+                            inodes, ifree, iavail = int(osres.f_files), int(osres.f_ffree), int(osres.f_favail)
+                        except:
+                            pass
+                        else:
+                            if blocks:
+                                sizetot = blocks * fact
+                                sizeused = (blocks - bfree) * fact
+                                _sizeavail = bavail * fact
+                                sizefree = sizetot - sizeused
+                                proc = int((100. * float(blocks - bfree)) / float(blocks - bfree + bavail))
+                                # print mnt, proc
+                                n_dict[mnt[0]] = {
+                                    "mountpoint": mnt[1],
+                                    "fs": mnt[2],
+                                    "b_free_perc": proc,
+                                    "b_size": int(sizetot),
+                                    "b_used": int(sizeused),
+                                    "b_free": int(sizefree),
+                                    "i_size": int(inodes),
+                                    # "i_used"      : int(inodes) - int(ifree),
+                                    "i_avail": int(iavail),
+                                    "i_free": int(ifree),
+                                }
+                                # [mnt[1], proc, int(sizetot), int(sizeused), int(sizefree), mnt[2]]
+                for link_dst, link_src in link_set:
+                    n_dict[link_dst] = n_dict[link_src]
+            else:
+                n_dict = self.disk_dict
+        elif PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+            n_dict = {}
+            for disk_partition in psutil.disk_partitions():
+                try:
+                    usage_obj = psutil.disk_usage(disk_partition.device)
+                    disk_name = disk_partition.device[0]
+
+                    n_dict[disk_name] = {"mountpoint": disk_partition.mountpoint,
+                                         "fs": disk_partition.fstype,
+                                         "b_free_perc": int(usage_obj.percent),
+                                         "b_size": usage_obj.total,
+                                         "b_used": usage_obj.used,
+                                         "b_free": usage_obj.total - usage_obj.used,
+                                         "i_size": 0,
+                                         "i_avail": 0,
+                                         "i_free": 0
+                                         }
+                except OSError:
+                    continue
         else:
-            n_dict = self.disk_dict
+            raise NotImplementedError
         if mvect:
             # delete old keys
             for key in self.disk_dict:
@@ -878,7 +900,15 @@ class _general(hm_classes.hm_module):
 
 
             # mv["mem.used.shared"] = mem_list["MemShared"]
-        for call_name in ["_df_int", "_vmstat_int", "_nfsstat_int"]:
+
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+            mach_vector_functions = ["_df_int", "_vmstat_int", "_nfsstat_int"]
+        elif PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+            mach_vector_functions = ["_df_int"]
+        else:
+            mach_vector_functions = []
+
+        for call_name in mach_vector_functions:
             try:
                 getattr(self, call_name)(mv)
             except:
@@ -889,6 +919,8 @@ class _general(hm_classes.hm_module):
                     ),
                     logging_tools.LOG_LEVEL_CRITICAL
                 )
+
+        #mv.tigger()
 
     def _partinfo_int(self):
         # lookup tables for /dev/disk-by
@@ -1287,36 +1319,7 @@ class df_command(hm_classes.hm_command):
             else:
                 mapped_disk = disk
 
-            if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
-                try:
-                    n_dict = self.module._df_int()
-                except:
-                    srv_com.set_result(
-                        "error reading mtab: {}".format(process_tools.get_except_info()),
-                        server_command.SRV_REPLY_STATE_ERROR,
-                    )
-                    return
-            elif PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
-                n_dict = {}
-                for disk_partition in psutil.disk_partitions():
-                    try:
-                        usage_obj = psutil.disk_usage(disk_partition.device)
-                        disk_name = disk_partition.device[0]
-
-                        n_dict[disk_name] = {"mountpoint": disk_partition.mountpoint,
-                                             "fs": disk_partition.fstype,
-                                             "b_free_perc": int(usage_obj.percent),
-                                             "b_size": usage_obj.total,
-                                             "b_used": usage_obj.used,
-                                             "b_free": usage_obj.total - usage_obj.used,
-                                             "i_size": 0,
-                                             "i_avail": 0,
-                                             "i_free": 0
-                                            }
-                    except OSError:
-                        continue
-            else:
-                raise NotImplementedError
+            n_dict = self.module._df_int()
 
             if disk == "ALL":
                 srv_com["df_result"] = {

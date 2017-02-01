@@ -33,6 +33,9 @@ from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 from ..long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
 
+if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+    import wmi
+
 # name of total-device
 TOTAL_DEVICE_NAME = "all"
 # name of maximum device
@@ -542,54 +545,76 @@ class _general(hm_classes.hm_module):
         return res_dict
 
     def _net_int(self, mvect):
-        act_time = time.time()
-        time_diff = act_time - self.last_update
-        if time_diff < 0:
-            self.log(
-                "(net_int) possible clock-skew detected, adjusting ({} since last request)".format(
-                    logging_tools.get_diff_time_str(time_diff)
-                ),
-                logging_tools.LOG_LEVEL_WARN
-            )
-            self.last_update = act_time
-        elif time_diff < MIN_UPDATE_TIME:
-            self.log(
-                "(net_int) too many update requests, skipping this one (last one {} ago; {:d} seconds minimum)".format(
-                    logging_tools.get_diff_time_str(time_diff),
-                    int(MIN_UPDATE_TIME)
-                ),
-                logging_tools.LOG_LEVEL_WARN
-            )
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+            act_time = time.time()
+            time_diff = act_time - self.last_update
+            if time_diff < 0:
+                self.log(
+                    "(net_int) possible clock-skew detected, adjusting ({} since last request)".format(
+                        logging_tools.get_diff_time_str(time_diff)
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
+                self.last_update = act_time
+            elif time_diff < MIN_UPDATE_TIME:
+                self.log(
+                    "(net_int) too many update requests, skipping this one (last one {} ago; {:d} seconds minimum)".format(
+                        logging_tools.get_diff_time_str(time_diff),
+                        int(MIN_UPDATE_TIME)
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
+            else:
+                self.act_nds.update()
+                self.last_update = time.time()
+            # tcp / udp connections
+            for _type in ["tcp", "udp"]:
+                _filename = "/proc/net/{}".format(_type)
+                try:
+                    _lines = len(open(_filename, "r").readlines()) - 1
+                except:
+                    self.log("error reading {}: {}".format(_filename, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    _lines = 0
+                mvect["net.count.{}".format(_type)] = _lines
+            # netstat
+            if self._detailed_network:
+                ns_info = self.get_netstat_info()
+                dn_keys = set(ns_info.keys())
+                for _key, _value in ns_info.items():
+                    _mv_key = "net.detail.{}".format(_key)
+                    if _mv_key not in mvect:
+                        mvect.register_entry(_mv_key, 0, _value[1], "1/s", 1000)
+                    else:
+                        _mvv = (_value[0] - self._detailed_dict[_key][0]) / time_diff
+                        mvect[_mv_key] = _mvv
+                self._detailed_dict = ns_info
+                for del_key in set(self._detailed_dict.keys()) - dn_keys:
+                    mvect.unregister_entry("net.detail.{}".format(del_key))
+            # fibrechannel
+            for _fc_entry in self.fc_devices:
+                _fc_entry.update(act_time, mvect)
+            nd_dict = self.act_nds.make_speed_dict()
+        elif PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+            c = wmi.WMI()
+
+            nd_dict = {}
+
+            perf_results = c.query("SELECT * FROM Win32_PerfFormattedData_Tcpip_NetworkInterface")
+            for i in range(len(perf_results)):
+                perf_result = perf_results[i]
+                net_device_name = "eth{}".format(i)
+                nd_dict[net_device_name] = {
+                    "rx": float(perf_result.BytesReceivedPersec),
+                    "rxdrop": 0.0,
+                    "rxerr": 0.0,
+                    "tx": float(perf_result.BytesSentPersec),
+                    "txdrop": 0.0,
+                    "txerr": 0.0,
+                    "carrier": 0.0,
+                }
         else:
-            self.act_nds.update()
-            self.last_update = time.time()
-        # tcp / udp connections
-        for _type in ["tcp", "udp"]:
-            _filename = "/proc/net/{}".format(_type)
-            try:
-                _lines = len(open(_filename, "r").readlines()) - 1
-            except:
-                self.log("error reading {}: {}".format(_filename, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                _lines = 0
-            mvect["net.count.{}".format(_type)] = _lines
-        # netstat
-        if self._detailed_network:
-            ns_info = self.get_netstat_info()
-            dn_keys = set(ns_info.keys())
-            for _key, _value in ns_info.items():
-                _mv_key = "net.detail.{}".format(_key)
-                if _mv_key not in mvect:
-                    mvect.register_entry(_mv_key, 0, _value[1], "1/s", 1000)
-                else:
-                    _mvv = (_value[0] - self._detailed_dict[_key][0]) / time_diff
-                    mvect[_mv_key] = _mvv
-            self._detailed_dict = ns_info
-            for del_key in set(self._detailed_dict.keys()) - dn_keys:
-                mvect.unregister_entry("net.detail.{}".format(del_key))
-        # fibrechannel
-        for _fc_entry in self.fc_devices:
-            _fc_entry.update(act_time, mvect)
-        nd_dict = self.act_nds.make_speed_dict()
+            raise NotImplementedError
+
         # pprint.pprint(nd_dict)
         if nd_dict:
             # add total and maximum info
@@ -1227,7 +1252,6 @@ class net_command(hm_classes.hm_command):
                         server_command.SRV_REPLY_STATE_ERROR,
                     )
             elif PLATFORM_SYSTEM_TYPE == PLATFORM_SYSTEM_TYPE.WINDOWS:
-                import wmi
                 c = wmi.WMI()
 
                 # very, very crude mapping from eth{d} to perf_results list

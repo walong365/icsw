@@ -56,7 +56,7 @@ SERVER_RESULT_RUN_RESULT = {
     server_command.SRV_REPLY_STATE_UNSET: RunResult.UNKNOWN,
 }
 
-HM_CMD_TUPLES = [(asset_type, hm_command, 60) for asset_type, hm_command in list(ASSETTYPE_HM_COMMAND_MAP.items())]
+HM_CMD_TUPLES = [(asset_type, hm_command, 60 * 5) for asset_type, hm_command in list(ASSETTYPE_HM_COMMAND_MAP.items())]
 
 
 class ScanBatch(object):
