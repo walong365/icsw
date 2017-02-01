@@ -155,7 +155,8 @@ setup(
                 "opt/cluster/bin/load_firmware.sh",
                 "opt/cluster/bin/populate_ramdisk.py",
                 "opt/cluster/bin/change_cluster_var.py",
-                "opt/cluster/bin/show_config_script.py",
+                # deprecated, use icsw config
+                # "opt/cluster/bin/show_config_script.py",
                 "opt/cluster/bin/resync_config.sh",
                 "opt/cluster/bin/send_mail.py",
                 "opt/cluster/bin/send_command_zmq.py",
