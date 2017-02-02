@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<?define ProductVersion = "3.0.4"?>
+<?define ProductVersion = "3.0.5"?>
 <?define ProductUpgradeCode = "77EA450B-4B37-478C-919B-D0D62F2ED7C5"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
    <Product Id="*" UpgradeCode="$(var.ProductUpgradeCode)" 
@@ -37,11 +37,8 @@
       </InstallExecuteSequence>
  
       <Feature Id="DefaultFeature" Level="1">
-	     <!--<ComponentRef Id="nsclientIni" />-->
-         <ComponentGroupRef Id="NscpFiles"/>	 
+         <ComponentGroupRef Id="HostmonitorFiles"/>	 
       </Feature>
-      <Property Id="HOSTNAMES" Value="*" />
-      <Property Id="PORTNAMES" Value="5666" />
       <Property Id="SERVICENAME" Value="ICSW_Monitoring_Service" />      
    </Product>
 </Wix>
