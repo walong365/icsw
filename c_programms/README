@@ -1,0 +1,8 @@
+ccollclientzmq.c     : sends commands from cli to host-relay
+csendsyncerzmq.c     : sends commands from cli to md-syncer (icinga OCSP / OCHP)
+csnmpclientzmq.c     : sends commands from cli to snmp-relay
+hoststatus_zmq.c     : daemon, only needed while in bootsystem (future)
+parse_uuid.c         : common file
+send_collectd_zmq.c  : parse icinga performance data files and send results to local collectd
+tell_mother_zmq.c    : only needed in bootsystem, sends status updates to mother on server
+
