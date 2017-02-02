@@ -26,7 +26,8 @@ from django.db.models import Q
 from lxml import etree
 from lxml.builder import E
 
-from initat.cluster.backbone.models import MachineVector, MVStructEntry
+from initat.cluster.backbone.models import MachineVector, MVStructEntry, MVValueEntry, \
+    SensorThreshold
 from initat.tools import logging_tools, process_tools, server_command
 from .config import global_config
 
@@ -273,37 +274,91 @@ class DataStore(object):
 
     def vector_struct(self):
         _struct = []
-        for mvs in MVStructEntry.objects.filter(
-            Q(machine_vector=self.mv)
-        ).prefetch_related(
-            "mvvalueentry_set__sensorthreshold_set"
-        ):
-            mvv_list = []
-            for mvv in mvs.mvvalueentry_set.all():
-                if not mvv.full_key:
-                    mvv.full_key = "{}{}".format(mvs.key, ".{}".format(mvv.key) if mvv.key else "")
-                    mvv.save(update_fields=["full_key"])
-                    self.log("correcting full_key of {}".format(str(mvv)), logging_tools.LOG_LEVEL_WARN)
-                mvv_list.append(
+        # print("*", time.time())
+        if False:
+            # old code
+            for mvs in MVStructEntry.objects.filter(
+                Q(machine_vector=self.mv)
+            ).prefetch_related(
+                "mvvalueentry_set__sensorthreshold_set"
+            ):
+                mvv_list = []
+                for mvv in mvs.mvvalueentry_set.all():
+                    if not mvv.full_key:
+                        mvv.full_key = "{}{}".format(mvs.key, ".{}".format(mvv.key) if mvv.key else "")
+                        mvv.save(update_fields=["full_key"])
+                        self.log("correcting full_key of {}".format(str(mvv)), logging_tools.LOG_LEVEL_WARN)
+                    mvv_list.append(
+                        {
+                            "unit": mvv.unit,
+                            "info": mvv.info,
+                            "key": mvv.key,
+                            "build_info": None,
+                            "num_sensors": mvv.sensorthreshold_set.all().count()
+                        }
+                    )
+                _struct.append(
                     {
-                        "unit": mvv.unit,
-                        "info": mvv.info,
-                        "key": mvv.key,
-                        "build_info": None,
-                        "num_sensors": mvv.sensorthreshold_set.all().count()
+                        # not needed for display
+                        # "type": mvs.se_type,
+                        "fn": mvs.file_name,
+                        "ti": mvs.type_instance,
+                        "key": mvs.key,
+                        "is_active": mvs.is_active,
+                        "mvvs": mvv_list,
                     }
                 )
-            _struct.append(
-                {
-                    # not needed for display
-                    # "type": mvs.se_type,
-                    "fn": mvs.file_name,
-                    "ti": mvs.type_instance,
-                    "key": mvs.key,
-                    "is_active": mvs.is_active,
-                    "mvvs": mvv_list,
+        else:
+            # new code
+            mvs_lut = {}
+            for _values in MVStructEntry.objects.filter(
+                Q(machine_vector=self.mv)
+            ).values_list(
+                "idx", "file_name", "type_instance", "key", "is_active",
+            ):
+                mvs_struct = {
+                    "fn": _values[1],
+                    "ti": _values[2],
+                    "key": _values[3],
+                    "is_active": _values[4],
+                    "mvvs": [],
                 }
-            )
+                _struct.append(mvs_struct)
+                mvs_lut[_values[0]] = mvs_struct
+            # key: index in mvvs (list) of mvs
+            mvv_idx_lut = {}
+            for _values in MVValueEntry.objects.filter(
+                Q(mv_struct_entry__machine_vector=self.mv)
+            ).values_list(
+                "idx", "mv_struct_entry", "full_key", "key", "unit", "info"
+            ):
+                mvs = mvs_lut[_values[1]]
+                full_key = _values[2]
+                if not full_key:
+                    # full key missing
+                    full_key = "{}{}".format(
+                        mvs["key"],
+                        _values[3],
+                    )
+                    mvv = MVValueEntry.objects.get(Q(pk=_values[0]))
+                    mvv.full_key = full_key
+                    mvv.save(update_fields=["full_key"])
+                    self.log("correcting full_key of {}".format(str(mvv)), logging_tools.LOG_LEVEL_WARN)
+                mvv_idx_lut[_values[0]] = len(mvs["mvvs"])
+                mvs["mvvs"].append(
+                    {
+                        "unit": _values[4],
+                        "info": _values[5],
+                        "key": _values[3],
+                        "build_info": None,
+                        "num_sensors": 0,
+                    }
+                )
+            # add sensor threshold
+            for th in SensorThreshold.objects.filter(
+                Q(mv_value_entry__mv_struct_entry__machine_vector=self.mv)
+            ).values_list("mv_value_entry", "mv_value_entry__mv_struct_entry"):
+                mvs_lut[th[1]]["mvvs"][mvv_idx_lut[th[0]]]["num_sensors"] += 1
         return _struct
 
     @staticmethod
