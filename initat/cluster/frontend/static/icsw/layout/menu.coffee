@@ -152,7 +152,7 @@ menu_module = angular.module(
         # user is logged in
         user_loggedin: false
         # menu layout
-        menu_layout: "normal"
+        menu_layout: "newstyle"
     }
 
     MENU_LAYOUTS = [
@@ -178,8 +178,9 @@ menu_module = angular.module(
         return _get_themes_valid()
 
     _set_menu_layout = (layout) ->
-        SETTINGS.menu_layout = layout
-        $rootScope.$emit(ICSW_SIGNALS("ICSW_MENU_LAYOUT_CHANGED"))
+        # ignore, always newstyle
+        # SETTINGS.menu_layout = layout
+        # $rootScope.$emit(ICSW_SIGNALS("ICSW_MENU_LAYOUT_CHANGED"))
         return _get_menu_layout()
 
     _get_menu_layout = () ->
@@ -450,7 +451,8 @@ menu_module = angular.module(
             overall_style = icswOverallStyle.get()
             items_added = 0
             _items = []
-            _ul_break_keys = []
+            if overall_style != "condensed"
+                _ul_break_keys = []
             for sg_state in @props.menu.entries
                 menu_entry = sg_state.data
                 # if sg_state.data.hidden?
@@ -460,9 +462,9 @@ menu_module = angular.module(
                 #    _hidden = false
                 # if not _hidden
                 _head_key = "#{sg_state.$$menu_key}_li"
-                if menu_entry.newcol == "true"
-                    _ul_break_keys.push(_head_key)
                 if overall_style != "condensed"
+                    if menu_entry.newcol
+                        _ul_break_keys.push(_head_key)
                     _head = li(
                         {
                             key: _head_key
@@ -524,28 +526,28 @@ menu_module = angular.module(
                 _num_items = _items.length
 
                 # get number of rows
-                """ request SR
-                if _num_items > 8
-                    _num_cols = 3
-                    _col_style = "col-sm-4"
-                else if _num_items > 4
-                    _num_cols = 2
-                    _col_style = "col-sm-6"
+                if overall_style == "condensed"
+                    if _num_items > 8
+                        _num_cols = 3
+                        _col_style = "col-sm-4"
+                    else if _num_items > 4
+                        _num_cols = 2
+                        _col_style = "col-sm-6"
+                    else
+                        _num_cols = 1
+                        _col_style = "col-sm-12"
+                    _max_per_col = parseInt(_num_items / _num_cols) + 1
                 else
-                    _num_cols = 1
-                    _col_style = "col-sm-12"
-                """
-
-                _num_cols = 0
-                for _item in _items
-                    if _item.key in _ul_break_keys
-                        _num_cols++
-                _num_cols = if _num_cols == 0 then 1 else _num_cols
-                _bootstrap_col = Math.ceil(12/_num_cols)
-                _col_style = "col-sm-#{_bootstrap_col}"
-                # entries per col
-                # _max_per_col = parseInt(_num_items / _num_cols) + 1
-                _max_per_col = _num_items
+                    _num_cols = 0
+                    for _item in _items
+                        if _item.key in _ul_break_keys
+                            _num_cols++
+                    _num_cols = if _num_cols == 0 then 1 else _num_cols
+                    _bootstrap_col = Math.ceil(12/_num_cols)
+                    _col_style = "col-sm-#{_bootstrap_col}"
+                    # entries per col
+                    # _max_per_col = parseInt(_num_items / _num_cols) + 1
+                    _max_per_col = _num_items
 
                 # balance items
 
@@ -571,8 +573,11 @@ menu_module = angular.module(
                         _item_stream = []
                     if item.type == "li"
                         # element is a header
-                        # if _count + 1 == _max_per_col
-                        if item.key in _ul_break_keys
+                        if (
+                            overall_style == "condensed" and _count + 1 == _max_per_col
+                        ) or (
+                            overall_style != "condensed" and item.key in _ul_break_keys
+                        )
                             # cannot be last in stream
                             add_stream(_item_stream)
                             _item_stream = []

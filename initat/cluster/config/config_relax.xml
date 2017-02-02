@@ -135,9 +135,12 @@
                     <oneOrMore>
                         <element name="routeSubGroup">
                             <attribute name="name"/>
-                            <optional>
-                                <attribute name="newcol"/>
-                            </optional>
+                            <attribute name="newcol_bool">
+                                <choice>
+                                    <value>yes</value>
+                                    <value>no</value>
+                                </choice>
+                            </attribute>
                             <oneOrMore>
                                 <element name="menuEntry">
                                     <attribute name="icon"></attribute>

@@ -165,26 +165,25 @@
                     <thead>
                         <tr>
                             <td colspan="99">
-                                <div class="row">
-                                    <div class="col-sm-3">
-                                        <div class="input-group">
-                                            <input
-                                                ng-model="struct.search_str"
-                                                ng-model-options="{debounce: {default: 200, blur: 0}}"
-                                                ng-change="update_search()"
-                                                class="form-control"
-                                                placeholder="filter"
-                                            >
-                                            </input>
-                                            <div class="input-group-btn">
-                                                <input type="button" title="Add config to search scope" ng-class="struct.filter_settings.$$config_class" value="Name" ng-click="change_filter_setting($event, 'config')"/>
-                                                <input type="button" title="Add script(s) to search scope" ng-class="struct.filter_settings.$$script_class" value="Script" ng-click="change_filter_setting($event, 'script')"/>
-                                                <input type="button" title="Add variable(s) to search scope" ng-class="struct.filter_settings.$$var_class" value="Variable" ng-click="change_filter_setting($event, 'var')"/>
-                                                <input type="button" title="Add monitoring config(s) to search scope" ng-class="struct.filter_settings.$$mon_class" value="MonCheck" ng-click="change_filter_setting($event, 'mon')"/>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-sm-2">
+                                <div class="form-inline">
+                                    <div
+                                        icsw-tools-pagination
+                                        st-items-by-page="15"
+                                        st-displayed-pages="11"
+                                        possible-items-by-page="15,30,100,200"
+                                        class="pull-left"
+                                    ></div>
+                                    &nbsp;
+                                    <input
+                                        ng-model="struct.search_str"
+                                        ng-model-options="{debounce: {default: 100, blur: 0}}"
+                                        ng-change="update_search()"
+                                        class="form-control"
+                                        placeholder="filter"
+                                    >
+                                    </input>
+                                    <span>
+
                                         Service:
                                         <icsw-tools-tri-button
                                             icsw-state="struct.with_service"
@@ -195,14 +194,7 @@
                                             icsw-state="struct.with_server"
                                             icsw-callback="change_boolean_filters('with_server', value)"
                                         ></icsw-tools-tri-button>
-                                    </div>
-                                    <div
-                                        icsw-tools-pagination
-                                        st-items-by-page="15"
-                                        st-displayed-pages="11"
-                                        possible-items-by-page="15,30,100,200"
-                                        class="col-sm-6"
-                                    ></div>
+                                    </span>
                                 </div>
                             </td>
                         </tr>
