@@ -432,7 +432,16 @@ angular.module(
                                     ) else ""
                                     ")"
                                 )
-                                _svg
+                                div(
+                                    {
+                                        key: "svg.wrap"
+                                        style: {
+                                            margin: "0 5px"
+                                            textAlign: "center"
+                                            }
+                                    }
+                                    _svg
+                                )
                             ]
                         )
                     ]
@@ -510,6 +519,7 @@ angular.module(
                 "Burst Graph"
                 5
                 5
+                true  # no_y_scrolling
             )
             @new_data_notifier = $q.defer()
             @__dp_async_emit = true

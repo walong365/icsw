@@ -829,6 +829,7 @@ angular.module(
                 "Network Topology"
                 10
                 8
+                true  # no_y_scrolling
             )
 
             @__dp_notify_only_on_devchange = true

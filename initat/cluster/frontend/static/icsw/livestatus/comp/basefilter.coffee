@@ -57,6 +57,7 @@ angular.module(
                 "Base Filter"
                 3
                 2
+                true  # no_y_scrolling
             )
             running_id++
             @id = running_id

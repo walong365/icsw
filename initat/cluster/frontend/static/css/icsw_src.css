@@ -604,3 +604,7 @@ th[st-sort]:not(.st-sort-ascent):not(.st-sort-descent):not(.bg-info):not(.st-nev
     background-color: #e4e4e4;
     border: 1px solid #ffffff;
 }
+icsw-livestatus-tooltip .table,
+icsw-livestatus-tooltip .panel {
+    margin:0;
+}

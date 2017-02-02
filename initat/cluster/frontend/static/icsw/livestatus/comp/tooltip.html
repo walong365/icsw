@@ -10,7 +10,7 @@
     <div class="panel panel-default svg-tooltip">
         <div class="panel-heading">
             <b>System</b>
-            {{ node.check }}
+            <span class="hidden">{{ node.check }}</span>
         </div>
     </div>
 </script>
@@ -18,8 +18,7 @@
 <script type="text/ng-template" id="icsw.livestatus.tooltip.devicegroup">
     <div class="panel panel-default svg-tooltip">
         <div class="panel-heading">
-            <b>DeviceGroup</b>
-            {{ node.check }}
+            <b>Device Group {{node.check.display_name}}</b>
         </div>
     </div>
 </script>
@@ -87,7 +86,7 @@
 <script type="text/ng-template" id="icsw.livestatus.tooltip.serviceoverview">
     <div class="panel panel-default svg-tooltip">
         <div class="panel-heading">
-            <b>ServiceOverview for '{{ node.device.display_name }}' weight={{ node.device.$$serviceWeight }}</b>
+            <b>Service Overview for '{{ node.device.display_name }}' weight={{ node.device.$$serviceWeight }}</b>
         </div>
         <div class="svg-tooltip-content">
             <table class="table table-condensed">
@@ -190,7 +189,7 @@
 <script type="text/ng-template" id="icsw.livestatus.tooltip.histline.device">
     <div class="panel panel-default svg-tooltip">
         <div class="panel-heading">
-            <b>Entry for device</b>
+            <b>Entry for Device</b>
         </div>
         <div class="svg-tooltip-content">
             <table class="table table-condensed">
@@ -220,7 +219,7 @@
 <script type="text/ng-template" id="icsw.livestatus.tooltip.histline.service">
     <div class="panel panel-default svg-tooltip">
         <div class="panel-heading">
-            <b>Entry for service</b>
+            <b>Entry for Service</b>
         </div>
         <div class="svg-tooltip-content">
             <table class="table table-condensed">
