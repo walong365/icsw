@@ -25,7 +25,7 @@ from initat.host_monitoring import limits
 from initat.tools import logging_tools, process_tools, server_command
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     def base_init(self):
         self.smartctl_bin = None
         self.devices = {}
@@ -82,9 +82,9 @@ class _general(hm_classes.hm_module):
             )
 
 
-class smartstat_command(hm_classes.hm_command):
+class smartstat_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True, arguments_name="interface")
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True, arguments_name="interface")
 
     def __call__(self, srv_com, cur_ns):
         self.module.check_for_smartctl()

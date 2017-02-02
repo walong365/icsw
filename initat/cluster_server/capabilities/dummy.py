@@ -30,7 +30,7 @@ class dummy_stuff(BackgroundBase):
         description = "Dummy capability, do not use"
 
     def init_bg_stuff(self):
-        self.load_value = hm_classes.mvect_entry("sys.load1", info="test entry", default=0.0)
+        self.load_value = hm_classes.MachineVectorEntry("sys.load1", info="test entry", default=0.0)
 
     def _call(self, cur_time, builder):
         self.load_value.update(float(open("/proc/loadavg", "r").read().split()[0]))

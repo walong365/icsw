@@ -44,7 +44,7 @@ nw_classes = ["ethernet", "network", "infiniband"]
 EXTRA_BLOCK_DEVS = "/etc/sysconfig/host-monitoring.d/extra_block_devs"
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     def base_init(self):
         self.dmi_bin = process_tools.find_file("dmidecode")
         self.lstopo_ng_bin = process_tools.find_file("lstopo-no-graphics")
@@ -1290,9 +1290,9 @@ class _general(hm_classes.hm_module):
         return ret_str, dev_dict
 
 
-class df_command(hm_classes.hm_command):
+class df_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
         self.__disk_lut = partition_tools.disk_lut()
@@ -1535,9 +1535,9 @@ class df_command(hm_classes.hm_command):
                 logging_tools.get_plural("partition", len(all_parts))
             )
 
-class vgfree_command(hm_classes.hm_command):
+class vgfree_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
 
@@ -1566,9 +1566,9 @@ class vgfree_command(hm_classes.hm_command):
                                                                                        v_free,
                                                                                        v_size)
 
-class lvsdatapercent_command(hm_classes.hm_command):
+class lvsdatapercent_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
 
@@ -1593,7 +1593,7 @@ class lvsdatapercent_command(hm_classes.hm_command):
         except ValueError:
             return limits.mon_STATE_CRITICAL, "No data_percent value set for {}".format(lv_name)
 
-class version_command(hm_classes.hm_command):
+class version_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         srv_com["version"] = VERSION_STRING
 
@@ -1608,7 +1608,7 @@ class version_command(hm_classes.hm_command):
         return act_state, "version is {}".format(result)
 
 
-class get_0mq_id_command(hm_classes.hm_command):
+class get_0mq_id_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         _cs = config_store.ConfigStore(ZMQ_ID_MAP_STORE, log_com=self.log, prefix="bind")
         if "target_ip" in srv_com:
@@ -1624,7 +1624,7 @@ class get_0mq_id_command(hm_classes.hm_command):
             return limits.mon_STATE_CRITICAL, "version not found"
 
 
-class status_command(hm_classes.hm_command):
+class status_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         srv_com["status_str"] = "ok running"
 
@@ -1639,7 +1639,7 @@ class status_command(hm_classes.hm_command):
         return act_state, "status is {}".format(result)
 
 
-class get_uuid_command(hm_classes.hm_command):
+class get_uuid_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         srv_com["uuid"] = uuid_tools.get_uuid().urn
 
@@ -1654,9 +1654,9 @@ class get_uuid_command(hm_classes.hm_command):
         return act_state, "uuid is {}".format(result.split()[1])
 
 
-class swap_command(hm_classes.hm_command):
+class swap_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=False)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
 
@@ -1702,9 +1702,9 @@ class swap_command(hm_classes.hm_command):
             )
 
 
-class mem_command(hm_classes.hm_command):
+class mem_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=False)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
 
@@ -1798,9 +1798,9 @@ class mem_command(hm_classes.hm_command):
         )
 
 
-class sysinfo_command(hm_classes.hm_command):
+class sysinfo_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
@@ -1872,11 +1872,11 @@ class sysinfo_command(hm_classes.hm_command):
             return limits.mon_STATE_OK, ret_str
 
 
-class load_command(hm_classes.hm_command):
+class load_command(hm_classes.MonitoringCommand):
     info_string = "load information"
 
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=False)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
 
@@ -1918,7 +1918,7 @@ class load_command(hm_classes.hm_command):
         )
 
 
-class uptime_command(hm_classes.hm_command):
+class uptime_command(hm_classes.MonitoringCommand):
     info_string = "uptime information"
 
     def __call__(self, srv_com, cur_ns):
@@ -1953,7 +1953,7 @@ class uptime_command(hm_classes.hm_command):
         )
 
 
-class date_command(hm_classes.hm_command):
+class date_command(hm_classes.MonitoringCommand):
     info_string = "return date"
 
     def __call__(self, srv_com, cur_ns):
@@ -2002,7 +2002,7 @@ class date_command(hm_classes.hm_command):
             return limits.mon_STATE_OK, "%s" % (time.ctime(remote_date))
 
 
-class macinfo_command(hm_classes.hm_command):
+class macinfo_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         valid_devs = ["eth", "myri", "ib", "vmnet"]
         net_dict = {}
@@ -2069,9 +2069,9 @@ class macinfo_command(hm_classes.hm_command):
             return limits.mon_STATE_CRITICAL, "error parsing return"
 
 
-class umount_command(hm_classes.hm_command):
+class umount_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
         ignore_list = (srv_com["arguments:rest"].text or "").strip().split()
@@ -2112,7 +2112,7 @@ class umount_command(hm_classes.hm_command):
             )
 
 
-class ksminfo_command(hm_classes.hm_command):
+class ksminfo_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         ksm_dir = "/sys/kernel/mm/ksm"
         if os.path.isdir(ksm_dir):
@@ -2152,7 +2152,7 @@ class ksminfo_command(hm_classes.hm_command):
             return limits.mon_STATE_CRITICAL, "ksm problem: {]".format(ksm_info.text)
 
 
-class hugepageinfo_command(hm_classes.hm_command):
+class hugepageinfo_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         hpage_dir = "/sys/kernel/mm/hugepages"
         if os.path.isdir(hpage_dir):
@@ -2192,7 +2192,7 @@ class hugepageinfo_command(hm_classes.hm_command):
             return limits.mon_STATE_CRITICAL, "hugepage problem: %s" % (hpage_info.text)
 
 
-class thugepageinfo_command(hm_classes.hm_command):
+class thugepageinfo_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         hpage_dir = "/sys/kernel/mm/transparent_hugepage"
         if os.path.isdir(hpage_dir):
@@ -2230,7 +2230,7 @@ class thugepageinfo_command(hm_classes.hm_command):
         return ret_state, "transparent hugepage {}".format(ret_str)
 
 
-class pciinfo_command(hm_classes.hm_command):
+class pciinfo_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
             srv_com["pci_type"] = "linux"
@@ -2292,7 +2292,7 @@ class pciinfo_command(hm_classes.hm_command):
             return limits.mon_STATE_CRITICAL, "no PCI-dump found"
 
 
-class cpuflags_command(hm_classes.hm_command):
+class cpuflags_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         srv_com["proclines"] = server_command.compress(open("/proc/cpuinfo", "r").read())
 
@@ -2320,7 +2320,7 @@ class cpuflags_command(hm_classes.hm_command):
         return ret_state, "\n".join(ret_lines)
 
 
-class cpuinfo_command(hm_classes.hm_command):
+class cpuinfo_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         srv_com["cpuinfo"] = self.module._cpuinfo_int(srv_com)
 
@@ -2374,7 +2374,7 @@ class cpuinfo_command(hm_classes.hm_command):
         return ret_state, join_str.join([head_str] + str(out_list).split("\n"))  # ret_f)
 
 
-class lvminfo_command(hm_classes.hm_command):
+class lvminfo_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         self.module.local_lvm_info.update()
         srv_com["lvm_dict"] = self.module.local_lvm_info.generate_xml_dict(srv_com.builder)
@@ -2410,7 +2410,7 @@ class lvminfo_command(hm_classes.hm_command):
                 return limits.mon_STATE_WARNING, "no LVM-binaries found"
 
 
-class partinfo_command(hm_classes.hm_command):
+class partinfo_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         self.module.local_lvm_info.update()
         ret_str, dev_dict = self.module._partinfo_int()
@@ -2550,7 +2550,7 @@ class partinfo_command(hm_classes.hm_command):
         return limits.mon_STATE_OK, "\n".join(ret_f)
 
 
-class mdstat_command(hm_classes.hm_command):
+class mdstat_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         srv_com["mdstat"] = server_command.compress(open("/proc/mdstat", "r").read())
 
@@ -2596,7 +2596,7 @@ class mdstat_command(hm_classes.hm_command):
         return ret_state, ret_str
 
 
-class uname_command(hm_classes.hm_command):
+class uname_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         for idx, sub_str in enumerate(platform.uname()):
             srv_com["uname:part_%d" % (idx)] = sub_str
@@ -2608,9 +2608,9 @@ class uname_command(hm_classes.hm_command):
         return limits.mon_STATE_OK, "{}, kernel {}".format(uname_list[0], uname_list[2])
 
 
-class cpufreq_info_command(hm_classes.hm_command):
+class cpufreq_info_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name)
+        hm_classes.MonitoringCommand.__init__(self, name)
         self.parser.add_argument("--governor", dest="governor", type=str, default="")
         self.parser.add_argument("--driver", dest="driver", type=str, default="")
 
@@ -2713,7 +2713,7 @@ class cpufreq_info_command(hm_classes.hm_command):
         return ret_state, ", ".join(ret_f)
 
 
-class lstopo_command(hm_classes.hm_command):
+class lstopo_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         srv_com["lstopo_dump"] = self.module._lstopo_int()
 
@@ -2722,7 +2722,7 @@ class lstopo_command(hm_classes.hm_command):
         return limits.mon_STATE_OK, "received lstopo output"
 
 
-class lshw_command(hm_classes.hm_command):
+class lshw_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         srv_com["lshw_dump"] = self.module._lshw_int()
 
@@ -2735,7 +2735,7 @@ class lshw_command(hm_classes.hm_command):
         return limits.mon_STATE_OK, "received lshw output"
 
 
-class lsblk_command(hm_classes.hm_command):
+class lsblk_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         srv_com["lsblk_dump"] = self.module._lsblk_int()
 
@@ -2754,7 +2754,7 @@ class lsblk_command(hm_classes.hm_command):
         return limits.mon_STATE_OK, dump
 
 
-class xrandr_command(hm_classes.hm_command):
+class xrandr_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         srv_com["xrandr_dump"] = self.module._xrandr_int()
 
@@ -2767,7 +2767,7 @@ class xrandr_command(hm_classes.hm_command):
         return limits.nag_STATE_OK, "received xrandr output"
 
 
-class dmiinfo_command(hm_classes.hm_command):
+class dmiinfo_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
             srv_com["dmi_type"] = "linux"
@@ -2820,7 +2820,7 @@ class dmiinfo_command(hm_classes.hm_command):
             return limits.mon_STATE_OK, "\n".join(_out_f)
 
 
-class windowshardware_command(hm_classes.hm_command):
+class windowshardware_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
             from collections import defaultdict

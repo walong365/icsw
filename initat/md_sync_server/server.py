@@ -25,7 +25,7 @@ import time
 import zmq
 
 from initat.host_monitoring.client_enums import icswServiceEnum
-from initat.host_monitoring.hm_classes import mvect_entry
+from initat.host_monitoring.hm_classes import MachineVectorEntry
 from initat.host_monitoring.ipc_comtools import IPCCommandHandler
 from initat.md_config_server import constants
 from initat.md_sync_server.config import global_config, CS_NAME
@@ -170,10 +170,10 @@ class server_process(
             drop_com = server_command.srv_command(command="set_vector")
             add_obj = drop_com.builder("values")
             mv_list = [
-                mvect_entry("mon.devices.up", info="Devices up", default=0),
-                mvect_entry("mon.devices.down", info="Devices down", default=0),
-                mvect_entry("mon.devices.total", info="Devices total", default=0),
-                mvect_entry("mon.devices.unknown", info="Devices unknown", default=0),
+                MachineVectorEntry("mon.devices.up", info="Devices up", default=0),
+                MachineVectorEntry("mon.devices.down", info="Devices down", default=0),
+                MachineVectorEntry("mon.devices.total", info="Devices total", default=0),
+                MachineVectorEntry("mon.devices.unknown", info="Devices unknown", default=0),
             ]
             cur_time = time.time()
             for mv_entry, key in zip(mv_list, ["up", "down", "tot", "unknown"]):

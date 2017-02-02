@@ -21,7 +21,7 @@ import os
 import inspect
 import importlib
 
-from initat.host_monitoring.hm_classes import hm_command
+from initat.host_monitoring.hm_classes import MonitoringCommand
 from initat.host_monitoring.modules.raidcontrollers.base import ctrl_type
 
 
@@ -44,5 +44,5 @@ for mod_name in _mods:
         if inspect.isclass(_entry):
             if _entry != ctrl_type and issubclass(_entry, ctrl_type):
                 CTRL_DICT[_entry.Meta.name] = _entry
-            elif _entry != hm_command and issubclass(_entry, hm_command):
+            elif _entry != MonitoringCommand and issubclass(_entry, MonitoringCommand):
                 COMMAND_DICT[_name] = _entry

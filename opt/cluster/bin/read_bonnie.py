@@ -88,10 +88,12 @@ class sum_aggreg(aggreg):
         while in_int > 1024:
             in_int //= 1024.
             act_pf = mult.pop(0)
-        return "%.2f %s%s%s" % (in_int,
-                                act_pf,
-                                self.__unit_str,
-                                self.__add_str)
+        return "%.2f %s%s%s" % (
+            in_int,
+            act_pf,
+            self.__unit_str,
+            self.__add_str
+        )
 
     def value(self):
         return sum(self.__values)
@@ -122,32 +124,38 @@ class max_aggreg(aggreg):
 
 class res_line(object):
     def __init__(self):
-        self.__out_keys = ["size",
-                           "seq_out_char_speed",
-                           "seq_out_char_cpu",
-                           "seq_out_block_speed",
-                           "seq_out_block_cpu",
-                           "seq_rew_block_speed",
-                           "seq_rew_block_cpu",
-                           "seq_in_char_speed",
-                           "seq_in_char_cpu",
-                           "seq_in_block_speed",
-                           "seq_in_block_cpu",
-                           "random_seek_speed",
-                           "random_seek_cpu"]
+        self.__out_keys = [
+            "size",
+            "seq_out_char_speed",
+            "seq_out_char_cpu",
+            "seq_out_block_speed",
+            "seq_out_block_cpu",
+            "seq_rew_block_speed",
+            "seq_rew_block_cpu",
+            "seq_in_char_speed",
+            "seq_in_char_cpu",
+            "seq_in_block_speed",
+            "seq_in_block_cpu",
+            "random_seek_speed",
+            "random_seek_cpu"
+        ]
         self.__value_dict = {}
-        for sum_name in ["seq_out_char_speed",
-                         "seq_out_block_speed",
-                         "seq_rew_block_speed",
-                         "seq_in_char_speed",
-                         "seq_in_block_speed"]:
+        for sum_name in [
+            "seq_out_char_speed",
+            "seq_out_block_speed",
+            "seq_rew_block_speed",
+            "seq_in_char_speed",
+            "seq_in_block_speed"
+        ]:
             self[sum_name] = sum_aggreg(mult=1024)
         self["random_seek_speed"] = sum_aggreg(mult=1, postfix="", unit="", float_input=True)
-        for max_name in ["seq_out_char_cpu",
-                         "seq_out_block_cpu",
-                         "seq_rew_block_cpu",
-                         "seq_in_char_cpu",
-                         "seq_in_block_cpu"]:
+        for max_name in [
+            "seq_out_char_cpu",
+            "seq_out_block_cpu",
+            "seq_rew_block_cpu",
+            "seq_in_char_cpu",
+            "seq_in_block_cpu"
+        ]:
             self[max_name] = max_aggreg()
         self["random_seek_cpu"] = max_aggreg(postfix="%")
         self.machine_name = "not set"
@@ -194,20 +202,32 @@ def main():
         print("File %s does not exist" % (file_name))
         sys.exit(2)
     try:
-        file_struct = server_command.net_to_sys(open(file_name, "r").read())
+        file_struct = server_command.decompress(
+            open(file_name, "r").read(),
+            json=True
+        )
     except:
-        print("Error reading file %s: %s" % (file_name,
-                                             process_tools.get_except_info()))
+        print(
+            "Error reading file %s: %s" % (
+                file_name,
+                process_tools.get_except_info()
+            )
+        )
         sys.exit(3)
     out_list = logging_tools.form_list()
-    out_list.set_header_string(0, ["tnum", "ttot", "time spent",
-                                   "machine", "size",
-                                   "cout_spd", "cout_cpu",
-                                   "seqout_spd", "seqout_cpu",
-                                   "rew_spd", "rew_cpu",
-                                   "cin_spd", "cin_cpu",
-                                   "seqin_spd", "seqin_cpu",
-                                   "seek_spd", "seek_cpu"])
+    out_list.set_header_string(
+        0,
+        [
+            "tnum", "ttot", "time spent",
+            "machine", "size",
+            "cout_spd", "cout_cpu",
+            "seqout_spd", "seqout_cpu",
+            "rew_spd", "rew_cpu",
+            "cin_spd", "cin_cpu",
+            "seqin_spd", "seqin_cpu",
+            "seek_spd", "seek_cpu"
+        ]
+    )
     out_list.set_format_string("time spent", "s", "")
     out_list.set_format_string("cout_spd", "s", "")
     out_list.set_format_string("seqout_spd", "s", "")
@@ -216,8 +236,16 @@ def main():
     out_list.set_format_string("seqin_spd", "s", "")
     out_list.set_format_string("seek_spd", "s", "")
     run_keys = sorted([x for x in list(file_struct.keys()) if type(x) in [type(0), type(0)]])
-    print("Found %s: %s" % (logging_tools.get_plural("run", len(run_keys)),
-                            ", ".join([logging_tools.get_plural("thread", file_struct[x]["num_threads"]) for x in run_keys])))
+    print(
+        "Found %s: %s" % (
+            logging_tools.get_plural("run", len(run_keys)),
+            ", ".join(
+                [
+                    logging_tools.get_plural("thread", file_struct[x]["num_threads"]) for x in run_keys
+                ]
+            )
+        )
+    )
     # dict special_key -> thread_num -> values
     spec_dict = dict([(key, {}) for key in res_line().get_out_keys() if key.count("speed")])
     for run_key in run_keys:
@@ -225,9 +253,13 @@ def main():
         tot_threads = run_stuff["num_threads"]
         print("run with %s:" % (logging_tools.get_plural("thread", tot_threads)))
         if run_stuff["started"] != run_stuff["ended"] or run_stuff["started"] != run_stuff["num_threads"]:
-            print(" + started / ended / num_threads differ: %d / %d / %d" % (run_stuff["started"],
-                                                                             run_stuff["ended"],
-                                                                             run_stuff["num_threads"]))
+            print(
+                " + started / ended / num_threads differ: %d / %d / %d" % (
+                    run_stuff["started"],
+                    run_stuff["ended"],
+                    run_stuff["num_threads"]
+                )
+            )
         else:
             run_res = run_stuff["results"]
             run_obj = res_line()
@@ -246,14 +278,26 @@ def main():
                 except:
                     print(" + %s" % (process_tools.get_except_info()))
                 else:
-                    out_list.add_line([res_thread,
-                                       tot_threads,
-                                       logging_tools.get_time_str(run_time) or "---",
-                                       line_obj.machine_name] + [line_obj[key] for key in line_obj.get_out_keys()])
-            out_list.add_line([res_thread,
-                               "all",
-                               logging_tools.get_time_str(run_time) or "---",
-                               run_obj.machine_name] + [run_obj[key] for key in run_obj.get_out_keys()])
+                    out_list.add_line(
+                        [
+                            res_thread,
+                            tot_threads,
+                            logging_tools.get_time_str(run_time) or "---",
+                            line_obj.machine_name
+                        ] + [
+                            line_obj[key] for key in line_obj.get_out_keys()
+                        ]
+                    )
+            out_list.add_line(
+                [
+                    res_thread,
+                    "all",
+                    logging_tools.get_time_str(run_time) or "---",
+                    run_obj.machine_name
+                ] + [
+                    run_obj[key] for key in run_obj.get_out_keys()
+                ]
+            )
             for key in list(spec_dict.keys()):
                 spec_dict[key][tot_threads] = run_obj[key]
     if out_list:
@@ -270,11 +314,15 @@ def main():
                     top_value = act_struct.value()
                 act_val = act_struct.value()
                 act_perc = 100 * act_val / top_value
-                out_list.add_line([key,
-                                   t_num,
-                                   act_struct,
-                                   "%7.2f %%" % (act_perc),
-                                   act_struct.get_perc_graph(act_perc)])
+                out_list.add_line(
+                    [
+                        key,
+                        t_num,
+                        act_struct,
+                        "%7.2f %%" % (act_perc),
+                        act_struct.get_perc_graph(act_perc)
+                    ]
+                )
             out_list.add_line(["-" * 50])
         print(out_list)
 

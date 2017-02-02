@@ -24,7 +24,7 @@ from initat.host_monitoring import limits, hm_classes
 from initat.tools import logging_tools, process_tools
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     def init_module(self):
         self._find_ipsec_command()
 
@@ -232,9 +232,9 @@ class c_con(object):
             return False
 
 
-class ipsec_status_command(hm_classes.hm_command):
+class ipsec_status_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
         srv_com["ipsec_status"] = self.module._update_ipsec_status()
@@ -242,10 +242,6 @@ class ipsec_status_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         con_dict = srv_com["ipsec_status"]
         return self._interpret(con_dict, cur_ns)
-
-    def interpret_old(self, result, parsed_coms):
-        con_dict = hm_classes.net_to_sys(result[3:])
-        return self._interpret(con_dict, parsed_coms)
 
     def _interpret(self, con_dict, cur_ns):
         if cur_ns.arguments:

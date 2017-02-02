@@ -22,7 +22,7 @@ from initat.host_monitoring import limits, hm_classes
 from initat.tools import logging_tools, process_tools
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     def _exec_command(self, com, **kwargs):
         c_stat, c_out = subprocess.getstatusoutput(com)
         if kwargs.get("full_output", False):
@@ -34,9 +34,9 @@ class _general(hm_classes.hm_module):
             return c_out.split("\n")
 
 
-class corosync_status_command(hm_classes.hm_command):
+class corosync_status_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=False)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("-w", dest="warn", default=4, type=int)
         self.parser.add_argument("-c", dest="crit", default=8, type=int)
 
@@ -111,7 +111,7 @@ class corosync_status_command(hm_classes.hm_command):
         return ret_state, ", ".join(out_f)
 
 
-class heartbeat_status_command(hm_classes.hm_command):
+class heartbeat_status_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         srv_com["heartbeat_info"] = {
             "host": process_tools.get_machine_name(),
@@ -119,9 +119,6 @@ class heartbeat_status_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["heartbeat_info"], cur_ns)
-
-    def interpret_old(self, result, parsed_coms):
-        return self._interpret(hm_classes.net_to_sys(result[3:]), parsed_coms)
 
     def _interpret(self, r_dict, parsed_coms):
         if isinstance(r_dict, list):

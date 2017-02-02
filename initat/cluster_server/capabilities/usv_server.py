@@ -58,7 +58,7 @@ class usv_server_stuff(BackgroundBase):
                     first_v = value.split()[0]
                     if key == "linev":
                         my_vector.append(
-                            hm_classes.mvect_entry(
+                            hm_classes.MachineVectorEntry(
                                 "usv.volt.line",
                                 info="Line voltage",
                                 default=0.,
@@ -70,7 +70,7 @@ class usv_server_stuff(BackgroundBase):
                         )
                     elif key == "loadpct":
                         my_vector.append(
-                            hm_classes.mvect_entry(
+                            hm_classes.MachineVectorEntry(
                                 "usv.percent.load",
                                 info="Percent Load Capacity",
                                 default=0.,
@@ -82,7 +82,7 @@ class usv_server_stuff(BackgroundBase):
                         )
                     elif key == "bcharge":
                         my_vector.append(
-                            hm_classes.mvect_entry(
+                            hm_classes.MachineVectorEntry(
                                 "usv.percent.charge",
                                 info="Battery charge",
                                 default=0.,
@@ -94,7 +94,7 @@ class usv_server_stuff(BackgroundBase):
                         )
                     elif key == "timeleft":
                         my_vector.append(
-                            hm_classes.mvect_entry(
+                            hm_classes.MachineVectorEntry(
                                 "usv.time.left",
                                 info="Time left in minutes",
                                 default=0.,
@@ -106,7 +106,7 @@ class usv_server_stuff(BackgroundBase):
                         )
                     elif key == "itemp":
                         my_vector.append(
-                            hm_classes.mvect_entry(
+                            hm_classes.MachineVectorEntry(
                                 "usv.temp.int",
                                 info="Internal temperature",
                                 default=0.,

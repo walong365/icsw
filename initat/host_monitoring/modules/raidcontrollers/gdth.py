@@ -196,7 +196,7 @@ class ctrl_type_gdth(ctrl_type):
         return ret_state, "{}: {}".format(ret_str, ", ".join(out_f))
 
 
-class gdth_status_command(hm_classes.hm_command):
+class gdth_status_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         ctrl_type.update("gdth")
         if "arguments:arg0" in srv_com:

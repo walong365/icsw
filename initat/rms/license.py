@@ -624,7 +624,7 @@ class LicenseProcess(threading_tools.icswProcessObj):
         add_obj = drop_com.builder("values")
         cur_time = time.time()
         for lic_stuff in actual_licenses.values():
-            for cur_mve in lic_stuff.get_mvect_entries(hm_classes.mvect_entry):
+            for cur_mve in lic_stuff.get_mvect_entries(hm_classes.MachineVectorEntry):
                 cur_mve.valid_until = cur_time + 120
                 add_obj.append(cur_mve.build_xml(drop_com.builder))
         drop_com["vector_loadsensor"] = add_obj

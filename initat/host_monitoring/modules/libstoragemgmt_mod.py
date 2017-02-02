@@ -18,7 +18,7 @@
 #
 
 from .. import limits
-from ..hm_classes import hm_command, hm_module
+from ..hm_classes import MonitoringCommand, MonitoringModule
 from ..long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
 
 try:
@@ -27,7 +27,7 @@ except ImportError:
     lsm = None
 
 
-class _general(hm_module):
+class _general(MonitoringModule):
     def init_module(self):
         self.enabled = True
         if lsm:
@@ -58,7 +58,7 @@ class LibstoragemgmtCheck(LongRunningCheck):
         queue.put(result)
 
 
-class libstoragemgmt_command(hm_command):
+class libstoragemgmt_command(MonitoringCommand):
     """
     A generic libstoragemgmt check. Needs a URI specifying the device to check.
     This check needs a running lsmd from the libstoragemgmt-init package.

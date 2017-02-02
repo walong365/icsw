@@ -58,9 +58,9 @@ class VPNNetSpeed(object):
             return (0., 0.)
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     def __init__(self, *args, **kwargs):
-        hm_classes.hm_module.__init__(self, *args, **kwargs)
+        hm_classes.MonitoringModule.__init__(self, *args, **kwargs)
         # instance dict
         self.__inst_dict = {}
 
@@ -341,10 +341,10 @@ class OpenVPNInstance(object):
         }
 
 
-class certificate_status_command(hm_classes.hm_command):
+class certificate_status_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
         self._openssl_command = process_tools.find_file("openssl")
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def _get_pem_status(self, file_name):
         pem_com = "{} x509 -in {} -startdate -enddate -noout".format(
@@ -481,9 +481,9 @@ class certificate_status_command(hm_classes.hm_command):
         )
 
 
-class openvpn_status_command(hm_classes.hm_command):
+class openvpn_status_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=False)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("-i", dest="instance", type=str, default="ALL")
         self.parser.add_argument("-p", dest="peer", type=str, default="ALL")
 

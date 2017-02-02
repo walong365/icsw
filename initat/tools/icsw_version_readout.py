@@ -46,7 +46,9 @@ else:
     VERSION_STRING = "0.0-0"
     if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
         import subprocess
-        VERSION_STRING = subprocess.check_output(["nssm.exe", "get", "ICSW_Monitoring_Service", "Description"])
+        VERSION_STRING = subprocess.check_output(
+            ["nssm.exe", "get", "ICSW_Monitoring_Service", "Description"]
+        )
         VERSION_STRING = VERSION_STRING.replace(b"\x00", b"").decode().strip()
         maj, min, release = VERSION_STRING.split(".")
         VERSION_STRING = "{}.{}-{}".format(maj, min, release)

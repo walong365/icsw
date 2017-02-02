@@ -25,7 +25,7 @@ from initat.host_monitoring import limits, hm_classes
 from initat.tools import process_tools, server_command
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     def init_module(self):
         sge_dict = {}
         for v_name, v_src in [
@@ -40,7 +40,7 @@ class _general(hm_classes.hm_module):
         self.sge_dict = sge_dict
 
 
-class sge_queue_status_command(hm_classes.hm_command):
+class sge_queue_status_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
         super(sge_queue_status_command, self).__init__(name)
         self.parser.add_argument("--sge-queue", dest="sge_queue", type=str)

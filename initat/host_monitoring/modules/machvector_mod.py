@@ -34,12 +34,12 @@ from initat.tools import logging_tools, process_tools, server_command, config_st
 from ..constants import MACHVECTOR_CS_NAME
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     class Meta:
         priority = 5
 
     def __init__(self, *args, **kwargs):
-        hm_classes.hm_module.__init__(self, *args, **kwargs)
+        hm_classes.MonitoringModule.__init__(self, *args, **kwargs)
 
     def init_module(self):
         if hasattr(self.main_proc, "register_vector_receiver"):
@@ -68,9 +68,9 @@ class _general(hm_classes.hm_module):
         self.machine_vector.update()
 
 
-class get_mvector_command(hm_classes.hm_command):
+class get_mvector_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--raw", dest="raw", action="store_true", default=False)
 
     def __call__(self, srv_com, cur_ns):
@@ -100,7 +100,7 @@ class get_mvector_command(hm_classes.hm_command):
             for mv_num, mv_key in enumerate(vector_keys):
                 if mv_key in used_keys:
                     cur_xml = srv_com.xpath("//ns:mve[@name='{}']".format(mv_key), start_el=cur_vector, smart_strings=False)[0]
-                    _mv = hm_classes.mvect_entry(
+                    _mv = hm_classes.MachineVectorEntry(
                         cur_xml.attrib.pop("name"),
                         **cur_xml.attrib
                     )
@@ -112,9 +112,9 @@ class get_mvector_command(hm_classes.hm_command):
             return limits.mon_STATE_OK, "\n".join(ret_array)
 
 
-class graph_setup_command(hm_classes.hm_command):
+class graph_setup_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=False)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("--send-name", dest="send_name", type=str)
         self.parser.add_argument("--target-ip", dest="target_ip", type=str)
 
@@ -474,7 +474,7 @@ class MachineVector(object):
             for in_vector in rcv_com.xpath(".//*[@type='vector']", smart_strings=False):
                 for values_list in in_vector:
                     for cur_value in values_list:
-                        self.set_from_external(hm_classes.mvect_entry(**cur_value.attrib))
+                        self.set_from_external(hm_classes.MachineVectorEntry(**cur_value.attrib))
             self.check_timeout()
             self.check_changed()
 
@@ -495,7 +495,7 @@ class MachineVector(object):
         # base is the divider to derive the k/M/G-Values (1, 1000 or 1024)
         # factor is a number the values have to be multipilicated with in order to lead to a meaningful number (for example memory or df)
         self.__changed = True
-        self.__act_dict[name] = hm_classes.mvect_entry(name, default=default, info=info, unit=unit, base=base, factor=factor)
+        self.__act_dict[name] = hm_classes.MachineVectorEntry(name, default=default, info=info, unit=unit, base=base, factor=factor)
 
     def get(self, name, default_value=None):
         return self.__act_dict.get(name, default_value)

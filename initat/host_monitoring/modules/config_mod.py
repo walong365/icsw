@@ -28,7 +28,8 @@ from initat.host_monitoring import limits, hm_classes
 from initat.tools import logging_tools, process_tools, server_command
 from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
-class _general(hm_classes.hm_module):
+
+class _general(hm_classes.MonitoringModule):
     def _parse_ecd(self, in_str):
         # parse exclude_checkdate, ecd has the form [WHHMM][-WHHMM]
         # W ... weekday, 1 ... monday, 7 ... sunday
@@ -62,9 +63,9 @@ class _general(hm_classes.hm_module):
             return (weekday, hour, minute)
 
 
-class check_file_command(hm_classes.hm_command):
+class check_file_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--mod", dest="mod_diff_time", type=int)
         self.parser.add_argument("--size", dest="min_file_size", type=int)
         self.parser.add_argument("--exclude-checkdate", dest="exclude_checkdate", type=str)
@@ -88,9 +89,6 @@ class check_file_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["stat_result"], cur_ns)
-
-    def interpret_old(self, result, cur_ns):
-        return self._interpret(hm_classes.net_to_sys(result[3:]), cur_ns)
 
     def _interpret(self, f_dict, cur_ns):
         ret_state = limits.mon_STATE_OK
@@ -139,9 +137,9 @@ class check_file_command(hm_classes.hm_command):
                                           ", ".join(add_array))
 
 
-class call_script_command(hm_classes.hm_command):
+class call_script_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--at-time", dest="time", type=int, default=0)
         self.parser.add_argument("--use-at", dest="use_at", default=False, action="store_true")
 
@@ -200,34 +198,34 @@ class call_script_command(hm_classes.hm_command):
         return limits.mon_STATE_OK, srv_com["result"].attrib["reply"]
 
 
-class create_dir_command(hm_classes.hm_command):
+class create_dir_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         filesys_tools.create_dir(srv_com, self.log)
 
 
-class remove_dir_command(hm_classes.hm_command):
+class remove_dir_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         filesys_tools.remove_dir(srv_com, self.log)
 
 
-class get_dir_tree_command(hm_classes.hm_command):
+class get_dir_tree_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         filesys_tools.get_dir_tree(srv_com, self.log)
 
 
-class get_file_content_command(hm_classes.hm_command):
+class get_file_content_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         filesys_tools.get_file_content(srv_com, self.log)
 
 
-class set_file_content_command(hm_classes.hm_command):
+class set_file_content_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         filesys_tools.set_file_content(srv_com, self.log)
 
 
-class check_mount_command(hm_classes.hm_command):
+class check_mount_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--type", default="nfs", type=str)
 
     def __call__(self, srv_com, cur_ns):
@@ -271,9 +269,9 @@ class check_mount_command(hm_classes.hm_command):
         )
 
 
-class check_dir_command(hm_classes.hm_command):
+class check_dir_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
         if len(cur_ns.arguments) != 1:
@@ -307,9 +305,10 @@ class check_dir_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         return limits.mon_STATE_OK, "dir {} exists".format(srv_com["result:dir_stat"].attrib["directory"])
 
-class modules_fingerprint_command(hm_classes.hm_command):
+
+class modules_fingerprint_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
         from initat.host_monitoring.modules import HOST_MONITOR_MODULES_HEX_CHECKSUM

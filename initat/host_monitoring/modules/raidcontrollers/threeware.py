@@ -283,11 +283,11 @@ class ctrl_type_tw(ctrl_type):
         return ret_state, ", ".join(ret_list)
 
 
-class tw_status_command(hm_classes.hm_command):
+class tw_status_command(hm_classes.MonitoringCommand):
     info_string = "3ware controller information"
 
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
         ctrl_type.update("tw")

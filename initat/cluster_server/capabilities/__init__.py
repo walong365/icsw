@@ -137,7 +137,7 @@ class CapabilityProcess(threading_tools.icswProcessObj):
         def _vector_entry(v_type, csr):
             # build local vector entry
             service = icswServiceEnum[csr.config_service_enum.enum_name]
-            return hm_classes.mvect_entry(
+            return hm_classes.MachineVectorEntry(
                 "icsw.ova.{}.{}.{}.{}".format(
                     v_type,
                     csr.content_type.model,
@@ -169,7 +169,7 @@ class CapabilityProcess(threading_tools.icswProcessObj):
                 my_vector.append(_vector_entry("consume", _csr))
                 _total += _csr.consumed
         my_vector.append(
-            hm_classes.mvect_entry(
+            hm_classes.MachineVectorEntry(
                 "icsw.ova.overall.total",
                 info="Ova consumed by all actions on all models",
                 default=0,
@@ -180,7 +180,7 @@ class CapabilityProcess(threading_tools.icswProcessObj):
             ).build_xml(_bldr)
         )
         my_vector.append(
-            hm_classes.mvect_entry(
+            hm_classes.MachineVectorEntry(
                 "icsw.ova.overall.ghost",
                 info="Ova consumed by all actions on all models (ghost)",
                 default=0,
@@ -196,7 +196,7 @@ class CapabilityProcess(threading_tools.icswProcessObj):
             lic_id_name = lic_id_name or "global"
             for v_name, v_value in values.items():
                 my_vector.append(
-                    hm_classes.mvect_entry(
+                    hm_classes.MachineVectorEntry(
                         "icsw.ova.license.{}.{}".format(lic_id_name, v_name),
                         info="Ova {} for license {}".format(v_name, lic_id_name),
                         default=0,

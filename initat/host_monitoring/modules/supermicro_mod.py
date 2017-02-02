@@ -391,7 +391,7 @@ CMM 1 IP: 192.168.102.130
 }
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     pass
 
 
@@ -511,13 +511,13 @@ class SMCRetrievePendingStruct(hm_classes.subprocess_struct):
             return False
 
 
-class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
+class smcipmi_command(hm_classes.MonitoringCommand, hm_classes.HMCCacheMixin):
     class Meta:
         cache_timeout = 60
     info_str = "SMCIPMITool frontend"
 
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--user", dest="user", type=str, default="ADMIN")
         self.parser.add_argument("--passwd", dest="passwd", type=str, default="ADMIN")
         self.parser.add_argument("--ip", dest="ip", type=str)

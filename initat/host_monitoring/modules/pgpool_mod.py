@@ -28,7 +28,7 @@ import subprocess
 from configparser import SafeConfigParser
 
 from initat.host_monitoring import limits
-from initat.host_monitoring.hm_classes import hm_command, hm_module
+from initat.host_monitoring.hm_classes import MonitoringCommand, MonitoringModule
 from initat.tools import server_command, logging_tools, process_tools, config_store
 
 try:
@@ -196,7 +196,7 @@ class PGPoolOverview(object):
             self.mv_keys = _new_keys
 
 
-class _general(hm_module):
+class _general(MonitoringModule):
     def init_module(self):
         if psycopg2:
             self.enabled = True
@@ -216,7 +216,7 @@ class ArgumentError(Exception):
     pass
 
 
-class PgPoolCommand(hm_command):
+class PgPoolCommand(MonitoringCommand):
     sql = NotImplemented
     key = NotImplemented
 

@@ -27,7 +27,8 @@ import pwd
 import sys
 import time
 
-from initat.tools import configfile, logging_tools, process_tools, server_command, threading_tools
+from initat.tools import configfile, logging_tools, process_tools, \
+    server_command, threading_tools
 
 
 class slave_thread(threading_tools.thread_obj):
@@ -51,13 +52,15 @@ class slave_thread(threading_tools.thread_obj):
     def _start_run(self):
         if self.__loc_config["SYNC_LOCAL"]:
             self._sync()
-        bonnie_args = "-x %d -d %s -s %d -u %d -g %d%s -q%s" % (self.__loc_config["NUM_TESTS"],
-                                                                self.__loc_config["TMP_DIR"],
-                                                                self.__loc_config["BONNIE_SIZE"],
-                                                                self.__loc_config["UID"],
-                                                                self.__loc_config["GID"],
-                                                                (" -y" if self.__num > 1 else " -p %d" % (self.__max_num)) if self.__loc_config["WAIT_SEMAPHORE"] else "",
-                                                                self.__loc_config["SET_RAM_SIZE"] and " -r %d" % (self.__loc_config["RAM_SIZE"]) or "")
+        bonnie_args = "-x %d -d %s -s %d -u %d -g %d%s -q%s" % (
+            self.__loc_config["NUM_TESTS"],
+            self.__loc_config["TMP_DIR"],
+            self.__loc_config["BONNIE_SIZE"],
+            self.__loc_config["UID"],
+            self.__loc_config["GID"],
+            (" -y" if self.__num > 1 else " -p %d" % (self.__max_num)) if self.__loc_config["WAIT_SEMAPHORE"] else "",
+            self.__loc_config["SET_RAM_SIZE"] and " -r %d" % (self.__loc_config["RAM_SIZE"]) or ""
+        )
         self.log("starting run (bonnie_args: %s)" % (bonnie_args))
         s_time = time.time()
         stat, result = subprocess.getstatusoutput("bonnie++ %s" % (bonnie_args))
@@ -70,9 +73,19 @@ class slave_thread(threading_tools.thread_obj):
             self._sync()
         if stat:
             result = []
-        self.send_pool_message(("run_finished", (self.__num, {"output"      : result,
-                                                              "run_time"    : e_time - s_time,
-                                                              "bonnie_args" : bonnie_args})))
+        self.send_pool_message(
+            (
+                "run_finished",
+                (
+                    self.__num,
+                    {
+                        "output": result,
+                        "run_time": e_time - s_time,
+                        "bonnie_args": bonnie_args
+                    }
+                )
+            )
+        )
 
 
 class server_thread_pool(threading_tools.thread_pool):
@@ -83,48 +96,72 @@ class server_thread_pool(threading_tools.thread_pool):
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("run_finished", self._run_finished)
-        self.log("starting, uid is %d, gid is %d" % (self.__loc_config["UID"],
-                                                     self.__loc_config["GID"]))
+        self.log(
+            "starting, uid is %d, gid is %d" % (
+                self.__loc_config["UID"],
+                self.__loc_config["GID"]
+            )
+        )
         self._breakup_thread_info()
         # spawn threads
         self.__stq_list = []
         for i in range(self.__max_threads):
-            self.__stq_list.append(self.add_thread(slave_thread(self.__loc_config, i + 1, self.__max_threads, self.__logger), start_thread=True).get_thread_queue())
+            self.__stq_list.append(
+                self.add_thread(
+                    slave_thread(
+                        self.__loc_config, i + 1, self.__max_threads, self.__logger
+                    ),
+                    start_thread=True
+                ).get_thread_queue()
+            )
         # init runs
         self.__act_run = 0
         self._check_for_next_run()
+
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         self.__logger.log(lev, what)
+
     def _breakup_thread_info(self):
         t_i_list = sorted(dict([(int(x), True) for x in self.__loc_config["THREADS"].split(":")]).keys())
         self.__num_runs = len(t_i_list)
         self.__thread_list = t_i_list
         self.__max_threads = t_i_list[-1]
-        self.log("%s (%s), max_thread_count is %d" % (logging_tools.get_plural("run", self.__num_runs),
-                                                      ", ".join(["%d" % (x) for x in self.__thread_list]),
-                                                      self.__max_threads))
+        self.log(
+            "%s (%s), max_thread_count is %d" % (
+                logging_tools.get_plural("run", self.__num_runs),
+                ", ".join(["%d" % (x) for x in self.__thread_list]),
+                self.__max_threads
+            )
+        )
+
     def _sync(self):
         s_time = time.time()
         self.log("syncing...")
         stat, out = subprocess.getstatusoutput("sync")
         e_time = time.time()
         self.log("syncing took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
+
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+
     def _check_for_next_run(self):
         if not self.__act_run:
             self.log("init run_dict")
             self.__act_run += 1
-            self.__act_run_dict = {"sysinfo" : process_tools.fetch_sysinfo()[1]}
+            self.__act_run_dict = {
+                "sysinfo": process_tools.fetch_sysinfo()[1]
+            }
         if self.__act_run not in self.__act_run_dict:
             self.log("init run_dict for run %d" % (self.__act_run))
-            self.__act_run_dict[self.__act_run] = {"num_threads" : self.__thread_list[self.__act_run - 1],
-                                                   "started"     : 0,
-                                                   "ended"       : 0,
-                                                   "results"     : {}}
+            self.__act_run_dict[self.__act_run] = {
+                "num_threads": self.__thread_list[self.__act_run - 1],
+                "started": 0,
+                "ended": 0,
+                "results": {}
+            }
             if self.__loc_config["SYNC_GLOBAL"]:
                 self._sync()
             for num_t in range(self.__act_run_dict[self.__act_run]["num_threads"]):
@@ -137,19 +174,25 @@ class server_thread_pool(threading_tools.thread_pool):
             if self.__loc_config["SYNC_GLOBAL"]:
                 self._sync()
             self.log("Saving result to %s" % (self.__loc_config["RESULT_FILE"]))
-            open(self.__loc_config["RESULT_FILE"], "w").write(server_command.sys_to_net(self.__act_run_dict))
+            open(
+                self.__loc_config["RESULT_FILE"], "w"
+            ).write(
+                server_command.compress(self.__act_run_dict, json=True)
+            )
             if self.__act_run == self.__num_runs:
                 self.log("all runs finished, exiting")
                 self._int_error("all runs finished")
             else:
                 self.__act_run += 1
                 self._check_for_next_run()
+
     def _run_finished(self, xxx_todo_changeme):
         (t_num, result) = xxx_todo_changeme
         self.log("Got result from thread %d" % (t_num))
         self.__act_run_dict[self.__act_run]["results"][t_num] = result
         self.__act_run_dict[self.__act_run]["ended"] += 1
         self._check_for_next_run()
+
 
 def main():
     try:
@@ -160,23 +203,28 @@ def main():
     pname = os.path.basename(sys.argv[0])
     user_name = pwd.getpwuid(os.getuid())[0]
     group_name = grp.getgrgid(os.getgid())[0]
-    loc_config = configfile.configuration("bonnie", {"USER"            : configfile.str_c_var(user_name),
-                                                     "GROUP"           : configfile.str_c_var(group_name),
-                                                     "TMP_DIR"         : configfile.str_c_var("/tmp"),
-                                                     "UID"             : configfile.int_c_var(0),
-                                                     "GID"             : configfile.int_c_var(0),
-                                                     "SET_RAM_SIZE"    : configfile.bool_c_var(False),
-                                                     "RAM_SIZE"        : configfile.int_c_var(0),
-                                                     "DAEMONIZE"       : configfile.bool_c_var(False),
-                                                     "WAIT_SEMAPHORE"  : configfile.bool_c_var(True),
-                                                     "SYNC_GLOBAL"     : configfile.bool_c_var(False),
-                                                     "SYNC_LOCAL"      : configfile.bool_c_var(False),
-                                                     "NUM_TESTS"       : configfile.int_c_var(1),
-                                                     "BONNIE_SIZE"     : configfile.int_c_var(1024),
-                                                     "LOG_NAME"        : configfile.str_c_var("bonnie"),
-                                                     "LOG_DESTINATION" : configfile.str_c_var("uds:/var/lib/logging-server/py_log"),
-                                                     "THREADS"         : configfile.str_c_var("1"),
-                                                     "RESULT_FILE"     : configfile.str_c_var("/tmp/bonnie_res_%s" % (time.ctime().replace(" ", "_").replace("__", "_")))})
+    loc_config = configfile.configuration(
+        "bonnie",
+        {
+            "USER": configfile.str_c_var(user_name),
+            "GROUP": configfile.str_c_var(group_name),
+            "TMP_DIR": configfile.str_c_var("/tmp"),
+            "UID": configfile.int_c_var(0),
+            "GID": configfile.int_c_var(0),
+            "SET_RAM_SIZE": configfile.bool_c_var(False),
+            "RAM_SIZE": configfile.int_c_var(0),
+            "DAEMONIZE": configfile.bool_c_var(False),
+            "WAIT_SEMAPHORE": configfile.bool_c_var(True),
+            "SYNC_GLOBAL": configfile.bool_c_var(False),
+            "SYNC_LOCAL": configfile.bool_c_var(False),
+            "NUM_TESTS": configfile.int_c_var(1),
+            "BONNIE_SIZE": configfile.int_c_var(1024),
+            "LOG_NAME": configfile.str_c_var("bonnie"),
+            "LOG_DESTINATION": configfile.str_c_var("uds:/var/lib/logging-server/py_log"),
+            "THREADS": configfile.str_c_var("1"),
+            "RESULT_FILE": configfile.str_c_var("/tmp/bonnie_res_%s" % (time.ctime().replace(" ", "_").replace("__", "_")))
+        }
+    )
     for opt, arg in opts:
         if opt in ["-h", "--help"]:
             print("Usage: %s [OPTIONS]" % (pname))
@@ -239,19 +287,25 @@ def main():
     else:
         print("empty thread_info, exiting ...")
         sys.exit(1)
-    logger = logging_tools.get_logger(loc_config["LOG_NAME"],
-                                      loc_config["LOG_DESTINATION"],
-                                      init_logger=True)
+    logger = logging_tools.get_logger(
+        loc_config["LOG_NAME"],
+        loc_config["LOG_DESTINATION"],
+        init_logger=True
+    )
     if loc_config["DAEMONIZE"]:
         process_tools.become_daemon()  # deprecated call
-        hc_ok = process_tools.set_handles({"out"    : (1, "bonnie.out"),  # deprecated code
-                                           "err"    : (0, "/var/lib/logging-server/py_err"),
-                                           "strict" : 0})
+        hc_ok = process_tools.set_handles(
+            {
+                "out": (1, "bonnie.out"),  # deprecated code
+                "err": (0, "/var/lib/logging-server/py_err"),
+                "strict": 0
+            }
+        )
     thread_pool = server_thread_pool(logger, loc_config)
     thread_pool.thread_loop()
     logger.info("CLOSE")
 
 
 if __name__ == "__main__":
-    print("code is currently deprecated, needs refacturing")
+    print("code is currently deprecated, needs some mahor refacturing")
     # main()

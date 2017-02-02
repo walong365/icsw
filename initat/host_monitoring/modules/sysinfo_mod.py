@@ -25,14 +25,14 @@ from initat.host_monitoring import hm_classes, limits
 from initat.tools import process_tools, logging_tools, server_command
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     def init_module(self):
         self.lsmod_command = process_tools.find_file("lsmod")
 
 
-class lsmodinfo_command(hm_classes.hm_command):
+class lsmodinfo_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name)
+        hm_classes.MonitoringCommand.__init__(self, name)
         self.parser.add_argument("--required", dest="required", type=str, default="")
 
     def __call__(self, srv_com, cur_ns):
@@ -74,9 +74,9 @@ class lsmodinfo_command(hm_classes.hm_command):
             return limits.mon_STATE_OK, "loaded {}".format(logging_tools.get_plural("module", len(modules)))
 
 
-class mountinfo_command(hm_classes.hm_command):
+class mountinfo_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name)
+        hm_classes.MonitoringCommand.__init__(self, name)
         self.parser.add_argument("--mountpoint", type=str, default="/")
         self.parser.add_argument("--filesys", type=str, default="ext4")
 

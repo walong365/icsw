@@ -270,7 +270,7 @@ class subprocess_struct(object):
                 del self.popen
 
 
-class hm_module(object):
+class MonitoringModule(object):
     class Meta:
         priority = 0
 
@@ -318,11 +318,11 @@ class hm_module(object):
         return "module {}, priority {:d}".format(self.name, self.Meta.priority)
 
 
-class hm_command(object):
+class MonitoringCommand(object):
     info_str = ""
 
     def __init__(self, name, **kwargs):
-        super(hm_command, self).__init__()
+        super(MonitoringCommand, self).__init__()
         self.__log_cache = []
         self.name = name
         # argument parser
@@ -376,7 +376,7 @@ class hm_command(object):
         return res_ns, unknown
 
 
-class mvect_entry(object):
+class MachineVectorEntry(object):
     __slots__ = [
         "name", "default", "info", "unit", "base", "value", "factor", "v_type", "valid_until"
     ]

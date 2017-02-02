@@ -25,11 +25,11 @@ except ImportError:
     memcache = None
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     pass
 
 
-class memcached_status_command(hm_classes.hm_command):
+class memcached_status_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
         super(memcached_status_command, self).__init__(name, positional_arguments=True)
         self.parser.add_argument("-w", dest="warn", type=float)

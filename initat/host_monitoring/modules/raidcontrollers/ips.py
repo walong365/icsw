@@ -260,9 +260,9 @@ class ctrl_type_ips(ctrl_type):
             return ret_state, "; ".join(ret_f)
 
 
-class aac_status_command(hm_classes.hm_command):
+class aac_status_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=False)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
 
     def __call__(self, srv_com, cur_ns):
         ctrl_type.update("ips")

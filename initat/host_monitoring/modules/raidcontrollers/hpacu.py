@@ -321,7 +321,7 @@ class ctrl_type_hpacu(ctrl_type):
             )
 
 
-class hpacu_status_command(hm_classes.hm_command):
+class hpacu_status_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         ctrl_type.update("hpacu")
         ctrl_list = []

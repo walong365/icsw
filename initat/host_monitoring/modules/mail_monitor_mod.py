@@ -19,10 +19,10 @@
 #
 """ monitors the mail subsystem """
 
-import subprocess
 import os
 import re
 import stat
+import subprocess
 import time
 
 from initat.host_monitoring import hm_classes, limits
@@ -280,7 +280,7 @@ class MailLogObject(file_object):
         return act_event
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     class Meta:
         priority = 10
 
@@ -500,9 +500,9 @@ class _general(hm_classes.hm_module):
         return self.__mailcount
 
 
-class mailq_command(hm_classes.hm_command):
+class mailq_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name)
+        hm_classes.MonitoringCommand.__init__(self, name)
         self.parser.add_argument("-w", dest="warntotal", type=int, help="warning value for total number of mails in queue [%(default)s]", default=5)
         self.parser.add_argument("-c", dest="crittotal", type=int, help="critical value for total number of mails in queue [%(default)s]", default=10)
         self.parser.add_argument("-wq", dest="warnqueued", type=int, help="warning value for number of queued mails in queue [%(default)s]", default=5)
@@ -571,10 +571,6 @@ class mailq_command(hm_classes.hm_command):
         if not ret_f:
             ret_f = ["mailqueue is empty"]
         return ret_state, ", ".join(ret_f)
-
-    def interpret_old(self, result, cur_ns):
-        num_mails = hm_classes.net_to_sys(result[3:])["mails"]
-        return self.interpret(num_mails, cur_ns)
 
 
 class ext_mailq_commandX(object):  # hm_classes.hmb_command):

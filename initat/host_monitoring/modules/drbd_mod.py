@@ -22,7 +22,7 @@ from initat.host_monitoring import hm_classes, limits
 from initat.tools import logging_tools, server_command, drbd_tools, process_tools
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     def init_module(self):
         self.__last_drbd_check = (-1, -1)
         if drbd_tools:
@@ -34,7 +34,7 @@ class _general(hm_classes.hm_module):
             self.drbd_config = None
 
 
-class drbd_status_command(hm_classes.hm_command):
+class drbd_status_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         if drbd_tools and self.module.drbd_config:
             try:
@@ -57,10 +57,6 @@ class drbd_status_command(hm_classes.hm_command):
             return self._interpret(json.loads(srv_com["*drbd_status"]), cur_ns)
         else:
             return self._interpret(srv_com["drbd_status"], cur_ns)
-
-    def interpret_old(self, result, cur_ns):
-        drbd_conf = hm_classes.net_to_sys(result[3:])
-        return self._interpret(drbd_conf, cur_ns)
 
     def _interpret(self, drbd_conf, cur_ns):
         if drbd_conf:
@@ -110,7 +106,11 @@ class drbd_status_command(hm_classes.hm_command):
                 # pprint.pprint(state_dict)
                 ret_state = max(dev_states)
                 return ret_state, "{}; {}".format(
-                    ", ".join([logging_tools.get_plural(key, len(value)) for key, value in state_dict.items()]),
+                    ", ".join(
+                        [
+                            logging_tools.get_plural(key, len(value)) for key, value in state_dict.items()
+                        ]
+                    ),
                     ", ".join(ret_strs) if ret_strs else "everything ok"
                 )
             else:

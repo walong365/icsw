@@ -76,7 +76,7 @@ class ctrl_type_megaraid(ctrl_type):
                                                 ", ".join(drive_stats))
 
 
-class megaraid_status_command(hm_classes.hm_command):
+class megaraid_status_command(hm_classes.MonitoringCommand):
     def server_call(self, cm):
         self.module_info.init_ctrl_dict(self.logger)
         self.module_info.update_ctrl_dict(self.logger)

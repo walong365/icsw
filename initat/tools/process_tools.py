@@ -21,9 +21,7 @@
 
 import atexit
 import inspect
-import marshal
 import os
-import pickle
 import platform
 import random
 import re
@@ -83,22 +81,6 @@ def safe_unicode(obj):
 
 def getstatusoutput(cmd):
     return subprocess.getstatusoutput(cmd)
-
-
-# net to sys and reverse functions
-def net_to_sys(in_val):
-    try:
-        result = pickle.loads(in_val)
-    except:
-        try:
-            result = marshal.loads(in_val)
-        except:
-            raise ValueError
-    return result
-
-
-def sys_to_net(in_val):
-    return pickle.dumps(in_val)
 
 
 def get_except_info(exc_info=None, **kwargs):

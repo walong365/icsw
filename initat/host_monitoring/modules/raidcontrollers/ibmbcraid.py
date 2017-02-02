@@ -212,9 +212,9 @@ class ctrl_type_ibmbcraid(ctrl_type):
             return limits.mon_STATE_CRITICAL, "no controller found"
 
 
-class ibmbcraid_status_command(hm_classes.hm_command):
+class ibmbcraid_status_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--user", dest="user", type=str)
         self.parser.add_argument("--pass", dest="passwd", type=str)
 

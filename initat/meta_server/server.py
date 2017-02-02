@@ -450,7 +450,7 @@ class MainProcess(ICSWBasePoolClient):
                         f_key = (key, proc_name)
                         info_str = "memory usage of {} ({})".format(key, proc_name)
                         if f_key not in self.mis_dict:
-                            self.mis_dict[f_key] = hm_classes.mvect_entry(
+                            self.mis_dict[f_key] = hm_classes.MachineVectorEntry(
                                 "mem.icsw.{}.{}".format(key, proc_name),
                                 info=info_str,
                                 default=0,
@@ -463,7 +463,7 @@ class MainProcess(ICSWBasePoolClient):
                         new_keys.add(f_key)
                         my_vector.append(self.mis_dict[f_key].build_xml(drop_com.builder))
                 if key not in self.mis_dict:
-                    self.mis_dict[key] = hm_classes.mvect_entry(
+                    self.mis_dict[key] = hm_classes.MachineVectorEntry(
                         "mem.icsw.{}.total".format(key),
                         info="memory usage of {}".format(key),
                         default=0,

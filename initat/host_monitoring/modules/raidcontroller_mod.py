@@ -28,6 +28,6 @@ for _key, _value in COMMAND_DICT.items():
     locals()[_key] = _value
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     def init_module(self):
         AllRAIDCtrl.init(self)

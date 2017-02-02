@@ -147,11 +147,11 @@ Conf univention-pam (9.0.0-6.268.201604140831 Univention:updates.software-univen
 """
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     pass
 
 
-class installedupdates_command(hm_classes.hm_command):
+class installedupdates_command(hm_classes.MonitoringCommand):
     info_str = "installed updates (windows only)"
 
     class Update:
@@ -167,7 +167,7 @@ class installedupdates_command(hm_classes.hm_command):
             return self.date == other.date
 
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
         installed_updates = []
@@ -209,7 +209,7 @@ class installedupdates_command(hm_classes.hm_command):
         srv_com["installed_updates"] = server_command.compress(installed_updates, pickle=True)
 
 
-class rpmlist_command(hm_classes.hm_command):
+class rpmlist_command(hm_classes.MonitoringCommand):
     info_str = "rpm list"
 
     class Package:
@@ -229,7 +229,7 @@ class rpmlist_command(hm_classes.hm_command):
             return hash((self.displayName, self.displayVersion, self.estimatedSize, self.installDate))
 
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
@@ -403,9 +403,9 @@ class rpmlist_command(hm_classes.hm_command):
             return limits.mon_STATE_CRITICAL, "{}, nothing found".format(header_line)
 
 
-class updatelist_command(hm_classes.hm_command):
+class updatelist_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:

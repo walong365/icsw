@@ -25,7 +25,7 @@ import time
 
 import zmq
 
-from initat.host_monitoring.hm_classes import mvect_entry
+from initat.host_monitoring.hm_classes import MachineVectorEntry
 from initat.tools import logging_tools, process_tools, server_command
 
 
@@ -240,7 +240,7 @@ class KeyListCom(BaseCom):
                     num_key += 1
                     if entry[0] == 0:
                         # simple format
-                        cur_mv = mvect_entry(
+                        cur_mv = MachineVectorEntry(
                             entry[1],
                             info=entry[2],
                             unit=entry[3],
@@ -281,7 +281,7 @@ class KeyListCom(BaseCom):
                     )
                 )
                 for num_key, key_el in enumerate(host):
-                    cur_mv = mvect_entry(key_el.attrib.pop("name"), info="", **key_el.attrib)
+                    cur_mv = MachineVectorEntry(key_el.attrib.pop("name"), info="", **key_el.attrib)
                     _list.append((host.attrib["name"], cur_mv))
                     max_num_keys = max(max_num_keys, cur_mv.num_keys)
             for k_num, (h_name, entry) in enumerate(_list):

@@ -77,7 +77,7 @@ class IBDataResult(object):
                         _mult = 1
                         unit = "1/s"
                     self._mult_dict[_key] = _mult
-                    self._speed[_key] = hm_classes.mvect_entry(
+                    self._speed[_key] = hm_classes.MachineVectorEntry(
                         "{}.{}".format(self._get_root_key(port_num), _alt_key),
                         default=0.,
                         info="IB Readout for {} on port {}".format(_key, port_num),
@@ -326,7 +326,7 @@ class IBQueryClass(BackgroundBase):
                     uuid="5f0a0564-913a-40d1-97ee-22151ae13c7f",
                 )
             )
-            dummy_v = hm_classes.mvect_entry("test.value", default=0, info="test entry", unit="1", base=1, factor=1, value=4)
+            dummy_v = hm_classes.MachineVectorEntry("test.value", default=0, info="test entry", unit="1", base=1, factor=1, value=4)
             m_vectors[0].append(
                 dummy_v.build_xml(E)
             )

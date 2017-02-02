@@ -40,20 +40,6 @@ from initat.tools import logging_tools
 XML_NS = "http://www.initat.org/lxml/ns"
 
 
-def net_to_sys(in_val):
-    try:
-        result = pickle.loads(in_val)
-    except:
-        try:
-            result = marshal.loads(in_val)
-        except:
-            raise ValueError
-    return result
-
-
-def sys_to_net(in_val):
-    return pickle.dumps(in_val)
-
 SRV_REPLY_STATE_OK = 0
 SRV_REPLY_STATE_WARN = 1
 SRV_REPLY_STATE_ERROR = 2

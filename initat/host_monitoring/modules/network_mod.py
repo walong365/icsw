@@ -239,7 +239,7 @@ class NetCompressJob(object):
             return ("", "")
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     class Meta:
         # high priority to set ethtool_path before init_machine_vector
         priority = 10
@@ -1084,11 +1084,11 @@ class PingSPStruct(hm_classes.subprocess_struct):
     #    print "dp"
 
 
-class argus_status_command(hm_classes.hm_command):
+class argus_status_command(hm_classes.MonitoringCommand):
     info_str = "checks argus processes"
 
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name)
+        hm_classes.MonitoringCommand.__init__(self, name)
         self.parser.add_argument("-w", dest="warn", type=int, help="warning level, minimum processes")
         self.parser.add_argument("-c", dest="crit", type=int, help="critical level, minimum processes")
 
@@ -1106,11 +1106,11 @@ class argus_status_command(hm_classes.hm_command):
         )
 
 
-class ping_command(hm_classes.hm_command):
+class ping_command(hm_classes.MonitoringCommand):
     info_str = "ping command"
 
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.ping_match = re.compile("^(?P<rta>\d+),(?P<loss>\d+)%?$")
         self.parser.add_argument("-w", dest="warn", type=str, help="warning level, format is <RTA in ms>,<LOSS in %%>%%")
         self.parser.add_argument("-c", dest="crit", type=str, help="critical level, format is <RTA in ms>,<LOSS in %%>%%")
@@ -1225,11 +1225,11 @@ class ping_command(hm_classes.hm_command):
         return ret_state, ", ".join(ret_f)
 
 
-class net_command(hm_classes.hm_command):
+class net_command(hm_classes.MonitoringCommand):
     info_str = "network information"
 
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True, arguments_name="interface")
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True, arguments_name="interface")
         self.parser.add_argument("-w", dest="warn", type=str)
         self.parser.add_argument("-c", dest="crit", type=str)
         self.parser.add_argument("-s", dest="speed", type=str)
@@ -1724,7 +1724,7 @@ class net_command(hm_classes.hm_command):
         )
 
 
-class bridge_info_command(hm_classes.hm_command):
+class bridge_info_command(hm_classes.MonitoringCommand):
     info_str = "bridge information"
 
     def __call__(self, srv_com, cur_ns):
@@ -1749,7 +1749,7 @@ class bridge_info_command(hm_classes.hm_command):
         return limits.mon_STATE_OK, "{}".format("\n".join(out_f))
 
 
-class network_info_command(hm_classes.hm_command):
+class network_info_command(hm_classes.MonitoringCommand):
     info_str = "network information"
 
     def __call__(self, srv_com, cur_ns):
@@ -1820,11 +1820,11 @@ class network_info_command(hm_classes.hm_command):
         )
 
 
-class iptables_info_command(hm_classes.hm_command):
+class iptables_info_command(hm_classes.MonitoringCommand):
     info_str = "iptables information"
 
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("-w", dest="warn", type=str)
         self.parser.add_argument("-c", dest="crit", type=str)
 
@@ -1888,7 +1888,7 @@ class ntpq_struct(hm_classes.subprocess_struct):
             self.srv_com["output"] = output
 
 
-class ntp_status_command(hm_classes.hm_command):
+class ntp_status_command(hm_classes.MonitoringCommand):
     info_str = "show NTP status"
 
     def __call__(self, srv_com, cur_ns):
@@ -1956,9 +1956,9 @@ class NmapScanCheck(LongRunningCheck):
         self.nmap_scan_command_obj.current_nmap_scan_check = None
 
 
-class nmap_scan_command(hm_classes.hm_command):
+class nmap_scan_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=False)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("--network", dest="network", type=str)
         self.current_nmap_scan_check = None
 

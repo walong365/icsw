@@ -349,7 +349,7 @@ class NVidiaGPU(object):
             mv[self.power_key] = self._parse_to_int(tree.findtext(".//power_readings/power_draw"), via_float=True)
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     def init_module(self):
         self._find_smi_command()
 

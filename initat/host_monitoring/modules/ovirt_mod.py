@@ -32,7 +32,7 @@ from initat.host_monitoring.long_running_checks import LongRunningCheck
 from initat.tools import process_tools, server_command, logging_tools
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     def init_module(self):
         requests.packages.urllib3.disable_warnings()
 
@@ -409,7 +409,7 @@ class OvirtBaseMixin(object):
         )
 
 
-class ovirt_overview_command(hm_classes.hm_command, OvirtBaseMixin):
+class ovirt_overview_command(hm_classes.MonitoringCommand, OvirtBaseMixin):
     def __init__(self, name):
         super(ovirt_overview_command, self).__init__(
             name,
@@ -538,7 +538,7 @@ class ovirt_overview_command(hm_classes.hm_command, OvirtBaseMixin):
         )
 
 
-class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
+class ovirt_storagedomains_command(hm_classes.MonitoringCommand, OvirtBaseMixin):
     def __init__(self, name):
         super(ovirt_storagedomains_command, self).__init__(
             name,
@@ -675,7 +675,7 @@ class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
         return ret
 
 
-class ovirt_hosts_command(hm_classes.hm_command, OvirtBaseMixin):
+class ovirt_hosts_command(hm_classes.MonitoringCommand, OvirtBaseMixin):
     def __init__(self, name):
         super(ovirt_hosts_command, self).__init__(
             name,

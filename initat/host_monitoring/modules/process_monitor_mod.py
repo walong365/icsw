@@ -292,7 +292,7 @@ class AffinityStruct(object):
             self.log("usage pattern: {}".format(cpu_c.get_usage_str()))
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     def init_module(self):
         # AFFINITY ist not set for relay mode
         self.check_affinity = self.main_proc.CC.CS["hm.enable.affinity.matcher"]
@@ -367,9 +367,9 @@ class _general(hm_classes.hm_module):
         mv["proc.total"] = len(pids)
 
 
-class procstat_command(hm_classes.hm_command):
+class procstat_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("-f", dest="filter", action="store_true", default=False)
         self.parser.add_argument("-w", dest="warn", type=int, default=0)
         self.parser.add_argument("-c", dest="crit", type=int, default=0)
@@ -540,9 +540,9 @@ class procstat_command(hm_classes.hm_command):
         return ret_state, rets
 
 
-class proclist_command(hm_classes.hm_command):
+class proclist_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name)
+        hm_classes.MonitoringCommand.__init__(self, name)
         self.parser.add_argument("-t", dest="tree", action="store_true", default=False)
         self.parser.add_argument("-c", dest="comline", action="store_true", default=False)
         self.parser.add_argument("-f", dest="filter", action="append", type=str, default=[])
@@ -633,9 +633,9 @@ class proclist_command(hm_classes.hm_command):
         return ret_state, "\n".join(ret_a)
 
 
-class ipckill_command(hm_classes.hm_command):
+class ipckill_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--min-uid", dest="min_uid", type=int, default=0)
         self.parser.add_argument("--max-uid", dest="max_uid", type=int, default=65535)
 
@@ -708,11 +708,11 @@ class ipckill_command(hm_classes.hm_command):
         )
 
 
-class signal_command(hm_classes.hm_command):
+class signal_command(hm_classes.MonitoringCommand):
     info_str = "send signal to processes"
 
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--signal", dest="signal", type=int, default=15)
         self.parser.add_argument("--min-uid", dest="min_uid", type=int, default=0)
         self.parser.add_argument("--max-uid", dest="max_uid", type=int, default=65535)

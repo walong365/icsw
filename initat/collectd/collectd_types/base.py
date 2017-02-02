@@ -116,7 +116,7 @@ class PerfdataObject(object):
 
 
 class value(object):
-    # somehow resembles mvect_entry from hm_classes
+    # somehow resembles MachineVectorEntry from hm_classes
     __slots__ = ["name", "sane_name", "info", "unit", "base", "value", "factor", "v_type", "last_update", "set_value", "timeout"]
 
     def __init__(self, name):

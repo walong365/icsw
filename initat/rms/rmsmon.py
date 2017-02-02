@@ -242,7 +242,7 @@ class RMSMonProcess(threading_tools.icswProcessObj):
             _host_stats[_host].feed(_st, _sr, _su, _state)
         # print node_res
         _rms_vector.append(
-            hm_classes.mvect_entry(
+            hm_classes.MachineVectorEntry(
                 "rms.clusterqueues.total",
                 info="ClusterQueues defined",
                 default=0,
@@ -253,7 +253,7 @@ class RMSMonProcess(threading_tools.icswProcessObj):
             ).build_xml(_bldr)
         )
         _rms_vector.append(
-            hm_classes.mvect_entry(
+            hm_classes.MachineVectorEntry(
                 "rms.hosts.total",
                 info="Hosts defined",
                 default=0,
@@ -279,7 +279,7 @@ class RMSMonProcess(threading_tools.icswProcessObj):
             q_name = q_name.replace(".", "_")
             for _key, _info in report_list:
                 _rms_vector.append(
-                    hm_classes.mvect_entry(
+                    hm_classes.MachineVectorEntry(
                         "rms.queues.{}.{}".format(q_name, _key),
                         info="{} in queue {}".format(_info, q_name),
                         default=0,
@@ -333,7 +333,7 @@ class RMSMonProcess(threading_tools.icswProcessObj):
             )
             _total += _slots
             _rms_vector.append(
-                hm_classes.mvect_entry(
+                hm_classes.MachineVectorEntry(
                     "rms.user.{}.slots".format(_name),
                     info="Slots used by user '{}'".format(_name),
                     default=0,
@@ -345,7 +345,7 @@ class RMSMonProcess(threading_tools.icswProcessObj):
             )
         # total vector
         _rms_vector.append(
-            hm_classes.mvect_entry(
+            hm_classes.MachineVectorEntry(
                 "rms.user.slots".format(_name),
                 info="Slots used by all users",
                 default=0,
@@ -378,7 +378,7 @@ class RMSMonProcess(threading_tools.icswProcessObj):
             q_value = _host_stats[_host_name]
             mach_vect.extend(
                 [
-                    hm_classes.mvect_entry(
+                    hm_classes.MachineVectorEntry(
                         "rms.slots.{}".format(_key),
                         info="{}".format(_info),
                         default=0,
@@ -704,7 +704,7 @@ class RMSMonProcess(threading_tools.icswProcessObj):
                         ("total", "total", "total"),
                     ]:
                         _rms_vector.append(
-                            hm_classes.mvect_entry(
+                            hm_classes.MachineVectorEntry(
                                 "rms.fairshare.{}.{}".format(_user, _t_key),
                                 info="{} for user {}".format(_info, _user),
                                 default=0.,

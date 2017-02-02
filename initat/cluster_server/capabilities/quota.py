@@ -618,7 +618,7 @@ class quota_stuff(BackgroundBase):
             block_dict = stuff.get_block_dict()
             pfix = "quota.{}.{}.{}".format(obj_type, name, dev_name)
             my_vector.append(
-                hm_classes.mvect_entry(
+                hm_classes.MachineVectorEntry(
                     "{}.soft".format(pfix),
                     info="Soft Limit for $2 $3 on $4",
                     default=0,
@@ -630,7 +630,7 @@ class quota_stuff(BackgroundBase):
                 ).build_xml(builder)
             )
             my_vector.append(
-                hm_classes.mvect_entry(
+                hm_classes.MachineVectorEntry(
                     "{}.hard".format(pfix),
                     info="Hard Limit for $2 $3 on $4",
                     default=0,
@@ -642,7 +642,7 @@ class quota_stuff(BackgroundBase):
                 ).build_xml(builder)
             )
             my_vector.append(
-                hm_classes.mvect_entry(
+                hm_classes.MachineVectorEntry(
                     "{}.used".format(pfix),
                     info="Used quota for $2 $3 on $4",
                     default=0,

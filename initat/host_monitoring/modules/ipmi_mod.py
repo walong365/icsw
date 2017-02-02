@@ -79,7 +79,7 @@ def parse_ipmi(in_lines):
     return result
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     def init_module(self):
         self.ipmi_result, self.ipmi_update = (None, None)
         self.it_command = False
@@ -195,11 +195,11 @@ class _ipmi_sensor(object):
             pass
 
 
-class ipmi_sensor_command(hm_classes.hm_command):
+class ipmi_sensor_command(hm_classes.MonitoringCommand):
     info_string = "get all IPMI sensors"
 
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         for limit in IPMI_LONG_LIMITS:
             self.parser.add_argument("--{}".format(limit), dest=limit, type=str, default="na")
 

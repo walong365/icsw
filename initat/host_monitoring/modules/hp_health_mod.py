@@ -23,7 +23,7 @@ from initat.tools import logging_tools, server_command, process_tools
 HPASM_BIN = "hpasmcli"
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     def init_module(self):
         pass
 
@@ -155,7 +155,7 @@ class hp_health_bg(hm_classes.subprocess_struct):
         self.__log_com("[hph] {}".format(what), level)
 
 
-class hp_dimm_command(hm_classes.hm_command):
+class hp_dimm_command(hm_classes.MonitoringCommand):
     info_string = "check DIMM state via hpasmcli"
 
     def __call__(self, srv_com, cur_ns):
@@ -165,7 +165,7 @@ class hp_dimm_command(hm_classes.hm_command):
         return HPDimm().interpret(srv_com, cur_ns)
 
 
-class hp_powersupply_command(hm_classes.hm_command):
+class hp_powersupply_command(hm_classes.MonitoringCommand):
     info_string = "check PSU state via hpasmcli"
 
     def __call__(self, srv_com, cur_ns):

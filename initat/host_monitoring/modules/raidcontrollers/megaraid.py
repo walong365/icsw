@@ -846,10 +846,10 @@ class ctrl_type_megaraid_sas(ctrl_type):
         return [("", "all", "SAS Controllers", True), ]
 
 
-class megaraid_sas_status_command(hm_classes.hm_command):
+class megaraid_sas_status_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
         self.__cache = {}
-        hm_classes.hm_command.__init__(self, name)
+        hm_classes.MonitoringCommand.__init__(self, name)
         self.parser.add_argument("--get-hints", dest="get_hints", default=False, action="store_true")
         self.parser.add_argument("--key", default="", type=str)
         self.parser.add_argument("--check", default="all", type=str)

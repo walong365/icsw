@@ -17,13 +17,13 @@
 #
 """ load all defined commands """
 
-import os
-import inspect
-import importlib
 import hashlib
+import importlib
+import inspect
+import os
 
+from initat.host_monitoring.hm_classes import MonitoringCommand
 from initat.tools import process_tools
-from initat.host_monitoring.hm_classes import hm_command
 
 __all__ = [
     cur_entry for cur_entry in [
@@ -34,7 +34,7 @@ __all__ = [
 ]
 __all__.sort()
 
-sha3_512_digester = hashlib.sha3_512()
+sha3_512_digester = hashlib.new("sha3_512")
 
 module_list = []
 command_dict = {}
@@ -61,6 +61,7 @@ for mod_name in __all__:
             IMPORT_ERRORS.append((mod_name, "import", log_line))
 
 HOST_MONITOR_MODULES_HEX_CHECKSUM = sha3_512_digester.hexdigest()
+
 del sha3_512_digester
 
 _new_hm_list.sort(reverse=True, key=lambda x: x[0])
@@ -72,7 +73,7 @@ for _pri, new_hm_mod in sorted(_new_hm_list, key=lambda x: x[0], reverse=True):
         entry for entry in dir(new_mod) if entry.endswith("_command") and inspect.isclass(
             getattr(new_mod, entry)
         ) and issubclass(
-            getattr(new_mod, entry), hm_command
+            getattr(new_mod, entry), MonitoringCommand
         )
     ]
     for loc_com in loc_coms:

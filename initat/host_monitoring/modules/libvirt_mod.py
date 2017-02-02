@@ -28,7 +28,7 @@ except:
     libvirt_tools = None
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     def init_module(self):
         if libvirt_tools:
             self.connection = None
@@ -172,7 +172,7 @@ class _general(hm_classes.hm_module):
                 self.mv_regs = set([value for value in self.mv_regs if not value.startswith("virt.{}.".format(dom_del))])
 
 
-class libvirt_status_command(hm_classes.hm_command):
+class libvirt_status_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         if self.module.libvirt_problem:
             srv_com.set_result(self.module.libvirt_problem, server_command.SRV_REPLY_STATE_ERROR)
@@ -187,10 +187,6 @@ class libvirt_status_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         r_dict = srv_com["libvirt"]
         return self._interpret(r_dict, cur_ns)
-
-    def interpret_old(self, result, parsed_coms):
-        r_dict = hm_classes.net_to_sys(result[3:])
-        return self._interpret(r_dict, parsed_coms)
 
     def _interpret(self, r_dict, cur_ns):
         ret_state, out_f = (limits.mon_STATE_OK, [])
@@ -209,7 +205,7 @@ class libvirt_status_command(hm_classes.hm_command):
         return ret_state, ", ".join(out_f)
 
 
-class domain_overview_command(hm_classes.hm_command):
+class domain_overview_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         if self.module.libvirt_problem:
             srv_com.set_result(self.module.libvirt_problem, server_command.SRV_REPLY_STATE_ERROR)
@@ -223,10 +219,6 @@ class domain_overview_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["domain_overview"], cur_ns)
-
-    def interpret_old(self, result, parsed_coms):
-        r_dict = hm_classes.net_to_sys(result[3:])
-        return self._interpret(r_dict, parsed_coms)
 
     def _interpret(self, dom_dict, cur_ns):
         ret_state, out_f = (limits.mon_STATE_OK, [])
@@ -257,9 +249,9 @@ class domain_overview_command(hm_classes.hm_command):
             ", ".join(out_f))
 
 
-class domain_status_command(hm_classes.hm_command):
+class domain_status_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
         if self.module.libvirt_problem:
@@ -277,10 +269,6 @@ class domain_status_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["domain_status"], cur_ns)
-
-    def interpret_old(self, result, parsed_coms):
-        r_dict = hm_classes.net_to_sys(result[3:])
-        return self._interpret(r_dict, parsed_coms)
 
     def _interpret(self, dom_dict, cur_ns):
         ret_state, out_f = (limits.mon_STATE_OK, [])

@@ -130,9 +130,9 @@ class ctrl_type_lsi(ctrl_type):
             return limits.mon_STATE_WARNING, "no controller found"
 
 
-class lsi_status_command(hm_classes.hm_command):
+class lsi_status_command(hm_classes.MonitoringCommand):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
         ctrl_type.update("lsi")

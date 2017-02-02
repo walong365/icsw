@@ -23,11 +23,11 @@ from initat.host_monitoring import limits, hm_classes
 from initat.tools import server_command
 
 
-class _general(hm_classes.hm_module):
+class _general(hm_classes.MonitoringModule):
     pass
 
 
-class cups_status_command(hm_classes.hm_command):
+class cups_status_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         lp_stat, lp_out = subprocess.getstatusoutput("lpstat -p")
         if lp_stat:
@@ -43,9 +43,6 @@ class cups_status_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["printers"], cur_ns)
-
-    def interpret_old(self, result, parsed_coms):
-        return self._interpret(hm_classes.net_to_sys(result[3:]), parsed_coms)
 
     def _interpret(self, print_dict, parsed_coms):
         if isinstance(print_dict, dict):
