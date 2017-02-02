@@ -40,7 +40,7 @@ MOVE .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR% .\host_monitor_windows
 .\host_monitor_windows\python.exe -m pip install netifaces
 .\host_monitor_windows\python.exe -m pip install setproctitle
 .\host_monitor_windows\python.exe -m pip install zmq
-.\host_monitor_windows\python.exe -m pip install psutil==5.0.0
+.\host_monitor_windows\python.exe -m pip install psutil
 .\host_monitor_windows\python.exe -m pip install wmi
 
 XCOPY .\inflection.py .\host_monitor_windows\Lib\site-packages\

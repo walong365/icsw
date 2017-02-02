@@ -419,9 +419,6 @@
                 <rights>
                     <value>backbone.dispatchersetting.setup</value>
                 </rights>
-                <licenses>
-                    <value>asset</value>
-                </licenses>
                 <description>
                     <infoText language="en">Manage scheduling settings for asset runs</infoText>
                 </description>
