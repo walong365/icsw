@@ -1588,7 +1588,7 @@ class lvsdatapercent_command(hm_classes.hm_command):
         try:
             data_percent = float(lv_dict["Data%"])
 
-            ret_state = limits.check_floor(data_percent, cur_ns.warn, cur_ns.crit)
+            ret_state = limits.check_ceiling(data_percent, cur_ns.warn, cur_ns.crit)
             return ret_state, "{} - data_percentage is {}".format(lv_name, data_percent)
         except ValueError:
             return limits.mon_STATE_CRITICAL, "No data_percent value set for {}".format(lv_name)
