@@ -22,11 +22,12 @@
 import json
 import os
 import stat
+import time
 
 from django.conf import settings
 
-from initat.cluster.backbone.models import device, MachineVector
 from initat.cluster.backbone import db_tools
+from initat.cluster.backbone.models import device, MachineVector
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.rrd_grapher.config import global_config
 from initat.rrd_grapher.graph import GraphProcess
@@ -88,6 +89,7 @@ class ServerProcess(
         db_tools.close_connection()
         self._init_network_sockets()
         DataStore.setup(self)
+        self._db_debug = threading_tools.DBDebugBase(self.log, force_disable=False)
         # self.test("x")
 
     def _int_error(self, err_cause):
@@ -114,7 +116,10 @@ class ServerProcess(
     @server_mixins.RemoteCall()
     def get_node_rrd(self, srv_com, **kwargs):
         # print("got", unicode(srv_com))
+        # database debug
+        self._db_debug.start_call("node_rrd")
         node_results = []
+        s_time = time.time()
         dev_list = srv_com.xpath(".//device_list", smart_strings=False)[0]
         pk_list = [int(cur_pk) for cur_pk in dev_list.xpath(".//device/@pk", smart_strings=False)]
         for dev_pk in pk_list:
@@ -127,8 +132,16 @@ class ServerProcess(
             else:
                 self.log("no MachineVector found for device {:d}".format(dev_pk), logging_tools.LOG_LEVEL_WARN)
             node_results.append(cur_res)
+        e_time = time.time()
+        self.log(
+            "node_rrd for {} took {}".format(
+                logging_tools.get_plural("device", len(pk_list)),
+                logging_tools.get_diff_time_str(e_time - s_time),
+            )
+        )
         # _json = self._to_json(node_results, set(["info", "active", "key", "name", "part", "pk"]))
         # pprint.pprint(node_results, depth=5)
+        self._db_debug.end_call()
         srv_com["result"] = json.dumps(node_results)
         srv_com.set_result("set results for {}".format(logging_tools.get_plural("node", len(node_results))))
         return srv_com
