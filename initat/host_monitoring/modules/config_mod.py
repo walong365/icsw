@@ -26,7 +26,7 @@ import time
 from initat.host_monitoring import filesys_tools
 from initat.host_monitoring import limits, hm_classes
 from initat.tools import logging_tools, process_tools, server_command
-
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 class _general(hm_classes.hm_module):
     def _parse_ecd(self, in_str):
@@ -306,3 +306,14 @@ class check_dir_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         return limits.mon_STATE_OK, "dir {} exists".format(srv_com["result:dir_stat"].attrib["directory"])
+
+class modules_fingerprint_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+
+    def __call__(self, srv_com, cur_ns):
+        from initat.host_monitoring.modules import HOST_MONITOR_MODULES_HEX_CHECKSUM
+        srv_com["checksum"] = HOST_MONITOR_MODULES_HEX_CHECKSUM
+
+    def interpret(self, srv_com, cur_ns):
+        return limits.mon_STATE_OK, srv_com["checksum"].text

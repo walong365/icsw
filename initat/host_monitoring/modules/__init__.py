@@ -20,6 +20,7 @@
 import os
 import inspect
 import importlib
+import hashlib
 
 from initat.tools import process_tools
 from initat.host_monitoring.hm_classes import hm_command
@@ -31,6 +32,9 @@ __all__ = [
         ) if entry.endswith(".py")
     ] if cur_entry and not cur_entry.startswith("_")
 ]
+__all__.sort()
+
+sha3_512_digester = hashlib.sha3_512()
 
 module_list = []
 command_dict = {}
@@ -38,6 +42,13 @@ IMPORT_ERRORS = []
 
 _new_hm_list = []
 for mod_name in __all__:
+    mod_path = os.path.join(os.path.dirname(__file__), "{}.py".format(mod_name))
+    try:
+        with open(mod_path, "rb") as f:
+            sha3_512_digester.update(f.read())
+    except:
+        pass
+
     try:
         new_mod = importlib.import_module("initat.host_monitoring.modules.{}".format(mod_name))
         if hasattr(new_mod, "_general"):
@@ -48,6 +59,9 @@ for mod_name in __all__:
         exc_info = process_tools.icswExceptionInfo()
         for log_line in exc_info.log_lines:
             IMPORT_ERRORS.append((mod_name, "import", log_line))
+
+HOST_MONITOR_MODULES_HEX_CHECKSUM = sha3_512_digester.hexdigest()
+del sha3_512_digester
 
 _new_hm_list.sort(reverse=True, key=lambda x: x[0])
 

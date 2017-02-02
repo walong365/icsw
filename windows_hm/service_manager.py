@@ -32,7 +32,7 @@ def cleanup_service(service_name):
         pass
 
 
-def install_service(service_name):
+def install_service(service_name, version_string):
     cleanup_service(service_name)
 
     python_path = os.path.join(os.getcwd(), "python.exe")
@@ -56,6 +56,8 @@ def install_service(service_name):
                             stderr=subprocess.STDOUT)
     subprocess.check_output([NSSM_BIN, "set", service_name, "AppRotateBytes", "1000000"],
                             stderr=subprocess.STDOUT)
+    subprocess.check_output([NSSM_BIN, "set", service_name, "Description", version_string],
+                            stderr=subprocess.STDOUT)
     
     try:
         subprocess.check_output([NSSM_BIN, "start", service_name], stderr=subprocess.STDOUT)
@@ -65,9 +67,13 @@ def install_service(service_name):
 if __name__ == "__main__":
     _service_name = sys.argv[1]
     install = sys.argv[2] == "install"
+    try:
+        version_string = sys.argv[3]
+    except:
+        version_string = None
 
     if install:
-        install_service(_service_name)
+        install_service(_service_name, version_string)
     else:
         cleanup_service(_service_name)
 
