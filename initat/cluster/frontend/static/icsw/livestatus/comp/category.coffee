@@ -336,7 +336,7 @@ angular.module(
                     # height: "#{@props.draw_parameters.total_height}px"
                     fontFamily: "'Open-Sans', sans-serif"
                     fontSize: "10pt"
-                    viewBox: "128 32 330 330"
+                    viewBox: "128 30 330 330"
                     preserveAspectRatio: "xMidYMid meet"
                 }
                 [
@@ -419,7 +419,16 @@ angular.module(
                                     _header
                                 )
                             )
-                            _svg
+                            div(
+                                {
+                                    key: "svg.wrap"
+                                    style: {
+                                        margin: "0 5px"
+                                        textAlign: "center"
+                                        }
+                                }
+                                _svg
+                            )
                         )
                     ]
                 )
@@ -542,7 +551,8 @@ angular.module(
                 <icsw-livestatus-category-filter-burst icsw-connect-element="con_element" icsw-sub-tree="\'mon\'"></icsw-livestatus-category-filter-burst>'
                 "Monitoring Category Filter (Burst)"
                 5
-                4
+                5
+                true  # no_y_scrolling
             )
             @__dp_async_emit = true
             @new_data_notifier = $q.defer()
@@ -576,7 +586,8 @@ angular.module(
                 <icsw-livestatus-category-filter-burst icsw-connect-element="con_element" icsw-sub-tree="\'device\'"></icsw-livestatus-category-filter-burst>'
                 "Device Category Filter (Burst)"
                 5
-                4
+                5
+                true  # no_y_scrolling
             )
             @__dp_async_emit = true
             @new_data_notifier = $q.defer()

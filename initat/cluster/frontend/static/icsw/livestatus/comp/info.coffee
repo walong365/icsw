@@ -42,6 +42,7 @@ angular.module(
                 "Info"
                 4
                 2
+                true  # no_y_scrolling
             )
             @new_data_notifier = $q.defer()
 

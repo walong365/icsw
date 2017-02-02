@@ -81,8 +81,8 @@ angular.module(
                     # y_scroll_diff = panel_body.scrollHeight - $(panel_body).height()
                     scope.panelbody_height = newHeight - header_height - 2
                     $(panel_body).css("height", scope.panelbody_height)
-                    $(panel_body).css("overflow-x", if attr.noXScroll? then "hidden" else "auto")
-                    $(panel_body).css("overflow-y", if attr.noYScroll? then "hidden" else "auto")
+                    $(panel_body).css("overflow-x", if attr.noXScroll == "1" then "hidden" else "auto")
+                    $(panel_body).css("overflow-y", if attr.noYScroll == "1" then "hidden" else "auto")
                 delayInMs
             )
 

@@ -232,13 +232,14 @@ angular.module(
                 return @name
 
         # set template
-        set_template: (template, title, size_x=4, size_y=4) =>
+        set_template: (template, title, size_x=4, size_y=4, no_y_scroll=false) =>
             @__dp_has_template = true
             # template content, not URL
             @__dp_template = template
             @$$dp_title = title
             @sizeX = size_x
             @sizeY = size_y
+            @no_y_scroll = no_y_scroll
 
         build_title: () =>
             title = @$$dp_title
@@ -1261,10 +1262,10 @@ angular.module(
             _outer = $templateCache.get("icsw.connect.element")
             _content = scope.con_element.__dp_template
 
-            # console.log "C=", scope.con_element
-
             # not beautiful but working
+            scope.no_y_scroll = if scope.con_element.no_y_scroll then "1" else "0"
             _template_content = _outer  + _content + "</div></div>"
+
             element.append($compile(_template_content)(scope))
 
     }
