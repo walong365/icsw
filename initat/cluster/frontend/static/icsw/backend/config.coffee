@@ -380,17 +380,13 @@ config_module = angular.module(
                 moncc.$$filter_string = _local_s.join(" ")
 
 
-        update_filtered_list: (search_str, filter_settings, with_server, with_service) =>
+        update_filtered_list: (search_str, with_server, with_service) =>
             if not search_str?
                 search_str = ""
-            # console.log "f", search_str, filter_settings
             try
                 search_re = new RegExp(search_str)
             catch error
                 search_re = new RegExp("")
-            if search_str == ""
-                # default for empty search string
-                filter_settings = {config: true, mon: false, script: false, var: false}
             # default values
             if not with_server?
                 with_server = 0
@@ -403,16 +399,16 @@ config_module = angular.module(
                     # search_str defined due some filtering
                     [_num_script_found, _num_mon_found, _num_var_found] = [0, 0, 0]
                     for scr in entry.config_script_set
-                        if filter_settings.script
+                        if search_str
                             scr.$$filter_match = if scr.$$filter_string.match(search_re) then true else false
                             if scr.$$filter_match
                                 _num_script_found++
                         else
                             scr.$$filter_match = false
                     for mon in entry.res_mon_check_command_set
-                        if mon.$$filter_string.match(search_re)
-                            @filtered_mcc_list.push(mon)
-                        if filter_settings.mon
+                        if search_str
+                            if mon.$$filter_string.match(search_re)
+                                @filtered_mcc_list.push(mon)
                             mon.$$filter_match = if mon.$$filter_string.match(search_re) then true else false
                             if mon.$$filter_match
                                 _num_mon_found++
@@ -420,7 +416,7 @@ config_module = angular.module(
                             mon.$$filter_match = false
                     for vart in ["str", "int", "blob", "bool"]
                         for cvar in entry["config_#{vart}_set"]
-                            if filter_settings.var
+                            if search_str
                                 cvar.$$filter_match = if cvar.$$filter_string.match(search_re) then true else false
                                 if cvar.$$filter_match
                                     _num_var_found++
@@ -429,10 +425,7 @@ config_module = angular.module(
                     entry.$$num_script_found = _num_script_found
                     entry.$$num_var_found = _num_var_found
                     entry.$$num_mon_found = _num_mon_found
-                    if filter_settings.config
-                        entry.$$filter_match = if entry.$$filter_string.match(search_re) then true else false
-                    else
-                        entry.$$filter_match = false
+                    entry.$$filter_match = if entry.$$filter_string.match(search_re) then true else false
                     _sub_found = if _num_script_found + _num_var_found + _num_mon_found > 0 then true else false
                     # console.log _sub_found, entry.$$filter_match
                     entry.$$global_filter_match = _sub_found or entry.$$filter_match
@@ -461,10 +454,7 @@ config_module = angular.module(
                 #     entry.$$config = null
                 if mon.$$filter_string.match(search_re)
                     @filtered_mcc_list.push(mon)
-                if filter_settings.mon
-                    mon.$$filter_match = if mon.$$filter_string.match(search_re) then true else false
-                else
-                    mon.$$filter_match = false
+                mon.$$filter_match = if mon.$$filter_string.match(search_re) then true else false
 
         update_category_tree: () =>
             @cat_tree.feed_config_tree(@)

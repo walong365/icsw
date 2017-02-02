@@ -198,13 +198,6 @@ config_module = angular.module(
         mon_tree: undefined
         # selected objects
         selected_objects: []
-        # filter settings
-        filter_settings: {
-            config: true
-            script: false
-            var: false
-            mon: false
-        }
         # search string
         search_str: ""
         # open configs
@@ -224,26 +217,13 @@ config_module = angular.module(
         if $scope.struct.config_tree?
             $scope.struct.config_tree.update_filtered_list(
                 $scope.struct.search_str
-                $scope.struct.filter_settings
                 $scope.struct.with_server
                 $scope.struct.with_service
             )
 
     _update_filter_settings = () ->
-        for _fltr in ["config", "script", "mon", "var"]
-            _cls = "$$#{_fltr}_class"
-            if $scope.struct.filter_settings[_fltr]
-                $scope.struct.filter_settings[_cls] = "btn btn-success"
-            else
-                $scope.struct.filter_settings[_cls] = "btn btn-default"
         if $scope.struct.config_tree?
             $scope.update_search()
-
-    $scope.change_filter_setting = ($event, name) ->
-        $scope.struct.filter_settings[name] = !$scope.struct.filter_settings[name]
-        if not _.some(($scope.struct.filter_settings[_fltr] for _fltr in ["config", "script", "mon", "var"]))
-            $scope.struct.filter_settings.name = true
-        _update_filter_settings()
 
     $scope.change_boolean_filters = (attr, value) ->
         $scope.struct[attr] = value
