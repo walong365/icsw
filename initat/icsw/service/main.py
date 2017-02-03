@@ -159,7 +159,7 @@ def main(opt_ns):
         opt_ns.memory = False
     inst_xml = instance.InstanceXML(log_com)
     cur_c = container.ServiceContainer(log_com)
-    META_COMS = ["disable", "enable", "ignore", "monitor", "overview"]
+    META_COMS = {"disable", "enable", "ignore", "monitor", "overview"}
     if opt_ns.childcom == "version":
         version_command(opt_ns)
     elif opt_ns.childcom == "status":

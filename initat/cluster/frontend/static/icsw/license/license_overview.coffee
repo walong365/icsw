@@ -51,10 +51,18 @@ class license
         @key = @name
         # link to overview object
         @overview = null
-        for _lc in ["used", "reserved", "free", "issued"]
-            @[_lc] = parseInt(@xml.attr(_lc))
-        @versions = (new license_version($(sub_xml), @) for sub_xml in @xml.find("version"))
         @all_usages = []
+        @versions = []
+        @update(@)
+
+    update: (other) =>
+        for _lc in ["used", "reserved", "free", "issued"]
+            @[_lc] = parseInt(other.xml.attr(_lc))
+        @versions.length = 0
+        for sub_xml in other.xml.find("version")
+            @versions.push(new license_version($(sub_xml), @))
+        @all_usages.length = 0
+        @versions = (new license_version($(sub_xml), @) for sub_xml in other.xml.find("version"))
         for version in @versions
             for usage in version.usages
                 @all_usages.push(usage)
@@ -65,7 +73,10 @@ class license
             usercount[usage.user] += usage.num
         for usage in @all_usages
             usage.user_usage = usercount[usage.user]
+        @num_users = _.keys(usercount).length
+        # console.log @num_users
         @all_usages = _.sortBy(usage for usage in @all_usages, (entry) -> return entry.user)
+
 
 class license_version
     constructor: (@xml, @license) ->
@@ -108,14 +119,16 @@ lic_module = angular.module("icsw.license.overview",
     }
 ]).controller("icswRMSLicenseLiveviewCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$log",
     "$uibModal", "icswAccessLevelService", "$timeout", "ICSW_URLS", "icswSimpleAjaxCall",
 (
-    $scope, $compile, $filter, $templateCache, Restangular, $q,
+    $scope, $compile, $filter, $templateCache, Restangular, $q, $log,
     $uibModal, icswAccessLevelService, $timeout, ICSW_URLS, icswSimpleAjaxCall
 ) ->
     $scope.struct = {
+        # license servers
         servers: []
+        # license
         licenses: []
         lic_overview: []
         # current timeout
@@ -137,12 +150,16 @@ lic_module = angular.module("icsw.license.overview",
                 $scope.struct.servers.length = 0
                 for entry in $(xml).find("ms_license_info > license_servers > server")
                     $scope.struct.servers.push(new license_server($(entry)))
-                $scope.struct.licenses.length = 0
+                _lic_lut = _.keyBy($scope.struct.licenses, (entry) -> return entry.name)
+                # $scope.struct.licenses.length = 0
                 for entry in $(xml).find("ms_license_info > licenses > license")
                     new_lic = new license($(entry))
-                    $scope.struct.licenses.push(new_lic)
-                    if new_lic.name in _open_list
-                        new_lic.open = true
+                    if new_lic.name of _lic_lut
+                        _lic_lut[new_lic.name].update(new_lic)
+                    else
+                        $scope.struct.licenses.push(new_lic)
+                        if new_lic.name in _open_list
+                            new_lic.open = true
                 _updated = []
                 for entry in $(xml).find("license_overview > licenses > license")
                     _name = $(entry).attr("name")
@@ -166,42 +183,35 @@ lic_module = angular.module("icsw.license.overview",
                 _.remove($scope.struct.lic_overview, (entry) -> return entry.name in _to_remove)
                 for _ov in $scope.struct.lic_overview
                     $scope.build_stack(_ov)
-                $scope.struct.cur_timeout = $timeout($scope.update, 30000)
+                $scope.struct.cur_timeout = $timeout($scope.update, 3000)
             (error) ->
                 $scope.struct.cur_timeout = $timeout($scope.update, 30000)
         )
 
     $scope.build_stack = (lic) ->
         total = lic.total
-        lic.license_stack.length = 0
-        if lic.used
-            if lic.sge_used
-                lic.license_stack.push(
-                    {
-                        value: parseInt(lic.sge_used * 1000 / total)
-                        type: "primary"
-                        out: "#{lic.sge_used}"
-                        title: "#{lic.sge_used} used on cluster"
-                    }
-                )
-            if lic.external_used
-                lic.license_stack.push(
-                    {
-                        value: parseInt(lic.external_used * 1000 / total)
-                        type: "warning"
-                        out: "#{lic.external_used}"
-                        title: "#{lic.external_used} used external"
-                    }
-                )
-        if lic.free
-            lic.license_stack.push(
+        [_to_add, _to_modify, _to_remove] = [[], [], []]
+        if lic.license_stack.length == 0
+            lic.license_stack = [
                 {
-                    value: parseInt(lic.free * 1000 / total)
-                    type: "success"
-                    out: "#{lic.free}"
-                    title: "#{lic.free} free"
+                    type: "primary"
                 }
-            )
+                {
+                    type: "warning"
+                }
+                {
+                    type: "success"
+                }
+            ]
+        _lut = _.keyBy(lic.license_stack, (entry) -> return entry.type)
+        for [_key, _value, _info] in _.zip(
+            ["primary", "warning", "success"]
+            [lic.sge_used, lic.external_used, lic.free]
+            ["used on cluster", "used external", "free"]
+        )
+            _lut[_key].value = parseInt(_value * 1000 / total)
+            _lut[_key].out = "#{_value}"
+            _lut[_key].title = "#{_value} #{_info}"
     $scope.update()
     $scope.$on("$destroy", () ->
         if $scope.struct.cur_timeout?

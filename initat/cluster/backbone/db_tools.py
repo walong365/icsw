@@ -21,8 +21,6 @@
 #
 """ helper functions for db access / close """
 
-
-
 import socket
 
 from django.conf import settings

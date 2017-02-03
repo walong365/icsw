@@ -21,8 +21,6 @@
 #
 """ enums for all defined icinga commands """
 
-
-
 import time
 
 from dateutil import parser
@@ -33,8 +31,8 @@ from initat.cluster.backbone.models import functions
 
 
 __all__ = [
-    b"IcingaCommandEnum",
-    b"IcingaCommandSerializer",
+    "IcingaCommandEnum",
+    "IcingaCommandSerializer",
 ]
 
 

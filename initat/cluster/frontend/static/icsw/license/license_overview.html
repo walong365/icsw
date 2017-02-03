@@ -38,7 +38,8 @@
                             <td class="text-right">{{ ov.external_used }}</td>
                             <td>
                                 <div style="width:200px;height:10px;margin-bottom:0px;" ng-show="ov.total">
-                                    <icsw-rms-license-graph icsw-license="ov"></icsw-rms-license-graph>
+                                    <icsw-rms-license-graph icsw-license="ov">
+                                    </icsw-rms-license-graph>
                                 </div>
                             </td>
                         </tr>
@@ -47,7 +48,10 @@
             </div>
             <div uib-accordion-group class="panel-default" is-open="licenses_open">
                 <uib-accordion-heading>
-                    <icsw-tools-accordion-chevron icsw-left="true" icsw-flag="licenses_open"></icsw-tools-accordion-chevron>
+                    <icsw-tools-accordion-chevron
+                        icsw-left="true"
+                        icsw-flag="licenses_open"
+                    ></icsw-tools-accordion-chevron>
                     Licenses from Licenseserver: {{ struct.licenses.length }}
                 </uib-accordion-heading>
                 <div
@@ -64,6 +68,9 @@
                                     icsw-flag="license.open"
                                 ></icsw-tools-accordion-chevron>
                                 {{ license.name }}
+                                <span ng-show="license.num_users">
+                                    ({{ license.num_users }} users)
+                                </span>
                             </div>
                             <div class="col-md-4">
                                 <span class="label label-warning" ng-show="license.used">{{ license.used }} used</span>
@@ -72,7 +79,8 @@
                                 <span class="label label-primary">{{ license.issued }} issued</span>
                             </div>
                             <div class="col-md-4" ng-show="license.overview">
-                                <icsw-rms-license-graph icsw-license="license.overview"></icsw-rms-license-graph>
+                                <icsw-rms-license-graph icsw-license="license.overview"
+                                ></icsw-rms-license-graph>
                             </div>
                         </div>
                     </uib-accordion-heading>

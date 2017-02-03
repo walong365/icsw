@@ -21,8 +21,6 @@
 #
 """ enums for domains """
 
-
-
 from enum import Enum
 
 from initat.cluster.backbone.server_enums import icswServiceEnum

@@ -420,7 +420,7 @@ class SGEInfo(object):
                         E.messages(),
                         init_time="{:d}".format(cur_time), job_id=job_id
                     )
-                    _exec_time_el = job_xml.find(".//JB_execution_time")
+                    _exec_time_el = job_el.find(".//JB_execution_time")
                     if _exec_time_el is not None and int(_exec_time_el.text):
                         ext_xml.append(E.execution_time(str(int(_exec_time_el.text))))
                     job_xml_dict[job_id] = ext_xml
