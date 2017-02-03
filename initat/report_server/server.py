@@ -74,6 +74,9 @@ class ServerProcess(
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
         self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
 
+    def process_start(self, src_process, src_pid):
+        self.CC.process_added(src_process, src_pid)
+
     def _init_network_sockets(self):
         self.network_bind(
             need_all_binds=False,

@@ -21,6 +21,7 @@
 """ constants for service handling """
 
 import os
+from enum import Enum
 
 from initat.constants import CLUSTER_DIR
 
@@ -57,6 +58,11 @@ __all__ = [
     "LIC_STATE_DICT",
     "CONF_STATE_DICT",
     "TARGET_STATE_DICT",
+    # Enums
+    "ConfigStateEnum",
+    "LicenseStateEnum",
+    "TargetStateEnum",
+    "ServiceStateEnum",
 ]
 
 # service states (== process states)
@@ -105,6 +111,40 @@ CONF_STATE_DICT = {
 TARGET_STATE_DICT = {
     _locs[_key]: _key.split("_", 2)[2].lower().replace("_", " ") for _key in list(_locs.keys()) if _key.startswith("TARGET_STATE_")
 }
+
+# Enums
+ServiceStateEnum = Enum(
+    value="ServiceStateEnum",
+    names={
+        _value.replace(" ", "_"): _key for _key, _value in STATE_DICT.items()
+    }
+)
+
+ConfigStateEnum = Enum(
+    value="ConfigStateEnum",
+    names={
+        _value.replace(" ", "_"): _key for _key, _value in CONF_STATE_DICT.items()
+    }
+)
+
+LicenseStateEnum = Enum(
+    value="LicenseStateEnum",
+    names={
+        _value.replace(" ", "_"): _key for _key, _value in LIC_STATE_DICT.items()
+    }
+)
+
+TargetStateEnum = Enum(
+    value="TargetStateEnum",
+    names={
+        _value.replace(" ", "_"): _key for _key, _value in TARGET_STATE_DICT.items()
+    }
+)
+
+# print(list(ServiceStateEnum))
+# print(list(ConfigStateEnum))
+# print(list(LicenseStateEnum))
+# print(list(TargetStateEnum))
 
 # path definitions
 SERVERS_DIR = os.path.join(CLUSTER_DIR, "etc", "servers.d")

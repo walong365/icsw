@@ -45,6 +45,16 @@ class StateEnum(enum.Enum):
     stop = "stop"
 
 
+class ServiceActionEnum(enum.Enum):
+    # all actions
+    start = StateEnum.start.value
+    stop = StateEnum.stop.value
+    enable = "enable"
+    disable = "disable"
+    monitor = "monitor"
+    ignore = "ignore"
+
+
 class DBCursor(object):
     def __init__(self, conn, cached):
         self.__cached = cached
@@ -145,7 +155,7 @@ class ServiceStateTranstaction(object):
         self.repeat = 0
         max_dt = 0.0
         for _action, _time in actions:
-            if _action == StateEnum.start:
+            if _action == ServiceActionEnum.start:
                 self.repeat += 1
                 max_dt = max(max_dt, _time)
             else:
@@ -584,6 +594,8 @@ class ServiceState(object):
                     self.__service_lut[name],
                 )
             ).fetchall()
+            # map to StateEnums
+            _actions = [(ServiceActionEnum[_v[0]], _v[1]) for _v in _actions]
             if _actions and _actions[0][0] == StateEnum.start and _actions[0][1] < 5:
                 # latest action only 5 seconds ago, not stable
                 _stable = False
@@ -676,6 +688,8 @@ class ServiceState(object):
                         cur_time - TRANSACTION_WINDOW,
                     )
                 ).fetchall()
+                # map to StateEnum
+                actions = [(ServiceActionEnum[_v[0]], _v[1]) for _v in actions]
                 crs.execute(
                     "INSERT INTO action(service, action, created) VALUES(?, ?, ?)",
                     (
@@ -811,7 +825,7 @@ class ServiceState(object):
             )
             self._disable_command(
                 server_command.srv_command(
-                    command="disable",
+                    command=ServiceActionEnum.disable.value,
                     services=",".join(dis_list)
                 )
             )
@@ -954,9 +968,9 @@ class ServiceState(object):
                     ] + [
                         "{} pstate={}, cstate={}, license_state={} [{}]".format(
                             time.ctime(int(_state[3])),
-                            _state[0],
-                            _state[1],
-                            _state[2],
+                            constants.ServiceStateEnum(_state[0]),
+                            constants.ConfigStateEnum(_state[1]),
+                            constants.LicenseStateEnum(_state[2]),
                             _state[4],
                         ) for _state in _states
                     ] + [
@@ -1039,13 +1053,13 @@ class ServiceState(object):
                             )
                         )
             srv_com["overview"] = instances
-        elif _com == "enable":
+        elif _com == ServiceActionEnum.enable.value:
             trigger = self._enable_command(srv_com)
-        elif _com == "disable":
+        elif _com == ServiceActionEnum.disable.value:
             trigger = self._disable_command(srv_com)
-        elif _com == "monitor":
+        elif _com == ServiceActionEnum.monitor.value:
             trigger = self._monitor_command(srv_com)
-        elif _com == "ignore":
+        elif _com == ServiceActionEnum.ignore.value:
             trigger = self._ignore_command(srv_com)
         else:
             srv_com.set_result(
@@ -1076,7 +1090,7 @@ class ServiceState(object):
                 crsr.execute(
                     "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
                     (
-                        _idx, "enable", int(time.time()), 1, 1,
+                        _idx, ServiceActionEnum.enable.value, int(time.time()), 1, 1,
                     )
                 )
         srv_com.set_result(
@@ -1110,7 +1124,7 @@ class ServiceState(object):
                 crsr.execute(
                     "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
                     (
-                        _idx, "disable", int(time.time()), 1, 1,
+                        _idx, ServiceActionEnum.disable.value, int(time.time()), 1, 1,
                     )
                 )
         srv_com.set_result(
@@ -1139,7 +1153,7 @@ class ServiceState(object):
                 crsr.execute(
                     "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
                     (
-                        _idx, "monitor", int(time.time()), 1, 1,
+                        _idx, ServiceActionEnum.monitor.value, int(time.time()), 1, 1,
                     )
                 )
         srv_com.set_result(
@@ -1168,7 +1182,7 @@ class ServiceState(object):
                 crsr.execute(
                     "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
                     (
-                        _idx, "ignore", int(time.time()), 1, 1,
+                        _idx, ServiceActionEnum.ignore.value, int(time.time()), 1, 1,
                     )
                 )
         srv_com.set_result(
