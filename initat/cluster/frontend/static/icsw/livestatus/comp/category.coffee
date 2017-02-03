@@ -352,15 +352,8 @@ angular.module(
             )
             if _ia
                 num_clicked = (entry for entry in @focus_elements when entry.clicked).length
-                _header = [
-                    if @props.sub_tree == "mon" then "Service" else "Device"
-                    " ("
-                    @props.draw_parameters.get_segment_info()
-                ]
-                if num_clicked
-                    _header.push(", #{num_clicked} selected")
-                _header.push(")")
-                _header = _header.join("")
+                _header = if @props.sub_tree == "mon" then "Monitoring Category Filter" else "Device Category Filter"
+                _sel_info = "selected #{num_clicked} of #{@props.draw_parameters.segments_drawn}"
                 # graph has a focus component
                 _graph = div(
                     {
@@ -373,61 +366,95 @@ angular.module(
                                 key: "svg.div"
                                 className: "col-xs-12"
                             }
-                            h4(
+                            div(
                                 {
-                                    key: "graph.header"
-                                    style: { }
+                                    key: "graph.headerblock"
+                                    className: "pull-left"
                                 }
-                                "all:"
-                                input(
+                                h4(
                                     {
-                                        type: "checkbox"
-                                        key: "selall"
-                                        title: "keep all categories selected"
-                                        checked: @settings.select_all
-                                        # className: "btn btn-xs btn-primary"
-                                        onClick: (event) =>
-                                            @setState({select_all: !@state.select_all})
-                                            # @select_all(true)
+                                        key: "graph.header"
                                     }
+                                _header
                                 )
-                                button(
+                                div(
                                     {
-                                        type: "button"
-                                        key: "selnone"
-                                        className: "btn btn-xs btn-warning"
-                                        onClick: (event) =>
-                                            @select_none()
+                                        key: "graph.selinfo"
                                     }
-                                    "none"
-                                )
-                                "sum:"
-                                input(
-                                    {
-                                        type: "checkbox"
-                                        key: "parent"
-                                        title: "Take info from childs"
-                                        checked: @state.sum_childs
-                                        onClick: (event) =>
-                                            @setState({sum_childs: !@state.sum_childs})
-                                    }
-                                )
-                                span(
-                                    {
-                                        key: "hs"
-                                    }
-                                    _header
+                                    _sel_info
                                 )
                             )
                             div(
                                 {
                                     key: "svg.wrap"
                                     style: {
-                                        margin: "0 5px"
+                                        margin: "0 10px"
                                         textAlign: "center"
                                         }
                                 }
                                 _svg
+                            )
+                            div(
+                                {
+                                    key: "graph.controls"
+                                    style: {
+                                        position: "absolute"
+                                        top: 0
+                                        right: 20
+                                    }
+                                    className: "pull-right"
+                                }
+                                div(
+                                    {
+                                        key: "graph.inherit"
+                                    }
+                                    input(
+                                        {
+                                            type: "checkbox"
+                                            key: "parent"
+                                            style: { marginRight: 5}
+                                            title: "Take info from childs"
+                                            checked: @state.sum_childs
+                                            onClick: (event) =>
+                                                @setState({sum_childs: !@state.sum_childs})
+                                        }
+                                    )
+                                    "Inherit Status"
+                                )
+                                div(
+                                    {
+                                        key: "graph.selall"
+                                    }
+                                    input(
+                                        {
+                                            type: "checkbox"
+                                            key: "selall"
+                                            style: { marginRight: 5}
+                                            title: "keep all categories selected"
+                                            checked: @settings.select_all
+                                            # className: "btn btn-xs btn-primary"
+                                            onClick: (event) =>
+                                                @setState({select_all: !@state.select_all})
+                                                # @select_all(true)
+                                        }
+                                    )
+                                    "Select all"
+                                )
+                                div(
+                                    {
+                                        key: "graph.selnone"
+                                    }
+                                    button(
+                                        {
+                                            type: "button"
+                                            key: "selnone"
+                                            className: "btn btn-xs btn-warning"
+                                            onClick: (event) =>
+                                                @select_none()
+                                        }
+                                        "Select none"
+                                    )
+                                )
                             )
                         )
                     ]
