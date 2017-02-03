@@ -939,6 +939,7 @@ angular.module(
                             x: -60
                             y: -22
                             key: "symbol"
+                            height: 50
                             width: 110
                             xlinkHref: _el.$$imgdata.icon
                             }
