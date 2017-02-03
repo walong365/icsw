@@ -968,9 +968,9 @@ class ServiceState(object):
                     ] + [
                         "{} pstate={}, cstate={}, license_state={} [{}]".format(
                             time.ctime(int(_state[3])),
-                            constants.ServiceStateEnum(_state[0]),
-                            constants.ConfigStateEnum(_state[1]),
-                            constants.LicenseStateEnum(_state[2]),
+                            constants.ServiceStateEnum(_state[0]).name,
+                            constants.ConfigStateEnum(_state[1]).name,
+                            constants.LicenseStateEnum(_state[2]).name,
                             _state[4],
                         ) for _state in _states
                     ] + [
