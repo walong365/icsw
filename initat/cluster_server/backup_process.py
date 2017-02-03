@@ -53,8 +53,8 @@ class BackupProcess(threading_tools.icswProcessObj):
         ignore_list = []
         for _config in apps.get_app_configs():
             for _model in _config.get_models():
-                if hasattr(_model, "CSW_Meta"):
-                    if not getattr(_model.CSW_Meta, "backup", True):
+                if hasattr(_model, "ICSW_Meta"):
+                    if not getattr(_model.ICSW_Meta, "backup", True):
                         if table_name:
                             ignore_list.append(_model._meta.db_table)
                         else:
