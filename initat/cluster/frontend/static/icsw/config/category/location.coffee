@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2016 init.at
+# Copyright (C) 2015-2017 init.at
 #
 # Send feedback to: <mallinger@init.at>
 #
