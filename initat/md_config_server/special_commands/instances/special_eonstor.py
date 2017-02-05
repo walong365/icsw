@@ -32,6 +32,7 @@ class SpecialEonStor(SpecialBase):
         info = "Eonstor checks"
         command_line = "$USER3$ -m $HOSTADDRESS$ -C ${ARG1:SNMP_COMMUNITY:public} -V ${ARG2:SNMP_VERSION:2} $ARG3$ $ARG4$"
         description = "checks the eonstore disc chassis via SNMP"
+        uuid = "49ff3ddb-dd5a-4059-bafe-d15a455b90a9"
 
     def to_hint(self, srv_reply):
         _hints = []

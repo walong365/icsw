@@ -33,6 +33,7 @@ class SpecialDisc(SpecialBase):
         group = SpecialGroupsEnum.system_disc
         command_line = "$USER2$ -m $HOSTADDRESS$ df -w ${ARG1:85} -c ${ARG2:95} $ARG3$"
         description = "queries the partition on the target system via collserver"
+        uuid = "0e8c7057-90a9-46ac-adcf-9540559801e2"
 
     def call(self):
         part_dev = self.host.partdev

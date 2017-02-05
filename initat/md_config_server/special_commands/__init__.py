@@ -22,25 +22,26 @@
 
 from django.db.models import Q
 
-from initat.cluster.backbone.models import mon_check_command_special, mon_check_command, SpecialGroupsEnum
+from initat.cluster.backbone.models import SpecialGroupsEnum
 from initat.cluster.backbone.models.functions import get_related_models
 from initat.md_config_server.special_commands.base import SpecialBase, ArgTemplate
-from .struct import DynamicCheckServer, DynamicCheckAction
-from initat.md_config_server.special_commands.instances import *
+from initat.md_config_server.special_commands.instances import dynamic_checks
 from initat.tools import logging_tools
+from .struct import DynamicCheckServer, DynamicCheckAction
 
 __all__ = [
     "check_special_commands",
-    "META_SUB_REVERSE_LUT",
+    # "META_SUB_REVERSE_LUT",
 ]
 
 # 'global' dict to map names from instances of Meta-subcommands (for instance snmp instance names)
 # back to the unique name stored in database
-META_SUB_REVERSE_LUT = {}
+# META_SUB_REVERSE_LUT = {}
 
 
 def check_special_commands(log_com):
 
+    from initat.cluster.backbone.models import mon_check_command_special
     def _check_db_for_mccs(log_com, meta, parent=None):
         try:
             cur_mccs = mon_check_command_special.objects.get(Q(name=meta.database_name))
@@ -56,18 +57,9 @@ def check_special_commands(log_com):
 
     pks_found = set()
     mccs_dict = {}
-    for _name, _entry in dynamic_checks.class_dict.items():
-        _inst = _entry(log_com)
-        if dynamic_checks.meta_to_class_name(_inst.Meta.name) != _name:
-            log_com(
-                "special {} has illegal name {}".format(
-                    _name,
-                    _inst.Meta.name
-                ),
-                logging_tools.LOG_LEVEL_CRITICAL
-            )
-        else:
-            log_com("found special {}".format(_name))
+    for _name, _inst in dynamic_checks.valid_class_dict(log_com).items():
+        # print(_name, _entry)
+        if True:  # False:
             cur_mccs = _check_db_for_mccs(log_com, _inst.Meta)
             mccs_dict[cur_mccs.name] = cur_mccs
             pks_found.add(cur_mccs.pk)
@@ -82,28 +74,20 @@ def check_special_commands(log_com):
                     sub_mccs = _check_db_for_mccs(log_com, _sub_com.Meta, parent=cur_mccs)
                     mccs_dict[sub_mccs.name] = sub_mccs
                     pks_found.add(sub_mccs.pk)
+    print(mccs_dict)
     # delete stale
-    del_mccs = mon_check_command_special.objects.exclude(pk__in=pks_found)
-    if del_mccs:
-        for _del_mcc in del_mccs:
-            log_com(
-                "trying to remove stale {}...".format(
-                    str(_del_mcc),
+    if True:   # False:
+        del_mccs = mon_check_command_special.objects.exclude(pk__in=pks_found)
+        if del_mccs:
+            for _del_mcc in del_mccs:
+                log_com(
+                    "trying to remove stale {}...".format(
+                        str(_del_mcc),
+                    )
                 )
-            )
-            _refs = get_related_models(_del_mcc)
-            if _refs:
-                log_com("  unable to remove because referenced {}".format(logging_tools.get_plural("time", _refs)), logging_tools.LOG_LEVEL_ERROR)
-            else:
-                _del_mcc.delete()
-                log_com("  ...done")
-    # rewrite
-    for to_rewrite in mon_check_command.objects.filter(Q(name__startswith="@")):
-        log_com("rewriting {} to new format... ".format(str(to_rewrite)))
-        _key = to_rewrite.name.split("@")[1].lower()
-        if _key in mccs_dict:
-            to_rewrite.name = to_rewrite.name.split("@")[2]
-            to_rewrite.mon_check_command_special = mccs_dict[_key]
-            to_rewrite.save()
-        else:
-            log_com("key {} not found in dict".format(_key), logging_tools.LOG_LEVEL_ERROR)
+                _refs = get_related_models(_del_mcc)
+                if _refs:
+                    log_com("  unable to remove because referenced {}".format(logging_tools.get_plural("time", _refs)), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    _del_mcc.delete()
+                    log_com("  ...done")

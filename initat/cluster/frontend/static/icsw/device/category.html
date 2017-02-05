@@ -1,6 +1,7 @@
 <script type="text/ng-template" id="icsw.device.category.overview">
     <h3>
-        Categories for <icsw-device-list-info icsw-device-list="struct.devices"></icsw-device-list-info>
+        Categories for
+        <icsw-device-list-info icsw-device-list="struct.devices"></icsw-device-list-info>
     </h3>
     <icsw-config-category-tree-select
         icsw-sub-tree="'device'"
@@ -16,11 +17,25 @@
 
 <script type="text/ng-template" id="icsw.config.category.tree.select">
     <div>
-        <icsw-tools-button type="modify" icsw-disabled="!struct.sel_changed" ng-click="modify_it($event)" ng-if="mode!='filter'"></icsw-tools-button>
-        <icsw-tools-button type="revert" icsw-disabled="!struct.sel_changed" ng-click="cancel_it($event)" ng-if="mode!='filter'"></icsw-tools-button>
-        <icsw-react-tree ng-if='struct.tree_ready' icsw-tree-config='struct.disp_cat_tree'></icsw-react-tree>
+        <icsw-tools-button
+            type="modify"
+            icsw-disabled="!struct.sel_changed"
+            ng-click="modify_it($event)"
+            ng-if="mode != 'filter'"
+        ></icsw-tools-button>
+        <icsw-tools-button
+            type="revert"
+            icsw-disabled="!struct.sel_changed"
+            ng-click="cancel_it($event)"
+            ng-if="mode != 'filter'"
+        ></icsw-tools-button>
+        <icsw-react-tree
+            ng-if='struct.tree_ready'
+            icsw-tree-config='struct.disp_cat_tree'
+        ></icsw-react-tree>
     </div>
 </script>
+
 <script type="text/ng-template" id="icsw.device.category.edit">
     <icsw-config-category-tree-select
         icsw-sub-tree="'device'"

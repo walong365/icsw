@@ -25,7 +25,7 @@ from ...snmp_struct import simple_snmp_oid
 from ..base import SNMPHandler
 
 
-class handler(SNMPHandler):
+class Handler(SNMPHandler):
     class Meta:
         description = "rackable power distribution unit"
         vendor_name = "apc"

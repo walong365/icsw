@@ -23,6 +23,8 @@ class for encoding and decoding icinga command names
 separated to enable flawless import from webfrontend
 """
 
+from initat.tools import logging_tools
+
 __all__ = [
     "HostServiceIDUtil",
 ]
@@ -53,37 +55,23 @@ class HostServiceIDUtil(object):
         Use create_host_service_description_direct if you don't have a check_command object
         :param s_check: initat.md_config_server.config.check_command.check_command
         '''
-        # todo: move to new unique shadow mon_check_command objects for special_commands
-        if s_check.mon_check_command_special_id is not None:
-            # special command
-            check_command_pk = s_check.idx
-            special_check_command_pk = s_check.mon_check_command_special_id
-        else:
-            check_command_pk = s_check.idx
-            special_check_command_pk = None
-
         return cls.create_host_service_description_direct(
             host_pk,
-            check_command_pk,
-            special_check_command_pk=special_check_command_pk,
+            s_check,
             info=info
         )
 
     @classmethod
     def create_host_service_description_direct(
-        cls, host_pk, check_command_pk=None,
-        special_check_command_pk=None, info=""
+        cls, host_pk, check_command, info=""
     ):
-        if special_check_command_pk is not None:
-            # special service check
-            # form is similar to regular service check, other prefix and we also set the pk of the special_command
-            retval = "s_host_check:{}:{}:{}:{}".format(host_pk, check_command_pk, special_check_command_pk, info)
-        elif check_command_pk is not None:
-            # regular service check
-            # format is: service_check:${mon_check_command_pk}:$info
-            # since a mon_check_command_pk can have multiple actual service checks,
-            # we add the info string to identify it as the services are created dynamically, we don't have a nice db pk
-            retval = "host_check:{}:{}:{}".format(host_pk, check_command_pk, info)
+        if check_command is not None:
+            # new format
+            retval = "uuid_hc:{}:{}:{}".format(
+                host_pk,
+                check_command.uuid,
+                info,
+            )
         else:
             retval = "unstructured: {}".format(info)
         return retval
@@ -96,7 +84,13 @@ class HostServiceIDUtil(object):
         data = service_spec.split(':', 1)
         retval = (None, None, None)
         if len(data) == 2:
-            if data[0] == 'host_check':
+            if data[0] == "uuid_hc":
+                # new format
+                if data[1].count(":") >= 3:
+                    service_data = data[1].split(":", 3)
+                    host_pk, mc_uuid, info = service_data.split(":", 3)
+                    retval = (int(host_pk), mc_uuid, info)
+            elif data[0] == 'host_check':
                 if data[1].count(":") >= 2:
                     service_data = data[1].split(":", 2)
                     host_pk, service_pk, info = service_data
@@ -110,5 +104,17 @@ class HostServiceIDUtil(object):
                 pass
             else:
                 if log:
-                    log("invalid service description: {}".format(service_spec))
+                    log(
+                        "invalid service description: {}".format(
+                            service_spec
+                        ),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
+        if retval[0] is None:
+            log(
+                "error parsing service_spec '{}'".format(
+                    service_spec
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         return retval

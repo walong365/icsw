@@ -31,7 +31,7 @@ from ...functions import simplify_dict
 STACK_BASE = "1.3.6.1.4.1.9.5.1.9.3.1"
 
 
-class handler(SNMPHandler):
+class Handler(SNMPHandler):
     class Meta:
         # oids = ["generic.netip"]
         description = "Cisco Stack Information"

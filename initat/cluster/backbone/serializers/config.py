@@ -107,7 +107,7 @@ class config_serializer(serializers.ModelSerializer):
     config_blob_set = config_blob_serializer(many=True, read_only=True)
     config_bool_set = config_bool_serializer(many=True, read_only=True)
     config_script_set = config_script_serializer(many=True, read_only=True)
-    mon_check_command_set = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    mcc_rel = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     device_config_set = device_config_serializer(many=True, read_only=True)
     # categories only as flat list, no nesting
 

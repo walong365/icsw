@@ -46,6 +46,7 @@ class SpecialMegaraidSas(SpecialBase):
                 IGNORE_KEYS_NAME,
             )
         description = "detailed checks for MegaRaid SAS controllers"
+        uuid = "df821c8e-aba9-4def-bc32-5a5b01720f56"
 
     def dynamic_update_calls(self):
         yield DynamicCheckAction(DynamicCheckServer.collrelay, "megaraid_sas_status")

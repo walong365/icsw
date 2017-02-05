@@ -146,6 +146,24 @@ class DynamicCheckDict(object):
         self._class_list.append(obj)
         self._class_dict[key] = obj
 
+    def valid_class_dict(self, log_com):
+        # filter _class_dict and return only valid commands
+        _res = {}
+        for _name, _entry in self._class_dict.items():
+            _inst = _entry(log_com)
+            if self.meta_to_class_name(_inst.Meta.name) != _name:
+                log_com(
+                    "special {} has illegal name {}".format(
+                        _name,
+                        _inst.Meta.name
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL
+                )
+            else:
+                log_com("found special {}".format(_name))
+                _res[_name] = _inst
+        return _res
+
     @staticmethod
     def meta_to_class_name(name):
         return "Special{}".format(name)
@@ -160,7 +178,6 @@ class DynamicCheckDict(object):
 
     def handle(self, gbc, hbc, cur_gc, s_check, mode):
         # import reverse lut for meta subcommands
-        from . import META_SUB_REVERSE_LUT
         # init Dynamic Check Result
         rv = DynamicCheckResult()
         # mccs .... mon_check_command_special

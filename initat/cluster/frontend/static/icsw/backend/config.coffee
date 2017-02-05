@@ -44,7 +44,6 @@ config_module = angular.module(
             for entry in EL_LIST
                 @[entry] = []
             # monitoring check command list
-            @mcc_list = []
             # free mccs (without a config)
             @free_mcc_list = []
             @update(list, cse_list, catalog_list, hint_list)
@@ -58,36 +57,34 @@ config_module = angular.module(
 
         build_luts: () =>
             _start = new Date().getTime()
-            @mcc_list.length = 0
             @free_mcc_list.length = 0
             # new entries added
             @lut = _.keyBy(@list, "idx")
             @cse_lut = _.keyBy(@cse_list, "idx")
             @catalog_lut = _.keyBy(@catalog_list, "idx")
             @hint_lut = _.keyBy(@hint_list, "idx")
-            @mcc_to_config_lut = {}
+            # init mccs
+            for mcc in @mon_basic_tree.mon_check_command_list
+                if mcc.$$res_config_rel?
+                    mcc.$$res_config_rel.length = 0
+                else
+                    mcc.$$res_config_rel = []
             for config in @list
                 # links
                 config.$$config_tree = @
-                if config.res_mon_check_command_set?
-                    config.res_mon_check_command_set.length = 0
+                if config.$$res_mcc_rel?
+                    config.$$res_mcc_rel.length = 0
                 else
-                    config.res_mon_check_command_set = []
-                for mcc_idx in config.mon_check_command_set
+                    config.$$res_mcc_rel = []
+                for mcc_idx in config.mcc_rel
                     mcc = @mon_basic_tree.mon_check_command_lut[mcc_idx]
-                    config.res_mon_check_command_set.push(mcc)
-                    mcc.$$config = config
-                    mcc.$$config_name = config.name
-                    @mcc_to_config_lut[mcc.idx] = config.idx
-                    @mcc_list.push(mcc)
+                    config.$$res_mcc_rel.push(mcc)
+                    mcc.$$res_config_rel.push(config)
             for entry in @mon_basic_tree.mon_check_command_list
-                if not entry.config
-                    entry.$$config = null
-                    entry.$$config_name = null
+                # console.log entry.config_rel
+                if not entry.config_rel.length
                     entry.$$config_tree = @
-                    @mcc_list.push(entry)
                     @free_mcc_list.push(entry)
-            @mcc_lut = _.keyBy(@mcc_list, "idx")
             @resolve_hints()
             @reorder()
             @update_filtered_list()
@@ -223,16 +220,12 @@ config_module = angular.module(
                 mcc.$$mon_service_templ_name = @mon_basic_tree.mon_service_templ_lut[mcc.mon_service_templ].name
             else
                 mcc.$$mon_service_templ_name = "-"
-            if mcc.mon_check_command_special
-                mcc.$$command_line = @mon_basic_tree.mon_check_command_special_lut[mcc.mon_check_command_special].command_line
-            else
-                mcc.$$command_line = mcc.command_line
             ev_idx = mcc.event_handler
             if ev_idx
                 # not fast but working
                 ev_config = (entry for entry in mcc.$$config_tree.list when ev_idx of entry.mon_check_command_lut)
                 if ev_config.length
-                    mcc.$$event_handler = (entry for entry in ev_config[0].res_mon_check_command_set when entry.idx == ev_idx)[0].name
+                    mcc.$$event_handler = (entry for entry in ev_config[0].$$res_mcc_rel when entry.idx == ev_idx)[0].name
                 else
                     mcc.$$event_handler = "???"
             else
@@ -269,9 +262,9 @@ config_module = angular.module(
                 script.$$config_tree = @
                 if not script.$selected?
                     script.$selected = false
-            for mon in config.res_mon_check_command_set
+            for mon in config.$$res_mcc_rel
                 mon.$$config_tree = @
-                mon.$$config = config
+                # mon.$$config = config
             for vt in ["str", "int", "bool", "blob"]
                 for el in config["config_#{vt}_set"]
                     el.$$config_tree = @
@@ -288,9 +281,9 @@ config_module = angular.module(
             config.var_sel = (true for entry in config.var_list when entry.$selected).length
             config.$$num_script = config.config_script_set.length
             config.script_sel = (true for entry in config.config_script_set when entry.$selected).length
-            config.$$num_mon = config.res_mon_check_command_set.length
-            config.mon_sel = (true for entry in config.res_mon_check_command_set when entry.$selected).length
-            config.mon_check_command_lut = _.keyBy(config.res_mon_check_command_set, "idx")
+            config.$$num_mon = config.$$res_mcc_rel.length
+            config.mon_sel = (true for entry in config.$$res_mcc_rel when entry.$selected).length
+            config.mon_check_command_lut = _.keyBy(config.$$res_mcc_rel, "idx")
             # build info strings for device-config
             if @_multi_name_dict[config.name] > 1
                 _name = "#{config.name} [" + @catalog_lut[config.config_catalog].name + "]"
@@ -332,7 +325,7 @@ config_module = angular.module(
                     cat.configs = []
             for config in @list
                 @_enrich_config(config)
-            for mcc in @mcc_list
+            for mcc in @mon_basic_tree.mon_check_command_list
                 @_enrich_mcc(mcc)
             @_populate_filter_fields()
             @$selected = (entry for entry in @list when entry.$selected).length
@@ -356,7 +349,7 @@ config_module = angular.module(
                             _local_s.push(cvar[attr_name])
                         cvar.$$filter_string = _local_s.join(" ")
                         s.push(cvar.$$filter_string)
-                for moncc in entry.res_mon_check_command_set
+                for moncc in entry.$$res_mcc_rel
                     _local_s = []
                     for attr_name in ["name", "description", "check_command", "command_line"]
                         _local_s.push(moncc[attr_name])
@@ -378,7 +371,6 @@ config_module = angular.module(
                 for attr_name in ["name", "description", "check_command", "command_line"]
                     _local_s.push(moncc[attr_name])
                 moncc.$$filter_string = _local_s.join(" ")
-
 
         update_filtered_list: (search_str, with_server, with_service) =>
             if not search_str?
@@ -405,14 +397,19 @@ config_module = angular.module(
                                 _num_script_found++
                         else
                             scr.$$filter_match = false
-                    for mon in entry.res_mon_check_command_set
+                    for mon in entry.$$res_mcc_rel
+                        # console.log mon.idx, mon.$$filter_string, search_re
                         if search_str
                             if mon.$$filter_string.match(search_re)
+                                # console.log "p"
                                 @filtered_mcc_list.push(mon)
                             mon.$$filter_match = if mon.$$filter_string.match(search_re) then true else false
                             if mon.$$filter_match
                                 _num_mon_found++
                         else
+                            # in case of full monitoring table the search_string is always empty
+                            # (search is done via filters on the local controller)
+                            @filtered_mcc_list.push(mon)
                             mon.$$filter_match = false
                     for vart in ["str", "int", "blob", "bool"]
                         for cvar in entry["config_#{vart}_set"]
@@ -543,11 +540,12 @@ config_module = angular.module(
             )
 
         # config create / delete mon_check_commands
-        create_mon_check_command: (config, new_mcc) =>
+        create_mon_check_command: (new_mcc) =>
             defer = $q.defer()
             @mon_basic_tree.create_mon_check_command(new_mcc).then(
                 (new_mcc) =>
-                    config.mon_check_command_set.push(new_mcc.idx)
+                    for new_c in new_mcc.config_rel
+                        @lut[new_c].mcc_rel.push(new_mcc.idx)
                     @build_luts()
                     defer.resolve("done")
                 (error) =>
@@ -556,15 +554,15 @@ config_module = angular.module(
             )
             return defer.promise
 
-        modify_mon_check_command: (config, mcc) =>
+        modify_mon_check_command: (mcc) =>
             defer = $q.defer()
             @mon_basic_tree.modify_mon_check_command(mcc).then(
                 (new_mcc) =>
-                    # try to remove from current config
-                    if config?
-                        _.remove(config.mon_check_command_set, (entry) -> return entry == mcc.idx)
-                    if new_mcc.config
-                        @lut[new_mcc.config].mon_check_command_set.push(new_mcc.idx)
+                    # try to remove from current configs
+                    for old_c in mcc.config_rel
+                        _.remove(@lut[old_c].mcc_rel, (entry) -> return entry == mcc.idx)
+                    for new_c in new_mcc.config_rel
+                        @lut[new_c].mcc_rel.push(new_mcc.idx)
                     @build_luts()
                     defer.resolve("done")
                 (error) =>
@@ -573,11 +571,13 @@ config_module = angular.module(
             )
             return defer.promise
 
-        delete_mon_check_command: (config, del_mcc) =>
+        delete_mon_check_command: (del_mcc) =>
             defer = $q.defer()
             @mon_basic_tree.delete_mon_check_command(del_mcc).then(
                 (ok) =>
-                    _.remove(config.mon_check_command_set, (entry) -> return entry == del_mcc.idx)
+                    # remove from current configs
+                    for old_c in del_mcc.config_rel
+                        _.remove(@lut[old_c].mcc_rel, (entry) -> return entry == del_mcc.idx)
                     @build_luts()
                     defer.resolve("deleted")
                 (error) ->
@@ -690,13 +690,13 @@ config_module = angular.module(
             _.remove(conf.categories, (entry) -> return entry == cat_idx)
 
         add_category_to_mcc_by_pk: (mcc_idx, cat_idx) =>
-            @add_category_to_mcc(@mcc_lut[mcc_idx], cat_idx)
+            @add_category_to_mcc(@mon_basic_tree.mon_check_command_lut[mcc_idx], cat_idx)
             
         add_category_to_mcc: (mcc, cat_idx) =>
             mcc.categories.push(cat_idx)
 
         remove_category_from_mcc_by_pk: (mcc_idx, cat_idx) =>
-            @remove_category_from_mcc(@mcc_lut[mcc_idx], cat_idx)
+            @remove_category_from_mcc(@mon_basic_tree.mon_check_command_lut[mcc_idx], cat_idx)
             
         remove_category_from_mcc: (mcc, cat_idx) =>
             _.remove(mcc.categories, (entry) -> return entry == cat_idx)

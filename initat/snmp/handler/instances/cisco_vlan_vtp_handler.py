@@ -30,7 +30,7 @@ VLAN_BASE = "1.3.6.1.4.1.9.9.46"
 # todo: add port/ etherchannel stuff via 192.168.2.14 1.2.840.10006.300.43
 
 
-class handler(SNMPHandler):
+class Handler(SNMPHandler):
     class Meta:
         # oids = ["generic.netip"]
         description = "Cisco VLAN Information"

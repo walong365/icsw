@@ -49,6 +49,7 @@ class Parser(object):
         parser.add_argument("--node-filter", type=str, default=".*", help="regexp filter for nodes [%(default)s]")
         parser.add_argument("--verbose", default=False, action="store_true", help="enable verbose mode [%(default)s]")
         parser.add_argument("--show-unparseable", default=False, action="store_true", help="show unparseable lines [%(default)s]")
+        parser.add_argument("filter", nargs="*", type=str, help="list of regexp filter for system [%(default)s]")
         return parser
 
     @staticmethod
@@ -71,7 +72,13 @@ class Parser(object):
                 "directory {} not found, possible machine names for root directory {}: {}".format(
                     rd,
                     opt_ns.root,
-                    ", ".join(sorted([_entry for _entry in os.listdir(opt_ns.root) if os.path.isdir(os.path.join(opt_ns.root, _entry))])),
+                    ", ".join(
+                        sorted(
+                            [
+                                _entry for _entry in os.listdir(opt_ns.root) if os.path.isdir(os.path.join(opt_ns.root, _entry))
+                            ]
+                        )
+                    ),
                 )
             )
         opt_ns.rootdir = rd
@@ -80,9 +87,17 @@ class Parser(object):
         ]
         max_system_len = max([len(_entry) for _entry in opt_ns.systems])
         try:
-            opt_ns.system_re = re.compile(opt_ns.system_filter)
+            if opt_ns.filter and opt_ns.system_filter == ".*":
+                opt_ns.system_re = re.compile("|".join(opt_ns.filter))
+            else:
+                opt_ns.system_re = re.compile(opt_ns.system_filter)
         except:
-            print("cannot interpret '{}', using default".format(opt_ns.system_filter))
+            print(
+                "cannot interpret '{}' / '{}', using default".format(
+                    opt_ns.system_filter,
+                    ", ".join(opt_ns.filter),
+                )
+            )
             opt_ns.system_re = re.compile("^$")
         try:
             opt_ns.node_re = re.compile(opt_ns.node_filter)

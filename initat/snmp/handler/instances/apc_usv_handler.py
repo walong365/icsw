@@ -35,7 +35,7 @@ except:
 USV_BASE = "1.3.6.1.4.1.318.1.1.1"
 
 
-class handler(SNMPHandler):
+class Handler(SNMPHandler):
     class Meta:
         description = "USV"
         vendor_name = "apc"
@@ -189,6 +189,7 @@ class usv_mon_all(usv_mon_base):
         command_line = "*"
         info = "Check APC USV via SNMP, overview"
         description = "Check USV via SNMP (one-line version)"
+        uuid = "5cf37ef1-c904-4331-ab6b-0711543f8777"
         if SpecialGroupsEnum:
             group = SpecialGroupsEnum.hardware
 
@@ -225,6 +226,7 @@ class usv_mon_detail(usv_mon_base):
         command_line = "* --type $ARG3$"
         info = "Check APC USV via SNMP"
         description = "Check USV via SNMP"
+        uuid = "6252f286-f5ad-4469-8972-71daf05b5626"
         if SpecialGroupsEnum:
             group = SpecialGroupsEnum.hardware
 

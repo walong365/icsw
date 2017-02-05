@@ -29,4 +29,4 @@ _files = [_entry.split(".")[0] for _entry in os.listdir(_dir) if _entry.endswith
 handlers = []
 for mod_name in _files:
     new_mod = importlib.import_module("initat.snmp.handler.instances.{}".format(mod_name))
-    handlers.append(new_mod.handler)
+    handlers.append(new_mod.Handler)

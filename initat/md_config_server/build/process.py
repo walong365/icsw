@@ -28,7 +28,7 @@ from lxml.builder import E
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, mon_contactgroup, network_type, user, \
     config, config_catalog, mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
-    mon_check_command_special, BackgroundJobState, MonCheckCommandSystemNames, DBStructuredMonBaseConfig
+    BackgroundJobState, MonCheckCommandSystemNames, DBStructuredMonBaseConfig
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.icinga_log_reader.log_reader import HostServiceIDUtil
 from initat.md_sync_server.mixins import VersionCheckMixin
@@ -99,41 +99,28 @@ class BuildProcess(
             mon_service_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None)).delete()
 
     def _check_for_snmp_container(self):
+        # remove SNMP container
+        _NAME = "SNMP container"
         try:
-            _container = config.objects.get(Q(name="SNMP container"))
+            _container = config.objects.get(Q(name=_NAME))
         except config.DoesNotExist:
-            self.log("created SNMP container class")
-            _container = config.objects.create(
-                name="SNMP container",
-                # system_config=True,
-                server_config=True,
-                config_catalog=config_catalog.objects.get(Q(system_catalog=True)),
-                enabled=False,
-                description="container for all SNMP checks",
+            self.log(
+                "Config container '{}' does not exist, good".format(
+                    _NAME
+                )
             )
-        _present_coms = set(_container.mon_check_command_set.all().values_list("name", flat=True))
-        _specials = {
-            "snmp {}".format(_special.name): _special for _special in mon_check_command_special.objects.all()
-        }
-        _new = set(
-            [
-                "snmp {}".format(_com.Meta.name) for _com in special_commands.special_snmp_general.SpecialSnmpGeneral(
-                    self.log
-                ).get_commands()
-            ]
-        )
-        # create snmp monitoring entries for all SNMP-based configs
-        _to_create = set(_specials.keys()) & (_new - _present_coms)
-        for _name in _to_create:
-            # this is not the same as the shadow mon_check_commands,
-            # the ones created here are user selectable
-            DBStructuredMonBaseConfig.objects.create(
-                name=_name,
-                description="auto created SNMP check entry",
-                config=_container,
-                mon_check_command_special=_specials[_name],
-                command_line="/bin/true",
+        else:
+            self.log(
+                "Config container '{}' exists, removing".format(
+                    _NAME
+                ),
+                logging_tools.LOG_LEVEL_ERROR
             )
+            for sub_com in _container.mon_check_command_set.all():
+
+                sub_com.config = None
+                sub_com.save(update_fields=["config"])
+            _container.delete()
 
     def _routing_fingerprint(self, *args, **kwargs):
         # called when process is a slave after the main process has determined the current routing generation
@@ -269,7 +256,7 @@ class BuildProcess(
                 for mcc_conf_pk in mc_emitter[host_pk]:  #conf_names:
                     s_check = cur_gc["command"][mcc_conf_pk]
                     # check for special check
-                    if s_check.mon_check_command_special_id:
+                    if s_check.is_special_command:
                         _count_dict["special_found"] += 1
                         if hbc is None:
                             # init
@@ -1408,7 +1395,7 @@ class BuildProcess(
         else:
             used_checks.add(s_check.unique_name)
             # s_check: instance of check_command
-            if s_check.mon_check_command_special_id:
+            if s_check.is_special_command:
                 hbc.add_dynamic_check(s_check)
                 dc_rv = special_commands.dynamic_checks.handle(
                     gbc,

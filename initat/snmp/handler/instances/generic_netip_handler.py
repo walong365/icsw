@@ -36,7 +36,7 @@ IP_ADDR_TABLE = "1.3.6.1.2.1.4.20"
 IP_NET_TO_MEDIA_TABLE = "1.3.6.1.2.1.4.22"
 
 
-class handler(SNMPHandler):
+class Handler(SNMPHandler):
     class Meta:
         # oids = ["generic.netip"]
         description = "network settings (IP addresses)"

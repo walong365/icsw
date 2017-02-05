@@ -58,6 +58,7 @@ class SpecialOvirtDomains(SpecialBase):
                 OVIRT_PASSWORD,
             ) + " --passive-check-prefix $ARG4$ --reference $ARG5$"
         description = "checks running virtual machines via API-calls to the engine"
+        uuid = "3d8c5090-58de-4a4e-ba73-697e6c621376"
 
     def dynamic_update_calls(self):
         _user_name = self.host.dev_variables.get(OVIRT_USER_NAME, "notset")
@@ -154,6 +155,7 @@ class SpecialOvirtStorageDomains(SpecialBase):
                 OVIRT_PASSWORD,
             ) + " --passive-check-prefix $ARG4$ --reference $ARG5$"
         description = "checks storage domains via API-calls to the engine"
+        uuid = "aec9f50d-509d-4d4f-9168-193e3a85f508"
 
     def dynamic_update_calls(self):
         _user_name = self.host.dev_variables.get(OVIRT_USER_NAME, "notset")
@@ -235,6 +237,7 @@ class SpecialOvirtHosts(SpecialBase):
                 OVIRT_PASSWORD,
             ) + " --passive-check-prefix $ARG4$ --reference $ARG5$"
         description = "checks hosts via API-calls to the engine"
+        uuid = "edad2a2a-3fca-40fc-878a-aa11befcad3b"
 
     def dynamic_update_calls(self):
         _user_name = self.host.dev_variables.get(OVIRT_USER_NAME, "notset")

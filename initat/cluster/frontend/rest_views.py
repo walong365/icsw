@@ -201,7 +201,7 @@ class DBPrefetchMixin(object):
         return ["snmp_schemes__snmp_scheme_vendor", "DeviceSNMPInfo", "snmp_schemes__snmp_scheme_tl_oid_set", "com_capability_list"]
 
     def _mon_check_command_prefetch(self):
-        return ["exclude_devices", "categories", "devices"]
+        return ["exclude_devices", "categories", "devices", "config_rel"]
 
     def _mon_host_cluster_prefetch(self):
         return ["devices"]
@@ -263,9 +263,9 @@ class DBPrefetchMixin(object):
     def _config_prefetch(self):
         return [
             "categories", "config_str_set", "config_int_set", "config_blob_set",
-            "config_bool_set", "config_script_set", "mon_check_command_set__categories",
-            "mon_check_command_set__exclude_devices",
-            "device_config_set"
+            "config_bool_set", "config_script_set", "device_config_set",
+            "mcc_rel__categories",
+            "mcc_rel__exclude_devices",
         ]
 
     def _cransys_dataset_prefetch(self):

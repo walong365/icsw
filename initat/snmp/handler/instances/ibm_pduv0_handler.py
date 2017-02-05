@@ -28,7 +28,7 @@ from ..base import SNMPHandler
 PDU_OID = "1.3.6.1.4.1.534.6.6.2.1.3.2.7.1"
 
 
-class handler(SNMPHandler):
+class Handler(SNMPHandler):
     class Meta:
         description = "rackable power distribution unit, old MIB (IBM)"
         vendor_name = "ibm"

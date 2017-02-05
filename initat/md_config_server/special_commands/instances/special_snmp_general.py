@@ -30,6 +30,7 @@ class SpecialSnmpGeneral(SpecialBase):
         info = "all configured SNMP checks"
         description = "Enable all checks related to found SNMP schemes"
         meta = True
+        uuid = "1f608d8e-fca9-4c84-b114-61a0564b5f62"
 
     def call(self, instance: str=None):
         # instance is the SNMP-instance to be called

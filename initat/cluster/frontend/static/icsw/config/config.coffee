@@ -276,7 +276,7 @@ config_module = angular.module(
             name: "New Configuration"
             description: ""
             priority: 0
-            mon_check_command_set: []
+            mcc_rel: []
             config_script_set: []
             config_str_set: []
             config_int_set: []
@@ -330,12 +330,12 @@ config_module = angular.module(
             for obj in $scope.struct.selected_objects
                 conf = (entry for entry in $scope.entries when entry.idx == obj.config)[0]
                 if obj.object_type == "mon"
-                    ref_f = conf.res_mon_check_command_set
+                    ref_f = conf.$$res_mcc_rel
                 else
                     ref_f = conf["config_#{obj.object_type}_set"]
                 ref_f = (_rv for _rv in ref_f when _rv.idx != obj.idx)
                 if obj.object_type == "mon"
-                    conf.res_mon_check_command_set = ref_f
+                    conf.$$res_mcc_rel = ref_f
                 else
                     conf["config_#{obj.object_type}_set"] = ref_f
                 $scope._set_fields(conf)
@@ -878,7 +878,7 @@ config_module = angular.module(
                 c_name = "cc_#{config.name}"
             else
                 c_name = "cc_new"
-            cc_names = (cc.name for cc in config_tree.mcc_list)
+            cc_names = (cc.name for cc in config_tree.mon_basic_tree.mon_check_command_list)
             c_idx = 1
             while true
                 if "#{c_name}_#{c_idx}" in cc_names
@@ -887,10 +887,11 @@ config_module = angular.module(
                     break
             c_name = "#{c_name}_#{c_idx}"
             obj_or_parent = {
-                config: config_idx
                 name: c_name
                 is_active: true
                 enabled: true
+                config_rel: [config_idx]
+                $$res_config_rel: [config]
                 description: "Check command"
                 command_line: "$USER2$ -m $HOSTADDRESS$ uptime"
                 categories: []
@@ -905,40 +906,7 @@ config_module = angular.module(
         sub_scope.config_tree = config_tree
         sub_scope.create = create
         sub_scope.edit_obj = obj_or_parent
-        sub_scope.mccs_list = mon_tree.mon_check_command_special_list
         sub_scope.template_list = mon_tree.mon_service_templ_list
-
-        sub_scope.get_mccs_info = (edit_obj) ->
-            cur_mccs = edit_obj.mon_check_command_special
-            if cur_mccs
-                return mon_tree.mon_check_command_special_lut[cur_mccs].description
-            else
-                return ""
-
-        sub_scope.get_mccs_cmdline = (edit_obj) ->
-            cur_mccs = edit_obj.mon_check_command_special
-            if cur_mccs
-                if mon_tree.mon_check_command_special_lut[cur_mccs].is_active
-                    return mon_tree.mon_check_command_special_lut[cur_mccs].command_line
-                else
-                    return "passive check"
-            else
-                return ""
-
-        sub_scope.get_mccs_already_used_warning=  (edit_obj) ->
-            cur_mccs = edit_obj.mon_check_command_special
-            warning = ""
-            if cur_mccs?
-                problem_list = []
-                for config in config_tree.list
-                    for mcc in config.res_mon_check_command_set
-                        if mcc.idx != edit_obj.idx and mcc.mon_check_command_special == cur_mccs
-                            problem_list.push(mcc.name)
-                if problem_list.length
-                    warning += ""
-                    warning += "This special check command is already used in " + problem_list.join(",") + "."
-                    warning += "Multiple assignments of special check commands to check commands are not supported and may result in undefined behavior."
-            return warning
 
         sub_scope.add_argument = (edit_obj) ->
             cur_cl = edit_obj.command_line
@@ -987,7 +955,7 @@ config_module = angular.module(
         sub_scope.get_event_handlers = (edit_obj) ->
             ev_handlers = []
             for entry in config_tree.list
-                for cc in entry.res_mon_check_command_set
+                for cc in entry.$$res_mcc_rel
                     if cc.is_event_handler and cc.idx != edit_obj.idx
                         ev_handlers.push(cc)
             return ev_handlers
@@ -1007,14 +975,14 @@ config_module = angular.module(
                         d.reject("form not valid")
                     else
                         if create
-                            config_tree.create_mon_check_command(cur_config, sub_scope.edit_obj).then(
+                            config_tree.create_mon_check_command(sub_scope.edit_obj).then(
                                 (ok) ->
                                     d.resolve("created")
                                 (notok) ->
                                     d.reject("not created")
                             )
                         else
-                            config_tree.modify_mon_check_command(cur_config, sub_scope.edit_obj).then(
+                            config_tree.modify_mon_check_command(sub_scope.edit_obj).then(
                                 (ok) ->
                                     d.resolve("updated")
                                 (not_ok) ->
@@ -1040,7 +1008,7 @@ config_module = angular.module(
         icswToolsSimpleModalService("Really delete MonCheckCommand #{mon.name} ?").then(
             () =>
                 blockUI.start()
-                mon.$$config.$$config_tree.delete_mon_check_command(mon.$$config, mon).then(
+                mon.$$config_tree.delete_mon_check_command(mon).then(
                     () ->
                         blockUI.stop()
                         console.log "mon deleted"
@@ -1088,18 +1056,9 @@ config_module = angular.module(
         ).then(
             (data) ->
                 $scope.struct.config_tree = data[0]
-                # for entry in $scope.struct.config_tree
                 $scope.struct.monccs_list = $scope.struct.config_tree.filtered_mcc_list
                 $scope.struct.data_loaded = true
         )
-
-    #   else
-    #            $scope.struct.config_tree.update_filtered_list(
-    #               $scope.struct.search_str
-    #               {config: false, mon: true, script: false, var: false}
-    #               0
-    #               0
-    #           )
 
     if $scope.config_tree?
         # is subtable
@@ -1107,7 +1066,7 @@ config_module = angular.module(
         $scope.struct.data_loaded = true
         $scope.struct.config_tree = $scope.config_tree
         $scope.struct.config = $scope.config
-        $scope.struct.monccs_list = $scope.struct.config.res_mon_check_command_set
+        $scope.struct.monccs_list = $scope.struct.config.$$res_mcc_rel
     else
         $scope.struct.is_sub_table = false
         $scope.struct.data_loaded = false
@@ -1260,8 +1219,8 @@ config_module = angular.module(
                     return 0
 
             scope.get_num_check_commands = (config) ->
-                if config.res_mon_check_command_set
-                    return config.res_mon_check_command_set.length
+                if config.$$res_mcc_rel
+                    return config.$$res_mcc_rel.length
                 else
                     return 0
 
@@ -1269,8 +1228,8 @@ config_module = angular.module(
                 blockUI.start()
                 icswSimpleAjaxCall(
                     {
-                        url     : ICSW_URLS.CONFIG_HANDLE_CACHED_CONFIG
-                        data    : {
+                        url: ICSW_URLS.CONFIG_HANDLE_CACHED_CONFIG
+                        data: {
                             upload_key: scope.upload.upload_key
                             catalog: scope.catalog
                             name: config.name

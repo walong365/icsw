@@ -41,8 +41,7 @@ from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 
 from initat.cluster.backbone.models import get_related_models, mon_check_command, \
-    mon_check_command_special, device, mon_dist_master, \
-    MonDisplayPipeSpec, DBStructuredMonBaseConfig
+    device, mon_dist_master, MonDisplayPipeSpec, DBStructuredMonBaseConfig
 from initat.cluster.backbone.models.functions import duration, cluster_timezone
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
@@ -337,24 +336,6 @@ class get_mon_vars(View):
                             _mc.config.name,
                         )
                     )
-        mon_special_check_commands = mon_check_command_special.objects.filter(
-            Q(mon_check_command__config__device_config__device__in=_dev_pks)
-        )
-        for _mc in mon_special_check_commands:
-            _mon_info, _log_lines = DBStructuredMonBaseConfig.parse_commandline(_mc.command_line)
-            for _key, _value in _mon_info["default_values"].items():
-                if isinstance(_value, tuple):
-                    _checks = _mc.mon_check_command_set.all()
-                    if len(_checks) == 1:
-                        res_list.append(
-                            (
-                                _mc.name,
-                                _value[0],
-                                _value[1],
-                                "i" if _value[1].isdigit() else "s",
-                                _checks[0].config.name,
-                            )
-                        )
         return HttpResponse(
             json.dumps(
                 # [

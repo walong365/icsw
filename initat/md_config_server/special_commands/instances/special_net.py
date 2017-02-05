@@ -34,6 +34,7 @@ class SpecialNet(SpecialBase):
         group = SpecialGroupsEnum.system_net
         command_line = "$USER2$ -m $HOSTADDRESS$ net --duplex $ARG1$ -s $ARG2$ -w $ARG3$ -c $ARG4$ $ARG5$"
         description = "queries all configured network devices"
+        uuid = "17d6f196-ba39-4496-bcc7-4d9d4543bf7a"
 
     def call(self):
         sc_array = []

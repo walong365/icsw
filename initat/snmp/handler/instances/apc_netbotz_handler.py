@@ -28,7 +28,7 @@ from ..base import SNMPHandler
 APC_OID = "1.3.6.1.4.1.1909.31.4"
 
 
-class handler(SNMPHandler):
+class Handler(SNMPHandler):
     class Meta:
         description = "APC Netbotz, old version, only temperature"
         vendor_name = "apc"

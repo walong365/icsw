@@ -29,7 +29,7 @@ AMP_OID = "1.3.6.1.4.1.2.6.223.8.2.2.1.9"
 WATT_OID = "1.3.6.1.4.1.2.6.223.8.2.2.1.15"
 
 
-class handler(SNMPHandler):
+class Handler(SNMPHandler):
     class Meta:
         description = "rackable power distribution unit (IBM)"
         vendor_name = "ibm"

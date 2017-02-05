@@ -21,6 +21,7 @@
 
 import enum
 import json
+import uuid
 import re
 from enum import Enum
 
@@ -59,7 +60,7 @@ __all__ = [
     "mon_dist_master",
     "mon_dist_slave",
     "monitoring_hint",
-    "mon_check_command_special",
+    # "mon_check_command_special",
 
     # trace
 
@@ -304,19 +305,10 @@ class host_check_command(models.Model):
         return "hcc_{}".format(self.name)
 
 
-"""
-
-possible combinations:
-1) - mon_check_command alone
-2) - mon_check_command points to
-     - mon_check_command_special via mccs_ref which in turn references a
-       - dummy_mcc to have a unique name
-
-The shadow mon_check_command between special_commands and mon_check_commands exists
-to ensure a unique_name for special_commands
 
 """
 
+deprecated
 
 class mon_check_command_special(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -361,6 +353,7 @@ class mon_check_command_special(models.Model):
 
     def __str__(self):
         return "MonCheckCommandSpecial {}".format(self.name)
+"""
 
 
 class MonCheckCommandSystemNames(Enum):
@@ -383,19 +376,20 @@ class MonCheckCommandSystemNames(Enum):
 
 class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
-    # must be zero for system-commands (also for shadow commands)
-    config = models.ForeignKey("backbone.config", db_column="new_config_id", null=True, blank=True)
+    # must be empty for system-commands (also for shadow commands)
+    config_rel = models.ManyToManyField("backbone.config", related_name="mcc_rel", blank=True)
     mon_service_templ = models.ForeignKey("backbone.mon_service_templ", null=True, blank=True)
+    # UUID
+    uuid = models.CharField(default="", max_length=64, blank=True)
     # only unique per config
     name = models.CharField(max_length=192)
-    # link to mon_check_special_command
-    mon_check_command_special = models.ForeignKey("backbone.mon_check_command_special", null=True, blank=True)
     # unique name, this name is local to each installation and will be changed
     # on import if necessary
     unique_name = models.CharField(default="", max_length=255)
     # for mon_check_special_command this is empty
     command_line = models.CharField(max_length=765, default="")
-    description = models.CharField(max_length=192, blank=True)
+    # description
+    description = models.CharField(max_length=512, blank=True)
     # device = models.ForeignKey("backbone.device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     enable_perfdata = models.BooleanField(default=False)
@@ -411,37 +405,41 @@ class mon_check_command(models.Model):
     event_handler_enabled = models.BooleanField(default=True)
     # internal (==system) command
     system_command = models.BooleanField(default=False)
-    # shadow of special command
-    special_shadow = models.BooleanField(default=False)
     # is an active check
     is_active = models.BooleanField(default=True)
     # is enabled
     enabled = models.BooleanField(default=True)
-    # which tcp port(s) cover this check
-    tcp_coverage = models.CharField(default="", max_length=256, blank=True)
+    # fields for special commands
+    is_special_command = models.BooleanField(default=False)
+    # is container for other special commands (all SNMP checks for instance)
+    is_special_meta = models.BooleanField(default=False)
+    # for commands from a meta-command
+    special_parent = models.ForeignKey("self", null=True, related_name="special_child")
 
     def get_configured_device_pks(self):
-        if self.config:
-            return [dev_conf.device_id for dev_conf in self.config.device_config_set.all()]
-        return []
+        if self.config_rel.all().count():
+            return sum(
+                [
+                    dev_conf.device_id for dev_conf in _config.device_config_set.all() for _config in self.config_rel.all()
+                ],
+                []
+            )
+        else:
+            return []
 
     def get_object_type(self):
         return "mon"
 
     @property
     def command_type(self):
-        if self.system_command and self.special_shadow:
-            return "shadow"
-        elif self.system_command:
+        if self.system_command:
             return "pure system"
-        elif self.special_shadow:
-            return "ILLEGAL"
         else:
             return "normal"
 
     class Meta:
         db_table = 'ng_check_command'
-        unique_together = (("name", "config"))
+        # unique_together = (("name", "config"))
         verbose_name = "Check command"
 
     class ICSW_Meta:
@@ -464,7 +462,7 @@ class mon_check_command(models.Model):
         return "command"
 
     def __str__(self):
-        return "MonCheckCommand {}".format(self.name)
+        return "MonCheckCommand '{}'".format(self.name or "empty")
 
 
 class DBStructuredMonBaseConfig(mon_check_command, StructuredContentEmitter):
@@ -472,61 +470,39 @@ class DBStructuredMonBaseConfig(mon_check_command, StructuredContentEmitter):
     # every command like
     # - mon_check_command
     # - notificaton
-    # - special commands
     # has a mon_check_command entries, only the first type has system_command=False set
 
     @classmethod
     def get_system_check_command(cls, **kwargs):
         # some kind of simple factory ...
         _create = kwargs.pop("create")
-        _special = kwargs.pop("special_command", None)
+        # _special = kwargs.pop("special_command", None)
         _changed = False
         try:
-            if _special:
-                if _special.dummy_mcc_id:
-                    # already linked
-                    _obj = _special.dummy_mcc
-                else:
-                    # no link set, generate a new mon_check_command
-                    _obj = None
-            else:
-                # non-special command, create a system command from the given (kw)args
-                _obj = cls.objects.get(Q(system_command=True) & Q(name=kwargs["name"]))
+            # if _special:
+            #    if _special.dummy_mcc_id:
+            #        # already linked
+            #        _obj = _special.dummy_mcc
+            #    else:
+            #        # no link set, generate a new mon_check_command
+            #        _obj = None
+            # else:
+            # non-special command, create a system command from the given (kw)args
+            _obj = cls.objects.get(Q(system_command=True) & Q(name=kwargs["name"]))
         except cls.DoesNotExist:
             _obj = None
         if _obj is None:
             if _create:
-                if _special:
-                    # create a new special shadow command
-                    _obj = cls(
-                        name=_special._md_name,
-                        command_line=_special.command_line.strip(),
-                        description=_special.description,
-                        system_command=True,
-                        special_shadow=True,
-                    )
-                    # check unique_name (before we save the command)
-                    _check_unique_name(_obj)
-                else:
-                    # simply a system-command from a non-special command
-                    _obj = cls(
-                        name=kwargs["name"],
-                        system_command=True,
-                    )
+                # simply a system-command from a non-special command
+                _obj = cls(
+                    name=kwargs["name"],
+                    system_command=True,
+                )
                 _changed = True
                 _obj.generate_md_com_line(None, False)
             else:
                 # this should never happen, trigger an error
                 _obj = None
-        else:
-            # obj already defined, check link with special
-            if _special:
-                # copy some attributes from special
-                _obj.command_line = _special.command_line.strip()
-                _obj.description = _special.description
-                _obj.system_command = True
-                _obj.special_shadow = True
-                _changed = True
         for key, value in kwargs.items():
             # set the values from the kwargs
             if getattr(_obj, key) != value:
@@ -540,17 +516,6 @@ class DBStructuredMonBaseConfig(mon_check_command, StructuredContentEmitter):
         if _changed:
             # save obj if something has changed
             _obj.save()
-        if _special and _obj:
-            # fix special command line if needed
-            if not _special.command_line.strip():
-                _special.command_line = "/bin/true"
-                _special.save(update_fields=["command_line"])
-            # check for link between special and new check_command
-            if not _special.dummy_mcc_id:
-                # create the link if it is not already set
-                _special.dummy_mcc = _obj
-                # this also creates the mccs_ref field
-                _special.save(update_fields=["dummy_mcc"])
         return _obj
 
     @classmethod
@@ -690,15 +655,15 @@ class DBStructuredMonBaseConfig(mon_check_command, StructuredContentEmitter):
             self.__description = build_safe_name(self.name)
         else:
             self.__description = self.name
-        if self.mon_check_command_special_id:
-            # is a user-specified link to a mon_check_command_special
-            arg_info, log_lines = DBStructuredMonBaseConfig.parse_commandline(
-                self.mon_check_command_special.command_line
-            )
-        else:
-            arg_info, log_lines = DBStructuredMonBaseConfig.parse_commandline(
-                self.command_line
-            )
+        # if self.mon_check_command_special_id:
+        #    # is a user-specified link to a mon_check_command_special
+        #    arg_info, log_lines = DBStructuredMonBaseConfig.parse_commandline(
+        #        self.mon_check_command_special.command_line
+        #    )
+        # else:
+        arg_info, log_lines = DBStructuredMonBaseConfig.parse_commandline(
+            self.command_line
+        )
         # print arg_info, log_lines
         self.__arg_lut = arg_info["arg_lut"]
         self.__arg_list = arg_info["arg_list"]
@@ -773,25 +738,24 @@ def _check_unique_name(cur_inst: object) -> bool:
         unique_name = cur_inst.unique_name
     _other_uniques = mon_check_command.objects.all().exclude(Q(idx=cur_inst.idx)).values_list("unique_name", flat=True)
     if cur_inst.system_command:
-        if cur_inst.config_id:
+        if cur_inst.config_rel.all().count():
             raise ValidationError(
-                "{} mon_check_command ({}) should not be linked to a config".format(
+                "{} mon_check_command ({}) should not be linked to any config".format(
                     cur_inst.command_type,
                     cur_inst.name,
                 )
             )
-        if not cur_inst.special_shadow:
-            # pure system commands need unique names and have no possibility to alter their names
-            if unique_name in _other_uniques:
-                # print("Q", cur_inst.idx)
-                # print(list(_other_uniques))
-                raise ValidationError(
-                    "MonCheckName for {} '{}' (pk={}) already used, please fix ...".format(
-                        cur_inst.command_type,
-                        cur_inst.name,
-                        cur_inst.idx,
-                    )
+        # pure system commands need unique names and have no possibility to alter their names
+        if unique_name in _other_uniques:
+            # print("Q", cur_inst.idx)
+            # print(list(_other_uniques))
+            raise ValidationError(
+                "MonCheckName for {} '{}' (pk={}) already used, please fix ...".format(
+                    cur_inst.command_type,
+                    cur_inst.name,
+                    cur_inst.idx,
                 )
+            )
     while unique_name in _other_uniques:
         _parts = unique_name.split("_")
         if _parts[-1].isdigit():
@@ -827,6 +791,8 @@ def dbstructuredmonbaseconfig_post_init(sender, **kwargs):
 
 def _mcc_pre_save(cur_inst):
     # cur_inst.is_special_command = True if special_re.match(cur_inst.name) else False
+    if not cur_inst.uuid:
+        cur_inst.uuid = str(uuid.uuid4())
     if not cur_inst.system_command:
         try:
             _ = MonCheckCommandSystemNames[cur_inst.name]
@@ -836,19 +802,16 @@ def _mcc_pre_save(cur_inst):
             raise ValidationError("'{}' is a reserved system command name".format(cur_inst.name))
     if not cur_inst.name:
         raise ValidationError("name is empty")
-    if not cur_inst.command_line:
-        raise ValidationError("command_line is empty")
+    # if not cur_inst.command_line:
+    #     raise ValidationError("command_line is empty")
     if not cur_inst.is_event_handler:
         mc_refs = cur_inst.mon_check_command_set.all()
         if len(mc_refs):
             raise ValidationError("still referenced by {}".format(logging_tools.get_plural("check_command", len(mc_refs))))
-    if cur_inst.mon_check_command_special_id and cur_inst.is_event_handler:
-        cur_inst.is_event_handler = False
-        cur_inst.save()
+    # specials can not be event_handlers
+    if cur_inst.is_special_command and cur_inst.is_event_handler:
         raise ValidationError("special command not allowed as event handler")
     if cur_inst.is_event_handler and cur_inst.event_handler_id:
-        cur_inst.event_handler = None
-        cur_inst.save()
         raise ValidationError("cannot be an event handler and reference to another event handler")
     _check_unique_name(cur_inst)
 
@@ -866,14 +829,14 @@ def dbstructuredmonbaseconfig_pre_save(sender, **kwargs):
 
 
 def _mcc_post_save(cur_inst):
-    if cur_inst.config and not cur_inst.system_command and cur_inst.idx:
+    # if cur_inst.idx
+    if cur_inst.idx and cur_inst.config_rel.all().count() and not cur_inst.system_command:
         # remove all associated devices
         cur_inst.devices.clear()
 
 
 @receiver(signals.pre_save, sender=mon_check_command)
 def mon_check_command_post_save(sender, **kwargs):
-    print("dbsave")
     if "instance" in kwargs:
         _mcc_post_save(kwargs["instance"])
 

@@ -33,7 +33,6 @@ monitoring_basic_module = angular.module(
     ELIST = [
         "mon_period", "mon_notification",
         "host_check_command", "mon_check_command",
-        "mon_check_command_special",
         "mon_service_templ", "mon_device_templ",
         "mon_contact", "mon_contactgroup",
         "mon_ext_host", "icinga_command",
@@ -344,9 +343,6 @@ monitoring_basic_module = angular.module(
         ]
         [
             ICSW_URLS.REST_MON_CHECK_COMMAND_LIST, {}
-        ]
-        [
-            ICSW_URLS.REST_MON_CHECK_COMMAND_SPECIAL_LIST, {}
         ]
         [
             ICSW_URLS.REST_MON_SERVICE_TEMPL_LIST, {}

@@ -21,8 +21,6 @@
 #
 """ show and follow cluster logs """
 
-
-
 import time
 
 from initat.tools import logging_tools

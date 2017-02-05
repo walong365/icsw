@@ -158,8 +158,8 @@ angular.module(
                 if @mode in ["gen", "srv"]
                     conf.$$_dc_name = conf.name
                 else
-                    conf.$$_dc_num_mcs = conf.res_mon_check_command_set.length
-                    conf.$$_dc_name = ("#{_v.name} #{_v.description}" for _v in conf.res_mon_check_command_set).join(" ")
+                    conf.$$_dc_num_mcs = conf.$$res_mcc_rel.length
+                    conf.$$_dc_name = ("#{_v.name} #{_v.description}" for _v in conf.$$res_mcc_rel).join(" ")
 
                 # step 2: set configs for all meta-devices
 
@@ -458,13 +458,13 @@ angular.module(
                         if @mode in ["gen", "srv"]
                             @active_rows.push(entry)
                         else
-                            for _mc in entry.res_mon_check_command_set
+                            for _mc in entry.$$res_mcc_rel
                                 @active_rows.push(_mc)
                     # count rows
                     if @mode in ["gen", "srv"]
                         @num_rows++
                     else
-                        @num_rows += entry.res_mon_check_command_set.length
+                        @num_rows += entry.$$res_mcc_rel.length
             if @mode == "mon"
                 for entry in @config_tree.free_mcc_list
                     if not entry.system_command

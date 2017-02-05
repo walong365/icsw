@@ -30,6 +30,7 @@ class SpecialLibvirt(SpecialBase):
         group = SpecialGroupsEnum.system
         command_line = "$USER2$ -m $HOSTADDRESS$ domain_status $ARG1$"
         description = "checks running virtual machines on the target host via libvirt"
+        uuid = "c4b25fa8-b929-4b4f-b3f3-a027fc41e8f6"
 
     def dynamic_update_calls(self):
         yield DynamicCheckAction(DynamicCheckServer.collrelay, "domain_overview")

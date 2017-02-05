@@ -4,6 +4,7 @@
 
 from django.db import migrations
 
+
 def fix_assetbatch_and_assetrun(apps, schema_editor):
     AssetBatch = apps.get_model("backbone", "AssetBatch")
     AssetRun = apps.get_model("backbone", "AssetRun")
@@ -15,6 +16,7 @@ def fix_assetbatch_and_assetrun(apps, schema_editor):
     for ar in AssetRun.objects.all():
         ar.run_status = 5
         ar.save() 
+
 
 class Migration(migrations.Migration):
 

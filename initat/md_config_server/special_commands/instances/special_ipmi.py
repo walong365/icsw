@@ -32,6 +32,7 @@ class SpecialIpmi(SpecialBase):
         command_line = "$USER2$ -m $HOSTADDRESS$ ipmi_sensor --lowern=${ARG1:na} --lowerc=${ARG2:na} " \
             "--lowerw=${ARG3:na} --upperw=${ARG4:na} --upperc=${ARG5:na} --uppern=${ARG6:na} $ARG7$"
         description = "queries the IPMI sensors of the underlying IPMI interface of the target device"
+        uuid = "1e420d9b-62d4-4881-aed4-eab878618d90"
 
     def dynamic_update_calls(self):
         yield DynamicCheckAction(DynamicCheckServer.collrelay, "ipmi_sensor")

@@ -54,7 +54,7 @@ def safe_string(in_str):
     return "".join([_char for _char in in_str if ord(_char) >= 32])
 
 
-class handler(SNMPHandler):
+class Handler(SNMPHandler):
     class Meta:
         description = "network settings (devices)"
         vendor_name = "generic"
@@ -293,6 +293,7 @@ class if_mon(MonCheckDefinition):
         command_line = "* --speed $ARG3$ --flags $ARG4$ $ARG5$"
         info = "SNMP Interface check"
         description = "SNMP Interface check, source is Database"
+        uuid = "5b348ca7-d864-401a-9b83-c4b68d8c2fbe"
         if SpecialGroupsEnum:
             group = SpecialGroupsEnum.system_net
 

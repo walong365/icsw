@@ -28,7 +28,7 @@ except:
     pass
 
 
-class handler(SNMPHandler):
+class Handler(SNMPHandler):
     class Meta:
         # oids = ["generic.base"]
         description = "basic SNMP info"

@@ -80,12 +80,12 @@ class MonCheckEmitter(object):
             Q(is_meta_device=True)
         ).filter(
             Q(
-                device_config__config__mon_check_command__isnull=False,
-                device_config__config__mon_check_command__enabled=True,
+                device_config__config__mcc_rel__isnull=False,
+                device_config__config__mcc_rel__enabled=True,
             )
         ).values_list(
             "device_group__device_group",
-            "device_config__config__mon_check_command"
+            "device_config__config__mcc_rel"
         ):
             cc_per_dev[_entry[0]].add(_entry[1])
         if _DEBUG:
@@ -113,13 +113,13 @@ class MonCheckEmitter(object):
             ac_filter
         ).filter(
             Q(
-                device_config__config__mon_check_command__isnull=False,
-                device_config__config__mon_check_command__enabled=True,
+                device_config__config__mcc_rel__isnull=False,
+                device_config__config__mcc_rel__enabled=True,
             )
         ).values_list(
             "idx",
-            "device_config__config__mon_check_command",
-            "device_config__config__mon_check_command__exclude_devices",
+            "device_config__config__mcc_rel",
+            "device_config__config__mcc_rel__exclude_devices",
         ):  # .distinct():
             # check for exclusion
             if _entry[0] == _entry[2]:
@@ -311,11 +311,11 @@ class GlobalBuildCache(object):
             # _value.check_command_pk = _value.pk
             pass
         self.mcc_lut = {
-            key: (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config__name")
+            key: (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config_rel__name")
         }
         # lookup table for config -> mon_check_commands
         self.mcc_lut_2 = {}
-        for v_list in mon_check_command.objects.all().values_list("name", "config__name"):
+        for v_list in mon_check_command.objects.all().values_list("name", "config_rel__name"):
             self.mcc_lut_2.setdefault(v_list[1], []).append(v_list[0])
         # print("i1")
         # import pprint

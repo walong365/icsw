@@ -26,14 +26,14 @@ from django.db.models import Q
 
 from initat.cluster.backbone.models import device_group, mon_period, \
     mon_contact, mon_contactgroup, category_tree, mon_notification, \
-    host_check_command, mon_check_command_special, MonCheckCommandSystemNames, device_variable, \
+    host_check_command, MonCheckCommandSystemNames, device_variable, \
     DBStructuredMonBaseConfig
 from initat.constants import CLUSTER_DIR
 from initat.tools import logging_tools
 from .global_config import global_config
 from .mon_config_containers import MonFileContainer
 from ..base_config.mon_base_config import StructuredMonBaseConfig
-from ..special_commands import META_SUB_REVERSE_LUT
+from ..special_commands.instances import dynamic_checks
 
 __all__ = [
     "MonAllHostDependencies",
@@ -225,6 +225,11 @@ class MonAllCommands(MonFileContainer):
                 )
 
     def _add_commands_from_db(self, gen_conf):
+        # to log or not to log ...
+        if self.__logging:
+            log_com = gen_conf.log
+        else:
+            log_com = None
         for hc_com in host_check_command.objects.all():
             cur_nc = StructuredMonBaseConfig(
                 "command",
@@ -235,15 +240,68 @@ class MonAllCommands(MonFileContainer):
             self.add_object(cur_nc)
             # simple mon_config, we do not add this to the command dict
             # self.__dict[cur_nc["command_name"]] = cur_nc
+
+        def get_special_db_inst(inst: object, name: str) -> object:
+            # inst: Object with a Meta (with an uuid entry)
+            # name: name to search for in case no uuid match was found
+            try:
+                _db_inst = DBStructuredMonBaseConfig.objects.get(
+                    Q(uuid=inst.Meta.uuid)
+                )
+            except DBStructuredMonBaseConfig.DoesNotExist:
+                _db_inst = DBStructuredMonBaseConfig.objects.get(
+                    Q(name=name) &
+                    Q(is_special_command=True)
+                )
+                _db_inst.uuid = inst.Meta.uuid
+                _db_inst.save(update_fields=["uuid"])
+            _update_fields = []
+            if not _db_inst.command_line:
+                _db_inst.command_line = "/bin/true"
+                _update_fields.append("command_line")
+            if _db_inst.system_command:
+                _db_inst.system_command = False
+                _update_fields.append("system_command")
+            if _update_fields:
+                _db_inst.save(update_fields=_update_fields)
+            return _db_inst
+
+        # check commands
+        # special commands
+
+        # _s_names = DBStructuredMonBaseConfig.objects.filter(Q(is_special_command=True)).values_list("name", flat=True)
+        # print("*", _s_names)
+        # ensure mon_check_commands for all special commands
+        for name, mccs_inst in dynamic_checks.valid_class_dict(gen_conf.log).items():
+            get_special_db_inst(mccs_inst, mccs_inst.Meta.database_name)
+            if mccs_inst.Meta.meta:
+                # handle subcommands
+                for sub_com in mccs_inst.get_commands():
+                    get_special_db_inst(sub_com, sub_com.Meta.name)
+        # check all commands starting with "special" which have the system_command flag set
+        stale_list = DBStructuredMonBaseConfig.objects.filter(
+            Q(system_command=True) & Q(name__istartswith="special_") & Q(is_special_command=False)
+        )
+        for entry in stale_list:
+            # delete entries
+            # - without config
+            # - no associated devices
+            if not entry.config_id and not entry.devices.all().count():
+                log_com(
+                    "removing stale entry '{}'".format(str(entry)),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                entry.delete()
+
         check_coms = list(
             DBStructuredMonBaseConfig.objects.filter(
                 Q(system_command=False)
             ).prefetch_related(
                 "categories",
-                "exclude_devices"
+                "exclude_devices",
+                "config_rel",
             ).select_related(
                 "mon_service_templ",
-                "config",
                 "event_handler"
             ).order_by("name")
         )
@@ -271,16 +329,7 @@ class MonAllCommands(MonFileContainer):
                     ),
                 ]
             )
-        for ccs in mon_check_command_special.objects.all():
-            # create a mon_check_command instance for every special command
-            special_cc = DBStructuredMonBaseConfig.get_system_check_command(
-                special_command=ccs,
-                create=self.__create,
-            )
-            if ccs.parent_id:
-                # this is a subcommand (meta=True in parent), store linkage information
-                META_SUB_REVERSE_LUT[ccs.name] = special_cc.unique_name
-            check_coms.append(special_cc)
+
         check_coms.extend(
             [
                 DBStructuredMonBaseConfig.get_system_check_command(
@@ -320,11 +369,6 @@ class MonAllCommands(MonFileContainer):
             ]
         )
         safe_descr = global_config["SAFE_NAMES"]
-        # to log or not to log ...
-        if self.__logging:
-            log_com = gen_conf.log
-        else:
-            log_com = None
         for ngc in check_coms:
             # print("*", ngc, type(ngc))
             ngc.generate_md_com_line(log_com, safe_descr)

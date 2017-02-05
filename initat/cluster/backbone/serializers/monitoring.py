@@ -19,12 +19,12 @@
 #
 """ database definitions for monitoring """
 
+from rest_framework import serializers
+
 from initat.cluster.backbone.models import mon_host_cluster, mon_service_cluster, mon_ext_host, \
     mon_check_command, mon_host_dependency, mon_service_dependency, host_check_command, \
-    mon_notification, mon_contact, mon_contactgroup, mon_check_command_special, mon_device_templ, \
-    mon_service_templ, mon_period, mon_host_dependency_templ, mon_service_dependency_templ, \
+    mon_notification, mon_contact, mon_contactgroup, mon_device_templ, mon_service_templ, mon_period, mon_host_dependency_templ, mon_service_dependency_templ, \
     mon_device_esc_templ, monitoring_hint, mon_service_esc_templ, MonDisplayPipeSpec
-from rest_framework import serializers
 
 __all__ = [
     "mon_host_cluster_serializer",
@@ -47,7 +47,6 @@ __all__ = [
     "mon_service_esc_templ_serializer",
     # distribution models
     "monitoring_hint_serializer",
-    "mon_check_command_special_serializer",
     "MonDisplayPipeSpecSerializer",
 ]
 
@@ -70,14 +69,8 @@ class host_check_command_serializer(serializers.ModelSerializer):
         model = host_check_command
 
 
-class mon_check_command_special_serializer(serializers.ModelSerializer):
-    class Meta:
-        fields = "__all__"
-        model = mon_check_command_special
-
-
 class mon_check_command_nat_serializer(serializers.ModelSerializer):
-    config = serializers.SlugRelatedField(slug_field="name", read_only=True)
+    config_rel = serializers.SlugRelatedField(slug_field="name", read_only=True, many=True)
 
     class Meta:
         fields = "__all__"

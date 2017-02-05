@@ -30,6 +30,7 @@ class SpecialOpenvpn(SpecialBase):
         group = SpecialGroupsEnum.system
         command_line = "$USER2$ -m $HOSTADDRESS$ openvpn_status -i $ARG1$ -p $ARG2$"
         description = "checks for running OpenVPN instances"
+        uuid = "ae9fc2bf-7742-4f45-8cef-2848bf1d9cdd"
 
     def dynamic_update_calls(self):
         yield DynamicCheckAction(DynamicCheckServer.collrelay, "openvpn_status")

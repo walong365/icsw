@@ -32,6 +32,7 @@ class SpecialSyslogRate(SpecialBase):
         command_line = "$USER2$ -m $ARG1$ -p $ARG2$ syslog_rate_mon -w ${ARG3:DEVICE_SYSLOG_RATE_WARNING:1} " \
             "-c ${ARG4:DEVICE_SYSLOG_RATE_CRITICAL:2.0} --pk $ARG5$"
         description = "return the current syslog rate of the given device"
+        uuid = "c63a2dd6-971d-4f3a-8813-9be3e899c419"
 
     def call(self):
         sc_array = []
@@ -63,6 +64,7 @@ class SpecialSyslogGeneral(SpecialBase):
         description = "Enable all syslog checks"
         command_line = "$USER2$ -m $ARG1$ -p $ARG2$ syslog_check_mon " \
             "--pk $ARG3$ --key $ARG4$ --checks $ARG5$"
+        uuid = "cbfe0f74-b1d9-4c81-a3df-1314838e874d"
 
     def call(self, instance=None):
         _checks = SyslogCheck.all_enabled.all()

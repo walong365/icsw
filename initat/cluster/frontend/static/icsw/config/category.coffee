@@ -1016,7 +1016,8 @@ angular.module(
                     _ct.change_select = false
                     break
             $scope.$watch(
-                "edit_obj"
+                () ->
+                    return $scope.edit_obj.idx
                 (new_val) ->
                     if new_val? and $scope.struct.cat_tree?
                         build_tree()

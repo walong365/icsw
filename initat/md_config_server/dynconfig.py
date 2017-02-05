@@ -30,7 +30,7 @@ import time
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device, monitoring_hint, mon_check_command_special, \
+from initat.cluster.backbone.models import device, monitoring_hint, \
     mon_check_command, DeviceLogEntry
 from initat.host_monitoring import limits
 from initat.md_config_server.config import global_config

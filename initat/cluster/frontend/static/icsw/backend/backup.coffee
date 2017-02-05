@@ -262,12 +262,13 @@ angular.module(
         constructor: () ->
             super()
             @simple_attributes = [
-                "config", "mon_service_templ", "name", "mon_check_command_special",
+                "mon_service_templ", "name", "is_special_command", "is_special_meta",
                 "command_line", "description", "enable_perfdata", "volatile", "event_handler",
                 "is_event_handler", "event_handler_enabled", "is_active", "tcp_coverage",
+                "special_parent", "unique_name", "uuid",
             ]
             @list_attributes = [
-                "categories", "exclude_devices"
+                "categories", "exclude_devices", "config_rel",
             ]
 
 ]).service("icswConfigVarBackup", ["icswBackupDefinition", (icswBackupDefinition) ->

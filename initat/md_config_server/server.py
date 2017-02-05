@@ -19,27 +19,26 @@
 #
 """ server process for md-config-server """
 
+import json
 import time
 
 import zmq
-import json
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
+from initat.cluster.backbone.icinga_commands_enum import IcingaCommandEnum
 from initat.cluster.backbone.models import mon_notification, config_str, config_int, \
     device, user
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.cluster.backbone.icinga_commands_enum import IcingaCommandEnum
+from initat.md_sync_server.mixins import VersionCheckMixin
+from initat.tools import logging_tools, process_tools, threading_tools, server_mixins, configfile, server_command
+from initat.tools.server_mixins import RemoteCall
 from .build import BuildControl
 from .config import global_config
 from .dynconfig import DynConfigProcess
 from .icinga_log_reader.log_reader import IcingaLogReader
 from .kpi import KpiProcess
 from .syncer import SyncerProcess, RemoteServer
-from initat.md_sync_server.mixins import VersionCheckMixin
-from initat.tools import logging_tools, process_tools, threading_tools, server_mixins, configfile, server_command
-from initat.tools.server_mixins import RemoteCall
-from .special_commands import check_special_commands
 
 
 @server_mixins.RemoteCallProcess
@@ -113,7 +112,6 @@ class ServerProcess(
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
         self._check_notification()
-        check_special_commands(self.log)
         # sync master uuid
         self.__sync_master_uuid = None
         # from mixins
@@ -303,7 +301,6 @@ class ServerProcess(
         host_idxs = set([entry["host_idx"] for entry in data["key_list"]])
         name_dict = {dev.idx: dev.full_name for dev in device.objects.filter(Q(idx__in=host_idxs))}
         cmd_lines = _enum.value.create_commands(data["type"], data["key_list"], _val_dict, name_dict)
-        import pprint
         # pprint.pprint(cmd_lines)
         srv_com.set_result(
             "processed command {} (generated {})".format(

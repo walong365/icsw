@@ -28,7 +28,7 @@ from ...snmp_struct import simple_snmp_oid
 UCD_OID = "1.3.6.1.4.1.2021"
 
 
-class handler(SNMPHandler):
+class Handler(SNMPHandler):
     class Meta:
         description = "UCD-SNMP generic info"
         vendor_name = "UCD"

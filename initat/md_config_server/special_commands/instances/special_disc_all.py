@@ -29,6 +29,7 @@ class SpecialDiscAll(SpecialBase):
         group = SpecialGroupsEnum.system_disc
         command_line = "$USER2$ -m $HOSTADDRESS$ df -w ${ARG1:85} -c ${ARG2:95} $ARG3$"
         description = "queries the collserver on the target system for the partition with the lowest space"
+        uuid = "a36b31a9-3a01-45f6-935f-10af504c3b08"
 
     def call(self):
         sc_array = [self.get_arg_template("All partitions", arg3="ALL")]
