@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<?define ProductVersion = "3.0.5"?>
+<?define ProductVersion = "3.0.6"?>
 <?define ProductUpgradeCode = "77EA450B-4B37-478C-919B-D0D62F2ED7C5"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
    <Product Id="*" UpgradeCode="$(var.ProductUpgradeCode)" 
@@ -28,7 +28,7 @@
       </UI>
       <UIRef Id="WixUI_ErrorProgressText" />
 
-      <CustomAction Id="ExecInstallService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand='[INSTALLDIR]\python.exe "[INSTALLDIR]\service_manager.py" [SERVICENAME] install' Return="check" />
+      <CustomAction Id="ExecInstallService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand='[INSTALLDIR]\python.exe "[INSTALLDIR]\service_manager.py" [SERVICENAME] install [ProductVersion]' Return="check" />
       <CustomAction Id="ExecUninstallService" Directory="INSTALLDIR" Execute="deferred" Impersonate="no" ExeCommand='[INSTALLDIR]\python.exe "[INSTALLDIR]\service_manager.py" [SERVICENAME] uninstall' Return="check" />
 
       <InstallExecuteSequence>
