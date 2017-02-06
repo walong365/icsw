@@ -23,7 +23,7 @@ def migrate_special_commands(apps, schema_editor):
         _conv_1 += 1
         # shadow already created
         # copy command line and other values to obj
-        _obj.dummy_mcc.command_line = _obj.command_line,strip() or "/bin/true",
+        _obj.dummy_mcc.command_line = _obj.command_line.strip() or "/bin/true",
         _obj.dummy_mcc.description = _obj.description
         _obj.dummy_mcc.name = _obj.name
         _obj.dummy_mcc.uuid = ""

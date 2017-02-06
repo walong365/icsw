@@ -890,8 +890,8 @@ config_module = angular.module(
                 name: c_name
                 is_active: true
                 enabled: true
-                config_rel: [config_idx]
-                $$res_config_rel: [config]
+                config_rel: if config then [config_idx] else []
+                $$res_config_rel: if config then [config] else []
                 description: "Check command"
                 command_line: "$USER2$ -m $HOSTADDRESS$ uptime"
                 categories: []

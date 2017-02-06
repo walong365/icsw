@@ -685,7 +685,7 @@
 
 <script type="text/ng-template" id="icsw.mon.check.command.line">
     <td>{{ obj.name }}</td>
-    <td>{{ obj.config_rel.length }}</td>
+    <td class="text-center">{{ obj.config_rel.length }}</td>
     <td>{{ obj.$$mon_service_templ_name }}</td>
     <td>{{ obj.description }}</td>
     <td class="text-center"><span ng-bind-html="obj.enabled | yesno4"></span></td>
@@ -826,14 +826,6 @@
                             </span>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
-                            Enabled
-                        </label>
-                        <div class="controls col-sm-9">
-                            <icsw-tools-yes-no flag="edit_obj.enabled"></icsw-tools-yes-no>
-                        </div>
-                    </div>
                     <div class="form-group ng-class:form_error('name')">
                         <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Name<span class="asteriskField">*</span>
@@ -958,14 +950,22 @@
                         </div>
                     </div>
                 </fieldset>
-                <fieldset ng-show="!edit_obj.is_special_command && !edit_obj.is_event_handler">
-                    <legend>Active / Passive Settings</legend>
-                    <div class="form-group">
-                        <div class="">
-                            <div class="controls col-sm-9">
+                <fieldset>
+                    <legend>Active / Passive,  Enabled / Disabled Settings</legend>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="controls" ng-show="!edit_obj.is_special_command && !edit_obj.is_event_handler">
                                 <label>
-                                    <icsw-tools-yes-no-small flag="edit_obj.is_active"></icsw-tools-yes-no-small>
+                                    <icsw-tools-yes-no flag="edit_obj.is_active"></icsw-tools-yes-no>
                                     Is Active
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="controls">
+                                <label>
+                                    <icsw-tools-yes-no flag="edit_obj.enabled"></icsw-tools-yes-no>
+                                    Enabled
                                 </label>
                             </div>
                         </div>
@@ -982,49 +982,48 @@
                     <legend>Flags</legend>
                     <div class="row">
                         <div class="col-md-6">
-                            <div class="form-group">
-                                <div class="">
-                                    <div class="controls col-sm-9">
-                                        <label>
-                                            <icsw-tools-yes-no-small flag="edit_obj.volatile"></icsw-tools-yes-no-small>
-                                            Volatile
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <div class="">
-                                    <div class="controls col-sm-9">
-                                        <label>
-                                            <icsw-tools-yes-no-small flag="edit_obj.enable_perfdata"></icsw-tools-yes-no-small>
-                                            Enable Perfdata
-                                        </label>
-                                    </div>
-                                </div>
+                            <div class="controls">
+                                <label>
+                                    <icsw-tools-yes-no flag="edit_obj.volatile"></icsw-tools-yes-no>
+                                    Volatile
+                                </label>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group" ng-show="!edit_obj.is_special_command">
-                                <div class="">
-                                    <div class="controls col-sm-9">
-                                        <label>
-                                            <icsw-tools-yes-no-small flag="edit_obj.event_handler_enabled"></icsw-tools-yes-no-small>
-                                            Event Handler Enabled
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-group" ng-show="!edit_obj.is_special_command">
-                                <div class="" ng-show="edit_obj.event_handler == undefined">
-                                    <div class="controls col-sm-9">
-                                        <label>
-                                            <icsw-tools-yes-no-small flag="edit_obj.is_event_handler"></icsw-tools-yes-no-small>
-                                            Is Event Handler
-                                        </label>
-                                    </div>
-                                </div>
+                            <div class="controls">
+                                <label>
+                                    <icsw-tools-yes-no flag="edit_obj.enable_perfdata"></icsw-tools-yes-no>
+                                    Enable Perfdata
+                                </label>
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <div class="controls">
+                                <label>
+                                    <icsw-tools-yes-no flag="edit_obj.event_handler_enabled"></icsw-tools-yes-no>
+                                    Event Handler Enabled
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="control">
+                                <label ng-show="!edit_obj.is_special_command">
+                                    <icsw-tools-yes-no flag="edit_obj.is_event_handler"></icsw-tools-yes-no>
+                                    Is Event Handler
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+                <fieldset>
+                    <legend>Internal</legend>
+                    <div class="form-group row">
+                        <label class="control-label col-sm-3 icsw-formlabel">
+                            UUID
+                        </label>
+                        <label class="col-sm-9">
+                            <code>{{ edit_obj.uuid }}</code>
+                        </label>
                     </div>
                 </fieldset>
             </uib-tab>
