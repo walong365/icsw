@@ -305,57 +305,6 @@ class host_check_command(models.Model):
         return "hcc_{}".format(self.name)
 
 
-
-"""
-
-deprecated
-
-class mon_check_command_special(models.Model):
-    idx = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=64, unique=True)
-    group = models.CharField(max_length=64, default="")
-    info = models.CharField(max_length=64, default="")
-    command_line = models.CharField(max_length=512, default="")
-    description = models.CharField(max_length=512, default="")
-    is_active = models.BooleanField(default=True)
-    date = models.DateTimeField(auto_now_add=True)
-    # triggers other commands
-    meta = models.BooleanField(default=False)
-    # for commands from a meta-command
-    parent = models.ForeignKey("self", null=True)
-    # identifier, to find certain checks, for internal use only
-    identifier = models.CharField(max_length=64, default="")
-    # link to mon_check_command_command created from this special commands
-    # -> sytem_command is True
-    # -> special_shaodw is True
-    # should alays be set
-    dummy_mcc = models.OneToOneField(
-        "backbone.dbstructuredmonbaseconfig",
-        null=True,
-        blank=True,
-        related_name="mccs_ref",
-    )
-
-    @property
-    def _md_name(self):
-        if self.dummy_mcc_id:
-            return self.dummy_mcc.name
-        else:
-            # this property is private and only used to create an initial unique name
-            return "special_{:d}_{}".format(
-                self.idx,
-                self.name.replace(" ", "_").replace("__", "_").replace("__", "_")
-            )
-
-    class Meta:
-        verbose_name = "Special check command"
-        ordering = ("group", "name",)
-
-    def __str__(self):
-        return "MonCheckCommandSpecial {}".format(self.name)
-"""
-
-
 class MonCheckCommandSystemNames(Enum):
     # process commands
     process_service_perfdata_file = "process-service-perfdata-file"
@@ -381,6 +330,8 @@ class mon_check_command(models.Model):
     mon_service_templ = models.ForeignKey("backbone.mon_service_templ", null=True, blank=True)
     # UUID
     uuid = models.CharField(default="", max_length=64, blank=True)
+    # parent UUID, value of the UUID this check_command was copied from
+    parent_uuid = models.CharField(default="", max_length=64, blank=True)
     # only unique per config
     name = models.CharField(max_length=192)
     # unique name, this name is local to each installation and will be changed
@@ -420,7 +371,9 @@ class mon_check_command(models.Model):
         if self.config_rel.all().count():
             return sum(
                 [
-                    dev_conf.device_id for dev_conf in _config.device_config_set.all() for _config in self.config_rel.all()
+                    [
+                        dev_conf.device_id for dev_conf in _config.device_config_set.all()
+                    ] for _config in self.config_rel.all()
                 ],
                 []
             )
