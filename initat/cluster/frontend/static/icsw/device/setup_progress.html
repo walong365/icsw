@@ -234,6 +234,52 @@
                         </tbody>
                     </table>
                 </uib-tab>
+                <uib-tab ng-click="host_monitoring_status_clicked()">
+                    <uib-tab-heading>
+                        <span>Host Monitoring Status</span>
+                    </uib-tab-heading>
+                    <br/>
+                    <h3 ng-show="struct.devices.length > 0">Local Information:</h3>
+                    <table class="table table-condensed table-striped table-hover simple-border">
+                        <thead>
+                            <tr>
+                                <th class="text-center">Local Fingerprint</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="text-center">{{ struct.local_hm_module_fingerprint }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <h3 ng-show="struct.devices.length == 0">No devices selected</h3>
+                    <h3 ng-show="struct.devices.length > 0">Device Information:</h3>
+                    <table
+                        class="table table-condensed table-striped table-hover simple-border"
+                        st-table="devices_shown"
+                        ng-show="struct.devices.length > 0"
+                        st-safe-src="struct.devices"
+                    >
+                        <thead>
+                            <tr>
+                                <th class="text-center">Device</th>
+                                <th class="text-center">Version</th>
+                                <th class="text-center">Platform</th>
+                                <th class="text-center">Fingerprint</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="device in devices_shown">
+                                <td class="text-center"><button type="button" class="btn btn-xs btn-success" ng-click="show_device($event, device)">{{ device.full_name }}</button></td>
+                                <td class="text-center">{{ device.$$host_monitor_version }}</td>
+                                <td class="text-center">{{ device.$$host_monitor_platform }}</td>
+                                <td ng-class="device.$$host_monitor_fingerprint_class">{{ device.$$host_monitor_fingerprint }}</td>
+                                <td class="text-center">N/A</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </uib-tab>
                 <uib-tab ng-repeat="tab in struct.tabs" ng-click="mark_unfresh(tab)">
                     <uib-tab-heading>
                         <span>{{ tab.heading }}</span>
