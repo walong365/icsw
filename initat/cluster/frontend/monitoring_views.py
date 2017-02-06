@@ -233,11 +233,15 @@ class NodeStatusViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
     def get_all(self, request):
         from initat.md_config_server.icinga_log_reader.log_reader_utils import HostServiceIDUtil
+
         def _to_fqdn(_vals):
             if _vals[2]:
                 return "{}.{}".format(_vals[1], _vals[2])
             else:
                 return _vals[1]
+
+        def dummy_log(what, log_level=logging_tools.LOG_LEVEL_OK):
+            logger.log(log_level, what)
 
         pk_list = json.loads(request.data["pk_list"])
         srv_com = server_command.srv_command(command="get_node_status")
@@ -286,7 +290,7 @@ class NodeStatusViewSet(viewsets.ViewSet):
                 for serv_res in json.loads(service_results[0]):
                     host_pk, service_pk, _ = HostServiceIDUtil.parse_host_service_description(
                         serv_res['description'],
-                        log=logger.error
+                        log=dummy_log,
                     )
                     if host_pk is not None and service_pk is not None:
                         if _eco.consume("dashboard", host_pk):
