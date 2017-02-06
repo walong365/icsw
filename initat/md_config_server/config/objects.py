@@ -286,7 +286,7 @@ class MonAllCommands(MonFileContainer):
             # delete entries
             # - without config
             # - no associated devices
-            if not entry.config_id and not entry.devices.all().count():
+            if not entry.config_rel.all().count() and not entry.devices.all().count():
                 log_com(
                     "removing stale entry '{}'".format(str(entry)),
                     logging_tools.LOG_LEVEL_ERROR
