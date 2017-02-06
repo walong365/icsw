@@ -18,11 +18,18 @@
 
 import json
 
-from initat.host_monitoring import hm_classes, limits
+from .. import hm_classes, limits
 from initat.tools import logging_tools, server_command, drbd_tools, process_tools
+from ..constants import HMAccessClassEnum
+from initat.constants import PlatformSystemTypeEnum
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "0447077c-1e22-473b-8333-bff4e66e97bd"
+
     def init_module(self):
         self.__last_drbd_check = (-1, -1)
         if drbd_tools:
@@ -35,6 +42,11 @@ class _general(hm_classes.MonitoringModule):
 
 
 class drbd_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "d799b6dd-08fb-45d1-a80b-0bb6d824af35"
+
     def __call__(self, srv_com, cur_ns):
         if drbd_tools and self.module.drbd_config:
             try:

@@ -17,17 +17,27 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
 import subprocess
-from initat.host_monitoring import limits, hm_classes
+
+from initat.constants import PlatformSystemTypeEnum
 from initat.tools import server_command
+from .. import limits, hm_classes
+from ..constants import HMAccessClassEnum
 
 
 class _general(hm_classes.MonitoringModule):
-    pass
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "3256c983-2fcf-4e0e-ada8-bf9b76c87e44"
 
 
 class cups_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "48e18be1-c860-4368-b415-b7d6f9a2d4cd"
+
     def __call__(self, srv_com, cur_ns):
         lp_stat, lp_out = subprocess.getstatusoutput("lpstat -p")
         if lp_stat:

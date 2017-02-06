@@ -19,13 +19,12 @@
 #
 """ monitors postgres performance values """
 
-import os
 import time
-import pprint
 
-from initat.host_monitoring import limits, hm_classes
-
+from .. import limits, hm_classes
 from initat.tools import logging_tools, process_tools, config_store
+from ..constants import HMAccessClassEnum
+from initat.constants import PlatformSystemTypeEnum
 
 try:
     import psycopg2
@@ -121,6 +120,11 @@ class PGStat(object):
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "431275ca-5ad6-4547-939c-aa4d78cb7e07"
+
     def init_module(self):
         self.activity = None
         self.pg_settings = None
@@ -243,6 +247,11 @@ class _general(hm_classes.MonitoringModule):
 
 
 class postgresql_connection_info_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "436a0b36-1991-44c4-8d35-42238186bc85"
+
     def __call__(self, srv_com, cur_ns):
         if self.module.pg_settings:
             srv_com["max_connections"] = int(self.module.pg_settings["max_connections"]["setting"])

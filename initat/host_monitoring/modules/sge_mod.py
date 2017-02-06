@@ -16,16 +16,23 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import subprocess
 import os
+import subprocess
 
 from lxml import etree
 
-from initat.host_monitoring import limits, hm_classes
+from initat.constants import PlatformSystemTypeEnum
 from initat.tools import process_tools, server_command
+from .. import limits, hm_classes
+from ..constants import HMAccessClassEnum
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "c99abe4c-d091-451f-8aff-b0da1d0ba8f8"
+
     def init_module(self):
         sge_dict = {}
         for v_name, v_src in [
@@ -41,6 +48,11 @@ class _general(hm_classes.MonitoringModule):
 
 
 class sge_queue_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "893e1cd5-c7a3-4962-987b-05cb5dc3d2cb"
+
     def __init__(self, name):
         super(sge_queue_status_command, self).__init__(name)
         self.parser.add_argument("--sge-queue", dest="sge_queue", type=str)

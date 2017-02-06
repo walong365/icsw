@@ -16,8 +16,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from initat.host_monitoring import limits, hm_classes
+from .. import limits, hm_classes
 from initat.tools import logging_tools, process_tools, server_command
+from initat.constants import PlatformSystemTypeEnum
+from ..constants import HMAccessClassEnum
 
 try:
     import memcache
@@ -26,10 +28,18 @@ except ImportError:
 
 
 class _general(hm_classes.MonitoringModule):
-    pass
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "b4f5e4b9-cc6d-4cb2-85b0-317b3f2ce1b0"
 
 
 class memcached_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "1d5cffb3-43ee-436b-9188-d268eb759caf"
+
     def __init__(self, name):
         super(memcached_status_command, self).__init__(name, positional_arguments=True)
         self.parser.add_argument("-w", dest="warn", type=float)

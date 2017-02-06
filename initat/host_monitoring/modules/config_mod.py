@@ -18,18 +18,23 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import subprocess
 import os
 import stat
+import subprocess
 import time
 
-from initat.host_monitoring import filesys_tools
-from initat.host_monitoring import limits, hm_classes
-from initat.tools import logging_tools, process_tools, server_command
 from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+from initat.tools import logging_tools, process_tools, server_command
+from .. import filesys_tools, limits, hm_classes
+from ..constants import HMAccessClassEnum
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "4fb08ee8-99da-4b3d-b232-df0ecc54629c"
+
     def _parse_ecd(self, in_str):
         # parse exclude_checkdate, ecd has the form [WHHMM][-WHHMM]
         # W ... weekday, 1 ... monday, 7 ... sunday
@@ -64,6 +69,11 @@ class _general(hm_classes.MonitoringModule):
 
 
 class check_file_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "7c70d4c2-f933-4576-86dd-112cb4b6cc1e"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--mod", dest="mod_diff_time", type=int)
@@ -138,6 +148,11 @@ class check_file_command(hm_classes.MonitoringCommand):
 
 
 class call_script_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level2
+        uuid = "fa28d8d1-0523-4eca-8336-507385d721cf"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--at-time", dest="time", type=int, default=0)
@@ -199,31 +214,61 @@ class call_script_command(hm_classes.MonitoringCommand):
 
 
 class create_dir_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level2
+        uuid = "55f35c53-3fb0-4dda-8264-ced2df694941"
+
     def __call__(self, srv_com, cur_ns):
         filesys_tools.create_dir(srv_com, self.log)
 
 
 class remove_dir_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level2
+        uuid = "e429d019-1822-4f98-8300-109842a6fe75"
+
     def __call__(self, srv_com, cur_ns):
         filesys_tools.remove_dir(srv_com, self.log)
 
 
 class get_dir_tree_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level1
+        uuid = "03ff9f6a-3e79-4569-b407-b1d193e58845"
+
     def __call__(self, srv_com, cur_ns):
         filesys_tools.get_dir_tree(srv_com, self.log)
 
 
 class get_file_content_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level1
+        uuid = "1f1f2993-20ef-4811-b752-a114fab3a75b"
+
     def __call__(self, srv_com, cur_ns):
         filesys_tools.get_file_content(srv_com, self.log)
 
 
 class set_file_content_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level2
+        uuid = "7694dab7-d77e-48fd-bd96-0cbc0480b484"
+
     def __call__(self, srv_com, cur_ns):
         filesys_tools.set_file_content(srv_com, self.log)
 
 
 class check_mount_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "4537cc1f-00fa-433c-91ee-797363d12358"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--type", default="nfs", type=str)
@@ -270,6 +315,11 @@ class check_mount_command(hm_classes.MonitoringCommand):
 
 
 class check_dir_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "9a3be3b0-d030-4f0c-86b0-9c1b2eadc615"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
@@ -307,6 +357,11 @@ class check_dir_command(hm_classes.MonitoringCommand):
 
 
 class modules_fingerprint_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "2d9ae7a1-c37b-42ac-829c-eee5a3d84b28"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
@@ -320,6 +375,11 @@ class modules_fingerprint_command(hm_classes.MonitoringCommand):
 
 
 class update_modules_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level2
+        uuid = "da051ddb-a316-4db7-b23a-0eb68fdab161"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
@@ -376,6 +436,11 @@ class update_modules_command(hm_classes.MonitoringCommand):
 
 
 class platform_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "7f1499f8-33f0-40e5-8b07-b20f93e09acb"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 

@@ -165,68 +165,24 @@ class ModuleContainer(object):
             self.log(what, level)
         self.__log_cache = []
 
-    def init_commands(self, server_proc, verbose, platform, access_class):
-        module_list = []
+    def build_structure(self, platform: object=None, access_class:object =None):
         command_dict = {}
-        _init_ok = True
+        _init_mod_list = []
+        used_uuids = set()
         for mod_object in self.__pure_module_list:
             mod_name = mod_object.__name__
             _general = mod_object._general
             # salt meta
             MonitoringModule.salt_meta(_general)
             if MonitoringModule.check_meta(_general, platform, access_class):
+                if _general.Meta.uuid in used_uuids:
+                    raise ValueError("UUID used twice")
+                used_uuids.add(_general.Meta.uuid)
                 new_hm_mod = _general(mod_name.split(".")[-1], mod_object)
                 # init state flags for correct handling of shutdown (do not call close_module when
                 # init_module was not called)
                 new_hm_mod.module_state = {_name: False for _name, _flag in MODULE_STATE_INIT_LIST}
-                module_list.append(new_hm_mod)
-                loc_coms = [
-                    entry for entry in dir(mod_object) if entry.endswith("_command") and inspect.isclass(
-                        getattr(mod_object, entry)
-                    ) and issubclass(
-                        getattr(mod_object, entry),
-                        MonitoringCommand
-                    )
-                ]
-                if len(loc_coms):
-                    coms_added = []
-                    for loc_com in loc_coms:
-                        com_obj = getattr(mod_object, loc_com)
-                        MonitoringCommand.salt_meta(com_obj)
-                        if MonitoringCommand.check_meta(com_obj, platform, access_class):
-                            try:
-                                new_hm_mod.add_command(loc_com, com_obj)
-                            except:
-                                exc_info = process_tools.icswExceptionInfo()
-                                for log_line in exc_info.log_lines:
-                                    self.log(
-                                        "error adding command {}@{}: {}".format(
-                                            loc_com,
-                                            mod_name,
-                                            process_tools.get_except_info()
-                                        ),
-                                        logging_tools.LOG_LEVEL_CRITICAL
-                                    )
-                            else:
-                                coms_added.append(loc_com)
-                        else:
-                            self.log(
-                                "command {}@{} not added because of {}".format(
-                                    loc_com,
-                                    mod_name,
-                                    com_obj.Meta.reject_cause,
-                                )
-                            )
-                    command_dict.update(new_hm_mod.commands)
-                    self.log(
-                        "{} added for module {}: {}".format(
-                            logging_tools.get_plural("command", len(coms_added)),
-                            mod_name,
-                            ", ".join(coms_added),
-                        )
-                    )
-                else:
-                    self.log("no commands found in module {}".format(mod_name), logging_tools.LOG_LEVEL_WARN)
+                _init_mod_list.append((mod_object, new_hm_mod, mod_name))
             else:
                 self.log(
                     "module {} not added because of {}".format(
@@ -234,10 +190,90 @@ class ModuleContainer(object):
                         _general.Meta.reject_cause,
                     )
                 )
+        module_list = []
+        for mod_object, new_hm_mod, mod_name in sorted(
+            _init_mod_list, reverse=True, key=lambda x: x[1].Meta.priority
+        ):
+            module_list.append(new_hm_mod)
+            loc_coms = [
+                entry for entry in dir(mod_object) if entry.endswith("_command") and inspect.isclass(
+                    getattr(mod_object, entry)
+                ) and issubclass(
+                    getattr(mod_object, entry),
+                    MonitoringCommand
+                )
+            ]
+            if len(loc_coms):
+                coms_added = []
+                for loc_com in loc_coms:
+                    com_obj = getattr(mod_object, loc_com)
+                    MonitoringCommand.salt_meta(com_obj)
+                    if MonitoringCommand.check_meta(com_obj, platform, access_class):
+                        if com_obj.Meta.uuid in used_uuids:
+                            raise ValueError("UUID used twice")
+                        used_uuids.add(com_obj.Meta.uuid)
+                        try:
+                            new_hm_mod.add_command(loc_com, com_obj)
+                        except:
+                            exc_info = process_tools.icswExceptionInfo()
+                            self.log(
+                                "error adding command {}@{}: {}".format(
+                                    loc_com,
+                                    mod_name,
+                                    process_tools.get_except_info()
+                                ),
+                                logging_tools.LOG_LEVEL_CRITICAL
+                            )
+                            for log_line in exc_info.log_lines:
+                                self.log(
+                                    "    {}".format(
+                                        log_line
+                                    ),
+                                    logging_tools.LOG_LEVEL_CRITICAL
+                                )
+                        else:
+                            coms_added.append(loc_com)
+                    else:
+                        self.log(
+                            "command {}@{} not added because of {}".format(
+                                loc_com,
+                                mod_name,
+                                com_obj.Meta.reject_cause,
+                            )
+                        )
+                command_dict.update(new_hm_mod.commands)
+                self.log(
+                    "{} added for module {}: {}".format(
+                        logging_tools.get_plural("command", len(coms_added)),
+                        mod_name,
+                        ", ".join(coms_added),
+                    )
+                )
+                not_added = set(loc_coms) - set(coms_added)
+                if not_added:
+                    self.log(
+                        "{} not added for module {}: {}".format(
+                            logging_tools.get_plural("command", len(not_added)),
+                            mod_name,
+                            ", ".join(sorted(list(not_added))),
+                        ),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
+            else:
+                self.log("no commands found in module {}".format(mod_name), logging_tools.LOG_LEVEL_WARN)
+        self.log(
+            "{} added, {} added".format(
+                logging_tools.get_plural("module", len(module_list)),
+                logging_tools.get_plural("command", len(command_dict.keys())),
+            )
+        )
         self.module_list = module_list
         self.command_dict = command_dict
+
+    def init_commands(self, server_proc: object, verbose: bool) -> bool:
+        _init_ok = True
         for call_name, add_server_proc in MODULE_STATE_INIT_LIST:
-            for cur_mod in module_list:
+            for cur_mod in self.module_list:
                 if verbose:
                     self.log(
                         "calling {} for module '{}'".format(
@@ -291,53 +327,53 @@ class MMMCBase(object):
         priority = 0
         required_access = HMAccessClassEnum.level2
         required_platform = PlatformSystemTypeEnum.NONE
+        uuid = ""
 
     @classmethod
-    def salt_meta(cls, obj):
-        for _attr_name in ["priority", "required_access", "required_platform"]:
+    def salt_meta(cls, obj: object) -> None:
+        for _attr_name in ["priority", "required_access", "required_platform", "uuid"]:
             if not hasattr(obj.Meta, _attr_name):
                 # set default value
                 setattr(obj.Meta, _attr_name, getattr(cls.Meta, _attr_name))
+        if not isinstance(obj.Meta.required_platform, list):
+            obj.Meta.required_platform = [obj.Meta.required_platform]
 
     @classmethod
-    def check_meta(cls, obj, platform, access_class):
-        _pass = True
-        meta_platform = obj.Meta.required_platform
-        if not isinstance(meta_platform, list):
-            meta_platform = [meta_platform]
-        meta_access = obj.Meta.required_access
-        _allowed_classes = [access_class]
-        if HMAccessClassEnum.level2 in _allowed_classes:
-            _allowed_classes.append(HMAccessClassEnum.level1)
-        if HMAccessClassEnum.level1 in _allowed_classes:
-            _allowed_classes.append(HMAccessClassEnum.level0)
+    def check_meta(cls, obj: object, platform: object, access_class: object) -> bool:
         _reject_cause = []
-        if platform not in meta_platform and PlatformSystemTypeEnum.ANY not in meta_platform:
-            _reject_cause.append(
-                "Platform {} not in [{}]".format(
-                    platform,
-                    ", ".join([_pf.name for _pf in meta_platform])
+        if platform is not None or access_class is not None:
+            meta_platform = obj.Meta.required_platform
+            meta_access = obj.Meta.required_access
+            _allowed_classes = [access_class]
+            if HMAccessClassEnum.level2 in _allowed_classes:
+                _allowed_classes.append(HMAccessClassEnum.level1)
+            if HMAccessClassEnum.level1 in _allowed_classes:
+                _allowed_classes.append(HMAccessClassEnum.level0)
+            if platform not in meta_platform and PlatformSystemTypeEnum.ANY not in meta_platform:
+                _reject_cause.append(
+                    "Platform {} not in [{}]".format(
+                        platform,
+                        ", ".join([_pf.name for _pf in meta_platform])
+                    )
                 )
-            )
-            _pass = False
-        if PlatformSystemTypeEnum.NONE in meta_platform:
-            _reject_cause.append(
-                "{} in [{}]".format(
-                    PlatformSystemTypeEnum.NONE,
-                    ", ".join([_pf.name for _pf in meta_platform])
+            if PlatformSystemTypeEnum.NONE in meta_platform:
+                _reject_cause.append(
+                    "{} in [{}]".format(
+                        PlatformSystemTypeEnum.NONE,
+                        ", ".join([_pf.name for _pf in meta_platform])
+                    )
                 )
-            )
-            _pass = False
-        if meta_access not in _allowed_classes:
-            _reject_cause.append(
-                "{} not in [{}]".format(
-                    meta_access,
-                    ", ".join([_cl.name for _cl in _allowed_classes]),
+            if meta_access not in _allowed_classes:
+                _reject_cause.append(
+                    "{} not in [{}]".format(
+                        meta_access,
+                        ", ".join([_cl.name for _cl in _allowed_classes]),
+                    )
                 )
-            )
-            _pass = False
+        if not obj.Meta.uuid.strip():
+            _reject_cause.append("no UUID")
         obj.Meta.reject_cause = ", ".join(_reject_cause)
-        return _pass
+        return False if _reject_cause else True
 
 
 class MonitoringModule(MMMCBase):

@@ -32,6 +32,7 @@ from initat.tools import logging_tools, process_tools, server_command
 from .. import hm_classes, limits
 from ..host_monitoring_struct import HMSubprocessStruct
 from ..long_running_checks import LongRunningCheck
+from ..constants import HMAccessClassEnum
 
 if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
     import wmi
@@ -241,6 +242,9 @@ class NetCompressJob(object):
 
 class _general(hm_classes.MonitoringModule):
     class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "1fd40fc5-5a9c-4a4c-8c41-54ceceb4debb"
         # high priority to set ethtool_path before init_machine_vector
         priority = 10
 
@@ -1085,6 +1089,11 @@ class PingSPStruct(HMSubprocessStruct):
 
 
 class argus_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "ccc60cfb-ca93-4f05-90be-a145fa85b6d5"
+
     info_str = "checks argus processes"
 
     def __init__(self, name):
@@ -1107,6 +1116,11 @@ class argus_status_command(hm_classes.MonitoringCommand):
 
 
 class ping_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "7ca1e4b6-962a-442f-ab5b-32a9ec248900"
+
     info_str = "ping command"
 
     def __init__(self, name):
@@ -1226,6 +1240,11 @@ class ping_command(hm_classes.MonitoringCommand):
 
 
 class net_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "ac58a719-5455-4047-b7e2-bbc4c1bd8f46"
+
     info_str = "network information"
 
     def __init__(self, name):
@@ -1725,6 +1744,11 @@ class net_command(hm_classes.MonitoringCommand):
 
 
 class bridge_info_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "82f87462-940e-4971-ab1c-d984d96b6e6f"
+
     info_str = "bridge information"
 
     def __call__(self, srv_com, cur_ns):
@@ -1750,6 +1774,11 @@ class bridge_info_command(hm_classes.MonitoringCommand):
 
 
 class network_info_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "bcb21ce0-9d5e-47f1-89ec-ea044185d5f8"
+
     info_str = "network information"
 
     def __call__(self, srv_com, cur_ns):
@@ -1821,6 +1850,11 @@ class network_info_command(hm_classes.MonitoringCommand):
 
 
 class iptables_info_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "47776042-9fd8-470f-b7ea-0d72f50602ae"
+
     info_str = "iptables information"
 
     def __init__(self, name):
@@ -1889,6 +1923,11 @@ class ntpq_struct(HMSubprocessStruct):
 
 
 class ntp_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "86b1cb9d-7424-45aa-9eed-d8bd50d46040"
+
     info_str = "show NTP status"
 
     def __call__(self, srv_com, cur_ns):
@@ -1938,6 +1977,11 @@ class ntp_status_command(hm_classes.MonitoringCommand):
 
 
 class NmapScanCheck(LongRunningCheck):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "812eb320-ba75-4717-a2a5-160c515722b6"
+
     def __init__(self, srv_command_obj, network_str, nmap_scan_command_object):
         self.srv_command_obj = srv_command_obj
         self.network_str = network_str
@@ -1957,6 +2001,11 @@ class NmapScanCheck(LongRunningCheck):
 
 
 class nmap_scan_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "2d63bd61-5876-4bc9-b00b-f6686cf1e179"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("--network", dest="network", type=str)

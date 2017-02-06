@@ -36,16 +36,19 @@ class HMHRMixin(object):
             _platform = PLATFORM_SYSTEM_TYPE
             _access_class = HMAccessClassEnum(self.CC.CS["hm.access_class"])
         else:
-            _platform = PlatformSystemTypeEnum.ANY
-            _access_class = HMAccessClassEnum.level2
+            _platform = None
+            _access_class = None
         self.log(
-            "command filtering is {} (platform {}, access-class {})".format(
+            "command filtering is {}{}".format(
                 "enabled" if enable_filter else "disabled",
-                str(_platform),
-                str(_access_class),
+                " (platform {}, access-class {})".format(
+                    str(_platform),
+                    str(_access_class),
+                ) if _platform else "",
             )
         )
-        _init_ok = self.local_mc.init_commands(self, verbose, _platform, _access_class)
+        self.local_mc.build_structure(_platform, _access_class)
+        _init_ok = self.local_mc.init_commands(self, verbose)
         return _init_ok
 
     def COM_close(self):

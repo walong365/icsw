@@ -18,8 +18,11 @@
 #
 
 from .. import limits
+from initat.constants import PlatformSystemTypeEnum
 from ..hm_classes import MonitoringCommand, MonitoringModule
 from ..long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
+from ..constants import HMAccessClassEnum
+
 
 try:
     import lsm
@@ -28,6 +31,11 @@ except ImportError:
 
 
 class _general(MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "1e66d204-deef-4487-9895-6e6b3c9b5188"
+
     def init_module(self):
         self.enabled = True
         if lsm:
@@ -59,6 +67,11 @@ class LibstoragemgmtCheck(LongRunningCheck):
 
 
 class libstoragemgmt_command(MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "dff5d4e7-3980-4dd4-8ed7-aacae07b46d2"
+
     """
     A generic libstoragemgmt check. Needs a URI specifying the device to check.
     This check needs a running lsmd from the libstoragemgmt-init package.

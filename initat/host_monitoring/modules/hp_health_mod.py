@@ -17,14 +17,21 @@
 #
 """ frontend to various HP monitoring commands """
 
-from .. import hm_classes, limits
-from ..host_monitoring_struct import HMSubprocessStruct
+from initat.constants import PlatformSystemTypeEnum
 from initat.tools import logging_tools, server_command, process_tools
+from .. import hm_classes, limits
+from ..constants import HMAccessClassEnum
+from ..host_monitoring_struct import HMSubprocessStruct
 
 HPASM_BIN = "hpasmcli"
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "bd747c12-5ff3-404d-8f2d-a47abdf37655"
+
     def init_module(self):
         pass
 
@@ -157,6 +164,11 @@ class hp_health_bg(HMSubprocessStruct):
 
 
 class hp_dimm_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "87086398-bc22-485f-b062-6147e50943db"
+
     info_string = "check DIMM state via hpasmcli"
 
     def __call__(self, srv_com, cur_ns):
@@ -167,6 +179,11 @@ class hp_dimm_command(hm_classes.MonitoringCommand):
 
 
 class hp_powersupply_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "a40c60fb-c553-40d6-a1fe-7aabd4ead4ec"
+
     info_string = "check PSU state via hpasmcli"
 
     def __call__(self, srv_com, cur_ns):

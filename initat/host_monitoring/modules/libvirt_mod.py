@@ -19,8 +19,11 @@
 from lxml import etree
 import subprocess
 
-from initat.host_monitoring import limits, hm_classes
+from .. import limits, hm_classes
 from initat.tools import logging_tools, process_tools, server_command
+from initat.constants import PlatformSystemTypeEnum
+from ..constants import HMAccessClassEnum
+
 
 try:
     from initat.tools import libvirt_tools
@@ -29,6 +32,11 @@ except:
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "2623c02a-6889-402d-93de-469d2b027dad"
+
     def init_module(self):
         if libvirt_tools:
             self.connection = None
@@ -173,6 +181,11 @@ class _general(hm_classes.MonitoringModule):
 
 
 class libvirt_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "eb6ae74b-f3f5-4095-898f-d0a501f85a9c"
+
     def __call__(self, srv_com, cur_ns):
         if self.module.libvirt_problem:
             srv_com.set_result(self.module.libvirt_problem, server_command.SRV_REPLY_STATE_ERROR)
@@ -206,6 +219,11 @@ class libvirt_status_command(hm_classes.MonitoringCommand):
 
 
 class domain_overview_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "737f4cf1-9ffb-47b6-9ef8-e7c1fdf63e77"
+
     def __call__(self, srv_com, cur_ns):
         if self.module.libvirt_problem:
             srv_com.set_result(self.module.libvirt_problem, server_command.SRV_REPLY_STATE_ERROR)
@@ -250,6 +268,11 @@ class domain_overview_command(hm_classes.MonitoringCommand):
 
 
 class domain_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "12a6fb2b-d635-4dd3-891b-a3ee6e6980e4"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 

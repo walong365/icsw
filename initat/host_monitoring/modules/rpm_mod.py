@@ -16,15 +16,15 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import subprocess
 import os
 import re
+import subprocess
 import time
-import platform
 
-from initat.host_monitoring import hm_classes, limits
-from initat.tools import logging_tools, server_command
 from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+from .. import hm_classes, limits
+from initat.tools import logging_tools, server_command
+from ..constants import HMAccessClassEnum
 
 TEST_OUTPUT_ZYPPER = """Loading repository data...
 Reading installed packages...
@@ -148,10 +148,18 @@ Conf univention-pam (9.0.0-6.268.201604140831 Univention:updates.software-univen
 
 
 class _general(hm_classes.MonitoringModule):
-    pass
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "825f08c8-c83c-43f8-bc76-cf9e2a56334d"
 
 
 class installedupdates_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "e2e456ea-d358-4e52-8d5f-0d5ac9ac0ba4"
+
     info_str = "installed updates (windows only)"
 
     class Update:
@@ -210,6 +218,11 @@ class installedupdates_command(hm_classes.MonitoringCommand):
 
 
 class rpmlist_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "46d060f7-3c7f-4620-9436-0a1b14999c26"
+
     info_str = "rpm list"
 
     class Package:
@@ -404,6 +417,11 @@ class rpmlist_command(hm_classes.MonitoringCommand):
 
 
 class updatelist_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "9a23e2f7-1953-4476-b4cc-3f3c2c813157"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 

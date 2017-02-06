@@ -29,14 +29,19 @@ import time
 from lxml import etree
 from lxml.builder import E
 
-from initat.host_monitoring import hm_classes, limits
+from initat.constants import PlatformSystemTypeEnum
 from initat.tools import logging_tools, process_tools, server_command, config_store
+from .. import hm_classes, limits
+from ..constants import HMAccessClassEnum
 from ..constants import MACHVECTOR_CS_NAME
 
 
 class _general(hm_classes.MonitoringModule):
     class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
         priority = 5
+        uuid = "337abcef-adc2-4038-8e9b-8fc7ed73d2d8"
 
     def __init__(self, *args, **kwargs):
         hm_classes.MonitoringModule.__init__(self, *args, **kwargs)
@@ -69,6 +74,11 @@ class _general(hm_classes.MonitoringModule):
 
 
 class get_mvector_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "3da4050e-060a-4984-a096-32cd48d87343"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--raw", dest="raw", action="store_true", default=False)
@@ -113,6 +123,11 @@ class get_mvector_command(hm_classes.MonitoringCommand):
 
 
 class graph_setup_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "8444d61b-4cf9-4ad3-9562-089d877b7afb"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("--send-name", dest="send_name", type=str)

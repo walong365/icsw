@@ -21,16 +21,28 @@
 
 import subprocess
 
-from initat.host_monitoring import hm_classes, limits
+from initat.constants import PlatformSystemTypeEnum
 from initat.tools import process_tools, logging_tools, server_command
+from .. import hm_classes, limits
+from ..constants import HMAccessClassEnum
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "4fcc704d-1cb1-40a4-a71d-930a23d7bf59"
+
     def init_module(self):
         self.lsmod_command = process_tools.find_file("lsmod")
 
 
 class lsmodinfo_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "d2dc7289-af35-444c-83cf-23d02b37d1ef"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name)
         self.parser.add_argument("--required", dest="required", type=str, default="")
@@ -75,6 +87,11 @@ class lsmodinfo_command(hm_classes.MonitoringCommand):
 
 
 class mountinfo_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "8d055985-3857-4e41-9d05-0e63ee6bd0b7"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name)
         self.parser.add_argument("--mountpoint", type=str, default="/")

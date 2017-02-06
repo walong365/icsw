@@ -20,12 +20,18 @@
 
 import subprocess
 
-from initat.host_monitoring import hm_classes
-from initat.host_monitoring import limits
+from initat.constants import PlatformSystemTypeEnum
 from initat.tools import logging_tools, process_tools, server_command
+from .. import hm_classes, limits
+from ..constants import HMAccessClassEnum
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "5c9c7f3e-7a05-466a-9653-c60053675b04"
+
     def base_init(self):
         self.smartctl_bin = None
         self.devices = {}
@@ -83,6 +89,11 @@ class _general(hm_classes.MonitoringModule):
 
 
 class smartstat_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "e99d5740-49cc-49af-8370-608d1dcbe70a"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True, arguments_name="interface")
 

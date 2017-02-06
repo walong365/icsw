@@ -18,11 +18,18 @@
 
 import subprocess
 
-from initat.host_monitoring import limits, hm_classes
+from initat.constants import PlatformSystemTypeEnum
 from initat.tools import logging_tools, process_tools
+from .. import limits, hm_classes
+from ..constants import HMAccessClassEnum
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "94d38f19-d06b-44fc-b3e1-dea060475459"
+
     def _exec_command(self, com, **kwargs):
         c_stat, c_out = subprocess.getstatusoutput(com)
         if kwargs.get("full_output", False):
@@ -35,6 +42,11 @@ class _general(hm_classes.MonitoringModule):
 
 
 class corosync_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "add63b5c-5896-4f90-ad56-36a470c88126"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("-w", dest="warn", default=4, type=int)
@@ -112,6 +124,11 @@ class corosync_status_command(hm_classes.MonitoringCommand):
 
 
 class heartbeat_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "8b2f8ea7-bf66-4e65-83b6-339a5d0190ea"
+
     def __call__(self, srv_com, cur_ns):
         srv_com["heartbeat_info"] = {
             "host": process_tools.get_machine_name(),

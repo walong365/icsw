@@ -29,13 +29,13 @@ from initat.host_monitoring.constants import HMAccessClassEnum
 
 def show_hm_help(options):
     from initat.host_monitoring.modules import local_mc
-    to_show = []
 
     def dummy_print(what, log_level=logging_tools.LOG_LEVEL_OK):
         print("{} {}".format(logging_tools.map_log_level_to_log_status(log_level), what))
 
+    to_show = []
     local_mc.set_log_command(dummy_print)
-    local_mc.init_commands(None, False, PlatformSystemTypeEnum.ANY, HMAccessClassEnum.level2)
+    local_mc.build_structure()
     for com_name in sorted(local_mc.keys()):
         _show = True
         if options.args:
@@ -84,6 +84,16 @@ def show_hm_help(options):
                 [
                     logging_tools.form_entry_right(_idx, header="#"),
                     logging_tools.form_entry(mod.name, header="Module name"),
+                    logging_tools.form_entry(mod.Meta.uuid, header="uuid"),
+                    logging_tools.form_entry_center(mod.Meta.required_access.name, header="Access"),
+                    logging_tools.form_entry_center(
+                        ",".join(
+                            [
+                                _platform.name for _platform in mod.Meta.required_platform
+                            ]
+                        ),
+                        header="Platform",
+                    ),
                     logging_tools.form_entry_right(mod.Meta.priority, header="priority"),
                     logging_tools.form_entry_right(
                         "yes" if hasattr(mod, "init_machine_vector") else "---",

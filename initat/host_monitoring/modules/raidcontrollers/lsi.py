@@ -17,9 +17,11 @@
 #
 """ checks for various RAID controllers """
 
-from initat.host_monitoring import limits, hm_classes
-from initat.host_monitoring.modules.raidcontrollers.base import ctrl_type, ctrl_check_struct
+from ... import limits, hm_classes
+from .base import ctrl_type, ctrl_check_struct
 from initat.tools import logging_tools
+from ...constants import HMAccessClassEnum
+from initat.constants import PlatformSystemTypeEnum
 
 
 class ctrl_type_lsi(ctrl_type):
@@ -131,6 +133,11 @@ class ctrl_type_lsi(ctrl_type):
 
 
 class lsi_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "5c60b021-e27c-4de2-a980-461ac1fb3527"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 

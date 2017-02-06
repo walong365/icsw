@@ -17,10 +17,11 @@
 #
 """ checks for various RAID controllers """
 
-from initat.host_monitoring import hm_classes
-
-from initat.host_monitoring.modules.raidcontrollers import COMMAND_DICT
-from initat.host_monitoring.modules.raidcontrollers.all import AllRAIDCtrl
+from initat.constants import PlatformSystemTypeEnum
+from .raidcontrollers import COMMAND_DICT
+from .raidcontrollers.all import AllRAIDCtrl
+from .. import hm_classes
+from ..constants import HMAccessClassEnum
 
 
 # add commands to be included automatically
@@ -29,5 +30,10 @@ for _key, _value in COMMAND_DICT.items():
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "41d8506e-55a3-40fd-8bdf-52788be2c204"
+
     def init_module(self):
         AllRAIDCtrl.init(self)

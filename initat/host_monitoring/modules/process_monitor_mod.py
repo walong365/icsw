@@ -18,17 +18,20 @@
 
 """ process monitor """
 
-import subprocess
 import os
 import re
 import signal
+import subprocess
 import time
+
 import psutil
 
-from initat.host_monitoring import hm_classes, limits
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+from .. import hm_classes, limits
 from initat.tools import affinity_tools, logging_tools, process_tools, config_store, \
     server_command
-from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+from initat.constants import PlatformSystemTypeEnum
+from ..constants import HMAccessClassEnum
 
 MIN_UPDATE_TIME = 10
 
@@ -293,6 +296,11 @@ class AffinityStruct(object):
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "78a38bc3-ee23-49a3-ac29-0469b5a9f927"
+
     def init_module(self):
         # AFFINITY ist not set for relay mode
         self.check_affinity = self.main_proc.CC.CS["hm.enable.affinity.matcher"]
@@ -368,6 +376,11 @@ class _general(hm_classes.MonitoringModule):
 
 
 class procstat_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "198c1e13-613d-48a5-a8d8-7d4578705bc1"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("-f", dest="filter", action="store_true", default=False)
@@ -541,6 +554,11 @@ class procstat_command(hm_classes.MonitoringCommand):
 
 
 class proclist_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "dead220a-e479-48ad-87cf-1f85ab271aa7"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name)
         self.parser.add_argument("-t", dest="tree", action="store_true", default=False)
@@ -634,6 +652,11 @@ class proclist_command(hm_classes.MonitoringCommand):
 
 
 class ipckill_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level1
+        uuid = "f46fd5bf-54f9-4ee9-94fa-7e6c41d7636d"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--min-uid", dest="min_uid", type=int, default=0)
@@ -709,6 +732,11 @@ class ipckill_command(hm_classes.MonitoringCommand):
 
 
 class signal_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level1
+        uuid = "ef5b49af-3062-425b-9720-77baeb8dea25"
+
     info_str = "send signal to processes"
 
     def __init__(self, name):

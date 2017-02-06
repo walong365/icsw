@@ -26,13 +26,20 @@ from lxml import etree
 from lxml.builder import E
 from requests_futures.sessions import FuturesSession
 
-from initat.host_monitoring import limits, hm_classes
-from initat.host_monitoring.host_monitoring_struct import ExtReturn, SimpleCounter
-from initat.host_monitoring.long_running_checks import LongRunningCheck
+from initat.constants import PlatformSystemTypeEnum
 from initat.tools import process_tools, server_command, logging_tools
+from .. import limits, hm_classes
+from ..constants import HMAccessClassEnum
+from ..host_monitoring_struct import ExtReturn, SimpleCounter
+from ..long_running_checks import LongRunningCheck
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "f7d67452-0865-4a65-a998-7e1124867596"
+
     def init_module(self):
         requests.packages.urllib3.disable_warnings()
 
@@ -410,6 +417,11 @@ class OvirtBaseMixin(object):
 
 
 class ovirt_overview_command(hm_classes.MonitoringCommand, OvirtBaseMixin):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "c9c76225-6c04-4c37-ab6d-e876498f3938"
+
     def __init__(self, name):
         super(ovirt_overview_command, self).__init__(
             name,
@@ -539,6 +551,11 @@ class ovirt_overview_command(hm_classes.MonitoringCommand, OvirtBaseMixin):
 
 
 class ovirt_storagedomains_command(hm_classes.MonitoringCommand, OvirtBaseMixin):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "c2107fac-139c-4fef-91f8-213de033a417"
+
     def __init__(self, name):
         super(ovirt_storagedomains_command, self).__init__(
             name,
@@ -676,6 +693,11 @@ class ovirt_storagedomains_command(hm_classes.MonitoringCommand, OvirtBaseMixin)
 
 
 class ovirt_hosts_command(hm_classes.MonitoringCommand, OvirtBaseMixin):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "090e9dee-2f85-40c4-ad60-eac80fae1c77"
+
     def __init__(self, name):
         super(ovirt_hosts_command, self).__init__(
             name,

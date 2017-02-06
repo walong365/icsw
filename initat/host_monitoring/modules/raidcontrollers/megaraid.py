@@ -19,10 +19,12 @@
 
 import re
 
-from initat.host_monitoring import limits, hm_classes
-from initat.host_monitoring.host_monitoring_struct import ExtReturn
-from initat.host_monitoring.modules.raidcontrollers.base import ctrl_type, ctrl_check_struct
+from initat.constants import PlatformSystemTypeEnum
 from initat.tools import logging_tools, server_command
+from .base import ctrl_type, ctrl_check_struct
+from ... import limits, hm_classes
+from ...constants import HMAccessClassEnum
+from ...host_monitoring_struct import ExtReturn
 
 # global debug mode
 DEBUG = False
@@ -847,6 +849,11 @@ class ctrl_type_megaraid_sas(ctrl_type):
 
 
 class megaraid_sas_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "e27fe0c5-35f2-49b8-bbaa-37dba6d21387"
+
     def __init__(self, name):
         self.__cache = {}
         hm_classes.MonitoringCommand.__init__(self, name)

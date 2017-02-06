@@ -23,11 +23,12 @@ import json
 import re
 import subprocess
 
+from initat.constants import PlatformSystemTypeEnum
 from initat.tools import logging_tools, process_tools, server_command
 from .. import limits, hm_classes
+from ..constants import HMAccessClassEnum
 from ..hm_cache import HMCCacheMixin
 from ..host_monitoring_struct import ExtReturn, HMSubprocessStruct
-
 
 SMCIPMI_BIN = "SMCIPMITool"
 
@@ -394,7 +395,10 @@ CMM 1 IP: 192.168.102.130
 
 
 class _general(hm_classes.MonitoringModule):
-    pass
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "3d787ac0-1043-437c-8730-c88399187945"
 
 
 def generate_dict(in_list):
@@ -515,7 +519,11 @@ class SMCRetrievePendingStruct(HMSubprocessStruct):
 
 class smcipmi_command(hm_classes.MonitoringCommand, HMCCacheMixin):
     class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
         cache_timeout = 60
+        uuid = "b739a4a7-fbe0-4956-8396-7db02c41d729"
+
     info_str = "SMCIPMITool frontend"
 
     def __init__(self, name):

@@ -21,8 +21,10 @@ import subprocess
 
 from lxml import etree
 
-from initat.host_monitoring import hm_classes
+from initat.constants import PlatformSystemTypeEnum
+from .. import hm_classes
 from initat.tools import logging_tools, process_tools
+from ..constants import HMAccessClassEnum
 
 COM_NAME = "nvidia-smi"
 _DEBUG = False
@@ -350,6 +352,11 @@ class NVidiaGPU(object):
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "8abed1c1-6876-46e9-873f-a717c660e9c4"
+
     def init_module(self):
         self._find_smi_command()
 

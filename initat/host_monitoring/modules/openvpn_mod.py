@@ -25,8 +25,10 @@ import shutil
 import tempfile
 import time
 
-from initat.host_monitoring import limits, hm_classes
+from .. import limits, hm_classes
 from initat.tools import logging_tools, process_tools
+from initat.constants import PlatformSystemTypeEnum
+from ..constants import HMAccessClassEnum
 
 OPENVPN_DIR = "/etc/openvpn"
 
@@ -59,6 +61,11 @@ class VPNNetSpeed(object):
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "b3321759-0c79-4f96-908c-cd561113a2b2"
+
     def __init__(self, *args, **kwargs):
         hm_classes.MonitoringModule.__init__(self, *args, **kwargs)
         # instance dict
@@ -342,6 +349,11 @@ class OpenVPNInstance(object):
 
 
 class certificate_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "ea9f11c7-f3c3-4704-ae6e-ae3e42983183"
+
     def __init__(self, name):
         self._openssl_command = process_tools.find_file("openssl")
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
@@ -482,6 +494,11 @@ class certificate_status_command(hm_classes.MonitoringCommand):
 
 
 class openvpn_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "c0798eb6-9be0-4399-aebc-1edcaacf6fd1"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("-i", dest="instance", type=str, default="ALL")

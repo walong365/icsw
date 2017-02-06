@@ -27,9 +27,11 @@ import os
 import subprocess
 from configparser import SafeConfigParser
 
-from initat.host_monitoring import limits
+from .. import limits
 from initat.host_monitoring.hm_classes import MonitoringCommand, MonitoringModule
 from initat.tools import server_command, logging_tools, process_tools, config_store
+from initat.constants import PlatformSystemTypeEnum
+from ..constants import HMAccessClassEnum
 
 try:
     import psycopg2
@@ -198,7 +200,9 @@ class PGPoolOverview(object):
 
 class _general(MonitoringModule):
     class Meta:
-        bla = 4
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "35803cf5-2578-4a14-858a-f4e85efd9501"
 
     def init_module(self):
         if psycopg2:
@@ -281,6 +285,11 @@ class pgpool_status_command(PgPoolCommand):
 
 
 class pgpool_nodes_command(PgPoolCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "84be4d12-9b40-4ec4-b404-b753d032215a"
+
     info_str = (
         "Check if the correct node count is returned and all nodes are not "
         "in status NODE_DOWN"
@@ -332,6 +341,11 @@ class pgpool_nodes_command(PgPoolCommand):
 
 
 class pgpool_processes_command(PgPoolCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "9a312213-fbdd-4e41-95bc-8c1170efb1f8"
+
     info_str = "Check for the correct count of pgpool processes"
     sql = "SHOW pool_processes;"
     key = KEY
@@ -363,6 +377,11 @@ class pgpool_processes_command(PgPoolCommand):
 
 
 class pgpool_pools_command(PgPoolCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "27852f97-707d-446c-b08a-bee71c56f703"
+
     info_str = "Check for the correct count of pgpool pools"
     sql = "SHOW pool_pools;"
     key = KEY
@@ -403,6 +422,11 @@ class pgpool_pools_command(PgPoolCommand):
 
 
 class pgpool_version_command(PgPoolCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "e556a050-58f1-4021-9ada-c19bd49fbe3e"
+
     info_str = "Check for a specific version of pgpool"
     sql = "SHOW pool_version;"
     key = KEY

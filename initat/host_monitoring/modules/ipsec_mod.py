@@ -16,15 +16,22 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import subprocess
 import re
+import subprocess
 import time
 
-from initat.host_monitoring import limits, hm_classes
+from initat.constants import PlatformSystemTypeEnum
 from initat.tools import logging_tools, process_tools
+from .. import limits, hm_classes
+from ..constants import HMAccessClassEnum
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "c63f69d2-92e6-4b33-bfcc-2d720a95db6f"
+
     def init_module(self):
         self._find_ipsec_command()
 
@@ -119,7 +126,7 @@ class _general(hm_classes.MonitoringModule):
                         self.__ipsec_conns[_cn] = ipsec_con(_cn, mv)
                     self.__ipsec_conns[_cn].feed(mv, int(_gd["bytes_in"]), int(_gd["bytes_out"]))
                 else:
-                    self.log("cannot parse line '{}'".format(line), logging_tools.LOG_LEVEL_WARN)
+                    self.log("cannot parse line '{}'".format(_line), logging_tools.LOG_LEVEL_WARN)
             _to_del = set(self.__ipsec_conns.keys()) - _found
             for _del in _to_del:
                 self.log("unregistered IPSec connection {}".format(_del))
@@ -233,6 +240,11 @@ class c_con(object):
 
 
 class ipsec_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "baf08e06-a1d9-4a40-b205-a336d10aa095"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 

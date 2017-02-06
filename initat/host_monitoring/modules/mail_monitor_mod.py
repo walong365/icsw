@@ -25,10 +25,10 @@ import stat
 import subprocess
 import time
 
-from initat.host_monitoring import hm_classes, limits
+from initat.constants import PlatformSystemTypeEnum
 from initat.tools import logging_tools, process_tools, server_command
+from .. import hm_classes, limits
 from ..constants import HMAccessClassEnum
-from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 MIN_UPDATE_TIME = 30
 # load threshold for mailq call
@@ -287,6 +287,7 @@ class _general(hm_classes.MonitoringModule):
         priority = 10
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
+        uuid = "7411bfc5-45f5-4914-8219-5f51c447f890"
 
     def init_module(self):
         self.__maillog_object = MailLogObject(self)
@@ -508,6 +509,7 @@ class mailq_command(hm_classes.MonitoringCommand):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
+        uuid = "bac44d08-d498-4a92-9572-4d81c0ccee1a"
 
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name)

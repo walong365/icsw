@@ -23,8 +23,10 @@
 import subprocess
 import time
 
-from initat.host_monitoring import hm_classes, limits
+from initat.constants import PlatformSystemTypeEnum
 from initat.tools import logging_tools, process_tools, server_command
+from .. import hm_classes, limits
+from ..constants import HMAccessClassEnum
 from ..host_monitoring_struct import HMSubprocessStruct
 
 IPMI_LIMITS = ["ln", "lc", "lw", "uw", "uc", "un"]
@@ -80,6 +82,11 @@ def parse_ipmi(in_lines):
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "25c17c82-c09c-463c-b369-036befdc807c"
+
     def init_module(self):
         self.ipmi_result, self.ipmi_update = (None, None)
         self.it_command = False
@@ -196,6 +203,11 @@ class _ipmi_sensor(object):
 
 
 class ipmi_sensor_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "e85a632a-6a55-4e69-9b9c-17c2a3e795c0"
+
     info_string = "get all IPMI sensors"
 
     def __init__(self, name):

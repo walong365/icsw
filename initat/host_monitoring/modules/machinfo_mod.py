@@ -19,12 +19,12 @@
 #
 """ machine information """
 
-import subprocess
 import itertools
 import json
 import os
 import platform
 import re
+import subprocess
 import sys
 import tempfile
 import time
@@ -33,11 +33,12 @@ import psutil
 from lxml import etree
 
 from initat.client_version import VERSION_STRING
-from initat.host_monitoring import hm_classes, limits
-from initat.host_monitoring.constants import ZMQ_ID_MAP_STORE
-from initat.tools import cpu_database, logging_tools, partition_tools, pci_database, \
-    process_tools, server_command, uuid_tools, config_store, dmi_tools
 from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+from initat.tools import cpu_database, partition_tools, pci_database, \
+    uuid_tools, config_store, dmi_tools, logging_tools, process_tools, \
+    server_command
+from .. import hm_classes, limits
+from ..constants import HMAccessClassEnum, ZMQ_ID_MAP_STORE
 
 nw_classes = ["ethernet", "network", "infiniband"]
 
@@ -45,6 +46,11 @@ EXTRA_BLOCK_DEVS = "/etc/sysconfig/host-monitoring.d/extra_block_devs"
 
 
 class _general(hm_classes.MonitoringModule):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "1827ef3c-267b-4e31-a7ae-bcb70ab8bf1b"
+
     def base_init(self):
         self.dmi_bin = process_tools.find_file("dmidecode")
         self.lstopo_ng_bin = process_tools.find_file("lstopo-no-graphics")
@@ -783,8 +789,6 @@ class _general(hm_classes.MonitoringModule):
                         )
             self.vmstat_dict = stat_dict
             self.disk_stat = disk_stat
-        else:
-            tdiff = None
         self.last_vmstat_time = act_time
 
     def _interpret_nfsstat_line(self, header, *parts):
@@ -898,8 +902,7 @@ class _general(hm_classes.MonitoringModule):
                 mv["mem.used.buffers"] = 0
                 mv["mem.used.cached"] = 0
 
-
-            # mv["mem.used.shared"] = mem_list["MemShared"]
+            #  mv["mem.used.shared"] = mem_list["MemShared"]
 
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
             mach_vector_functions = ["_df_int", "_vmstat_int", "_nfsstat_int"]
@@ -920,7 +923,7 @@ class _general(hm_classes.MonitoringModule):
                     logging_tools.LOG_LEVEL_CRITICAL
                 )
 
-        #mv.tigger()
+        # mv.tigger()
 
     def _partinfo_int(self):
         # lookup tables for /dev/disk-by
@@ -1291,6 +1294,11 @@ class _general(hm_classes.MonitoringModule):
 
 
 class df_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "e94ebbd1-509e-4445-a57d-22af5100396c"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("-w", dest="warn", type=float)
@@ -1535,7 +1543,13 @@ class df_command(hm_classes.MonitoringCommand):
                 logging_tools.get_plural("partition", len(all_parts))
             )
 
+
 class vgfree_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "4254aba8-a7cf-4f31-9e82-23651c6be276"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("-w", dest="warn", type=float)
@@ -1561,12 +1575,20 @@ class vgfree_command(hm_classes.MonitoringCommand):
         v_free_percentage = int((v_free / v_size) * 100)
 
         ret_state = limits.check_floor(v_free_percentage, cur_ns.warn, cur_ns.crit)
-        return ret_state, "{} - free percentage is {}% (v_free: {}, v_size: {})".format(vg_name,
-                                                                                       v_free_percentage,
-                                                                                       v_free,
-                                                                                       v_size)
+        return ret_state, "{} - free percentage is {}% (v_free: {}, v_size: {})".format(
+            vg_name,
+            v_free_percentage,
+            v_free,
+            v_size
+        )
+
 
 class lvsdatapercent_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "fbfcf26c-b036-4248-a52a-a95637388d1b"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("-w", dest="warn", type=float)
@@ -1593,7 +1615,13 @@ class lvsdatapercent_command(hm_classes.MonitoringCommand):
         except ValueError:
             return limits.mon_STATE_CRITICAL, "No data_percent value set for {}".format(lv_name)
 
+
 class version_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "5eb4ffef-e3cb-44f6-8bf5-8f15baee6fa5"
+
     def __call__(self, srv_com, cur_ns):
         srv_com["version"] = VERSION_STRING
 
@@ -1609,6 +1637,11 @@ class version_command(hm_classes.MonitoringCommand):
 
 
 class get_0mq_id_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "0ff13b8d-ac77-4bf7-9087-f0b5bf41502c"
+
     def __call__(self, srv_com, cur_ns):
         _cs = config_store.ConfigStore(ZMQ_ID_MAP_STORE, log_com=self.log, prefix="bind")
         if "target_ip" in srv_com:
@@ -1625,6 +1658,11 @@ class get_0mq_id_command(hm_classes.MonitoringCommand):
 
 
 class status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "cc4a3d1c-5908-48d3-8617-41738e4622ee"
+
     def __call__(self, srv_com, cur_ns):
         srv_com["status_str"] = "ok running"
 
@@ -1640,6 +1678,11 @@ class status_command(hm_classes.MonitoringCommand):
 
 
 class get_uuid_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "6a628622-0dd2-4307-ae3d-87448bd71251"
+
     def __call__(self, srv_com, cur_ns):
         srv_com["uuid"] = uuid_tools.get_uuid().urn
 
@@ -1655,6 +1698,11 @@ class get_uuid_command(hm_classes.MonitoringCommand):
 
 
 class swap_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "fb80134f-95f7-4919-993d-d4e2f526f761"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("-w", dest="warn", type=float)
@@ -1703,6 +1751,11 @@ class swap_command(hm_classes.MonitoringCommand):
 
 
 class mem_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "c0a27b98-cdc8-47e5-93f5-6af74179088b"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("-w", dest="warn", type=float)
@@ -1799,6 +1852,11 @@ class mem_command(hm_classes.MonitoringCommand):
 
 
 class sysinfo_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "a1ab85b9-cdf4-4c7d-a65a-2b88da3d4966"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
@@ -1873,6 +1931,11 @@ class sysinfo_command(hm_classes.MonitoringCommand):
 
 
 class load_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "28e496b4-5a37-4246-9a79-226c9914b178"
+
     info_string = "load information"
 
     def __init__(self, name):
@@ -1919,6 +1982,11 @@ class load_command(hm_classes.MonitoringCommand):
 
 
 class uptime_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "50d6b312-b53f-4f52-9f61-bf7b2b6f4a51"
+
     info_string = "uptime information"
 
     def __call__(self, srv_com, cur_ns):
@@ -1954,6 +2022,11 @@ class uptime_command(hm_classes.MonitoringCommand):
 
 
 class date_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "b5aeccec-c409-4d99-a68e-4f0e116b19ee"
+
     info_string = "return date"
 
     def __call__(self, srv_com, cur_ns):
@@ -2003,6 +2076,11 @@ class date_command(hm_classes.MonitoringCommand):
 
 
 class macinfo_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "723b7643-0701-41e3-87c1-273f75451d2b"
+
     def __call__(self, srv_com, cur_ns):
         valid_devs = ["eth", "myri", "ib", "vmnet"]
         net_dict = {}
@@ -2070,6 +2148,11 @@ class macinfo_command(hm_classes.MonitoringCommand):
 
 
 class umount_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level1
+        uuid = "7f2c2820-cd76-4ebf-bfc5-e514c35a44ab"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
@@ -2113,6 +2196,11 @@ class umount_command(hm_classes.MonitoringCommand):
 
 
 class ksminfo_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "ac20873d-36d1-49c2-9d60-6282f9304c23"
+
     def __call__(self, srv_com, cur_ns):
         ksm_dir = "/sys/kernel/mm/ksm"
         if os.path.isdir(ksm_dir):
@@ -2153,6 +2241,11 @@ class ksminfo_command(hm_classes.MonitoringCommand):
 
 
 class hugepageinfo_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "ab50d94b-9423-456b-acf4-474132cd59d6"
+
     def __call__(self, srv_com, cur_ns):
         hpage_dir = "/sys/kernel/mm/hugepages"
         if os.path.isdir(hpage_dir):
@@ -2193,6 +2286,11 @@ class hugepageinfo_command(hm_classes.MonitoringCommand):
 
 
 class thugepageinfo_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "25cf62a5-c9da-45b0-9596-92d45a34ae7c"
+
     def __call__(self, srv_com, cur_ns):
         hpage_dir = "/sys/kernel/mm/transparent_hugepage"
         if os.path.isdir(hpage_dir):
@@ -2231,6 +2329,11 @@ class thugepageinfo_command(hm_classes.MonitoringCommand):
 
 
 class pciinfo_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "cb508240-ae19-4c59-872f-3b0aa110cecc"
+
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
             srv_com["pci_type"] = "linux"
@@ -2293,6 +2396,11 @@ class pciinfo_command(hm_classes.MonitoringCommand):
 
 
 class cpuflags_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "96cfd17a-6afb-493d-9546-57e60cbd639e"
+
     def __call__(self, srv_com, cur_ns):
         srv_com["proclines"] = server_command.compress(open("/proc/cpuinfo", "r").read())
 
@@ -2321,6 +2429,11 @@ class cpuflags_command(hm_classes.MonitoringCommand):
 
 
 class cpuinfo_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "567f368c-8c30-4f33-a8f2-d4e4be7c8b89"
+
     def __call__(self, srv_com, cur_ns):
         srv_com["cpuinfo"] = self.module._cpuinfo_int(srv_com)
 
@@ -2375,6 +2488,11 @@ class cpuinfo_command(hm_classes.MonitoringCommand):
 
 
 class lvminfo_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "167c1af5-b367-4789-a6c8-5dfd6ea40ee7"
+
     def __call__(self, srv_com, cur_ns):
         self.module.local_lvm_info.update()
         srv_com["lvm_dict"] = self.module.local_lvm_info.generate_xml_dict(srv_com.builder)
@@ -2411,6 +2529,11 @@ class lvminfo_command(hm_classes.MonitoringCommand):
 
 
 class partinfo_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "7cb4c3bd-ebaf-4592-9883-ddf91a294554"
+
     def __call__(self, srv_com, cur_ns):
         self.module.local_lvm_info.update()
         ret_str, dev_dict = self.module._partinfo_int()
@@ -2551,6 +2674,11 @@ class partinfo_command(hm_classes.MonitoringCommand):
 
 
 class mdstat_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "fe28d9f6-c2d4-4137-a999-1b6e6712e4a8"
+
     def __call__(self, srv_com, cur_ns):
         srv_com["mdstat"] = server_command.compress(open("/proc/mdstat", "r").read())
 
@@ -2597,6 +2725,11 @@ class mdstat_command(hm_classes.MonitoringCommand):
 
 
 class uname_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "b4f6a583-aeae-4279-92dd-ea0918d9a65f"
+
     def __call__(self, srv_com, cur_ns):
         for idx, sub_str in enumerate(platform.uname()):
             srv_com["uname:part_%d" % (idx)] = sub_str
@@ -2609,6 +2742,11 @@ class uname_command(hm_classes.MonitoringCommand):
 
 
 class cpufreq_info_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "399f3cb5-3fc0-426b-8189-3357494d7e7a"
+
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name)
         self.parser.add_argument("--governor", dest="governor", type=str, default="")
@@ -2714,6 +2852,11 @@ class cpufreq_info_command(hm_classes.MonitoringCommand):
 
 
 class lstopo_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "1e9bbc36-1367-4fdd-bd5d-977a7546719f"
+
     def __call__(self, srv_com, cur_ns):
         srv_com["lstopo_dump"] = self.module._lstopo_int()
 
@@ -2723,6 +2866,11 @@ class lstopo_command(hm_classes.MonitoringCommand):
 
 
 class lshw_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "841fd9cd-ec77-4ef7-bd49-5d0a901c702d"
+
     def __call__(self, srv_com, cur_ns):
         srv_com["lshw_dump"] = self.module._lshw_int()
 
@@ -2736,6 +2884,11 @@ class lshw_command(hm_classes.MonitoringCommand):
 
 
 class lsblk_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "7a0d46a8-c24a-4d94-aa9f-3f729d7f267b"
+
     def __call__(self, srv_com, cur_ns):
         srv_com["lsblk_dump"] = self.module._lsblk_int()
 
@@ -2755,6 +2908,11 @@ class lsblk_command(hm_classes.MonitoringCommand):
 
 
 class xrandr_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "514597ae-9f9c-41d8-8ac6-d3771af0b0e5"
+
     def __call__(self, srv_com, cur_ns):
         srv_com["xrandr_dump"] = self.module._xrandr_int()
 
@@ -2768,6 +2926,11 @@ class xrandr_command(hm_classes.MonitoringCommand):
 
 
 class dmiinfo_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "9eaad6d9-aa06-4db3-ac89-5b5134d321a3"
+
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
             srv_com["dmi_type"] = "linux"
@@ -2821,6 +2984,11 @@ class dmiinfo_command(hm_classes.MonitoringCommand):
 
 
 class windowshardware_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        required_access = HMAccessClassEnum.level0
+        uuid = "ce9b9ec4-7014-4588-a784-fa5157ee82c4"
+
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
             from collections import defaultdict
@@ -2859,6 +3027,7 @@ class windowshardware_command(hm_classes.MonitoringCommand):
 
             info.update(mapping_info)
             srv_com["windowshardware_dict"] = server_command.compress(info, pickle=True)
+
 
 # helper routines
 def get_nfs_mounts():
