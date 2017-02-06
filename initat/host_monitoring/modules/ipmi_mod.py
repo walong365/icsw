@@ -160,7 +160,7 @@ class _general(hm_classes.MonitoringModule):
             # pprint.pprint(self.ipmi_result)
 
 
-class ipmi_bg(hm_classes.subprocess_struct):
+class ipmi_bg(hm_classes.HMSubprocessStruct):
     class Meta:
         verbose = False
         id_str = "ipmi"
@@ -168,7 +168,7 @@ class ipmi_bg(hm_classes.subprocess_struct):
     def __init__(self, log_com, srv_com, ipmi_com, it_command):
         self.__log_com = log_com
         self.__ipmi_com = ipmi_com
-        hm_classes.subprocess_struct.__init__(
+        hm_classes.HMSubprocessStruct.__init__(
             self,
             srv_com, [
                 "{} -s '{}'".format(

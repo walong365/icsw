@@ -180,7 +180,7 @@ class ctrl_type(object):
             return False
 
 
-class ctrl_check_struct(hm_classes.subprocess_struct):
+class ctrl_check_struct(hm_classes.HMSubprocessStruct):
     class Meta:
         verbose = True
         id_str = "raid_ctrl"
@@ -188,7 +188,7 @@ class ctrl_check_struct(hm_classes.subprocess_struct):
     def __init__(self, log_com, srv_com, ct_struct, ctrl_list=[]):
         self.__log_com = log_com
         self.__ct_struct = ct_struct
-        hm_classes.subprocess_struct.__init__(self, srv_com, ct_struct.get_exec_list(ctrl_list))
+        hm_classes.HMSubprocessStruct.__init__(self, srv_com, ct_struct.get_exec_list(ctrl_list))
 
     def process(self):
         try:

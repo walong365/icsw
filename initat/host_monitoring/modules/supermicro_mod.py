@@ -434,7 +434,7 @@ def generate_dict(in_list):
 MOCK_MODE = None  # "sys1"  # None  # "sys1"
 
 
-class SMCIpmiStruct(hm_classes.subprocess_struct):
+class SMCIpmiStruct(hm_classes.HMSubprocessStruct):
     g_error_cache = {}
 
     class Meta:
@@ -448,7 +448,7 @@ class SMCIpmiStruct(hm_classes.subprocess_struct):
         self.__hm_command = hm_command
         if MOCK_MODE:
             com = "sleep 5"
-        hm_classes.subprocess_struct.__init__(
+        hm_classes.HMSubprocessStruct.__init__(
             self,
             srv_com,
             com,
@@ -486,13 +486,13 @@ class SMCIpmiStruct(hm_classes.subprocess_struct):
             self.srv_com["output"] = output
 
 
-class SMCRetrievePendingStruct(hm_classes.subprocess_struct):
+class SMCRetrievePendingStruct(hm_classes.HMSubprocessStruct):
     class Meta:
         max_usage = 128
 
     def __init__(self, srv_com, real_com):
 
-        hm_classes.subprocess_struct.__init__(
+        hm_classes.HMSubprocessStruct.__init__(
             self,
             srv_com,
             None,

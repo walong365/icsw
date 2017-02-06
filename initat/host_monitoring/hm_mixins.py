@@ -22,54 +22,14 @@
 
 """ host-monitoring / relay mixin """
 
-from initat.tools import logging_tools, process_tools
-
-INIT_LIST = [
-    ("register_server", True),
-    ("init_module", False)
-]
-
 
 class HMHRMixin(object):
-    def _init_commands(self):
-        self.log("init commands")
-        self.__delayed = []
-        self.module_list = self.modules.module_list
-        self.commands = self.modules.command_dict
-        if self.modules.IMPORT_ERRORS:
-            self.log("modules import errors:", logging_tools.LOG_LEVEL_ERROR)
-            for mod_name, com_name, error_str in self.modules.IMPORT_ERRORS:
-                self.log(
-                    "{:<24s} {:<32s} {}".format(mod_name.split(".")[-1], com_name, error_str),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-        _init_ok = True
-        for cur_mod in self.modules.module_list:
-            # init state flags for correct handling of shutdown (do not call close_module when
-            # init_module was not called)
-            cur_mod.INIT_STATE = {_name: False for _name, _flag in INIT_LIST}
-        for call_name, add_self in INIT_LIST:
-            for cur_mod in self.modules.module_list:
-                if self.global_config["VERBOSE"]:
-                    self.log(
-                        "calling {} for module '{}'".format(
-                            call_name,
-                            cur_mod.name,
-                        )
-                    )
-                try:
-                    if add_self:
-                        getattr(cur_mod, call_name)(self)
-                    else:
-                        getattr(cur_mod, call_name)()
-                except:
-                    exc_info = process_tools.icswExceptionInfo()
-                    for log_line in exc_info.log_lines:
-                        self.log(log_line, logging_tools.LOG_LEVEL_CRITICAL)
-                    _init_ok = False
-                    break
-                else:
-                    cur_mod.INIT_STATE[call_name] = True
-            if not _init_ok:
-                break
+    def COM_open(self, local_mc, verbose):
+        self.local_mc = local_mc
+        self.local_mc.set_log_command(self.log)
+        self.module_list = self.local_mc.module_list
+        _init_ok = self.local_mc.init_commands(self, verbose)
         return _init_ok
+
+    def COM_close(self):
+        self.local_mc.close_modules()

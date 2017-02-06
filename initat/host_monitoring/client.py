@@ -27,30 +27,32 @@ import os
 from initat.host_monitoring import limits
 from initat.host_monitoring.host_monitoring_struct import ExtReturn
 from initat.icsw.service.instance import InstanceXML
-from initat.tools import net_tools, server_command
+from initat.tools import net_tools, server_command, logging_tools
+
+
+def dummy_log(what, log_level=logging_tools.LOG_LEVEL_OK):
+    print("{} {}".format(logging_tools.get_log_level_str(log_level), what))
 
 
 def ClientCode(global_config):
-    from initat.host_monitoring import modules
+    from initat.host_monitoring.modules import local_mc
     from initat.debug import ICSW_DEBUG_MODE
     if ICSW_DEBUG_MODE:
-        print("{:d} import errors:".format(len(modules.IMPORT_ERRORS)))
-        for mod, com, _str in modules.IMPORT_ERRORS:
-            print("{:<30s} {:<20s} {}".format(com, mod.split(".")[-1], _str))
+        local_mc.set_log_command(dummy_log)
     conn_str = "tcp://{}:{:d}".format(
         global_config["HOST"],
         global_config["COMMAND_PORT"]
     )
     arg_list = global_config["ARGUMENTS"]
     com_name = arg_list.pop(0)
-    if com_name in modules.command_dict:
+    if com_name in local_mc:
         srv_com = server_command.srv_command(command=com_name)
         for src_key, dst_key in [
             ("HOST", "host"),
             ("COMMAND_PORT", "port")
         ]:
             srv_com[dst_key] = global_config[src_key]
-        com_struct = modules.command_dict[com_name]
+        com_struct = local_mc[com_name]
         try:
             cur_ns, rest = com_struct.handle_commandline(arg_list)
         except ValueError as what:
@@ -99,7 +101,7 @@ def ClientCode(global_config):
                 ret = ExtReturn(limits.mon_STATE_CRITICAL, "timeout")
     else:
         import difflib
-        c_matches = difflib.get_close_matches(com_name, list(modules.command_dict.keys()))
+        c_matches = difflib.get_close_matches(com_name, list(local_mc.keys()))
         if c_matches:
             cm_str = "close matches: {}".format(", ".join(c_matches))
         else:

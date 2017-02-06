@@ -90,13 +90,12 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             self.add_process(HMInotifyProcess("inotify", busy_loop=True, kill_myself=True), start=True)
         self._show_config()
         self.__debug = self.global_config["DEBUG"]
-        from initat.host_monitoring import modules
-        self.modules = modules
+        from initat.host_monitoring.modules import local_mc
         self.__delayed = []
         # Datastructure for managing long running checks:
         # A tuple of (Process, queue, zmq_socket, src_id, srv_com)
         self.long_running_checks = []
-        if not self._init_commands():
+        if not self.COM_open(local_mc, global_config["VERBOSE"]):
             self._sigint("error init")
         self.register_timer(self._check_cpu_usage, 30, instant=True)
         # self["exit_requested"] = True
@@ -768,24 +767,9 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             self.log("Config : {}".format(conf))
 
     def loop_end(self):
-        for cur_mod in self.modules.module_list:
-            if cur_mod.INIT_STATE["init_module"]:
-                cur_mod.close_module()
-
-    def _close_modules(self):
-        for cur_mod in self.module_list:
-            if hasattr(cur_mod, "stop_module"):
-                self.log("calling stop_module() for {}".format(cur_mod.name))
-                try:
-                    cur_mod.stop_module()
-                except:
-                    exc_info = process_tools.icswExceptionInfo()
-                    for log_line in exc_info.log_lines:
-                        self.log(log_line, logging_tools.LOG_LEVEL_CRITICAL)
-                    _init_ok = False
+        self.COM_close()
 
     def loop_post(self):
-        self._close_modules()
         for cur_sock in self.socket_list:
             cur_sock.close()
         self.vector_socket.close()

@@ -120,7 +120,7 @@ class HPPsu(object):
             return limits.mon_STATE_CRITICAL, "nothing returned"
 
 
-class hp_health_bg(hm_classes.subprocess_struct):
+class hp_health_bg(hm_classes.HMSubprocessStruct):
     class Meta:
         verbose = False
         id_str = "hp_health"
@@ -142,7 +142,7 @@ class hp_health_bg(hm_classes.subprocess_struct):
                     hp_com.Meta.command,
                 )
             ]
-        hm_classes.subprocess_struct.__init__(
+        hm_classes.HMSubprocessStruct.__init__(
             self,
             srv_com,
             _com_line,

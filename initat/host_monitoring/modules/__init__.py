@@ -17,84 +17,11 @@
 #
 """ load all defined commands """
 
-import hashlib
-import importlib
-import inspect
 import os
 
-from initat.host_monitoring.hm_classes import MonitoringCommand
-from initat.tools import process_tools
+from initat.host_monitoring.hm_classes import ModuleContainer
 
-__all__ = [
-    cur_entry for cur_entry in [
-        entry.split(".")[0] for entry in os.listdir(
-            os.path.dirname(__file__)
-        ) if entry.endswith(".py")
-    ] if cur_entry and not cur_entry.startswith("_")
-]
-__all__.sort()
-
-module_list = []
-command_dict = {}
-IMPORT_ERRORS = []
-HOST_MONITOR_MODULES_HEX_CHECKSUMS = {}
-HOST_MONITOR_MODULES_PATH_DICT = {}
-HOST_MONITOR_ALL_MODULES_KEY = "*"
-
-_new_hm_list = []
-for mod_name in __all__:
-    mod_name_full = "{}.py".format(mod_name)
-    mod_path = os.path.join(os.path.dirname(__file__), mod_name_full)
-    HOST_MONITOR_MODULES_PATH_DICT[mod_name_full] = mod_path
-
-    try:
-        new_mod = importlib.import_module("initat.host_monitoring.modules.{}".format(mod_name))
-        if hasattr(new_mod, "_general"):
-            new_hm_mod = new_mod._general(mod_name, new_mod)
-            if new_hm_mod.enabled:
-                _new_hm_list.append((new_hm_mod.Meta().priority, new_hm_mod))
-    except:
-        exc_info = process_tools.icswExceptionInfo()
-        for log_line in exc_info.log_lines:
-            IMPORT_ERRORS.append((mod_name, "import", log_line))
-
-def reload_module_checksums():
-    sha3_512_digester_all = hashlib.new("sha3_512")
-
-    for module_name in sorted(HOST_MONITOR_MODULES_PATH_DICT.keys()):
-        mod_path = HOST_MONITOR_MODULES_PATH_DICT[module_name]
-        sha3_512_digester = hashlib.new("sha3_512")
-        try:
-            with open(mod_path, "rb") as f:
-                data = f.read()
-                sha3_512_digester_all.update(data)
-                sha3_512_digester.update(data)
-                HOST_MONITOR_MODULES_HEX_CHECKSUMS[module_name] = sha3_512_digester.hexdigest()
-        except:
-            pass
-
-    HOST_MONITOR_MODULES_HEX_CHECKSUMS[HOST_MONITOR_ALL_MODULES_KEY] = sha3_512_digester_all.hexdigest()
-
-reload_module_checksums()
-
-_new_hm_list.sort(reverse=True, key=lambda x: x[0])
-
-for _pri, new_hm_mod in sorted(_new_hm_list, key=lambda x: x[0], reverse=True):
-    new_mod = new_hm_mod.obj
-    module_list.append(new_hm_mod)
-    loc_coms = [
-        entry for entry in dir(new_mod) if entry.endswith("_command") and inspect.isclass(
-            getattr(new_mod, entry)
-        ) and issubclass(
-            getattr(new_mod, entry), MonitoringCommand
-        )
-    ]
-    for loc_com in loc_coms:
-        try:
-            new_hm_mod.add_command(loc_com, getattr(new_mod, loc_com))
-        except:
-            exc_info = process_tools.icswExceptionInfo()
-            for log_line in exc_info.log_lines:
-                IMPORT_ERRORS.append((new_mod.__name__, loc_com, log_line))
-        # print getattr(getattr(new_mod, loc_com), "info_string", "???")
-    command_dict.update(new_hm_mod.commands)
+local_mc = ModuleContainer(
+    "initat.host_monitoring.modules",
+    os.path.dirname(__file__)
+)

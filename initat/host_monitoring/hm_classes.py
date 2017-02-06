@@ -18,12 +18,17 @@
 """ base class for host-monitoring modules """
 
 import argparse
-import pickle
+import hashlib
+import importlib
+import inspect
 import marshal
+import os
+import pickle
 import subprocess
 import time
 
-from initat.tools import logging_tools, server_command
+from initat.constants import PLATFORM_SYSTEM_TYPE
+from initat.tools import logging_tools, server_command, process_tools
 
 
 def net_to_sys(in_val):
@@ -39,6 +44,212 @@ def net_to_sys(in_val):
 
 def sys_to_net(in_val):
     return pickle.dumps(in_val)
+
+HM_ALL_MODULES_KEY = "*"
+
+MODULE_STATE_INIT_LIST = [
+    ("register_server", True),
+    ("init_module", False)
+]
+
+
+class ModuleContainer(object):
+    # holds all available modules and commands
+    def __init__(self, parent_module_name, root_dir):
+        self.__log_com = None
+        self.__log_cache = []
+        self.__parent_module_name = parent_module_name
+        self.__root_dir = root_dir
+        self.log(
+            "parent module is '{}, root_dir is {}, platform is {}".format(
+                self.__parent_module_name,
+                self.__root_dir,
+                PLATFORM_SYSTEM_TYPE,
+            )
+        )
+        self.read()
+
+    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+        _log_str = "[MC] {}".format(what)
+        if self.__log_com:
+            self.__log_com(_log_str, level)
+        else:
+            self.__log_cache.append((_log_str, level))
+
+    def read(self):
+        _all_files = [
+            cur_entry for cur_entry in [
+                entry.split(".")[0] for entry in os.listdir(
+                    self.__root_dir
+                ) if entry.endswith(".py")
+            ] if cur_entry and not cur_entry.startswith("_")
+        ]
+        self.log(
+            "{} found: {}".format(
+                logging_tools.get_plural("file", len(_all_files)),
+                ", ".join(sorted(_all_files)),
+            )
+        )
+        import_errors = []
+        hm_path_dict = {}
+        _new_hm_list = []
+        for mod_name in _all_files:
+            mod_name_full = "{}.py".format(mod_name)
+            mod_path = os.path.join(self.__root_dir, mod_name_full)
+            hm_path_dict[mod_name_full] = mod_path
+
+            try:
+                new_mod = importlib.import_module(
+                    "{}.{}".format(
+                        self.__parent_module_name,
+                        mod_name
+                    )
+                )
+                if hasattr(new_mod, "_general"):
+                    new_hm_mod = new_mod._general(mod_name, new_mod)
+                    if new_hm_mod.enabled:
+                        _new_hm_list.append(new_hm_mod)
+                    else:
+                        self.log(
+                            "module {} is not enabled".format(
+                                mod_name
+                            ),
+                            logging_tools.LOG_LEVEL_WARN
+                        )
+                else:
+                    self.log(
+                        "module {} is missing the '_general' object".format(
+                            mod_name
+                        ),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
+            except:
+                exc_info = process_tools.icswExceptionInfo()
+                for log_line in exc_info.log_lines:
+                    import_errors.append((mod_name, "import", log_line))
+        self.HM_PATH_DICT = hm_path_dict
+        # list of modules sorted according to the Meta-priority
+        self.__sorted_hm_list = sorted(_new_hm_list, reverse=True, key=lambda x: x.Meta().priority)
+        self.reload_module_checksum()
+
+        self.init_modules(import_errors)
+
+    def reload_module_checksum(self):
+        sha3_512_digester_all = hashlib.new("sha3_512")
+
+        hm_checksums = {}
+        for module_name in sorted(self.HM_PATH_DICT.keys()):
+            mod_path = self.HM_PATH_DICT[module_name]
+            sha3_512_digester = hashlib.new("sha3_512")
+            try:
+                with open(mod_path, "rb") as f:
+                    data = f.read()
+                    sha3_512_digester_all.update(data)
+                    sha3_512_digester.update(data)
+                    hm_checksums[module_name] = sha3_512_digester.hexdigest()
+            except:
+                self.log(
+                    "error creating checksum for {}: {}".format(
+                        mod_path,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+        hm_checksums[HM_ALL_MODULES_KEY] = sha3_512_digester_all.hexdigest()
+        self.HM_MODULES_HEX_CHECKSUMS = hm_checksums
+
+    def init_modules(self, import_errors):
+        module_list = []
+        command_dict = {}
+        for gen_mod in self.__sorted_hm_list:
+            # init state flags for correct handling of shutdown (do not call close_module when
+            # init_module was not called)
+            mod = gen_mod.obj
+            gen_mod.module_state = {_name: False for _name, _flag in MODULE_STATE_INIT_LIST}
+            module_list.append(gen_mod)
+            loc_coms = [
+                entry for entry in dir(mod) if entry.endswith("_command") and inspect.isclass(
+                    getattr(mod, entry)
+                ) and issubclass(
+                    getattr(mod, entry),
+                    MonitoringCommand
+                )
+            ]
+            if len(loc_coms):
+                for loc_com in loc_coms:
+                    try:
+                        gen_mod.add_command(loc_com, getattr(mod, loc_com))
+                    except:
+                        exc_info = process_tools.icswExceptionInfo()
+                        for log_line in exc_info.log_lines:
+                            import_errors.append((mod.__name__, loc_com, log_line))
+                command_dict.update(gen_mod.commands)
+            else:
+                self.log("no commands found in module {}".format(mod.__name__), logging_tools.LOG_LEVEL_WARN)
+        self.module_list = module_list
+        self.command_dict = command_dict
+        self._log_import_errors(import_errors)
+
+    def _log_import_errors(self, log_list):
+        for mod_name, scope, line in log_list:
+            self.log("{}@{}: {}".format(scope, mod_name, line), logging_tools.LOG_LEVEL_ERROR)
+
+    def set_log_command(self, log_com):
+        self.__log_com = log_com
+        for what, level in self.__log_cache:
+            self.log(what, level)
+        self.__log_cache = []
+
+    def init_commands(self, server_proc, verbose):
+        _init_ok = True
+        for call_name, add_server_proc in MODULE_STATE_INIT_LIST:
+            for cur_mod in self.module_list:
+                if verbose:
+                    self.log(
+                        "calling {} for module '{}'".format(
+                            call_name,
+                            cur_mod.name,
+                        )
+                    )
+                try:
+                    if add_server_proc:
+                        getattr(cur_mod, call_name)(server_proc)
+                    else:
+                        getattr(cur_mod, call_name)()
+                except:
+                    exc_info = process_tools.icswExceptionInfo()
+                    for log_line in exc_info.log_lines:
+                        self.log(log_line, logging_tools.LOG_LEVEL_CRITICAL)
+                    _init_ok = False
+                    break
+                else:
+                    cur_mod.module_state[call_name] = True
+            if not _init_ok:
+                break
+        return _init_ok
+
+    def close_modules(self):
+        for cur_mod in self.module_list:
+            if hasattr(cur_mod, "stop_module"):
+                self.log("calling stop_module() for {}".format(cur_mod.name))
+                try:
+                    cur_mod.stop_module()
+                except:
+                    exc_info = process_tools.icswExceptionInfo()
+                    for log_line in exc_info.log_lines:
+                        self.log(log_line, logging_tools.LOG_LEVEL_CRITICAL)
+            if cur_mod.module_state["init_module"]:
+                cur_mod.close_module()
+
+    # command access commands
+    def __contains__(self, key):
+        return key in self.command_dict
+
+    def __getitem__(self, key):
+        return self.command_dict[key]
+
+    def keys(self):
+        return self.command_dict.keys()
 
 
 class CacheObject(object):
@@ -129,7 +340,7 @@ class HMCCacheMixin(object):
         return self._HMC.register_retrieval_client(key, client)
 
 
-class subprocess_struct(object):
+class HMSubprocessStruct(object):
     __slots__ = [
         "srv_com", "command", "command_line", "com_num", "popen", "srv_process",
         "cb_func", "_init_time", "terminated", "__nfts", "__return_sent", "__finished",
@@ -146,9 +357,9 @@ class subprocess_struct(object):
 
     def __init__(self, srv_com, com_line, cb_func=None):
         # copy Meta keys
-        for key in dir(subprocess_struct.Meta):
+        for key in dir(HMSubprocessStruct.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
-                setattr(self.Meta, key, getattr(subprocess_struct.Meta, key))
+                setattr(self.Meta, key, getattr(HMSubprocessStruct.Meta, key))
         self.srv_com = srv_com
         self.command = srv_com["command"].text
         self.command_line = com_line

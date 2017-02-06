@@ -55,9 +55,8 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             zmq=True,
             global_config=global_config,
         )
-        from initat.host_monitoring import modules
+        from initat.host_monitoring.modules import local_mc
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
-        self.modules = modules
         self.CC.init(icswServiceEnum.host_relay, self.global_config)
         self.CC.check_config()
         self.__verbose = self.global_config["VERBOSE"]
@@ -107,7 +106,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         self.register_timer(self._check_timeout, 2)
         self.register_func("socket_result", self._socket_result)
         self.register_func("socket_ping_result", self._socket_ping_result)
-        if not self._init_commands():
+        if not self.COM_open(local_mc, global_config["VERBOSE"]):
             self._sigint("error init")
 
     def _sigint(self, err_cause):
@@ -604,8 +603,8 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             id_str = ZMQDiscovery.get_mapping(conn_str)
             cur_hc = HostConnection.get_hc_0mq(conn_str, id_str)
             cur_mes = cur_hc.add_message(HostMessage(com_name, src_id, srv_com, xml_input))
-            if com_name in self.modules.command_dict:
-                com_struct = self.modules.command_dict[srv_com["command"].text]
+            if com_name in self.local_mc:
+                com_struct = self.local_mc[srv_com["command"].text]
                 # handle commandline
                 cur_hc.send(cur_mes, com_struct)
             else:
@@ -784,8 +783,8 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         cur_hc = HostConnection.get_hc_tcp(conn_str, dummy_connection=True)
         com_name = srv_com["command"].text
         cur_mes = cur_hc.add_message(HostMessage(com_name, src_id, srv_com, xml_input))
-        if com_name in self.modules.command_dict:
-            com_struct = self.modules.command_dict[com_name]
+        if com_name in self.local_mc:
+            com_struct = self.local_mc[com_name]
             cur_hc.send(cur_mes, com_struct)
             self.__old_send_lut[cur_mes.src_id] = cur_hc
         else:
@@ -804,7 +803,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
 
     def _handle_module_command(self, srv_com):
         try:
-            self.commands[srv_com["command"].text](srv_com)
+            self.local_mc[srv_com["command"].text](srv_com)
         except:
             for log_line in process_tools.icswExceptionInfo().log_lines:
                 self.log(log_line, logging_tools.LOG_LEVEL_ERROR)
@@ -850,12 +849,10 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         self.network_unbind()
 
     def loop_end(self):
+        self.COM_close()
         self._close_ipc_sockets()
         self._close_io_sockets()
         ZMQDiscovery.destroy()
-        from initat.host_monitoring import modules
-        for cur_mod in modules.module_list:
-            cur_mod.close_module()
 
     def loop_post(self):
         self.CC.close()
