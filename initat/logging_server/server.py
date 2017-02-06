@@ -33,7 +33,6 @@ import pwd
 import resource
 import stat
 import time
-from enum import Enum
 
 import zmq
 
@@ -42,12 +41,7 @@ from initat.icsw.service import clusterid
 from initat.tools import io_stream_helper, logging_tools, mail_tools, process_tools, threading_tools, \
     uuid_tools, logging_functions
 from initat.tools.server_mixins import ICSWBasePool
-
-
-class icswLogTypes(Enum):
-    log = "log"
-    log_py = "log_py"
-    err_py = "err_py"
+from .constants import icswLogHandleTypes
 
 
 class ErrorStructure(object):
@@ -60,7 +54,7 @@ class ErrorStructure(object):
         self.in_dict = in_dict
         self.pid = in_dict.get("pid", 0)
 
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, dst=icswLogTypes.log):
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, dst=icswLogHandleTypes.log):
         # [ES  is used as parser
         self.process.log("[ES {:d}] {}".format(self.pid, what), log_level, dst)
 
@@ -128,7 +122,7 @@ class ErrorStructure(object):
             self.log(
                 base64.b64encode(bz2.compress(json.dumps(_struct).encode("utf-8"))).decode("utf-8"),
                 logging_tools.LOG_LEVEL_ERROR,
-                icswLogTypes.err_py
+                icswLogHandleTypes.err_py
             )
         self.__num_logged = len(self.error_str)
 
@@ -162,7 +156,7 @@ class MainProcess(ICSWBasePool):
         self.__num_write, self.__num_close, self.__num_open = (0, 0, 0)
         self.__num_forward_ok, self.__num_forward_error = (0, 0)
         self.log("logging_process {} is now awake (pid {:d})".format(self.name, self.pid))
-        for _enum in icswLogTypes:
+        for _enum in icswLogHandleTypes:
             _handle = self.get_python_handle(_enum)
         self.log(
             "opened handles for {}".format(
@@ -188,12 +182,12 @@ class MainProcess(ICSWBasePool):
         )
         resource.setrlimit(resource.RLIMIT_OFILE, new_files)
 
-    def log(self, what, level=logging_tools.LOG_LEVEL_OK, dst=icswLogTypes.log, **kwargs):
+    def log(self, what, level=logging_tools.LOG_LEVEL_OK, dst=icswLogHandleTypes.log, **kwargs):
         if not self["exit_requested"]:
             if dst.value in self.__handles:
                 cur_dst = self.__handles[dst.value]
                 # check for open handles
-                if dst != icswLogTypes.log:
+                if dst != icswLogHandleTypes.log:
                     for cur_handle in cur_dst.handlers:
                         if not os.path.exists(cur_handle.baseFilename):
                             self.log(
@@ -251,7 +245,7 @@ class MainProcess(ICSWBasePool):
 
     def _init_network_sockets(self):
         _log_base = "/var/lib/logging-server"
-        _handle_names = [os.path.join(_log_base, "py_{}".format(_type.value)) for _type in icswLogTypes]
+        _handle_names = [os.path.join(_log_base, "py_{}".format(_type.value)) for _type in icswLogHandleTypes]
         self.__open_handles = [
             io_stream_helper.icswIOStream.zmq_socket_name(h_name) for h_name in _handle_names
         ] + [
@@ -454,7 +448,7 @@ class MainProcess(ICSWBasePool):
         # pprint.pprint(s_dict)
 
     def get_python_handle(self, record):
-        if isinstance(record, icswLogTypes):
+        if isinstance(record, icswLogHandleTypes):
             # special type for direct handles (log, log_py, err_py)
             sub_dirs = []
             record_host = "localhost"

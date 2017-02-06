@@ -18,8 +18,6 @@
 
 """ base classes for cluster-server modules """
 
-
-
 import time
 
 # from django.db import connection
@@ -27,6 +25,7 @@ import time
 from initat.cluster.backbone import db_tools
 from initat.cluster_server.config import global_config
 from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.logging_server.constants import icswLogHandleTypes
 from initat.tools import process_tools, server_command, threading_tools, config_tools, io_stream_helper, logging_tools
 
 
@@ -166,7 +165,7 @@ class icswCSComInstance(object):
                 )
                 # write to logging-server
                 err_h = io_stream_helper.icswIOStream(
-                    "/var/lib/logging-server/py_err_zmq",
+                    icswLogHandleTypes.err_py,
                     zmq_context=self.zmq_context
                 )
                 err_h.write("\n".join(exc_info.log_lines))

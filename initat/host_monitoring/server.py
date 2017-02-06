@@ -43,7 +43,7 @@ from initat.tools import logging_tools, process_tools, \
     server_command, threading_tools, uuid_tools, config_store
 from initat.tools.server_mixins import ICSWBasePool
 from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
-from .constants import TIME_FORMAT, ZMQ_ID_MAP_STORE
+from .constants import TIME_FORMAT, ZMQ_ID_MAP_STORE, HMAccessClassEnum
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
 from .long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
@@ -90,12 +90,15 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             self.add_process(HMInotifyProcess("inotify", busy_loop=True, kill_myself=True), start=True)
         self._show_config()
         self.__debug = self.global_config["DEBUG"]
+        if "hm.access_level" not in self.CC.CS:
+            self.CC.CS["hm.access_class"] = HMAccessClassEnum.level0.value
+            self.CC.CS.write()
         from initat.host_monitoring.modules import local_mc
         self.__delayed = []
         # Datastructure for managing long running checks:
         # A tuple of (Process, queue, zmq_socket, src_id, srv_com)
         self.long_running_checks = []
-        if not self.COM_open(local_mc, global_config["VERBOSE"]):
+        if not self.COM_open(local_mc, global_config["VERBOSE"], True):
             self._sigint("error init")
         self.register_timer(self._check_cpu_usage, 30, instant=True)
         # self["exit_requested"] = True
@@ -611,10 +614,10 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                     "start_time": TIME_FORMAT.format(time.time())
                 }
             )
-            if cur_com in self.commands:
+            if cur_com in self.local_mc:
                 delayed = self._handle_module_command(srv_com, cur_ns, rest_str)
             else:
-                c_matches = difflib.get_close_matches(cur_com, list(self.commands.keys()))
+                c_matches = difflib.get_close_matches(cur_com, list(self.local_mc.keys()))
                 if c_matches:
                     cm_str = "close matches: {}".format(", ".join(c_matches))
                 else:
@@ -723,7 +726,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             self.set_loop_granularity()
 
     def _handle_module_command(self, srv_com, cur_ns, rest_str):
-        cur_com = self.commands[srv_com["command"].text]
+        cur_com = self.local_mc[srv_com["command"].text]
         sp_struct = None
         try:
             if cur_ns is None:

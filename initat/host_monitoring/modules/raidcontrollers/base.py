@@ -21,8 +21,9 @@ import subprocess
 import os
 import time
 
-from initat.host_monitoring import hm_classes
 from initat.tools import logging_tools, process_tools, server_command
+from ... import hm_classes
+from ...host_monitoring_struct import HMSubprocessStruct
 
 
 class ctrl_type(object):
@@ -180,7 +181,7 @@ class ctrl_type(object):
             return False
 
 
-class ctrl_check_struct(hm_classes.HMSubprocessStruct):
+class ctrl_check_struct(HMSubprocessStruct):
     class Meta:
         verbose = True
         id_str = "raid_ctrl"
@@ -188,7 +189,7 @@ class ctrl_check_struct(hm_classes.HMSubprocessStruct):
     def __init__(self, log_com, srv_com, ct_struct, ctrl_list=[]):
         self.__log_com = log_com
         self.__ct_struct = ct_struct
-        hm_classes.HMSubprocessStruct.__init__(self, srv_com, ct_struct.get_exec_list(ctrl_list))
+        HMSubprocessStruct.__init__(self, srv_com, ct_struct.get_exec_list(ctrl_list))
 
     def process(self):
         try:

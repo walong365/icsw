@@ -21,11 +21,10 @@
 #
 """ logs an error """
 
-
-
 import argparse
 
 from initat.tools import io_stream_helper
+from initat.logging_server.constants import icswLogHandleTypes
 import zmq
 
 
@@ -33,7 +32,14 @@ def main():
     my_parser = argparse.ArgumentParser()
     my_parser.add_argument("-n", dest="repeat", default=1, type=int, help="how often the error should by sent [%(default)s]")
     my_parser.add_argument(dest="args", nargs="+")
-    my_parser.add_argument("--target", type=str, default="/var/lib/logging-server/py_err_zmq", help="0MQ target [%(default)s]")
+    my_parser.add_argument(
+        "--target",
+        type=str,
+        default=io_stream_helper.zmq_socket_name(
+            "/var/lib/logging-server/{}".format(icswLogHandleTypes.err_py.value)
+        ),
+        help="0MQ target [%(default)s]"
+    )
     opts = my_parser.parse_args()
     s_str = " ".join(opts.args)
     print("Sending '{}' to {} (repeat: {:d})".format(s_str, opts.target, opts.repeat))

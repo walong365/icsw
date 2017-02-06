@@ -23,12 +23,29 @@
 """ host-monitoring / relay mixin """
 
 
+from initat.constants import PlatformSystemTypeEnum, PLATFORM_SYSTEM_TYPE
+from .constants import HMAccessClassEnum
+
+
 class HMHRMixin(object):
-    def COM_open(self, local_mc, verbose):
+    def COM_open(self, local_mc, verbose, enable_filter=False):
         self.local_mc = local_mc
         self.local_mc.set_log_command(self.log)
-        self.module_list = self.local_mc.module_list
-        _init_ok = self.local_mc.init_commands(self, verbose)
+        if enable_filter:
+            # read access level and platform
+            _platform = PLATFORM_SYSTEM_TYPE
+            _access_class = HMAccessClassEnum(self.CC.CS["hm.access_class"])
+        else:
+            _platform = PlatformSystemTypeEnum.ANY
+            _access_class = HMAccessClassEnum.level2
+        self.log(
+            "command filtering is {} (platform {}, access-class {})".format(
+                "enabled" if enable_filter else "disabled",
+                str(_platform),
+                str(_access_class),
+            )
+        )
+        _init_ok = self.local_mc.init_commands(self, verbose, _platform, _access_class)
         return _init_ok
 
     def COM_close(self):

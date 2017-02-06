@@ -27,11 +27,11 @@ import time
 import inflection
 import psutil
 
-from initat.host_monitoring import hm_classes, limits
-from initat.tools import logging_tools, process_tools, server_command
 from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
-
-from ..long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
+from initat.tools import logging_tools, process_tools, server_command
+from .. import hm_classes, limits
+from ..host_monitoring_struct import HMSubprocessStruct
+from ..long_running_checks import LongRunningCheck
 
 if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
     import wmi
@@ -1019,7 +1019,7 @@ class NetSpeed(object):
             self.__a_time = ntime
 
 
-class PingSPStruct(hm_classes.HMSubprocessStruct):
+class PingSPStruct(HMSubprocessStruct):
     seq_num = 0
 
     class Meta:
@@ -1029,7 +1029,7 @@ class PingSPStruct(hm_classes.HMSubprocessStruct):
         id_str = "ping"
 
     def __init__(self, srv_com, target_spec, num_pings, timeout):
-        hm_classes.HMSubprocessStruct.__init__(self, srv_com, "")
+        HMSubprocessStruct.__init__(self, srv_com, "")
         self.target_spec, self.num_pings, self.timeout = (target_spec, num_pings, timeout)
         PingSPStruct.seq_num += 1
         self.seq_str = "ping_{:d}".format(PingSPStruct.seq_num)
@@ -1860,7 +1860,7 @@ class iptables_info_command(hm_classes.MonitoringCommand):
             )
 
 
-class ntpq_struct(hm_classes.HMSubprocessStruct):
+class ntpq_struct(HMSubprocessStruct):
     class Meta:
         max_usage = 2
         id_str = "ntpq"
@@ -1868,7 +1868,7 @@ class ntpq_struct(hm_classes.HMSubprocessStruct):
 
     def __init__(self, log_com, srv_com):
         self.__log_com = log_com
-        hm_classes.HMSubprocessStruct.__init__(
+        HMSubprocessStruct.__init__(
             self,
             srv_com,
             "/usr/sbin/ntpq -p",

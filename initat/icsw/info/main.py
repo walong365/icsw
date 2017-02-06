@@ -23,12 +23,20 @@
 """ shows command help """
 
 from initat.tools import logging_tools
+from initat.constants import PlatformSystemTypeEnum, PLATFORM_SYSTEM_TYPE
+from initat.host_monitoring.constants import HMAccessClassEnum
 
 
 def show_hm_help(options):
-    from initat.host_monitoring import modules
+    from initat.host_monitoring.modules import local_mc
     to_show = []
-    for com_name in sorted(modules.command_dict):
+
+    def dummy_print(what, log_level=logging_tools.LOG_LEVEL_OK):
+        print("{} {}".format(logging_tools.map_log_level_to_log_status(log_level), what))
+
+    local_mc.set_log_command(dummy_print)
+    local_mc.init_commands(None, False, PlatformSystemTypeEnum.ANY, HMAccessClassEnum.level2)
+    for com_name in sorted(local_mc.keys()):
         _show = True
         if options.args:
             _show = any([com_name.count(arg) for arg in options.args])
@@ -36,19 +44,19 @@ def show_hm_help(options):
             to_show.append(com_name)
     print(
         "Modules defined            : {:d}".format(
-            len(modules.module_list)
+            len(local_mc.module_list)
         )
     )
     print(
         "Commands defined / to show : {:d} / {:d}".format(
-            len(modules.command_dict),
+            len(local_mc.command_dict),
             len(to_show),
         )
     )
-    valid_names = sorted(modules.command_dict.keys())
+    valid_names = sorted(local_mc.command_dict.keys())
     _sep_len = 60
     for _idx, com_name in enumerate(to_show, 1):
-        com = modules.command_dict[com_name]
+        com = local_mc.command_dict[com_name]
         print(
             "\n{}\n{}\n{}\n".format(
                 "-" * _sep_len,
@@ -66,8 +74,8 @@ def show_hm_help(options):
     if not options.args or not to_show:
         # show module overview
         out_list = logging_tools.NewFormList()
-        for _idx, mod in enumerate(modules.module_list):
-            c_names = [name for name in valid_names if modules.command_dict[name].module == mod]
+        for _idx, mod in enumerate(local_mc.module_list):
+            c_names = [name for name in valid_names if local_mc.command_dict[name].module == mod]
             local_valid_names = []
             for com_name in c_names:
                 local_valid_names.append(com_name)

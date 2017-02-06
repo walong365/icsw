@@ -19,13 +19,15 @@
 
 import base64
 import bz2
-import re
 import json
+import re
 import subprocess
 
-from initat.host_monitoring import limits, hm_classes
-from initat.host_monitoring.host_monitoring_struct import ExtReturn
 from initat.tools import logging_tools, process_tools, server_command
+from .. import limits, hm_classes
+from ..hm_cache import HMCCacheMixin
+from ..host_monitoring_struct import ExtReturn, HMSubprocessStruct
+
 
 SMCIPMI_BIN = "SMCIPMITool"
 
@@ -434,7 +436,7 @@ def generate_dict(in_list):
 MOCK_MODE = None  # "sys1"  # None  # "sys1"
 
 
-class SMCIpmiStruct(hm_classes.HMSubprocessStruct):
+class SMCIpmiStruct(HMSubprocessStruct):
     g_error_cache = {}
 
     class Meta:
@@ -448,7 +450,7 @@ class SMCIpmiStruct(hm_classes.HMSubprocessStruct):
         self.__hm_command = hm_command
         if MOCK_MODE:
             com = "sleep 5"
-        hm_classes.HMSubprocessStruct.__init__(
+        HMSubprocessStruct.__init__(
             self,
             srv_com,
             com,
@@ -486,13 +488,13 @@ class SMCIpmiStruct(hm_classes.HMSubprocessStruct):
             self.srv_com["output"] = output
 
 
-class SMCRetrievePendingStruct(hm_classes.HMSubprocessStruct):
+class SMCRetrievePendingStruct(HMSubprocessStruct):
     class Meta:
         max_usage = 128
 
     def __init__(self, srv_com, real_com):
 
-        hm_classes.HMSubprocessStruct.__init__(
+        HMSubprocessStruct.__init__(
             self,
             srv_com,
             None,
@@ -511,7 +513,7 @@ class SMCRetrievePendingStruct(hm_classes.HMSubprocessStruct):
             return False
 
 
-class smcipmi_command(hm_classes.MonitoringCommand, hm_classes.HMCCacheMixin):
+class smcipmi_command(hm_classes.MonitoringCommand, HMCCacheMixin):
     class Meta:
         cache_timeout = 60
     info_str = "SMCIPMITool frontend"

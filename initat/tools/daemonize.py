@@ -139,23 +139,17 @@ def main():
         main_module = importlib.import_module(opts.modname)
         if opts.daemonize:
             # redirect IO-streams
+            from initat.logging_server.constants import icswLogHandleTypes
             from initat.tools.io_stream_helper import icswIOStream
-            sys.stdout = icswIOStream("/var/lib/logging-server/py_log_zmq")
-            sys.stderr = icswIOStream("/var/lib/logging-server/py_err_zmq")
+            sys.stdout = icswIOStream(icswLogHandleTypes.log_py)
+            sys.stderr = icswIOStream(icswLogHandleTypes.err_py)
         main_module.main()
     else:
         # path for standard exe (munge, redis)
         if opts.extra_args:
             _args.extend(opts.extra_args)
         setproctitle.setproctitle(opts.proctitle)
-        # if opts.daemonize:
-        #    # redirect IO-streams
-        #    from initat.tools.io_stream_helper import icswIOStream
-        #    sys.stdout = icswIOStream("/var/lib/logging-server/py_log_zmq")
-        #    sys.stderr = icswIOStream("/var/lib/logging-server/py_err_zmq")
         os.execv(_args[0], _args)
-        # print("*", _args, os.getuid(), os.getgid())
-        # subprocess.call(_args)
 
 
 if __name__ == "__main__":

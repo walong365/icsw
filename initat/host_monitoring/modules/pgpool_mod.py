@@ -197,6 +197,9 @@ class PGPoolOverview(object):
 
 
 class _general(MonitoringModule):
+    class Meta:
+        bla = 4
+
     def init_module(self):
         if psycopg2:
             self.enabled = True

@@ -24,11 +24,10 @@ import inspect
 import marshal
 import os
 import pickle
-import subprocess
-import time
 
-from initat.constants import PLATFORM_SYSTEM_TYPE
-from initat.tools import logging_tools, server_command, process_tools
+from .constants import HMAccessClassEnum
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+from initat.tools import logging_tools, process_tools
 
 
 def net_to_sys(in_val):
@@ -49,7 +48,7 @@ HM_ALL_MODULES_KEY = "*"
 
 MODULE_STATE_INIT_LIST = [
     ("register_server", True),
-    ("init_module", False)
+    ("init_module", False),
 ]
 
 
@@ -92,7 +91,7 @@ class ModuleContainer(object):
         )
         import_errors = []
         hm_path_dict = {}
-        _new_hm_list = []
+        _mod_list = []
         for mod_name in _all_files:
             mod_name_full = "{}.py".format(mod_name)
             mod_path = os.path.join(self.__root_dir, mod_name_full)
@@ -106,16 +105,7 @@ class ModuleContainer(object):
                     )
                 )
                 if hasattr(new_mod, "_general"):
-                    new_hm_mod = new_mod._general(mod_name, new_mod)
-                    if new_hm_mod.enabled:
-                        _new_hm_list.append(new_hm_mod)
-                    else:
-                        self.log(
-                            "module {} is not enabled".format(
-                                mod_name
-                            ),
-                            logging_tools.LOG_LEVEL_WARN
-                        )
+                    _mod_list.append(new_mod)
                 else:
                     self.log(
                         "module {} is missing the '_general' object".format(
@@ -128,11 +118,12 @@ class ModuleContainer(object):
                 for log_line in exc_info.log_lines:
                     import_errors.append((mod_name, "import", log_line))
         self.HM_PATH_DICT = hm_path_dict
-        # list of modules sorted according to the Meta-priority
-        self.__sorted_hm_list = sorted(_new_hm_list, reverse=True, key=lambda x: x.Meta().priority)
+        # list of modules
+        self.__pure_module_list = _mod_list
         self.reload_module_checksum()
+        self._log_import_errors(import_errors)
 
-        self.init_modules(import_errors)
+        # self.init_modules(import_errors)
 
     def reload_module_checksum(self):
         sha3_512_digester_all = hashlib.new("sha3_512")
@@ -161,34 +152,8 @@ class ModuleContainer(object):
     def init_modules(self, import_errors):
         module_list = []
         command_dict = {}
-        for gen_mod in self.__sorted_hm_list:
-            # init state flags for correct handling of shutdown (do not call close_module when
-            # init_module was not called)
-            mod = gen_mod.obj
-            gen_mod.module_state = {_name: False for _name, _flag in MODULE_STATE_INIT_LIST}
-            module_list.append(gen_mod)
-            loc_coms = [
-                entry for entry in dir(mod) if entry.endswith("_command") and inspect.isclass(
-                    getattr(mod, entry)
-                ) and issubclass(
-                    getattr(mod, entry),
-                    MonitoringCommand
-                )
-            ]
-            if len(loc_coms):
-                for loc_com in loc_coms:
-                    try:
-                        gen_mod.add_command(loc_com, getattr(mod, loc_com))
-                    except:
-                        exc_info = process_tools.icswExceptionInfo()
-                        for log_line in exc_info.log_lines:
-                            import_errors.append((mod.__name__, loc_com, log_line))
-                command_dict.update(gen_mod.commands)
-            else:
-                self.log("no commands found in module {}".format(mod.__name__), logging_tools.LOG_LEVEL_WARN)
         self.module_list = module_list
         self.command_dict = command_dict
-        self._log_import_errors(import_errors)
 
     def _log_import_errors(self, log_list):
         for mod_name, scope, line in log_list:
@@ -200,10 +165,79 @@ class ModuleContainer(object):
             self.log(what, level)
         self.__log_cache = []
 
-    def init_commands(self, server_proc, verbose):
+    def init_commands(self, server_proc, verbose, platform, access_class):
+        module_list = []
+        command_dict = {}
         _init_ok = True
+        for mod_object in self.__pure_module_list:
+            mod_name = mod_object.__name__
+            _general = mod_object._general
+            # salt meta
+            MonitoringModule.salt_meta(_general)
+            if MonitoringModule.check_meta(_general, platform, access_class):
+                new_hm_mod = _general(mod_name.split(".")[-1], mod_object)
+                # init state flags for correct handling of shutdown (do not call close_module when
+                # init_module was not called)
+                new_hm_mod.module_state = {_name: False for _name, _flag in MODULE_STATE_INIT_LIST}
+                module_list.append(new_hm_mod)
+                loc_coms = [
+                    entry for entry in dir(mod_object) if entry.endswith("_command") and inspect.isclass(
+                        getattr(mod_object, entry)
+                    ) and issubclass(
+                        getattr(mod_object, entry),
+                        MonitoringCommand
+                    )
+                ]
+                if len(loc_coms):
+                    coms_added = []
+                    for loc_com in loc_coms:
+                        com_obj = getattr(mod_object, loc_com)
+                        MonitoringCommand.salt_meta(com_obj)
+                        if MonitoringCommand.check_meta(com_obj, platform, access_class):
+                            try:
+                                new_hm_mod.add_command(loc_com, com_obj)
+                            except:
+                                exc_info = process_tools.icswExceptionInfo()
+                                for log_line in exc_info.log_lines:
+                                    self.log(
+                                        "error adding command {}@{}: {}".format(
+                                            loc_com,
+                                            mod_name,
+                                            process_tools.get_except_info()
+                                        ),
+                                        logging_tools.LOG_LEVEL_CRITICAL
+                                    )
+                            else:
+                                coms_added.append(loc_com)
+                        else:
+                            self.log(
+                                "command {}@{} not added because of {}".format(
+                                    loc_com,
+                                    mod_name,
+                                    com_obj.Meta.reject_cause,
+                                )
+                            )
+                    command_dict.update(new_hm_mod.commands)
+                    self.log(
+                        "{} added for module {}: {}".format(
+                            logging_tools.get_plural("command", len(coms_added)),
+                            mod_name,
+                            ", ".join(coms_added),
+                        )
+                    )
+                else:
+                    self.log("no commands found in module {}".format(mod_name), logging_tools.LOG_LEVEL_WARN)
+            else:
+                self.log(
+                    "module {} not added because of {}".format(
+                        mod_name,
+                        _general.Meta.reject_cause,
+                    )
+                )
+        self.module_list = module_list
+        self.command_dict = command_dict
         for call_name, add_server_proc in MODULE_STATE_INIT_LIST:
-            for cur_mod in self.module_list:
+            for cur_mod in module_list:
                 if verbose:
                     self.log(
                         "calling {} for module '{}'".format(
@@ -252,239 +286,61 @@ class ModuleContainer(object):
         return self.command_dict.keys()
 
 
-class CacheObject(object):
-    def __init__(self, key):
-        self.key = key
-        self.valid_until = None
-        # retrieval pending
-        self.retrieval_pending = False
-        self.clients = []
-
-    def register_retrieval_client(self, client):
-        self.clients.append(client)
-
-    def store_object(self, obj, valid_until):
-        self.obj = obj
-        self.valid_until = valid_until
-        self.retrieval_pending = False
-        self._resolve_clients()
-
-    def _resolve_clients(self):
-        for _c in self.clients:
-            _c.resolve_cache(self.obj)
-        self.clients = []
-
-    def is_valid(self):
-        if self.valid_until:
-            return time.time() < self.valid_until
-        else:
-            return False
-
-
-class HMCCache(object):
-    def __init__(self, timeout):
-        self._timeout = timeout
-        self._cache = {}
-
-    def store_object(self, key, obj):
-        cur_time = time.time()
-        self._cache[key].store_object(obj, cur_time + self._timeout)
-
-    def start_retrieval(self, key):
-        self._cache[key].retrieval_pending = True
-
-    def load_object(self, key):
-        return self._cache[key].obj
-
-    def cache_valid(self, key):
-        if key not in self._cache:
-            self._cache[key] = CacheObject(key)
-        return self._cache[key].is_valid()
-
-    def retrieval_pending(self, key):
-        return self._cache[key].retrieval_pending
-
-    def register_retrieval_client(self, key, client):
-        return self._cache[key].register_retrieval_client(client)
-
-
-class HMCCacheMixin(object):
-    class Meta:
-        cache_timeout = 10
-
-    def _cache_init(self):
-        if not hasattr(self, "_HMC"):
-            self._HMC = HMCCache(self.Meta.cache_timeout)
-
-    def start_retrieval(self, key):
-        # to flag start of external object generation
-        self._cache_init()
-        self._HMC.start_retrieval(key)
-
-    def store_object(self, key, obj):
-        self._cache_init()
-        self._HMC.store_object(key, obj)
-
-    def load_object(self, key):
-        return self._HMC.load_object(key)
-
-    def cache_valid(self, key):
-        self._cache_init()
-        # return True if the given key is in the cache and valid
-        return self._HMC.cache_valid(key)
-
-    def retrieval_pending(self, key):
-        return self._HMC.retrieval_pending(key)
-
-    def register_retrieval_client(self, key, client):
-        return self._HMC.register_retrieval_client(key, client)
-
-
-class HMSubprocessStruct(object):
-    __slots__ = [
-        "srv_com", "command", "command_line", "com_num", "popen", "srv_process",
-        "cb_func", "_init_time", "terminated", "__nfts", "__return_sent", "__finished",
-        "multi_command", "run_info", "src_id"
-    ]
-
-    class Meta:
-        max_usage = 2
-        direct = False
-        max_runtime = 300
-        use_popen = True
-        verbose = False
-        id_str = "not_set"
-
-    def __init__(self, srv_com, com_line, cb_func=None):
-        # copy Meta keys
-        for key in dir(HMSubprocessStruct.Meta):
-            if not key.startswith("__") and not hasattr(self.Meta, key):
-                setattr(self.Meta, key, getattr(HMSubprocessStruct.Meta, key))
-        self.srv_com = srv_com
-        self.command = srv_com["command"].text
-        self.command_line = com_line
-        self.multi_command = isinstance(self.command_line, list)
-        self.com_num = 0
-        self.popen = None
-        self.srv_process = None
-        self.cb_func = cb_func
-        self._init_time = time.time()
-        # if not a popen call
-        self.terminated = False
-        # flag for not_finished info
-        self.__nfts = None
-        # return already sent
-        self.__return_sent = False
-        # finished
-        self.__finished = False
-
-    def run(self):
-        run_info = {}
-        if self.multi_command:
-            if self.command_line:
-                cur_cl = self.command_line[self.com_num]
-                if isinstance(cur_cl, tuple):
-                    # in case of tuple
-                    run_info["comline"] = cur_cl[0]
-                else:
-                    run_info["comline"] = cur_cl
-                run_info["command"] = cur_cl
-                run_info["run"] = self.com_num
-                self.com_num += 1
-            else:
-                run_info["comline"] = None
-        else:
-            run_info["comline"] = self.command_line
-        self.run_info = run_info
-        if run_info["comline"]:
-            # if comline is None we do nothing, no server_reply is set
-            if self.Meta.verbose:
-                self.log("popen '{}'".format(run_info["comline"]))
-            self.popen = subprocess.Popen(run_info["comline"], shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-            self.started()
-
-    def set_send_stuff(self, srv_proc, src_id, zmq_sock):
-        self.srv_process = srv_proc
-        self.src_id = src_id
-        self.zmq_sock = zmq_sock
-
-    def started(self):
-        pass
-
-    def read(self):
-        if self.popen:
-            return self.popen.stdout.read()
-        else:
-            return None
-
-    def finished(self):
-        if self.run_info["comline"] is None:
-            self.run_info["result"] = 0
-            # empty list of commands
-            fin = True
-        elif not hasattr(self, "popen"):
-            # calling finished () after popen has been delete, strange bug
-            self.run_info["result"] = 0
-            # empty list of commands
-            fin = True
-        else:
-            self.run_info["result"] = self.popen.poll()
-            if self.Meta.verbose:
-                if self.run_info["result"] is None:
-                    cur_time = time.time()
-                    if not self.__nfts or abs(self.__nfts - cur_time) > 1:
-                        self.__nfts = cur_time
-                        self.log("not finished")
-                else:
-                    self.log("finished with {}".format(str(self.run_info["result"])))
-            fin = False
-            if self.run_info["result"] is not None:
-                self.process()
-                if self.multi_command:
-                    if self.com_num == len(self.command_line):
-                        # last command
-                        fin = True
-                    else:
-                        # next command
-                        self.run()
-                else:
-                    fin = True
-        self.__finished = fin
-        return fin
-
-    def process(self):
-        if self.cb_func:
-            self.cb_func(self)
-        else:
-            self.srv_com.set_result("default process() call", server_command.SRV_REPLY_STATE_ERROR)
-
-    def terminate(self):
-        # popen may not be set or None
-        if getattr(self, "popen", None):
-            self.popen.kill()
-        if getattr(self, "srv_com", None):
-            self.srv_com.set_result(
-                "runtime ({}) exceeded".format(logging_tools.get_plural("second", self.Meta.max_runtime)),
-                server_command.SRV_REPLY_STATE_ERROR
-            )
-
-    def send_return(self):
-        if not self.__return_sent:
-            self.__return_sent = True
-            if self.srv_process:
-                self.srv_process._send_return(self.zmq_sock, self.src_id, self.srv_com)
-                del self.srv_com
-                del self.zmq_sock
-                del self.srv_process
-        if self.__finished:
-            if hasattr(self, "popen") and self.popen:
-                del self.popen
-
-
-class MonitoringModule(object):
+class MMMCBase(object):
     class Meta:
         priority = 0
+        required_access = HMAccessClassEnum.level2
+        required_platform = PlatformSystemTypeEnum.NONE
 
+    @classmethod
+    def salt_meta(cls, obj):
+        for _attr_name in ["priority", "required_access", "required_platform"]:
+            if not hasattr(obj.Meta, _attr_name):
+                # set default value
+                setattr(obj.Meta, _attr_name, getattr(cls.Meta, _attr_name))
+
+    @classmethod
+    def check_meta(cls, obj, platform, access_class):
+        _pass = True
+        meta_platform = obj.Meta.required_platform
+        if not isinstance(meta_platform, list):
+            meta_platform = [meta_platform]
+        meta_access = obj.Meta.required_access
+        _allowed_classes = [access_class]
+        if HMAccessClassEnum.level2 in _allowed_classes:
+            _allowed_classes.append(HMAccessClassEnum.level1)
+        if HMAccessClassEnum.level1 in _allowed_classes:
+            _allowed_classes.append(HMAccessClassEnum.level0)
+        _reject_cause = []
+        if platform not in meta_platform and PlatformSystemTypeEnum.ANY not in meta_platform:
+            _reject_cause.append(
+                "Platform {} not in [{}]".format(
+                    platform,
+                    ", ".join([_pf.name for _pf in meta_platform])
+                )
+            )
+            _pass = False
+        if PlatformSystemTypeEnum.NONE in meta_platform:
+            _reject_cause.append(
+                "{} in [{}]".format(
+                    PlatformSystemTypeEnum.NONE,
+                    ", ".join([_pf.name for _pf in meta_platform])
+                )
+            )
+            _pass = False
+        if meta_access not in _allowed_classes:
+            _reject_cause.append(
+                "{} not in [{}]".format(
+                    meta_access,
+                    ", ".join([_cl.name for _cl in _allowed_classes]),
+                )
+            )
+            _pass = False
+        obj.Meta.reject_cause = ", ".join(_reject_cause)
+        return _pass
+
+
+class MonitoringModule(MMMCBase):
     def __init__(self, name, mod_obj):
         self.name = name
         self.obj = mod_obj
@@ -529,7 +385,7 @@ class MonitoringModule(object):
         return "module {}, priority {:d}".format(self.name, self.Meta.priority)
 
 
-class MonitoringCommand(object):
+class MonitoringCommand(MMMCBase):
     info_str = ""
 
     def __init__(self, name, **kwargs):

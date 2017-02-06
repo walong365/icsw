@@ -17,7 +17,8 @@
 #
 """ frontend to various HP monitoring commands """
 
-from initat.host_monitoring import hm_classes, limits
+from .. import hm_classes, limits
+from ..host_monitoring_struct import HMSubprocessStruct
 from initat.tools import logging_tools, server_command, process_tools
 
 HPASM_BIN = "hpasmcli"
@@ -120,7 +121,7 @@ class HPPsu(object):
             return limits.mon_STATE_CRITICAL, "nothing returned"
 
 
-class hp_health_bg(hm_classes.HMSubprocessStruct):
+class hp_health_bg(HMSubprocessStruct):
     class Meta:
         verbose = False
         id_str = "hp_health"
@@ -142,7 +143,7 @@ class hp_health_bg(hm_classes.HMSubprocessStruct):
                     hp_com.Meta.command,
                 )
             ]
-        hm_classes.HMSubprocessStruct.__init__(
+        HMSubprocessStruct.__init__(
             self,
             srv_com,
             _com_line,

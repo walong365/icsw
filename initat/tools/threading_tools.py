@@ -45,6 +45,7 @@ import zmq
 
 from initat.tools import io_stream_helper, logging_tools, process_tools
 from initat.debug import ICSW_DEBUG_MODE
+from initat.logging_server.constants import icswLogHandleTypes
 from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
 # default stacksize
@@ -698,7 +699,10 @@ class ExceptionHandlingMixin(object):
             out_lines.append(except_info)
             # write to logging-server
             if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
-                err_h = io_stream_helper.icswIOStream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
+                err_h = io_stream_helper.icswIOStream(
+                    icswLogHandleTypes.err_py,
+                    zmq_context=self.zmq_context
+                )
                 err_h.write("\n".join(out_lines))
                 err_h.close()
                 self.log(
@@ -963,10 +967,18 @@ class icswProcessObj(multiprocessing.Process, TimerBase, PollerBase, icswProcess
         # redirect stdout / stderr ?
         if self.stdout_target:
             self.orig_stdout = sys.stdout
-            sys.stdout = io_stream_helper.icswIOStream(self.stdout_target, zmq_context=self.zmq_context, register_atexit=False)
+            sys.stdout = io_stream_helper.icswIOStream(
+                self.stdout_target,
+                zmq_context=self.zmq_context,
+                register_atexit=False
+            )
         if self.stderr_target:
             self.orig_stderr = sys.stderr
-            sys.stderr = io_stream_helper.icswIOStream(self.stderr_target, zmq_context=self.zmq_context, register_atexit=False)
+            sys.stderr = io_stream_helper.icswIOStream(
+                self.stderr_target,
+                zmq_context=self.zmq_context,
+                register_atexit=False
+            )
         # call process_init (set pid and stuff)
         self.process_init()
         # now we should have a vaild log command

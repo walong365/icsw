@@ -23,6 +23,8 @@
 """ host-monitoring, with 0MQ and twisted support, constants """
 
 import os
+from enum import Enum
+
 
 TIME_FORMAT = "{:.3f}"
 
@@ -36,3 +38,12 @@ RELAY_SETTINGS_CS_NAME = "icsw.relay.settings"
 
 # number of 0MQ connection errors before we try to re-get the 0MQ id
 MAX_0MQ_CONNECTION_ERRORS = 20
+
+
+class HMAccessClassEnum(Enum):
+    # free for all (monitoring)
+    level0 = "level0"
+    # require level1 (corvus)
+    level1 = "level1"
+    # require level2 (critical, need extra access level)
+    level2 = "level2"

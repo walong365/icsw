@@ -30,14 +30,14 @@ from initat.icsw.service.instance import InstanceXML
 from initat.tools import net_tools, server_command, logging_tools
 
 
-def dummy_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-    print("{} {}".format(logging_tools.get_log_level_str(log_level), what))
-
-
 def ClientCode(global_config):
     from initat.host_monitoring.modules import local_mc
     from initat.debug import ICSW_DEBUG_MODE
     if ICSW_DEBUG_MODE:
+        # dummy logger of module loader
+        def dummy_log(what, log_level=logging_tools.LOG_LEVEL_OK):
+            print("{} {}".format(logging_tools.get_log_level_str(log_level), what))
+
         local_mc.set_log_command(dummy_log)
     conn_str = "tcp://{}:{:d}".format(
         global_config["HOST"],
@@ -111,6 +111,11 @@ def ClientCode(global_config):
             "unknown command {}, {}".format(com_name, cm_str)
         )
     if ret.ascii_chunk:
-        print("Ignoring ascii_chunk with {:d} bytes".format(len(ret.ascii_chunk)))
+        print(
+            "Ignoring ascii_chunk with {:d} bytes".format(
+                len(ret.ascii_chunk)
+            )
+        )
+    # output
     print(ret.ret_str)
     return ret.ret_state

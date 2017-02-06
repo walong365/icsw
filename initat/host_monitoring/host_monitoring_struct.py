@@ -24,6 +24,7 @@
 
 import argparse
 import time
+import subprocess
 
 import zmq
 from enum import Enum
@@ -632,3 +633,149 @@ class HostMessage(object):
         # HostMessage.hm_open.remove(self.hm_idx)
         del self.srv_com
         pass
+
+
+class HMSubprocessStruct(object):
+    __slots__ = [
+        "srv_com", "command", "command_line", "com_num", "popen", "srv_process",
+        "cb_func", "_init_time", "terminated", "__nfts", "__return_sent", "__finished",
+        "multi_command", "run_info", "src_id"
+    ]
+
+    class Meta:
+        max_usage = 2
+        direct = False
+        max_runtime = 300
+        use_popen = True
+        verbose = False
+        id_str = "not_set"
+
+    def __init__(self, srv_com, com_line, cb_func=None):
+        # copy Meta keys
+        for key in dir(HMSubprocessStruct.Meta):
+            if not key.startswith("__") and not hasattr(self.Meta, key):
+                setattr(self.Meta, key, getattr(HMSubprocessStruct.Meta, key))
+        self.srv_com = srv_com
+        self.command = srv_com["command"].text
+        self.command_line = com_line
+        self.multi_command = isinstance(self.command_line, list)
+        self.com_num = 0
+        self.popen = None
+        self.srv_process = None
+        self.cb_func = cb_func
+        self._init_time = time.time()
+        # if not a popen call
+        self.terminated = False
+        # flag for not_finished info
+        self.__nfts = None
+        # return already sent
+        self.__return_sent = False
+        # finished
+        self.__finished = False
+
+    def run(self):
+        run_info = {}
+        if self.multi_command:
+            if self.command_line:
+                cur_cl = self.command_line[self.com_num]
+                if isinstance(cur_cl, tuple):
+                    # in case of tuple
+                    run_info["comline"] = cur_cl[0]
+                else:
+                    run_info["comline"] = cur_cl
+                run_info["command"] = cur_cl
+                run_info["run"] = self.com_num
+                self.com_num += 1
+            else:
+                run_info["comline"] = None
+        else:
+            run_info["comline"] = self.command_line
+        self.run_info = run_info
+        if run_info["comline"]:
+            # if comline is None we do nothing, no server_reply is set
+            if self.Meta.verbose:
+                self.log("popen '{}'".format(run_info["comline"]))
+            self.popen = subprocess.Popen(
+                run_info["comline"],
+                shell=True,
+                stderr=subprocess.STDOUT,
+                stdout=subprocess.PIPE
+            )
+            self.started()
+
+    def set_send_stuff(self, srv_proc, src_id, zmq_sock):
+        self.srv_process = srv_proc
+        self.src_id = src_id
+        self.zmq_sock = zmq_sock
+
+    def started(self):
+        pass
+
+    def read(self):
+        if self.popen:
+            return self.popen.stdout.read()
+        else:
+            return None
+
+    def finished(self):
+        if self.run_info["comline"] is None:
+            self.run_info["result"] = 0
+            # empty list of commands
+            fin = True
+        elif not hasattr(self, "popen"):
+            # calling finished () after popen has been delete, strange bug
+            self.run_info["result"] = 0
+            # empty list of commands
+            fin = True
+        else:
+            self.run_info["result"] = self.popen.poll()
+            if self.Meta.verbose:
+                if self.run_info["result"] is None:
+                    cur_time = time.time()
+                    if not self.__nfts or abs(self.__nfts - cur_time) > 1:
+                        self.__nfts = cur_time
+                        self.log("not finished")
+                else:
+                    self.log("finished with {}".format(str(self.run_info["result"])))
+            fin = False
+            if self.run_info["result"] is not None:
+                self.process()
+                if self.multi_command:
+                    if self.com_num == len(self.command_line):
+                        # last command
+                        fin = True
+                    else:
+                        # next command
+                        self.run()
+                else:
+                    fin = True
+        self.__finished = fin
+        return fin
+
+    def process(self):
+        if self.cb_func:
+            self.cb_func(self)
+        else:
+            self.srv_com.set_result("default process() call", server_command.SRV_REPLY_STATE_ERROR)
+
+    def terminate(self):
+        # popen may not be set or None
+        if getattr(self, "popen", None):
+            self.popen.kill()
+        if getattr(self, "srv_com", None):
+            self.srv_com.set_result(
+                "runtime ({}) exceeded".format(logging_tools.get_plural("second", self.Meta.max_runtime)),
+                server_command.SRV_REPLY_STATE_ERROR
+            )
+
+    def send_return(self):
+        if not self.__return_sent:
+            self.__return_sent = True
+            if self.srv_process:
+                self.srv_process._send_return(self.zmq_sock, self.src_id, self.srv_com)
+                del self.srv_com
+                del self.zmq_sock
+                del self.srv_process
+        if self.__finished:
+            if hasattr(self, "popen") and self.popen:
+                del self.popen

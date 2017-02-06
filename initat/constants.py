@@ -57,6 +57,10 @@ __all__ = [
 
 
 class PlatformSystemTypeEnum(Enum):
+    # none, never matches, for HM
+    NONE = -1
+    # for any, needed for HM
+    ANY = 0
     LINUX = 1
     WINDOWS = 2
     UNKNOWN = 3

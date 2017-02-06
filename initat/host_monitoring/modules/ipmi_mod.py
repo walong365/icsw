@@ -21,11 +21,11 @@
 """ IPMI sensor readings """
 
 import subprocess
-import subprocess
 import time
 
 from initat.host_monitoring import hm_classes, limits
 from initat.tools import logging_tools, process_tools, server_command
+from ..host_monitoring_struct import HMSubprocessStruct
 
 IPMI_LIMITS = ["ln", "lc", "lw", "uw", "uc", "un"]
 IPMI_LONG_LIMITS = ["{}{}".format({"l": "lower", "u": "upper"}[_key[0]], _key[1:]) for _key in IPMI_LIMITS]
@@ -160,7 +160,7 @@ class _general(hm_classes.MonitoringModule):
             # pprint.pprint(self.ipmi_result)
 
 
-class ipmi_bg(hm_classes.HMSubprocessStruct):
+class ipmi_bg(HMSubprocessStruct):
     class Meta:
         verbose = False
         id_str = "ipmi"
@@ -168,7 +168,7 @@ class ipmi_bg(hm_classes.HMSubprocessStruct):
     def __init__(self, log_com, srv_com, ipmi_com, it_command):
         self.__log_com = log_com
         self.__ipmi_com = ipmi_com
-        hm_classes.HMSubprocessStruct.__init__(
+        HMSubprocessStruct.__init__(
             self,
             srv_com, [
                 "{} -s '{}'".format(
