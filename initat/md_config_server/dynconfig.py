@@ -178,66 +178,20 @@ class DynConfigProcess(threading_tools.icswProcessObj):
         self._create_hints_ipmi(cur_dev, mon_info)
 
     def _get_ipmi_service_prefix(self, cur_dev):
-        _prefix = None
+
         # better cache this info ?
-        # special check command
-        try:
-            _mcs = mon_check_command_special.objects.get(
-                Q(identifier="ipmi_passive_checks")
-            )
-        except mon_check_command_special.DoesNotExist:
-            pass
-        else:
-            # mon command for current device
-            try:
-                _mc = mon_check_command.objects.get(
-                    Q(config__device_config__device=cur_dev) &
-                    Q(mon_check_command_special=_mcs)
-                )
-            except mon_check_command.DoesNotExist:
-                try:
-                    _mc = mon_check_command.objects.get(
-                        Q(config__device_config__device=cur_dev.device_group.device_id) &
-                        Q(mon_check_command_special=_mcs)
-                    )
-                except mon_check_command.DoesNotExist:
-                    # mon check command not found
-                    self.log(
-                        "no mcc for mccs {} / device [or device_group] {} found".format(
-                            str(_mcs),
-                            str(cur_dev),
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR
-                    )
-                    DeviceLogEntry.new(
-                        device=cur_dev,
-                        source=global_config["LOG_SOURCE_IDX"],
-                        level=logging_tools.LOG_LEVEL_ERROR,
-                        text="unhandled IPMI result chunk",
-                    )
-                else:
-                    # _mc.check_command_pk = _mc.pk
-                    # _mc.mccs_id = _mcs.pk
-                    _prefix = HostServiceIDUtil.create_host_service_description(cur_dev.pk, _mc, "")
-            except mon_check_command.MultipleObjectsReturned:
-                # more than one check command found
-                self.log(
-                    "more than one mcc for mccs {} / device {} found".format(
-                        str(_mcs),
-                        str(cur_dev),
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-            else:
-                # _mc.check_command_pk = _mc.pk
-                # _mc.mccs_id = _mcs.pk
-                _prefix = HostServiceIDUtil.create_host_service_description(cur_dev.pk, _mc, "")
+        # get mon_check_command
+        _mcc = mon_check_command.objects.get(Q(uuid="dc3f0b78-be93-4752-acbe-ac34bbf54a24"))
+        _prefix = HostServiceIDUtil.create_host_service_description(cur_dev.pk, _mcc, "")
         return _prefix
 
     def _create_hints_ipmi(self, cur_dev, mon_info):
         cur_hints = {
             (cur_h.m_type, cur_h.key): cur_h for cur_h in monitoring_hint.objects.filter(Q(device=cur_dev))
         }
+        # import pprint
+        # pprint.pprint(cur_hints)
+        # print("**", cur_hints)
         _ocsp_prefix = self._get_ipmi_service_prefix(cur_dev)
         if not _ocsp_prefix:
             self.log("cannot get prefix for IPMI service results for device {}".format(str(cur_dev)))

@@ -53,8 +53,6 @@ class SpecialBase(object):
         description = "no description available"
         # meta, triggers a cascade of checks
         meta = False
-        # identifier
-        identifier = ""
         # name in database
         database_name = ""
 

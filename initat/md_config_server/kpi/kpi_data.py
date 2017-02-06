@@ -328,8 +328,7 @@ class KpiData(object):
         )
         description = HostServiceIDUtil.create_host_service_description_direct(
             dev.pk,
-            mcc.pk,
-            special_check_command_pk=mcc.mon_check_command_special_id,
+            mcc,
             info=".*"
         )
         description = "^{}".format(description)  # need regex to force start to distinguish s_host_check and host_check
@@ -340,10 +339,8 @@ class KpiData(object):
         ret = []
         # this is usually only one except in case of special check commands
         for ir in icinga_result:
-            try:
-                service_info = HostServiceIDUtil.parse_host_service_description(ir['description'])[2]
-            except IndexError:
-                service_info = None
+            # print("D=", ir["description"])
+            service_info = HostServiceIDUtil.parse_host_service_description(ir['description'], self.log)[2]
             ret.append(
                 KpiServiceObject(
                     result=KpiResult.from_numeric_icinga_service_state(int(ir['state'])),

@@ -32,7 +32,6 @@ class SpecialIpmiExt(SpecialBase):
         info = "IPMI as passive checks via collectd"
         group = SpecialGroupsEnum.hardware
         description = "queries the IPMI sensors of the IPMI interface directly (not via the target host)"
-        identifier = "ipmi_passive_checks"
         uuid = "dc3f0b78-be93-4752-acbe-ac34bbf54a24"
 
     def call(self):

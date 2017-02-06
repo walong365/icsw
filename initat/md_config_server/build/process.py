@@ -116,10 +116,7 @@ class BuildProcess(
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-            for sub_com in _container.mon_check_command_set.all():
-
-                sub_com.config = None
-                sub_com.save(update_fields=["config"])
+            _container.mcc_rel.clear()
             _container.delete()
 
     def _routing_fingerprint(self, *args, **kwargs):
