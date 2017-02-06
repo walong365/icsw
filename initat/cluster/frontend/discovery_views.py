@@ -620,3 +620,34 @@ class ScheduleItemCreator(View):
         discovery_server_state = int(result.tree.xpath("ns0:result", namespaces=result.tree.nsmap)[0].attrib["state"])
 
         return HttpResponse(json.dumps({"discovery_server_state": discovery_server_state}))
+
+
+class HostMonitoringStatusLoader(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        from initat.cluster.backbone.server_enums import icswServiceEnum
+        from initat.cluster.frontend.helper_functions import contact_server
+        from initat.tools import server_command
+        from initat.host_monitoring.modules import local_mc
+        from initat.host_monitoring.hm_classes import HM_ALL_MODULES_KEY
+
+        device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
+
+        srv_com = server_command.srv_command(command="get_host_monitoring_info", device_pks=device_pks)
+
+        (result, status) = contact_server(
+            request,
+            icswServiceEnum.discovery_server,
+            srv_com,
+            timeout=len(device_pks) * 10
+        )
+
+        hm_status_dict = server_command.decompress(result.get_element("hm_status_dict")[0].text, json=True)
+        for idx in hm_status_dict.keys():
+            if hm_status_dict[idx]["checksum"] == local_mc.HM_MODULES_HEX_CHECKSUMS[HM_ALL_MODULES_KEY]:
+                hm_status_dict[idx]["checksum_class"] = "alert-success text-center"
+            else:
+                hm_status_dict[idx]["checksum_class"] = "alert-danger text-center"
+        hm_status_dict[0] = {"checksum": local_mc.HM_MODULES_HEX_CHECKSUMS[HM_ALL_MODULES_KEY] }
+
+        return HttpResponse(json.dumps(hm_status_dict))

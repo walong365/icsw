@@ -54,6 +54,7 @@ setup_progress = angular.module(
     $scope.struct = {
         # selected devices
         devices: []
+        device_pks: []
         # device tree
         device_tree: undefined
         ugr_tree: undefined
@@ -79,6 +80,9 @@ setup_progress = angular.module(
         device_task_headers: []
 
         push_graphing_config_device: undefined
+
+        local_hm_module_fingerprint: undefined
+        in_hm_status_view: false
     }
 
     push_graphing_config = (_yes) ->
@@ -119,11 +123,45 @@ setup_progress = angular.module(
 
     $scope.new_devsel = (devs) ->
         $scope.struct.devices.length = 0
+        $scope.struct.device_pks.length = 0
         for entry in devs
             if not entry.is_meta_device
                 $scope.struct.devices.push(entry)
+                $scope.struct.device_pks.push(entry.idx)
         perform_refresh_for_device_status(false)
         perform_refresh_for_system_status()
+        if $scope.struct.in_hm_status_view
+            perform_refresh_for_hm_status()
+
+
+    perform_refresh_for_hm_status = () ->
+        blockUI.start("Please wait...")
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.DISCOVERY_HOST_MONITORING_STATUS_LOADER
+                data:
+                    device_pks: $scope.struct.device_pks
+                dataType: "json"
+            }
+        ).then(
+            (hm_status_dict) ->
+                $scope.struct.local_hm_module_fingerprint = hm_status_dict[0]["checksum"]
+                for idx in Object.keys(hm_status_dict)
+                    if idx > 0
+                        device = $scope.struct.device_tree.all_lut[idx]
+                        device.$$host_monitor_version = "N/A"
+                        device.$$host_monitor_platform = "N/A"
+                        device.$$host_monitor_fingerprint = "N/A"
+                        device.$$host_monitor_fingerprint_class = hm_status_dict[idx]["checksum_class"]
+
+                        if hm_status_dict[idx]["version"]
+                            device.$$host_monitor_version = hm_status_dict[idx]["version"]
+                        if hm_status_dict[idx]["platform"]
+                            device.$$host_monitor_platform = hm_status_dict[idx]["platform"]
+                        if hm_status_dict[idx]["checksum"]
+                            device.$$host_monitor_fingerprint = hm_status_dict[idx]["checksum"]
+                blockUI.stop()
+        )
 
     perform_refresh_for_device_status = (partial_refresh) ->
         $q.all(
@@ -178,6 +216,9 @@ setup_progress = angular.module(
         )
 
     salt_device = (device, tasks) ->
+        device.$$host_monitor_version = "N/A"
+        device.$$host_monitor_platform = "N/A"
+        device.$$host_monitor_fingerprint = "N/A"
         device.$$date_created = moment(device.date).format("YYYY-MM-DD HH:mm:ss")
         if device.creator
             device.$$creator = $scope.struct.ugr_tree.user_lut[device.creator].$$long_name
@@ -391,6 +432,12 @@ setup_progress = angular.module(
                 (_no) ->
                     console.log("no")
             )
+
+    $scope.host_monitoring_status_clicked = () ->
+        perform_refresh_for_hm_status()
+
+    $scope.show_device = ($event, dev) ->
+        DeviceOverviewService($event, [dev])
 
 ]).service("SetupProgressHelper",
 [

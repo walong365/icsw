@@ -30,13 +30,14 @@ from initat.discovery_server.event_log.event_log_poller import \
 from initat.snmp.process import SNMPProcessContainer
 from initat.tools import configfile, logging_tools, process_tools, \
     server_command, server_mixins, threading_tools, net_tools
-from initat.tools.server_mixins import RemoteCall
+from initat.tools.server_mixins import RemoteCall, GetRouteToDevicesMixin
+from initat.icsw.service.instance import InstanceXML
 from .config import global_config, IPC_SOCK_SNMP
 from .discovery import DiscoveryProcess
 
 
 @server_mixins.RemoteCallProcess
-class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
+class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, GetRouteToDevicesMixin):
     def __init__(self):
         threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
         self.register_exception("int_error", self._int_error)
@@ -73,6 +74,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             self._test()
 
         self.__pending_host_monitoring_commands = {}
+        self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
 
     def clear_pending_scans(self):
         pending_locks = DeviceScanLock.objects.filter(Q(server=global_config["SERVER_IDX"]) & Q(active=True))
@@ -177,6 +179,78 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
     @RemoteCall()
     def status(self, srv_com, **kwargs):
         return self.server_status(srv_com, self.CC.msi_block, global_config, spc=self.spc)
+
+    @RemoteCall()
+    def get_host_monitoring_info(self, srv_com, **kwargs):
+        import uuid
+        from initat.constants import PlatformSystemTypeEnum
+
+        device_pks = []
+        for child in srv_com["device_pks"].getchildren():
+            device_pks.append(int(child.text))
+
+        devices = device.objects.filter(idx__in=device_pks)
+        self.get_route_to_devices(devices)
+
+
+        result_dict = {}
+
+        for target_device in devices:
+            result_dict[target_device.idx] = {}
+
+            conn_str = "tcp://{}:{:d}".format(target_device.target_ip, self.__hm_port)
+
+            # fetch platform information
+            new_srv_com = server_command.srv_command(command="platform")
+
+            _new_con = net_tools.ZMQConnection(
+                str(uuid.uuid4()),
+                context=self.zmq_context,
+                timeout=3
+            )
+            _new_con.add_connection(conn_str, new_srv_com)
+            result = _new_con.loop()[0]
+
+            if result:
+                result_dict[target_device.idx]["platform"] = PlatformSystemTypeEnum(int(result["platform"].text)).name
+            else:
+                result_dict[target_device.idx]["platform"] = None
+
+            # fetch version information
+            new_srv_com = server_command.srv_command(command="version")
+
+            _new_con = net_tools.ZMQConnection(
+                str(uuid.uuid4()),
+                context=self.zmq_context,
+                timeout=3
+            )
+            _new_con.add_connection(conn_str, new_srv_com)
+            result = _new_con.loop()[0]
+
+            if result:
+                result_dict[target_device.idx]["version"] = result["version"].text
+            else:
+                result_dict[target_device.idx]["version"] = None
+
+            # fetch module fingerprint information
+            new_srv_com = server_command.srv_command(command="modules_fingerprint")
+
+            _new_con = net_tools.ZMQConnection(
+                str(uuid.uuid4()),
+                context=self.zmq_context,
+                timeout=3
+            )
+            _new_con.add_connection(conn_str, new_srv_com)
+            result = _new_con.loop()[0]
+
+            if result:
+                result_dict[target_device.idx]["checksum"] = result["checksum"].text
+            else:
+                result_dict[target_device.idx]["checksum"] = None
+
+        srv_com["hm_status_dict"] = server_command.compress(result_dict, json=True)
+        srv_com.set_result("ok")
+        return srv_com
 
     @RemoteCall(target_process="discovery")
     def scan_system_info(self, srv_com, **kwargs):

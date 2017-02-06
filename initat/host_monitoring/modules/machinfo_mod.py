@@ -2772,7 +2772,7 @@ class dmiinfo_command(hm_classes.MonitoringCommand):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
             srv_com["dmi_type"] = "linux"
             srv_com["dmi_dump"] = self.module._dmiinfo_int()
-        elif PLATFORM_SYSTEM_TYPE == PLATFORM_SYSTEM_TYPE.WINDOWS:
+        elif PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
             srv_com["dmi_type"] = "windows"
             srv_com["dmi_dump"] = subprocess.check_output("dmidecode212.exe")
 
