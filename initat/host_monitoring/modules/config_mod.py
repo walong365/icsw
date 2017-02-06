@@ -372,3 +372,14 @@ class update_modules_command(hm_classes.MonitoringCommand):
                                                                          srv_com["new_modules_fingerprint"].text)
         else:
             return limits.mon_STATE_OK, srv_com["update_result"].text
+
+
+class platform_command(hm_classes.MonitoringCommand):
+    def __init__(self, name):
+        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
+
+    def __call__(self, srv_com, cur_ns):
+        srv_com["platform"] = PLATFORM_SYSTEM_TYPE.value
+
+    def interpret(self, srv_com, cur_ns):
+        return limits.mon_STATE_OK, "Platform is {}".format(PlatformSystemTypeEnum(int(srv_com["platform"].text)).name)
