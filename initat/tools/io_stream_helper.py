@@ -29,14 +29,14 @@ from initat.logging_server.constants import icswLogHandleTypes
 
 class icswIOStream(object):
     def __init__(self, sock_name="/var/lib/logging-server/py_err_py_zmq", **kwargs):
-        if isinstance(sock_name, icswLogHandleTypes):
-            self.__sock_name = os.path.join("/var/lib/logging-server", sock_name.value)
-        self.__sock_name = self.zmq_socket_name(sock_name, check_ipc_prefix=True)
         self.__buffered = kwargs.get("buffered", False)
         # late init of context and socket to reduce threads
         self.__zmq_context = kwargs.get("zmq_context", None)
         self.__zmq_sock = None
         self.__buffer = ""
+        if isinstance(sock_name, icswLogHandleTypes):
+            sock_name = os.path.join("/var/lib/logging-server", sock_name.value)
+        self.__sock_name = self.zmq_socket_name(sock_name, check_ipc_prefix=True)
         if kwargs.get("register_atexit", True):
             atexit.register(self.close)
 
