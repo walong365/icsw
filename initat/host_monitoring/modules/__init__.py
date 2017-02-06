@@ -34,20 +34,18 @@ __all__ = [
 ]
 __all__.sort()
 
-sha3_512_digester = hashlib.new("sha3_512")
-
 module_list = []
 command_dict = {}
 IMPORT_ERRORS = []
+HOST_MONITOR_MODULES_HEX_CHECKSUMS = {}
+HOST_MONITOR_MODULES_PATH_DICT = {}
+HOST_MONITOR_ALL_MODULES_KEY = "*"
 
 _new_hm_list = []
 for mod_name in __all__:
-    mod_path = os.path.join(os.path.dirname(__file__), "{}.py".format(mod_name))
-    try:
-        with open(mod_path, "rb") as f:
-            sha3_512_digester.update(f.read())
-    except:
-        pass
+    mod_name_full = "{}.py".format(mod_name)
+    mod_path = os.path.join(os.path.dirname(__file__), mod_name_full)
+    HOST_MONITOR_MODULES_PATH_DICT[mod_name_full] = mod_path
 
     try:
         new_mod = importlib.import_module("initat.host_monitoring.modules.{}".format(mod_name))
@@ -60,9 +58,24 @@ for mod_name in __all__:
         for log_line in exc_info.log_lines:
             IMPORT_ERRORS.append((mod_name, "import", log_line))
 
-HOST_MONITOR_MODULES_HEX_CHECKSUM = sha3_512_digester.hexdigest()
+def reload_module_checksums():
+    sha3_512_digester_all = hashlib.new("sha3_512")
 
-del sha3_512_digester
+    for module_name in sorted(HOST_MONITOR_MODULES_PATH_DICT.keys()):
+        mod_path = HOST_MONITOR_MODULES_PATH_DICT[module_name]
+        sha3_512_digester = hashlib.new("sha3_512")
+        try:
+            with open(mod_path, "rb") as f:
+                data = f.read()
+                sha3_512_digester_all.update(data)
+                sha3_512_digester.update(data)
+                HOST_MONITOR_MODULES_HEX_CHECKSUMS[module_name] = sha3_512_digester.hexdigest()
+        except:
+            pass
+
+    HOST_MONITOR_MODULES_HEX_CHECKSUMS[HOST_MONITOR_ALL_MODULES_KEY] = sha3_512_digester_all.hexdigest()
+
+reload_module_checksums()
 
 _new_hm_list.sort(reverse=True, key=lambda x: x[0])
 
