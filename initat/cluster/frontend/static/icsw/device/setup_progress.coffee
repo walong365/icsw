@@ -130,7 +130,10 @@ setup_progress = angular.module(
 
         $timeout(angular.noop)
 
-    $scope.struct.websocket = icswWebSocketService.get_ws("hm_status", ws_handle_func)
+    icswWebSocketService.get_ws("hm_status", ws_handle_func).then(
+        (ws) ->
+            $scope.struct.websocket = ws
+    )
 
     $scope.update_modules = (device) ->
         icswToolsSimpleModalService("WARNING: This process might fail if there is a large mismatch between the local and client version!").then(
