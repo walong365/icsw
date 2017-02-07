@@ -90,7 +90,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             self.add_process(HMInotifyProcess("inotify", busy_loop=True, kill_myself=True), start=True)
         self._show_config()
         self.__debug = self.global_config["DEBUG"]
-        if "hm.access_level" not in self.CC.CS:
+        if "hm.access_class" not in self.CC.CS:
             self.CC.CS["hm.access_class"] = HMAccessClassEnum.level0.value
             self.CC.CS.write()
         from initat.host_monitoring.modules import local_mc
