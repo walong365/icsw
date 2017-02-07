@@ -23,7 +23,7 @@
 """ host-monitoring / relay mixin """
 
 
-from initat.constants import PlatformSystemTypeEnum, PLATFORM_SYSTEM_TYPE
+from initat.constants import PLATFORM_SYSTEM_TYPE
 from .constants import HMAccessClassEnum
 
 

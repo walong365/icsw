@@ -34,7 +34,7 @@ from ..host_monitoring_struct import ExtReturn, SimpleCounter
 from ..long_running_checks import LongRunningCheck
 
 
-class _general(hm_classes.MonitoringModule):
+class ModuleDefinition(hm_classes.MonitoringModule):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0

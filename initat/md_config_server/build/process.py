@@ -27,8 +27,8 @@ from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, mon_contactgroup, network_type, user, \
-    config, config_catalog, mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
-    BackgroundJobState, MonCheckCommandSystemNames, DBStructuredMonBaseConfig
+    config, mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
+    BackgroundJobState, MonCheckCommandSystemNames
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.icinga_log_reader.log_reader import HostServiceIDUtil
 from initat.md_sync_server.mixins import VersionCheckMixin
@@ -701,35 +701,6 @@ class BuildProcess(
             )
         )
         return hbcs_created
-
-    def _get_all_configs(self, ac_filter: object) -> dict:
-        # deprecated
-        print("DEPRECATED")
-        sys.exit(0)
-        meta_devices = {
-            md.device_group.pk: md for md in device.objects.filter(
-                Q(is_meta_device=True)
-            ).prefetch_related(
-                "device_config_set",
-                "device_config_set__config"
-            ).select_related("device_group")
-        }
-        all_configs = {}
-        for cur_dev in device.objects.filter(
-            ac_filter
-        ).select_related(
-            "domain_tree_node"
-        ).prefetch_related(
-            "device_config_set",
-            "device_config_set__config"
-        ):
-            loc_config = [cur_dc.config.name for cur_dc in cur_dev.device_config_set.all()]
-            if cur_dev.device_group_id in meta_devices:
-                loc_config.extend([cur_dc.config.name for cur_dc in meta_devices[cur_dev.device_group_id].device_config_set.all()])
-            all_configs[cur_dev.full_name] = loc_config
-        import pprint
-        pprint.pprint(all_configs)
-        return all_configs
 
     def parenting_run(self, gbc):
         s_time = time.time()

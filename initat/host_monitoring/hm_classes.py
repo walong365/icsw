@@ -104,11 +104,11 @@ class ModuleContainer(object):
                         mod_name
                     )
                 )
-                if hasattr(new_mod, "_general"):
+                if hasattr(new_mod, "ModuleDefinition"):
                     _mod_list.append(new_mod)
                 else:
                     self.log(
-                        "module {} is missing the '_general' object".format(
+                        "module {} is missing the 'ModuleDefinition' object".format(
                             mod_name
                         ),
                         logging_tools.LOG_LEVEL_WARN
@@ -166,19 +166,21 @@ class ModuleContainer(object):
         self.__log_cache = []
 
     def build_structure(self, platform: object=None, access_class: object =None):
-        command_dict = {}
         _init_mod_list = []
         used_uuids = set()
+
+        # step 1: filter modules and create module list
+
         for mod_object in self.__pure_module_list:
             mod_name = mod_object.__name__
-            _general = mod_object._general
+            _mod_def = mod_object.ModuleDefinition
             # salt meta
-            MonitoringModule.salt_meta(_general)
-            if MonitoringModule.verify_meta(_general, platform, access_class):
-                if _general.Meta.uuid in used_uuids:
+            MonitoringModule.salt_meta(_mod_def)
+            if MonitoringModule.verify_meta(_mod_def, platform, access_class):
+                if _mod_def.Meta.uuid in used_uuids:
                     raise ValueError("UUID used twice")
-                used_uuids.add(_general.Meta.uuid)
-                new_hm_mod = _general(mod_name.split(".")[-1], mod_object)
+                used_uuids.add(_mod_def.Meta.uuid)
+                new_hm_mod = _mod_def(mod_name.split(".")[-1], mod_object)
                 # init state flags for correct handling of shutdown (do not call close_module when
                 # init_module was not called)
                 new_hm_mod.module_state = {_name: False for _name, _flag in MODULE_STATE_INIT_LIST}
@@ -187,10 +189,14 @@ class ModuleContainer(object):
                 self.log(
                     "module {} not added because of {}".format(
                         mod_name,
-                        _general.Meta.reject_cause,
+                        _mod_def.Meta.reject_cause,
                     )
                 )
+        command_dict = {}
         module_list = []
+
+        # step 2: iterate over modules and add commands
+
         for mod_object, new_hm_mod, mod_name in sorted(
             _init_mod_list, reverse=True, key=lambda x: x[1].Meta.priority
         ):
@@ -334,7 +340,7 @@ class MMMCBase(object):
         for _attr_name in ["priority", "required_access", "required_platform", "uuid"]:
             if not hasattr(obj.Meta, _attr_name):
                 # set default value
-                setattr(obj.Meta, _attr_name, getattr(cls.Meta, _attr_name))
+                setattr(obj.Meta, _attr_name, getattr(MMMCBase.Meta, _attr_name))
         if not isinstance(obj.Meta.required_platform, list):
             obj.Meta.required_platform = [obj.Meta.required_platform]
 
@@ -425,7 +431,9 @@ class MonitoringModule(MMMCBase):
 
 
 class MonitoringCommand(MMMCBase):
-    info_str = ""
+    class Meta:
+        description = "No description available"
+        with_perfdata = False
 
     def __init__(self, name, **kwargs):
         super(MonitoringCommand, self).__init__()
@@ -433,25 +441,33 @@ class MonitoringCommand(MMMCBase):
         self.name = name
         # argument parser
         self.parser = argparse.ArgumentParser(
-            description="description: {}".format(self.info_str) if self.info_str else "",
+            description="description: {}".format(self.Meta.description) if self.Meta.description else "",
             add_help=False,
             prog="collclient.py --host HOST {}".format(self.name),
         )
         parg_flag = kwargs.get("positional_arguments", False)
         # used to pass commandline arguments to the server
-        self.partial = kwargs.get("partial", False)
-        if parg_flag is not False:
-            if parg_flag is True:
-                # self.parser.add_argument("arguments", nargs="*", help="additional arguments")
-                self.parser.add_argument("arguments", nargs="*", help=kwargs.get("arguments_name", "additional arguments"))
-            elif parg_flag == 1:
-                # self.parser.add_argument("arguments", nargs="+", help="additional arguments")
-                self.parser.add_argument("arguments", nargs="+", help=kwargs.get("arguments_name", "additional arguments"))
-            else:
-                raise ValueError("positional_argument flag not in [1, True, False]")
+        if parg_flag in [True, 1]:
+            self.parser.add_argument(
+                "arguments",
+                nargs="+" if parg_flag == 1 else "*",
+                help=kwargs.get("arguments_name", "additional arguments")
+            )
+        elif parg_flag is not False:
+            raise ValueError("positional_argument flag not in [1, True, False]")
         # monkey patch parsers
         self.parser.exit = self._parser_exit
         self.parser.error = self._parser_error
+
+    @classmethod
+    def salt_meta(cls, obj: object) -> None:
+        # salt baseclass
+        super(MonitoringCommand, cls).salt_meta(obj)
+        # salt monitoringcommand
+        for _attr_name in ["description", "with_perfdata"]:
+            if not hasattr(obj.Meta, _attr_name):
+                # set default value
+                setattr(obj.Meta, _attr_name, getattr(cls.Meta, _attr_name))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if hasattr(self, "module"):
@@ -473,10 +489,7 @@ class MonitoringCommand(MMMCBase):
 
     def handle_commandline(self, arg_list):
         # for arguments use "--" to separate them from the commandline arguments
-        if self.partial:
-            res_ns, unknown = self.parser.parse_known_args(arg_list)
-        else:
-            res_ns, unknown = self.parser.parse_args(arg_list), []
+        res_ns, unknown = self.parser.parse_args(arg_list), []
         if hasattr(res_ns, "arguments"):
             unknown.extend(res_ns.arguments)
         return res_ns, unknown

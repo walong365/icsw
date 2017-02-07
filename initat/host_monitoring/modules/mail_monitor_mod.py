@@ -282,7 +282,7 @@ class MailLogObject(file_object):
         return act_event
 
 
-class _general(hm_classes.MonitoringModule):
+class ModuleDefinition(hm_classes.MonitoringModule):
     class Meta:
         priority = 10
         required_platform = PlatformSystemTypeEnum.ANY

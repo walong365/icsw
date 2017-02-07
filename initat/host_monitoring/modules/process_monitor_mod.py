@@ -295,7 +295,7 @@ class AffinityStruct(object):
             self.log("usage pattern: {}".format(cpu_c.get_usage_str()))
 
 
-class _general(hm_classes.MonitoringModule):
+class ModuleDefinition(hm_classes.MonitoringModule):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0

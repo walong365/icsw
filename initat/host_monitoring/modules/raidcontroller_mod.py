@@ -29,7 +29,7 @@ for _key, _value in COMMAND_DICT.items():
     locals()[_key] = _value
 
 
-class _general(hm_classes.MonitoringModule):
+class ModuleDefinition(hm_classes.MonitoringModule):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0

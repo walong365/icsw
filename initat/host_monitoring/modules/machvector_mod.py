@@ -36,7 +36,7 @@ from ..constants import HMAccessClassEnum
 from ..constants import MACHVECTOR_CS_NAME
 
 
-class _general(hm_classes.MonitoringModule):
+class ModuleDefinition(hm_classes.MonitoringModule):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
