@@ -42,6 +42,7 @@ __all__ = [
 def check_special_commands(log_com):
 
     from initat.cluster.backbone.models import mon_check_command_special
+
     def _check_db_for_mccs(log_com, meta, parent=None):
         try:
             cur_mccs = mon_check_command_special.objects.get(Q(name=meta.database_name))

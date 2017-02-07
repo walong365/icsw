@@ -70,6 +70,11 @@ def show_hm_help(options):
                     "-" * _sep_len,
                 )
             )
+            print(
+                "Icinga Command: {}\n".format(
+                    com.build_icinga_command(),
+                )
+            )
             com.parser.print_help()
             print("\n")
     if options.overview:
@@ -114,6 +119,7 @@ def show_hm_help(options):
                     logging_tools.form_entry(cmd_name, header="Name"),
                     logging_tools.form_entry(cmd.module.name, header="Module name"),
                     logging_tools.form_entry(cmd.Meta.uuid, header="uuid"),
+                    logging_tools.form_entry(cmd.Meta.check_instance.name, header="Server"),
                     logging_tools.form_entry_center(cmd.Meta.required_access.name, header="Access"),
                     logging_tools.form_entry_center(
                         ",".join(
@@ -124,7 +130,7 @@ def show_hm_help(options):
                         header="Platform",
                     ),
                     logging_tools.form_entry_center(
-                        "yes" if cmd.Meta.with_perfdata else "no",
+                        "yes" if cmd.Meta.has_perfdata else "no",
                         header="perfdata",
                     ),
                     logging_tools.form_entry(

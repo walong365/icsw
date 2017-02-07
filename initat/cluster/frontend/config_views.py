@@ -313,7 +313,7 @@ class alter_config(View):
         # excluded monchecks
 
         for mc in mon_check_command.objects.filter(
-            Q(config__in=config_pks) | Q(idx__in=mc_pks)
+            Q(config_rel__in=config_pks) | Q(idx__in=mc_pks)
         ).prefetch_related("exclude_devices"):
             changeset.append(
                 E.mon_check_command_excl(

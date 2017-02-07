@@ -25,7 +25,7 @@ import marshal
 import os
 import pickle
 
-from .constants import HMAccessClassEnum
+from .constants import HMAccessClassEnum, DynamicCheckServer
 from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 from initat.tools import logging_tools, process_tools
 
@@ -44,12 +44,99 @@ def net_to_sys(in_val):
 def sys_to_net(in_val):
     return pickle.dumps(in_val)
 
+
+# some definitions
+
 HM_ALL_MODULES_KEY = "*"
 
 MODULE_STATE_INIT_LIST = [
     ("register_server", True),
     ("init_module", False),
 ]
+
+
+class MCParameters(object):
+    def __init__(self, *args):
+        self.parameters = args
+
+    def feed_parser(self, parser):
+        for para in self.parameters:
+            para.feed_parser(parser)
+
+    def any_args_defined(self):
+        return True if len(self.parameters) else False
+
+    def build_icinga_command(self):
+        return " ".join(
+            [
+                _para.build_icinga_command(index) for index, _para in enumerate(self.parameters, 1)
+            ]
+        )
+
+
+class MCParameter(object):
+    def __init__(self, arg_name, destination, devvar_name, default, description):
+        # for argument parsing (-w, -l, --speed for instance)
+        self.arg_name = arg_name
+        # destination for comandline parsing
+        self.destination = destination
+        # device variable name (or None for nothing)
+        self.devvar_name = devvar_name
+        # default value, can be string, integer or float
+        if default is None:
+            raise ValueError("None not allowed for default")
+        self.default = default
+        # description of parameter
+        self.description = description
+
+    def build_icinga_command(self, index):
+        def _to_string(value):
+            if isinstance(value, float):
+                return "{:.2f}".format(value)
+            elif isinstance(value, int):
+                return "{:d}".format(value)
+            else:
+                return value
+
+        if self.devvar_name:
+            return "{} ${{ARG{:d}:{}:{}}}$".format(
+                self.arg_name,
+                index,
+                self.devvar_name,
+                _to_string(self.default),
+            )
+        elif self.default:
+            return "{} ${{ARG{:d}:{}}}$".format(
+                self.arg_name,
+                index,
+                _to_string(self.default),
+            )
+        else:
+            if self.arg_name:
+                # named argument
+                return "{}".format(
+                    self.arg_name,
+                )
+            else:
+                # unnamed argument
+                return "${{ARG{:d}}}".format(index)
+
+    def feed_parser(self, parser):
+        # add argument to parser
+        if self.arg_name:
+            parser.add_argument(
+                self.arg_name,
+                dest=self.destination,
+                type=type(self.default),
+                help=self.description
+            )
+        else:
+            parser.add_argument(
+                self.destination,
+                nargs="+",
+                type=type(self.default),
+                help=self.description
+            )
 
 
 class ModuleContainer(object):
@@ -433,28 +520,34 @@ class MonitoringModule(MMMCBase):
 class MonitoringCommand(MMMCBase):
     class Meta:
         description = "No description available"
-        with_perfdata = False
+        has_perfdata = False
+        parameters = MCParameters()
+        check_instance = DynamicCheckServer.collrelay
 
     def __init__(self, name, **kwargs):
         super(MonitoringCommand, self).__init__()
         self.__log_cache = []
-        self.name = name
+        self.Meta.name = name
         # argument parser
         self.parser = argparse.ArgumentParser(
             description="description: {}".format(self.Meta.description) if self.Meta.description else "",
             add_help=False,
-            prog="collclient.py --host HOST {}".format(self.name),
+            prog="collclient.py --host HOST {}".format(self.Meta.name),
         )
-        parg_flag = kwargs.get("positional_arguments", False)
-        # used to pass commandline arguments to the server
-        if parg_flag in [True, 1]:
-            self.parser.add_argument(
-                "arguments",
-                nargs="+" if parg_flag == 1 else "*",
-                help=kwargs.get("arguments_name", "additional arguments")
-            )
-        elif parg_flag is not False:
-            raise ValueError("positional_argument flag not in [1, True, False]")
+
+        if self.Meta.parameters.any_args_defined():
+            self.Meta.parameters.feed_parser(self.parser)
+        else:
+            parg_flag = kwargs.get("positional_arguments", False)
+            # used to pass commandline arguments to the server
+            if parg_flag:
+                self.parser.add_argument(
+                    "arguments",
+                    nargs="+",
+                    help=kwargs.get("arguments_name", "additional arguments")
+                )
+            elif parg_flag is not False:
+                raise ValueError("positional_argument flag not in [1, True, False]")
         # monkey patch parsers
         self.parser.exit = self._parser_exit
         self.parser.error = self._parser_error
@@ -464,14 +557,14 @@ class MonitoringCommand(MMMCBase):
         # salt baseclass
         super(MonitoringCommand, cls).salt_meta(obj)
         # salt monitoringcommand
-        for _attr_name in ["description", "with_perfdata"]:
+        for _attr_name in ["description", "has_perfdata", "parameters", "check_instance"]:
             if not hasattr(obj.Meta, _attr_name):
                 # set default value
                 setattr(obj.Meta, _attr_name, getattr(cls.Meta, _attr_name))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if hasattr(self, "module"):
-            self.module.main_proc.log("[{}] {}".format(self.name, what), log_level)
+            self.module.main_proc.log("[{}] {}".format(self.Meta.name, what), log_level)
         else:
             self.__log_cache.append((what, log_level))
 
@@ -493,6 +586,17 @@ class MonitoringCommand(MMMCBase):
         if hasattr(res_ns, "arguments"):
             unknown.extend(res_ns.arguments)
         return res_ns, unknown
+
+    def build_icinga_command(self):
+        if self.Meta.check_instance == DynamicCheckServer.collrelay:
+            _server = "$USER2$"
+        elif self.Meta.check_instance == DynamicCheckServer.snmp_relay:
+            _server = "$USER3$"
+        return "{} -m $HOSTADDRESS$ {} {}".format(
+            _server,
+            self.Meta.name,
+            self.Meta.parameters.build_icinga_command(),
+        ).strip()
 
 
 class MachineVectorEntry(object):

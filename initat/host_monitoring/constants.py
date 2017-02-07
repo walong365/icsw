@@ -47,3 +47,9 @@ class HMAccessClassEnum(Enum):
     level1 = "level1"
     # require level2 (critical, need extra access level)
     level2 = "level2"
+
+
+class DynamicCheckServer(Enum):
+    snmp_relay = "snmp_relay"
+    collrelay = "collrelay"
+    native = "native"

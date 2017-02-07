@@ -250,7 +250,7 @@ class BuildProcess(
                 #    ]
                 # )
                 _dev_added = False
-                for mcc_conf_pk in mc_emitter[host_pk]:  #conf_names:
+                for mcc_conf_pk in mc_emitter[host_pk]:
                     s_check = cur_gc["command"][mcc_conf_pk]
                     # check for special check
                     if s_check.is_special_command:

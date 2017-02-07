@@ -245,7 +245,7 @@ class MainProcess(ICSWBasePool):
 
     def _init_network_sockets(self):
         _log_base = "/var/lib/logging-server"
-        _handle_names = [os.path.join(_log_base, "py_{}".format(_type.value)) for _type in icswLogHandleTypes]
+        _handle_names = [os.path.join(_log_base, _type.value) for _type in icswLogHandleTypes]
         self.__open_handles = [
             io_stream_helper.icswIOStream.zmq_socket_name(h_name) for h_name in _handle_names
         ] + [

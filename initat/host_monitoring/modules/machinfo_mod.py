@@ -1298,11 +1298,15 @@ class df_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "e94ebbd1-509e-4445-a57d-22af5100396c"
+        has_perfdata = True
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-w", "warn", None, 80, "Warning value for disk in percent"),
+            hm_classes.MCParameter("-c", "crit", None, 95, "Critical value for disk in percent"),
+            hm_classes.MCParameter("", "arguments", None, "", "Disk partition")
+        )
 
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
-        self.parser.add_argument("-w", dest="warn", type=float)
-        self.parser.add_argument("-c", dest="crit", type=float)
         self.__disk_lut = partition_tools.disk_lut()
 
     def __call__(self, srv_com, cur_ns):
@@ -1549,11 +1553,12 @@ class vgfree_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "4254aba8-a7cf-4f31-9e82-23651c6be276"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
-        self.parser.add_argument("-w", dest="warn", type=float)
-        self.parser.add_argument("-c", dest="crit", type=float)
+        description = "LogicalVolumeGroup free space information"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-w", "warn", None, 80, "Warning value for VG in percent"),
+            hm_classes.MCParameter("-c", "crit", None, 95, "Critical value for VG in percent"),
+            hm_classes.MCParameter("", "arguments", None, "", "VG name")
+        )
 
     def __call__(self, srv_com, cur_ns):
         if "arguments:arg0" not in srv_com:
@@ -1578,8 +1583,8 @@ class vgfree_command(hm_classes.MonitoringCommand):
         return ret_state, "{} - free percentage is {}% (v_free: {}, v_size: {})".format(
             vg_name,
             v_free_percentage,
-            v_free,
-            v_size
+            logging_tools.get_size_str(v_free),
+            logging_tools.get_size_str(v_size),
         )
 
 
@@ -1588,11 +1593,12 @@ class lvsdatapercent_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "fbfcf26c-b036-4248-a52a-a95637388d1b"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
-        self.parser.add_argument("-w", dest="warn", type=float)
-        self.parser.add_argument("-c", dest="crit", type=float)
+        description = "LogicalVolume free space information"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-w", "warn", None, 80, "Warning value for VG in percent"),
+            hm_classes.MCParameter("-c", "crit", None, 95, "Critical value for VG in percent"),
+            hm_classes.MCParameter("", "arguments", None, "", "LV name"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         if "arguments:arg0" not in srv_com:
@@ -1621,6 +1627,7 @@ class version_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "5eb4ffef-e3cb-44f6-8bf5-8f15baee6fa5"
+        description = "Version information"
 
     def __call__(self, srv_com, cur_ns):
         srv_com["version"] = VERSION_STRING
@@ -1641,6 +1648,7 @@ class get_0mq_id_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "0ff13b8d-ac77-4bf7-9087-f0b5bf41502c"
+        description = "get 0MQ ID"
 
     def __call__(self, srv_com, cur_ns):
         _cs = config_store.ConfigStore(ZMQ_ID_MAP_STORE, log_com=self.log, prefix="bind")
@@ -1662,6 +1670,7 @@ class status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "cc4a3d1c-5908-48d3-8617-41738e4622ee"
+        description = "get current status of system"
 
     def __call__(self, srv_com, cur_ns):
         srv_com["status_str"] = "ok running"
@@ -1682,6 +1691,7 @@ class get_uuid_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "6a628622-0dd2-4307-ae3d-87448bd71251"
+        description = "get UUID of system"
 
     def __call__(self, srv_com, cur_ns):
         srv_com["uuid"] = uuid_tools.get_uuid().urn
@@ -1702,11 +1712,11 @@ class swap_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "fb80134f-95f7-4919-993d-d4e2f526f761"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
-        self.parser.add_argument("-w", dest="warn", type=float)
-        self.parser.add_argument("-c", dest="crit", type=float)
+        description = "show swap usage"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-w", "warn", None, 80, "Warning value for swap in percent"),
+            hm_classes.MCParameter("-c", "crit", None, 95, "Critical value for swap in percent"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         _virt_info, swap_info = self.module._mem_int()
@@ -1755,11 +1765,11 @@ class mem_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "c0a27b98-cdc8-47e5-93f5-6af74179088b"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
-        self.parser.add_argument("-w", dest="warn", type=float)
-        self.parser.add_argument("-c", dest="crit", type=float)
+        description = "show memory usage"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-w", "warn", None, 80, "Warning value for memory in percent"),
+            hm_classes.MCParameter("-c", "crit", None, 95, "Critical value for memory in percent"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         virt_info, swap_info = self.module._mem_int()
@@ -1856,6 +1866,10 @@ class sysinfo_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "a1ab85b9-cdf4-4c7d-a65a-2b88da3d4966"
+        description = "System info"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("", "arguments", None, "", "System root"),
+        )
 
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
@@ -1936,12 +1950,14 @@ class load_command(hm_classes.MonitoringCommand):
         required_access = HMAccessClassEnum.level0
         uuid = "28e496b4-5a37-4246-9a79-226c9914b178"
         description = "load information"
-        with_perfdata = True
+        has_perfdata = True
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-w", "warn", "LOAD_WARNING", 5.0, "Warning value for load check"),
+            hm_classes.MCParameter("-c", "crit", "LOAD_CRITICAL", 5.0, "Critical value for load check"),
+        )
 
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
-        self.parser.add_argument("-w", dest="warn", type=float)
-        self.parser.add_argument("-c", dest="crit", type=float)
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
@@ -1992,8 +2008,7 @@ class uptime_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "50d6b312-b53f-4f52-9f61-bf7b2b6f4a51"
-
-    info_string = "uptime information"
+        description = "Update Information"
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
@@ -2032,8 +2047,7 @@ class date_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "b5aeccec-c409-4d99-a68e-4f0e116b19ee"
-
-    info_string = "return date"
+        description = "get current date"
 
     def __call__(self, srv_com, cur_ns):
         srv_com["local_time"] = int(time.time())
@@ -2086,6 +2100,7 @@ class macinfo_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "723b7643-0701-41e3-87c1-273f75451d2b"
+        description = "Get information about MAC addresses"
 
     def __call__(self, srv_com, cur_ns):
         valid_devs = ["eth", "myri", "ib", "vmnet"]
@@ -2158,9 +2173,10 @@ class umount_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level1
         uuid = "7f2c2820-cd76-4ebf-bfc5-e514c35a44ab"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
+        description = "umount the given partition"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("", "mp", None, "", "Mountpoint")
+        )
 
     def __call__(self, srv_com, cur_ns):
         ignore_list = (srv_com["arguments:rest"].text or "").strip().split()
@@ -2170,7 +2186,15 @@ class umount_command(hm_classes.MonitoringCommand):
         if mount_dict and auto_list:
             for src, m_point in mount_dict.get("nfs", []) + mount_dict.get("nfs4", []) + mount_dict.get("nfs3", []):
                 # mount points must not be in ignore list and have to be below an automount-directory
-                if not (any([m_point.startswith(ignore_part) for ignore_part in ignore_list]) or any([m_point.startswith(a_mpoint) for a_mpoint in auto_list])):
+                if not any(
+                    [
+                        m_point.startswith(ignore_part) for ignore_part in ignore_list
+                    ]
+                ) or any(
+                    [
+                        m_point.startswith(a_mpoint) for a_mpoint in auto_list
+                    ]
+                ):
                     self.log("trying to umount %s (source is %s)" % (m_point, src))
                     um_stat, um_out = subprocess.getstatusoutput("umount %s" % (m_point))
                     cur_umount_node = srv_com.builder("umount_result", m_point, src=src, error="0")
@@ -2189,10 +2213,11 @@ class umount_command(hm_classes.MonitoringCommand):
                     srv_com["umount_list"].append(cur_umount_node)
 
     def interpret(self, srv_com, cur_ns):
-        ok_list, error_list = (srv_com.xpath(".//ns:umount_result[@error='0']", smart_strings=False),
-                               srv_com.xpath(".//ns:umount_result[@error='1']", smart_strings=False))
-        return limits.mon_STATE_CRITICAL if error_list else limits.mon_STATE_OK, \
-            "".join(
+        ok_list, error_list = (
+            srv_com.xpath(".//ns:umount_result[@error='0']", smart_strings=False),
+            srv_com.xpath(".//ns:umount_result[@error='1']", smart_strings=False)
+        )
+        return limits.mon_STATE_CRITICAL if error_list else limits.mon_STATE_OK, "".join(
                 [
                     "tried to unmount %s" % (logging_tools.get_plural("entry", len(ok_list) + len(error_list))),
                     ", ok: %s" % (",".join([ok_node.text for ok_node in ok_list])) if ok_list else "",
@@ -2206,6 +2231,7 @@ class ksminfo_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "ac20873d-36d1-49c2-9d60-6282f9304c23"
+        description = "Show info about KernelSamePages (KSM)"
 
     def __call__(self, srv_com, cur_ns):
         ksm_dir = "/sys/kernel/mm/ksm"
@@ -2251,6 +2277,7 @@ class hugepageinfo_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "ab50d94b-9423-456b-acf4-474132cd59d6"
+        description = "Show info about hugepages (kernel)"
 
     def __call__(self, srv_com, cur_ns):
         hpage_dir = "/sys/kernel/mm/hugepages"
@@ -2296,6 +2323,7 @@ class thugepageinfo_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "25cf62a5-c9da-45b0-9596-92d45a34ae7c"
+        description = "info about transparent hugepages (kernel)"
 
     def __call__(self, srv_com, cur_ns):
         hpage_dir = "/sys/kernel/mm/transparent_hugepage"
@@ -2339,6 +2367,7 @@ class pciinfo_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "cb508240-ae19-4c59-872f-3b0aa110cecc"
+        description = "get PCI list"
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
@@ -2406,6 +2435,7 @@ class cpuflags_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "96cfd17a-6afb-493d-9546-57e60cbd639e"
+        description = "get CPU flags"
 
     def __call__(self, srv_com, cur_ns):
         srv_com["proclines"] = server_command.compress(open("/proc/cpuinfo", "r").read())

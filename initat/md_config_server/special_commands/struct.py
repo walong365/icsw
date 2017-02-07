@@ -23,6 +23,7 @@ import inflection
 from enum import Enum
 
 from initat.tools import logging_tools, process_tools
+from initat.host_monitoring.constants import DynamicCheckServer
 
 
 __all__ = [
@@ -33,11 +34,6 @@ __all__ = [
     "DynamicCheckMode",
     "DynamicCheckResult",
 ]
-
-
-class DynamicCheckServer(Enum):
-    snmp_relay = "snmp_relay"
-    collrelay = "collrelay"
 
 
 class DynamicCheckResultType(Enum):
