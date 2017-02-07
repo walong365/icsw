@@ -75,7 +75,7 @@ class MCParameters(object):
 
 
 class MCParameter(object):
-    def __init__(self, arg_name, destination, devvar_name, default, description):
+    def __init__(self, arg_name, destination, default, description, devvar_name=None):
         # for argument parsing (-w, -l, --speed for instance)
         self.arg_name = arg_name
         # destination for comandline parsing
@@ -98,44 +98,75 @@ class MCParameter(object):
             else:
                 return value
 
+        def _arg_name_str():
+            if isinstance(self.arg_name, str) and len(self.arg_name):
+                return self.arg_name
+            else:
+                return ""
+
+        _r_v = [
+            _arg_name_str()
+        ]
+
         if self.devvar_name:
-            return "{} ${{ARG{:d}:{}:{}}}$".format(
-                self.arg_name,
-                index,
-                self.devvar_name,
-                _to_string(self.default),
+            _r_v.append(
+                "${{ARG{:d}:{}:{}}}$".format(
+                    index,
+                    self.devvar_name,
+                    _to_string(self.default),
+                )
             )
-        elif self.default:
-            return "{} ${{ARG{:d}:{}}}$".format(
-                self.arg_name,
-                index,
-                _to_string(self.default),
+        elif self.default is not None:
+            _r_v.append(
+                "${{ARG{:d}:{}}}$".format(
+                    index,
+                    _to_string(self.default),
+                )
             )
         else:
-            if self.arg_name:
-                # named argument
-                return "{}".format(
-                    self.arg_name,
-                )
-            else:
-                # unnamed argument
-                return "${{ARG{:d}}}".format(index)
+            _r_v.append(
+                "${{ARG{:d}}}".format(index)
+            )
+        return " ".join(_r_v).strip()
 
     def feed_parser(self, parser):
         # add argument to parser
+        _descr = "{} [%(default)s]".format(
+            self.description
+        )
         if self.arg_name:
-            parser.add_argument(
-                self.arg_name,
-                dest=self.destination,
-                type=type(self.default),
-                help=self.description
-            )
+            if isinstance(self.default, bool):
+                if self.default:
+                    parser.add_argument(
+                        self.arg_name,
+                        dest=self.destination,
+                        default=True,
+                        action="store_false",
+                        help=_descr,
+                    )
+                else:
+                    parser.add_argument(
+                        self.arg_name,
+                        dest=self.destination,
+                        default=False,
+                        action="store_true",
+                        help=_descr,
+                    )
+            else:
+                parser.add_argument(
+                    self.arg_name,
+                    default=self.default,
+                    dest=self.destination,
+                    type=type(self.default),
+                    help=_descr,
+                )
         else:
             parser.add_argument(
                 self.destination,
-                nargs="+",
+                default=self.default,
+                nargs="+" if self.arg_name == "" else "*",
                 type=type(self.default),
-                help=self.description
+                help=_descr,
             )
 
 
@@ -523,6 +554,7 @@ class MonitoringCommand(MMMCBase):
         has_perfdata = False
         parameters = MCParameters()
         check_instance = DynamicCheckServer.collrelay
+        create_mon_check_command = True
 
     def __init__(self, name, **kwargs):
         super(MonitoringCommand, self).__init__()
@@ -557,7 +589,10 @@ class MonitoringCommand(MMMCBase):
         # salt baseclass
         super(MonitoringCommand, cls).salt_meta(obj)
         # salt monitoringcommand
-        for _attr_name in ["description", "has_perfdata", "parameters", "check_instance"]:
+        for _attr_name in [
+            "description", "has_perfdata", "parameters", "check_instance",
+            "create_mon_check_command",
+        ]:
             if not hasattr(obj.Meta, _attr_name):
                 # set default value
                 setattr(obj.Meta, _attr_name, getattr(cls.Meta, _attr_name))

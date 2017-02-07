@@ -37,7 +37,7 @@ LOAD_THRESHOLD = 5.0
 INVALIDATE_TIME = 60 * 10
 
 
-class event(object):
+class MailLogEvent(object):
     def __init__(self, year, month, day, time, what):
         self.__year = year
         self.__month = month
@@ -58,7 +58,7 @@ class event(object):
         return self.__what
 
 
-class file_object(object):
+class MailBaseFileObject(object):
     def __init__(self, file_name, **kwargs):
         self.__name = file_name
         self.__fd = None
@@ -113,10 +113,10 @@ class file_object(object):
                 self.__where = self.__fd.tell()
 
 
-class MailLogObject(file_object):
+class MailLogObject(MailBaseFileObject):
     def __init__(self, mod, name="/var/log/mail", **args):
         self.__mod = mod
-        file_object.__init__(self, name, **args)
+        MailBaseFileObject.__init__(self, name, **args)
         self.__act_year = time.localtime()[0]
         self.__client_re = re.compile("^[0-9A-F]+: client=(?P<client>[^\[]+)\[(?P<client_ip>[^\]]+)\].*$")
         self.__relay_re = re.compile("^.*, relay=(?P<relay>[^\[]+)\[(?P<relay_ip>[^\]]+)\]:(?P<relay_port>\d+),.*")
@@ -229,53 +229,53 @@ class MailLogObject(file_object):
             # postfix line
             if sub_prog == "smtp":
                 if act_text.count("status=bounced"):
-                    act_event = event(self.__act_year, act_month, act_day, act_hms_str, "bounced")
+                    act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "bounced")
                 elif act_text.count("status=sent"):
                     r_re = self.__relay_re.match(act_text)
                     if r_re:
                         # print r_re.group("relay"), r_re.group("relay_ip"), r_re.group("relay_port")
                         if r_re.group("relay_ip") == "127.0.0.1":
-                            act_event = event(self.__act_year, act_month, act_day, act_hms_str, "sent.local")
+                            act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "sent.local")
                         else:
-                            act_event = event(self.__act_year, act_month, act_day, act_hms_str, "sent.net")
+                            act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "sent.net")
             elif sub_prog == "local":
                 if act_text.count("status=bounced"):
-                    act_event = event(self.__act_year, act_month, act_day, act_hms_str, "bounced")
+                    act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "bounced")
             elif sub_prog == "smtpd":
                 c_re = self.__client_re.match(act_text)
                 if c_re:
                     if c_re.group("client") == "localhost":
-                        act_event = event(self.__act_year, act_month, act_day, act_hms_str, "received.local")
+                        act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "received.local")
                     else:
-                        act_event = event(self.__act_year, act_month, act_day, act_hms_str, "received.net")
+                        act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "received.net")
                 elif act_text.count("blocked using"):
-                    act_event = event(self.__act_year, act_month, act_day, act_hms_str, "blocked")
+                    act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "blocked")
                 elif act_text.count("disconnect"):
-                    act_event = event(self.__act_year, act_month, act_day, act_hms_str, "connections.stop")
+                    act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "connections.stop")
                 elif act_text.count("connect"):
-                    act_event = event(self.__act_year, act_month, act_day, act_hms_str, "connections.start")
+                    act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "connections.start")
             elif sub_prog == "error":
                 if act_text.count("status=bounced"):
-                    act_event = event(self.__act_year, act_month, act_day, act_hms_str, "bounced")
+                    act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "bounced")
         elif act_prog.startswith("spamd"):
             if act_text.count("identified spam"):
-                act_event = event(self.__act_year, act_month, act_day, act_hms_str, "spam")
+                act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "spam")
         elif act_prog.startswith("smtpgw") or act_prog.startswith("mailgwd"):
             if act_text.count("AV-SCANNED"):
                 # antivirus scan
                 if act_text.lower().count("infected"):
-                    act_event = event(self.__act_year, act_month, act_day, act_hms_str, "virus")
+                    act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "virus")
             elif act_text.count("AS-SCANNED"):
                 # antispam scan
                 if act_text.lower().count("\"spam\""):
-                    act_event = event(self.__act_year, act_month, act_day, act_hms_str, "spam")
+                    act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "spam")
         elif act_prog.startswith("sendmail"):
             if act_text.count("mailer=local"):
-                act_event = event(self.__act_year, act_month, act_day, act_hms_str, "received")
+                act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "received")
             elif act_text.count("mailer=relay"):
-                act_event = event(self.__act_year, act_month, act_day, act_hms_str, "received")
+                act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "received")
             elif act_text.count("stat=Sent"):
-                act_event = event(self.__act_year, act_month, act_day, act_hms_str, "sent")
+                act_event = MailLogEvent(self.__act_year, act_month, act_day, act_hms_str, "sent")
         else:
             # print "***", act_hms_str, act_prog
             pass
@@ -510,17 +510,58 @@ class mailq_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "bac44d08-d498-4a92-9572-4d81c0ccee1a"
+        description = "Show Postfix mailqueue Status"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter(
+                "-w",
+                "warntotal",
+                5,
+                "warning value for total number of mails in queue",
+            ),
 
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name)
-        self.parser.add_argument("-w", dest="warntotal", type=int, help="warning value for total number of mails in queue [%(default)s]", default=5)
-        self.parser.add_argument("-c", dest="crittotal", type=int, help="critical value for total number of mails in queue [%(default)s]", default=10)
-        self.parser.add_argument("-wq", dest="warnqueued", type=int, help="warning value for number of queued mails in queue [%(default)s]", default=5)
-        self.parser.add_argument("-cq", dest="critqueued", type=int, help="critical value for number of queued mails in queue [%(default)s]", default=10)
-        self.parser.add_argument("-wh", dest="warnhold", type=int, help="warning value for number of hold mails in queue [%(default)s]", default=5)
-        self.parser.add_argument("-ch", dest="crithold", type=int, help="critical value for number of hold mails in queue [%(default)s]", default=10)
-        self.parser.add_argument("-wa", dest="warnactive", type=int, help="warning value for number of active mails in queue [%(default)s]", default=5)
-        self.parser.add_argument("-ca", dest="critactive", type=int, help="critical value for number of active mails in queue [%(default)s]", default=10)
+            hm_classes.MCParameter(
+                "-c",
+                "crittotal",
+                10,
+                "critical value for total number of mails in queue",
+            ),
+            hm_classes.MCParameter(
+                "-wq",
+                "warnqueued",
+                5,
+                "warning value for number of queued mails in queue",
+            ),
+            hm_classes.MCParameter(
+                "-cq",
+                "critqueued",
+                10,
+                "critical value for number of queued mails in queue",
+            ),
+            hm_classes.MCParameter(
+                "-wh",
+                "warnhold",
+                5,
+                "warning value for number of hold mails in queue",
+            ),
+            hm_classes.MCParameter(
+                "-ch",
+                "crithold",
+                10,
+                "critical value for number of hold mails in queue",
+            ),
+            hm_classes.MCParameter(
+                "-wa",
+                "warnactive",
+                5,
+                "warning value for number of active mails in queue",
+            ),
+            hm_classes.MCParameter(
+                "-ca",
+                "critactive",
+                10,
+                "critical value for number of active mails in queue",
+            ),
+        )
 
     def __call__(self, srv_com, cur_ns):
         if self.module.mailq_command_valid():
@@ -583,28 +624,28 @@ class mailq_command(hm_classes.MonitoringCommand):
         return ret_state, ", ".join(ret_f)
 
 
-class ext_mailq_commandX(object):  # hm_classes.hmb_command):
-    def __init__(self, **args):
-        # hm_classes.hmb_command.__init__(self, "ext_mailq", **args)
-        self.help_str = "checks the number of mails in a mail queue via the supplied command"
-        self.short_client_info = " -w NUM1 -c NUM2"
-        self.long_client_info = "warning and critical values for the mailsystem"
-        self.short_client_opts = "w:c:"
-
-    def server_call(self, cm):
-        return "ok %s" % (hm_classes.sys_to_net(self.module_info.ext_num_mails(cm)))
-
-    def client_call(self, result, parsed_coms):
-        lim = parsed_coms[0]
-        result = hm_classes.net_to_sys(result[3:])
-        raw_output = lim.get_add_flag("R")
-        ret_str, ret_state = ("OK", limits.mon_STATE_CRITICAL)
-        if not raw_output:
-            ret_state, ret_str = lim.check_ceiling(result["num_mails"])
-            result = "{}: {} in queue, format '{}' via '{}'".format(
-                ret_str,
-                logging_tools.get_plural("mail", result["num_mails"]),
-                result["format"],
-                result["command"]
-            )
-        return ret_state, result
+# class ext_mailq_commandX(object):  # hm_classes.hmb_command):
+#     def __init__(self, **args):
+#         # hm_classes.hmb_command.__init__(self, "ext_mailq", **args)
+#         self.help_str = "checks the number of mails in a mail queue via the supplied command"
+#         self.short_client_info = " -w NUM1 -c NUM2"
+#         self.long_client_info = "warning and critical values for the mailsystem"
+#         self.short_client_opts = "w:c:"
+#
+#     def server_call(self, cm):
+#         return "ok %s" % (hm_classes.sys_to_net(self.module_info.ext_num_mails(cm)))
+#
+#     def client_call(self, result, parsed_coms):
+#         lim = parsed_coms[0]
+#         result = hm_classes.net_to_sys(result[3:])
+#         raw_output = lim.get_add_flag("R")
+#         ret_str, ret_state = ("OK", limits.mon_STATE_CRITICAL)
+#         if not raw_output:
+#             ret_state, ret_str = lim.check_ceiling(result["num_mails"])
+#             result = "{}: {} in queue, format '{}' via '{}'".format(
+#                 ret_str,
+#                 logging_tools.get_plural("mail", result["num_mails"]),
+#                 result["format"],
+#                 result["command"]
+#             )
+#         return ret_state, result

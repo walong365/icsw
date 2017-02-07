@@ -74,12 +74,27 @@ class check_file_command(hm_classes.MonitoringCommand):
         required_access = HMAccessClassEnum.level0
         uuid = "7c70d4c2-f933-4576-86dd-112cb4b6cc1e"
         description = "information about files (size, gid, uid, change dates)"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
-        self.parser.add_argument("--mod", dest="mod_diff_time", type=int)
-        self.parser.add_argument("--size", dest="min_file_size", type=int)
-        self.parser.add_argument("--exclude-checkdate", dest="exclude_checkdate", type=str)
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter(
+                "--min-mod-time",
+                "mod_diff_time",
+                0,
+                "minimum difference in modification time in seconds",
+            ),
+            hm_classes.MCParameter(
+                "--min-size",
+                "min_file_size",
+                0,
+                "minimum file size in Bytes",
+            ),
+            # hm_classes.MCParameter(
+            #    "--exclude-checkdate",
+            #    "exclude_checkdate",
+            #    "",
+            #    "",
+            # ),
+            hm_classes.MCParameter("", "arguments", "", "Mountpoint"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         if "arguments:arg0" not in srv_com:
@@ -112,12 +127,14 @@ class check_file_command(hm_classes.MonitoringCommand):
             file_mtime = file_stat[stat.ST_MTIME]
         add_array = ["size %s" % (logging_tools.get_size_str(file_size))]
         act_time = time.localtime()
-        act_time = (act_time.tm_wday + 1,
-                    act_time.tm_hour,
-                    act_time.tm_min)
+        act_time = (
+            act_time.tm_wday + 1,
+            act_time.tm_hour,
+            act_time.tm_min
+        )
         act_time = act_time[2] + 60 * (act_time[1] + 24 * act_time[0])
         in_exclude_range = False
-        if cur_ns.exclude_checkdate:
+        if False and cur_ns.exclude_checkdate:
             for s_time, e_time in cur_ns.exclude_checkdate:
                 if s_time:
                     s_time = s_time[2] + 60 * (s_time[1] + 24 * s_time[0])
@@ -168,33 +185,41 @@ class call_script_command(hm_classes.MonitoringCommand):
         else:
             script_name = srv_com["arguments:arg0"].text
             args = []
-            while "arguments:arg%d" % (len(args) + 1) in srv_com:
-                args.append(srv_com["arguments:arg%d" % (len(args) + 1)].text)
+            while "arguments:arg{:d}".format(len(args) + 1) in srv_com:
+                args.append(srv_com["arguments:arg{:d}".format(len(args) + 1)].text)
             if os.path.isfile(script_name):
                 if cur_ns.time:
                     cur_ns.use_at = True
-                info_str = "Starting script %s with %s: %s" % (
+                info_str = "Starting script {} with {}: {}".format(
                     script_name,
                     logging_tools.get_plural("argument", len(args)),
-                    " ".join(args))
+                    " ".join(args)
+                )
                 if cur_ns.use_at:
-                    info_str = "%s after %s" % (
+                    info_str = "{} after {}".format(
                         info_str,
-                        logging_tools.get_plural("minute", cur_ns.time))
+                        logging_tools.get_plural("minute", cur_ns.time)
+                    )
                 self.log(info_str)
                 if cur_ns.use_at:
                     c_stat, log_lines = process_tools.submit_at_command(
                         " ".join([script_name] + args),
-                        cur_ns.time)
+                        cur_ns.time
+                    )
                     ipl = "\n".join(log_lines)
                 else:
                     c_stat, ipl = subprocess.getstatusoutput(
-                        " ".join([script_name] + args))
+                        " ".join([script_name] + args)
+                    )
                     log_lines = ipl.split("\n")
-                self.log(" - gave stat %d (%s):" % (c_stat,
-                                                    logging_tools.get_plural("log line", len(log_lines))))
+                self.log(
+                    " - gave stat {:d} ({}):".format(
+                        c_stat,
+                        logging_tools.get_plural("log line", len(log_lines))
+                    )
+                )
                 for line in [s_line.strip() for s_line in log_lines]:
-                    self.log("   - %s" % (line))
+                    self.log("   - {}".format(line))
                 if c_stat:
                     srv_com.set_result(
                         "problem while executing {}: {}".format(script_name, ipl),
@@ -216,10 +241,11 @@ class call_script_command(hm_classes.MonitoringCommand):
 
 class create_dir_command(hm_classes.MonitoringCommand):
     class Meta:
-        required_platform = PlatformSystemTypeEnum.ANY
+        required_platform = PlatformSystemTypeEnum.LINUX
         required_access = HMAccessClassEnum.level2
         uuid = "55f35c53-3fb0-4dda-8264-ced2df694941"
         description = "create new directories"
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         filesys_tools.create_dir(srv_com, self.log)
@@ -227,10 +253,11 @@ class create_dir_command(hm_classes.MonitoringCommand):
 
 class remove_dir_command(hm_classes.MonitoringCommand):
     class Meta:
-        required_platform = PlatformSystemTypeEnum.ANY
+        required_platform = PlatformSystemTypeEnum.LINUX
         required_access = HMAccessClassEnum.level2
         uuid = "e429d019-1822-4f98-8300-109842a6fe75"
         description = "remove directories"
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         filesys_tools.remove_dir(srv_com, self.log)
@@ -238,10 +265,11 @@ class remove_dir_command(hm_classes.MonitoringCommand):
 
 class get_dir_tree_command(hm_classes.MonitoringCommand):
     class Meta:
-        required_platform = PlatformSystemTypeEnum.ANY
+        required_platform = PlatformSystemTypeEnum.LINUX
         required_access = HMAccessClassEnum.level1
         uuid = "03ff9f6a-3e79-4569-b407-b1d193e58845"
         description = "list of directory tree"
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         filesys_tools.get_dir_tree(srv_com, self.log)
@@ -249,10 +277,11 @@ class get_dir_tree_command(hm_classes.MonitoringCommand):
 
 class get_file_content_command(hm_classes.MonitoringCommand):
     class Meta:
-        required_platform = PlatformSystemTypeEnum.ANY
+        required_platform = PlatformSystemTypeEnum.LINUX
         required_access = HMAccessClassEnum.level1
         uuid = "1f1f2993-20ef-4811-b752-a114fab3a75b"
         description = "read/return content of a file"
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         filesys_tools.get_file_content(srv_com, self.log)
@@ -260,10 +289,11 @@ class get_file_content_command(hm_classes.MonitoringCommand):
 
 class set_file_content_command(hm_classes.MonitoringCommand):
     class Meta:
-        required_platform = PlatformSystemTypeEnum.ANY
+        required_platform = PlatformSystemTypeEnum.LINUX
         required_access = HMAccessClassEnum.level2
         uuid = "7694dab7-d77e-48fd-bd96-0cbc0480b484"
         description = "write content to a file"
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         filesys_tools.set_file_content(srv_com, self.log)
@@ -274,10 +304,10 @@ class check_mount_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "4537cc1f-00fa-433c-91ee-797363d12358"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
-        self.parser.add_argument("--type", default="nfs", type=str)
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("--type", "type", "nfs", "Mount Type"),
+            hm_classes.MCParameter("", "arguments", "", "Mountpoint"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         if len(cur_ns.arguments) != 1:
@@ -325,9 +355,9 @@ class check_dir_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "9a3be3b0-d030-4f0c-86b0-9c1b2eadc615"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("", "arguments", "", "Mountpoint"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         if len(cur_ns.arguments) != 1:
@@ -384,6 +414,7 @@ class update_modules_command(hm_classes.MonitoringCommand):
         required_access = HMAccessClassEnum.level2
         uuid = "da051ddb-a316-4db7-b23a-0eb68fdab161"
         description = "update/refresh installed host monitoring modules"
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         if "update_dict" not in srv_com:

@@ -1093,8 +1093,7 @@ class argus_status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "ccc60cfb-ca93-4f05-90be-a145fa85b6d5"
-
-    info_str = "checks argus processes"
+        description = "Check running Argus Process"
 
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name)

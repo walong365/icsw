@@ -380,14 +380,14 @@ class procstat_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "198c1e13-613d-48a5-a8d8-7d4578705bc1"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
-        self.parser.add_argument("-f", dest="filter", action="store_true", default=False)
-        self.parser.add_argument("-w", dest="warn", type=int, default=0)
-        self.parser.add_argument("-c", dest="crit", type=int, default=0)
-        self.parser.add_argument("-Z", dest="zombie", default=False, action="store_true", help="ignore zombie processes")
-        self.parser.add_argument("--cmdre", dest="cmdre", default="", type=str, help="regexp to match against the commandline")
+        description = "Get Information about one or more processes"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-w", "warn", 0, "lower bound of number of processes for warning state"),
+            hm_classes.MCParameter("-c", "crit", 0, "lower bound of number of processes for critical state"),
+            hm_classes.MCParameter("-Z", "zombie", False, "ignore zombie processes"),
+            hm_classes.MCParameter("--cmd-re", "cmdre", ".*", "Regular Expression to match against the commandline"),
+            hm_classes.MCParameter(None, "arguments", ".*", "Process names to search for"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         # s_time = time.time()
@@ -400,12 +400,15 @@ class procstat_command(hm_classes.MonitoringCommand):
         _p_dict = {}
 
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
-            attr_list = ["pid", "ppid", "name", "exe", "cmdline", "status", "ppid", "cpu_affinity"]
+            attr_list = [
+                "pid", "ppid", "name", "exe", "cmdline", "status",
+                "ppid", "cpu_affinity"
+            ]
         elif PLATFORM_SYSTEM_TYPE == PLATFORM_SYSTEM_TYPE.LINUX:
             attr_list = [
-                            "pid", "ppid", "uids", "gids", "name", "exe",
-                            "cmdline", "status", "ppid", "cpu_affinity",
-                        ]
+                "pid", "ppid", "uids", "gids", "name", "exe",
+                "cmdline", "status", "ppid", "cpu_affinity",
+            ]
         else:
             attr_list = ["pid", "name"]
 
@@ -447,7 +450,7 @@ class procstat_command(hm_classes.MonitoringCommand):
                 return limits.mon_STATE_CRITICAL, "cannot decompress: {}".format(process_tools.get_except_info())
             # print result.text
         p_names = cur_ns.arguments
-        zombie_ok_list = ["cron"]
+        zombie_ok_list = {"cron"}
         res_dict = {
             "ok": 0,
             "fail": 0,
@@ -493,7 +496,10 @@ class procstat_command(hm_classes.MonitoringCommand):
                 p_names[0] = "{} instead of {}".format(found_name, p_names[0])
             # print p_names, result
         zombie_dict = {key: len(value) for key, value in zombie_dict.items()}
-        ret_state = max(ret_state, limits.check_floor(res_dict["ok"], cur_ns.warn, cur_ns.crit))
+        ret_state = max(
+            ret_state,
+            limits.check_floor(res_dict["ok"], cur_ns.warn, cur_ns.crit)
+        )
         ret_str = "{} running ({}{}{}{})".format(
             " + ".join(
                 [
@@ -558,12 +564,13 @@ class proclist_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "dead220a-e479-48ad-87cf-1f85ab271aa7"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name)
-        self.parser.add_argument("-t", dest="tree", action="store_true", default=False)
-        self.parser.add_argument("-c", dest="comline", action="store_true", default=False)
-        self.parser.add_argument("-f", dest="filter", action="append", type=str, default=[])
+        create_mon_check_command = False
+        description = "Show Overview of running processes"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-t", "tree", False, "show as tree"),
+            hm_classes.MCParameter("-c", "comline", False, "also show comline"),
+            hm_classes.MCParameter(None, "filter", "", "one or more Regular Expressions")
+        )
 
     def __call__(self, srv_com, cur_ns):
         srv_com["psutil"] = "yes"
@@ -635,9 +642,12 @@ class proclist_command(hm_classes.MonitoringCommand):
             if comline_view:
                 proc_name = " ".join(proc_stuff.get("cmdline")) or proc_name
             proc_stuff["out_name"] = proc_name
-        ret_a = ["found {} matching {}".format(
-            logging_tools.get_plural("process", len(pids)),
-            name_re.pattern)]
+        ret_a = [
+            "found {} matching {}".format(
+                logging_tools.get_plural("process", len(pids)),
+                name_re.pattern
+            )
+        ]
         form_list = logging_tools.NewFormList()
         if tree_view:
             for act_pid in pids:

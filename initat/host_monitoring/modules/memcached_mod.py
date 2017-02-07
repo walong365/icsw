@@ -16,9 +16,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from .. import limits, hm_classes
-from initat.tools import logging_tools, process_tools, server_command
 from initat.constants import PlatformSystemTypeEnum
+from initat.tools import logging_tools, process_tools, server_command
+from .. import limits, hm_classes
 from ..constants import HMAccessClassEnum
 
 try:
@@ -39,11 +39,12 @@ class memcached_status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "1d5cffb3-43ee-436b-9188-d268eb759caf"
-
-    def __init__(self, name):
-        super(memcached_status_command, self).__init__(name, positional_arguments=True)
-        self.parser.add_argument("-w", dest="warn", type=float)
-        self.parser.add_argument("-c", dest="crit", type=float)
+        description = "check memcache status"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-w", "warn", 0.0, "Warning value for memory in percent"),
+            hm_classes.MCParameter("-c", "crit", 0.0, "Critical value for memory in percent"),
+            hm_classes.MCParameter(None, "arguments", "", "List of Memcache servers to query"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         if memcache:
@@ -60,9 +61,17 @@ class memcached_status_command(hm_classes.MonitoringCommand):
                 if mc_stats:
                     srv_com["memcache_stats"] = mc_stats
                 else:
-                    srv_com.set_result("no stats from {}".format(", ".join(target_servers)), server_command.SRV_REPLY_STATE_ERROR)
+                    srv_com.set_result(
+                        "no stats from {}".format(
+                            ", ".join(target_servers)
+                        ),
+                        server_command.SRV_REPLY_STATE_ERROR
+                    )
         else:
-            srv_com.set_result("no memcached module found", server_command.SRV_REPLY_STATE_ERROR)
+            srv_com.set_result(
+                "no memcached module found",
+                server_command.SRV_REPLY_STATE_ERROR
+            )
 
     def interpret(self, srv_com, cur_ns):
         if "memcache_stats" in srv_com:
@@ -84,7 +93,10 @@ class memcached_status_command(hm_classes.MonitoringCommand):
                         cur_perc,
                     )
                 )
-                ret_state = max(ret_state, limits.check_ceiling(cur_perc, cur_ns.warn, cur_ns.crit))
+                ret_state = max(
+                    ret_state,
+                    limits.check_ceiling(cur_perc, cur_ns.warn, cur_ns.crit)
+                )
             return ret_state, ", ".join(out_f)
         else:
             return limits.mon_STATE_CRITICAL, "no stats found"

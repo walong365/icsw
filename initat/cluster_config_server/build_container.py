@@ -449,7 +449,7 @@ class BuildContainer(object):
                             "delete_object": delete_object,
                             "copy_object": copy_object,
                             "link_object": link_object,
-                            "file_object": file_object,
+                            "MailBaseFileObject": file_object,
                             "do_ssh": do_ssh,
                             "do_etc_hosts": do_etc_hosts,
                             "do_hosts_equiv": do_hosts_equiv,

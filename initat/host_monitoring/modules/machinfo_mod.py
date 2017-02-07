@@ -1300,13 +1300,13 @@ class df_command(hm_classes.MonitoringCommand):
         uuid = "e94ebbd1-509e-4445-a57d-22af5100396c"
         has_perfdata = True
         parameters = hm_classes.MCParameters(
-            hm_classes.MCParameter("-w", "warn", None, 80, "Warning value for disk in percent"),
-            hm_classes.MCParameter("-c", "crit", None, 95, "Critical value for disk in percent"),
-            hm_classes.MCParameter("", "arguments", None, "", "Disk partition")
+            hm_classes.MCParameter("-w", "warn", 80, "Warning value for disk in percent"),
+            hm_classes.MCParameter("-c", "crit", 95, "Critical value for disk in percent"),
+            hm_classes.MCParameter("", "arguments", "", "Disk partition")
         )
 
     def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
+        hm_classes.MonitoringCommand.__init__(self, name)
         self.__disk_lut = partition_tools.disk_lut()
 
     def __call__(self, srv_com, cur_ns):
@@ -1555,9 +1555,9 @@ class vgfree_command(hm_classes.MonitoringCommand):
         uuid = "4254aba8-a7cf-4f31-9e82-23651c6be276"
         description = "LogicalVolumeGroup free space information"
         parameters = hm_classes.MCParameters(
-            hm_classes.MCParameter("-w", "warn", None, 80, "Warning value for VG in percent"),
-            hm_classes.MCParameter("-c", "crit", None, 95, "Critical value for VG in percent"),
-            hm_classes.MCParameter("", "arguments", None, "", "VG name")
+            hm_classes.MCParameter("-w", "warn", 80, "Warning value for VG in percent"),
+            hm_classes.MCParameter("-c", "crit", 95, "Critical value for VG in percent"),
+            hm_classes.MCParameter("", "arguments", "", "VG name")
         )
 
     def __call__(self, srv_com, cur_ns):
@@ -1595,9 +1595,9 @@ class lvsdatapercent_command(hm_classes.MonitoringCommand):
         uuid = "fbfcf26c-b036-4248-a52a-a95637388d1b"
         description = "LogicalVolume free space information"
         parameters = hm_classes.MCParameters(
-            hm_classes.MCParameter("-w", "warn", None, 80, "Warning value for VG in percent"),
-            hm_classes.MCParameter("-c", "crit", None, 95, "Critical value for VG in percent"),
-            hm_classes.MCParameter("", "arguments", None, "", "LV name"),
+            hm_classes.MCParameter("-w", "warn", 80, "Warning value for VG in percent"),
+            hm_classes.MCParameter("-c", "crit", 95, "Critical value for VG in percent"),
+            hm_classes.MCParameter("", "arguments", "", "LV name"),
         )
 
     def __call__(self, srv_com, cur_ns):
@@ -1714,8 +1714,8 @@ class swap_command(hm_classes.MonitoringCommand):
         uuid = "fb80134f-95f7-4919-993d-d4e2f526f761"
         description = "show swap usage"
         parameters = hm_classes.MCParameters(
-            hm_classes.MCParameter("-w", "warn", None, 80, "Warning value for swap in percent"),
-            hm_classes.MCParameter("-c", "crit", None, 95, "Critical value for swap in percent"),
+            hm_classes.MCParameter("-w", "warn", 80, "Warning value for swap in percent"),
+            hm_classes.MCParameter("-c", "crit", 95, "Critical value for swap in percent"),
         )
 
     def __call__(self, srv_com, cur_ns):
@@ -1767,8 +1767,8 @@ class mem_command(hm_classes.MonitoringCommand):
         uuid = "c0a27b98-cdc8-47e5-93f5-6af74179088b"
         description = "show memory usage"
         parameters = hm_classes.MCParameters(
-            hm_classes.MCParameter("-w", "warn", None, 80, "Warning value for memory in percent"),
-            hm_classes.MCParameter("-c", "crit", None, 95, "Critical value for memory in percent"),
+            hm_classes.MCParameter("-w", "warn", 80, "Warning value for memory in percent"),
+            hm_classes.MCParameter("-c", "crit", 95, "Critical value for memory in percent"),
         )
 
     def __call__(self, srv_com, cur_ns):
@@ -1868,7 +1868,7 @@ class sysinfo_command(hm_classes.MonitoringCommand):
         uuid = "a1ab85b9-cdf4-4c7d-a65a-2b88da3d4966"
         description = "System info"
         parameters = hm_classes.MCParameters(
-            hm_classes.MCParameter("", "arguments", None, "", "System root"),
+            hm_classes.MCParameter("", "arguments", "", "System root"),
         )
 
     def __init__(self, name):
@@ -1952,8 +1952,20 @@ class load_command(hm_classes.MonitoringCommand):
         description = "load information"
         has_perfdata = True
         parameters = hm_classes.MCParameters(
-            hm_classes.MCParameter("-w", "warn", "LOAD_WARNING", 5.0, "Warning value for load check"),
-            hm_classes.MCParameter("-c", "crit", "LOAD_CRITICAL", 5.0, "Critical value for load check"),
+            hm_classes.MCParameter(
+                "-w",
+                "warn",
+                5.0,
+                "Warning value for load check",
+                devvar_name="LOAD_WARNING"
+            ),
+            hm_classes.MCParameter(
+                "-c",
+                "crit",
+                5.0,
+                "Critical value for load check",
+                devvar_name = "LOAD_CRITICAL",
+            ),
         )
 
     def __init__(self, name):
@@ -2175,7 +2187,7 @@ class umount_command(hm_classes.MonitoringCommand):
         uuid = "7f2c2820-cd76-4ebf-bfc5-e514c35a44ab"
         description = "umount the given partition"
         parameters = hm_classes.MCParameters(
-            hm_classes.MCParameter("", "mp", None, "", "Mountpoint")
+            hm_classes.MCParameter("", "mp", "", "Mountpoint")
         )
 
     def __call__(self, srv_com, cur_ns):
@@ -2432,24 +2444,27 @@ class pciinfo_command(hm_classes.MonitoringCommand):
 
 class cpuflags_command(hm_classes.MonitoringCommand):
     class Meta:
-        required_platform = PlatformSystemTypeEnum.ANY
+        required_platform = PlatformSystemTypeEnum.LINUX
         required_access = HMAccessClassEnum.level0
         uuid = "96cfd17a-6afb-493d-9546-57e60cbd639e"
         description = "get CPU flags"
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         srv_com["proclines"] = server_command.compress(open("/proc/cpuinfo", "r").read())
 
     def interpret(self, srv_com, cur_ns):
         flag_dict = {}
-        for line in server_command.decompress(srv_com["proclines"].text).split("\n"):
+        for line in server_command.decompress(srv_com["*proclines"].encode("utf-8")).decode("utf-8").split("\n"):
             if line.count(":"):
                 key, value = [part.strip() for part in line.split(":", 1)]
                 if key == "processor":
                     cpu_num = int(value)
                 elif key == "flags":
                     flag_dict[cpu_num] = sorted(value.split())
-        ret_lines = ["found %s:" % (logging_tools.get_plural("CPU", len(list(flag_dict.keys()))))]
+        ret_lines = [
+            "found {}:".format(logging_tools.get_plural("CPU", len(list(flag_dict.keys()))))
+        ]
         for cpu_num in sorted(flag_dict.keys()):
             cpu_flags = flag_dict[cpu_num]
             ret_lines.append("CPU %2d: %s" % (cpu_num, logging_tools.get_plural("flag", len(cpu_flags))))

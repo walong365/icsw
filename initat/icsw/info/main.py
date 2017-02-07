@@ -133,6 +133,10 @@ def show_hm_help(options):
                         "yes" if cmd.Meta.has_perfdata else "no",
                         header="perfdata",
                     ),
+                    logging_tools.form_entry_center(
+                        "yes" if cmd.Meta.create_mon_check_command else "no",
+                        header="create MCC",
+                    ),
                     logging_tools.form_entry(
                         cmd.Meta.description,
                         header="description",
