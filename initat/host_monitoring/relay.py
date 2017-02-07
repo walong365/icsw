@@ -33,7 +33,6 @@ from lxml import etree
 from initat.host_monitoring import limits
 from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.host_monitoring.hm_mixins import HMHRMixin
-from initat.host_monitoring.modules.network_mod import ping_command
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, server_command, threading_tools, uuid_tools
 from initat.tools.server_mixins import ICSWBasePool
@@ -102,12 +101,14 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         self.register_exception("hup_error", self._hup_error)
         self.__delayed = []
         self.__local_pings = {}
-        self.__local_ping = ping_command("ping")
-        self.register_timer(self._check_timeout, 2)
-        self.register_func("socket_result", self._socket_result)
-        self.register_func("socket_ping_result", self._socket_ping_result)
+        self.__local_ping = None
         if not self.COM_open(local_mc, global_config["VERBOSE"]):
             self._sigint("error init")
+        else:
+            self.__local_ping = self.local_mc["ping"]
+            self.register_timer(self._check_timeout, 2)
+            self.register_func("socket_result", self._socket_result)
+            self.register_func("socket_ping_result", self._socket_ping_result)
 
     def _sigint(self, err_cause):
         if self["exit_requested"]:

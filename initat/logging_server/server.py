@@ -118,12 +118,14 @@ class ErrorStructure(object):
         _lines = self.error_str[self.__num_logged:].split("\n")
         # never log the last line, this line is either incomplete (\n missing) or empty (\n present)
         for err_line in _lines:
-            _struct["line"] = err_line.rstrip()
-            self.log(
-                base64.b64encode(bz2.compress(json.dumps(_struct).encode("utf-8"))).decode("utf-8"),
-                logging_tools.LOG_LEVEL_ERROR,
-                icswLogHandleTypes.err_py
-            )
+            err_line = err_line.strip()
+            if err_line:
+                _struct["line"] = err_line
+                self.log(
+                    base64.b64encode(bz2.compress(json.dumps(_struct).encode("utf-8"))).decode("utf-8"),
+                    logging_tools.LOG_LEVEL_ERROR,
+                    icswLogHandleTypes.err_py
+                )
         self.__num_logged = len(self.error_str)
 
 

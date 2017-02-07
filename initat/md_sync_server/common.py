@@ -210,7 +210,7 @@ class LiveSocket(object):
                             _len,
                             _entry["type"],
                             _entry["name"],
-                            _entry["description"]
+                            _entry["description"],
                         )
                     )
             table_enum = Enum(
@@ -220,11 +220,14 @@ class LiveSocket(object):
             _enum_list.append((_table, table_enum))
             # print table_enum, len(table_enum), _enum_name_list
         # print(_enum_list)
-        cls.livestatus_enum = Enum(
-            value="LivestatusEnum",
-            names=_enum_list,
-        )
-        e_time = time.time()
+        if len(_enum_list):
+            cls.livestatus_enum = Enum(
+                value="LivestatusEnum",
+                names=_enum_list,
+            )
+            e_time = time.time()
+        else:
+            log_com("num_list is empty, skipping init", logging_tools.LOG_LEVEL_WARN)
         log_com("init_enum took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
 
     @classmethod
