@@ -166,9 +166,11 @@ class ModuleContainer(object):
         self.__log_cache = []
 
     def build_structure(self, platform: object=None, access_class: object =None):
-        command_dict = {}
         _init_mod_list = []
         used_uuids = set()
+
+        # step 1: filter modules and create module list
+
         for mod_object in self.__pure_module_list:
             mod_name = mod_object.__name__
             _general = mod_object._general
@@ -190,7 +192,11 @@ class ModuleContainer(object):
                         _general.Meta.reject_cause,
                     )
                 )
+        command_dict = {}
         module_list = []
+
+        # step 2: iterate over modules and add commands
+
         for mod_object, new_hm_mod, mod_name in sorted(
             _init_mod_list, reverse=True, key=lambda x: x[1].Meta.priority
         ):
@@ -334,7 +340,7 @@ class MMMCBase(object):
         for _attr_name in ["priority", "required_access", "required_platform", "uuid"]:
             if not hasattr(obj.Meta, _attr_name):
                 # set default value
-                setattr(obj.Meta, _attr_name, getattr(cls.Meta, _attr_name))
+                setattr(obj.Meta, _attr_name, getattr(MMMCBase.Meta, _attr_name))
         if not isinstance(obj.Meta.required_platform, list):
             obj.Meta.required_platform = [obj.Meta.required_platform]
 
@@ -425,7 +431,8 @@ class MonitoringModule(MMMCBase):
 
 
 class MonitoringCommand(MMMCBase):
-    info_str = ""
+    class Meta:
+        help_string = ""
 
     def __init__(self, name, **kwargs):
         super(MonitoringCommand, self).__init__()
@@ -433,7 +440,7 @@ class MonitoringCommand(MMMCBase):
         self.name = name
         # argument parser
         self.parser = argparse.ArgumentParser(
-            description="description: {}".format(self.info_str) if self.info_str else "",
+            description="description: {}".format(self.Meta.help_string) if self.Meta.help_string else "",
             add_help=False,
             prog="collclient.py --host HOST {}".format(self.name),
         )
@@ -452,6 +459,16 @@ class MonitoringCommand(MMMCBase):
         # monkey patch parsers
         self.parser.exit = self._parser_exit
         self.parser.error = self._parser_error
+
+    @classmethod
+    def salt_meta(cls, obj: object) -> None:
+        # salt baseclass
+        super(MonitoringCommand, cls).salt_meta(obj)
+        # salt monitoringcommand
+        for _attr_name in ["help_string"]:
+            if not hasattr(obj.Meta, _attr_name):
+                # set default value
+                setattr(obj.Meta, _attr_name, getattr(cls.Meta, _attr_name))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if hasattr(self, "module"):

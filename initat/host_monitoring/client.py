@@ -39,6 +39,7 @@ def ClientCode(global_config):
             print("{} {}".format(logging_tools.get_log_level_str(log_level), what))
 
         local_mc.set_log_command(dummy_log)
+    local_mc.build_structure(None, None)
     conn_str = "tcp://{}:{:d}".format(
         global_config["HOST"],
         global_config["COMMAND_PORT"]
