@@ -45,13 +45,8 @@ if config_store.ConfigStore.exists(VERSION_CS_NAME):
 else:
     VERSION_STRING = "0.0-0"
     if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
-        import subprocess
-        VERSION_STRING = subprocess.check_output(
-            ["nssm.exe", "get", "ICSW_Monitoring_Service", "Description"]
-        )
-        VERSION_STRING = VERSION_STRING.replace(b"\x00", b"").decode().strip()
-        maj, min, release = VERSION_STRING.split(".")
-        VERSION_STRING = "{}.{}-{}".format(maj, min, release)
+        from initat.constants import WINDOWS_HM_VERSION
+        VERSION_STRING = WINDOWS_HM_VERSION
 
     BUILD_TIME = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     BUILD_MACHINE = platform.uname()[1]

@@ -136,3 +136,5 @@ INITAT_BASE_DEBUG = os.path.dirname(__file__)
 
 # meta server directory
 META_SERVER_DIR = "/var/lib/meta-server"
+
+WINDOWS_HM_VERSION = "3.0-7"
