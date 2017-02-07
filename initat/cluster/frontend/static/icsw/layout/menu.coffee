@@ -458,9 +458,10 @@ menu_module = angular.module(
 
             for sg_state in @props.menu.entries
                 menu_entry = sg_state.data
-                if @props.menu.data.limitedTo? and initProduct.name.toLowerCase() != "CORVUS".toLowerCase()
-                    if initProduct.name.toLowerCase() != @props.menu.data.limitedTo.toLowerCase()
-                        continue
+                if (@props.menu.data.limitedTo? and initProduct.name? and
+                    initProduct.name.toLowerCase() != "CORVUS".toLowerCase())
+                        if initProduct.name.toLowerCase() != @props.menu.data.limitedTo.toLowerCase()
+                            continue
                 # if sg_state.data.hidden?
                 #    console.log "***", sg_state.data
                 #    _hidden = sg_state.data.hidden
