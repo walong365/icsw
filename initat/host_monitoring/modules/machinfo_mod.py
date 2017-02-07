@@ -45,7 +45,7 @@ nw_classes = ["ethernet", "network", "infiniband"]
 EXTRA_BLOCK_DEVS = "/etc/sysconfig/host-monitoring.d/extra_block_devs"
 
 
-class _general(hm_classes.MonitoringModule):
+class ModuleDefinition(hm_classes.MonitoringModule):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0

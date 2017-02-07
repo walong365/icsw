@@ -147,7 +147,7 @@ Conf univention-pam (9.0.0-6.268.201604140831 Univention:updates.software-univen
 """
 
 
-class _general(hm_classes.MonitoringModule):
+class ModuleDefinition(hm_classes.MonitoringModule):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0

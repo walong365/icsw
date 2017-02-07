@@ -30,7 +30,7 @@ except ImportError:
     lsm = None
 
 
-class _general(MonitoringModule):
+class ModuleDefinition(MonitoringModule):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0

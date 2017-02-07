@@ -60,7 +60,7 @@ class VPNNetSpeed(object):
             return (0., 0.)
 
 
-class _general(hm_classes.MonitoringModule):
+class ModuleDefinition(hm_classes.MonitoringModule):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0

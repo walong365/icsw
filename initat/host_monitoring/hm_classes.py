@@ -104,11 +104,11 @@ class ModuleContainer(object):
                         mod_name
                     )
                 )
-                if hasattr(new_mod, "_general"):
+                if hasattr(new_mod, "ModuleDefinition"):
                     _mod_list.append(new_mod)
                 else:
                     self.log(
-                        "module {} is missing the '_general' object".format(
+                        "module {} is missing the 'ModuleDefinition' object".format(
                             mod_name
                         ),
                         logging_tools.LOG_LEVEL_WARN
@@ -173,14 +173,14 @@ class ModuleContainer(object):
 
         for mod_object in self.__pure_module_list:
             mod_name = mod_object.__name__
-            _general = mod_object._general
+            _mod_def = mod_object.ModuleDefinition
             # salt meta
-            MonitoringModule.salt_meta(_general)
-            if MonitoringModule.verify_meta(_general, platform, access_class):
-                if _general.Meta.uuid in used_uuids:
+            MonitoringModule.salt_meta(_mod_def)
+            if MonitoringModule.verify_meta(_mod_def, platform, access_class):
+                if _mod_def.Meta.uuid in used_uuids:
                     raise ValueError("UUID used twice")
-                used_uuids.add(_general.Meta.uuid)
-                new_hm_mod = _general(mod_name.split(".")[-1], mod_object)
+                used_uuids.add(_mod_def.Meta.uuid)
+                new_hm_mod = _mod_def(mod_name.split(".")[-1], mod_object)
                 # init state flags for correct handling of shutdown (do not call close_module when
                 # init_module was not called)
                 new_hm_mod.module_state = {_name: False for _name, _flag in MODULE_STATE_INIT_LIST}
@@ -189,7 +189,7 @@ class ModuleContainer(object):
                 self.log(
                     "module {} not added because of {}".format(
                         mod_name,
-                        _general.Meta.reject_cause,
+                        _mod_def.Meta.reject_cause,
                     )
                 )
         command_dict = {}

@@ -351,7 +351,7 @@ class NVidiaGPU(object):
             mv[self.power_key] = self._parse_to_int(tree.findtext(".//power_readings/power_draw"), via_float=True)
 
 
-class _general(hm_classes.MonitoringModule):
+class ModuleDefinition(hm_classes.MonitoringModule):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0

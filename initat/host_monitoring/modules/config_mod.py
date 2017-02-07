@@ -29,7 +29,7 @@ from .. import filesys_tools, limits, hm_classes
 from ..constants import HMAccessClassEnum
 
 
-class _general(hm_classes.MonitoringModule):
+class ModuleDefinition(hm_classes.MonitoringModule):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
