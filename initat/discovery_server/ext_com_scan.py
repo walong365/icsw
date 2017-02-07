@@ -851,19 +851,17 @@ class Dispatcher(object):
             # Happens if "in progress" nmap scan gets deleted via webinterface, simply discard return value and continue
             pass
 
-
     def hostmonitor_status_schedule_handler(self, schedule_item):
         device_pks = ast.literal_eval(schedule_item.schedule_handler_data)
         devices = device.objects.filter(idx__in=device_pks)
         self.discovery_process.get_route_to_devices(devices)
 
-        STATUS_COMMANDS = ["platform", "version", "modules_fingerprint"]
+        status_commands = ["platform", "version", "modules_fingerprint"]
 
         for _device in devices:
             conn_str = "tcp://{}:{:d}".format(_device.target_ip, self.__hm_port)
 
-
-            for command in STATUS_COMMANDS:
+            for command in status_commands:
                 new_srv_com = server_command.srv_command(command=command)
 
                 callback_dict = {
@@ -881,7 +879,6 @@ class Dispatcher(object):
                     conn_str,
                     str(new_srv_com)
                 )
-
 
     @staticmethod
     def hostmonitor_status_schedule_handler_callback(callback_dict, result):
@@ -901,6 +898,60 @@ class Dispatcher(object):
                 callback_dict["result"] = result["checksum"].text
             except Exception as e:
                 _ = e
+
+        propagate_channel_object("hm_status", callback_dict)
+
+    def hostmonitor_update_modules_handler(self, schedule_item):
+        device_pk = int(schedule_item.schedule_handler_data)
+        _device = device.objects.get(idx=device_pk)
+        self.discovery_process.get_route_to_devices([_device])
+
+        from initat.host_monitoring.modules import local_mc
+        import pickle
+        import binascii
+        import bz2
+
+        update_dict = {}
+
+        for module in local_mc.HM_PATH_DICT.keys():
+            path = local_mc.HM_PATH_DICT[module]
+            f = open(path, "rb")
+            data = f.read()
+            f.close()
+
+            update_dict[module] = data
+
+        update_dict_s = pickle.dumps(update_dict)
+        update_dict_s = bz2.compress(update_dict_s)
+        update_dict_s = binascii.b2a_base64(update_dict_s).decode()
+
+        conn_str = "tcp://{}:{:d}".format(_device.target_ip, self.__hm_port)
+        new_srv_com = server_command.srv_command(command="update_modules")
+        new_srv_com["update_dict"] = update_dict_s
+
+        callback_dict = {
+            "device_pk": _device.idx
+        }
+
+        hm_command = HostMonitoringCommand(self.hostmonitor_update_modules_handler_callback,
+                                           callback_dict,
+                                           timeout=30)
+
+        self.discovery_process.send_pool_message(
+            "send_host_monitor_command",
+            hm_command.run_index,
+            conn_str,
+            str(new_srv_com)
+        )
+
+    @staticmethod
+    def hostmonitor_update_modules_handler_callback(callback_dict, result):
+        callback_dict["command"] = "modules_fingerprint"
+        callback_dict["result"] = "N/A"
+        try:
+            callback_dict["result"] = result["new_modules_fingerprint"].text
+        except Exception as e:
+            _ = e
 
         propagate_channel_object("hm_status", callback_dict)
 

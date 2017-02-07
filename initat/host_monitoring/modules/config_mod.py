@@ -378,9 +378,9 @@ class update_modules_command(hm_classes.MonitoringCommand):
         uuid = "da051ddb-a316-4db7-b23a-0eb68fdab161"
 
     def __call__(self, srv_com, cur_ns):
-        if "arguments:arg0" not in srv_com:
+        if "update_dict" not in srv_com:
             srv_com.set_result(
-                "missing argument",
+                "Missing update_dict",
                 server_command.SRV_REPLY_STATE_ERROR,
             )
         else:
@@ -391,7 +391,7 @@ class update_modules_command(hm_classes.MonitoringCommand):
             import binascii
             from threading import Thread
 
-            new_modules_dict = srv_com["arguments:arg0"].text.strip()
+            new_modules_dict = srv_com["update_dict"].text.strip()
             new_modules_dict = binascii.a2b_base64(new_modules_dict)
             new_modules_dict = bz2.decompress(new_modules_dict)
             new_modules_dict = pickle.loads(new_modules_dict)
