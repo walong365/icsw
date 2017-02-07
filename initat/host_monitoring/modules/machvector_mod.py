@@ -176,7 +176,7 @@ class MachineVector(object):
         self.read_config()
         module.main_proc.register_vector_receiver(self._recv_vector)
         # check flags
-        for module in module.main_proc.module_list:
+        for module in module.main_proc.local_mc.module_list:
             if hasattr(module, "set_machine_vector_flags"):
                 if self.__verbosity:
                     self.log("calling set_machine_vector_flags for module '{}'".format(module.name))
@@ -196,7 +196,7 @@ class MachineVector(object):
                 )
             )
         # init MV
-        for module in module.main_proc.module_list:
+        for module in module.main_proc.local_mc.module_list:
             if hasattr(module, "init_machine_vector") and module.enabled:
                 if self.__verbosity:
                     self.log("calling init_machine_vector for module '{}'".format(module.name))
@@ -680,7 +680,7 @@ class MachineVector(object):
         # if esd:
         #    self.check_external_sources(log_t, esd)
         # self.check_for_alert_file_change(log_t)
-        for module in self.module.main_proc.module_list:
+        for module in self.module.main_proc.local_mc.module_list:
             if hasattr(module, "update_machine_vector"):
                 module.update_machine_vector(self)
         self.check_changed()

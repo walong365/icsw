@@ -165,7 +165,7 @@ class ModuleContainer(object):
             self.log(what, level)
         self.__log_cache = []
 
-    def build_structure(self, platform: object=None, access_class:object =None):
+    def build_structure(self, platform: object=None, access_class: object =None):
         command_dict = {}
         _init_mod_list = []
         used_uuids = set()
@@ -174,7 +174,7 @@ class ModuleContainer(object):
             _general = mod_object._general
             # salt meta
             MonitoringModule.salt_meta(_general)
-            if MonitoringModule.check_meta(_general, platform, access_class):
+            if MonitoringModule.verify_meta(_general, platform, access_class):
                 if _general.Meta.uuid in used_uuids:
                     raise ValueError("UUID used twice")
                 used_uuids.add(_general.Meta.uuid)
@@ -208,7 +208,7 @@ class ModuleContainer(object):
                 for loc_com in loc_coms:
                     com_obj = getattr(mod_object, loc_com)
                     MonitoringCommand.salt_meta(com_obj)
-                    if MonitoringCommand.check_meta(com_obj, platform, access_class):
+                    if MonitoringCommand.verify_meta(com_obj, platform, access_class):
                         if com_obj.Meta.uuid in used_uuids:
                             raise ValueError("UUID used twice")
                         used_uuids.add(com_obj.Meta.uuid)
@@ -339,7 +339,10 @@ class MMMCBase(object):
             obj.Meta.required_platform = [obj.Meta.required_platform]
 
     @classmethod
-    def check_meta(cls, obj: object, platform: object, access_class: object) -> bool:
+    def verify_meta(cls, obj: object, platform: object, access_class: object) -> bool:
+        # verifies the Meta class of the given class
+        # - for validity
+        # - if the required access-class and platform is given
         _reject_cause = []
         if platform is not None or access_class is not None:
             meta_platform = obj.Meta.required_platform
