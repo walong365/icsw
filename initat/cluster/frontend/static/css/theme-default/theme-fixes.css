@@ -105,3 +105,8 @@ div.menubuttontext {
 table.rotateheaders {
     background-color: #ffffff;
 }
+/* make inactive tabs darker (background) */
+.uib-tab.nav-item.ng-scope.ng-isolate-scope {
+    background-color: #e4e4e4;
+    border: 1px solid #ffffff;
+}
