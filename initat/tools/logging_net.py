@@ -35,6 +35,8 @@ import zmq
 
 from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 from .logging_tools import LOG_LEVEL_OK, rewrite_log_destination, my_syslog, get_plural, UNIFIED_NAME
+from initat.logging_server.constants import icswLogHandleTypes, ICSW_LOG_BASE
+
 
 CONTEXT_KEY = "__ctx__"
 
@@ -315,7 +317,7 @@ class icswInitFormatter(object):
                             "  {:3d} {}: {}".format(
                                 s_num + 1,
                                 s_key,
-v_dict[s_key]
+                                v_dict[s_key],
                             )
                         )
             # print frame_info, var_list
@@ -329,7 +331,12 @@ class icswInitEmailHandler(ZMQHandler):
         ZMQHandler.__init__(
             self,
             None,
-            destination=rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq")
+            destination=rewrite_log_destination(
+                "uds:{}/{}_zmq".format(
+                    ICSW_LOG_BASE,
+                    icswLogHandleTypes.log_py.value
+                )
+            )
         )
         self.__lens = {
             "name": 1,
@@ -352,7 +359,12 @@ class icswInitHandler(ZMQHandler):
         ZMQHandler.__init__(
             self,
             None,
-            destination=rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq")
+            destination=rewrite_log_destination(
+                "uds:{}/{}_zmq".format(
+                    ICSW_LOG_BASE,
+                    icswLogHandleTypes.log_py.value
+                )
+            )
         )
 
     def emit(self, record):
@@ -369,7 +381,12 @@ class icswInitHandlerUnified(ZMQHandler):
         ZMQHandler.__init__(
             self,
             None,
-            destination=rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq")
+            destination=rewrite_log_destination(
+                "uds:{}/{}_zmq".format(
+                    ICSW_LOG_BASE,
+                    icswLogHandleTypes.log_py.value
+                )
+            )
         )
 
     def emit(self, record):

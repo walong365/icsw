@@ -34,6 +34,7 @@ from lxml import etree
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import image
 from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.logging_server.constants import icswLogHandleTypes, get_log_path
 from initat.tools import logging_tools, process_tools, threading_tools, configfile, config_tools
 
 global_config = configfile.get_global_config("build_image")
@@ -638,7 +639,7 @@ def build_main(opt_ns):
         [
             ("VERBOSE", configfile.bool_c_var(opt_ns.verbose)),
             ("IGNORE_ERRORS", configfile.bool_c_var(opt_ns.ignore_errors)),
-            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+            ("LOG_DESTINATION", configfile.str_c_var(get_log_path(icswLogHandleTypes.log_py))),
             ("LOG_NAME", configfile.str_c_var("build_image")),
             ("BUILDERS", configfile.int_c_var(4)),
             ("OVERRIDE", configfile.bool_c_var(opt_ns.override)),

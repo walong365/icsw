@@ -41,7 +41,7 @@ from initat.icsw.service import clusterid
 from initat.tools import io_stream_helper, logging_tools, mail_tools, process_tools, threading_tools, \
     uuid_tools, logging_functions
 from initat.tools.server_mixins import ICSWBasePool
-from .constants import icswLogHandleTypes
+from .constants import icswLogHandleTypes, ICSW_LOG_BASE
 
 
 class ErrorStructure(object):
@@ -240,12 +240,16 @@ class MainProcess(ICSWBasePool):
                 self.log("removing previous handle {}".format(act_hname))
                 os.unlink(act_hname)
                 any_removed = True
+        for entry in os.listdir(ICSW_LOG_BASE):
+            _path = os.path.join(ICSW_LOG_BASE, entry)
+            self.log("removing stale handle {}".format(_path))
+            os.unlink(_path)
+            any_removed = True
         if any_removed:
             time.sleep(0.5)
 
     def _init_network_sockets(self):
-        _log_base = "/var/lib/logging-server"
-        _handle_names = [os.path.join(_log_base, _type.value) for _type in icswLogHandleTypes]
+        _handle_names = [os.path.join(ICSW_LOG_BASE, _type.value) for _type in icswLogHandleTypes]
         self.__open_handles = [
             io_stream_helper.icswIOStream.zmq_socket_name(h_name) for h_name in _handle_names
         ] + [

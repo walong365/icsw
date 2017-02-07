@@ -23,9 +23,10 @@
 
 import argparse
 
-from initat.tools import io_stream_helper
-from initat.logging_server.constants import icswLogHandleTypes
 import zmq
+
+from initat.logging_server.constants import icswLogHandleTypes, ICSW_LOG_BASE
+from initat.tools import io_stream_helper
 
 
 def main():
@@ -36,7 +37,7 @@ def main():
         "--target",
         type=str,
         default=io_stream_helper.zmq_socket_name(
-            "/var/lib/logging-server/{}".format(icswLogHandleTypes.err_py.value)
+            "{}/{}".format(ICSW_LOG_BASE, icswLogHandleTypes.err_py.value)
         ),
         help="0MQ target [%(default)s]"
     )

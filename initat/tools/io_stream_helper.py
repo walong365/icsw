@@ -24,7 +24,7 @@ import os
 import pickle
 
 import zmq
-from initat.logging_server.constants import icswLogHandleTypes
+from initat.logging_server.constants import icswLogHandleTypes, get_log_path
 
 
 class icswIOStream(object):
@@ -35,7 +35,7 @@ class icswIOStream(object):
         self.__zmq_sock = None
         self.__buffer = ""
         if isinstance(sock_name, icswLogHandleTypes):
-            sock_name = os.path.join("/var/lib/logging-server", sock_name.value)
+            sock_name = get_log_path(sock_name)
         self.__sock_name = self.zmq_socket_name(sock_name, check_ipc_prefix=True)
         if kwargs.get("register_atexit", True):
             atexit.register(self.close)

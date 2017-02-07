@@ -29,3 +29,12 @@ class icswLogHandleTypes(Enum):
     log = "log"
     log_py = "log_py"
     err_py = "err_py"
+
+ICSW_LOG_BASE = "/var/lib/logging-server"
+
+
+def get_log_path(log_type):
+    return "ipc://{}/{}_zmq".format(
+        ICSW_LOG_BASE,
+        log_type.value,
+    )

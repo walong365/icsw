@@ -25,6 +25,7 @@ import sys
 
 import zmq
 
+from initat.logging_server.constants import icswLogHandleTypes, get_log_path
 from initat.tools import logging_tools, process_tools
 
 
@@ -40,7 +41,7 @@ def main():
     zmq_context = zmq.Context()
     log_template = logging_tools.get_logger(
         "syslog_scan",
-        "uds:/var/lib/logging-server/py_log_zmq",
+        get_log_path(icswLogHandleTypes.log_py),
         zmq=True,
         context=zmq_context
     )

@@ -20,17 +20,17 @@
 """ client for logging-server """
 
 
-
 import argparse
 
 from initat.tools import io_stream_helper, logging_tools, threading_tools
+from initat.logging_server.constants import ICSW_LOG_BASE
 
 
 class my_options(argparse.ArgumentParser):
     def __init__(self):
         argparse.ArgumentParser.__init__(self)
         self.add_argument("-L", default=False, dest="use_log_com", action="store_true", help="use log_command instead of io_stream [%(default)s]")
-        self.add_argument("-d", type=str, dest="dst", default="ipc:///var/lib/logging-server/py_log", help="set destination [%(default)s]")
+        self.add_argument("-d", type=str, dest="dst", default="ipc:///{}/log_py".format(ICSW_LOG_BASE), help="set destination [%(default)s]")
         self.add_argument("-t", default=10, type=int, dest="timeout", help="set timeout in seconds [%(default)d]")
         self.add_argument("-m", default=1, type=int, dest="mult", help="set multiplicator for loggstr to stress logging-client [%(default)d]")
         self.add_argument("-n", default=1, type=int, dest="processes", help="set number of concurrent processes to stress logging-client [%(default)d]")

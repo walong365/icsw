@@ -1598,9 +1598,14 @@ except:
 
 def main_code():
     # brand new 0MQ-based code
+    try:
+        from initat.logging_server.constants import icswLogHandleTypes, get_log_path
+        LPATH = get_log_path(icswLogHandleTypes.log_py)
+    except:
+        LPATH = "ipc:///var/lib/logging-server/py_log_zmq"
     global_config.add_config_entries(
         [
-            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+            ("LOG_DESTINATION", configfile.str_c_var("uds:{}".format(LPATH))),
             ("LOG_NAME", configfile.str_c_var("proepilogue")),
             ("MAX_RUN_TIME", configfile.int_c_var(60)),
             ("SEP_LEN", configfile.int_c_var(80)),

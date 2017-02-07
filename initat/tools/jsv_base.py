@@ -22,6 +22,7 @@
 import os
 import sys
 
+from initat.logging_server.constants import icswLogHandleTypes, get_log_path
 from initat.tools import logging_tools
 
 
@@ -53,8 +54,7 @@ class JSVBase(object):
     def __init__(self):
         self.__log_template = logging_tools.get_logger(
             "jsv_{:d}".format(os.getuid()),
-            "uds:/var/lib/logging-server/py_log_zmq",
-            zmq=True,
+            get_log_path(icswLogHandleTypes.log_py),
         )
         self.__state = "initialized"
         self.env = {}

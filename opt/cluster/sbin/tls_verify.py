@@ -20,7 +20,6 @@
 """ small script to verify TLS of openvpn """
 
 
-
 import datetime
 import os
 import sys
@@ -28,6 +27,7 @@ import sys
 import zmq
 
 from initat.tools import logging_tools, process_tools
+from initat.logging_server.constants import icswLogHandleTypes, get_log_path
 
 
 class AllowedStruct(object):
@@ -114,7 +114,7 @@ def main():
     zmq_context = zmq.Context()
     logger = logging_tools.get_logger(
         "openvpn_tls_check",
-        "uds:/var/lib/logging-server/py_log",
+        get_log_path(icswLogHandleTypes.log_py),
         zmq=True,
         context=zmq_context
     )

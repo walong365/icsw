@@ -30,6 +30,7 @@ import time
 
 import zmq
 from initat.tools import logging_tools, sge_license_tools
+from initat.logging_server.constants import icswLogHandleTypes, get_log_path
 
 
 class error(Exception):
@@ -138,7 +139,7 @@ def main():
     zmq_context = zmq.Context()
     log_template = logging_tools.get_logger(
         "loadsensor",
-        "uds:/var/lib/logging-server/py_log",
+        get_log_path(icswLogHandleTypes.log_py),
         init_logger=True,
         zmq=True,
         context=zmq_context,

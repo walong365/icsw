@@ -21,19 +21,18 @@
 
 """ loggers for commandline usage """
 
-
-
 import datetime
 import os
 import sys
 import time
 
 from initat.constants import LOG_ROOT
+from initat.logging_server.constants import icswLogHandleTypes, get_log_path
 from initat.tools import logging_tools
 
 __all__ = [
-    b"get_logger",
-    b"install_global_logger",
+    "get_logger",
+    "install_global_logger",
 ]
 
 
@@ -61,7 +60,7 @@ def get_logger(name, options, **kwargs):
     else:
         return logging_tools.get_logger(
             "icsw_{}".format(name),
-            "uds:/var/lib/logging-server/py_log_zmq",
+            get_log_path(icswLogHandleTypes.log_py),
             zmq=True,
             init_logger=True,
         ).log

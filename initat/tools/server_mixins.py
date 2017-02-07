@@ -30,6 +30,7 @@ from initat.debug import ICSW_DEBUG_MODE, ICSW_DEBUG_LEVEL
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, threading_tools, server_command, \
     configfile, config_store, uuid_tools, logging_functions
+from initat.logging_server.constants import icswLogHandleTypes, get_log_path
 
 MAX_RESEND_COUNTER = 5
 
@@ -205,7 +206,14 @@ class ConfigCheckObject(object):
             if "LOG_DESTINATION" not in global_config:
                 global_config.add_config_entries(
                     [
-                        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+                        (
+                            "LOG_DESTINATION",
+                            configfile.str_c_var(
+                                get_log_path(
+                                    icswLogHandleTypes.log_py
+                                )
+                            )
+                        ),
                     ]
                 )
 
