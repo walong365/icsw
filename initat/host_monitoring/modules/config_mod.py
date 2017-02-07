@@ -73,6 +73,7 @@ class check_file_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "7c70d4c2-f933-4576-86dd-112cb4b6cc1e"
+        description = "information about files (size, gid, uid, change dates)"
 
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
@@ -218,6 +219,7 @@ class create_dir_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level2
         uuid = "55f35c53-3fb0-4dda-8264-ced2df694941"
+        description = "create new directories"
 
     def __call__(self, srv_com, cur_ns):
         filesys_tools.create_dir(srv_com, self.log)
@@ -228,6 +230,7 @@ class remove_dir_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level2
         uuid = "e429d019-1822-4f98-8300-109842a6fe75"
+        description = "remove directories"
 
     def __call__(self, srv_com, cur_ns):
         filesys_tools.remove_dir(srv_com, self.log)
@@ -238,6 +241,7 @@ class get_dir_tree_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level1
         uuid = "03ff9f6a-3e79-4569-b407-b1d193e58845"
+        description = "list of directory tree"
 
     def __call__(self, srv_com, cur_ns):
         filesys_tools.get_dir_tree(srv_com, self.log)
@@ -248,6 +252,7 @@ class get_file_content_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level1
         uuid = "1f1f2993-20ef-4811-b752-a114fab3a75b"
+        description = "read/return content of a file"
 
     def __call__(self, srv_com, cur_ns):
         filesys_tools.get_file_content(srv_com, self.log)
@@ -258,6 +263,7 @@ class set_file_content_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level2
         uuid = "7694dab7-d77e-48fd-bd96-0cbc0480b484"
+        description = "write content to a file"
 
     def __call__(self, srv_com, cur_ns):
         filesys_tools.set_file_content(srv_com, self.log)
@@ -361,6 +367,7 @@ class modules_fingerprint_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "2d9ae7a1-c37b-42ac-829c-eee5a3d84b28"
+        description = "checksum/fingerprint of installed host monitoring modules"
 
     def __call__(self, srv_com, cur_ns):
         from initat.host_monitoring.modules import local_mc
@@ -376,6 +383,7 @@ class update_modules_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level2
         uuid = "da051ddb-a316-4db7-b23a-0eb68fdab161"
+        description = "update/refresh installed host monitoring modules"
 
     def __call__(self, srv_com, cur_ns):
         if "update_dict" not in srv_com:
@@ -430,6 +438,7 @@ class platform_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "7f1499f8-33f0-40e5-8b07-b20f93e09acb"
+        description = "platform type of this host_monitor (LINUX or WINDOWS)"
 
     def __call__(self, srv_com, cur_ns):
         srv_com["platform"] = PLATFORM_SYSTEM_TYPE.value
