@@ -39,7 +39,8 @@ def install_service(service_name, version_string):
     module_path = "\"{}\"".format(os.path.join(os.getcwd(), "Lib\site-packages\initat\host_monitoring\main_windows.py"))
 
     # install service
-    subprocess.check_output([NSSM_BIN, "install", service_name, python_path, module_path], stderr=subprocess.STDOUT)
+    subprocess.check_output([NSSM_BIN, "install", service_name, python_path, "-B", module_path],
+                            stderr=subprocess.STDOUT)
 
     # set various logging settings
     subprocess.check_output([NSSM_BIN, "set", service_name, "AppStdout", os.path.join(os.getcwd(), "log.txt")],
