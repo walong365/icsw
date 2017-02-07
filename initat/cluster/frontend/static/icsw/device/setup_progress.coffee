@@ -133,20 +133,23 @@ setup_progress = angular.module(
     $scope.struct.websocket = icswWebSocketService.get_ws("hm_status", ws_handle_func)
 
     $scope.update_modules = (device) ->
-        device.$$update_modules_disabled = true
-        icswSimpleAjaxCall(
-            {
-                url: ICSW_URLS.DISCOVERY_CREATE_SCHEDULE_ITEM
-                data:
-                    schedule_handler: "hostmonitor_update_modules_handler"
-                    schedule_handler_data: "" + device.idx
-                dataType: "json"
-            }
-        ).then(
-            (result) ->
-                toaster.pop("success", "", "Module update of device '" + device.full_name + "' was successfully scheduled.")
-                if result.discovery_server_state > 0
-                    toaster.pop("warning", "", "Could not contact discovery server.")
+        icswToolsSimpleModalService("WARNING: This process might fail if there is a large mismatch between the local and client version!").then(
+            (ok) ->
+                device.$$update_modules_disabled = true
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.DISCOVERY_CREATE_SCHEDULE_ITEM
+                        data:
+                            schedule_handler: "hostmonitor_update_modules_handler"
+                            schedule_handler_data: "" + device.idx
+                        dataType: "json"
+                    }
+                ).then(
+                    (result) ->
+                        toaster.pop("success", "", "Module update of device '" + device.full_name + "' was successfully scheduled.")
+                        if result.discovery_server_state > 0
+                            toaster.pop("warning", "", "Could not contact discovery server.")
+                )
         )
 
     push_graphing_config = (_yes) ->
