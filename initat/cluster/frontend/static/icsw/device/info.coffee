@@ -210,7 +210,7 @@ angular.module(
                 template_f = []
                 _valid_names = []
                 _disabled_tabs = DeviceOverviewSettings.get_disabled_tabs().split(",")
-                console.log "*", _disabled_tabs
+                # console.log "*", _disabled_tabs
                 for tab in icswDeviceOverviewTabs
                     if tab.with_meta and sub_scope.total_sel
                         _add = true

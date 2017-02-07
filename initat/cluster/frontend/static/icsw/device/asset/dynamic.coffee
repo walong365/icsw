@@ -127,7 +127,10 @@ device_asset_module = angular.module(
             500
         )
 
-    $scope.struct.websocket = icswWebSocketService.get_ws("asset_batch", ws_handle_func)
+    icswWebSocketService.get_ws("asset_batch", ws_handle_func).then(
+        (new_ws) ->
+            $scope.struct.websocket = new_ws
+    )
 
     reload_data = () ->
         idx_list = (idx for idx in Object.keys($scope.struct.asset_batch_lookup_cache) when $scope.struct.asset_batch_lookup_cache[idx].is_finished_processing == true)
