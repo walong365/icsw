@@ -720,9 +720,9 @@ class location_gfx(models.Model):
         if _content is None:
             _entry = os.path.join(settings.ICSW_WEBCACHE, "lgfx", self.uuid)
             if os.path.isfile(_entry):
-                _img = Image.open(open(_entry, "rb"))
+                _img = Image.open(_entry)  # open(_entry, "rb"))
                 _img.thumbnail((24, 24))
-                _content = io.StringIO()
+                _content = io.BytesIO()
                 _img.save(_content, format="JPEG")
                 _content = _content.getvalue()
                 cache.set(self.icon_cache_key, _content)

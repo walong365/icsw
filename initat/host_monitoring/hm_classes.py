@@ -432,7 +432,8 @@ class MonitoringModule(MMMCBase):
 
 class MonitoringCommand(MMMCBase):
     class Meta:
-        help_string = ""
+        description = "No description available"
+        with_perfdata = False
 
     def __init__(self, name, **kwargs):
         super(MonitoringCommand, self).__init__()
@@ -440,22 +441,20 @@ class MonitoringCommand(MMMCBase):
         self.name = name
         # argument parser
         self.parser = argparse.ArgumentParser(
-            description="description: {}".format(self.Meta.help_string) if self.Meta.help_string else "",
+            description="description: {}".format(self.Meta.description) if self.Meta.description else "",
             add_help=False,
             prog="collclient.py --host HOST {}".format(self.name),
         )
         parg_flag = kwargs.get("positional_arguments", False)
         # used to pass commandline arguments to the server
-        self.partial = kwargs.get("partial", False)
-        if parg_flag is not False:
-            if parg_flag is True:
-                # self.parser.add_argument("arguments", nargs="*", help="additional arguments")
-                self.parser.add_argument("arguments", nargs="*", help=kwargs.get("arguments_name", "additional arguments"))
-            elif parg_flag == 1:
-                # self.parser.add_argument("arguments", nargs="+", help="additional arguments")
-                self.parser.add_argument("arguments", nargs="+", help=kwargs.get("arguments_name", "additional arguments"))
-            else:
-                raise ValueError("positional_argument flag not in [1, True, False]")
+        if parg_flag in [True, 1]:
+            self.parser.add_argument(
+                "arguments",
+                nargs="+" if parg_flag == 1 else "*",
+                help=kwargs.get("arguments_name", "additional arguments")
+            )
+        elif parg_flag is not False:
+            raise ValueError("positional_argument flag not in [1, True, False]")
         # monkey patch parsers
         self.parser.exit = self._parser_exit
         self.parser.error = self._parser_error
@@ -465,7 +464,7 @@ class MonitoringCommand(MMMCBase):
         # salt baseclass
         super(MonitoringCommand, cls).salt_meta(obj)
         # salt monitoringcommand
-        for _attr_name in ["help_string"]:
+        for _attr_name in ["description", "with_perfdata"]:
             if not hasattr(obj.Meta, _attr_name):
                 # set default value
                 setattr(obj.Meta, _attr_name, getattr(cls.Meta, _attr_name))
@@ -490,10 +489,7 @@ class MonitoringCommand(MMMCBase):
 
     def handle_commandline(self, arg_list):
         # for arguments use "--" to separate them from the commandline arguments
-        if self.partial:
-            res_ns, unknown = self.parser.parse_known_args(arg_list)
-        else:
-            res_ns, unknown = self.parser.parse_args(arg_list), []
+        res_ns, unknown = self.parser.parse_args(arg_list), []
         if hasattr(res_ns, "arguments"):
             unknown.extend(res_ns.arguments)
         return res_ns, unknown

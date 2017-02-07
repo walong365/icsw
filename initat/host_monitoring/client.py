@@ -57,7 +57,7 @@ def ClientCode(global_config):
         try:
             cur_ns, rest = com_struct.handle_commandline(arg_list)
         except ValueError as what:
-            ret = ExtReturn(limits.mon_STATE_CRITICAL, "error parsing: {}".format(what[1]))
+            ret = ExtReturn(limits.mon_STATE_CRITICAL, "error parsing: {}".format(what.args[1]))
         else:
             # see also struct.py in collrelay
             if hasattr(cur_ns, "arguments"):

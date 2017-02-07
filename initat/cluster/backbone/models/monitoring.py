@@ -332,14 +332,14 @@ class mon_check_command(models.Model):
     uuid = models.CharField(default="", max_length=64, blank=True)
     # parent UUID, value of the UUID this check_command was copied from
     parent_uuid = models.CharField(default="", max_length=64, blank=True)
-    # only unique per config
+    # only unique per config, shown on icinga page
     name = models.CharField(max_length=192)
     # unique name, this name is local to each installation and will be changed
     # on import if necessary
     unique_name = models.CharField(default="", max_length=255)
     # for mon_check_special_command this is empty
     command_line = models.CharField(max_length=765, default="")
-    # description
+    # description, only used for frontend (not for core monitoring)
     description = models.CharField(max_length=512, blank=True)
     # device = models.ForeignKey("backbone.device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)

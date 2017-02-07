@@ -1932,11 +1932,11 @@ class sysinfo_command(hm_classes.MonitoringCommand):
 
 class load_command(hm_classes.MonitoringCommand):
     class Meta:
-        required_platform = PlatformSystemTypeEnum.ANY
+        required_platform = PlatformSystemTypeEnum.LINUX
         required_access = HMAccessClassEnum.level0
         uuid = "28e496b4-5a37-4246-9a79-226c9914b178"
-
-    info_string = "load information"
+        description = "load information"
+        with_perfdata = True
 
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
@@ -1960,9 +1960,15 @@ class load_command(hm_classes.MonitoringCommand):
         max_load = max([load_1, load_5, load_15])
         ret_state = limits.mon_STATE_OK
         if cur_ns.warn is not None:
-            ret_state = max(ret_state, limits.mon_STATE_WARNING if max_load >= cur_ns.warn else limits.mon_STATE_OK)
+            ret_state = max(
+                ret_state,
+                limits.mon_STATE_WARNING if max_load >= cur_ns.warn else limits.mon_STATE_OK
+            )
         if cur_ns.crit is not None:
-            ret_state = max(ret_state, limits.mon_STATE_CRITICAL if max_load >= cur_ns.crit else limits.mon_STATE_OK)
+            ret_state = max(
+                ret_state,
+                limits.mon_STATE_CRITICAL if max_load >= cur_ns.crit else limits.mon_STATE_OK
+            )
         return ret_state, "load (1/5/15): %.2f %.2f %.2f | load1=%.2f load5=%.2f load15=%.2f" % (
             load_1, load_5, load_15,
             load_1, load_5, load_15

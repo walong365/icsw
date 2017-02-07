@@ -54,27 +54,28 @@ def show_hm_help(options):
         )
     )
     valid_names = sorted(local_mc.command_dict.keys())
-    _sep_len = 60
-    for _idx, com_name in enumerate(to_show, 1):
-        com = local_mc.command_dict[com_name]
-        print(
-            "\n{}\n{}\n{}\n".format(
-                "-" * _sep_len,
-                "command {:3d} of {:3d}: {} (module {})".format(
-                    _idx,
-                    len(to_show),
-                    com_name,
-                    com.module.name,
-                ),
-                "-" * _sep_len,
+    if options.detail:
+        _sep_len = 60
+        for _idx, com_name in enumerate(to_show, 1):
+            com = local_mc.command_dict[com_name]
+            print(
+                "\n{}\n{}\n{}\n".format(
+                    "-" * _sep_len,
+                    "command {:3d} of {:3d}: {} (module {})".format(
+                        _idx,
+                        len(to_show),
+                        com_name,
+                        com.module.name,
+                    ),
+                    "-" * _sep_len,
+                )
             )
-        )
-        com.parser.print_help()
-        print("\n")
-    if not options.args or not to_show:
+            com.parser.print_help()
+            print("\n")
+    if options.overview:
         # show module overview
         out_list = logging_tools.NewFormList()
-        for _idx, mod in enumerate(local_mc.module_list):
+        for _idx, mod in enumerate(local_mc.module_list, 1):
             c_names = [name for name in valid_names if local_mc.command_dict[name].module == mod]
             local_valid_names = []
             for com_name in c_names:
@@ -96,7 +97,7 @@ def show_hm_help(options):
                     ),
                     logging_tools.form_entry_right(mod.Meta.priority, header="priority"),
                     logging_tools.form_entry_right(
-                        "yes" if hasattr(mod, "init_machine_vector") else "---",
+                        "yes" if hasattr(mod, "init_machine_vector") else "no",
                         header="MachineVector"
                     ),
                     logging_tools.form_entry_right(len(local_valid_names), header="#coms"),
@@ -104,6 +105,35 @@ def show_hm_help(options):
                 ]
             )
         print("\nModule overview:\n{}".format(str(out_list)))
+        cmd_list = logging_tools.NewFormList()
+        for _idx, cmd_name in enumerate(sorted(local_mc.command_dict.keys()), 1):
+            cmd = local_mc[cmd_name]
+            cmd_list.append(
+                [
+                    logging_tools.form_entry_right(_idx, header="#"),
+                    logging_tools.form_entry(cmd_name, header="Name"),
+                    logging_tools.form_entry(cmd.module.name, header="Module name"),
+                    logging_tools.form_entry(cmd.Meta.uuid, header="uuid"),
+                    logging_tools.form_entry_center(cmd.Meta.required_access.name, header="Access"),
+                    logging_tools.form_entry_center(
+                        ",".join(
+                            [
+                                _platform.name for _platform in cmd.Meta.required_platform
+                                ]
+                        ),
+                        header="Platform",
+                    ),
+                    logging_tools.form_entry_center(
+                        "yes" if cmd.Meta.with_perfdata else "no",
+                        header="perfdata",
+                    ),
+                    logging_tools.form_entry(
+                        cmd.Meta.description,
+                        header="description",
+                    ),
+                ]
+            )
+        print("\nCommand overview:\n{}".format(str(cmd_list)))
 
 
 def show_cs_help(options):
