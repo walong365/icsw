@@ -132,6 +132,9 @@
                     <optional>
                         <attribute name="icon"></attribute>
                     </optional>
+                    <optional>
+                        <attribute name="limitedTo"></attribute>
+                    </optional>
                     <oneOrMore>
                         <element name="routeSubGroup">
                             <attribute name="name"/>

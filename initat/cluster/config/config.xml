@@ -186,6 +186,9 @@
                 <rights>
                     <value>backbone.device.change_connection</value>
                 </rights>
+                <licenses>
+                    <value>netboot</value>
+                </licenses>
                 <description>
                     <infoText language="en">IPMI configuration</infoText>
                 </description>
@@ -274,7 +277,7 @@
             <stateData url="/statushistory" templateUrl="icsw/main/status_history.html"/>
             <icswData pageTitle="Device Availability">
                 <licenses>
-                    <value>reporting</value>
+                    <value>md_config_server</value>
                 </licenses>
                 <dashboardEntry sizeX_int="4" sizeY_int="4"/>
                 <rights>
@@ -445,6 +448,9 @@
                 <rights>
                     <value>backbone.device.assets</value>
                 </rights>
+                <licenses>
+                    <value>asset</value>
+                </licenses>
                 <description>
                     <infoText language="en">Generate asset reports</infoText>
                 </description>
@@ -871,27 +877,26 @@
                 <menuEntry icon="fa-info" routeName="main.monitordynamic" name="Dynamic Monitoring"/>
             </routeSubGroup>
         </menuHeader>
-        <menuHeader name="Status" icon="fa-eye" side="left">
+        <menuHeader name="Status" icon="fa-eye" side="left" limitedTo="NOCTUA">
             <routeSubGroup name="Status" newcol_bool="yes">
-                <menuEntry icon="fa-dashboard" routeName="main.dashboard" name="Dashboard"/>
                 <menuEntry icon="fa-dot-circle-o" routeName="main.livestatus" name="Liveview"/>
                 <menuEntry icon="fa-list" routeName="main.monitorov" name="Availability Overview"/>
                 <menuEntry icon="fa-pie-chart" routeName="main.statushistory" name="Availability Detail"/>
                 <menuEntry icon="fa-line-chart" routeName="main.graph" name="Graphs"/>
                 <menuEntry icon="fa-code-fork" routeName="main.kpievaluation" name="KPI"/>
                 <menuEntry icon="fa-map-marker" routeName="main.monitorlocation" name="Locations"/>
-                <menuEntry icon="fa-book" routeName="main.report" name="Report History"/>
             </routeSubGroup>
         </menuHeader>
-        <menuHeader name="Asset" icon="fa-diamond" side="left">
+        <menuHeader name="Asset" icon="fa-diamond" side="left" limitedTo="NOCTUA">
             <routeSubGroup name="Asset" newcol_bool="yes">
                 <menuEntry icon="fa-reorder" routeName="main.assetstaticoverview" name="Static"/>
                 <menuEntry icon="fa-diamond" routeName="main.assetdynamicoverview" name="Dynamic"/>
                 <menuEntry icon="fa-clock-o" routeName="main.schedasset" name="Select Schedules"/>
+                <menuEntry icon="fa-book" routeName="main.report" name="Report"/>
             </routeSubGroup>
         </menuHeader>
-        <menuHeader name="HPC" icon="fa-cloud" side="left">
-            <routeSubGroup name="HPC" newcol_bool="yes">
+        <menuHeader name="Cluster" icon="fa-cloud" side="left" limitedTo="NESTOR">
+            <routeSubGroup name="Cluster" newcol_bool="yes">
                 <menuEntry icon="fa-rocket" routeName="main.deployboot" name="Boot nodes"/>
                 <menuEntry icon="fa-database" routeName="main.partition" name="Partition overview"/>
                 <menuEntry icon="fa-linux" routeName="main.imagekernel" name="Images and Kernels"/>
@@ -906,7 +911,6 @@
             <routeSubGroup name="Monitoring" newcol_bool="yes">
                 <menuEntry icon="fa-cubes" routeName="main.setupprogress" name="Setup Progress"/>
                 <menuEntry icon="fa-gears" name="Schedule" routeName="main.schedoverviewasset"/>
-                <menuEntry icon="fa-book" routeName="main.report" name="Report"/>
                 <menuEntry icon="fa-code" name="Variables" routeName="main.devvars"/>
                 <menuEntry icon="fa-code-fork" routeName="main.kpisettings" name="KPI"/>
                 <menuEntry icon="fa-wrench" routeName="main.monitorbasics" name="Monitoring"/>
@@ -917,6 +921,7 @@
                 <menuEntry icon="fa-key" routeName="main.syslicenseoverview" name="License"/>
                 <menuEntry icon="fa-check-square" routeName="main.devicesrvconfig" name="Assign System Service"/>
                 <menuEntry icon="fa-history" routeName="main.history" name="Database History"/>
+                <menuEntry icon="fa-book" routeName="main.report" name="Report History"/>
                 <menuEntry icon="fa-bars" routeName="main.statelist" name="Internal State List"/>
                 <menuEntry icon="fa-list" routeName="main.backgroundinfo" name="Background Job Info"/>
                 <menuEntry icon="fa-info" routeName="main.serverinfo" name="Server Information"/>
