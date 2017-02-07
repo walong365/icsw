@@ -362,9 +362,6 @@ class modules_fingerprint_command(hm_classes.MonitoringCommand):
         required_access = HMAccessClassEnum.level0
         uuid = "2d9ae7a1-c37b-42ac-829c-eee5a3d84b28"
 
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
-
     def __call__(self, srv_com, cur_ns):
         from initat.host_monitoring.modules import local_mc
         from initat.host_monitoring.hm_classes import HM_ALL_MODULES_KEY
@@ -379,9 +376,6 @@ class update_modules_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level2
         uuid = "da051ddb-a316-4db7-b23a-0eb68fdab161"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
@@ -440,9 +434,6 @@ class platform_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "7f1499f8-33f0-40e5-8b07-b20f93e09acb"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
         srv_com["platform"] = PLATFORM_SYSTEM_TYPE.value
