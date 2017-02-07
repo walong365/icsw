@@ -240,8 +240,8 @@ class ScanHistory(models.Model):
 class ScheduleItem(models.Model):
     idx = models.AutoField(primary_key=True)
 
-    model_name = models.TextField()
-    object_id = models.IntegerField()
+    model_name = models.TextField(null=True)
+    object_id = models.IntegerField(null=True)
 
     dispatch_setting = models.ForeignKey("backbone.DispatcherSetting", null=True)
     planned_date = models.DateTimeField(default=None, null=True)

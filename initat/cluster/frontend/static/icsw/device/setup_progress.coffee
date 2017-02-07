@@ -41,12 +41,12 @@ setup_progress = angular.module(
     }
 ]).controller("icswSetupProgressCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
+    "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI", "icswWebSocketService"
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",
     "icswDeviceTreeService", "$timeout", "DeviceOverviewService", "icswUserGroupRoleTreeService",
     "icswToolsSimpleModalService", "SetupProgressHelper", "ICSW_SIGNALS", "$rootScope", "toaster"
 (
-    $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
+    $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI, icswWebSocketService
     icswTools, icswSimpleAjaxCall, ICSW_URLS, icswAssetHelperFunctions,
     icswDeviceTreeService, $timeout, DeviceOverviewService, icswUserGroupRoleTreeService,
     icswToolsSimpleModalService, SetupProgressHelper, ICSW_SIGNALS, $rootScope, toaster
@@ -81,9 +81,30 @@ setup_progress = angular.module(
 
         push_graphing_config_device: undefined
 
-        local_hm_module_fingerprint: undefined
-        in_hm_status_view: false
+        local_hm_module_fingerprint: "N/A"
+
+        hm_status_websocket: undefined
     }
+
+    ws_handle_func = (data) ->
+        device = $scope.struct.device_tree.all_lut[data.device_pk]
+        result_type = data.command
+        result = data.result
+
+        if result
+            if result_type == "version"
+                device.$$host_monitor_version = result
+            else if result_type == "platform"
+                device.$$host_monitor_platform = result
+            else if result_type == "modules_fingerprint"
+                device.$$host_monitor_fingerprint = result
+                if $scope.struct.local_hm_module_fingerprint == result
+                    device.$$host_monitor_fingerprint_class = "alert-success"
+                else
+                    device.$$host_monitor_fingerprint_class = "alert-danger"
+            $timeout(angular.noop)
+
+    $scope.struct.websocket = icswWebSocketService.get_ws("hm_status", ws_handle_func)
 
     push_graphing_config = (_yes) ->
         blockUI.start("Please wait...")
@@ -128,14 +149,15 @@ setup_progress = angular.module(
             if not entry.is_meta_device
                 $scope.struct.devices.push(entry)
                 $scope.struct.device_pks.push(entry.idx)
+
+                entry.$$host_monitor_version = "N/A"
+                entry.$$host_monitor_platform = "N/A"
+                entry.$$host_monitor_fingerprint = "N/A"
+                entry.$$host_monitor_fingerprint_class = ""
+
         perform_refresh_for_device_status(false)
         perform_refresh_for_system_status()
-        if $scope.struct.in_hm_status_view
-            perform_refresh_for_hm_status()
 
-
-    perform_refresh_for_hm_status = () ->
-        blockUI.start("Please wait...")
         icswSimpleAjaxCall(
             {
                 url: ICSW_URLS.DISCOVERY_HOST_MONITORING_STATUS_LOADER
@@ -144,23 +166,27 @@ setup_progress = angular.module(
                 dataType: "json"
             }
         ).then(
-            (hm_status_dict) ->
-                $scope.struct.local_hm_module_fingerprint = hm_status_dict[0]["checksum"]
-                for idx in Object.keys(hm_status_dict)
-                    if idx > 0
-                        device = $scope.struct.device_tree.all_lut[idx]
-                        device.$$host_monitor_version = "N/A"
-                        device.$$host_monitor_platform = "N/A"
-                        device.$$host_monitor_fingerprint = "N/A"
-                        device.$$host_monitor_fingerprint_class = hm_status_dict[idx]["checksum_class"]
+            (data) ->
+                $scope.struct.local_hm_module_fingerprint = data.checksum
 
-                        if hm_status_dict[idx]["version"]
-                            device.$$host_monitor_version = hm_status_dict[idx]["version"]
-                        if hm_status_dict[idx]["platform"]
-                            device.$$host_monitor_platform = hm_status_dict[idx]["platform"]
-                        if hm_status_dict[idx]["checksum"]
-                            device.$$host_monitor_fingerprint = hm_status_dict[idx]["checksum"]
-                blockUI.stop()
+                schedule_handler_payload = "["
+                for pk in $scope.struct.device_pks
+                    schedule_handler_payload += pk + ","
+                schedule_handler_payload += "]"
+
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.DISCOVERY_CREATE_SCHEDULE_ITEM
+                        data:
+                            schedule_handler: "hostmonitor_status_schedule_handler"
+                            schedule_handler_data: schedule_handler_payload
+                        dataType: "json"
+                    }
+                ).then(
+                    (result) ->
+                        if result.discovery_server_state > 0
+                            toaster.pop("warning", "", "Could not contact discovery server.")
+                )
         )
 
     perform_refresh_for_device_status = (partial_refresh) ->
@@ -216,9 +242,6 @@ setup_progress = angular.module(
         )
 
     salt_device = (device, tasks) ->
-        device.$$host_monitor_version = "N/A"
-        device.$$host_monitor_platform = "N/A"
-        device.$$host_monitor_fingerprint = "N/A"
         device.$$date_created = moment(device.date).format("YYYY-MM-DD HH:mm:ss")
         if device.creator
             device.$$creator = $scope.struct.ugr_tree.user_lut[device.creator].$$long_name
@@ -381,6 +404,10 @@ setup_progress = angular.module(
     setup_tasks()
 
     $scope.$on("$destroy", () ->
+        if $scope.struct.hm_status_websocket?
+            $scope.struct.hm_status_websocket.close()
+            $scope.struct.hm_status_websocket = undefined
+
         $rootScope.$emit(ICSW_SIGNALS("ICSW_OPEN_SETUP_TASKS_CHANGED"))
         stop_timer()
     )
@@ -432,9 +459,6 @@ setup_progress = angular.module(
                 (_no) ->
                     console.log("no")
             )
-
-    $scope.host_monitoring_status_clicked = () ->
-        perform_refresh_for_hm_status()
 
     $scope.show_device = ($event, dev) ->
         DeviceOverviewService($event, [dev])

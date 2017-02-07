@@ -368,7 +368,7 @@ class modules_fingerprint_command(hm_classes.MonitoringCommand):
     def __call__(self, srv_com, cur_ns):
         from initat.host_monitoring.modules import local_mc
         from initat.host_monitoring.hm_classes import HM_ALL_MODULES_KEY
-        srv_com["checksum"] = local_mc.HOST_MONITOR_MODULES_HEX_CHECKSUMS[HM_ALL_MODULES_KEY]
+        srv_com["checksum"] = local_mc.HM_MODULES_HEX_CHECKSUMS[HM_ALL_MODULES_KEY]
 
     def interpret(self, srv_com, cur_ns):
         return limits.mon_STATE_OK, srv_com["checksum"].text

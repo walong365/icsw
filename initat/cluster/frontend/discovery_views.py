@@ -591,17 +591,22 @@ class ScheduleItemCreator(View):
         from initat.cluster.frontend.helper_functions import contact_server
         from initat.tools import server_command
 
-        model_name = request.POST.get("model_name")
-        object_id = request.POST.get("object_id")
+        model_name = request.POST.get("model_name", None)
+        object_id = request.POST.get("object_id", None)
+        if object_id:
+            object_id = int(object_id)
         schedule_handler = request.POST.get("schedule_handler")
-        schedule_handler_data = request.POST.get("schedule_handler_data")
-        user_id = request.POST.get("user_id")
+        schedule_handler_data = request.POST.get("schedule_handler_data", None)
+        user_id = request.POST.get("user_id", None)
 
-        user_obj = user.objects.get(idx=int(user_id))
+        if user_id:
+            user_obj = user.objects.get(idx=int(user_id))
+        else:
+            user_obj = None
 
         new_schedule_item = ScheduleItem(
             model_name=model_name,
-            object_id=int(object_id),
+            object_id=object_id,
             run_now=True,
             schedule_handler=schedule_handler,
             schedule_handler_data=schedule_handler_data,
@@ -625,29 +630,7 @@ class ScheduleItemCreator(View):
 class HostMonitoringStatusLoader(View):
     @method_decorator(login_required)
     def post(self, request):
-        from initat.cluster.backbone.server_enums import icswServiceEnum
-        from initat.cluster.frontend.helper_functions import contact_server
-        from initat.tools import server_command
         from initat.host_monitoring.modules import local_mc
         from initat.host_monitoring.hm_classes import HM_ALL_MODULES_KEY
 
-        device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
-
-        srv_com = server_command.srv_command(command="get_host_monitoring_info", device_pks=device_pks)
-
-        (result, status) = contact_server(
-            request,
-            icswServiceEnum.discovery_server,
-            srv_com,
-            timeout=len(device_pks) * 10
-        )
-
-        hm_status_dict = server_command.decompress(result.get_element("hm_status_dict")[0].text, json=True)
-        for idx in hm_status_dict.keys():
-            if hm_status_dict[idx]["checksum"] == local_mc.HM_MODULES_HEX_CHECKSUMS[HM_ALL_MODULES_KEY]:
-                hm_status_dict[idx]["checksum_class"] = "alert-success text-center"
-            else:
-                hm_status_dict[idx]["checksum_class"] = "alert-danger text-center"
-        hm_status_dict[0] = {"checksum": local_mc.HM_MODULES_HEX_CHECKSUMS[HM_ALL_MODULES_KEY] }
-
-        return HttpResponse(json.dumps(hm_status_dict))
+        return HttpResponse(json.dumps({"checksum": local_mc.HM_MODULES_HEX_CHECKSUMS[HM_ALL_MODULES_KEY]}))

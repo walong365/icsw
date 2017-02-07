@@ -25,6 +25,7 @@ import datetime
 import time
 import traceback
 import netaddr
+import ast
 
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -43,6 +44,8 @@ from .config import global_config
 from .discovery_struct import ExtCom
 from initat.cluster.backbone.models.asset.dynamic_asset import ASSETTYPE_HM_COMMAND_MAP
 from initat.tools.bgnotify import create_bg_job
+from initat.tools.bgnotify.create import propagate_channel_object
+from initat.constants import PlatformSystemTypeEnum
 
 DEFAULT_NRPE_PORT = 5666
 
@@ -847,6 +850,59 @@ class Dispatcher(object):
         except NmapScan.DoesNotExist:
             # Happens if "in progress" nmap scan gets deleted via webinterface, simply discard return value and continue
             pass
+
+
+    def hostmonitor_status_schedule_handler(self, schedule_item):
+        device_pks = ast.literal_eval(schedule_item.schedule_handler_data)
+        devices = device.objects.filter(idx__in=device_pks)
+        self.discovery_process.get_route_to_devices(devices)
+
+        STATUS_COMMANDS = ["platform", "version", "modules_fingerprint"]
+
+        for _device in devices:
+            conn_str = "tcp://{}:{:d}".format(_device.target_ip, self.__hm_port)
+
+
+            for command in STATUS_COMMANDS:
+                new_srv_com = server_command.srv_command(command=command)
+
+                callback_dict = {
+                    "command": command,
+                    "device_pk": _device.idx
+                }
+
+                hm_command = HostMonitoringCommand(self.hostmonitor_status_schedule_handler_callback,
+                                                   callback_dict,
+                                                   timeout=5)
+
+                self.discovery_process.send_pool_message(
+                    "send_host_monitor_command",
+                    hm_command.run_index,
+                    conn_str,
+                    str(new_srv_com)
+                )
+
+
+    @staticmethod
+    def hostmonitor_status_schedule_handler_callback(callback_dict, result):
+        callback_dict["result"] = None
+        if callback_dict["command"] == "platform":
+            try:
+                callback_dict["result"] = PlatformSystemTypeEnum(int(result["platform"].text)).name
+            except Exception as e:
+                _ = e
+        elif callback_dict["command"] == "version":
+            try:
+                callback_dict["result"] = result["version"].text
+            except Exception as e:
+                _ = e
+        elif callback_dict["command"] == "modules_fingerprint":
+            try:
+                callback_dict["result"] = result["checksum"].text
+            except Exception as e:
+                _ = e
+
+        propagate_channel_object("hm_status", callback_dict)
 
     @staticmethod
     def handle_hm_result(run_index, srv_result):
