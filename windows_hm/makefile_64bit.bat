@@ -35,6 +35,7 @@ MKDIR .\host_monitor_windows\Lib\site-packages\initat\icsw
 MKDIR .\host_monitor_windows\Lib\site-packages\opt
 XCOPY ..\initat\icsw .\host_monitor_windows\Lib\site-packages\initat\icsw\ /E
 XCOPY ..\initat\host_monitoring .\host_monitor_windows\Lib\site-packages\initat\host_monitoring\ /E
+XCOPY ..\initat\logging_server .\host_monitor_windows\Lib\site-packages\initat\logging_server\ /E
 XCOPY ..\initat\tools .\host_monitor_windows\Lib\site-packages\initat\tools\ /E
 XCOPY ..\initat\*.py .\host_monitor_windows\Lib\site-packages\initat\
 XCOPY ..\opt .\host_monitor_windows\Lib\site-packages\opt /E

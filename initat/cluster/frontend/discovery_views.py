@@ -632,5 +632,13 @@ class HostMonitoringStatusLoader(View):
     def post(self, request):
         from initat.host_monitoring.modules import local_mc
         from initat.host_monitoring.hm_classes import HM_ALL_MODULES_KEY
+        from initat.constants import WINDOWS_HM_VERSION
+        from initat.tools.icsw_version_readout import VERSION_STRING
 
-        return HttpResponse(json.dumps({"checksum": local_mc.HM_MODULES_HEX_CHECKSUMS[HM_ALL_MODULES_KEY]}))
+        result_dict = {
+            "checksum": local_mc.HM_MODULES_HEX_CHECKSUMS[HM_ALL_MODULES_KEY],
+            "linux_version": VERSION_STRING,
+            "windows_version": WINDOWS_HM_VERSION
+        }
+
+        return HttpResponse(json.dumps(result_dict))

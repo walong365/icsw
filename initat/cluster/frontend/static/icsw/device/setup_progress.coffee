@@ -82,6 +82,8 @@ setup_progress = angular.module(
         push_graphing_config_device: undefined
 
         local_hm_module_fingerprint: "N/A"
+        local_linux_version: "N/A"
+        local_windows_version: "N/A"
 
         hm_status_websocket: undefined
     }
@@ -94,6 +96,11 @@ setup_progress = angular.module(
         if result
             if result_type == "version"
                 device.$$host_monitor_version = result
+                if result == $scope.struct.local_linux_version || result == $scope.struct.local_windows_version
+                    device.$$host_monitor_version_class = "alert-success"
+                else
+                    device.$$host_monitor_version_class = "alert-danger"
+
             else if result_type == "platform"
                 device.$$host_monitor_platform = result
             else if result_type == "modules_fingerprint"
@@ -102,7 +109,26 @@ setup_progress = angular.module(
                     device.$$host_monitor_fingerprint_class = "alert-success"
                 else
                     device.$$host_monitor_fingerprint_class = "alert-danger"
-            $timeout(angular.noop)
+
+
+        if device.$$host_monitor_version != "N/A" && device.$$host_monitor_platform != "N/A" && device.$$host_monitor_fingerprint != "N/A"
+            maj_device = parseInt(device.$$host_monitor_version.split(".")[0])
+            min_device = parseInt(device.$$host_monitor_version.split(".")[1].split("-")[0])
+            rel_device = parseInt(device.$$host_monitor_version.split(".")[1].split("-")[1])
+
+            if device.$$host_monitor_platform == "WINDOWS"
+                version_str = $scope.struct.local_windows_version
+            else if device.$$host_monitor_platform == "LINUX"
+                version_str = $scope.struct.local_linux_version
+
+            maj_local = parseInt(version_str.split(".")[0])
+            min_local = parseInt(version_str.split(".")[1].split("-")[0])
+            rel_local = parseInt(version_str.split(".")[1].split("-")[1])
+
+            if maj_local >= maj_device && min_local >= min_device && rel_local >= rel_device && $scope.struct.local_hm_module_fingerprint != device.$$host_monitor_fingerprint
+                device.$$update_modules_disabled = false
+
+        $timeout(angular.noop)
 
     $scope.struct.websocket = icswWebSocketService.get_ws("hm_status", ws_handle_func)
 
@@ -151,9 +177,11 @@ setup_progress = angular.module(
                 $scope.struct.device_pks.push(entry.idx)
 
                 entry.$$host_monitor_version = "N/A"
+                entry.$$host_monitor_version_class = ""
                 entry.$$host_monitor_platform = "N/A"
                 entry.$$host_monitor_fingerprint = "N/A"
                 entry.$$host_monitor_fingerprint_class = ""
+                entry.$$update_modules_disabled = true
 
         perform_refresh_for_device_status(false)
         perform_refresh_for_system_status()
@@ -168,6 +196,8 @@ setup_progress = angular.module(
         ).then(
             (data) ->
                 $scope.struct.local_hm_module_fingerprint = data.checksum
+                $scope.struct.local_linux_version = data.linux_version
+                $scope.struct.local_windows_version = data.windows_version
 
                 schedule_handler_payload = "["
                 for pk in $scope.struct.device_pks

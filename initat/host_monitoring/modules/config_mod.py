@@ -378,48 +378,44 @@ class update_modules_command(hm_classes.MonitoringCommand):
         uuid = "da051ddb-a316-4db7-b23a-0eb68fdab161"
 
     def __call__(self, srv_com, cur_ns):
-        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
-            if "arguments:arg0" not in srv_com:
-                srv_com.set_result(
-                    "missing argument",
-                    server_command.SRV_REPLY_STATE_ERROR,
-                )
-            else:
-                from initat.host_monitoring.modules import HOST_MONITOR_MODULES_PATH_DICT, HOST_MONITOR_ALL_MODULES_KEY
-                from initat.host_monitoring.modules import HOST_MONITOR_MODULES_HEX_CHECKSUMS
-                from initat.host_monitoring.modules import reload_module_checksums
-                import pickle
-                import bz2
-                import binascii
-                from threading import Thread
-
-                new_modules_dict = srv_com["arguments:arg0"].text.strip()
-                new_modules_dict = binascii.a2b_base64(new_modules_dict)
-                new_modules_dict = bz2.decompress(new_modules_dict)
-                new_modules_dict = pickle.loads(new_modules_dict)
-
-                modules_updated = 0
-
-                for module_name in new_modules_dict.keys():
-                    f = open(HOST_MONITOR_MODULES_PATH_DICT[module_name], "wb")
-                    f.write(new_modules_dict[module_name])
-                    f.close()
-
-                    modules_updated += 1
-
-                reload_module_checksums()
-
-                srv_com["update_result"] = "{} modules updated".format(modules_updated)
-                srv_com["new_modules_fingerprint"] = HOST_MONITOR_MODULES_HEX_CHECKSUMS[HOST_MONITOR_ALL_MODULES_KEY]
-
-                def killme():
-                    time.sleep(1)
-                    os._exit(1)
-
-                t = Thread(target=killme)
-                t.start()
+        if "arguments:arg0" not in srv_com:
+            srv_com.set_result(
+                "missing argument",
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
         else:
-            srv_com["update_result"] = "update_modules command disabled"
+            from initat.host_monitoring.modules import local_mc
+            from initat.host_monitoring.hm_classes import HM_ALL_MODULES_KEY
+            import pickle
+            import bz2
+            import binascii
+            from threading import Thread
+
+            new_modules_dict = srv_com["arguments:arg0"].text.strip()
+            new_modules_dict = binascii.a2b_base64(new_modules_dict)
+            new_modules_dict = bz2.decompress(new_modules_dict)
+            new_modules_dict = pickle.loads(new_modules_dict)
+
+            modules_updated = 0
+
+            for module_name in new_modules_dict.keys():
+                f = open(local_mc.HM_PATH_DICT[module_name], "wb")
+                f.write(new_modules_dict[module_name])
+                f.close()
+
+                modules_updated += 1
+
+            local_mc.reload_module_checksum()
+
+            srv_com["update_result"] = "{} modules updated".format(modules_updated)
+            srv_com["new_modules_fingerprint"] = local_mc.HM_MODULES_HEX_CHECKSUMS[HM_ALL_MODULES_KEY]
+
+            def killme():
+                time.sleep(1)
+                os._exit(1)
+
+            t = Thread(target=killme)
+            t.start()
 
     def interpret(self, srv_com, cur_ns):
         if "new_modules_fingerprint" in srv_com:

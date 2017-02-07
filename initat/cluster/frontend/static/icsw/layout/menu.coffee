@@ -355,10 +355,12 @@ menu_module = angular.module(
     "icswAccessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
     "icswMenuProgressService", "$state", "icswRouteHelper", "icswTools",
     "icswUserService", "icswOverallStyle", "icswLanguageTool", "icswMenuSettings",
+    "initProduct",
 (
     icswAccessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
     icswMenuProgressService, $state, icswRouteHelper, icswTools,
     icswUserService, icswOverallStyle, icswLanguageTool, icswMenuSettings,
+    initProduct
 ) ->
     {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
 
@@ -453,8 +455,13 @@ menu_module = angular.module(
             _items = []
             if overall_style != "condensed"
                 _ul_break_keys = []
+
             for sg_state in @props.menu.entries
                 menu_entry = sg_state.data
+                if (@props.menu.data.limitedTo? and initProduct.name? and
+                    initProduct.name.toLowerCase() != "CORVUS".toLowerCase())
+                        if initProduct.name.toLowerCase() != @props.menu.data.limitedTo.toLowerCase()
+                            continue
                 # if sg_state.data.hidden?
                 #    console.log "***", sg_state.data
                 #    _hidden = sg_state.data.hidden
@@ -487,6 +494,7 @@ menu_module = angular.module(
                     _key = menu_entry.$$menu_key
                     # if data.$$menuEntry.isHidden? and data.$$menuEntry.isHidden
                     #     continue
+
                     if data.$$allowed or true
                         if not _head_added
                             # only add head when first entry is added
