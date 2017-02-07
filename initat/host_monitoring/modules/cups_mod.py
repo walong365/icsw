@@ -37,6 +37,7 @@ class cups_status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "48e18be1-c860-4368-b415-b7d6f9a2d4cd"
+        description = "various status information about printers"
 
     def __call__(self, srv_com, cur_ns):
         lp_stat, lp_out = subprocess.getstatusoutput("lpstat -p")
