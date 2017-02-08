@@ -15,12 +15,11 @@ bin\7z -o.\tmp\zero x WinPython-32bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH
 :: install missing/needed modules
 MOVE .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR% .\host_monitor_windows
 .\host_monitor_windows\python.exe -m pip install --upgrade pip
-.\host_monitor_windows\python.exe -m pip install lxml
-.\host_monitor_windows\python.exe -m pip install python-memcached
-.\host_monitor_windows\python.exe -m pip install netifaces
-.\host_monitor_windows\python.exe -m pip install setproctitle
-.\host_monitor_windows\python.exe -m pip install zmq
-.\host_monitor_windows\python.exe -m pip install psutil
+.\host_monitor_windows\python.exe -m pip install lxml==3.7.2
+.\host_monitor_windows\python.exe -m pip install netifaces==0.10.4
+.\host_monitor_windows\python.exe -m pip install setproctitle==1.1.10
+.\host_monitor_windows\python.exe -m pip install pyzmq==16.0.2
+.\host_monitor_windows\python.exe -m pip install psutil==5.1.3
 .\host_monitor_windows\python.exe -m pip install wmi
 .\host_monitor_windows\python.exe -m pip install pypiwin32
 
@@ -48,6 +47,8 @@ RMDIR /s /q .\host_monitor_windows\Doc
 XCOPY .\bin\win32\nssm.exe .\host_monitor_windows\
 XCOPY .\bin\dmidecode212.exe .\host_monitor_windows\
 MOVE .\tmp\pciutils-%PCIUTILS_VERSION%-win32 .\host_monitor_windows\pciutils
+
+bin\7z a -mx9 ICSW_Windows_Client.zip .\host_monitor_windows\*
 
 SET hm_path=host_monitor_windows
 "%WIX_BIN_PATH%heat.exe" dir host_monitor_windows -cg HostmonitorFiles -dr INSTALLDIR -gg -scom -sreg -sfrag -srd -var env.hm_path -out "Components.wxs"
