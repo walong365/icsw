@@ -45,6 +45,34 @@ nw_classes = ["ethernet", "network", "infiniband"]
 EXTRA_BLOCK_DEVS = "/etc/sysconfig/host-monitoring.d/extra_block_devs"
 
 
+# helper routines
+def get_nfs_mounts():
+    m_dict = {}
+    try:
+        for line in open("/proc/mounts", "r").read().split("\n"):
+            line_split = line.strip().split()
+            if len(line_split) == 6:
+                m_dict.setdefault(line_split[2], []).append((line_split[0], line_split[1]))
+    except:
+        pass
+    return m_dict
+
+
+def sub_wrap(val_1, val_0):
+    sub = val_1 - val_0
+    while sub < 0:
+        sub += sys.maxsize
+    if sub > sys.maxsize / 8:
+        sub = 0
+    return sub
+
+
+def trim_string(in_str):
+    while in_str.count("  "):
+        in_str = in_str.replace("  ", " ")
+    return in_str.strip()
+
+
 class ModuleDefinition(hm_classes.MonitoringModule):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY
@@ -93,12 +121,16 @@ class ModuleDefinition(hm_classes.MonitoringModule):
         return server_command.compress(_lshw_result)
 
     def _lvs_int(self):
-        lvs_output = subprocess.check_output([self.lvs_bin,
-                                              "-o",
-                                              "lv_name,data_percent",
-                                              "--separator", ":",
-                                              "--units",
-                                              "b"]).decode()
+        lvs_output = subprocess.check_output(
+            [
+                self.lvs_bin,
+                "-o",
+                "lv_name,data_percent",
+                "--separator", ":",
+                "--units",
+                "b"
+            ]
+        ).decode()
 
         lvs_output_lines = lvs_output.split("\n")
 
@@ -185,20 +217,20 @@ class ModuleDefinition(hm_classes.MonitoringModule):
             '-ab --list -o {}'.format(','.join(columns)),
         ]:
             _META["options"] = options
-            stdout, stderr = ("", "")
+            stdout, stderr = ([], [])
             _popen = subprocess.Popen([self.lsblk_bin] + options.split(), env=my_env, stdout=subprocess.PIPE)
 
             while True:
                 _new_stdout, _new_stderr = _popen.communicate()
-                stdout = "{}{}".format(stdout, _new_stdout)
-                stderr = "{}{}".format(stderr, _new_stderr)
+                stdout.append(_new_stdout)
+                stderr.append(_new_stderr)
                 if _popen.returncode is not None:
                     break
             _popen.wait()
             if _popen.returncode:
                 _lsblk_result = ""
             else:
-                _lsblk_result = stdout
+                _lsblk_result = b"".join(stdout).decode("utf-8")
         _META["result"] = _lsblk_result
         return server_command.compress(_META, json=True)
 
@@ -372,7 +404,7 @@ class ModuleDefinition(hm_classes.MonitoringModule):
         self._rescan_valid_disk_stuff()
 
     def _cpuinfo_int(self, srv_com):
-        return cpu_database.global_cpu_info().get_send_dict(srv_com)
+        return cpu_database.CPUId().raw
 
     def _load_int(self):
         return [float(value) for value in open("/proc/loadavg", "r").read().strip().split()[0:3]]
@@ -1299,6 +1331,7 @@ class df_command(hm_classes.MonitoringCommand):
         required_access = HMAccessClassEnum.level0
         uuid = "e94ebbd1-509e-4445-a57d-22af5100396c"
         has_perfdata = True
+        description = "Query the size of the given partition"
         parameters = hm_classes.MCParameters(
             hm_classes.MCParameter("-w", "warn", 80, "Warning value for disk in percent"),
             hm_classes.MCParameter("-c", "crit", 95, "Critical value for disk in percent"),
@@ -2373,6 +2406,7 @@ class pciinfo_command(hm_classes.MonitoringCommand):
         required_access = HMAccessClassEnum.level0
         uuid = "cb508240-ae19-4c59-872f-3b0aa110cecc"
         description = "get PCI list"
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
@@ -2455,19 +2489,26 @@ class cpuflags_command(hm_classes.MonitoringCommand):
                     cpu_num = int(value)
                 elif key == "flags":
                     flag_dict[cpu_num] = sorted(value.split())
-        ret_lines = [
-            "found {}:".format(logging_tools.get_plural("CPU", len(list(flag_dict.keys()))))
-        ]
+        flags_used = {}
         for cpu_num in sorted(flag_dict.keys()):
             cpu_flags = flag_dict[cpu_num]
-            ret_lines.append("CPU %2d: %s" % (cpu_num, logging_tools.get_plural("flag", len(cpu_flags))))
             for flag in cpu_flags:
-                ret_lines.append(
-                    "  {:<15s} : {}".format(
-                        flag,
-                        cpu_database.CPU_FLAG_LUT.get(flag.upper(), flag)[:140]
-                    )
+                flags_used.setdefault(flag, []).append(cpu_num)
+        ret_lines = [
+            "found {} with {}".format(
+                logging_tools.get_plural("CPU", len(list(flag_dict.keys()))),
+                logging_tools.get_plural("flag", len(flags_used.keys())),
+            )
+        ]
+
+        for flag in sorted(flags_used.keys()):
+            ret_lines.append(
+                "  {:<15s} ({}): {}".format(
+                    flag,
+                    logging_tools.compress_num_list(flags_used[flag]),
+                    cpu_database.CPU_FLAG_LUT.get(flag.upper(), flag)[:140]
                 )
+            )
         ret_state = limits.mon_STATE_OK
         return ret_state, "\n".join(ret_lines)
 
@@ -2477,6 +2518,7 @@ class cpuinfo_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "567f368c-8c30-4f33-a8f2-d4e4be7c8b89"
+        description = "Show CPU information"
 
     def __call__(self, srv_com, cur_ns):
         srv_com["cpuinfo"] = self.module._cpuinfo_int(srv_com)
@@ -2486,12 +2528,13 @@ class cpuinfo_command(hm_classes.MonitoringCommand):
         header_errors = []
         out_list = logging_tools.NewFormList()
         try:
-            cpu_info = cpu_database.global_cpu_info(xml=srv_com.tree, parse=True)
+            cpu_info = cpu_database.CPUId(source=srv_com["*cpuinfo"].encode("utf-8"), parse=True)
         except:
-            join_str, head_str = ("; ", "error decoding cpu_info: %s" % (process_tools.get_except_info()))
+            join_str, head_str = ("; ", "error decoding cpu_info: {}".format(process_tools.get_except_info()))
             exc_info = process_tools.icswExceptionInfo()
             print("\n".join(exc_info.log_lines))
         else:
+            return ret_state, "got CPU info, please update"
             for cpu in [cpu_info[cpu_idx] for cpu_idx in cpu_info.cpu_idxs()]:
                 if cpu.get("online", True):
                     cpu_speed = cpu["speed"]
@@ -2528,7 +2571,7 @@ class cpuinfo_command(hm_classes.MonitoringCommand):
                     ", %s" % (", ".join(header_errors)) if header_errors else ""
                 )
             )
-        return ret_state, join_str.join([head_str] + str(out_list).split("\n"))  # ret_f)
+        return ret_state, join_str.join([head_str] + str(out_list).split("\n"))
 
 
 class lvminfo_command(hm_classes.MonitoringCommand):
@@ -2536,6 +2579,7 @@ class lvminfo_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "167c1af5-b367-4789-a6c8-5dfd6ea40ee7"
+        description = "Show LVM VG / LV overview"
 
     def __call__(self, srv_com, cur_ns):
         self.module.local_lvm_info.update()
@@ -2577,6 +2621,8 @@ class partinfo_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "7cb4c3bd-ebaf-4592-9883-ddf91a294554"
+        description = "Display partition information"
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         self.module.local_lvm_info.update()
@@ -2722,12 +2768,13 @@ class mdstat_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "fe28d9f6-c2d4-4137-a999-1b6e6712e4a8"
+        description = "Query MD (Linux SoftwarRaid) devices"
 
     def __call__(self, srv_com, cur_ns):
-        srv_com["mdstat"] = server_command.compress(open("/proc/mdstat", "r").read())
+        srv_com["mdstat"] = server_command.compress(open("/proc/mdstat", "rb").read())
 
     def interpret(self, srv_com, cur_ns):
-        lines = server_command.decompress(srv_com["mdstat"].text).split("\n")
+        lines = server_command.decompress(srv_com["mdstat"].text).decode("utf-8").split("\n")
         raid_list = []
         cur_raid = None
         for _line_num, line in enumerate(lines):
@@ -2757,7 +2804,10 @@ class mdstat_command(hm_classes.MonitoringCommand):
                 [
                     "{} ({}{}{})".format(
                         cur_raid["name"],
-                        "{} {}".format(cur_raid["state"], cur_raid["type"]) if cur_raid["state"] == "active" else cur_raid["state"],
+                        "{} {}".format(
+                            cur_raid["state"],
+                            cur_raid["type"]
+                        ) if cur_raid["state"] == "active" else cur_raid["state"],
                         ", {:d} blocks".format(cur_raid["blocks"]) if "blocks" in cur_raid else "",
                         ", resync {}".format(cur_raid["resync"]) if "resync" in cur_raid else ""
                     ) for cur_raid in raid_list
@@ -2773,6 +2823,7 @@ class uname_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "b4f6a583-aeae-4279-92dd-ea0918d9a65f"
+        description = "show info about running kernel"
 
     def __call__(self, srv_com, cur_ns):
         for idx, sub_str in enumerate(platform.uname()):
@@ -2900,6 +2951,8 @@ class lstopo_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "1e9bbc36-1367-4fdd-bd5d-977a7546719f"
+        create_mon_check_command = False
+        description = "Fetch lstopo output"
 
     def __call__(self, srv_com, cur_ns):
         srv_com["lstopo_dump"] = self.module._lstopo_int()
@@ -2914,6 +2967,8 @@ class lshw_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "841fd9cd-ec77-4ef7-bd49-5d0a901c702d"
+        create_mon_check_command = False
+        description = "Fetch lshw output"
 
     def __call__(self, srv_com, cur_ns):
         srv_com["lshw_dump"] = self.module._lshw_int()
@@ -2932,6 +2987,8 @@ class lsblk_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "7a0d46a8-c24a-4d94-aa9f-3f729d7f267b"
+        description = "Fetch lsblk output"
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         srv_com["lsblk_dump"] = self.module._lsblk_int()
@@ -2956,6 +3013,8 @@ class xrandr_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "514597ae-9f9c-41d8-8ac6-d3771af0b0e5"
+        create_mon_check_command = False
+        description = "Fetch xrandr output"
 
     def __call__(self, srv_com, cur_ns):
         srv_com["xrandr_dump"] = self.module._xrandr_int()
@@ -2974,6 +3033,8 @@ class dmiinfo_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "9eaad6d9-aa06-4db3-ac89-5b5134d321a3"
+        create_mon_check_command = False
+        description = "Fetch and display DMI command"
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
@@ -2985,7 +3046,7 @@ class dmiinfo_command(hm_classes.MonitoringCommand):
 
     def interpret(self, srv_com, cur_ns):
         with tempfile.NamedTemporaryFile() as tmp_file:
-            open(tmp_file.name, "w").write(server_command.decompress(srv_com["dmi_dump"].text))
+            open(tmp_file.name, "wb").write(server_command.decompress(srv_com["dmi_dump"].text))
             _dmi_stat, dmi_result = subprocess.getstatusoutput("{} --from-dump {}".format(self.module.dmi_bin, tmp_file.name))
             _xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(dmi_result.split("\n")))
             # sys.exit(0)
@@ -3071,31 +3132,3 @@ class windowshardware_command(hm_classes.MonitoringCommand):
 
             info.update(mapping_info)
             srv_com["windowshardware_dict"] = server_command.compress(info, pickle=True)
-
-
-# helper routines
-def get_nfs_mounts():
-    m_dict = {}
-    try:
-        for line in open("/proc/mounts", "r").read().split("\n"):
-            line_split = line.strip().split()
-            if len(line_split) == 6:
-                m_dict.setdefault(line_split[2], []).append((line_split[0], line_split[1]))
-    except:
-        pass
-    return m_dict
-
-
-def sub_wrap(val_1, val_0):
-    sub = val_1 - val_0
-    while sub < 0:
-        sub += sys.maxsize
-    if sub > sys.maxsize / 8:
-        sub = 0
-    return sub
-
-
-def trim_string(in_str):
-    while in_str.count("  "):
-        in_str = in_str.replace("  ", " ")
-    return in_str.strip()

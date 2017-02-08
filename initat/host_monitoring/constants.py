@@ -55,7 +55,7 @@ class DynamicCheckServer(Enum):
     native = "native"
 
 
-class HMABIVersion(Enum):
+class HMABIVersionEnum(Enum):
     # old TCP-based
     v00 = "Version_0.0"
     # 0MQ but also no longer supported
@@ -67,3 +67,8 @@ class HMABIVersion(Enum):
 class HMIPProtocolEnum(Enum):
     tcp = "tcp"
     udp = "udp"
+
+
+HM_CURRENT_ABI_VERSION = HMABIVersionEnum.v20
+
+JSON_DEFINITION_FILE = "mon_defs.json"

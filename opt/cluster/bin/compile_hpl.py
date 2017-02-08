@@ -19,7 +19,6 @@
 #
 
 import argparse
-import subprocess
 import optparse
 import os
 import shutil

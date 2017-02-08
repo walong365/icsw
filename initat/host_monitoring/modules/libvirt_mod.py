@@ -16,14 +16,14 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from lxml import etree
 import subprocess
 
-from .. import limits, hm_classes
-from initat.tools import logging_tools, process_tools, server_command
-from initat.constants import PlatformSystemTypeEnum
-from ..constants import HMAccessClassEnum
+from lxml import etree
 
+from initat.constants import PlatformSystemTypeEnum
+from initat.tools import logging_tools, process_tools, server_command
+from .. import limits, hm_classes
+from ..constants import HMAccessClassEnum
 
 try:
     from initat.tools import libvirt_tools
@@ -185,6 +185,7 @@ class libvirt_status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "eb6ae74b-f3f5-4095-898f-d0a501f85a9c"
+        description = "show status of libvirt"
 
     def __call__(self, srv_com, cur_ns):
         if self.module.libvirt_problem:
@@ -223,6 +224,7 @@ class domain_overview_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "737f4cf1-9ffb-47b6-9ef8-e7c1fdf63e77"
+        description = "show libvirt domain Status"
 
     def __call__(self, srv_com, cur_ns):
         if self.module.libvirt_problem:
@@ -255,16 +257,23 @@ class domain_overview_command(hm_classes.MonitoringCommand):
         all_names = sorted(name_lut.keys())
         for act_name in all_names:
             n_dict = r_dict[name_lut[act_name]]
-            out_f.append("{} [#{:d}, {}]".format(
-                act_name,
-                name_lut[act_name],
-                logging_tools.get_plural("CPU", n_dict["info"][3])))
-        out_f.append("{:d} defined: {}".format(
-            len(d_dict),
-            ", ".join(sorted(d_dict.keys())) or "none"))
+            out_f.append(
+                "{} [#{:d}, {}]".format(
+                    act_name,
+                    name_lut[act_name],
+                    logging_tools.get_plural("CPU", n_dict["info"][3])
+                )
+            )
+        out_f.append(
+            "{:d} defined: {}".format(
+                len(d_dict),
+                ", ".join(sorted(d_dict.keys())) or "none"
+            )
+        )
         return ret_state, "running: {}; {}".format(
             logging_tools.get_plural("domain", len(all_names)),
-            ", ".join(out_f))
+            ", ".join(out_f)
+        )
 
 
 class domain_status_command(hm_classes.MonitoringCommand):
@@ -272,9 +281,15 @@ class domain_status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "12a6fb2b-d635-4dd3-891b-a3ee6e6980e4"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
+        description = "Show Status of a given libvirt Domain"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter(
+                "",
+                "arguments",
+                "",
+                "domain to query",
+            )
+        )
 
     def __call__(self, srv_com, cur_ns):
         if self.module.libvirt_problem:

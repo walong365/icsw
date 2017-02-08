@@ -20,7 +20,6 @@
 """ compiles scalapack, not really working ... """
 
 import argparse
-import subprocess
 import os
 import shutil
 import subprocess
@@ -400,7 +399,7 @@ class mpi_builder(object):
 
     def _compile_it(self):
         self._create_slmake_inc()
-        num_cores = cpu_database.global_cpu_info(parse=True).num_cores() * 2 if self.parser.options.pmake else 1
+        num_cores = cpu_database.CPUId(parse=True).num_cores * 2 if self.parser.options.pmake else 1
         act_dir = os.getcwd()
         os.chdir(os.path.join(self.tempdir, "{}-{}".format(self.parser.mode, self.parser.options.version)))
         print("Modifying environment")

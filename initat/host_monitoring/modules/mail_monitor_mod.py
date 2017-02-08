@@ -518,7 +518,6 @@ class mailq_command(hm_classes.MonitoringCommand):
                 5,
                 "warning value for total number of mails in queue",
             ),
-
             hm_classes.MCParameter(
                 "-c",
                 "crittotal",

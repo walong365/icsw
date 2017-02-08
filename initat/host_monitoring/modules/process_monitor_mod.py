@@ -666,6 +666,8 @@ class ipckill_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level1
         uuid = "f46fd5bf-54f9-4ee9-94fa-7e6c41d7636d"
+        create_mon_check_command = False
+        description = "Remove IPC segments"
 
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
@@ -746,8 +748,8 @@ class signal_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level1
         uuid = "ef5b49af-3062-425b-9720-77baeb8dea25"
-
-    info_str = "send signal to processes"
+        create_mon_check_command = False
+        description = "send a given signal to processes"
 
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
