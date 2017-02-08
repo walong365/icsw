@@ -55,6 +55,37 @@ MODULE_STATE_INIT_LIST = [
 ]
 
 
+class MCPortList(object):
+    def __init__(self, *port_specs):
+        self.port_specs = port_specs
+
+    def get_port_spec(self):
+        if self.port_specs:
+            return ", ".join([_ps.get_port_spec() for _ps in self.port_specs])
+        else:
+            return "none"
+
+
+class MCPort(object):
+    def __init__(self, protocol, start_port, end_port=None):
+        self.protocol = protocol
+        self.start_port = start_port
+        self.end_port = end_port
+
+    def get_port_spec(self):
+        if self.end_port:
+            return "{}/{:d}-{:d}".format(
+                self.protocol.name,
+                self.start_port,
+                self.end_port,
+            )
+        else:
+            return "{}/{:d}".format(
+                self.protocol.name,
+                self.start_port,
+            )
+
+
 class MCParameters(object):
     def __init__(self, *args):
         self.parameters = args
@@ -608,6 +639,8 @@ class MonitoringCommand(MMMCBase):
         alternate_names = []
         # cache timeout, for some mixins
         cache_timeout = 0
+        # ports for matching
+        ports = MCPortList()
 
     def __init__(self, name, **kwargs):
         super(MonitoringCommand, self).__init__()

@@ -62,3 +62,8 @@ class HMABIVersion(Enum):
     v10 = "Version_1.0"
     # new Version, includes filtering and Meta-based Parameterhandling
     v20 = "Version_2.0"
+
+
+class HMIPProtocolEnum(Enum):
+    tcp = "tcp"
+    udp = "udp"

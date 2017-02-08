@@ -125,7 +125,7 @@ def show_hm_help(options):
                         ",".join(
                             [
                                 _platform.name for _platform in cmd.Meta.required_platform
-                                ]
+                            ]
                         ),
                         header="Platform",
                     ),
@@ -140,6 +140,10 @@ def show_hm_help(options):
                     logging_tools.form_entry(
                         ", ".join(cmd.Meta.alternate_names) if cmd.Meta.alternate_names else "---",
                         header="Alternate names",
+                    ),
+                    logging_tools.form_entry(
+                        cmd.Meta.ports.get_port_spec(),
+                        header="PortSpec",
                     ),
                     logging_tools.form_entry(
                         cmd.Meta.description,

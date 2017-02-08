@@ -23,7 +23,7 @@ import time
 from initat.constants import PlatformSystemTypeEnum
 from initat.tools import logging_tools, process_tools
 from .. import limits, hm_classes
-from ..constants import HMAccessClassEnum
+from ..constants import HMAccessClassEnum, HMIPProtocolEnum
 
 
 class ModuleDefinition(hm_classes.MonitoringModule):
@@ -247,6 +247,12 @@ class ipsec_status_command(hm_classes.MonitoringCommand):
         description = "check status of all or a specific IPsec instance"
         parameters = hm_classes.MCParameters(
             hm_classes.MCParameter(None, "arguments", "", "Instance to check")
+        )
+        ports = hm_classes.MCPortList(
+            hm_classes.MCPort(HMIPProtocolEnum.udp, 500),
+            hm_classes.MCPort(HMIPProtocolEnum.tcp, 500),
+            hm_classes.MCPort(HMIPProtocolEnum.udp, 4500),
+            hm_classes.MCPort(HMIPProtocolEnum.tcp, 4500),
         )
 
     def __call__(self, srv_com, cur_ns):
