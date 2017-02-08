@@ -548,13 +548,14 @@ def get_time_inc_from_ds(ds):
 class HostMonitoringCommand:
     host_monitoring_commands = {}
 
-    def __init__(self, callback, callback_dict, timeout=60, always_call_callback=False):
+    def __init__(self, callback, callback_dict, timeout=60, always_call_callback=False, command_string="N/A"):
         self.callback = callback
         self.callback_dict = callback_dict
         self.run_index = self.__get_free_run_index()
         self.host_monitoring_commands[self.run_index] = self
         self.timeout_date = timezone.now() + datetime.timedelta(seconds=timeout)
         self.always_call_callback = always_call_callback
+        self.command_string = command_string
 
     def __get_free_run_index(self):
         run_index = 1
@@ -659,6 +660,8 @@ class Dispatcher(object):
         _now = timezone.now()
         for run_index, host_monitoring_command in list(HostMonitoringCommand.host_monitoring_commands.items()):
             if _now > host_monitoring_command.timeout_date:
+                self.log("HostMonitoring command [run_index:{} | command:{}] timed out".format(
+                    host_monitoring_command.run_index, host_monitoring_command.command_string))
                 host_monitoring_command.handle()
                 self.discovery_process.send_pool_message("host_monitoring_command_timeout_handler", run_index)
 
@@ -706,7 +709,9 @@ class Dispatcher(object):
                         }
 
                         hm_command = HostMonitoringCommand(self.asset_schedule_handler_callback, callback_dict,
-                                                           timeout=timeout, always_call_callback=True)
+                                                           timeout=timeout,
+                                                           always_call_callback=True,
+                                                           command_string=_command)
                         conn_str = "tcp://{}:{:d}".format(target_device.target_ip, self.__hm_port)
                         new_srv_com = server_command.srv_command(command=_command)
 

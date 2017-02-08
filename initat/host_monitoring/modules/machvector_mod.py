@@ -127,11 +127,12 @@ class graph_setup_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "8444d61b-4cf9-4ad3-9562-089d877b7afb"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
-        self.parser.add_argument("--send-name", dest="send_name", type=str)
-        self.parser.add_argument("--target-ip", dest="target_ip", type=str)
+        description = "Graphing setup"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("--send-name", "send_name", "", "(Full) name of target device"),
+            hm_classes.MCParameter("--target-ip", "target_ip", "", "IP of target device"),
+        )
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         if cur_ns.send_name:
