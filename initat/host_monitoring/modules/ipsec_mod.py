@@ -123,7 +123,7 @@ class ModuleDefinition(hm_classes.MonitoringModule):
                     _found.add(_cn)
                     if _cn not in self.__ipsec_conns:
                         self.log("registered IPSec connection {}".format(_cn))
-                        self.__ipsec_conns[_cn] = ipsec_con(_cn, mv)
+                        self.__ipsec_conns[_cn] = IPsecConnection(_cn, mv)
                     self.__ipsec_conns[_cn].feed(mv, int(_gd["bytes_in"]), int(_gd["bytes_out"]))
                 else:
                     self.log("cannot parse line '{}'".format(_line), logging_tools.LOG_LEVEL_WARN)
@@ -134,7 +134,7 @@ class ModuleDefinition(hm_classes.MonitoringModule):
                 del self.__ipsec_conns[_del]
 
 
-class ipsec_con(object):
+class IPsecConnection(object):
     def __init__(self, name, mv):
         self.name = name
         mv.register_entry(self.key("in"), 0, "bytes received for connection {}".format(self.name), "Byte/s", 1024)
@@ -159,7 +159,7 @@ class ipsec_con(object):
         mv.unregister_entry(self.key("out"))
 
 
-class ipsec_tunnel(object):
+class IPsecTunnel(object):
     def __init__(self, t_id):
         self.t_id = t_id
         self.__parts = []
@@ -187,7 +187,7 @@ class ipsec_tunnel(object):
         return self.__installed
 
 
-class c_con(object):
+class ConfiguredConnection(object):
     # ipsec client connection
     def __init__(self, name):
         self.name = name
@@ -221,7 +221,7 @@ class c_con(object):
 
     def feed_tunnel(self, _id, _parts):
         if _id not in self.__tunnels:
-            self.__tunnels[_id] = ipsec_tunnel(_id)
+            self.__tunnels[_id] = IPsecTunnel(_id)
         self.__tunnels[_id].feed(_parts)
 
     def tunnel_installed(self):
@@ -244,9 +244,10 @@ class ipsec_status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "baf08e06-a1d9-4a40-b205-a336d10aa095"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
+        description = "check status of all or a specific IPsec instance"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter(None, "arguments", "", "Instance to check")
+        )
 
     def __call__(self, srv_com, cur_ns):
         srv_com["ipsec_status"] = self.module._update_ipsec_status()
@@ -282,11 +283,11 @@ class ipsec_status_command(hm_classes.MonitoringCommand):
                             conn_name = _parts.pop(0)[:-1]
                             if not cur_con:
                                 prev_con = cur_con
-                                cur_con = c_con(conn_name)
+                                cur_con = ConfiguredConnection(conn_name)
                                 _con_dict[conn_name] = cur_con
                             elif cur_con.name != conn_name:
                                 prev_con = cur_con
-                                cur_con = c_con(conn_name)
+                                cur_con = ConfiguredConnection(conn_name)
                                 _con_dict[conn_name] = cur_con
                             cur_con.feed(_parts, prev_con)
                         else:

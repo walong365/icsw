@@ -42,10 +42,10 @@ class lsmodinfo_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "d2dc7289-af35-444c-83cf-23d02b37d1ef"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name)
-        self.parser.add_argument("--required", dest="required", type=str, default="")
+        description = "show loaded kernel modules"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("--required", "required", "", "required modules")
+        )
 
     def __call__(self, srv_com, cur_ns):
         _stat, _out = subprocess.getstatusoutput(self.module.lsmod_command)
@@ -91,11 +91,11 @@ class mountinfo_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "8d055985-3857-4e41-9d05-0e63ee6bd0b7"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name)
-        self.parser.add_argument("--mountpoint", type=str, default="/")
-        self.parser.add_argument("--filesys", type=str, default="ext4")
+        description = "check filesys on a given mountpoint"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("--mountpoint", "mountpoint", "/", "Mountpoint to check"),
+            hm_classes.MCParameter("--filesys", "filesys", "ext4", "required Filesystem"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         _mounts = [_line.strip().split() for _line in open("/proc/mounts", "r").read().split("\n") if _line.strip()]

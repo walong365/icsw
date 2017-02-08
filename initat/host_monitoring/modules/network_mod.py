@@ -528,7 +528,7 @@ class ModuleDefinition(hm_classes.MonitoringModule):
                     c_com = "{} -t {} -L -n".format(self.iptables_path, t_type)
                     t_dict = {}
                     res_dict[t_type] = t_dict
-                    for line in subprocess.check_output(c_com, shell=True).split("\n"):
+                    for line in subprocess.check_output(c_com, shell=True).decode("utf-8").split("\n"):
                         if line.startswith("Chain"):
                             parts = line.strip().split()
                             c_name = parts[1]
@@ -1094,11 +1094,10 @@ class argus_status_command(hm_classes.MonitoringCommand):
         required_access = HMAccessClassEnum.level0
         uuid = "ccc60cfb-ca93-4f05-90be-a145fa85b6d5"
         description = "Check running Argus Process"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name)
-        self.parser.add_argument("-w", dest="warn", type=int, help="warning level, minimum processes")
-        self.parser.add_argument("-c", dest="crit", type=int, help="critical level, minimum processes")
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-w", "warn", 0, "Warning value for number of running Argus processes"),
+            hm_classes.MCParameter("-c", "crit", 0, "Critical value for number of running Argus processes"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         # if not cur_ns.arguments:
@@ -1108,9 +1107,9 @@ class argus_status_command(hm_classes.MonitoringCommand):
         arg_list = srv_com["*argus_interfaces"]
         proc_l = limits.limits(cur_ns.warn, cur_ns.crit)
         ret_state, _str = proc_l.check_floor(len(arg_list))
-        return ret_state, "{} running: {}".format(
+        return ret_state, "{} running{}".format(
             logging_tools.get_plural("argus process", len(arg_list)),
-            ", ".join(sorted(arg_list))
+            ": {}".format(", ".join(sorted(arg_list))) if arg_list else "",
         )
 
 
@@ -1119,14 +1118,17 @@ class ping_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "7ca1e4b6-962a-442f-ab5b-32a9ec248900"
+        description = "Ping remote device"
+        has_perfdata = True
+        send_to_localhost = True
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-w", "warn", "200,50", "Warning level, format is <RTA in ms>,<LOSS in %%>%%"),
+            hm_classes.MCParameter("-c", "crit", "400,80", "Critical level, format is <RTA in ms>,<LOSS in %%>%%"),
+            hm_classes.MCParameter("", "arguments", "$HOSTADDRESS$ 5 0.5", "Device to ping, format is Host [#pings [timeout]]", expand=False),
+        )
 
-    info_str = "ping command"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
-        self.ping_match = re.compile("^(?P<rta>\d+),(?P<loss>\d+)%?$")
-        self.parser.add_argument("-w", dest="warn", type=str, help="warning level, format is <RTA in ms>,<LOSS in %%>%%")
-        self.parser.add_argument("-c", dest="crit", type=str, help="critical level, format is <RTA in ms>,<LOSS in %%>%%")
+    def mc_init(self):
+       self.ping_match = re.compile("^(?P<rta>\d+),(?P<loss>\d+)%?$")
 
     def __call__(self, srv_com, cur_ns):
         args = cur_ns.arguments
@@ -1243,15 +1245,15 @@ class net_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "ac58a719-5455-4047-b7e2-bbc4c1bd8f46"
-
-    info_str = "network information"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True, arguments_name="interface")
-        self.parser.add_argument("-w", dest="warn", type=str)
-        self.parser.add_argument("-c", dest="crit", type=str)
-        self.parser.add_argument("-s", dest="speed", type=str)
-        self.parser.add_argument("--duplex", dest="duplex", type=str)
+        description = "Check Status of network interface"
+        has_perfdata = True
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-w", "warn", "10MB", "Warning level for througput"),
+            hm_classes.MCParameter("-c", "crit", "20MB", "Critical level for throughput"),
+            hm_classes.MCParameter("-s", "speed", "1GB/s", "Required target speed of netdevice"),
+            hm_classes.MCParameter("--duplex", "duplex", "full", "Duplex State of netdevice"),
+            hm_classes.MCParameter("", "arguments", "", "Interface name"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         if "arguments:arg0" not in srv_com:
@@ -1747,8 +1749,8 @@ class bridge_info_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "82f87462-940e-4971-ab1c-d984d96b6e6f"
-
-    info_str = "bridge information"
+        description = "Query Bridge information"
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         srv_com["bridges"] = self.module._check_for_bridges()
@@ -1777,8 +1779,8 @@ class network_info_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "bcb21ce0-9d5e-47f1-89ec-ea044185d5f8"
-
-    info_str = "network information"
+        description = "Query network information"
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         srv_com["bridges"] = self.module._check_for_bridges()
@@ -1853,13 +1855,12 @@ class iptables_info_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "47776042-9fd8-470f-b7ea-0d72f50602ae"
-
-    info_str = "iptables information"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
-        self.parser.add_argument("-w", dest="warn", type=str)
-        self.parser.add_argument("-c", dest="crit", type=str)
+        description = "Query iptables information"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-w", "warn", 0, "Warning value for minimum number of lines"),
+            hm_classes.MCParameter("-c", "crit", 0, "Critical value for minimum number of lines"),
+            hm_classes.MCParameter(None, "arguments", "", "Required Chain"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         if "arguments:arg0" in srv_com:
@@ -1878,8 +1879,23 @@ class iptables_info_command(hm_classes.MonitoringCommand):
             )
         else:
             ret_state = limits.mon_STATE_OK
-            all_chains = sum([list(c_dict.keys()) for c_dict in res_dict.values()], [])
-            num_lines = sum([sum([c_dict["lines"] for _c_key, c_dict in t_dict.items()], 0) for _t_key, t_dict in res_dict.items()], 0)
+            all_chains = sum(
+                [
+                    list(c_dict.keys()) for c_dict in res_dict.values()
+                ],
+                []
+            )
+            num_lines = sum(
+                [
+                    sum(
+                        [
+                            c_dict["lines"] for _c_key, c_dict in t_dict.items()
+                        ],
+                        0
+                    ) for _t_key, t_dict in res_dict.items()
+                ],
+                0
+            )
             if cur_ns.crit is not None and num_lines < cur_ns.crit:
                 ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
             elif cur_ns.warn is not None and num_lines < cur_ns.warn:
@@ -1926,8 +1942,8 @@ class ntp_status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "86b1cb9d-7424-45aa-9eed-d8bd50d46040"
-
-    info_str = "show NTP status"
+        description = "show NTP status"
+        alternate_names = ["ntpq_status"]
 
     def __call__(self, srv_com, cur_ns):
         cur_ntpq_s = ntpq_struct(
@@ -1976,10 +1992,6 @@ class ntp_status_command(hm_classes.MonitoringCommand):
 
 
 class NmapScanCheck(LongRunningCheck):
-    class Meta:
-        required_platform = PlatformSystemTypeEnum.ANY
-        required_access = HMAccessClassEnum.level0
-        uuid = "812eb320-ba75-4717-a2a5-160c515722b6"
 
     def __init__(self, srv_command_obj, network_str, nmap_scan_command_object):
         self.srv_command_obj = srv_command_obj
@@ -2004,10 +2016,12 @@ class nmap_scan_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "2d63bd61-5876-4bc9-b00b-f6686cf1e179"
+        create_mon_check_command = False
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("--network", "network", "", "Network to scan"),
+        )
 
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
-        self.parser.add_argument("--network", dest="network", type=str)
+    def mc_init(self):
         self.current_nmap_scan_check = None
 
     def __call__(self, srv_command_obj, arguments):

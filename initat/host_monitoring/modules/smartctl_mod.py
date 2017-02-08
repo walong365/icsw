@@ -93,9 +93,10 @@ class smartstat_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "e99d5740-49cc-49af-8370-608d1dcbe70a"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True, arguments_name="interface")
+        description = "Check SMART Status of disks"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter(None, "arguments", "", "Disk to check"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         self.module.check_for_smartctl()
@@ -112,7 +113,9 @@ class smartstat_command(hm_classes.MonitoringCommand):
                     )
             else:
                 self.module.update_smart()
-                srv_com["smartstat"] = [self.module.devices[_dev] for _dev in list(self.module.devices.keys())]
+                srv_com["smartstat"] = [
+                    self.module.devices[_dev] for _dev in list(self.module.devices.keys())
+                ]
         else:
             srv_com.set_result(
                 "no smartctl binary found",
