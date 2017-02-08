@@ -240,6 +240,25 @@ class NetCompressJob(object):
             return ("", "")
 
 
+class NmapScanCheck(LongRunningCheck):
+    def __init__(self, srv_command_obj, network_str, nmap_scan_command_object):
+        self.srv_command_obj = srv_command_obj
+        self.network_str = network_str
+        self.nmap_scan_command_obj = nmap_scan_command_object
+
+    def perform_check(self, queue):
+        command = "/opt/cluster/bin/nmap -vv -sn -oX - {}".format(self.network_str)
+
+        status, output = subprocess.getstatusoutput(command)
+
+        self.srv_command_obj.set_result(output)
+
+        queue.put(str(self.srv_command_obj))
+
+    def post_perform_check(self):
+        self.nmap_scan_command_obj.current_nmap_scan_check = None
+
+
 class ModuleDefinition(hm_classes.MonitoringModule):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY
@@ -1991,35 +2010,16 @@ class ntp_status_command(hm_classes.MonitoringCommand):
             return limits.mon_STATE_CRITICAL, _lines[0]
 
 
-class NmapScanCheck(LongRunningCheck):
-
-    def __init__(self, srv_command_obj, network_str, nmap_scan_command_object):
-        self.srv_command_obj = srv_command_obj
-        self.network_str = network_str
-        self.nmap_scan_command_obj = nmap_scan_command_object
-
-    def perform_check(self, queue):
-        command = "/opt/cluster/bin/nmap -vv -sn -oX - {}".format(self.network_str)
-
-        status, output = subprocess.getstatusoutput(command)
-
-        self.srv_command_obj.set_result(output)
-
-        queue.put(str(self.srv_command_obj))
-
-    def post_perform_check(self):
-        self.nmap_scan_command_obj.current_nmap_scan_check = None
-
-
 class nmap_scan_command(hm_classes.MonitoringCommand):
     class Meta:
-        required_platform = PlatformSystemTypeEnum.ANY
+        required_platform = PlatformSystemTypeEnum.LINUX
         required_access = HMAccessClassEnum.level0
         uuid = "2d63bd61-5876-4bc9-b00b-f6686cf1e179"
-        create_mon_check_command = False
+        description = "Perform nmap scan"
         parameters = hm_classes.MCParameters(
-            hm_classes.MCParameter("--network", "network", "", "Network to scan"),
+            hm_classes.MCParameter("--network", "network", "", "Network to scan in CIDR notation (i.e 192.168.1.0/24)"),
         )
+        create_mon_check_command = False
 
     def mc_init(self):
         self.current_nmap_scan_check = None

@@ -156,11 +156,11 @@ class ModuleDefinition(hm_classes.MonitoringModule):
 
 class installedupdates_command(hm_classes.MonitoringCommand):
     class Meta:
-        required_platform = PlatformSystemTypeEnum.ANY
+        required_platform = PlatformSystemTypeEnum.WINDOWS
         required_access = HMAccessClassEnum.level0
         uuid = "e2e456ea-d358-4e52-8d5f-0d5ac9ac0ba4"
-
-    info_str = "installed updates (windows only)"
+        description = "Installed updates on {} machines".format(PlatformSystemTypeEnum.WINDOWS.name)
+        create_mon_check_command = False
 
     class Update:
         def __init__(self):
@@ -173,9 +173,6 @@ class installedupdates_command(hm_classes.MonitoringCommand):
 
         def __eg__(self, other):
             return self.date == other.date
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
         installed_updates = []
@@ -222,8 +219,8 @@ class rpmlist_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "46d060f7-3c7f-4620-9436-0a1b14999c26"
-
-    info_str = "rpm list"
+        description = "Returns a list of installed packages and software (plus various meta information)"
+        create_mon_check_command = False
 
     class Package:
         def __init__(self):
@@ -240,9 +237,6 @@ class rpmlist_command(hm_classes.MonitoringCommand):
 
         def __hash__(self):
             return hash((self.displayName, self.displayVersion, self.estimatedSize, self.installDate))
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
@@ -314,7 +308,8 @@ class rpmlist_command(hm_classes.MonitoringCommand):
             else:
                 is_debian = False
             rpm_root_dir, re_strs = ("/", [])
-            if len(cur_ns.arguments):
+            arguments = getattr(cur_ns, "arguments", None)
+            if arguments:
                 for arg in cur_ns.arguments:
                     if arg.startswith("/"):
                         rpm_root_dir = arg
@@ -421,9 +416,8 @@ class updatelist_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "9a23e2f7-1953-4476-b4cc-3f3c2c813157"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
+        description = "Returns a list of software packages that are available for update on the host system."
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:

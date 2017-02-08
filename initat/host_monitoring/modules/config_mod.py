@@ -398,6 +398,7 @@ class modules_fingerprint_command(hm_classes.MonitoringCommand):
         required_access = HMAccessClassEnum.level0
         uuid = "2d9ae7a1-c37b-42ac-829c-eee5a3d84b28"
         description = "checksum/fingerprint of installed host monitoring modules"
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         from initat.host_monitoring.modules import local_mc
@@ -469,7 +470,9 @@ class platform_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "7f1499f8-33f0-40e5-8b07-b20f93e09acb"
-        description = "platform type of this host_monitor (LINUX or WINDOWS)"
+        description = "platform type of this host_monitor ({}, {})".format(PlatformSystemTypeEnum.WINDOWS.name,
+                                                                           PlatformSystemTypeEnum.LINUX.name)
+        create_mon_check_command = False
 
     def __call__(self, srv_com, cur_ns):
         srv_com["platform"] = PLATFORM_SYSTEM_TYPE.value
