@@ -292,6 +292,12 @@ body.normal {
 body.condensed .ova-statusbutton {
     margin: 8px 0 0 0;
 }
+.ovabutton-na {
+    margin-top: 16px;
+}
+body.condensed .ovabutton-na {
+    margin-top: 3px;
+}
 a.bttn-bgjobs {
     padding: 43px 0 0 5px!important;
 }
