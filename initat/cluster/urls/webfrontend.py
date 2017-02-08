@@ -375,6 +375,8 @@ discovery_patterns = [
     url(r"^dispatcher_link_syncer$", discovery_views.DispatcherLinkSyncer.as_view(), name="dispatcher_link_syncer"),
     url(r"^create_schedule_item$", discovery_views.ScheduleItemCreator.as_view(), name="create_schedule_item"),
     url(r"^host_monitoring_status_loader$", discovery_views.HostMonitoringStatusLoader.as_view(), name="host_monitoring_status_loader"),
+    url(r"^upload_update_file$", discovery_views.UploadUpdateFile.as_view(), name="upload_update_file"),
+    url(r"^update_file_status$", discovery_views.UpdateFileStatusLoader.as_view(), name="update_file_status"),
 ]
 
 rpl = []

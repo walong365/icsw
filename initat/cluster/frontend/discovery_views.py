@@ -642,3 +642,44 @@ class HostMonitoringStatusLoader(View):
         }
 
         return HttpResponse(json.dumps(result_dict))
+
+UPLOAD_FILE = None
+UPLOAD_FILE_VERSION = None
+UPLOAD_FILE_CHECKSUM = None
+class UploadUpdateFile(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        _file = request.FILES[list(request.FILES.keys())[0]]
+        if _file.size < 100000000:
+            import zipfile
+            import hashlib
+
+            try:
+                zf = zipfile.ZipFile(_file)
+
+                constants_py_str = zf.read("Lib/site-packages/initat/constants.py").decode()
+                windows_hm_version = constants_py_str.split('WINDOWS_HM_VERSION = ')[1].strip().replace("\"", "")
+
+                sha3_512_digester_all = hashlib.new("sha3_512")
+                path_list = [module for module in zf.namelist() if
+                 module.startswith("Lib/site-packages/initat/host_monitoring/modules/") and module.endswith(".py")]
+                path_list.sort()
+                for path in path_list:
+                    sha3_512_digester_all.update(zf.read(path))
+
+                windows_hm_checksum = sha3_512_digester_all.hexdigest()
+            except Exception as e:
+                _ = e
+            else:
+                global UPLOAD_FILE, UPLOAD_FILE_VERSION, UPLOAD_FILE_CHECKSUM
+                UPLOAD_FILE = _file
+                UPLOAD_FILE_VERSION = windows_hm_version
+                UPLOAD_FILE_CHECKSUM = windows_hm_checksum
+
+        return HttpResponse(json.dumps({}))
+
+class UpdateFileStatusLoader(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        return HttpResponse(json.dumps({"windows_hm_version": UPLOAD_FILE_VERSION,
+                                        "windows_hm_checksum": UPLOAD_FILE_CHECKSUM}))

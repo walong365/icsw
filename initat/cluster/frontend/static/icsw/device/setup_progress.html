@@ -120,6 +120,34 @@
                         <span>Host Monitoring Status</span>
                     </uib-tab-heading>
                     <br>
+                        <label class="control-label">Upload Update File:</label>
+                    <br/>
+                    <input type="file" class="btn btn-sm btn-primary form-control-inline" nv-file-select uploader="uploader"/>
+                    <br/>
+                    <div ng-if="uploading" class="progress">
+                        <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100" ng-style="{width : ( getPercentage() + '%' ) }">
+                        </div>
+                    </div>
+                    <br>
+                        <label class="control-label">Update File Information:</label>
+                    <br/>
+                    <div ng-if="struct.update_file_version != undefined && struct.update_file_module_fingerprint != undefined">
+                        <table class="table table-condensed table-striped table-hover simple-border">
+                            <thead>
+                                <tr>
+                                    <th class="text-center">Version</th>
+                                    <th class="text-center">Module Fingerprint</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="text-center">{{ struct.update_file_version }}</td>
+                                    <td class="text-center">{{ struct.update_file_module_fingerprint }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <br>
                         <label class="control-label">Local Host Monitoring Information:</label>
                     <br/>
                     <table class="table table-condensed table-striped table-hover simple-border">
