@@ -1305,8 +1305,7 @@ class df_command(hm_classes.MonitoringCommand):
             hm_classes.MCParameter("", "arguments", "", "Disk partition")
         )
 
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name)
+    def mc_init(self):
         self.__disk_lut = partition_tools.disk_lut()
 
     def __call__(self, srv_com, cur_ns):
@@ -1871,9 +1870,6 @@ class sysinfo_command(hm_classes.MonitoringCommand):
             hm_classes.MCParameter("", "arguments", "", "System root"),
         )
 
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
-
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
             root_dir = srv_com.get("arguments:arg0", "/")
@@ -1964,12 +1960,9 @@ class load_command(hm_classes.MonitoringCommand):
                 "crit",
                 5.0,
                 "Critical value for load check",
-                devvar_name = "LOAD_CRITICAL",
+                devvar_name="LOAD_CRITICAL",
             ),
         )
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
@@ -2797,11 +2790,11 @@ class cpufreq_info_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "399f3cb5-3fc0-426b-8189-3357494d7e7a"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name)
-        self.parser.add_argument("--governor", dest="governor", type=str, default="")
-        self.parser.add_argument("--driver", dest="driver", type=str, default="")
+        description = "Check CPU frequencies"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("--governor", "governor", "", "required CPU governor"),
+            hm_classes.MCParameter("--driver", "driver", "", "required CPU driver"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         _TOP_DIR = "/sys/devices/system/cpu"

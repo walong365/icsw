@@ -75,7 +75,7 @@ class MCParameters(object):
 
 
 class MCParameter(object):
-    def __init__(self, arg_name, destination, default, description, devvar_name=None):
+    def __init__(self, arg_name, destination, default, description, devvar_name=None, expand=True):
         # for argument parsing (-w, -l, --speed for instance)
         self.arg_name = arg_name
         # destination for comandline parsing
@@ -88,6 +88,8 @@ class MCParameter(object):
         self.default = default
         # description of parameter
         self.description = description
+        # add magic icinga command expansion ($ARG$)
+        self.expand = expand
 
     def build_icinga_command(self, index):
         def _to_string(value):
@@ -116,13 +118,18 @@ class MCParameter(object):
                     _to_string(self.default),
                 )
             )
-        elif self.default is not None:
-            _r_v.append(
-                "${{ARG{:d}:{}}}$".format(
-                    index,
+        elif self.default not in [None, ""]:
+            if self.expand:
+                _r_v.append(
+                    "${{ARG{:d}:{}}}$".format(
+                        index,
+                        _to_string(self.default),
+                    )
+                )
+            else:
+                _r_v.append(
                     _to_string(self.default),
                 )
-            )
         else:
             _r_v.append(
                 "${{ARG{:d}}}".format(index)
@@ -291,14 +298,15 @@ class ModuleContainer(object):
 
         for mod_object in self.__pure_module_list:
             mod_name = mod_object.__name__
+            short_name = mod_name.split(".")[-1]
             _mod_def = mod_object.ModuleDefinition
             # salt meta
-            MonitoringModule.salt_meta(_mod_def)
+            MonitoringModule.salt_meta(short_name, _mod_def)
             if MonitoringModule.verify_meta(_mod_def, platform, access_class):
                 if _mod_def.Meta.uuid in used_uuids:
                     raise ValueError("UUID used twice")
                 used_uuids.add(_mod_def.Meta.uuid)
-                new_hm_mod = _mod_def(mod_name.split(".")[-1], mod_object)
+                new_hm_mod = _mod_def(short_name, mod_object)
                 # init state flags for correct handling of shutdown (do not call close_module when
                 # init_module was not called)
                 new_hm_mod.module_state = {_name: False for _name, _flag in MODULE_STATE_INIT_LIST}
@@ -312,6 +320,11 @@ class ModuleContainer(object):
                 )
         command_dict = {}
         module_list = []
+
+        # set of primary command names
+        pcom_names = set()
+        # dict of secondary command names (pointing to primary names)
+        scom_dict = {}
 
         # step 2: iterate over modules and add commands
 
@@ -331,10 +344,15 @@ class ModuleContainer(object):
                 coms_added = []
                 for loc_com in loc_coms:
                     com_obj = getattr(mod_object, loc_com)
-                    MonitoringCommand.salt_meta(com_obj)
+                    if loc_com.endswith("_command"):
+                        loc_com = loc_com[:-8]
+                    MonitoringCommand.salt_meta(loc_com, com_obj)
                     if MonitoringCommand.verify_meta(com_obj, platform, access_class):
                         if com_obj.Meta.uuid in used_uuids:
-                            raise ValueError("UUID used twice")
+                            raise ValueError("UUID {} used twice".format(com_obj.Meta.uuid))
+                        if com_obj.Meta.name in pcom_names:
+                            raise ValueError("name {} already used".format(com_obj.Meta.name))
+                        pcom_names.add(com_obj.Meta.name)
                         used_uuids.add(com_obj.Meta.uuid)
                         try:
                             new_hm_mod.add_command(loc_com, com_obj)
@@ -357,6 +375,27 @@ class ModuleContainer(object):
                                 )
                         else:
                             coms_added.append(loc_com)
+                            # add secondary names
+                            for other_name in com_obj.Meta.alternate_names:
+                                if other_name in pcom_names:
+                                    self.log(
+                                        "alternate name {} for {} already used in primary names, ignoring".format(
+                                            other_name,
+                                            loc_com,
+                                        ),
+                                        logging_tools.LOG_LEVEL_ERROR,
+                                    )
+                                elif other_name in scom_dict:
+                                    self.log(
+                                        "alternate name {} for {} already used in secondary dict for {}, ignoring".format(
+                                            other_name,
+                                            loc_com,
+                                            scom_dict[other_name],
+                                        ),
+                                        logging_tools.LOG_LEVEL_ERROR,
+                                    )
+                                else:
+                                    scom_dict[other_name] = loc_com
                     else:
                         self.log(
                             "command {}@{} not added because of {}".format(
@@ -393,6 +432,7 @@ class ModuleContainer(object):
         )
         self.module_list = module_list
         self.command_dict = command_dict
+        self.secondary_names = scom_dict
 
     def init_commands(self, server_proc: object, verbose: bool) -> bool:
         _init_ok = True
@@ -437,9 +477,12 @@ class ModuleContainer(object):
 
     # command access commands
     def __contains__(self, key):
-        return key in self.command_dict
+        return key in self.command_dict or key in self.secondary_names
 
     def __getitem__(self, key):
+        if key in self.secondary_names:
+            # resolve to primary name
+            key = self.secondary_names[key]
         return self.command_dict[key]
 
     def keys(self):
@@ -448,14 +491,16 @@ class ModuleContainer(object):
 
 class MMMCBase(object):
     class Meta:
+        name = ""
         priority = 0
         required_access = HMAccessClassEnum.level2
         required_platform = PlatformSystemTypeEnum.NONE
         uuid = ""
 
     @classmethod
-    def salt_meta(cls, obj: object) -> None:
-        for _attr_name in ["priority", "required_access", "required_platform", "uuid"]:
+    def salt_meta(cls, name: str, obj: object) -> None:
+        obj.Meta.name = name
+        for _attr_name in ["name", "priority", "required_access", "required_platform", "uuid"]:
             if not hasattr(obj.Meta, _attr_name):
                 # set default value
                 setattr(obj.Meta, _attr_name, getattr(MMMCBase.Meta, _attr_name))
@@ -512,12 +557,9 @@ class MonitoringModule(MMMCBase):
         self.base_init()
 
     def add_command(self, com_name, call_obj):
-        if isinstance(call_obj, type):
-            if com_name.endswith("_command"):
-                com_name = com_name[:-8]
-            new_co = call_obj(com_name)
-            new_co.module = self
-            self.__commands[com_name] = new_co
+        new_co = call_obj(com_name)
+        new_co.module = self
+        self.__commands[com_name] = new_co
 
     @property
     def commands(self):
@@ -550,16 +592,26 @@ class MonitoringModule(MMMCBase):
 
 class MonitoringCommand(MMMCBase):
     class Meta:
+        # Description
         description = "No description available"
+        # emits Performancedata
         has_perfdata = False
+        # parameters
         parameters = MCParameters()
+        # which server to be used
         check_instance = DynamicCheckServer.collrelay
+        # create a mon_check_command from this command
         create_mon_check_command = True
+        # do not interact with remote device, instead send to localhost
+        send_to_localhost = False
+        # alternate names
+        alternate_names = []
+        # cache timeout, for some mixins
+        cache_timeout = 0
 
     def __init__(self, name, **kwargs):
         super(MonitoringCommand, self).__init__()
         self.__log_cache = []
-        self.Meta.name = name
         # argument parser
         self.parser = argparse.ArgumentParser(
             description="description: {}".format(self.Meta.description) if self.Meta.description else "",
@@ -583,19 +635,34 @@ class MonitoringCommand(MMMCBase):
         # monkey patch parsers
         self.parser.exit = self._parser_exit
         self.parser.error = self._parser_error
+        self.mc_init()
 
     @classmethod
-    def salt_meta(cls, obj: object) -> None:
+    def salt_meta(cls, name: str, obj: object) -> None:
+        def _get_attrs(meta):
+            return {entry for entry in dir(meta) if not entry.startswith("_")}
+
         # salt baseclass
-        super(MonitoringCommand, cls).salt_meta(obj)
+        super(MonitoringCommand, cls).salt_meta(name, obj)
+        ALLOWED_ATTRS = _get_attrs(MonitoringCommand.Meta)
         # salt monitoringcommand
-        for _attr_name in [
-            "description", "has_perfdata", "parameters", "check_instance",
-            "create_mon_check_command",
-        ]:
+        for _attr_name in ALLOWED_ATTRS:
             if not hasattr(obj.Meta, _attr_name):
                 # set default value
                 setattr(obj.Meta, _attr_name, getattr(cls.Meta, _attr_name))
+        SUPER_ATTRS = _get_attrs(MMMCBase.Meta)
+        cur_attrs = _get_attrs(obj.Meta)
+        extra_attrs = cur_attrs - ALLOWED_ATTRS - SUPER_ATTRS
+        if extra_attrs:
+            raise AttributeError(
+                "unrecognized attributes found: {}".format(
+                    ", ".join(sorted(list(extra_attrs)))
+                )
+            )
+
+    def mc_init(self):
+        # to be called after the command __init__ was called but before the command is added to the module
+        pass
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if hasattr(self, "module"):
@@ -627,8 +694,13 @@ class MonitoringCommand(MMMCBase):
             _server = "$USER2$"
         elif self.Meta.check_instance == DynamicCheckServer.snmp_relay:
             _server = "$USER3$"
-        return "{} -m $HOSTADDRESS$ {} {}".format(
+        if self.Meta.send_to_localhost:
+            _target = "127.0.0.1"
+        else:
+            _target = "$HOSTADDRESS$"
+        return "{} -m {} {} {}".format(
             _server,
+            _target,
             self.Meta.name,
             self.Meta.parameters.build_icinga_command(),
         ).strip()

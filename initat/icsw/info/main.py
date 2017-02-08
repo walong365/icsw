@@ -138,6 +138,10 @@ def show_hm_help(options):
                         header="create MCC",
                     ),
                     logging_tools.form_entry(
+                        ", ".join(cmd.Meta.alternate_names) if cmd.Meta.alternate_names else "---",
+                        header="Alternate names",
+                    ),
+                    logging_tools.form_entry(
                         cmd.Meta.description,
                         header="description",
                     ),

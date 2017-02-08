@@ -59,7 +59,13 @@ def main(opt_ns):
     _lws = [_lw for _lw in [LogWatcher(opt_ns, _entry, _lc) for _entry in opt_ns.used_systems] if _lw.valid]
     if opt_ns.with_nodes:
         for _node in opt_ns.used_nodes:
-            _lws.extend([_lw for _lw in [LogWatcher(opt_ns, _entry, _lc, node=_node) for _entry in opt_ns.used_systems] if _lw.valid])
+            _lws.extend(
+                [
+                    _lw for _lw in [
+                        LogWatcher(opt_ns, _entry, _lc, node=_node) for _entry in opt_ns.used_systems
+                    ] if _lw.valid
+                ]
+            )
     _lc.sort()
     _lc.prune()
     _lc.show()

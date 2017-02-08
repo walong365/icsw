@@ -353,10 +353,12 @@ class certificate_status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "ea9f11c7-f3c3-4704-ae6e-ae3e42983183"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("", "arguments", "", "One or more Certificate directories"),
+        )
 
-    def __init__(self, name):
+    def mc_init__(self):
         self._openssl_command = process_tools.find_file("openssl")
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
 
     def _get_pem_status(self, file_name):
         pem_com = "{} x509 -in {} -startdate -enddate -noout".format(
@@ -498,11 +500,11 @@ class openvpn_status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "c0798eb6-9be0-4399-aebc-1edcaacf6fd1"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
-        self.parser.add_argument("-i", dest="instance", type=str, default="ALL")
-        self.parser.add_argument("-p", dest="peer", type=str, default="ALL")
+        description = "Check status of one or all OpenVPN Instances"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-i", "instance", "ALL", "Name of instance"),
+            hm_classes.MCParameter("-p", "peer", "ALL", "Name of peer"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         self.module.update_status()

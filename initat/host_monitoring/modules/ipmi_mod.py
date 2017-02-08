@@ -207,11 +207,12 @@ class ipmi_sensor_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "e85a632a-6a55-4e69-9b9c-17c2a3e795c0"
+        description = "Get all IPMI sensors"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter(None, "arguments", "", "Sensor filter"),
+        )
 
-    info_string = "get all IPMI sensors"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
+    def mc_init(self):
         for limit in IPMI_LONG_LIMITS:
             self.parser.add_argument("--{}".format(limit), dest=limit, type=str, default="na")
 

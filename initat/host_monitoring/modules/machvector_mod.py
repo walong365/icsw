@@ -78,10 +78,13 @@ class get_mvector_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "3da4050e-060a-4984-a096-32cd48d87343"
-
-    def __init__(self, name):
-        hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)
-        self.parser.add_argument("--raw", dest="raw", action="store_true", default=False)
+        create_mon_check_command = False
+        description = "Query current MachineVector"
+        alternate_names = ["get_machine_vector"]
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("--raw", "raw", False, "enable raw mode"),
+            hm_classes.MCParameter(None, "arguments", "", "Filter for output"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         self.module.machine_vector.store_xml(srv_com)
@@ -98,27 +101,29 @@ class get_mvector_command(hm_classes.MonitoringCommand):
             vector_keys = sorted(srv_com.xpath(".//ns:mve/@name", start_el=cur_vector, smart_strings=False))
             used_keys = [key for key in vector_keys if any([cur_re.search(key) for cur_re in re_list]) or not re_list]
             ret_array = [
-                "MachineVector id {}, {}, {} shown:".format(
+                "MachineVector id {}, {}, {} shown{}".format(
                     cur_vector.attrib["version"],
                     logging_tools.get_plural("key", len(vector_keys)),
                     logging_tools.get_plural("key", len(used_keys)),
+                    ":" if used_keys else "",
                 )
             ]
-            out_list = logging_tools.NewFormList()
-            max_num_keys = 0
-            _list = []
-            for mv_num, mv_key in enumerate(vector_keys):
-                if mv_key in used_keys:
-                    cur_xml = srv_com.xpath("//ns:mve[@name='{}']".format(mv_key), start_el=cur_vector, smart_strings=False)[0]
-                    _mv = hm_classes.MachineVectorEntry(
-                        cur_xml.attrib.pop("name"),
-                        **cur_xml.attrib
-                    )
-                    _list.append((mv_num, _mv))
-                    max_num_keys = max(max_num_keys, _mv.num_keys)
-            for mv_num, entry in _list:
-                out_list.append(entry.get_form_entry(mv_num, max_num_keys))
-            ret_array.extend(str(out_list).split("\n"))
+            if used_keys:
+                out_list = logging_tools.NewFormList()
+                max_num_keys = 0
+                _list = []
+                for mv_num, mv_key in enumerate(vector_keys):
+                    if mv_key in used_keys:
+                        cur_xml = srv_com.xpath("//ns:mve[@name='{}']".format(mv_key), start_el=cur_vector, smart_strings=False)[0]
+                        _mv = hm_classes.MachineVectorEntry(
+                            cur_xml.attrib.pop("name"),
+                            **cur_xml.attrib
+                        )
+                        _list.append((mv_num, _mv))
+                        max_num_keys = max(max_num_keys, _mv.num_keys)
+                for mv_num, entry in _list:
+                    out_list.append(entry.get_form_entry(mv_num, max_num_keys))
+                ret_array.extend(str(out_list).split("\n"))
             return limits.mon_STATE_OK, "\n".join(ret_array)
 
 
@@ -127,12 +132,12 @@ class graph_setup_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "8444d61b-4cf9-4ad3-9562-089d877b7afb"
-        description = "Graphing setup"
-        parameters = hm_classes.MCParameters(
-            hm_classes.MCParameter("--send-name", "send_name", "", "(Full) name of target device"),
-            hm_classes.MCParameter("--target-ip", "target_ip", "", "IP of target device"),
-        )
         create_mon_check_command = False
+        description = "Set Graphing target for MachineVector graphing"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("--send-name", "send_name", "", "Name to use for sending graphs"),
+            hm_classes.MCParameter("--target-ip", "target_ip", "", "Graphing Server address"),
+        )
 
     def __call__(self, srv_com, cur_ns):
         if cur_ns.send_name:
