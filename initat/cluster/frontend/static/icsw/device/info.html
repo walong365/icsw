@@ -132,7 +132,7 @@
 <script type="text/ng-template" id="icsw.device.info.tab.tab_setup">
     <uib-tab select="activate('$$modify')" index="'$$modify'">
         <uib-tab-heading>
-            Config <span class="fa fa-wrench"></span>
+            Tab Configuration <span class="fa fa-wrench"></span>
         </uib-tab-heading>
         <icsw-device-info-tab-modify></icsw-device-info-tab-modify>
     </uib-tab>
@@ -216,7 +216,7 @@
         <div class="form-group row">
             <div class="col-md-6 col-xs-12">
                 <div class="row">
-                    <label class="control-label col-xs-3 requiredField icsw-formlabel">
+                    <label class="control-label col-xs-3 requiredField">
                         FQDN
                     </label>
                     <div class="col-xs-9">
@@ -224,7 +224,7 @@
                     </div>
                 </div>
                 <div class="row" ng-show="edit_obj.alias">
-                    <label class="control-label col-xs-3 icsw-formlabel">
+                    <label class="control-label col-xs-3">
                         Alias
                     </label>
                     <div class="col-xs-9">
@@ -232,7 +232,7 @@
                     </div>
                 </div>
                 <div class="row">
-                    <label class="control-label col-xs-3 icsw-formlabel">
+                    <label class="control-label col-xs-3">
                         <!-- todo, add some helpfull information via info button -->
                         UUID <!-- <icsw-tools-button size="xs" type="info"></icsw-tools-button> -->
                     </label>
@@ -241,7 +241,7 @@
                     </div>
                 </div>
                 <div class="row">
-                    <label class="control-label col-xs-3 icsw-formlabel" ng-show="edit_obj.comment">
+                    <label class="control-label col-xs-3" ng-show="edit_obj.comment">
                         Comment
                     </label>
                     <div class="col-xs-9" ng-show="edit_obj.comment">
@@ -251,7 +251,7 @@
             </div>
             <div class="col-md-6 col-xs-12">
                 <div class="row">
-                    <label class="control-label col-xs-3 requiredField icsw-formlabel">
+                    <label class="control-label col-xs-3 requiredField">
                         Device Group
                     </label>
                     <div class="col-xs-9">
@@ -259,7 +259,7 @@
                     </div>
                 </div>
                 <div class="row">
-                    <label class="control-label col-xs-3 requiredField icsw-formlabel">
+                    <label class="control-label col-xs-3 requiredField">
                         Device Class
                     </label>
                     <div class="col-xs-9">
@@ -267,7 +267,7 @@
                     </div>
                 </div>
                 <div class="row">
-                    <label class="control-label col-xs-3 icsw-formlabel">
+                    <label class="control-label col-xs-3">
                         Categories
                     </label>
                     <div class="col-xs-9">
@@ -276,7 +276,7 @@
                     </div>
                 </div>
                 <div class="row">
-                    <label class="control-label col-xs-3 icsw-formlabel">
+                    <label class="control-label col-xs-3">
                         Asset Categories
                     </label>
                     <div class="col-xs-9">
@@ -294,7 +294,7 @@
         <div class="form-group row">
             <div class="col-md-6 col-xs-12">
                 <div class="row">
-                    <label class="control-label col-xs-3 icsw-formlabel">
+                    <label class="control-label col-xs-3">
                         IP Addresses
                     </label>
                     <div class="col-xs-9">
@@ -302,7 +302,7 @@
                     </div>
                 </div>
                 <div class="row">
-                    <label class="control-label col-xs-3 icsw-formlabel">
+                    <label class="control-label col-xs-3">
                         ComCapabilities
                     </label>
                     <div class="col-xs-9">
@@ -312,7 +312,7 @@
             </div>
             <div class="col-md-6 col-xs-12">
                 <div class="row">
-                    <label class="control-label col-xs-3 icsw-formlabel">
+                    <label class="control-label col-xs-3">
                         SNMP Scheme
                     </label>
                     <div class="col-xs-9">
@@ -320,7 +320,7 @@
                     </div>
                 </div>
                 <div class="row">
-                    <label class="control-label col-xs-3 icsw-formlabel">
+                    <label class="control-label col-xs-3">
                         SNMP Information
                     </label>
                     <div class="col-xs-9">
@@ -334,7 +334,7 @@
         <legend>Device Flags</legend>
         <div class="row">
             <div class="col-xs-6 col-sm-4" ng-show="struct.monitoring_tree.mon_device_templ_list.length">
-                <label class="control-label icsw-formlabel">
+                <label class="control-label">
                     Monitoring Device Template
                 </label>
             </div>
@@ -347,7 +347,7 @@
         </div>
         <div class="row">
             <div class="col-xs-6 col-sm-4">
-                <label class="control-label icsw-formlabel">Monitoring Hints</label>
+                <label class="control-label">Monitoring Hints</label>
             </div>
             <div class="col-xs-6 col-sm-8">
                 {{ edit_obj.$$monitoring_hint_info }}
@@ -355,7 +355,7 @@
         </div>
         <div class="row">
             <div class="col-xs-8 col-sm-4">
-                <label class="control-label icsw-formlabel">
+                <label class="control-label">
                     Monitoring Checks Enabled
                 </label>
             </div>
@@ -363,7 +363,7 @@
                 <span ng-bind-html="edit_obj.monitor_checks | yesno4"></span>
             </div>
             <div class="col-xs-8 col-sm-4">
-                <label class="control-label icsw-formlabel">
+                <label class="control-label">
                     Dynamic Checks found
                 </label>
             </div>
@@ -373,24 +373,24 @@
         </div>
         <div class="row">
             <div class="col-xs-8 col-sm-4">
-                <label class="control-label icsw-formlabel">
+                <label class="control-label">
                     Enable Perfdata, check IPMI and SNMP
                 </label>
             </div>
             <div class="col-xs-4 col-sm-2">
                 <span ng-bind-html="edit_obj.enable_perfdata | yesno4"></span>
             </div>
-            <label class="control-label col-xs-8 col-sm-4 icsw-formlabel">Flap-detection Enabled</label>
+            <label class="control-label col-xs-8 col-sm-4">Flap-detection Enabled</label>
             <div class="col-xs-4 col-sm-2">
                 <span ng-bind-html="edit_obj.flap_detection_enabled | yesno4"></span>
             </div>
         </div>
         <div class="row">
-            <label class="control-label col-xs-8 col-sm-4 icsw-formlabel">Resolve to IP for Monitoring</label>
+            <label class="control-label col-xs-8 col-sm-4">Resolve to IP for Monitoring</label>
             <div class="col-xs-4 col-sm-2">
                 <span ng-bind-html="edit_obj.mon_resolve_name | yesno4"></span>
             </div>
-            <label class="control-label col-xs-8 col-sm-4 icsw-formlabel">Store RRD Data</label>
+            <label class="control-label col-xs-8 col-sm-4">Store RRD Data</label>
             <div class="col-xs-4 col-sm-2">
                 <span ng-bind-html="edit_obj.store_rrd_data | yesno4"></span>
             </div>
@@ -416,6 +416,8 @@
                     icsw-select-device="edit_obj.idx"
                 ></icsw-monitoring-list-overview>
             </div>
+        </div>
+        <div class="row">
             <div class="col-xs-12 col-md-8">
                 <icsw-device-status-history-overview
                     icsw-device-mode="single"
