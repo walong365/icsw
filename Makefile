@@ -215,6 +215,7 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_SHARE}/examples/sge_licenses
 	cp -a examples/* ${DESTDIR}${ICSW_SHARE}/examples/sge_licenses
 	# /opt/cluster/share
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/opt/cluster/share/json_defs/
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/opt/cluster/share/cert/
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/opt/cluster/share/webcache/
 	${INSTALL} ${INSTALL_OPTS} cert/* ${DESTDIR}/opt/cluster/share/cert

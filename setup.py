@@ -137,6 +137,12 @@ setup(
             ]
         ),
         (
+            "/opt/cluster/share/json_defs",
+            [
+                "opt/cluster/share/pci/mon_defs.json",
+            ]
+        ),
+        (
             "/opt/cluster/bin",
             [
                 # cbc
