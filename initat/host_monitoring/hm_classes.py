@@ -278,7 +278,7 @@ class ModuleContainer(object):
     def reload_module_checksum(self):
         sha3_512_digester_all = hashlib.new("sha3_512")
         hm_checksums = {}
-        modules_file_list =  []
+        modules_file_list = []
 
         for root, dirs, files in os.walk(self.__root_dir):
             for _file in files:
@@ -755,14 +755,11 @@ class MonitoringCommand(MMMCBase):
         return self.hash_object.hexdigest()
 
     def get_json_dump(self, prev_file):
-        _prev_instance = None
-        if prev_file and isinstance(prev_file, dict):
-            if "command_list" in prev_file:
-                _prev_instance = [cmd for cmd in prev_file["command_list"] if cmd["uuid"] == self.Meta.uuid]
-                if len(_prev_instance):
-                    _prev_instance = _prev_instance[0]
-                else:
-                    _prev_instance = None
+        _prev_instance = [cmd for cmd in prev_file["command_list"] if cmd["uuid"] == self.Meta.uuid]
+        if len(_prev_instance):
+            _prev_instance = _prev_instance[0]
+        else:
+            _prev_instance = None
         if _prev_instance:
             _version = _prev_instance.get("version", 1)
             if _prev_instance["checksum"] != self.checksum:

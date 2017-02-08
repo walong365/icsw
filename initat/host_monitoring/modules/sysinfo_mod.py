@@ -66,7 +66,7 @@ class lsmodinfo_command(hm_classes.MonitoringCommand):
             )
 
     def interpret(self, srv_com, cur_ns):
-        modules = server_command.decompress(srv_com["*modules"],json=True)
+        modules = server_command.decompress(srv_com["*modules"], json=True)
         if cur_ns.required:
             _required = set(cur_ns.required.split(","))
             _found = set([_part[0] for _part in modules])
@@ -107,8 +107,15 @@ class mountinfo_command(hm_classes.MonitoringCommand):
         if len(_mount):
             _mount = _mount[0]
             if _mount[2] == cur_ns.filesys:
-                return limits.mon_STATE_OK, "mountpoint {} has filesystem {}".format(cur_ns.mountpoint, cur_ns.filesys)
+                return limits.mon_STATE_OK, "mountpoint {} has filesystem {}".format(
+                    cur_ns.mountpoint,
+                    cur_ns.filesys
+                )
             else:
-                return limits.mon_STATE_CRITICAL, "mountpoint {} has wrong filesystem: {} != {}".format(cur_ns.mountpoint, _mount[2], cur_ns.filesys)
+                return limits.mon_STATE_CRITICAL, "mountpoint {} has wrong filesystem: {} != {}".format(
+                    cur_ns.mountpoint,
+                    _mount[2],
+                    cur_ns.filesys
+                )
         else:
             return limits.mon_STATE_CRITICAL, "mountpoint {} not found".format(cur_ns.mountpoint)
