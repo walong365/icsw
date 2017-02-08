@@ -143,9 +143,6 @@
                     <div class="form-group row" ng-if="struct.any_images_found">
                         <label class="control-label col-md-3 icsw-formlabel">Icon</label>
                         <div class="form-inline col-md-6">
-                            <!-- <a href="#" class="thumbnail"> -->
-                                <img ng-src="{{ struct.img_url }}" width="16"/>
-                            <!-- </a> -->
                             <input
                                 type="text"
                                 name="icon"
@@ -156,8 +153,12 @@
                                 uib-typeahead-append-to-body="true"
                                 typeahead-on-select="on_icon_select($item, $model, $label)"
                             />
+                            <!-- <a href="#" class="thumbnail"> -->
+                                <img ng-src="{{ struct.img_url }}" width="16"/>
+                            <!-- </a> -->
                         </div>
                         <div class="col-md-3"></div>
+                        <!--
                         <div class="controls col-md-6 col-md-offset-3">
                             <div class="row">
                                 <div class="col-md-1 col-xs-1" ng-repeat="entry in struct.mon_ext_host">
@@ -167,6 +168,7 @@
                                 </div>
                             </div>
                         </div>
+                        -->
                     </div>
                     <div class="form-group">
                         <label class="control-label col-md-3 icsw-formlabel">Monitor host via</label>
