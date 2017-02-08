@@ -115,6 +115,115 @@
                         </div>
                     </div>
                 </uib-tab>
+                <uib-tab>
+                    <uib-tab-heading>
+                        <span>Host Monitoring Status</span>
+                    </uib-tab-heading>
+                    <br>
+                        <label class="control-label">Upload Update File:</label>
+                    <br/>
+                    <input type="file" class="btn btn-sm btn-primary form-control-inline" nv-file-select uploader="uploader"/>
+                    <br/>
+                    <div ng-if="uploading" class="progress">
+                        <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100" ng-style="{width : ( getPercentage() + '%' ) }">
+                        </div>
+                    </div>
+                    <br>
+                        <label class="control-label">Update File Information:</label>
+                    <br/>
+                    <div ng-if="struct.update_file_version != undefined && struct.update_file_module_fingerprint != undefined">
+                        <table class="table table-condensed table-striped table-hover simple-border">
+                            <thead>
+                                <tr>
+                                    <th class="text-center">Version</th>
+                                    <th class="text-center">Module Fingerprint</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="text-center">{{ struct.update_file_version }}</td>
+                                    <td class="text-center">{{ struct.update_file_module_fingerprint }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <br>
+                        <label class="control-label">Local Host Monitoring Information:</label>
+                    <br/>
+                    <table class="table table-condensed table-striped table-hover simple-border">
+                        <thead>
+                            <tr>
+                                <th class="text-center">Local <strong>LINUX</strong> Version</th>
+                                <th class="text-center">Local <strong>WINDOWS</strong> Version</th>
+                                <th class="text-center">Local Module Fingerprint</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="text-center">{{ struct.local_linux_version }}</td>
+                                <td class="text-center">{{ struct.local_windows_version }}</td>
+                                <td class="text-center">{{ struct.local_hm_module_fingerprint }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <br>
+                        <label class="control-label">Device(s) Host Monitoring Information:</label>
+                    <br/>
+                    <h3 ng-show="struct.devices.length == 0">No devices selected</h3>
+                    <table
+                        class="table table-condensed table-striped table-hover simple-border"
+                        st-table="devices_shown"
+                        ng-show="struct.devices.length > 0"
+                        st-safe-src="struct.devices"
+                    >
+                        <thead>
+                            <tr>
+                                <td colspan="99">
+                                    <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                                </td>
+                            </tr>
+                            <!--<tr>
+                                <td>Filter Actions:</td>
+                                <td colspan="99">
+                                    <div class="btn-group btn-group-xs">
+                                        <input type="button" value="All Devices" ng-class="sub_tab.all_devices_filter_class" ng-click="sub_tab.show_all_devices_filter()"></input>
+                                    </div>
+                                </td>
+                            </tr>-->
+                            <tr>
+                                <th class="text-center">Device</th>
+                                <th class="text-center">Version</th>
+                                <th class="text-center">Platform</th>
+                                <th class="text-center">Module Fingerprint</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="device in devices_shown">
+                                <td class="text-center"><button type="button" class="btn btn-xs btn-success" ng-click="show_device($event, device)">{{ device.full_name }}</button></td>
+                                <td ng-class="device.$$host_monitor_version_class" class="text-center">{{ device.$$host_monitor_version }}</td>
+                                <td class="text-center">{{ device.$$host_monitor_platform }}</td>
+                                <td ng-class="device.$$host_monitor_fingerprint_class" class="text-center">{{ device.$$host_monitor_fingerprint }}</td>
+                                <td class="text-center">
+                                    <icsw-tools-button
+                                        type="modify"
+                                        size="xs"
+                                        ng-click="update_modules(device)"
+                                        icsw-disabled="device.$$update_modules_disabled"
+                                        value="Update (Modules Only)"
+                                    ></icsw-tools-button>
+                                    <icsw-tools-button
+                                        type="modify"
+                                        size="xs"
+                                        ng-click="perform_full_update(device)"
+                                        icsw-disabled="true"
+                                        value="Update (Complete)"
+                                    ></icsw-tools-button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </uib-tab>
                 <uib-tab ng-click="device_overview_tab_clicked()">
                     <uib-tab-heading>
                         <span>Device Status</span>
@@ -229,80 +338,6 @@
                                             </div>
                                         </div>
                                     </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </uib-tab>
-                <uib-tab>
-                    <uib-tab-heading>
-                        <span>Host Monitoring Status</span>
-                    </uib-tab-heading>
-                    <br>
-                        <label class="control-label">Local Host Monitoring Information:</label>
-                    <br/>
-                    <table class="table table-condensed table-striped table-hover simple-border">
-                        <thead>
-                            <tr>
-                                <th class="text-center">Local <strong>LINUX</strong> Version</th>
-                                <th class="text-center">Local <strong>WINDOWS</strong> Version</th>
-                                <th class="text-center">Local Module Fingerprint</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td class="text-center">{{ struct.local_linux_version }}</td>
-                                <td class="text-center">{{ struct.local_windows_version }}</td>
-                                <td class="text-center">{{ struct.local_hm_module_fingerprint }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <br>
-                        <label class="control-label">Device(s) Host Monitoring Information:</label>
-                    <br/>
-                    <h3 ng-show="struct.devices.length == 0">No devices selected</h3>
-                    <table
-                        class="table table-condensed table-striped table-hover simple-border"
-                        st-table="devices_shown"
-                        ng-show="struct.devices.length > 0"
-                        st-safe-src="struct.devices"
-                    >
-                        <thead>
-                            <tr>
-                                <td colspan="99">
-                                    <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                                </td>
-                            </tr>
-                            <!--<tr>
-                                <td>Filter Actions:</td>
-                                <td colspan="99">
-                                    <div class="btn-group btn-group-xs">
-                                        <input type="button" value="All Devices" ng-class="sub_tab.all_devices_filter_class" ng-click="sub_tab.show_all_devices_filter()"></input>
-                                    </div>
-                                </td>
-                            </tr>-->
-                            <tr>
-                                <th class="text-center">Device</th>
-                                <th class="text-center">Version</th>
-                                <th class="text-center">Platform</th>
-                                <th class="text-center">Module Fingerprint</th>
-                                <th class="text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr ng-repeat="device in devices_shown">
-                                <td class="text-center"><button type="button" class="btn btn-xs btn-success" ng-click="show_device($event, device)">{{ device.full_name }}</button></td>
-                                <td ng-class="device.$$host_monitor_version_class" class="text-center">{{ device.$$host_monitor_version }}</td>
-                                <td class="text-center">{{ device.$$host_monitor_platform }}</td>
-                                <td ng-class="device.$$host_monitor_fingerprint_class" class="text-center">{{ device.$$host_monitor_fingerprint }}</td>
-                                <td class="text-center">
-                                    <icsw-tools-button
-                                        type="modify"
-                                        size="xs"
-                                        ng-click="update_modules(device)"
-                                        icsw-disabled="device.$$update_modules_disabled"
-                                        value="Update Modules"
-                                    ></icsw-tools-button>
                                 </td>
                             </tr>
                         </tbody>

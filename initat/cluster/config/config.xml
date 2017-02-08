@@ -870,11 +870,11 @@
                 <menuEntry icon="fa-map-pin" routeName="main.devlocation" name="Locations"/>
             </routeSubGroup>
             <routeSubGroup name="Properties" newcol_bool="yes">
-                <menuEntry icon="fa-th" routeName="main.moncheckoverview" name="Edit Checks"/>
+                <menuEntry icon="fa-th" routeName="main.moncheckoverview" name="Edit Checks" limitedTo="NOCTUA"/>
                 <menuEntry icon="fa-th-list" routeName="main.configoverview" name="Edit Configurations"/>
-                <menuEntry icon="fa-check-square" routeName="main.devicemonconfig" name="Assign Checks"/>
+                <menuEntry icon="fa-check-square" routeName="main.devicemonconfig" name="Assign Checks" limitedTo="NOCTUA"/>
                 <menuEntry icon="fa-check-square-o" routeName="main.deviceconfig" name="Assign Configurations"/>
-                <menuEntry icon="fa-info" routeName="main.monitordynamic" name="Dynamic Monitoring"/>
+                <menuEntry icon="fa-info" routeName="main.monitordynamic" name="Dynamic Monitoring" limitedTo="NOCTUA"/>
             </routeSubGroup>
         </menuHeader>
         <menuHeader name="Status" icon="fa-eye" side="left" limitedTo="NOCTUA">
@@ -908,12 +908,12 @@
             </routeSubGroup>
         </menuHeader>
         <menuHeader name="$$USER_INFO" icon="fa-cog" side="right">
-            <routeSubGroup name="Monitoring" newcol_bool="yes">
-                <menuEntry icon="fa-cubes" routeName="main.setupprogress" name="Setup Progress"/>
-                <menuEntry icon="fa-gears" name="Schedule" routeName="main.schedoverviewasset"/>
+            <routeSubGroup name="Setup" newcol_bool="yes">
+                <menuEntry icon="fa-cubes" routeName="main.setupprogress" name="Setup Progress" limitedTo="NOCTUA"/>
+                <menuEntry icon="fa-gears" name="Schedule" routeName="main.schedoverviewasset" limitedTo="NOCTUA"/>
                 <menuEntry icon="fa-code" name="Variables" routeName="main.devvars"/>
-                <menuEntry icon="fa-code-fork" routeName="main.kpisettings" name="KPI"/>
-                <menuEntry icon="fa-wrench" routeName="main.monitorbasics" name="Monitoring"/>
+                <menuEntry icon="fa-code-fork" routeName="main.kpisettings" name="KPI" limitedTo="NOCTUA"/>
+                <menuEntry icon="fa-wrench" routeName="main.monitorbasics" name="Monitoring" limitedTo="NOCTUA"/>
                 <!-- <menuEntry icon="fa-eye" name="Monitoring" routeName="main.monitorbuildinfo"/> -->
             </routeSubGroup>
             <routeSubGroup name="Server" newcol_bool="yes">
@@ -921,7 +921,7 @@
                 <menuEntry icon="fa-key" routeName="main.syslicenseoverview" name="License"/>
                 <menuEntry icon="fa-check-square" routeName="main.devicesrvconfig" name="Assign System Service"/>
                 <menuEntry icon="fa-history" routeName="main.history" name="Database History"/>
-                <menuEntry icon="fa-book" routeName="main.report" name="Report History"/>
+                <menuEntry icon="fa-book" routeName="main.report" name="Report History" limitedTo="NOCTUA"/>
                 <menuEntry icon="fa-bars" routeName="main.statelist" name="Internal State List"/>
                 <menuEntry icon="fa-list" routeName="main.backgroundinfo" name="Background Job Info"/>
                 <menuEntry icon="fa-info" routeName="main.serverinfo" name="Server Information"/>

@@ -250,13 +250,19 @@ body.condensed .submenu-bar{
 }
 .navbar-right.condensed .menu-openissues,
 .navbar-right.condensed .menu-backgroundjobs {
-    margin: 17px 5px 0 0!important;
+    margin: 13px 5px 0 0!important;
 }
 .ova-statusbutton {
     margin: 30px 0 0 5px;
 }
 body.condensed .ova-statusbutton {
     margin: 8px 0 0 0;
+}
+.ovabutton-na {
+    margin-top: 16px;
+}
+body.condensed .ovabutton-na {
+    margin-top: 2px;
 }
 body.normal {
     padding-top: 95px;

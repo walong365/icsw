@@ -42,14 +42,14 @@ setup_progress = angular.module(
 ]).controller("icswSetupProgressCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI", "icswWebSocketService"
-    "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",
+    "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions", "FileUploader"
     "icswDeviceTreeService", "$timeout", "DeviceOverviewService", "icswUserGroupRoleTreeService",
-    "icswToolsSimpleModalService", "SetupProgressHelper", "ICSW_SIGNALS", "$rootScope", "toaster"
+    "icswToolsSimpleModalService", "SetupProgressHelper", "ICSW_SIGNALS", "$rootScope", "toaster", "icswCSRFService"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI, icswWebSocketService
-    icswTools, icswSimpleAjaxCall, ICSW_URLS, icswAssetHelperFunctions,
+    icswTools, icswSimpleAjaxCall, ICSW_URLS, icswAssetHelperFunctions, FileUploader
     icswDeviceTreeService, $timeout, DeviceOverviewService, icswUserGroupRoleTreeService,
-    icswToolsSimpleModalService, SetupProgressHelper, ICSW_SIGNALS, $rootScope, toaster
+    icswToolsSimpleModalService, SetupProgressHelper, ICSW_SIGNALS, $rootScope, toaster, icswCSRFService
 ) ->
     $scope.struct = {
         # selected devices
@@ -84,6 +84,9 @@ setup_progress = angular.module(
         local_hm_module_fingerprint: "N/A"
         local_linux_version: "N/A"
         local_windows_version: "N/A"
+
+        update_file_version: undefined
+        update_file_module_fingerprint: undefined
 
         hm_status_websocket: undefined
     }
@@ -515,6 +518,47 @@ setup_progress = angular.module(
 
     $scope.show_device = ($event, dev) ->
         DeviceOverviewService($event, [dev])
+
+    $scope.upload_percentage = 0
+    $scope.uploading = false
+    $scope.getPercentage = () ->
+        return $scope.upload_percentage
+
+    $scope.uploader = new FileUploader(
+            url: ICSW_URLS.DISCOVERY_UPLOAD_UPDATE_FILE
+            scope: $scope
+            queueLimit: 1
+            alias: "update_file"
+            removeAfterUpload: true
+            autoUpload: true
+        )
+
+    $scope.uploader.onCompleteAll = () ->
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.DISCOVERY_UPDATE_FILE_STATUS
+                data:
+                    dummy: ""
+                dataType: "json"
+            }
+        ).then(
+            (data) ->
+                if data.windows_hm_version && data.windows_hm_checksum
+                    $scope.struct.update_file_version = data.windows_hm_version
+                    $scope.struct.update_file_module_fingerprint = data.windows_hm_checksum
+        )
+        angular.element("input[type='file']").val(null);
+        $scope.upload_percentage = 0
+        $scope.uploading = false
+
+    $scope.uploader.onProgressAll = (progress) ->
+        $scope.upload_percentage = progress
+        $scope.uploading = true
+
+    icswCSRFService.get_token().then(
+        (token) ->
+            $scope.uploader.formData.push({"csrfmiddlewaretoken": token})
+    )
 
 ]).service("SetupProgressHelper",
 [
