@@ -1004,8 +1004,17 @@ class Dispatcher(object):
 
     @staticmethod
     def hostmonitor_full_update_handler_callback(callback_dict, result):
-        print(callback_dict)
-        print(result)
+        callback_dict["command"] = "full_update_status"
+        callback_dict["result"] = -1
+        callback_dict["error_string"] = None
+
+        if result:
+            if "update_status" in result:
+                callback_dict["result"] = 1
+            else:
+                callback_dict["error_string"], _ = result.get_result()
+
+        propagate_channel_object("hm_status", callback_dict)
 
     @staticmethod
     def handle_hm_result(run_index, srv_result):

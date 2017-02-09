@@ -182,14 +182,14 @@
                                     <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
                                 </td>
                             </tr>
-                            <!--<tr>
-                                <td>Filter Actions:</td>
-                                <td colspan="99">
+                            <tr>
+                                <td class="vertical-align">Actions:</td>
+                                <td class="vertical-align" colspan="99">
                                     <div class="btn-group btn-group-xs">
-                                        <input type="button" value="All Devices" ng-class="sub_tab.all_devices_filter_class" ng-click="sub_tab.show_all_devices_filter()"></input>
+                                        <input type="button" value="Refresh" class="btn btn-info" ng-click="perform_host_monitor_status_refresh()"></input>
                                     </div>
                                 </td>
-                            </tr>-->
+                            </tr>
                             <tr>
                                 <th class="text-center">Device</th>
                                 <th class="text-center">Version</th>
@@ -216,7 +216,7 @@
                                         type="modify"
                                         size="xs"
                                         ng-click="perform_full_update(device)"
-                                        icsw-disabled="false"
+                                        icsw-disabled="device.$$hm_full_update_disabled"
                                         value="Update (Complete)"
                                     ></icsw-tools-button>
                                 </td>

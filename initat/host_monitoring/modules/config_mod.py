@@ -497,6 +497,18 @@ class full_update_command(hm_classes.MonitoringCommand):
             lzma_file = lzma.LZMAFile(filename=io.BytesIO(update_file_data))
             tar_file = tarfile.TarFile(fileobj=lzma_file)
 
+            config_files = {
+                "Lib\site-packages\opt\cluster\etc\.cluster_device_uuid": None,
+                "Lib\site-packages\opt\cluster\etc\cstores.d\client_config.xml": None,
+                "Lib\site-packages\opt\cluster\etc\cstores.d\icsw.device_config.xml": None,
+                "Lib\site-packages\opt\cluster\etc\cstores.d\icsw.hm.0mq-mapping_config.xml": None,
+                "Lib\site-packages\opt\cluster\etc\cstores.d\icsw.hm.machvector_config.xml": None
+            }
+
+            for config_file in config_files.keys():
+                with open(config_file, "rb") as f:
+                    config_files[config_file] = f.read()
+
             shutil.rmtree(".", ignore_errors=True)
             for old_path in os.listdir("."):
                 if old_path.startswith("log"):
@@ -512,6 +524,11 @@ class full_update_command(hm_classes.MonitoringCommand):
                 shutil.move(old_path, new_path)
 
             tar_file.extractall()
+
+            for config_file in config_files.keys():
+                with open(config_file, "wb") as f:
+                    if config_files[config_file]:
+                        f.write(bytes(config_files[config_file]))
 
             srv_com["update_status"] = "ok"
 

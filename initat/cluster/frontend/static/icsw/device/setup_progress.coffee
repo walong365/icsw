@@ -96,24 +96,35 @@ setup_progress = angular.module(
         result_type = data.command
         result = data.result
 
+        # salt devices with values
         if result
             if result_type == "version"
                 device.$$host_monitor_version = result
-                if result == $scope.struct.local_linux_version || result == $scope.struct.local_windows_version
-                    device.$$host_monitor_version_class = "alert-success"
-                else
-                    device.$$host_monitor_version_class = "alert-danger"
-
             else if result_type == "platform"
                 device.$$host_monitor_platform = result
             else if result_type == "modules_fingerprint"
                 device.$$host_monitor_fingerprint = result
-                if $scope.struct.local_hm_module_fingerprint == result
-                    device.$$host_monitor_fingerprint_class = "alert-success"
+            else if result_type == "full_update_status"
+                if result == -1
+                    toaster.pop("error", "", "Full update of device '" + device.full_name + "' failed with: " + data.error_string)
                 else
-                    device.$$host_monitor_fingerprint_class = "alert-danger"
+                    toaster.pop("success", "", "Full update of device '" + device.full_name + "' done!")
+                    device.$$host_monitor_fingerprint = data.update_file_checksum
+                    device.$$host_monitor_version = data.update_file_version
+
+        # salt devices with color information
+        if device.$$host_monitor_version == $scope.struct.local_linux_version || device.$$host_monitor_version == $scope.struct.local_windows_version
+            device.$$host_monitor_version_class = "alert-success"
+        else
+            device.$$host_monitor_version_class = "alert-danger"
+
+        if $scope.struct.local_hm_module_fingerprint == device.$$host_monitor_fingerprint
+            device.$$host_monitor_fingerprint_class = "alert-success"
+        else
+            device.$$host_monitor_fingerprint_class = "alert-danger"
 
 
+        # enable/disable buttons
         if device.$$host_monitor_version != "N/A" && device.$$host_monitor_platform != "N/A" && device.$$host_monitor_fingerprint != "N/A"
             maj_device = parseInt(device.$$host_monitor_version.split(".")[0])
             min_device = parseInt(device.$$host_monitor_version.split(".")[1].split("-")[0])
@@ -130,6 +141,9 @@ setup_progress = angular.module(
 
             if maj_local >= maj_device && min_local >= min_device && rel_local >= rel_device && $scope.struct.local_hm_module_fingerprint != device.$$host_monitor_fingerprint
                 device.$$update_modules_disabled = false
+
+        if $scope.struct.update_file_version != undefined && $scope.struct.update_file_module_fingerprint != undefined && device.$$host_monitor_platform == "WINDOWS"
+            device.$$hm_full_update_disabled = false
 
         $timeout(angular.noop)
 
@@ -202,48 +216,9 @@ setup_progress = angular.module(
                 $scope.struct.devices.push(entry)
                 $scope.struct.device_pks.push(entry.idx)
 
-                entry.$$host_monitor_version = "N/A"
-                entry.$$host_monitor_version_class = ""
-                entry.$$host_monitor_platform = "N/A"
-                entry.$$host_monitor_fingerprint = "N/A"
-                entry.$$host_monitor_fingerprint_class = ""
-                entry.$$update_modules_disabled = true
-
         perform_refresh_for_device_status(false)
         perform_refresh_for_system_status()
-
-        icswSimpleAjaxCall(
-            {
-                url: ICSW_URLS.DISCOVERY_HOST_MONITORING_STATUS_LOADER
-                data:
-                    device_pks: $scope.struct.device_pks
-                dataType: "json"
-            }
-        ).then(
-            (data) ->
-                $scope.struct.local_hm_module_fingerprint = data.checksum
-                $scope.struct.local_linux_version = data.linux_version
-                $scope.struct.local_windows_version = data.windows_version
-
-                schedule_handler_payload = "["
-                for pk in $scope.struct.device_pks
-                    schedule_handler_payload += pk + ","
-                schedule_handler_payload += "]"
-
-                icswSimpleAjaxCall(
-                    {
-                        url: ICSW_URLS.DISCOVERY_CREATE_SCHEDULE_ITEM
-                        data:
-                            schedule_handler: "hostmonitor_status_schedule_handler"
-                            schedule_handler_data: schedule_handler_payload
-                        dataType: "json"
-                    }
-                ).then(
-                    (result) ->
-                        if result.discovery_server_state > 0
-                            toaster.pop("warning", "", "Could not contact discovery server.")
-                )
-        )
+        schedule_refresh_for_host_monitor_status()
 
     perform_refresh_for_device_status = (partial_refresh) ->
         $q.all(
@@ -546,6 +521,10 @@ setup_progress = angular.module(
                 if data.windows_hm_version && data.windows_hm_checksum
                     $scope.struct.update_file_version = data.windows_hm_version
                     $scope.struct.update_file_module_fingerprint = data.windows_hm_checksum
+
+                    for device in $scope.struct.devices
+                        if device.$$host_monitor_platform == "WINDOWS"
+                            device.$$hm_full_update_disabled = false
         )
         angular.element("input[type='file']").val(null);
         $scope.upload_percentage = 0
@@ -571,10 +550,57 @@ setup_progress = angular.module(
             }
         ).then(
             (result) ->
-                toaster.pop("success", "", "Module update of device '" + device.full_name + "' was successfully scheduled.")
+                toaster.pop("success", "", "Full update of device '" + device.full_name + "' was successfully scheduled.")
                 if result.discovery_server_state > 0
                     toaster.pop("warning", "", "Could not contact discovery server.")
         )
+
+    $scope.perform_host_monitor_status_refresh = () ->
+        schedule_refresh_for_host_monitor_status()
+
+    schedule_refresh_for_host_monitor_status = () ->
+        for device in $scope.struct.devices
+            device.$$host_monitor_version = "N/A"
+            device.$$host_monitor_version_class = ""
+            device.$$host_monitor_platform = "N/A"
+            device.$$host_monitor_fingerprint = "N/A"
+            device.$$host_monitor_fingerprint_class = ""
+            device.$$update_modules_disabled = true
+            device.$$hm_full_update_disabled = true
+
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.DISCOVERY_HOST_MONITORING_STATUS_LOADER
+                data:
+                    device_pks: $scope.struct.device_pks
+                dataType: "json"
+            }
+        ).then(
+            (data) ->
+                $scope.struct.local_hm_module_fingerprint = data.checksum
+                $scope.struct.local_linux_version = data.linux_version
+                $scope.struct.local_windows_version = data.windows_version
+
+                schedule_handler_payload = "["
+                for pk in $scope.struct.device_pks
+                    schedule_handler_payload += pk + ","
+                schedule_handler_payload += "]"
+
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.DISCOVERY_CREATE_SCHEDULE_ITEM
+                        data:
+                            schedule_handler: "hostmonitor_status_schedule_handler"
+                            schedule_handler_data: schedule_handler_payload
+                        dataType: "json"
+                    }
+                ).then(
+                    (result) ->
+                        if result.discovery_server_state > 0
+                            toaster.pop("warning", "", "Could not contact discovery server.")
+                )
+        )
+
 
 ]).service("SetupProgressHelper",
 [
