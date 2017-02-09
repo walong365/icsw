@@ -136,7 +136,7 @@ class srv_command(object):
                     self.__tree = etree.fromstring(kwargs["source"])
                 except XMLSyntaxError as e:
                     if "Huge input lookup" in e.msg:
-                        # allows sending/receiving of server commands with large (>=10MiB payload)
+                        # allows sending/receiving of server commands with large (>=10MiB) payload
                         self.__tree = parse(io.StringIO(kwargs["source"]), parser=XMLParser(huge_tree=True))
                     else:
                         raise e
@@ -145,7 +145,7 @@ class srv_command(object):
                     self.__tree = etree.fromstring(kwargs["source"].decode("utf-8"))
                 except XMLSyntaxError as e:
                     if "Huge input lookup" in e.msg:
-                        # allows sending/receiving of server commands with large (>=10MiB payload)
+                        # allows sending/receiving of server commands with large (>=10MiB) payload
                         self.__tree = parse(io.StringIO(kwargs["source"].decode("utf-8")),
                             parser=XMLParser(huge_tree=True))
                     else:
