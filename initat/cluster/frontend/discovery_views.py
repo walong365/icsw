@@ -646,7 +646,7 @@ class HostMonitoringStatusLoader(View):
 UPDATE_FILE_DATA = None
 UPDATE_FILE_VERSION = None
 UPDATE_FILE_CHECKSUM = None
-UPDATE_FILE_BITS = None
+UPDATE_FILE_PLATFORM_BITS = None
 class UploadUpdateFile(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -684,11 +684,11 @@ class UploadUpdateFile(View):
                 print(e)
                 raise e
             else:
-                global UPDATE_FILE_DATA, UPDATE_FILE_VERSION, UPDATE_FILE_CHECKSUM, UPDATE_FILE_BITS
+                global UPDATE_FILE_DATA, UPDATE_FILE_VERSION, UPDATE_FILE_CHECKSUM, UPDATE_FILE_PLATFORM_BITS
                 UPDATE_FILE_DATA = data
                 UPDATE_FILE_VERSION = windows_hm_version
                 UPDATE_FILE_CHECKSUM = windows_hm_checksum
-                UPDATE_FILE_BITS = bits
+                UPDATE_FILE_PLATFORM_BITS = bits
 
         return HttpResponse(json.dumps({}))
 
@@ -699,7 +699,7 @@ class UpdateFileHandler(View):
         if command == "status":
             return HttpResponse(json.dumps({"update_file_version": UPDATE_FILE_VERSION,
                                             "update_file_checksum": UPDATE_FILE_CHECKSUM,
-                                            "update_file_bits": UPDATE_FILE_BITS}))
+                                            "update_file_platform_bits": UPDATE_FILE_PLATFORM_BITS}))
         else:
             import pickle
             import binascii
@@ -715,7 +715,7 @@ class UpdateFileHandler(View):
                 "update_file_data": UPDATE_FILE_DATA,
                 "update_file_version": UPDATE_FILE_VERSION,
                 "update_file_checksum": UPDATE_FILE_CHECKSUM,
-                "update_file_bits": UPDATE_FILE_BITS
+                "update_file_platform_bits": UPDATE_FILE_PLATFORM_BITS,
             }
 
             schedule_handler_data = binascii.b2a_base64(pickle.dumps(schedule_handler_data)).decode()

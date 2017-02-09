@@ -145,7 +145,7 @@
                                 <tr>
                                     <td class="text-center">{{ struct.update_file_version }}</td>
                                     <td class="text-center">WINDOWS</td>
-                                    <td class="text-center">{{ struct.update_file_bits }}</td>
+                                    <td class="text-center">{{ struct.update_file_platform_bits }}</td>
                                     <td class="text-center">{{ struct.update_file_module_fingerprint }}</td>
                                 </tr>
                             </tbody>
@@ -190,7 +190,7 @@
                                 <td class="vertical-align">Actions:</td>
                                 <td class="vertical-align" colspan="99">
                                     <div class="btn-group btn-group-xs">
-                                        <input type="button" value="Refresh" class="btn btn-info" ng-click="perform_host_monitor_status_refresh()"></input>
+                                        <input type="button" value="Refresh" class="btn btn-info" ng-disabled="struct.host_monitor_status_refresh_button_disabled" ng-click="perform_host_monitor_status_refresh()"></input>
                                     </div>
                                 </td>
                             </tr>

@@ -86,10 +86,12 @@ setup_progress = angular.module(
         local_windows_version: "N/A"
 
         update_file_version: undefined
-        update_file_bits: undefined
+        update_file_platform_bits: undefined
         update_file_module_fingerprint: undefined
 
         hm_status_websocket: undefined
+
+        host_monitor_status_refresh_button_disabled: true
     }
 
     ws_handle_func = (data) ->
@@ -113,6 +115,8 @@ setup_progress = angular.module(
                     toaster.pop("success", "", "Full update of device '" + device.full_name + "' done!")
                     device.$$host_monitor_fingerprint = data.update_file_checksum
                     device.$$host_monitor_version = data.update_file_version
+                    device.$$host_monitor_platform = data.update_file_platform
+                    device.$$host_monitor_platform_bits = data.update_file_platform_bits
 
         # salt devices with color information
         if device.$$host_monitor_version == $scope.struct.local_linux_version || device.$$host_monitor_version == $scope.struct.local_windows_version
@@ -144,8 +148,8 @@ setup_progress = angular.module(
             if maj_local >= maj_device && min_local >= min_device && rel_local >= rel_device && $scope.struct.local_hm_module_fingerprint != device.$$host_monitor_fingerprint
                 device.$$update_modules_disabled = false
 
-        if $scope.struct.update_file_version != undefined && $scope.struct.update_file_module_fingerprint != undefined && $scope.struct.update_file_bits != undefined
-            if device.$$host_monitor_platform == "WINDOWS" && device.$$host_monitor_platform_bits == $scope.struct.update_file_bits
+        if $scope.struct.update_file_version != undefined && $scope.struct.update_file_module_fingerprint != undefined && $scope.struct.update_file_platform_bits != undefined
+            if device.$$host_monitor_platform == "WINDOWS" && device.$$host_monitor_platform_bits == $scope.struct.update_file_platform_bits
                 device.$$hm_full_update_disabled = false
 
         $timeout(angular.noop)
@@ -521,13 +525,13 @@ setup_progress = angular.module(
             }
         ).then(
             (data) ->
-                if data.update_file_version && data.update_file_checksum && data.update_file_bits
+                if data.update_file_version && data.update_file_checksum && data.update_file_platform_bits
                     $scope.struct.update_file_version = data.update_file_version
                     $scope.struct.update_file_module_fingerprint = data.update_file_checksum
-                    $scope.struct.update_file_bits = data.update_file_bits
+                    $scope.struct.update_file_platform_bits = data.update_file_platform_bits
 
                     for device in $scope.struct.devices
-                        if device.$$host_monitor_platform == "WINDOWS" && device.$$host_monitor_platform_bits == $scope.struct.update_file_bits
+                        if device.$$host_monitor_platform == "WINDOWS" && device.$$host_monitor_platform_bits == $scope.struct.update_file_platform_bits
                             device.$$hm_full_update_disabled = false
         )
         angular.element("input[type='file']").val(null);
@@ -565,6 +569,8 @@ setup_progress = angular.module(
         schedule_refresh_for_host_monitor_status()
 
     schedule_refresh_for_host_monitor_status = () ->
+        $scope.struct.host_monitor_status_refresh_button_disabled = true
+
         for device in $scope.struct.devices
             device.$$host_monitor_version = "N/A"
             device.$$host_monitor_version_class = ""
@@ -606,8 +612,13 @@ setup_progress = angular.module(
                         if result.discovery_server_state > 0
                             toaster.pop("warning", "", "Could not contact discovery server.")
                 )
-        )
 
+                $timeout(
+                    () ->
+                        $scope.struct.host_monitor_status_refresh_button_disabled = false
+                    5000
+                )
+        )
 
 ]).service("SetupProgressHelper",
 [

@@ -991,7 +991,9 @@ class Dispatcher(object):
             callback_dict = {
                 "device_pk": _device.idx,
                 "update_file_version": data["update_file_version"],
-                "update_file_checksum": data["update_file_checksum"]
+                "update_file_checksum": data["update_file_checksum"],
+                "update_file_platform_bits": data["update_file_platform_bits"],
+                "update_file_platform": PlatformSystemTypeEnum.WINDOWS.name
             }
 
             hm_command = HostMonitoringCommand(self.hostmonitor_full_update_handler_callback,
