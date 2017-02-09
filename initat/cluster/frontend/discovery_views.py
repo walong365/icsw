@@ -653,9 +653,12 @@ class UploadUpdateFile(View):
         if _file.size < 100000000:
             import zipfile
             import hashlib
+            import io
 
             try:
-                zf = zipfile.ZipFile(_file)
+                data = _file.read()
+                zf = zipfile.ZipFile(io.BytesIO(data))
+                zf.testzip()
 
                 constants_py_str = zf.read("Lib/site-packages/initat/constants.py").decode()
                 windows_hm_version = constants_py_str.split('WINDOWS_HM_VERSION = ')[1].strip().replace("\"", "")
@@ -672,7 +675,7 @@ class UploadUpdateFile(View):
                 _ = e
             else:
                 global UPLOAD_FILE_DATA, UPLOAD_FILE_VERSION, UPLOAD_FILE_CHECKSUM
-                UPLOAD_FILE_DATA = _file.read()
+                UPLOAD_FILE_DATA = data
                 UPLOAD_FILE_VERSION = windows_hm_version
                 UPLOAD_FILE_CHECKSUM = windows_hm_checksum
 
@@ -688,6 +691,8 @@ class UpdateFileHandler(View):
         else:
             import pickle
             import binascii
+            import zipfile
+            import io
             from initat.cluster.backbone.server_enums import icswServiceEnum
             from initat.cluster.frontend.helper_functions import contact_server
             from initat.tools import server_command
