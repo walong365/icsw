@@ -901,6 +901,9 @@ class Dispatcher(object):
         if callback_dict["command"] == "platform":
             try:
                 callback_dict["result"] = PlatformSystemTypeEnum(int(result["platform"].text)).name
+                callback_dict["platform_bits"] = "N/A"
+                if "platform_bits" in result:
+                    callback_dict["platform_bits"] = result["platform_bits"].text
             except Exception as e:
                 _ = e
         elif callback_dict["command"] == "version":

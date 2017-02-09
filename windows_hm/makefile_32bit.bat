@@ -47,8 +47,8 @@ RMDIR /s /q .\host_monitor_windows\Doc
 XCOPY .\bin\win32\nssm.exe .\host_monitor_windows\
 XCOPY .\bin\dmidecode212.exe .\host_monitor_windows\
 MOVE .\tmp\pciutils-%PCIUTILS_VERSION%-win32 .\host_monitor_windows\pciutils
+type nul > .\host_monitor_windows\hm_icsw_w32
 
-::bin\7z a -mx9 ICSW_Windows_Client.zip .\host_monitor_windows\*
 host_monitor_windows\python -c "import tarfile; tar = tarfile.open(name='ICSW_Windows_Client.tar.xz', mode='w:xz'); tar.add('host_monitor_windows', arcname=''); tar.close();"
 
 SET hm_path=host_monitor_windows

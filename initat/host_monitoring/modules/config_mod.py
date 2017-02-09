@@ -557,6 +557,13 @@ class platform_command(hm_classes.MonitoringCommand):
 
     def __call__(self, srv_com, cur_ns):
         srv_com["platform"] = PLATFORM_SYSTEM_TYPE.value
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+            if os.path.exists("hm_icsw_w32"):
+                srv_com["platform_bits"] = "32"
+            elif os.path.exists("hm_icsw_w64"):
+                srv_com["platform_bits"] = "64"
+        else:
+            srv_com["platform_bits"] = "64"
 
     def interpret(self, srv_com, cur_ns):
         return limits.mon_STATE_OK, "Platform is {}".format(PlatformSystemTypeEnum(int(srv_com["platform"].text)).name)

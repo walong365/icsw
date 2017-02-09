@@ -102,6 +102,7 @@ setup_progress = angular.module(
                 device.$$host_monitor_version = result
             else if result_type == "platform"
                 device.$$host_monitor_platform = result
+                device.$$host_monitor_platform_bits = data.platform_bits
             else if result_type == "modules_fingerprint"
                 device.$$host_monitor_fingerprint = result
             else if result_type == "full_update_status"
@@ -567,6 +568,7 @@ setup_progress = angular.module(
             device.$$host_monitor_platform = "N/A"
             device.$$host_monitor_fingerprint = "N/A"
             device.$$host_monitor_fingerprint_class = ""
+            device.$$host_monitor_platform_bits = "N/A"
             device.$$update_modules_disabled = true
             device.$$hm_full_update_disabled = true
 
