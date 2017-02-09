@@ -227,28 +227,6 @@ class BuildProcess(
                     logging_tools.LOG_LEVEL_ERROR
                 )
             else:
-                # get config names
-                # conf_names = set(all_configs.get(host.full_name, []))
-                # cluster config names
-                # cconf_names = set(
-                #    [
-                #        _sc.mon_check_command.name for _sc in gbc.get_cluster(SpecialTypesEnum.mon_service_cluster, host.pk)
-                #    ]
-                # )
-                # build lut
-                # conf_names = sorted(
-                #    [
-                #        cur_c.unique_name for cur_c in list(cur_gc["command"].values()) if not cur_c.is_event_handler and (
-                #            (
-                #                (
-                #                    cur_c.config_id and cur_c.config.name in conf_names
-                #                ) and (
-                #                    host.pk not in cur_c.exclude_devices.all().values_list("pk", flat=True)
-                #                )
-                #            ) or cur_c.unique_name in cconf_names
-                #        )
-                #    ]
-                # )
                 _dev_added = False
                 for mcc_conf_pk in mc_emitter[host_pk]:
                     s_check = cur_gc["command"][mcc_conf_pk]
@@ -1022,25 +1000,6 @@ class BuildProcess(
                         # clear host from servicegroups
                         cur_gc["servicegroup"].clear_host(host.full_name)
                         mc_conf_pks = mc_emitter[host.pk]
-                        # get check_commands and templates
-                        # conf_names = set(all_configs.get(host.full_name, []))
-                        # cluster config names
-                        # cconf_names = set([_sc.mon_check_command.name for _sc in gbc.get_cluster(SpecialTypesEnum.mon_service_cluster, host.pk)])
-                        # build lut
-                        # conf_names = sorted(
-                        #    [
-                        #        cur_c.unique_name for cur_c in list(cur_gc["command"].values()) if not cur_c.is_event_handler and (
-                        #            (
-                        #                (
-                        #                    cur_c.config_id and cur_c.config.name in conf_names
-                        #                ) and (
-                        #                    host.pk not in cur_c.exclude_devices.all().values_list("pk", flat=True)
-                        #                )
-                        #            ) or cur_c.unique_name in cconf_names
-                        #        )
-                        #    ]
-                        # )
-                        # print("-", conf_names)
                         # list of already used checks
                         used_checks = set()
                         # print "*", conf_names

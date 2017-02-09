@@ -298,7 +298,7 @@ class MonAllCommands(MonFileContainer):
                 Q(system_command=False)
             ).prefetch_related(
                 "categories",
-                "exclude_devices",
+                "devices",
                 "config_rel",
             ).select_related(
                 "mon_service_templ",

@@ -56,7 +56,7 @@ angular.module(
                 removed: []
             }
             # config stream (for changes)
-            @pc_stream = {}
+            @pc_stream = {0: []}
 
             @check_pending()
 
@@ -118,8 +118,6 @@ angular.module(
                 dev.$local_conf_selected = []
                 # mccs local selected
                 dev.$local_mon_selected = []
-                # configs -> mon_checks local removed
-                dev.$local_mon_removed = {}
                 # monitoring checks selected for meta
                 dev.$num_meta_mon_selected = 0
                 # configs selected for meta
@@ -133,7 +131,6 @@ angular.module(
                     # the md_list + non_md_list may be longer than the @devices
                     md.$local_conf_selected = []
                     md.$local_mon_selected = []
-                    md.$local_mon_removed = {}
                     md.$num_meta_mon_selected = 0
                     md.$num_meta_conf_selected = 0
                     if md not in md_list
@@ -142,17 +139,7 @@ angular.module(
             @md_list = md_list
             @non_md_list = non_md_list
 
-            # step 1b: add exclude devices from mon_check_command
-
-            for mc in @config_tree.mon_basic_tree.mon_check_command_list
-                if mc.config
-                    # excluded devices make only sense for non-free mccs
-                    for dev in @devices
-                        if dev.idx in mc.exclude_devices
-                            if mc.config not of dev.$local_mon_removed
-                                dev.$local_mon_removed[mc.config] = []
-                            dev.$local_mon_removed[mc.config].push(mc.idx)
-
+            # step 1: add checks via configs
 
             for conf in @config_tree.list
                 if @mode in ["gen", "srv"]
@@ -176,8 +163,8 @@ angular.module(
                         if dc.device == dev.idx
                             dev.$local_conf_selected.push(conf.idx)
 
-            # check free mcss
-            for mcc in @config_tree.free_mcc_list
+            # check direct mcc connection
+            for mcc in @config_tree.mon_basic_tree.mon_check_command_list
 
                 # set configs for all meta devices
 
@@ -208,60 +195,11 @@ angular.module(
                     dev.$local_mon_removed[conf_idx].push(mc_idx)
 
             # iterate over configs
-
-            for conf in @config_tree.list
-
-                # iterate over pc_stream
-
-                if conf.idx of @pc_stream
-                    _pcs = @pc_stream[conf.idx]
-                    for _token in _pcs
-                        if _token.type == "m"
-                            # click on meta device
-                            meta_dev = @md_lut[_token.idx]
-                            if conf.idx in meta_dev.$local_conf_selected
-                                # deselect
-                                _.remove(meta_dev.$local_conf_selected, (entry) -> return entry == conf.idx)
-
-                            else
-                                # select
-                                meta_dev.$local_conf_selected.push(conf.idx)
-                                # deselect all local selections
-                                for dev_idx in meta_dev.$$group.devices
-                                    if dev_idx != meta_dev.idx
-                                        dev = @device_tree.all_lut[dev_idx]
-                                        if dev.$local_conf_selected?
-                                            _.remove(dev.$local_conf_selected, (entry) -> return entry == conf.idx)
-                        else
-                            # click on device
-                            dev = @device_tree.all_lut[_token.idx]
-                            meta_dev = @md_lut[_token.idx]
-                            if conf.idx in meta_dev.$local_conf_selected
-                                if @mode == "mon"
-                                    _toggle_mon_check(dev, conf.idx, _token.element)
-                                else
-                                    # handle meta device
-                                    # deselect from meta device
-                                    _.remove(meta_dev.$local_conf_selected, (entry) -> return entry == conf.idx)
-                                    # select all other devices
-                                    for dev_idx in meta_dev.$$group.devices
-                                        if dev_idx != meta_dev.idx and dev_idx != dev.idx
-                                            _loc_dev = @device_tree.all_lut[dev_idx]
-                                            if _loc_dev.$local_conf_selected?
-                                                _loc_dev.$local_conf_selected.push(conf.idx)
-                            else
-                                if conf.idx in dev.$local_conf_selected
-                                    if @mode == "mon"
-                                        _toggle_mon_check(dev, conf.idx, _token.element)
-                                    else
-                                        # deselect local
-                                        _.remove(dev.$local_conf_selected, (entry) -> return entry == conf.idx)
-                                else
-                                    # select local
-                                    dev.$local_conf_selected.push(conf.idx)
-            if 0 of @pc_stream
+            if @mode == "mon"
+                # moncheck config mode
                 _pcs = @pc_stream[0]
-                # zero-conf stream (free mccs)
+                console.log "***", _pcs
+                # zero-conf stream (monitoring only)
                 for _token in _pcs
                     if _token.type == "m"
                         # click on meta device
@@ -300,6 +238,58 @@ angular.module(
                                 # select local
                                 dev.$local_mon_selected.push(_token.element)
 
+            else
+                # config / service mode
+                for conf in @config_tree.list
+
+                    # iterate over pc_stream
+
+                    if conf.idx of @pc_stream
+                        _pcs = @pc_stream[conf.idx]
+                        for _token in _pcs
+                            if _token.type == "m"
+                                # click on meta device
+                                meta_dev = @md_lut[_token.idx]
+                                if conf.idx in meta_dev.$local_conf_selected
+                                    # deselect
+                                    _.remove(meta_dev.$local_conf_selected, (entry) -> return entry == conf.idx)
+
+                                else
+                                    # select
+                                    meta_dev.$local_conf_selected.push(conf.idx)
+                                    # deselect all local selections
+                                    for dev_idx in meta_dev.$$group.devices
+                                        if dev_idx != meta_dev.idx
+                                            dev = @device_tree.all_lut[dev_idx]
+                                            if dev.$local_conf_selected?
+                                                _.remove(dev.$local_conf_selected, (entry) -> return entry == conf.idx)
+                            else
+                                # click on device
+                                dev = @device_tree.all_lut[_token.idx]
+                                meta_dev = @md_lut[_token.idx]
+                                if conf.idx in meta_dev.$local_conf_selected
+                                    if @mode == "mon"
+                                        _toggle_mon_check(dev, conf.idx, _token.element)
+                                    else
+                                        # handle meta device
+                                        # deselect from meta device
+                                        _.remove(meta_dev.$local_conf_selected, (entry) -> return entry == conf.idx)
+                                        # select all other devices
+                                        for dev_idx in meta_dev.$$group.devices
+                                            if dev_idx != meta_dev.idx and dev_idx != dev.idx
+                                                _loc_dev = @device_tree.all_lut[dev_idx]
+                                                if _loc_dev.$local_conf_selected?
+                                                    _loc_dev.$local_conf_selected.push(conf.idx)
+                                else
+                                    if conf.idx in dev.$local_conf_selected
+                                        if @mode == "mon"
+                                            _toggle_mon_check(dev, conf.idx, _token.element)
+                                        else
+                                            # deselect local
+                                            _.remove(dev.$local_conf_selected, (entry) -> return entry == conf.idx)
+                                    else
+                                        # select local
+                                        dev.$local_conf_selected.push(conf.idx)
             # count selected
 
             for dev in @non_md_list
@@ -331,67 +321,87 @@ angular.module(
                         if @focus_element and @focus_element[0].idx == row_el.idx and @focus_element[1].idx == dev.idx
                             _foc = true
             if conf
-                # config present
+                # generic or service view
                 if dev.is_meta_device and conf.server_config
                     # check if config is a server config and therefore not selectable for
                     # a meta device (== group)
                     _cls = "danger"
-                    _icon = "fa fa-times-circle"
+                    _icon = "fa-times-circle"
                 else if conf.idx in dev.$local_conf_selected
                     # config is locally selected
-                    if conf.idx of dev.$local_mon_removed and row_el.idx in dev.$local_mon_removed[conf.idx]
-                        # is locally removed
-                        _cls = "danger"
-                        _icon = "fa fa-times-rectangle-o"
+                    if _foc
+                        _cls = "primary"
+                        _icon = "fa-minus"
                     else
-                        if _foc
-                            _cls = "primary"
-                            _icon = "fa fa-minus"
-                        else
-                            _cls = "success"
-                            _icon = "fa fa-check"
+                        _cls = "success"
+                        _icon = "fa-check"
                 else if conf.idx in @md_lut[dev.idx].$local_conf_selected and not dev.is_meta_device
                     # config is selected via meta-device (== group)
-                    if conf.idx of dev.$local_mon_removed and row_el.idx in dev.$local_mon_removed[conf.idx]
-                        _cls = "danger"
-                        _icon = "fa fa-times-rectangle-o"
-                    else
-                        _cls = "warning"
-                        _icon = "fa fa-check-square-o"
+                    _cls = "warning"
+                    _icon = "fa-check-square-o"
                 else
                     # config is not selected
                     if _foc
-                        _icon = "fa fa-check"
+                        _icon = "fa-check"
                         _cls = "primary"
                     else
-                        _icon = "fa fa-minus"
+                        _icon = "fa-minus"
                         if _shadow
                             _cls = "warning"
                         else
                             _cls = ""
             else
-                if row_el.idx in dev.$local_mon_selected
-                    if _foc
-                        _cls = "primary"
-                        _icon = "fa fa-minus"
+                # conf is null, mon call
+                # flags: local selected, local config selected
+                ls = row_el.idx in dev.$local_mon_selected
+                lc = if _.intersection(row_el.config_rel, dev.$local_conf_selected).length then true else false
+                # meta selected, meta config selected
+                ms = row_el.idx in @md_lut[dev.idx].$local_mon_selected
+                mc = if _.intersection(row_el.config_rel, @md_lut[dev.idx].$local_conf_selected).length then true else false
+                # console.log ls, lc, ms, mc
+                if dev.is_meta_device
+                    # meta checks
+                    if ls and lc
+                        # both set -> exclude
+                        _cls = "danger"
+                        _icon = "fa-times"
+                    else if (ls or lc)
+                        # set for meta
+                        _cls = "warning"
+                        if ls
+                            # via direct set
+                            _icon = "fa-check"
+                        else
+                            # via config
+                            _icon = "fa-check-square-o"
                     else
-                        _cls = "success"
-                        _icon = "fa fa-check"
-                else if row_el.idx in @md_lut[dev.idx].$local_mon_selected and not dev.is_meta_device
-                    # config is selected via meta-device (== group)
-                    _cls = "warning"
-                    _icon = "fa fa-check-square-o"
+                        # not set
+                        _cls = ""
+                        _icon = "fa-minus"
                 else
-                    # config not present ( == free mcc)
-                    if _foc
-                        _icon = "fa fa-check"
-                        _cls = "primary"
+                    if ls and ms
+                        console.error "both ls and ms are set for #{row_el.name} and #{dev.full_name}"
+                    if lc and mc
+                        console.error "both lc and mc are set for #{row_el.name} and #{dev.full_name}"
+                    if (ls or ms) and (lc or mc)
+                        # bot set -> exclude
+                        _cls = "danger"
+                        _icon = "fa-times"
+                    else if (ls or ms)
+                        # set via direct (devices relation) local or meta
+                        _cls = "success"
+                        _icon = "fa-check"
+                    else if (lc or mc)
+                        # set via config (local or meta)
+                        _cls = "success"
+                        _icon = "fa-check-square-o"
                     else
-                        _icon = "fa fa-minus"
-                        if _shadow
+                        # nothing set
+                        if _shadow and not _foc
                             _cls = "warning"
                         else
                             _cls = ""
+                        _icon = "fa-minus"
 
             return [_cls, _icon]
 
@@ -457,17 +467,15 @@ angular.module(
                     if entry.$selected
                         if @mode in ["gen", "srv"]
                             @active_rows.push(entry)
-                        else
-                            for _mc in entry.$$res_mcc_rel
-                                @active_rows.push(_mc)
                     # count rows
                     if @mode in ["gen", "srv"]
                         @num_rows++
                     else
                         @num_rows += entry.$$res_mcc_rel.length
             if @mode == "mon"
-                for entry in @config_tree.free_mcc_list
-                    if not entry.system_command
+                for entry in @config_tree.mon_basic_tree.mon_check_command_list
+                    entry.$selected = entry.$$info_str.match(name_re)
+                    if not entry.system_command and entry.$selected
                         @active_rows.push(entry)
                         @num_rows++
 
@@ -494,7 +502,7 @@ angular.module(
             if config
                 conf_idx = config.idx
             else
-                # free mccs: conf_idx is 0
+                # monitoring only: conf_idx is 0
                 conf_idx = 0
             @pending.clicked.push([device.idx, meta_device.idx, conf_idx, row_el.idx])
             # interpret
@@ -527,7 +535,7 @@ angular.module(
         remove_pending: () =>
             @pending.clicked.length = 0
             @pending.removed.length = 0
-            @pc_stream = {}
+            @pc_stream = {0: []}
             @check_pending()
             @link()
 
@@ -575,15 +583,6 @@ angular.module(
                             # add exclude entries
                             dev_entry = $(dev_entry)
                             mc.devices.push(parseInt(dev_entry.attr("dev_idx")))
-
-                    $(xml).find("changeset > mon_check_command_excl").each (idx, mc_entry) =>
-                        _idx = parseInt($(mc_entry).attr("pk"))
-                        mc = @config_tree.mon_basic_tree.mon_check_command_lut[_idx]
-                        mc.exclude_devices.length = 0
-                        $(mc_entry).find("exclude").each (idx, exc_entry) =>
-                            # add exclude entries
-                            exc_entry = $(exc_entry)
-                            mc.exclude_devices.push(parseInt(exc_entry.attr("dev_idx")))
 
                     @remove_pending()
                     defer.resolve("changed")
@@ -759,7 +758,7 @@ angular.module(
     $q, blockUI, icswConfigMonTableService, icswMonitoringBasicTreeService,
     $rootScope, $window,
 )->
-    {table, thead, div, tr, span, th, td, tbody, button, tbody, del} = React.DOM
+    {table, thead, div, tr, span, th, td, tbody, button, tbody, del, i} = React.DOM
 
     rot_header = React.createFactory(
         React.createClass(
@@ -836,47 +835,24 @@ angular.module(
             render: () ->
                 _conf_headers = []
                 _conf_infos = []
-                _conf_grouping = []
-                _last_idx = 0
-                _mark_header = false
                 # global for table
-                create_groupinfo = false
                 colspan = 1
                 for row_el in @props.configHelper.active_rows
                     if @props.configHelper.mode in ["gen", "srv"]
                         _conf = row_el
                         _enabled = true
                     else
-                        # may be null for free mccs
-                        _conf = row_el.$$config
+                        # monitoring mode, ignore config
+                        _conf = null
                         _enabled = row_el.enabled
                     if @props.focusElement
-                        if _conf
+                        if @props.configHelper.mode in ["gen", "srv"]
                             _focus = _conf.idx == @props.focusElement
                         else
-                            _focus = false
+                            # the focusElement is the negative mcc idx
+                            _focus = row_el.idx == -@props.focusElement
                     else
                         _focus = false
-
-                    if _conf
-                        if _conf.idx != _last_idx
-                            _last_idx = _conf.idx
-                            _mark_header = !_mark_header
-                            colspan = if (
-                                @props.configHelper.mode  not in ["gen", "srv"] and
-                                _conf.$$_dc_num_mcs? and
-                                _conf.$$_dc_num_mcs > 1
-                            ) then _conf.$$_dc_num_mcs else 1
-                            if colspan > 1
-                                create_groupinfo = true
-                            groupstart = true
-                        else
-                            groupstart = false
-                    else
-                        _last_idx = -1
-                        colspan = 1
-                        groupstart = true
-
                     _conf_headers.push(
                         rot_header(
                             {
@@ -888,34 +864,24 @@ angular.module(
                             }
                         )
                     )
-                    if groupstart
-                        _conf_grouping.push(
-                            th(
+                    _conf_infos.push(
+                        th(
+                            {
+                                key: "info-#{row_el.idx}"
+                                colSpan: colspan
+                                className: "text-center"
+                            }
+                            span(
                                 {
-                                    key: "grp-#{row_el.idx}"
-                                    colSpan: colspan
-                                    className: "group-indicator"
+                                    key: "span"
+                                    className: "label label-primary"
                                 }
+                                # F denotes a free monitoring check
+                                if _conf then _conf.$$config_type_str else row_el.$$res_config_rel.length
                             )
+                            # todo: for mon mode show if checkcom is free or to how many configs the check is associated
                         )
-                        _conf_infos.push(
-                            th(
-                                {
-                                    key: "info-#{row_el.idx}"
-                                    colSpan: colspan
-                                    # className: ["text-center", if _mark_header then "bg-success" else "bg-warning"].join(" ")
-                                    className: "text-center"
-                                }
-                                span(
-                                    {
-                                        key: "span"
-                                        className: "label label-primary"
-                                    }
-                                    # F denotes a free monitoring check
-                                    if _conf then _conf.$$config_type_str else "F"
-                                )
-                            )
-                        )
+                    )
                 if @props.configHelper.any_pending
                     modify_button = button(
                         {
@@ -945,16 +911,6 @@ angular.module(
                 else
                     modify_button = null
                     cancel_button = null
-                if create_groupinfo
-                    groupindicator = tr(
-                        {key: "groupindicator"}
-                        th({key: "g0"})
-                        th({key: "g1"})
-                        th({key: "g2"})
-                        _conf_grouping
-                    )
-                else
-                    groupindicator = null
                 return thead(
                     {key: "head"}
                     tr(
@@ -970,7 +926,6 @@ angular.module(
                         th({key: "head3"})
                         _conf_headers
                     )
-                    groupindicator
                     tr(
                         {key: "info"}
                         th({key: "t0"}, "Type")
@@ -993,17 +948,17 @@ angular.module(
 
             getInitialState: () ->
                 return {focus: false, x: 0, y: 0}
+
             render: () ->
                 _el = @props.rowElement
                 if @props.configHelper.mode in ["gen", "srv"]
+                    # generic or service mode, conf and el is the same element
                     _conf = _el
                     _info_str = _el.$$info_str
                 else
-                    _conf = _el.$$config
+                    _conf = null
                     _info_str = "#{_el.description} (#{_el.name})"
                 [_class, _icon] = @props.configHelper.get_td_class_and_icon(_el, _conf, @props.device)
-                if @state.focus
-                    _class = "#{_class} bg-primary"
                 if @props.configHelper.mode in ["mon"]
                     # overlay
                     _overlay = div(
@@ -1047,14 +1002,17 @@ angular.module(
                     _overlay = null
                     _title_str = _info_str
 
-                showtooltip = (event) =>
-                    @setState({focus: true})
-                    @props.focusCallback(_el, _conf, @props.device, true)
-                    @props.configHelper.tooltip.show(_overlay)
-
+                if @state.focus
+                    _style = {border: "2px solid black"}
+                else
+                    _style = {padding: "2px"}
+                span_el = span(
+                    {className: "fa #{_icon}"}
+                )
                 return td(
                     {
                         className: "text-center #{_class}"
+                        style: _style
                         onClick: (event) =>
                             if @props.configHelper.click_allowed(@props.device, _conf)
                                 blockUI.start()
@@ -1062,17 +1020,21 @@ angular.module(
                                     (ok) ->
                                         blockUI.stop()
                                 )
-                        onMouseEnter: showtooltip
-                        onMouseMove: @props.configHelper.tooltip.pos
+                        onMouseEnter: (event) =>
+                            @setState({focus: true})
+                            @props.focusCallback(_el, _conf, @props.device, true)
+                            @props.configHelper.tooltip.show(_overlay)
+
                         onMouseLeave: (event) =>
                             @props.configHelper.tooltip.hide()
                             @setState({focus: false})
                             @props.focusCallback(_el, _conf, @props.device, false)
+
+                        onMouseMove: @props.configHelper.tooltip.pos
+
                         title: _title_str
                     }
-                    span(
-                        {className: _icon}
-                    )
+                    span_el
                 )
         )
     )
@@ -1196,8 +1158,8 @@ angular.module(
 
             div(
                 {
-                key: "configcontainer"
-                className: "icsw-tools-floating-table-header"
+                    key: "configcontainer"
+                    className: "icsw-tools-floating-table-header"
                 }
                 table(
                     {

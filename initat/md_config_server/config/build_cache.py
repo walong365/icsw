@@ -92,7 +92,7 @@ class MonCheckEmitter(object):
             print("s0")
             pprint.pprint(cc_per_dev)
         # meta devices, check_commands via direct mon_check, resolve
-        # devices via deivce_group
+        # devices via device_group
         for _entry in device.objects.filter(
             Q(is_meta_device=True)
         ).filter(
@@ -119,7 +119,7 @@ class MonCheckEmitter(object):
         ).values_list(
             "idx",
             "device_config__config__mcc_rel",
-            "device_config__config__mcc_rel__exclude_devices",
+            "device_config__config__mcc_rel__devices",
         ):  # .distinct():
             # check for exclusion
             if _entry[0] == _entry[2]:

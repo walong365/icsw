@@ -347,9 +347,22 @@ class mon_check_command(models.Model):
     volatile = models.BooleanField(default=False)
     # categories for this check
     categories = models.ManyToManyField("backbone.category", blank=True)
-    # device to exclude
-    exclude_devices = models.ManyToManyField("backbone.device", related_name="mcc_exclude_devices", blank=True)
+    # device to exclude, to be removed ...
+    # exclude_devices = models.ManyToManyField("backbone.device", related_name="mcc_exclude_devices", blank=True)
+    # devices to assign directly
     devices = models.ManyToManyField("backbone.device", related_name="mcc_devices", blank=True)
+    # handling of mcc selection with meta and config-related selection:
+    # - options for meta devices:
+    #   - via config_rel, devices
+    #     - (0) - none set: not set
+    #     - (1) - any config_rel set: use check downstream (towards devices)
+    #     - (0) - any config_rel and via devices set: do not use check
+    #     - (1) - no config_rel but via devices set: use check downstream (towards devices)
+    # - options for real devices
+    #   - via meta, config_rel, devices
+    #     - if any meta config_rel is set no device-local config_rel should be set
+    #     - if any meta devices rel is set no device-local devices rel should be set
+    #     - the same rules apply as above but the meta settings are also taken into account
     # event handler settings
     is_event_handler = models.BooleanField(default=False)
     event_handler = models.ForeignKey("self", null=True, default=None, blank=True)
@@ -376,6 +389,8 @@ class mon_check_command(models.Model):
                     ] for _config in self.config_rel.all()
                 ],
                 []
+            ) + list(
+                self.devices.all().values_list("idx", flat=True)
             )
         else:
             return []
