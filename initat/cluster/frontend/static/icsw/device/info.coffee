@@ -455,13 +455,13 @@ angular.module(
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
     "icswAccessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
     "icswDeviceTreeHelperService", "icswComplexModalService", "toaster", "$compile", "$templateCache",
-    "icswCategoryTreeService", "icswInfoModalService", "icswDialogDeleteService",
+    "icswCategoryTreeService", "icswToolsSimpleModalService", "icswDialogDeleteService",
 (
     $scope, Restangular, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
     icswAccessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
     icswDeviceTreeHelperService, icswComplexModalService, toaster, $compile, $templateCache,
-    icswCategoryTreeService, icswInfoModalService, icswDialogDeleteService,
+    icswCategoryTreeService, icswToolsSimpleModalService, icswDialogDeleteService,
 ) ->
     $scope.struct = {
         # data is valid
@@ -584,7 +584,7 @@ angular.module(
         # return defer.promise
 
     $scope.delete = ($event) ->
-        icswInfoModalService("Really delete device '#{$scope.edit_obj.full_name}' ?").then(
+        icswToolsSimpleModalService("Really delete device '#{$scope.edit_obj.full_name}' ?").then(
             (ok) ->
                 icswDialogDeleteService.delete(
                     icswDialogDeleteService.get_delete_instance(

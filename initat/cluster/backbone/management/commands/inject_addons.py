@@ -20,10 +20,10 @@
 """ inject addons in already compiled main.html """
 
 import codecs
+import copy
 import json
 import os
 import re
-import copy
 import sys
 
 from django.conf import settings
@@ -31,8 +31,8 @@ from django.core.management.base import BaseCommand
 from lxml import etree
 from lxml.builder import E
 
-from initat.cluster.backbone.models import csw_permission
 from initat.cluster.backbone.management.commands import show_icsw_urls
+from initat.cluster.backbone.models import csw_permission
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools
 
@@ -69,6 +69,7 @@ class ConfigRelax(object):
         )
 
     def validate(self, in_xml):
+        # print(etree.tostring(in_xml, pretty_print=True, encoding="unicode"))
         _valid = self.ng.validate(in_xml)
         if not _valid:
             # not beautifull but working

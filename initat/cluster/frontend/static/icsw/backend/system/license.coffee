@@ -62,7 +62,7 @@ angular.module(
                 _ln = basket.license_id_name or "global"
                 if _ln not of @license_lut
                     new_usage = {
-                        name: _ln
+                        license_id_name: _ln
                         installed: 0
                         available: 0
                         available_ghost: 0
