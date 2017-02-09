@@ -38,5 +38,17 @@ def main():
     return ret_state
 
 
+def cleanup_old_files():
+    import shutil
+    import os
+
+    for path in os.listdir("."):
+        if path.endswith(".icsw_old"):
+            try:
+                shutil.rmtree(path)
+            except NotADirectoryError:
+                os.remove(path)
+
 if __name__ == "__main__":
+    cleanup_old_files()
     sys.exit(main())
