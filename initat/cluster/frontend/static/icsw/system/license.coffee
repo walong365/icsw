@@ -249,12 +249,16 @@ angular.module(
                 _style.paddingRight = 5
             if _.endsWith(key, "w")
                 _style.width = 10
-            return tc_factory(
-                key: key
-                value: value
-                style: _style
+            return td(
+                {
+                    key: key
+                    className: "text-right"
+                    style: _style
+                }
+                value
             )
-        # the following lines are a little shitty
+
+        # the following lines are still not optimal
         if used_elements.length == 1  # one pool (pure noctua or nestor)
             line_data = [
                 [
@@ -348,23 +352,6 @@ angular.module(
                             )
                         )
                     )
-                )
-        )
-    )
-
-    tc_factory = React.createFactory(
-        React.createClass(
-            propTypes: {
-                value: React.PropTypes.string
-                style: React.PropTypes.object
-            }
-            render: () ->
-                td(
-                    {
-                        className: "text-right"
-                        style: @props.style
-                    }
-                    @props.value
                 )
         )
     )

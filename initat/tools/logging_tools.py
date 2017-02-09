@@ -930,7 +930,7 @@ class logfile(logging.handlers.BaseRotatingHandler):
                 )
             )
         else:
-            act_z.write(open(self.baseFilename, "r").read().encode("utf-8"))
+            act_z.write(open(self.baseFilename, "rb").read())
             act_z.close()
             os.chmod(gz_file_name, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP)
             self.stream.close()
