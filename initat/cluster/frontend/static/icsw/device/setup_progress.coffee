@@ -86,6 +86,7 @@ setup_progress = angular.module(
         local_windows_version: "N/A"
 
         update_file_version: undefined
+        update_file_bits: undefined
         update_file_module_fingerprint: undefined
 
         hm_status_websocket: undefined
@@ -143,8 +144,9 @@ setup_progress = angular.module(
             if maj_local >= maj_device && min_local >= min_device && rel_local >= rel_device && $scope.struct.local_hm_module_fingerprint != device.$$host_monitor_fingerprint
                 device.$$update_modules_disabled = false
 
-        if $scope.struct.update_file_version != undefined && $scope.struct.update_file_module_fingerprint != undefined && device.$$host_monitor_platform == "WINDOWS"
-            device.$$hm_full_update_disabled = false
+        if $scope.struct.update_file_version != undefined && $scope.struct.update_file_module_fingerprint != undefined && $scope.struct.update_file_bits != undefined
+            if device.$$host_monitor_platform == "WINDOWS" && device.$$host_monitor_platform_bits == $scope.struct.update_file_bits
+                device.$$hm_full_update_disabled = false
 
         $timeout(angular.noop)
 
@@ -519,12 +521,13 @@ setup_progress = angular.module(
             }
         ).then(
             (data) ->
-                if data.windows_hm_version && data.windows_hm_checksum
-                    $scope.struct.update_file_version = data.windows_hm_version
-                    $scope.struct.update_file_module_fingerprint = data.windows_hm_checksum
+                if data.update_file_version && data.update_file_checksum && data.update_file_bits
+                    $scope.struct.update_file_version = data.update_file_version
+                    $scope.struct.update_file_module_fingerprint = data.update_file_checksum
+                    $scope.struct.update_file_bits = data.update_file_bits
 
                     for device in $scope.struct.devices
-                        if device.$$host_monitor_platform == "WINDOWS"
+                        if device.$$host_monitor_platform == "WINDOWS" && device.$$host_monitor_platform_bits == $scope.struct.update_file_bits
                             device.$$hm_full_update_disabled = false
         )
         angular.element("input[type='file']").val(null);

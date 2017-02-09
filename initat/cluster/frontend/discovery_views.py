@@ -643,9 +643,10 @@ class HostMonitoringStatusLoader(View):
 
         return HttpResponse(json.dumps(result_dict))
 
-UPLOAD_FILE_DATA = None
-UPLOAD_FILE_VERSION = None
-UPLOAD_FILE_CHECKSUM = None
+UPDATE_FILE_DATA = None
+UPDATE_FILE_VERSION = None
+UPDATE_FILE_CHECKSUM = None
+UPDATE_FILE_BITS = None
 class UploadUpdateFile(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -661,6 +662,13 @@ class UploadUpdateFile(View):
                 lf = lzma.LZMAFile(filename=io.BytesIO(data))
                 tf = tarfile.TarFile(fileobj=lf)
 
+                if "hm_icsw_w64" in tf.getnames():
+                    bits = "64"
+                elif "hm_icsw_w32" in tf.getnames():
+                    bits = "32"
+                else:
+                    raise Exception("Invalid Update File")
+
                 constants_py_str = tf.extractfile("Lib/site-packages/initat/constants.py").read().decode()
                 windows_hm_version = constants_py_str.split('WINDOWS_HM_VERSION = ')[1].strip().replace("\"", "")
 
@@ -673,13 +681,14 @@ class UploadUpdateFile(View):
 
                 windows_hm_checksum = sha3_512_digester_all.hexdigest()
             except Exception as e:
-                _ = e
+                print(e)
                 raise e
             else:
-                global UPLOAD_FILE_DATA, UPLOAD_FILE_VERSION, UPLOAD_FILE_CHECKSUM
-                UPLOAD_FILE_DATA = data
-                UPLOAD_FILE_VERSION = windows_hm_version
-                UPLOAD_FILE_CHECKSUM = windows_hm_checksum
+                global UPDATE_FILE_DATA, UPDATE_FILE_VERSION, UPDATE_FILE_CHECKSUM, UPDATE_FILE_BITS
+                UPDATE_FILE_DATA = data
+                UPDATE_FILE_VERSION = windows_hm_version
+                UPDATE_FILE_CHECKSUM = windows_hm_checksum
+                UPDATE_FILE_BITS = bits
 
         return HttpResponse(json.dumps({}))
 
@@ -688,8 +697,9 @@ class UpdateFileHandler(View):
     def post(self, request):
         command = request.POST.get("command")
         if command == "status":
-            return HttpResponse(json.dumps({"windows_hm_version": UPLOAD_FILE_VERSION,
-                                            "windows_hm_checksum": UPLOAD_FILE_CHECKSUM}))
+            return HttpResponse(json.dumps({"update_file_version": UPDATE_FILE_VERSION,
+                                            "update_file_checksum": UPDATE_FILE_CHECKSUM,
+                                            "update_file_bits": UPDATE_FILE_BITS}))
         else:
             import pickle
             import binascii
@@ -697,18 +707,17 @@ class UpdateFileHandler(View):
             from initat.cluster.backbone.server_enums import icswServiceEnum
             from initat.cluster.frontend.helper_functions import contact_server
             from initat.tools import server_command
-            #from threading import Thread
 
             device_ids = [int(value) for value in request.POST.getlist("device_ids[]")]
 
             schedule_handler_data = {
                 "device_ids": device_ids,
-                "update_file_data": UPLOAD_FILE_DATA,
-                "update_file_version": UPLOAD_FILE_VERSION,
-                "update_file_checksum": UPLOAD_FILE_CHECKSUM
+                "update_file_data": UPDATE_FILE_DATA,
+                "update_file_version": UPDATE_FILE_VERSION,
+                "update_file_checksum": UPDATE_FILE_CHECKSUM,
+                "update_file_bits": UPDATE_FILE_BITS
             }
 
-            #def create_schedule_item(schedule_handler_data = None):
             schedule_handler_data = binascii.b2a_base64(pickle.dumps(schedule_handler_data)).decode()
 
             new_schedule_item = ScheduleItem(
@@ -717,9 +726,6 @@ class UpdateFileHandler(View):
                 schedule_handler_data=schedule_handler_data,
             )
             new_schedule_item.save()
-
-            #t = Thread(target=create_schedule_item, kwargs={"schedule_handler_data": schedule_handler_data})
-            #t.start()
 
             srv_com = server_command.srv_command(command="status")
             (result, _) = contact_server(

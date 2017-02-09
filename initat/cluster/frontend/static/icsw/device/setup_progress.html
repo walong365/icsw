@@ -136,12 +136,16 @@
                             <thead>
                                 <tr>
                                     <th class="text-center">Version</th>
+                                    <th class="text-center">Platform</th>
+                                    <th class="text-center">Bits</th>
                                     <th class="text-center">Module Fingerprint</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td class="text-center">{{ struct.update_file_version }}</td>
+                                    <td class="text-center">WINDOWS</td>
+                                    <td class="text-center">{{ struct.update_file_bits }}</td>
                                     <td class="text-center">{{ struct.update_file_module_fingerprint }}</td>
                                 </tr>
                             </tbody>

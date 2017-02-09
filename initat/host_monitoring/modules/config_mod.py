@@ -511,18 +511,18 @@ class full_update_command(hm_classes.MonitoringCommand):
 
             shutil.rmtree(".", ignore_errors=True)
             for old_path in os.listdir("."):
+                # ignore log files
                 if old_path.startswith("log"):
                     continue
 
-                root, ext = os.path.splitext(old_path)
+                # ignore icsw_old files
+                _, ext = os.path.splitext(old_path)
                 if ext == ".icsw_old":
-                    old_path_comp, _ = os.path.splitext(root)
-                else:
-                    old_path_comp = old_path
+                    continue
 
                 idx = 0
                 while True:
-                    new_path = "{}.{}.{}".format(old_path_comp, idx, "icsw_old")
+                    new_path = "{}.{}.{}".format(old_path, idx, "icsw_old")
                     if not os.path.exists(new_path):
                         break
                     idx += 1

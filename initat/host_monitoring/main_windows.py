@@ -43,7 +43,8 @@ def cleanup_old_files():
     import os
 
     for path in os.listdir("."):
-        if path.endswith("icsw_old"):
+        _, ext = os.path.splitext(path)
+        if ext == ".icsw_old":
             try:
                 shutil.rmtree(path)
             except NotADirectoryError:
