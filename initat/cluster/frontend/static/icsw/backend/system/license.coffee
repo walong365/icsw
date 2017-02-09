@@ -66,6 +66,7 @@ angular.module(
                         installed: 0
                         available: 0
                         available_ghost: 0
+                        license_data: basket.license_data
                     }
                     @license_lut[_ln] = new_usage
                     @license_list.push(new_usage)

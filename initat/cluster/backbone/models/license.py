@@ -578,6 +578,16 @@ class icswEggBasket(models.Model):
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
+    def get_license_data(self):
+        if self.license_id_name:
+            _lic = getattr(LicenseEnum, self.license_id_name)
+            simple_dict = {
+                key: getattr(_lic.value, key) for key in dir(_lic.value) if not key.startswith("_")
+            }
+            return simple_dict
+        else:
+            return None
+
     def values(self):
         return {
             _key: getattr(self, _key) for _key in {"installed", "available", "available_ghost"}

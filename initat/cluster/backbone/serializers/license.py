@@ -38,6 +38,11 @@ __all__ = [
 
 
 class icswEggBasketSerializer(serializers.ModelSerializer):
+    license_data = serializers.SerializerMethodField()
+
+    def get_license_data(self, obj):
+        return obj.get_license_data()
+
     class Meta:
         fields = "__all__"
         model = icswEggBasket
