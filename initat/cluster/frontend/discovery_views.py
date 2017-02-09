@@ -651,28 +651,30 @@ class UploadUpdateFile(View):
     def post(self, request):
         _file = request.FILES[list(request.FILES.keys())[0]]
         if _file.size < 100000000:
-            import zipfile
+            import tarfile
+            import lzma
             import hashlib
             import io
 
             try:
                 data = _file.read()
-                zf = zipfile.ZipFile(io.BytesIO(data))
-                zf.testzip()
+                lf = lzma.LZMAFile(filename=io.BytesIO(data))
+                tf = tarfile.TarFile(fileobj=lf)
 
-                constants_py_str = zf.read("Lib/site-packages/initat/constants.py").decode()
+                constants_py_str = tf.extractfile("Lib/site-packages/initat/constants.py").read().decode()
                 windows_hm_version = constants_py_str.split('WINDOWS_HM_VERSION = ')[1].strip().replace("\"", "")
 
                 sha3_512_digester_all = hashlib.new("sha3_512")
-                path_list = [module for module in zf.namelist() if
+                path_list = [module for module in tf.getnames() if
                  module.startswith("Lib/site-packages/initat/host_monitoring/modules/") and module.endswith(".py")]
                 path_list.sort()
                 for path in path_list:
-                    sha3_512_digester_all.update(zf.read(path))
+                    sha3_512_digester_all.update(tf.extractfile(path).read())
 
                 windows_hm_checksum = sha3_512_digester_all.hexdigest()
             except Exception as e:
                 _ = e
+                raise e
             else:
                 global UPLOAD_FILE_DATA, UPLOAD_FILE_VERSION, UPLOAD_FILE_CHECKSUM
                 UPLOAD_FILE_DATA = data
@@ -691,7 +693,6 @@ class UpdateFileHandler(View):
         else:
             import pickle
             import binascii
-            import zipfile
             import io
             from initat.cluster.backbone.server_enums import icswServiceEnum
             from initat.cluster.frontend.helper_functions import contact_server

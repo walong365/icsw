@@ -483,15 +483,19 @@ class full_update_command(hm_classes.MonitoringCommand):
             )
         else:
             import binascii
-            import zipfile
+            import tarfile
+            import lzma
             import io
             import shutil
 
             from threading import Thread
 
-            zf = zipfile.ZipFile(io.BytesIO(binascii.a2b_base64(srv_com["update_file_data"].text)))
+            update_file_data = srv_com["update_file_data"].text
             srv_com["update_file_data"] = ""
-            zf.testzip()
+            update_file_data = binascii.a2b_base64(update_file_data)
+
+            lzma_file = lzma.LZMAFile(filename=io.BytesIO(update_file_data))
+            tar_file = tarfile.TarFile(fileobj=lzma_file)
 
             shutil.rmtree(".", ignore_errors=True)
             for old_path in os.listdir("."):
@@ -507,7 +511,7 @@ class full_update_command(hm_classes.MonitoringCommand):
 
                 shutil.move(old_path, new_path)
 
-            zf.extractall()
+            tar_file.extractall()
 
             srv_com["update_status"] = "ok"
 
