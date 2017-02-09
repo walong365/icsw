@@ -467,6 +467,48 @@ class update_modules_command(hm_classes.MonitoringCommand):
             return limits.mon_STATE_OK, srv_com["update_result"].text
 
 
+class full_update_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.WINDOWS
+        required_access = HMAccessClassEnum.level2
+        uuid = "5d67b3d3-7ded-4483-814d-8f6dcd3e10f8"
+        description = "Perform a full update of the windows host monitoring software."
+        create_mon_check_command = False
+
+    def __call__(self, srv_com, cur_ns):
+        if "update_file_data" not in srv_com:
+            srv_com.set_result(
+                "Missing update_file_data",
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
+        else:
+            import binascii
+            import zipfile
+            import io
+            import shutil
+
+            from threading import Thread
+
+            zf = zipfile.ZipFile(io.BytesIO(binascii.a2b_base64(srv_com["update_file_data"].text)))
+
+            shutil.rmtree(".", ignore_errors=True)
+            for old_path in os.listdir("."):
+                new_path = "{}.{}".format(old_path, ".icsw_old")
+                shutil.move(old_path, new_path)
+
+            zf.extractall()
+
+            srv_com["update_file_data"] = ""
+            srv_com["update_status"] = "ok"
+
+            def killme():
+                time.sleep(1)
+                os._exit(1)
+
+            t = Thread(target=killme)
+            t.start()
+
+
 class platform_command(hm_classes.MonitoringCommand):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY

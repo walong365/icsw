@@ -29,8 +29,10 @@ import os
 import pickle
 import re
 import platform
+import io
 
 from lxml import etree
+from lxml.etree import XMLParser, parse, XMLSyntaxError
 from lxml.builder import ElementMaker
 
 from initat.host_monitoring.limits import mon_STATE_CRITICAL, mon_STATE_WARNING, \
@@ -130,9 +132,24 @@ class srv_command(object):
         self.ignore_unicode_errors = False
         if "source" in kwargs:
             if isinstance(kwargs["source"], str):
-                self.__tree = etree.fromstring(kwargs["source"])
+                try:
+                    self.__tree = etree.fromstring(kwargs["source"])
+                except XMLSyntaxError as e:
+                    if "Huge input lookup" in e.msg:
+                        # allows sending/receiving of server commands with large (>=10MiB) payload
+                        self.__tree = parse(io.StringIO(kwargs["source"]), parser=XMLParser(huge_tree=True))
+                    else:
+                        raise e
             elif isinstance(kwargs["source"], bytes):
-                self.__tree = etree.fromstring(kwargs["source"].decode("utf-8"))
+                try:
+                    self.__tree = etree.fromstring(kwargs["source"].decode("utf-8"))
+                except XMLSyntaxError as e:
+                    if "Huge input lookup" in e.msg:
+                        # allows sending/receiving of server commands with large (>=10MiB) payload
+                        self.__tree = parse(io.StringIO(kwargs["source"].decode("utf-8")),
+                            parser=XMLParser(huge_tree=True))
+                    else:
+                        raise e
             else:
                 self.__tree = kwargs["source"]
         else:

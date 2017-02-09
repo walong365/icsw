@@ -643,7 +643,7 @@ class HostMonitoringStatusLoader(View):
 
         return HttpResponse(json.dumps(result_dict))
 
-UPLOAD_FILE = None
+UPLOAD_FILE_DATA = None
 UPLOAD_FILE_VERSION = None
 UPLOAD_FILE_CHECKSUM = None
 class UploadUpdateFile(View):
@@ -671,15 +671,58 @@ class UploadUpdateFile(View):
             except Exception as e:
                 _ = e
             else:
-                global UPLOAD_FILE, UPLOAD_FILE_VERSION, UPLOAD_FILE_CHECKSUM
-                UPLOAD_FILE = _file
+                global UPLOAD_FILE_DATA, UPLOAD_FILE_VERSION, UPLOAD_FILE_CHECKSUM
+                UPLOAD_FILE_DATA = _file.read()
                 UPLOAD_FILE_VERSION = windows_hm_version
                 UPLOAD_FILE_CHECKSUM = windows_hm_checksum
 
         return HttpResponse(json.dumps({}))
 
-class UpdateFileStatusLoader(View):
+class UpdateFileHandler(View):
     @method_decorator(login_required)
     def post(self, request):
-        return HttpResponse(json.dumps({"windows_hm_version": UPLOAD_FILE_VERSION,
-                                        "windows_hm_checksum": UPLOAD_FILE_CHECKSUM}))
+        command = request.POST.get("command")
+        if command == "status":
+            return HttpResponse(json.dumps({"windows_hm_version": UPLOAD_FILE_VERSION,
+                                            "windows_hm_checksum": UPLOAD_FILE_CHECKSUM}))
+        else:
+            import pickle
+            import binascii
+            from initat.cluster.backbone.server_enums import icswServiceEnum
+            from initat.cluster.frontend.helper_functions import contact_server
+            from initat.tools import server_command
+            #from threading import Thread
+
+            device_ids = [int(value) for value in request.POST.getlist("device_ids[]")]
+
+            schedule_handler_data = {
+                "device_ids": device_ids,
+                "update_file_data": UPLOAD_FILE_DATA,
+                "update_file_version": UPLOAD_FILE_VERSION,
+                "update_file_checksum": UPLOAD_FILE_CHECKSUM
+            }
+
+            #def create_schedule_item(schedule_handler_data = None):
+            schedule_handler_data = binascii.b2a_base64(pickle.dumps(schedule_handler_data)).decode()
+
+            new_schedule_item = ScheduleItem(
+                run_now=True,
+                schedule_handler="hostmonitor_full_update_handler",
+                schedule_handler_data=schedule_handler_data,
+            )
+            new_schedule_item.save()
+
+            #t = Thread(target=create_schedule_item, kwargs={"schedule_handler_data": schedule_handler_data})
+            #t.start()
+
+            srv_com = server_command.srv_command(command="status")
+            (result, _) = contact_server(
+                request,
+                icswServiceEnum.discovery_server,
+                srv_com,
+            )
+
+            discovery_server_state = int(
+                result.tree.xpath("ns0:result", namespaces=result.tree.nsmap)[0].attrib["state"])
+
+            return HttpResponse(json.dumps({"discovery_server_state": discovery_server_state}))

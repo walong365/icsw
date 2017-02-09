@@ -536,9 +536,9 @@ setup_progress = angular.module(
     $scope.uploader.onCompleteAll = () ->
         icswSimpleAjaxCall(
             {
-                url: ICSW_URLS.DISCOVERY_UPDATE_FILE_STATUS
+                url: ICSW_URLS.DISCOVERY_UPDATE_FILE_HANDLER
                 data:
-                    dummy: ""
+                    command: "status"
                 dataType: "json"
             }
         ).then(
@@ -559,6 +559,22 @@ setup_progress = angular.module(
         (token) ->
             $scope.uploader.formData.push({"csrfmiddlewaretoken": token})
     )
+
+    $scope.perform_full_update = (device) ->
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.DISCOVERY_UPDATE_FILE_HANDLER
+                data:
+                    command: "perform_update"
+                    device_ids: [device.idx]
+                dataType: "json"
+            }
+        ).then(
+            (result) ->
+                toaster.pop("success", "", "Module update of device '" + device.full_name + "' was successfully scheduled.")
+                if result.discovery_server_state > 0
+                    toaster.pop("warning", "", "Could not contact discovery server.")
+        )
 
 ]).service("SetupProgressHelper",
 [

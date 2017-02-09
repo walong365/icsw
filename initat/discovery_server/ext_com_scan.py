@@ -960,6 +960,42 @@ class Dispatcher(object):
 
         propagate_channel_object("hm_status", callback_dict)
 
+    def hostmonitor_full_update_handler(self, schedule_item):
+        import pickle
+        import binascii
+
+        data = pickle.loads(binascii.a2b_base64(schedule_item.schedule_handler_data))
+
+        devices = device.objects.filter(idx__in=data["device_ids"])
+        update_file_data = binascii.b2a_base64(data["update_file_data"]).decode()
+        self.discovery_process.get_route_to_devices(devices)
+
+        for _device in devices:
+            conn_str = "tcp://{}:{:d}".format(_device.target_ip, self.__hm_port)
+            new_srv_com = server_command.srv_command(command="full_update")
+            new_srv_com["update_file_data"] = update_file_data
+
+            callback_dict = {
+                "device_pk": _device.idx,
+                "update_file_version": data["update_file_version"],
+                "update_file_checksum": data["update_file_checksum"]
+            }
+
+            hm_command = HostMonitoringCommand(self.hostmonitor_full_update_handler_callback,
+                callback_dict,
+                timeout=30)
+
+            self.discovery_process.send_pool_message(
+                "send_host_monitor_command",
+                hm_command.run_index,
+                conn_str,
+                str(new_srv_com)
+            )
+
+    @staticmethod
+    def hostmonitor_full_update_handler_callback(callback_dict, result):
+        pass
+
     @staticmethod
     def handle_hm_result(run_index, srv_result):
         if run_index in HostMonitoringCommand.host_monitoring_commands:
