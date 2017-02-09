@@ -976,7 +976,9 @@ class Dispatcher(object):
             new_srv_com["update_file_data"] = update_file_data
 
             callback_dict = {
-                "device_pk": _device.idx
+                "device_pk": _device.idx,
+                "update_file_version": data["update_file_version"],
+                "update_file_checksum": data["update_file_checksum"]
             }
 
             hm_command = HostMonitoringCommand(self.hostmonitor_full_update_handler_callback,

@@ -697,7 +697,9 @@ class UpdateFileHandler(View):
 
             schedule_handler_data = {
                 "device_ids": device_ids,
-                "update_file_data": UPLOAD_FILE_DATA
+                "update_file_data": UPLOAD_FILE_DATA,
+                "update_file_version": UPLOAD_FILE_VERSION,
+                "update_file_checksum": UPLOAD_FILE_CHECKSUM
             }
 
             #def create_schedule_item(schedule_handler_data = None):
