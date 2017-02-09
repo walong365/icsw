@@ -540,6 +540,8 @@ setup_progress = angular.module(
     )
 
     $scope.perform_full_update = (device) ->
+        device.$$update_modules_disabled = true
+        device.$$hm_full_update_disabled = true
         icswSimpleAjaxCall(
             {
                 url: ICSW_URLS.DISCOVERY_UPDATE_FILE_HANDLER
