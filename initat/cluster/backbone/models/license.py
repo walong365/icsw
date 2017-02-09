@@ -529,14 +529,14 @@ class icswEggBasketManager(models.Manager):
         )
         return _new_b
 
-    def create_dummy_basket(self, eggs=10, validity=1):
+    def create_dummy_basket(self, installed=10, validity=1):
         # validity is in years
         _now = django.utils.timezone.now()
         return self.create_basket(
             dummy=True,
             valid_from=_now - datetime.timedelta(days=1),
             valid_to=_now.replace(year=_now.year + validity),
-            eggs=eggs,
+            installed=installed,
         )
 
     def get_values_per_license_name(self):
@@ -584,9 +584,16 @@ class icswEggBasket(models.Model):
             simple_dict = {
                 key: getattr(_lic.value, key) for key in dir(_lic.value) if not key.startswith("_")
             }
-            return simple_dict
         else:
-            return None
+            simple_dict = {
+                "lic_id": "global",
+                "name": "Global",
+                "description": "Global ova basket",
+                "warn_percentage": 85,
+                "crit_percentage": 95,
+                "ova_repr": "Ova",
+            }
+        return simple_dict
 
     def values(self):
         return {
