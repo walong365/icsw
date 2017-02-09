@@ -993,7 +993,7 @@ class Dispatcher(object):
 
             hm_command = HostMonitoringCommand(self.hostmonitor_full_update_handler_callback,
                 callback_dict,
-                timeout=30)
+                timeout=300)
 
             self.discovery_process.send_pool_message(
                 "send_host_monitor_command",
@@ -1004,9 +1004,8 @@ class Dispatcher(object):
 
     @staticmethod
     def hostmonitor_full_update_handler_callback(callback_dict, result):
-        pass
-        # print(callback_dict)
-        # print(result)
+        print(callback_dict)
+        print(result)
 
     @staticmethod
     def handle_hm_result(run_index, srv_result):

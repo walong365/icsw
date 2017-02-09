@@ -498,7 +498,13 @@ class full_update_command(hm_classes.MonitoringCommand):
                 if old_path.startswith("log"):
                     continue
 
-                new_path = "{}.{}".format(old_path, "icsw_old")
+                idx = 0
+                while True:
+                    new_path = "{}.{}.{}".format(old_path, idx, "icsw_old")
+                    if not os.path.exists(new_path):
+                        break
+                    idx += 1
+
                 shutil.move(old_path, new_path)
 
             zf.extractall()
