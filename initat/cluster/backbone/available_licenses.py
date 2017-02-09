@@ -124,7 +124,7 @@ class LicenseEnum(Enum):
         'Monitoring Daemon Configuration Writer',
         80,
         90,
-        'entry',
+        'Service',
     )
     monitoring_dashboard = LicenseEnumDef(
         'monitoring_dashboard',
@@ -140,7 +140,7 @@ class LicenseEnum(Enum):
         'Manage the boot process of your nodes',
         80,
         90,
-        'entry',
+        'Node',
     )
     network_weathermap = LicenseEnumDef(
         'network_weathermap',

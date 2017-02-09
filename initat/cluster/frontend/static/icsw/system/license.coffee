@@ -26,30 +26,7 @@ angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.syslicenseoverview")
-]).constant("RELEVANT_OVA_LICS"
-    # FIXME - MOVE OBJECT
-    # the following lines are very dangerous because they make some assumptions about the
-    # the license system which are in fact not fixed and will change for sure
-    netboot:
-        name: "Nodes"
-        critperc: 95
-        warnperc: 90
-        # shitty
-        title: "Ova for booting Nodes, {used} used of {installed} installed"
-    md_config_server:
-        name: "Checks"
-        # why 80 and 90 % ?
-        critperc: 90
-        warnperc: 80
-        title: "Ova for assigning Service Checks, {used} used of {installed} installed"
-    global:
-        # ah-ha, global
-        name: "Global"
-        critperc: 90
-        warnperc: 80
-        title: "{used} global ova of {installed} used"
-
-).controller("icswSystemLicenseCtrl",
+]).controller("icswSystemLicenseCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal",
     "ICSW_URLS", 'FileUploader', "icswCSRFService", "blockUI", "icswParseXMLResponseService",
@@ -214,9 +191,9 @@ angular.module(
 
 ]).service("icswReactOvaDisplayFactory",
 [
-    "$q", "icswSystemOvaCounterService", "$state", "ICSW_URLS", "RELEVANT_OVA_LICS",
+    "$q", "icswSystemOvaCounterService", "$state", "ICSW_URLS",
 (
-    $q, icswSystemOvaCounterService, $state, ICSW_URLS, RELEVANT_OVA_LICS
+    $q, icswSystemOvaCounterService, $state, ICSW_URLS,
 ) ->
     {li, a, span, div, img, button, table, tr, td, tbody} = React.DOM
 
@@ -226,18 +203,17 @@ angular.module(
         _levels = []
         for ova in used_elements
             used_perc = 100.0 / ova.installed * ova.used
-            lic_const = RELEVANT_OVA_LICS[ova.license_id_name]
-            if used_perc >= lic_const.critperc
+            lic_const = ova.license_data
+            if used_perc >= lic_const.crit_percentage
                 _levels.push(2) # error
-            else if used_perc >= lic_const.warnperc
+            else if used_perc >= lic_const.warn_percentage
                 _levels.push(1) # warning
             else
                 _levels.push(0) # ok
             # variable expansion
-            _title = lic_const.title
+            _title = "#{lic_const.description}, {used} used of {installed} installed"
             for _exp_name in ["used", "installed"]
                 _title = _.replace(_title, "{#{_exp_name}}", ova[_exp_name])
-            ova.$$stupid_name = lic_const.name
             titles.push(_title)
 
         _create_tcf = (key, value) ->
@@ -269,16 +245,13 @@ angular.module(
                 ]
             ]
         else if used_elements.length == 2  # CORVUS
-            line_data = [
+
+            line_data = (
                 [
-                    _create_tcf("l1pr", "#{used_elements[0].$$stupid_name}: ")
-                    _create_tcf("l1v", "#{used_elements[0].used} / #{used_elements[0].installed}")
-                ]
-                [
-                    _create_tcf("l2pr", "#{used_elements[1].$$stupid_name}: ")
-                    _create_tcf("l2v", "#{used_elements[1].used} / #{used_elements[1].installed}")
-                ]
-            ]
+                    _create_tcf("l#{_idx}pr", "#{used_elements[_idx - 1].license_data.ova_repr}: ")
+                    _create_tcf("l#{_idx}v", "#{used_elements[_idx - 1].used} / #{used_elements[_idx - 1].installed}")
+                ] for _idx in [1, 2]
+            )
         else
             _idx = 0
             line_data = [[], []]
@@ -399,7 +372,7 @@ angular.module(
         render: () ->
             if @struct.data_ok and @struct.ocs.license_list.length
                 used_lics = (
-                    lic for lic in @struct.ocs.license_list when lic.license_id_name of RELEVANT_OVA_LICS
+                    lic for lic in @struct.ocs.license_list when lic.license_data
                 )
             else
                 used_lics = []
