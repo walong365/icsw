@@ -653,7 +653,17 @@ class Dispatcher(object):
         for schedule_item in ScheduleItem.objects.all():
             if schedule_item.run_now or schedule_item.planned_date < _now:
                 schedule_handler_function = getattr(self, schedule_item.schedule_handler)
-                schedule_handler_function(schedule_item)
+                try:
+                    schedule_handler_function(schedule_item)
+                except Exception as e:
+                    _ = e
+                    _exc = process_tools.icswExceptionInfo()
+                    self.log(
+                        "error in schedule_handler: {}".format(schedule_item.schedule_handler),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                    for line in _exc.log_lines:
+                        self.log(line, logging_tools.LOG_LEVEL_ERROR)
                 schedule_item.delete()
 
         # timeout handling
@@ -995,6 +1005,8 @@ class Dispatcher(object):
     @staticmethod
     def hostmonitor_full_update_handler_callback(callback_dict, result):
         pass
+        # print(callback_dict)
+        # print(result)
 
     @staticmethod
     def handle_hm_result(run_index, srv_result):

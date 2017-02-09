@@ -490,15 +490,19 @@ class full_update_command(hm_classes.MonitoringCommand):
             from threading import Thread
 
             zf = zipfile.ZipFile(io.BytesIO(binascii.a2b_base64(srv_com["update_file_data"].text)))
+            srv_com["update_file_data"] = ""
+            zf.testzip()
 
             shutil.rmtree(".", ignore_errors=True)
             for old_path in os.listdir("."):
-                new_path = "{}.{}".format(old_path, ".icsw_old")
+                if old_path.startswith("log"):
+                    continue
+
+                new_path = "{}.{}".format(old_path, "icsw_old")
                 shutil.move(old_path, new_path)
 
             zf.extractall()
 
-            srv_com["update_file_data"] = ""
             srv_com["update_status"] = "ok"
 
             def killme():
