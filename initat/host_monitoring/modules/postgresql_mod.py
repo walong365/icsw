@@ -21,10 +21,10 @@
 
 import time
 
-from .. import limits, hm_classes
-from initat.tools import logging_tools, process_tools, config_store
-from ..constants import HMAccessClassEnum
 from initat.constants import PlatformSystemTypeEnum
+from initat.tools import logging_tools, process_tools, config_store
+from .. import limits, hm_classes
+from ..constants import HMAccessClassEnum
 
 try:
     import psycopg2
@@ -251,6 +251,7 @@ class postgresql_connection_info_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "436a0b36-1991-44c4-8d35-42238186bc85"
+        description = "show current postgresql connection info"
 
     def __call__(self, srv_com, cur_ns):
         if self.module.pg_settings:

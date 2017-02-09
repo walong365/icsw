@@ -155,6 +155,9 @@
                                     <optional>
                                         <attribute name="entryClass"></attribute>
                                     </optional>
+                                    <optional>
+                                        <attribute name="limitedTo"></attribute>
+                                    </optional>
                                 </element>
                             </oneOrMore>
                         </element>

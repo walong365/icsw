@@ -304,6 +304,7 @@ class check_mount_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "4537cc1f-00fa-433c-91ee-797363d12358"
+        description = "check if a given mountpoint has the specified type"
         parameters = hm_classes.MCParameters(
             hm_classes.MCParameter("--type", "type", "nfs", "Mount Type"),
             hm_classes.MCParameter("", "arguments", "", "Mountpoint"),
@@ -355,6 +356,7 @@ class check_dir_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "9a3be3b0-d030-4f0c-86b0-9c1b2eadc615"
+        description = "check availability of a given directory"
         parameters = hm_classes.MCParameters(
             hm_classes.MCParameter("", "arguments", "", "Mountpoint"),
         )

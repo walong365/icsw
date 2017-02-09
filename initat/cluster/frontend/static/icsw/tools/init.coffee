@@ -383,11 +383,14 @@ angular.module(
                         if _log
                             console.error "missing attribute #{_name} in dashboardEntry for", @
 
+    menu_lut_name = _.keys(ICSW_CONFIG_JSON)[0]
+
     _add_route = (name, resolve_map) ->
+
         # reads from ICSW_CONFIG_JSON and adds to $stateProvider
-        if name not of ICSW_CONFIG_JSON.normal.routes
+        if name not of ICSW_CONFIG_JSON[menu_lut_name].routes
             throw new Error("stateName '#{name}' not found in ICSW_CONFIG_JSON")
-        _data = ICSW_CONFIG_JSON.normal.routes[name]
+        _data = ICSW_CONFIG_JSON[menu_lut_name].routes[name]
         if not _data.icswData? or not _data.stateData?
             throw new Error("icswData or stateData not found for stateName '#{name}'")
         _ext = new icswRouteExtension(_data.icswData)

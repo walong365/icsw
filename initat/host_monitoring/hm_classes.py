@@ -278,7 +278,7 @@ class ModuleContainer(object):
     def reload_module_checksum(self):
         sha3_512_digester_all = hashlib.new("sha3_512")
         hm_checksums = {}
-        modules_file_list =  []
+        modules_file_list = []
 
         for root, dirs, files in os.walk(self.__root_dir):
             for _file in files:
@@ -583,6 +583,7 @@ class MonitoringModule(MMMCBase):
         self.obj = mod_obj
         self.enabled = True
         self.__commands = {}
+        self.hash_object = None
         self.base_init()
 
     def add_command(self, com_name, call_obj):
@@ -617,6 +618,14 @@ class MonitoringModule(MMMCBase):
 
     def __unicode__(self):
         return "module {}, priority {:d}".format(self.name, self.Meta.priority)
+
+    @property
+    def checksum(self):
+        if not self.hash_object:
+            _ck = hashlib.new("sha1")
+            _ck.update(inspect.getsource(self.__class__).encode("utf-8"))
+            self.hash_object = _ck
+        return self.hash_object.hexdigest()
 
 
 class MonitoringCommand(MMMCBase):
@@ -666,6 +675,7 @@ class MonitoringCommand(MMMCBase):
         # monkey patch parsers
         self.parser.exit = self._parser_exit
         self.parser.error = self._parser_error
+        self.hash_object = None
         self.mc_init()
 
     @classmethod
@@ -735,6 +745,40 @@ class MonitoringCommand(MMMCBase):
             self.Meta.name,
             self.Meta.parameters.build_icinga_command(),
         ).strip()
+
+    @property
+    def checksum(self):
+        if not self.hash_object:
+            _ck = self.module.hash_object.copy()
+            _ck.update(inspect.getsource(self.__class__).encode("utf-8"))
+            self.hash_object = _ck
+        return self.hash_object.hexdigest()
+
+    def get_json_dump(self, prev_file):
+        _prev_instance = [cmd for cmd in prev_file["command_list"] if cmd["uuid"] == self.Meta.uuid]
+        if len(_prev_instance):
+            _prev_instance = _prev_instance[0]
+        else:
+            _prev_instance = None
+        if _prev_instance:
+            _version = _prev_instance.get("version", 1)
+            if _prev_instance["checksum"] != self.checksum:
+                _version += 1
+                print("increasing version of {} to {:d}".format(self.Meta.name, _version))
+        else:
+            _version = 1
+        return {
+            # base data
+            "checksum": self.checksum,
+            "uuid": self.Meta.uuid,
+            "version": _version,
+            # name / description
+            "name": self.Meta.name,
+            "description": self.Meta.description,
+            # flags
+            "has_perfdata": self.Meta.has_perfdata,
+            "icinga_cmdline": self.build_icinga_command(),
+        }
 
 
 class MachineVectorEntry(object):

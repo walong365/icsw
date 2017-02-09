@@ -391,7 +391,7 @@ class mpi_builder(object):
         return success
 
     def _compile_it(self):
-        num_cores = cpu_database.global_cpu_info(parse=True).num_cores() * 2 if self.parser.options.pmake else 1
+        num_cores = cpu_database.CPUId(parse=True).num_cores * 2 if self.parser.options.pmake else 1
         act_dir = os.getcwd()
         os.chdir(os.path.join(self.tempdir, "{}-{}".format(self.parser.mode, self.parser.options.mpi_version)))
         print("Modifying environment")

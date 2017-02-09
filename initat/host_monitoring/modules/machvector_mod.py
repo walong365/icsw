@@ -112,6 +112,7 @@ class get_mvector_command(hm_classes.MonitoringCommand):
                 out_list = logging_tools.NewFormList()
                 max_num_keys = 0
                 _list = []
+                a = 2
                 for mv_num, mv_key in enumerate(vector_keys):
                     if mv_key in used_keys:
                         cur_xml = srv_com.xpath("//ns:mve[@name='{}']".format(mv_key), start_el=cur_vector, smart_strings=False)[0]
@@ -144,12 +145,10 @@ class graph_setup_command(hm_classes.MonitoringCommand):
             send_name = cur_ns.send_name
         else:
             send_name = srv_com['send_name'].text
-
         if cur_ns.target_ip:
             target_ip = cur_ns.target_ip
         else:
             target_ip = srv_com['target_ip'].text
-
         if self.module.machine_vector.add_target(send_name, target_ip):
             srv_com.set_result("added new target")
         else:
@@ -690,7 +689,6 @@ class MachineVector(object):
             if hasattr(module, "update_machine_vector"):
                 module.update_machine_vector(self)
         self.check_changed()
-        # self.check_for_alerts(log_t)
 
 
 def pretty_print(val, base):

@@ -156,8 +156,8 @@ menu_module = angular.module(
     }
 
     MENU_LAYOUTS = [
-        {short: "normal", name: "Optimized Menu Layout"}
-        {short: "oldstyle", name: "Oldstyle Menu Layout"}
+        # {short: "normal", name: "Optimized Menu Layout"}
+        # {short: "oldstyle", name: "Oldstyle Menu Layout"}
         {short: "newstyle", name: "Newstyle Menu Layout"}
     ]
 
@@ -494,16 +494,22 @@ menu_module = angular.module(
                     _key = menu_entry.$$menu_key
                     # if data.$$menuEntry.isHidden? and data.$$menuEntry.isHidden
                     #     continue
-
                     if data.$$allowed or true
                         if not _head_added
                             # only add head when first entry is added
                             _head_added = true
                             _items.push(_head)
-                        items_added += 1
-                        _items.push(
-                            React.createElement(menu_line, {key: _key, menuEntry: menu_entry.data})
-                        )
+
+                        hide_wrongproduct = false
+                        if (menu_entry.data.limitedTo? and initProduct.name? and
+                            initProduct.name.toLowerCase() != "CORVUS".toLowerCase())
+                                if initProduct.name.toLowerCase() != menu_entry.data.limitedTo.toLowerCase()
+                                    hide_wrongproduct = true
+                        if not hide_wrongproduct
+                            items_added += 1
+                            _items.push(
+                                React.createElement(menu_line, {key: _key, menuEntry: menu_entry.data})
+                            )
 
             if items_added > 0
                 state = @props.menu.data

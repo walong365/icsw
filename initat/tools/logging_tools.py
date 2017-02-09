@@ -154,7 +154,7 @@ def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
     )
 
 
-def get_size_str(in_s, long_format=False, divider=1024, strip_spaces=False, long_version=True, per_second=False):
+def get_size_str(in_s, long_format=False, divider=1024, strip_spaces=False, long_version=True, per_second=False, to_int=False):
     if isinstance(in_s, str):
         _len_in_s = len(in_s)
     else:
@@ -164,13 +164,24 @@ def get_size_str(in_s, long_format=False, divider=1024, strip_spaces=False, long
         b_str = "{}/s".format(b_str)
     pf_f, pf_str = (["k", "M", "G", "T", "P", "E"], "")
     while in_s > divider:
+        if (in_s / float(divider) * float(divider)) != in_s and to_int:
+            break
         in_s = in_s / float(divider)
+        if to_int:
+            in_s = int(in_s)
         pf_str = pf_f.pop(0)
-    ret_str = "{} {}{}".format(
-        pf_str and "{:6.2f}".format(float(in_s)) or "{:4d}".format(int(in_s)),
-        pf_str,
-        b_str
-    )
+    if to_int:
+        ret_str = "{:d} {}{}".format(
+            in_s,
+            pf_str,
+            b_str,
+        )
+    else:
+        ret_str = "{} {}{}".format(
+            pf_str and "{:6.2f}".format(float(in_s)) or "{:4d}".format(int(in_s)),
+            pf_str,
+            b_str
+        )
     if strip_spaces:
         ret_str = " ".join(ret_str.split())
     return ret_str
@@ -919,7 +930,7 @@ class logfile(logging.handlers.BaseRotatingHandler):
                 )
             )
         else:
-            act_z.write(open(self.baseFilename, "r").read().encode("utf-8"))
+            act_z.write(open(self.baseFilename, "rb").read())
             act_z.close()
             os.chmod(gz_file_name, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP)
             self.stream.close()

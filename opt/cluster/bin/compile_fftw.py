@@ -67,6 +67,7 @@ class my_opt_parser(optparse.OptionParser):
             self.add_option("--32", dest="use_64_bit", help="Set 32-Bit build [%default]", action="store_false", default=True)
         else:
             self.add_option("--64", dest="use_64_bit", help="Set 64-Bit build [%default]", action="store_true", default=False)
+
     def parse(self):
         options, args = self.parse_args()
         if args:

@@ -33,6 +33,10 @@ import daemon
 
 #  do NOT put initat imports here (otherwise path manipulations below will not work)
 
+if not __file__.startswith("/opt"):
+    # disable bytecode creation when not running in production mode
+    sys.dont_write_bytecode = True
+
 
 def get_gid_from_name(group):
     try:

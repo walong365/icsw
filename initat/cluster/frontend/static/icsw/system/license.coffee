@@ -26,21 +26,28 @@ angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.syslicenseoverview")
-
 ]).constant("RELEVANT_OVA_LICS"
     # FIXME - MOVE OBJECT
-    "netboot":
-        "name": "Nodes"
-        "warnperc": 0.9
-        "title": "OVA for booting Nodes used:{used} installed:{installed}"
-    "md_config_server":
-        "name": "Checks"
-        "warnperc": 0.8
-        "title": "OVA for assigning Service Checks used:{used} installed:{installed}"
-    "global-dev":
-        "name": "Global"
-        "warnperc": 0.8
-        "title": "{used} global OVA of {installed} used"
+    # the following lines are very dangerous because they make some assumptions about the
+    # the license system which are in fact not fixed and will change for sure
+    netboot:
+        name: "Nodes"
+        critperc: 95
+        warnperc: 90
+        # shitty
+        title: "Ova for booting Nodes, {used} used of {installed} installed"
+    md_config_server:
+        name: "Checks"
+        # why 80 and 90 % ?
+        critperc: 90
+        warnperc: 80
+        title: "Ova for assigning Service Checks, {used} used of {installed} installed"
+    global:
+        # ah-ha, global
+        name: "Global"
+        critperc: 90
+        warnperc: 80
+        title: "{used} global ova of {installed} used"
 
 ).controller("icswSystemLicenseCtrl",
 [
@@ -211,17 +218,102 @@ angular.module(
 (
     $q, icswSystemOvaCounterService, $state, ICSW_URLS, RELEVANT_OVA_LICS
 ) ->
-    {ul, li, a, span, div, p, strong, h3, hr, img, button, table, tr, td, tbody} = React.DOM
+    {li, a, span, div, img, button, table, tr, td, tbody} = React.DOM
 
-    # BUILD BUTTON WITH EGG SYMBOL
+    eval_lics = (used_elements) ->
+        style_classes = ["success", "warning", "danger"]
+        titles = []
+        _levels = []
+        for ova in used_elements
+            used_perc = 100.0 / ova.installed * ova.used
+            lic_const = RELEVANT_OVA_LICS[ova.license_id_name]
+            if used_perc >= lic_const.critperc
+                _levels.push(2) # error
+            else if used_perc >= lic_const.warnperc
+                _levels.push(1) # warning
+            else
+                _levels.push(0) # ok
+            # variable expansion
+            _title = lic_const.title
+            for _exp_name in ["used", "installed"]
+                _title = _.replace(_title, "{#{_exp_name}}", ova[_exp_name])
+            ova.$$stupid_name = lic_const.name
+            titles.push(_title)
+
+        _create_tcf = (key, value) ->
+            # style, use key to determine final style
+            _style = {}
+            if _.startsWith(key, "l2")
+                _style.borderTop = "1px solid #666666"
+            if _.endsWith(key, "pr")
+                _style.paddingRight = 5
+            if _.endsWith(key, "w")
+                _style.width = 10
+            return td(
+                {
+                    key: key
+                    className: "text-right"
+                    style: _style
+                }
+                value
+            )
+
+        # the following lines are still not optimal
+        if used_elements.length == 1  # one pool (pure noctua or nestor)
+            line_data = [
+                [
+                    _create_tcf("l1", "#{used_elements[0].used}")
+                ]
+                [
+                    _create_tcf("l2", "#{used_elements[0].installed}")
+                ]
+            ]
+        else if used_elements.length == 2  # CORVUS
+            line_data = [
+                [
+                    _create_tcf("l1pr", "#{used_elements[0].$$stupid_name}: ")
+                    _create_tcf("l1v", "#{used_elements[0].used} / #{used_elements[0].installed}")
+                ]
+                [
+                    _create_tcf("l2pr", "#{used_elements[1].$$stupid_name}: ")
+                    _create_tcf("l2v", "#{used_elements[1].used} / #{used_elements[1].installed}")
+                ]
+            ]
+        else
+            _idx = 0
+            line_data = [[], []]
+            for ova in used_elements
+                if _idx
+                    line_data[0].push(
+                        _create_tcf("sl#{_idx}w", "")
+                    )
+                    line_data[1].push(
+                        _create_tcf("sl#{_idx}w", "")
+                    )
+                _idx++
+                line_data[0].push(
+                    _create_tcf("l1#{_idx}", "#{ova.used}")
+                )
+                line_data[1].push(
+                    _create_tcf("l2#{_idx}", "#{ova.installed}")
+                )
+
+        return {
+            titles: titles
+            styleclass: style_classes[_.max(_levels)]
+            line_data: line_data
+        }
+
+
+    # build button with egg symbol
     egg_display = React.createFactory(
         React.createClass(
             propTypes: {
-                elements: React.PropTypes.array
+                used_licenses: React.PropTypes.array
             }
 
             render: () ->
-                lic_data = eval_lics(@props.elements)
+                lic_data = eval_lics(@props.used_licenses)
                 return button(
                     {
                         type: "button"
@@ -232,7 +324,7 @@ angular.module(
                     }
                     table(
                         {
-                        className: "condensed"
+                            className: "condensed"
                         }
                         tbody(
                             {}
@@ -252,121 +344,17 @@ angular.module(
                                         }
                                     )
                                 )
-                                lic_data.line_1
+                                lic_data.line_data[0]
                             )
                             tr(
                                 {}
-                                lic_data.line_2
+                                lic_data.line_data[1]
                             )
                         )
                     )
                 )
         )
     )
-
-    get_table_cell = React.createFactory(
-        React.createClass(
-            propTypes: {
-                value: React.PropTypes.string
-                style: React.PropTypes.object
-            }
-            render: () ->
-                td(
-                    {
-                        className: "text-right"
-                        style: @props.style
-                    }
-                    @props.value
-                )
-        )
-    )
-
-    eval_lics = (lic_elements) ->
-        lic_keys = Object.keys(RELEVANT_OVA_LICS)
-        used_elements = lic_elements.filter (lic) -> lic.name in lic_keys
-
-        style_classes = ["success", "warning", "danger"]
-        current_level = 0  # success
-        titles = []
-        line_1_data = []
-        line_2_data = []
-        for ova in used_elements when ova.name in lic_keys
-            used_perc = 1 / ova.installed * ova.used
-            lic_const = RELEVANT_OVA_LICS[ova.name]
-            if used_perc == 1.0
-                _lvl = 2  # error
-            else if used_perc >= lic_const.warnperc
-                _lvl = 1  # warning
-            else
-                _lvl = 0
-            current_level = if current_level < _lvl then _lvl else current_level
-            _title = lic_const.title.replace /{used}/, ova.used
-            _title = _title.replace /{installed}/, ova.installed
-            titles.push(_title)
-
-        if used_elements.length == 1  # ONE OVA POOL (NOCUTA / NESTOR)
-            line_1_data.push(get_table_cell({
-                key: "lic_btt_l1"
-                value: "#{used_elements[0].used}"
-                style: {}
-            }))
-            line_2_data.push(get_table_cell({
-                key: "lic_btt_l2"
-                value: "#{used_elements[0].installed}"
-                style: {borderTop: "1px solid #666666"}
-            }))
-        else if used_elements.length == 2  # CORVUS
-            line_1_data.push(get_table_cell({
-                key: "lic_btt_l1-name"
-                value: "#{RELEVANT_OVA_LICS[used_elements[0].name].name}: "
-                style: {paddingRight: 5}
-            }))
-            line_1_data.push(get_table_cell({
-                key: "lic_btt_l1"
-                value: "#{used_elements[0].used} / #{used_elements[0].installed}"
-                style: {}
-            }))
-            line_2_data.push(get_table_cell({
-                key: "lic_btt_l2-name"
-                value: "#{RELEVANT_OVA_LICS[used_elements[1].name].name}: "
-                style: {paddingRight: 5}
-            }))
-            line_2_data.push(get_table_cell({
-                key: "lic_btt_l2"
-                value: "#{used_elements[1].used} / #{used_elements[1].installed}"
-                style: {}
-            }))
-        else
-            for idx in [0...used_elements.length] by 1
-                line_1_data.push(get_table_cell({
-                    key: "lic_btt_l1-#{idx}"
-                    value: "#{used_elements[idx].used}"
-                    style: {}
-                }))
-                line_2_data.push(get_table_cell({
-                    key: "lic_btt_l2-#{idx}"
-                    value: "#{used_elements[idx].installed}"
-                    style: {borderTop: "1px solid #666666"}
-                }))
-                if idx < used_elements.length - 1
-                    line_1_data.push(get_table_cell({
-                        key: "lic_btt_l1m-#{idx}"
-                        value: ""
-                        style: { width:10 }
-                    }))
-                    line_2_data.push(get_table_cell({
-                        key: "lic_btt_l2m-#{idx}"
-                        value: ""
-                        style: { width:10 }
-                    }))
-
-        return {
-            "titles": titles
-            "styleclass": style_classes[current_level]
-            "line_1" : line_1_data
-            "line_2" : line_2_data
-        }
-
 
     return React.createClass(
         displayName: "icswOvaDisplay"
@@ -409,12 +397,13 @@ angular.module(
             console.log "stop ovadisplay"
 
         render: () ->
-            lic_keys = Object.keys(RELEVANT_OVA_LICS)
             if @struct.data_ok and @struct.ocs.license_list.length
-                used_elements = @struct.ocs.license_list.filter (lic) -> lic.name in lic_keys
+                used_lics = (
+                    lic for lic in @struct.ocs.license_list when lic.license_id_name of RELEVANT_OVA_LICS
+                )
             else
-                used_elements = []
-            if used_elements.length
+                used_lics = []
+            if used_lics.length
                 return li(
                     {}
                     div(
@@ -423,7 +412,7 @@ angular.module(
                             egg_display(
                                 {
                                     key: "lic.button"
-                                    elements: @struct.ocs.license_list
+                                    used_licenses: used_lics
                                 }
                             )
 

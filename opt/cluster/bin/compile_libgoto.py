@@ -19,15 +19,14 @@
 #
 
 import optparse
-import sys
 import os
 import os.path
-import tempfile
-import tarfile
-import time
 import shutil
 import subprocess
-import subprocess
+import sys
+import tarfile
+import tempfile
+import time
 
 from initat.tools import cpu_database, logging_tools, rpm_build_tools, compile_tools
 
@@ -192,11 +191,15 @@ class my_opt_parser(optparse.OptionParser):
                 )
         elif self.options.fcompiler == "PATHSCALE":
             if os.path.isdir(self.options.fcompiler_path):
-                self.add_path_dict = {"LD_LIBRARY_PATH": ["%s/lib" % (self.options.fcompiler_path)],
-                                      "PATH": ["%s/bin" % (self.options.fcompiler_path)]}
-                self.compiler_dict = {"CC": "pathcc",
-                                      "CXX": "pathCC",
-                                      "F77": "pathf95"}
+                self.add_path_dict = {
+                    "LD_LIBRARY_PATH": ["%s/lib" % (self.options.fcompiler_path)],
+                    "PATH": ["%s/bin" % (self.options.fcompiler_path)]
+                }
+                self.compiler_dict = {
+                    "CC": "pathcc",
+                    "CXX": "pathCC",
+                    "F77": "pathf95"
+                }
                 stat, pathf95_out = subprocess.getstatusoutput("%s/bin/pathf95 -dumpversion" % (self.options.fcompiler_path))
                 if stat:
                     raise ValueError("Cannot get Version from pathf95 (%d): %s" % (stat, pathf95_out))
@@ -205,8 +208,10 @@ class my_opt_parser(optparse.OptionParser):
                 stat, pathcc_out = subprocess.getstatusoutput("%s/bin/pathcc -dumpversion" % (self.options.fcompiler_path))
                 if stat:
                     raise ValueError("Cannot get Version from pathcc (%d): %s" % (stat, pathcc_out))
-                self.compiler_version_dict = {"pathf95": pathf95_out,
-                                              "pathcc": pathcc_out}
+                self.compiler_version_dict = {
+                    "pathf95": pathf95_out,
+                    "pathcc": pathcc_out
+                }
             else:
                 raise IOError(
                     "Compiler base path '%s' for compiler setting %s is not a directory" % (
@@ -305,16 +310,20 @@ class goto_builder(object):
             print("Modifying Makefile.rule")
             rule_lines = [line for line in open(self.orig_rulefile_name, "r").read().split("\n") if line.rstrip() and not line.lstrip().startswith("#")]
             parser_options = self.parser.options
-            pre_new_rules = [("C_COMPILER", parser_options.ccompiler),
-                             ("F_COMPILER", parser_options.fcompiler),
-                             ("BINARY64", parser_options.use_64_bit and "1" or ""),
-                             ("SMP", parser_options.smp and "1" or ""),
-                             ("MAX_THREADS", "%d" % (parser_options.max_threads)),
-                             ("INTERFACE64", parser_options.use_64_bit_interface and "1" or ""),
-                             ("AR", parser_options.archiver),
-                             ("LD", parser_options.linker)]
-            post_new_rules = [("CCOMMON_OPT", parser_options.compiler_flags),
-                              ("FCOMMON_OPT", parser_options.compiler_f77_flags)]
+            pre_new_rules = [
+                ("C_COMPILER", parser_options.ccompiler),
+                ("F_COMPILER", parser_options.fcompiler),
+                ("BINARY64", parser_options.use_64_bit and "1" or ""),
+                ("SMP", parser_options.smp and "1" or ""),
+                ("MAX_THREADS", "%d" % (parser_options.max_threads)),
+                ("INTERFACE64", parser_options.use_64_bit_interface and "1" or ""),
+                ("AR", parser_options.archiver),
+                ("LD", parser_options.linker)
+            ]
+            post_new_rules = [
+                ("CCOMMON_OPT", parser_options.compiler_flags),
+                ("FCOMMON_OPT", parser_options.compiler_f77_flags)
+            ]
             new_keys = [name for name, value in pre_new_rules]
             rule_lines = [line for line in rule_lines if line.split()[0] not in new_keys]
             rule_lines = [
@@ -327,15 +336,17 @@ class goto_builder(object):
         return success
 
     def _compile_it(self):
-        num_cores = cpu_database.global_cpu_info(parse=True).num_cores()
+        num_cores = cpu_database.CPUId(parse=True).num_cores
         self.time_dict, self.log_dict = ({}, {})
         success = True
         act_dir = os.getcwd()
         for path_name, path_add_value in self.parser.add_path_dict.items():
             os.environ[path_name] = "%s:%s" % (":".join(path_add_value), os.environ.get(path_name, ""))
-        for command, act_dir, time_name in [("make -j %d" % (num_cores), "%s/GotoBLAS" % (self.tempdir), "make"),
-                                            ("make so", "%s/GotoBLAS/exports" % (self.tempdir), "make so"),
-                                            ("make all", "%s/GotoBLAS/test" % (self.tempdir), "make check")]:
+        for command, act_dir, time_name in [
+            ("make -j %d" % (num_cores), "%s/GotoBLAS" % (self.tempdir), "make"),
+            ("make so", "%s/GotoBLAS/exports" % (self.tempdir), "make so"),
+            ("make all", "%s/GotoBLAS/test" % (self.tempdir), "make check"),
+        ]:
             b_task = build_task(
                 info=time_name,
                 directory=act_dir,
@@ -369,24 +380,32 @@ class goto_builder(object):
     def package_it(self):
         print("Packaging ...")
         width = self.parser.options.use_64_bit and "64" or "32"
-        libgoto_info_str = "%s-%s-%s-%s%s" % (self.parser.cpu_id,
-                                              self.parser.options.fcompiler,
-                                              self.parser.short_version,
-                                              width,
-                                              self.parser.options.smp and "p" or "")
+        libgoto_info_str = "%s-%s-%s-%s%s" % (
+            self.parser.cpu_id,
+            self.parser.options.fcompiler,
+            self.parser.short_version,
+            width,
+            self.parser.options.smp and "p" or ""
+        )
         libgoto_vers_str = "%s-r%s" % (
             libgoto_info_str,
             self.parser.options.goto_version
         )
-        static_library_name, dynamic_library_name = ("libgoto-%s.a" % (libgoto_vers_str),
-                                                     "libgoto-%s.so" % (libgoto_vers_str))
+        static_library_name, dynamic_library_name = (
+            "libgoto-%s.a" % (libgoto_vers_str),
+            "libgoto-%s.so" % (libgoto_vers_str)
+        )
         info_name = "README.libgoto-%s" % (libgoto_vers_str)
         sep_str = "-" * 50
         readme_lines = [
             sep_str
         ] + self.parser.get_compile_options().split("\n") + [
             "Compile times: %s" % (
-                ", ".join(["%s: %s" % (key, logging_tools.get_diff_time_str(self.time_dict[key])) for key in list(self.time_dict.keys())])
+                ", ".join(
+                    [
+                        "%s: %s" % (key, logging_tools.get_diff_time_str(self.time_dict[key])) for key in list(self.time_dict.keys())
+                    ]
+                )
             ),
             sep_str,
             ""
@@ -396,15 +415,19 @@ class goto_builder(object):
                 [
                     "Compile logs:"
                 ] + sum([["%s:" % (key)] + self.log_dict[key].split("\n") + [sep_str] for key in list(self.log_dict.keys())], []))
-        libgoto_static_file_name, libgoto_dynamic_file_name = ("%s/GotoBLAS/libgoto.a" % (self.tempdir),
-                                                               "/dynamic_not_found")
+        libgoto_static_file_name, libgoto_dynamic_file_name = (
+            "%s/GotoBLAS/libgoto.a" % (self.tempdir),
+            "/dynamic_not_found"
+        )
         open("%s/info" % (self.tempdir), "w").write("\n".join(readme_lines))
         for ent in os.listdir("%s/GotoBLAS" % (self.tempdir)):
             if ent.endswith(".so"):
                 libgoto_dynamic_file_name = "%s/GotoBLAS/%s" % (self.tempdir, ent)
-        package_name, package_version, package_release = ("libgoto-%s" % (libgoto_info_str),
-                                                          self.parser.options.goto_version,
-                                                          self.parser.options.release)
+        package_name, package_version, package_release = (
+            "libgoto-%s" % (libgoto_info_str),
+            self.parser.options.goto_version,
+            self.parser.options.release
+        )
         # copy libgoto.a
         open("%s.static" % (libgoto_static_file_name), "w").write(open(libgoto_static_file_name, "r").read())
         new_p = rpm_build_tools.build_package()
@@ -415,18 +438,30 @@ class goto_builder(object):
         new_p["release"] = package_release
         new_p["package_group"] = "Libraries/Math"
         new_p["inst_options"] = " -p "
-        content = rpm_build_tools.file_content_list(["%s.static:%s/%s" % (libgoto_static_file_name,
-                                                                          self.parser.options.target_dir,
-                                                                          static_library_name),
-                                                     "%s:%s/%s" % (libgoto_dynamic_file_name,
-                                                                   self.parser.options.target_dir,
-                                                                   dynamic_library_name),
-                                                     "%s/info:%s/%s" % (self.tempdir,
-                                                                        self.parser.options.target_dir,
-                                                                        info_name),
-                                                     "%s:%s/Makefile.rule.%s" % (self.orig_rulefile_name,
-                                                                                 self.parser.options.target_dir,
-                                                                                 libgoto_vers_str)])
+        content = rpm_build_tools.file_content_list(
+            [
+                "%s.static:%s/%s" % (
+                    libgoto_static_file_name,
+                    self.parser.options.target_dir,
+                    static_library_name
+                ),
+                "%s:%s/%s" % (
+                    libgoto_dynamic_file_name,
+                    self.parser.options.target_dir,
+                    dynamic_library_name
+                ),
+                "%s/info:%s/%s" % (
+                    self.tempdir,
+                    self.parser.options.target_dir,
+                    info_name
+                ),
+                "%s:%s/Makefile.rule.%s" % (
+                    self.orig_rulefile_name,
+                    self.parser.options.target_dir,
+                    libgoto_vers_str
+                )
+            ]
+        )
         new_p.create_tgz_file(content)
         new_p.write_specfile(content)
         new_p.build_package()

@@ -118,7 +118,7 @@ class ErrorStructure(object):
         _lines = self.error_str[self.__num_logged:].split("\n")
         # never log the last line, this line is either incomplete (\n missing) or empty (\n present)
         for err_line in _lines:
-            err_line = err_line.strip()
+            err_line = err_line.rstrip()
             if err_line:
                 _struct["line"] = err_line
                 self.log(

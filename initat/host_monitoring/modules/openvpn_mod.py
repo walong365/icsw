@@ -353,6 +353,7 @@ class certificate_status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "ea9f11c7-f3c3-4704-ae6e-ae3e42983183"
+        description = "check certificates found in the given directories"
         parameters = hm_classes.MCParameters(
             hm_classes.MCParameter("", "arguments", "", "One or more Certificate directories"),
         )
