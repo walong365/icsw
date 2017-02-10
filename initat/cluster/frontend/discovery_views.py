@@ -635,6 +635,7 @@ class ScheduleItemCreator(View):
 class HostMonitoringStatusLoader(View):
     @method_decorator(login_required)
     def post(self, request):
+        _ = request
         from initat.host_monitoring.modules import local_mc
         from initat.host_monitoring.hm_classes import HM_ALL_MODULES_KEY
         from initat.constants import WINDOWS_HM_VERSION
@@ -648,7 +649,10 @@ class HostMonitoringStatusLoader(View):
 
         return HttpResponse(json.dumps(result_dict))
 
+
 UPDATE_FILE_DICT = {}
+
+
 class UploadUpdateFile(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -685,7 +689,8 @@ class UploadUpdateFile(View):
 
                 sha3_512_digester_all = hashlib.new("sha3_512")
                 path_list = [module for module in tf.getnames() if
-                 module.startswith("Lib/site-packages/initat/host_monitoring/modules/") and module.endswith(".py")]
+                             module.startswith("Lib/site-packages/initat/host_monitoring/modules/") and
+                             module.endswith(".py")]
                 path_list.sort()
                 for path in path_list:
                     sha3_512_digester_all.update(tf.extractfile(path).read())
@@ -700,6 +705,7 @@ class UploadUpdateFile(View):
                 UPDATE_FILE_DICT["platform_bits"] = bits
 
         return HttpResponse(json.dumps({"version": version, "checksum": checksum, "platform_bits": bits}))
+
 
 class UpdateFileHandler(View):
     @method_decorator(login_required)
