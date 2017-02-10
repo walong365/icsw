@@ -81,6 +81,10 @@ setup_progress = angular.module(
 
         push_graphing_config_device: undefined
 
+        ## hostmonitor status variables
+
+        hm_status_display_devices: []
+
         local_hm_module_fingerprint: "N/A"
         local_linux_version: "N/A"
         local_windows_version: "N/A"
@@ -94,6 +98,11 @@ setup_progress = angular.module(
         host_monitor_refresh_button_counter: 10
         host_monitor_refresh_button_text: "Refresh (10)"
         host_monitor_refresh_button_timeout: undefined
+
+        hm_filter_modules_updatable_disabled: true
+        hm_filter_modules_updatable_class: "btn btn-default btn-xs"
+        hm_filter_full_updatable_disabled: true
+        hm_filter_full_updatable_class: "btn btn-default btn-xs"
     }
 
     ws_handle_func = (data) ->
@@ -226,10 +235,12 @@ setup_progress = angular.module(
     $scope.new_devsel = (devs) ->
         $scope.struct.devices.length = 0
         $scope.struct.device_pks.length = 0
+        $scope.struct.hm_status_display_devices.length = 0
         for entry in devs
             if not entry.is_meta_device
                 $scope.struct.devices.push(entry)
                 $scope.struct.device_pks.push(entry.idx)
+                $scope.struct.hm_status_display_devices.push(entry)
 
         perform_refresh_for_device_status(false)
         perform_refresh_for_system_status()
@@ -580,6 +591,32 @@ setup_progress = angular.module(
 
     $scope.perform_host_monitor_status_refresh = () ->
         schedule_refresh_for_host_monitor_status()
+
+    $scope.select_full_updateable_devices = () ->
+        $scope.struct.hm_filter_full_updatable_disabled = !$scope.struct.hm_filter_full_updatable_disabled
+
+        if $scope.struct.hm_filter_full_updatable_disabled
+            $scope.struct.hm_filter_full_updatable_class = "btn btn-default btn-xs"
+        else
+            $scope.struct.hm_filter_full_updatable_class = "btn btn-success btn-xs"
+
+        $scope.struct.hm_status_display_devices.length = 0
+        for device in $scope.struct.devices
+            if device.$$hm_full_update_disabled == $scope.struct.hm_filter_full_updatable_disabled
+                $scope.struct.hm_status_display_devices.push(device)
+
+    $scope.select_module_updateable_devices = () ->
+        $scope.struct.hm_filter_modules_updatable_disabled = !$scope.struct.hm_filter_modules_updatable_disabled
+
+        if $scope.struct.hm_filter_modules_updatable_disabled
+            $scope.struct.hm_filter_modules_updatable_class = "btn btn-default btn-xs"
+        else
+            $scope.struct.hm_filter_modules_updatable_class = "btn btn-success btn-xs"
+
+        $scope.struct.hm_status_display_devices.length = 0
+        for device in $scope.struct.devices
+            if device.$$update_modules_disabled == $scope.struct.hm_filter_modules_updatable_disabled
+                $scope.struct.hm_status_display_devices.push(device)
 
     schedule_refresh_for_host_monitor_status = () ->
         if $scope.struct.host_monitor_refresh_button_timeout != undefined

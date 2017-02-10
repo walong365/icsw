@@ -178,7 +178,7 @@
                         class="table table-condensed table-striped table-hover simple-border"
                         st-table="devices_shown"
                         ng-show="struct.devices.length > 0"
-                        st-safe-src="struct.devices"
+                        st-safe-src="struct.hm_status_display_devices"
                     >
                         <thead>
                             <tr>
@@ -201,7 +201,8 @@
                                 <th class="text-center">Platform</th>
                                 <th class="text-center">Bits</th>
                                 <th class="text-center">Module Fingerprint</th>
-                                <th class="text-center">Action</th>
+                                <th class="text-center">Update Modules</th>
+                                <th class="text-center">Complete Update</th>
                             </tr>
                             <tr>
                                 <th>
@@ -222,7 +223,11 @@
                                 <th>
                                     <input st-search="$$host_monitor_fingerprint" placeholder="filter by fingerprint" class="input-sm form-control" type="search"/>
                                 </th>
-                                <th>
+                                <th class="text-center vertical-align">
+                                    <button type="button" ng-click="select_module_updateable_devices()" ng-class="struct.hm_filter_modules_updatable_class">Filter: Updatable</button>
+                                </th>
+                                <th class="text-center vertical-align">
+                                    <button type="button" ng-click="select_full_updateable_devices()" ng-class="struct.hm_filter_full_updatable_class">Filter: Updatable</button>
                                 </th>
                             </tr>
                         </thead>
@@ -242,6 +247,8 @@
                                         icsw-disabled="device.$$update_modules_disabled"
                                         value="Update (Modules Only)"
                                     ></icsw-tools-button>
+                                </td>
+                                <td class="text-center">
                                     <icsw-tools-button
                                         type="modify"
                                         size="xs"
