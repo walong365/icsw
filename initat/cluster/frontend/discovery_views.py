@@ -622,7 +622,12 @@ class ScheduleItemCreator(View):
             srv_com,
         )
 
-        discovery_server_state = int(result.tree.xpath("ns0:result", namespaces=result.tree.nsmap)[0].attrib["state"])
+        try:
+            discovery_server_state = \
+                int(result.tree.xpath("ns0:result", namespaces=result.tree.nsmap)[0].attrib["state"])
+        except Exception as e:
+            _ = e
+            discovery_server_state = -1
 
         return HttpResponse(json.dumps({"discovery_server_state": discovery_server_state}))
 
@@ -731,6 +736,11 @@ class UpdateFileHandler(View):
             srv_com,
         )
 
-        discovery_server_state = int(result.tree.xpath("ns0:result", namespaces=result.tree.nsmap)[0].attrib["state"])
+        try:
+            discovery_server_state = \
+                int(result.tree.xpath("ns0:result", namespaces=result.tree.nsmap)[0].attrib["state"])
+        except Exception as e:
+            _ = e
+            discovery_server_state = -1
 
         return HttpResponse(json.dumps({"discovery_server_state": discovery_server_state}))
