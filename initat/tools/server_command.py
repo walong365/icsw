@@ -87,7 +87,7 @@ def srv_reply_state_is_valid(srv_reply_state):
     ]
 
 
-def compress(in_str, **kwargs):
+def compress(in_str: object, **kwargs):
     if kwargs.get("marshal", False):
         in_str = marshal.dumps(in_str)
     elif kwargs.get("pickle", False):

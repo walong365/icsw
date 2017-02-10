@@ -20,19 +20,28 @@
 # -*- coding: utf-8 -*-
 #
 
-""" model definitions, internal stuff (database version, patch levels, ....) """
+"""
 
+model definitions for
 
+  - internal stuff (database version, patch levels, ....)
+  - stores for config files
+
+"""
+
+from enum import Enum
 
 from django.db import models
 from django.db.models import Q
 from django.db.utils import ProgrammingError, DatabaseError
-from initat.cluster.backbone.models.functions import memoize_with_expiry
 
+from initat.cluster.backbone.models.functions import memoize_with_expiry
 
 __all__ = [
     "ICSWVersion",
     "VERSION_NAME_LIST",
+    "BackendConfigFile",
+    "BackendConfigFileTypeEnum",
 ]
 
 
@@ -70,3 +79,78 @@ class ICSWVersion(models.Model):
         except (ProgrammingError, DatabaseError):
             # model not defined
             return {}
+
+
+class BackendConfigFileTypeEnum(Enum):
+    # mon check command
+    mcc_json = "mcc_json"
+
+
+class BackendConfigFile(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # size
+    file_size = models.IntegerField(default=0)
+    # file type
+    file_type = models.CharField(
+        max_length=16,
+        default=BackendConfigFileTypeEnum.mcc_json.value,
+        choices=[
+            (
+                ft.value, ft.name.replace("_", " ")
+            ) for ft in BackendConfigFileTypeEnum
+        ],
+    )
+    # install device
+    install_device = models.ForeignKey("backbone.device")
+    # most recent, only one for can be most recent for each type
+    most_recent = models.BooleanField(default=False)
+    # same uploads, increase by one for every upload try on same file
+    same_uploads = models.IntegerField(default=0)
+    # content, compressed base64
+    content = models.TextField()
+    date = models.DateTimeField(auto_now_add=True)
+
+    @classmethod
+    def store(
+        cls,
+        structure: object,
+        file_size: int,
+        file_type: enumerate,
+        install_device: object,
+    ) -> object:
+        from initat.tools import server_command
+        _compr = server_command.compress(structure, json=True)
+        try:
+            cfile = cls.objects.get(Q(content=_compr))
+        except cls.DoesNotExist:
+            _create = True
+        else:
+            cfile.same_uploads += 1
+            cfile.save(update_fields=["same_uploads"])
+            _create = False
+        if _create:
+            cfile = BackendConfigFile(
+                file_size=file_size,
+                file_type=file_type.name,
+                most_recent=True,
+                content=_compr,
+                install_device=install_device,
+            )
+            cfile.save()
+            # remove most recent from other instances
+            cls.objects.filter(
+                Q(file_type=file_type.name, most_recent=True)
+            ).exclude(
+                Q(idx=cfile.idx)
+            ).update(
+                most_recent=True
+            )
+        return cfile
+
+    def __str__(self):
+        return "BackendConfigFile {} (size={:d}, idx={:d}, su={:d})".format(
+            BackendConfigFileTypeEnum(self.file_type).name,
+            self.file_size,
+            self.idx,
+            self.same_uploads,
+        )

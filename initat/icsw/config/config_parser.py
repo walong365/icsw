@@ -35,6 +35,7 @@ class Parser(object):
         self._add_enum_parser(child_parser)
         self._add_show_parser(child_parser)
         self._add_role_parser(child_parser)
+        self._add_upload_parser(child_parser)
         return parser
 
     def _add_enum_parser(self, child_parser):
@@ -46,6 +47,35 @@ class Parser(object):
                 default=False,
                 action="store_true",
                 help="sync found Enum with database [%(default)s] and create dummy configs"
+            )
+
+    def _add_upload_parser(self, child_parser):
+        if self.__server_mode:
+            from initat.cluster.backbone.models.internal import BackendConfigFileTypeEnum
+            parser = child_parser.add_parser("upload", help="upload config files to database")
+            parser.set_defaults(childcom="upload", execute=self._execute)
+            parser.add_argument(
+                "--type",
+                type=str,
+                default=BackendConfigFileTypeEnum.mcc_json.name,
+                choices=[
+                    _enum.name for _enum in BackendConfigFileTypeEnum
+                ],
+                help="Type for upload file [%(default)s]",
+            )
+            parser.add_argument(
+                "--mode",
+                type=str,
+                default="cjson",
+                choices=["cjson"],
+                help="mode to read the given file [%(default)s]",
+            )
+            parser.add_argument(
+                "filename",
+                type=str,
+                # nargs=1,
+                default="",
+                help="File to upload [%(default)s]"
             )
 
     def _add_show_parser(self, child_parser):

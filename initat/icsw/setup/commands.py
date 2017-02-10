@@ -656,6 +656,8 @@ def migrate_db(opts):
 
 @SetupLogger
 def call_update_funcs(opts):
+    from initat.cluster.backbone.models.internal import BackendConfigFileTypeEnum
+    from initat.host_monitoring.constants import JSON_DEFINITION_FILE
     create_version_entries()
     create_fixtures()
     call_manage(["create_cdg", "--name", opts.system_group_name])
@@ -663,6 +665,18 @@ def call_update_funcs(opts):
     call_manage(["migrate_to_config_catalog"])
     # at first sync config enums
     call_icsw(["config", "enum", "--sync"])
+    # install new moncc file
+    call_icsw(
+        [
+            "config",
+            "upload",
+            "--type",
+            BackendConfigFileTypeEnum.mcc_json.name,
+            "--mode",
+            "cjson",
+            os.path.joins(ICSW_ROOT, "json_defs", JSON_DEFINITION_FILE)
+        ]
+    )
     # then init ova system
     call_icsw(["license", "ova", "--init"])
 

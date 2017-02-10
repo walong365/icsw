@@ -28,10 +28,10 @@ import os
 import stat
 import sys
 
-from initat.tools import logging_tools, process_tools
 from initat.icsw import icsw_logging
 from initat.icsw.service import instance
 from initat.icsw.service.tools import query_local_meta_server
+from initat.tools import logging_tools, process_tools, server_command
 
 
 def _service_enum_show_command(options):
@@ -279,6 +279,29 @@ def role_command(options):
     )
 
 
+def upload_command(options):
+    if not os.path.exists(options.filename):
+        print("File '{}' does not exist".format(options.filename))
+        sys.exit(-4)
+    _content = open(options.filename, "rb").read()
+    _size = len(_content)
+    if options.mode == "cjson":
+        _structure = server_command.decompress(_content, json=True)
+    else:
+        print("Unknown filemode '{}'".format(options.mode))
+        sys.exit(-5)
+    from initat.cluster.backbone.models.internal import BackendConfigFileTypeEnum, \
+        BackendConfigFile
+    from initat.tools import cluster_location
+    _new = BackendConfigFile.store(
+        structure=_structure,
+        file_size=_size,
+        file_type=BackendConfigFileTypeEnum(options.type),
+        install_device=cluster_location.DeviceRecognition().device,
+    )
+    print("Current instance: {}".format(str(_new), _new.idx))
+
+
 def main(opt_ns):
     if opt_ns.childcom == "show":
         show_command(opt_ns)
@@ -286,3 +309,7 @@ def main(opt_ns):
         enum_show_command(opt_ns)
     elif opt_ns.childcom == "role":
         role_command(opt_ns)
+    elif opt_ns.childcom == "upload":
+        upload_command(opt_ns)
+    else:
+        raise KeyError("Unknown mode '{}'".format(opt_ns.childcom))
