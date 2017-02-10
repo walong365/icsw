@@ -582,7 +582,8 @@ setup_progress = angular.module(
 
     schedule_refresh_for_host_monitor_status = () ->
         if $scope.struct.host_monitor_refresh_button_timeout != undefined
-            $scope.struct.host_monitor_refresh_button_timeout.cancel()
+            if $scope.struct.host_monitor_refresh_button_timeout.hasOwnProperty('cancel')
+                $scope.struct.host_monitor_refresh_button_timeout.cancel()
         $scope.struct.host_monitor_refresh_button_counter = 10
         $scope.struct.host_monitor_refresh_button_text = "Refresh (10)"
 
