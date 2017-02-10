@@ -602,7 +602,9 @@ setup_progress = angular.module(
 
         $scope.struct.hm_status_display_devices.length = 0
         for device in $scope.struct.devices
-            if device.$$hm_full_update_disabled == $scope.struct.hm_filter_full_updatable_disabled
+            if $scope.struct.hm_filter_full_updatable_disabled
+                $scope.struct.hm_status_display_devices.push(device)
+            else if device.$$hm_full_update_disabled == false
                 $scope.struct.hm_status_display_devices.push(device)
 
     $scope.select_module_updateable_devices = () ->
@@ -615,7 +617,9 @@ setup_progress = angular.module(
 
         $scope.struct.hm_status_display_devices.length = 0
         for device in $scope.struct.devices
-            if device.$$update_modules_disabled == $scope.struct.hm_filter_modules_updatable_disabled
+            if $scope.struct.hm_filter_modules_updatable_disabled
+                $scope.struct.hm_status_display_devices.push(device)
+            else if device.$$update_modules_disabled == false
                 $scope.struct.hm_status_display_devices.push(device)
 
     schedule_refresh_for_host_monitor_status = () ->
