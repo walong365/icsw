@@ -91,7 +91,9 @@ setup_progress = angular.module(
 
         hm_status_websocket: undefined
 
-        host_monitor_status_refresh_button_disabled: true
+        host_monitor_refresh_button_counter: 10
+        host_monitor_refresh_button_text: "Refresh (10)"
+        host_monitor_refresh_button_timeout: undefined
     }
 
     ws_handle_func = (data) ->
@@ -117,6 +119,12 @@ setup_progress = angular.module(
                     device.$$host_monitor_version = data.update_file_version
                     device.$$host_monitor_platform = data.update_file_platform
                     device.$$host_monitor_platform_bits = data.update_file_platform_bits
+            else if result_type == "update_modules"
+                if result == -1
+                    toaster.pop("error", "", "Module update of device '" + device.full_name + "' failed with: " + data.error_string)
+                else
+                    toaster.pop("success", "", "Module update of device '" + device.full_name + "' done!")
+                    device.$$host_monitor_fingerprint = data.new_fingerprint
 
         # salt devices with color information
         if device.$$host_monitor_version == $scope.struct.local_linux_version || device.$$host_monitor_version == $scope.struct.local_windows_version
@@ -538,6 +546,10 @@ setup_progress = angular.module(
         $scope.upload_percentage = 0
         $scope.uploading = false
 
+    $scope.uploader.onBeforeUploadItem = (item) ->
+        for device in $scope.struct.devices
+            device.$$hm_full_update_disabled = true
+
     $scope.uploader.onProgressAll = (progress) ->
         $scope.upload_percentage = progress
         $scope.uploading = true
@@ -569,7 +581,10 @@ setup_progress = angular.module(
         schedule_refresh_for_host_monitor_status()
 
     schedule_refresh_for_host_monitor_status = () ->
-        $scope.struct.host_monitor_status_refresh_button_disabled = true
+        if $scope.struct.host_monitor_refresh_button_timeout != undefined
+            $scope.struct.host_monitor_refresh_button_timeout.cancel()
+        $scope.struct.host_monitor_refresh_button_counter = 10
+        $scope.struct.host_monitor_refresh_button_text = "Refresh (10)"
 
         for device in $scope.struct.devices
             device.$$host_monitor_version = "N/A"
@@ -613,11 +628,21 @@ setup_progress = angular.module(
                             toaster.pop("warning", "", "Could not contact discovery server.")
                 )
 
-                $timeout(
-                    () ->
-                        $scope.struct.host_monitor_status_refresh_button_disabled = false
-                    5000
-                )
+                decrease_refresh_button_counter = () ->
+                    $scope.struct.host_monitor_refresh_button_timeout = $timeout(
+                        () ->
+                            if $scope.struct.host_monitor_refresh_button_counter > 0
+                                $scope.struct.host_monitor_refresh_button_text = "Refresh (" + $scope.struct.host_monitor_refresh_button_counter + ")"
+                                $scope.struct.host_monitor_refresh_button_counter -= 1
+                                decrease_refresh_button_counter()
+                            else
+                                $scope.struct.host_monitor_refresh_button_counter = -1
+                                $scope.struct.host_monitor_refresh_button_text = "Refresh"
+                                $scope.struct.host_monitor_refresh_button_timeout = undefined
+                        1000
+                    )
+
+                decrease_refresh_button_counter()
         )
 
 ]).service("SetupProgressHelper",

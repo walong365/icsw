@@ -190,7 +190,7 @@
                                 <td class="vertical-align">Actions:</td>
                                 <td class="vertical-align" colspan="99">
                                     <div class="btn-group btn-group-xs">
-                                        <input type="button" value="Refresh" class="btn btn-info" ng-disabled="struct.host_monitor_status_refresh_button_disabled" ng-click="perform_host_monitor_status_refresh()"></input>
+                                        <input type="button" ng-value="struct.host_monitor_refresh_button_text" class="btn btn-warning" ng-disabled="struct.host_monitor_refresh_button_counter != -1" ng-click="perform_host_monitor_status_refresh()"></input>
                                     </div>
                                 </td>
                             </tr>
