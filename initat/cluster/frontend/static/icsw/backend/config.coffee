@@ -44,8 +44,6 @@ config_module = angular.module(
             for entry in EL_LIST
                 @[entry] = []
             # monitoring check command list
-            # free mccs (without a config)
-            @free_mcc_list = []
             @update(list, cse_list, catalog_list, hint_list)
 
         update: (args...) =>
@@ -57,7 +55,6 @@ config_module = angular.module(
 
         build_luts: () =>
             _start = new Date().getTime()
-            @free_mcc_list.length = 0
             # new entries added
             @lut = _.keyBy(@list, "idx")
             @cse_lut = _.keyBy(@cse_list, "idx")
@@ -81,10 +78,7 @@ config_module = angular.module(
                     config.$$res_mcc_rel.push(mcc)
                     mcc.$$res_config_rel.push(config)
             for entry in @mon_basic_tree.mon_check_command_list
-                # console.log entry.config_rel
-                if not entry.config_rel.length
-                    entry.$$config_tree = @
-                    @free_mcc_list.push(entry)
+                entry.$$config_tree = @
             @resolve_hints()
             @reorder()
             @update_filtered_list()
@@ -333,6 +327,13 @@ config_module = angular.module(
 
         # filter functions
         _populate_filter_fields: () =>
+            # all monitoring commands
+            for moncc in @mon_basic_tree.mon_check_command_list
+                _local_s = []
+                for attr_name in ["name", "description", "check_command", "command_line"]
+                    _local_s.push(moncc[attr_name])
+                moncc.$$filter_string = _local_s.join(" ")
+
             for entry in @list
                 entry.$$filter_set = true
                 s = []
@@ -350,10 +351,6 @@ config_module = angular.module(
                         cvar.$$filter_string = _local_s.join(" ")
                         s.push(cvar.$$filter_string)
                 for moncc in entry.$$res_mcc_rel
-                    _local_s = []
-                    for attr_name in ["name", "description", "check_command", "command_line"]
-                        _local_s.push(moncc[attr_name])
-                    moncc.$$filter_string = _local_s.join(" ")
                     s.push(moncc.$$filter_string)
                 # config search field
                 _local_s = []
@@ -366,11 +363,6 @@ config_module = angular.module(
                 s.push(entry.$$filter_string)
                 # needed ?
                 entry.$$global_filter_string = s.join(" ")
-            for moncc in @free_mcc_list
-                _local_s = []
-                for attr_name in ["name", "description", "check_command", "command_line"]
-                    _local_s.push(moncc[attr_name])
-                moncc.$$filter_string = _local_s.join(" ")
 
         update_filtered_list: (search_str, with_server, with_service) =>
             if not search_str?
@@ -385,7 +377,6 @@ config_module = angular.module(
             if not with_service?
                 with_service = 0
             @filtered_list.length = 0
-            @filtered_mcc_list.length = 0
             for entry in @list
                 if entry.$$filter_set?
                     # search_str defined due some filtering
@@ -400,16 +391,12 @@ config_module = angular.module(
                     for mon in entry.$$res_mcc_rel
                         # console.log mon.idx, mon.$$filter_string, search_re
                         if search_str
-                            if mon.$$filter_string.match(search_re)
-                                # console.log "p"
-                                @filtered_mcc_list.push(mon)
                             mon.$$filter_match = if mon.$$filter_string.match(search_re) then true else false
                             if mon.$$filter_match
                                 _num_mon_found++
                         else
                             # in case of full monitoring table the search_string is always empty
                             # (search is done via filters on the local controller)
-                            @filtered_mcc_list.push(mon)
                             mon.$$filter_match = false
                     for vart in ["str", "int", "blob", "bool"]
                         for cvar in entry["config_#{vart}_set"]
@@ -446,8 +433,12 @@ config_module = angular.module(
                     @_set_config_class(entry, _type)
                 if entry.$$global_filter_match
                     @filtered_list.push(entry)
-            # mon_check_commands without config
-            for mon in @free_mcc_list
+
+            # all mon_check_commands
+
+            @filtered_mcc_list.length = 0
+
+            for mon in @mon_basic_tree.mon_check_command_list
                 #     entry.$$config = null
                 if mon.$$filter_string.match(search_re)
                     @filtered_mcc_list.push(mon)

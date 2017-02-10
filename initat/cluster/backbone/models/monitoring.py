@@ -347,8 +347,6 @@ class mon_check_command(models.Model):
     volatile = models.BooleanField(default=False)
     # categories for this check
     categories = models.ManyToManyField("backbone.category", blank=True)
-    # device to exclude, to be removed ...
-    # exclude_devices = models.ManyToManyField("backbone.device", related_name="mcc_exclude_devices", blank=True)
     # devices to assign directly
     devices = models.ManyToManyField("backbone.device", related_name="mcc_devices", blank=True)
     # handling of mcc selection with meta and config-related selection:

@@ -75,65 +75,83 @@ class MonCheckEmitter(object):
         # dict of all check_commands per device
         cc_per_dev = defaultdict(set)
         _DEBUG = False
-        # meta devices, check_commands via config, resolve devices via device_group
+        if _DEBUG:
+            # debug: eddie == 3
+            # uptime (uptime), check command (uptime) == 3, 79
+            # ac_filter &= Q(name="eddie")
+            print("Hosts: ", list(self.host_pk_list))
+
+        # Step 1: meta devices, check_commands via config, resolve devices via device_group
+
         for _entry in device.objects.filter(
-            Q(is_meta_device=True)
-        ).filter(
             Q(
+                is_meta_device=True,
                 device_config__config__mcc_rel__isnull=False,
                 device_config__config__mcc_rel__enabled=True,
+                # device_group__device_group__name="eddie",
             )
         ).values_list(
+            # tuple format:
+            # - device idx (from meta device)
             "device_group__device_group",
-            "device_config__config__mcc_rel"
-        ):
-            cc_per_dev[_entry[0]].add(_entry[1])
-        if _DEBUG:
-            print("s0")
-            pprint.pprint(cc_per_dev)
-        # meta devices, check_commands via direct mon_check, resolve
-        # devices via device_group
-        for _entry in device.objects.filter(
-            Q(is_meta_device=True)
-        ).filter(
-            Q(
-                mcc_devices__isnull=False,
-                mcc_devices__enabled=True,
-            )
-        ).values_list(
+            # - mcc index via config
+            "device_config__config__mcc_rel",
+        ).order_by(
             "device_group__device_group",
-            "mcc_devices",
+            "device_config__config__mcc_rel",
         ).distinct():
+            # distinct beacuse a config check can be referenced multiple times
             cc_per_dev[_entry[0]].add(_entry[1])
         if _DEBUG:
             print("s1")
             pprint.pprint(cc_per_dev)
-        # check commands per device via configs
+
+        # Step 2: meta devices, check_commands via direct mon_check, resolve
+        # devices via device_group
         for _entry in device.objects.filter(
-            ac_filter
-        ).filter(
             Q(
-                device_config__config__mcc_rel__isnull=False,
-                device_config__config__mcc_rel__enabled=True,
+                is_meta_device=True,
+                mcc_devices__isnull=False,
+                mcc_devices__enabled=True,
             )
         ).values_list(
-            "idx",
-            "device_config__config__mcc_rel",
-            "device_config__config__mcc_rel__devices",
-        ):  # .distinct():
-            # check for exclusion
-            if _entry[0] == _entry[2]:
-                if _entry[1] in cc_per_dev[_entry[0]]:
-                    # remove excluded device, should normally not happen
-                    # (should have never been added)
-                    cc_per_dev[_entry[0]].remove(_entry[1])
-                # otherwise we simply do not add the check_command to the device
+            # device idx
+            "device_group__device_group",
+            # direct devices
+            "mcc_devices",
+        ).distinct():
+            if _entry[1] in cc_per_dev[_entry[0]]:
+                # already set, interpret as exclusion
+                cc_per_dev[_entry[0]].remove(_entry[1])
             else:
                 cc_per_dev[_entry[0]].add(_entry[1])
         if _DEBUG:
             print("s2")
             pprint.pprint(cc_per_dev)
-        # check commands per device vi mcc_device
+
+        # Step 3: check commands per device via configs
+
+        for _entry in device.objects.filter(
+            ac_filter
+        ).filter(
+            Q(
+                device_config__config__mcc_rel__isnull=False,
+                device_config__config__mcc_rel__enabled=True,
+            )
+        ).values_list(
+            # device idx
+            "idx",
+            # mcc via config
+            "device_config__config__mcc_rel",
+        ).distinct():
+            cc_per_dev[_entry[0]].add(_entry[1])
+
+        if _DEBUG:
+            print("s3")
+            pprint.pprint(cc_per_dev)
+
+        # Step 4: check commands per device direct via mcc
+
         for _entry in device.objects.filter(
             ac_filter
         ).filter(
@@ -145,11 +163,17 @@ class MonCheckEmitter(object):
             "idx",
             "mcc_devices",
         ).distinct():
-            # add check
-            cc_per_dev[_entry[0]].add(_entry[1])
+            if _entry[1] in cc_per_dev[_entry[0]]:
+                # interpret as exlcusion
+                cc_per_dev[_entry[0]].remove(_entry[1])
+            else:
+                cc_per_dev[_entry[0]].add(_entry[1])
         if _DEBUG:
-            print("s3")
+            print("s4")
             pprint.pprint(cc_per_dev)
+
+        # final debug dump
+
         if _DEBUG:
             # dump result
             for _key, _values in cc_per_dev.items():
