@@ -91,7 +91,7 @@ class alter_config(View):
         _stream_data = json.loads(request.POST["stream_data"])
         _mode = request.POST["mode"]
         import pprint
-        pprint.pprint(_stream_data)
+        # pprint.pprint(_stream_data)
         logger.info(
             "handling '{}' config stream with {}".format(
                 _mode,
@@ -371,7 +371,7 @@ class alter_config(View):
                     pk="{:d}".format(pk)
                 )
             )
-        print(etree.tostring(changeset, pretty_print=True, encoding="unicode"))
+        # print(etree.tostring(changeset, pretty_print=True, encoding="unicode"))
         request.xml_response["response"] = changeset
 
 

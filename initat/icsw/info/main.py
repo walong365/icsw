@@ -46,6 +46,7 @@ def show_hm_help(options):
             raise ValueError("Not allowed to run update-json as root or in production environment")
         json_file = os.path.normpath(
             os.path.join(
+                # not beautiful but working
                 os.path.dirname(__file__), "..", "..", "..", "opt", "cluster", "share", "json_defs", JSON_DEFINITION_FILE
             )
         )

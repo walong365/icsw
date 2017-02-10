@@ -301,6 +301,7 @@ class KpiRRDObject(KpiObject):
 class KpiServiceObject(KpiObject):
     """Kpi Object which references a particular service"""
     def __init__(self, service_id=None, service_info=None, mcc=None, **kwargs):
+        # print("*", service_id, service_info)
         if service_id is None:
             raise ValueError("service_id is None")
         if service_info is None:

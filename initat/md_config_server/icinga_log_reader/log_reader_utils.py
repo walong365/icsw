@@ -86,9 +86,9 @@ class HostServiceIDUtil(object):
         if len(data) == 2:
             if data[0] == "uuid_hc":
                 # new format
-                if data[1].count(":") >= 3:
-                    service_data = data[1].split(":", 3)
-                    host_pk, mc_uuid, info = service_data.split(":", 3)
+                if data[1].count(":") >= 2:
+                    service_data = data[1].split(":", 2)
+                    host_pk, mc_uuid, info = service_data
                     retval = (int(host_pk), mc_uuid, info)
             elif data[0] == 'host_check':
                 if data[1].count(":") >= 2:

@@ -380,9 +380,10 @@ angular.module(
                         _icon = "fa-minus"
                 else
                     if ls and ms
-                        console.error "both ls and ms are set for #{row_el.name} and #{dev.full_name}"
+                        console.error "both ls and ms are set for #{row_el.name} (#{row_el.description}) and #{dev.full_name}"
                     if lc and mc
-                        console.error "both lc and mc are set for #{row_el.name} and #{dev.full_name}"
+                        # this may happen if the meta is set from one and the direct association comes from another one
+                        console.warn "both lc and mc are set for #{row_el.name} (#{row_el.description}) and #{dev.full_name}"
                     if (ls or ms) and (lc or mc)
                         # bot set -> exclude
                         _cls = "danger"
@@ -580,7 +581,7 @@ angular.module(
                         mc = @config_tree.mon_basic_tree.mon_check_command_lut[_idx]
                         mc.devices.length = 0
                         $(mc_entry).find("device").each (idx, dev_entry) =>
-                            # add exclude entries
+                            # add direct device entries
                             dev_entry = $(dev_entry)
                             mc.devices.push(parseInt(dev_entry.attr("dev_idx")))
 

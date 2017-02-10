@@ -268,7 +268,7 @@ class NodeStatusViewSet(viewsets.ViewSet):
         _eco.init({"SERVICE_ENUM_NAME": icswServiceEnum.monitor_server.name})
         _result = {"messages": log_lines}
         if result:
-            # print result.pretty_print()
+            # print(result.pretty_print())
             host_results = result.xpath(".//ns:host_result/text()", smart_strings=False)
             service_results = result.xpath(".//ns:service_result/text()", smart_strings=False)
             # if not len(host_results) and not len(service_results) and result.get_log_tuple()[1] >= logging_tools.LOG_LEVEL_ERROR:
@@ -288,11 +288,11 @@ class NodeStatusViewSet(viewsets.ViewSet):
             service_results_filtered = []
             if len(service_results):
                 for serv_res in json.loads(service_results[0]):
-                    host_pk, service_pk, _ = HostServiceIDUtil.parse_host_service_description(
+                    host_pk, mmc_uuid, _ = HostServiceIDUtil.parse_host_service_description(
                         serv_res['description'],
                         log=dummy_log,
                     )
-                    if host_pk is not None and service_pk is not None:
+                    if host_pk is not None:  # and service_pk is not None:
                         if _eco.consume("dashboard", host_pk):
                             service_results_filtered.append(serv_res)
                         else:
@@ -307,6 +307,7 @@ class NodeStatusViewSet(viewsets.ViewSet):
 
             # import pprint
             # pprint.pprint(host_results_filtered)
+            # pprint.pprint(service_results_filtered)
             # simply copy json dump
             _result["host_result"] = host_results_filtered
             _result["service_result"] = service_results_filtered
