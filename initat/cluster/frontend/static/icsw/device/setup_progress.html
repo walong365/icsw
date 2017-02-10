@@ -196,16 +196,40 @@
                             </tr>
                             <tr>
                                 <th class="text-center">Device</th>
+                                <th class="text-center">Group</th>
                                 <th class="text-center">Version</th>
                                 <th class="text-center">Platform</th>
                                 <th class="text-center">Bits</th>
                                 <th class="text-center">Module Fingerprint</th>
                                 <th class="text-center">Action</th>
                             </tr>
+                            <tr>
+                                <th>
+                                    <input st-search="full_name" placeholder="filter by device name" class="input-sm form-control" type="search"/>
+                                </th>
+                                <th>
+                                    <input st-search="device_group_name" placeholder="filter by device name" class="input-sm form-control" type="search"/>
+                                </th>
+                                <th>
+                                    <input st-search="$$host_monitor_version" placeholder="filter by version" class="input-sm form-control" type="search"/>
+                                </th>
+                                <th>
+                                    <input st-search="$$host_monitor_platform" placeholder="filter by platform" class="input-sm form-control" type="search"/>
+                                </th>
+                                <th>
+                                    <input st-search="$$host_monitor_platform_bits" placeholder="filter by bits" class="input-sm form-control" type="search"/>
+                                </th>
+                                <th>
+                                    <input st-search="$$host_monitor_fingerprint" placeholder="filter by fingerprint" class="input-sm form-control" type="search"/>
+                                </th>
+                                <th>
+                                </th>
+                            </tr>
                         </thead>
                         <tbody>
                             <tr ng-repeat="device in devices_shown">
                                 <td class="text-center"><button type="button" class="btn btn-xs btn-success" ng-click="show_device($event, device)">{{ device.full_name }}</button></td>
+                                <td class="text-center">{{ device.device_group_name}}</td>
                                 <td ng-class="device.$$host_monitor_version_class" class="text-center">{{ device.$$host_monitor_version }}</td>
                                 <td class="text-center">{{ device.$$host_monitor_platform }}</td>
                                 <td class="text-center">{{ device.$$host_monitor_platform_bits }}</td>

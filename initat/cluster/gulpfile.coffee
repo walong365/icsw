@@ -187,7 +187,7 @@ sources = {
             "frontend/static/js/angular-cookies.min.js",
             "frontend/static/js/angular-sanitize.min.js",
             "frontend/static/js/angular-animate.min.js",
-            "frontend/static/js/angular-file-upload.js",
+            "frontend/static/js/angular-file-upload.min.js",
             "frontend/static/js/restangular.min.js",
             "frontend/static/js/angular-block-ui.js",
             "frontend/static/js/select.js",
