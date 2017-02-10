@@ -119,6 +119,12 @@ setup_progress = angular.module(
                     device.$$host_monitor_version = data.update_file_version
                     device.$$host_monitor_platform = data.update_file_platform
                     device.$$host_monitor_platform_bits = data.update_file_platform_bits
+            else if result_type == "update_modules"
+                if result == -1
+                    toaster.pop("error", "", "Module update of device '" + device.full_name + "' failed with: " + data.error_string)
+                else
+                    toaster.pop("success", "", "Module update of device '" + device.full_name + "' done!")
+                    device.$$host_monitor_fingerprint = data.new_fingerprint
 
         # salt devices with color information
         if device.$$host_monitor_version == $scope.struct.local_linux_version || device.$$host_monitor_version == $scope.struct.local_windows_version

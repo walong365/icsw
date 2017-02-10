@@ -964,12 +964,14 @@ class Dispatcher(object):
 
     @staticmethod
     def hostmonitor_update_modules_handler_callback(callback_dict, result):
-        callback_dict["command"] = "modules_fingerprint"
-        callback_dict["result"] = "N/A"
-        try:
-            callback_dict["result"] = result["new_modules_fingerprint"].text
-        except Exception as e:
-            _ = e
+        callback_dict["command"] = "update_modules"
+
+        if "new_modules_fingerprint" in result:
+            callback_dict["result"] = 1
+            callback_dict["new_fingerprint"] = result["new_modules_fingerprint"].text
+        else:
+            callback_dict["result"] = -1
+            callback_dict["error_string"], _ = result.get_result()
 
         propagate_channel_object("hm_status", callback_dict)
 
