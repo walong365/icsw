@@ -31,7 +31,8 @@ import subprocess
 import sys
 import time
 
-from initat.constants import GEN_CS_NAME, ICSW_ROOT, BACKBONE_DIR, DB_ACCESS_CS_NAME
+from initat.constants import GEN_CS_NAME, ICSW_ROOT, BACKBONE_DIR, DB_ACCESS_CS_NAME, \
+    CLUSTER_DIR
 from initat.tools import logging_tools, process_tools, config_store
 from .connection_tests import test_psql, test_mysql, test_sqlite
 from .constants import *
@@ -674,7 +675,7 @@ def call_update_funcs(opts):
             BackendConfigFileTypeEnum.mcc_json.name,
             "--mode",
             "cjson",
-            os.path.joins(ICSW_ROOT, "json_defs", JSON_DEFINITION_FILE)
+            os.path.join(CLUSTER_DIR, "share", "json_defs", JSON_DEFINITION_FILE)
         ]
     )
     # then init ova system
