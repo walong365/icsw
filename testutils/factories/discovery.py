@@ -2,7 +2,7 @@
 #
 # Copyright (C) 2015-2017 Bernhard Mallinger, init.at
 #
-# this file is part of icsw-server
+# this file is part of icsw-server-server
 #
 # Send feedback to: <mallinger@init.at>
 #

@@ -1,6 +1,6 @@
 # Copyright (C) 2008-2017 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of python-modules-base
+# this file is part of icsw-server-client
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #

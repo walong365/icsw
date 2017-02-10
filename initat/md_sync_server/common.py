@@ -1,6 +1,6 @@
 # Copyright (C) 2015-2017 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
-# this file is part of md-sync-server
+# this file is part of icsw-server-server
 #
 # Send feedback to: <mallinger@init.at>, <lang-nevyjel@init.at>
 #

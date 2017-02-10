@@ -1,7 +1,7 @@
 #!/usr/bin/python3-init -Otu
 # Copyright (C) 2015-2017 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of icsw-client
+# this file is part of icsw-server-client
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #

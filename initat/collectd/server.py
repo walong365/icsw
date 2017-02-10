@@ -1,5 +1,5 @@
 #
-# this file is part of collectd
+# this file is part of icsw-server-server
 #
 # Copyright (C) 2013-2017 Andreas Lang-Nevyjel init.at
 #

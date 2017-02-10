@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2007,2014-2017 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of python-modules-base
+# this file is part of icsw-server-client
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

@@ -1,7 +1,7 @@
 #
 # Copyright (C) 2016-2017 Gregor Kaufmann, Andreas Lang-Nevyjel init.at
 #
-# this file is part of icsw-server
+# this file is part of icsw-server-server
 #
 # Send feedback to: <g.kaufmann@init.at>
 #

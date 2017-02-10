@@ -1,6 +1,6 @@
 # Copyright (C) 2001-2017 Andreas Lang-Nevyjel
 #
-# this file is part of package-client
+# this file is part of icsw-server-client
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #

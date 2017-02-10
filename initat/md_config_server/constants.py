@@ -1,6 +1,6 @@
 # Copyright (C) 2013-2014,2016-2017 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of md-{sync,config}-server
+# this file is part of icsw-client
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #

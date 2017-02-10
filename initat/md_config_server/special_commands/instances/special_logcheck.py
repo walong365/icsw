@@ -1,6 +1,6 @@
 # Copyright (C) 2015-2017 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of md-config-server
+# this file is part of icsw-server-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #

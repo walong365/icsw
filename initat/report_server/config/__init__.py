@@ -1,6 +1,6 @@
 # Copyright (C) 2016-2017 init.at
 #
-# this file is part of report-server
+# this file is part of icsw-server-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
