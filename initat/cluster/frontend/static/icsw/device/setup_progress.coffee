@@ -523,30 +523,32 @@ setup_progress = angular.module(
             autoUpload: true
         )
 
-    $scope.uploader.onCompleteAll = () ->
-        icswSimpleAjaxCall(
-            {
-                url: ICSW_URLS.DISCOVERY_UPDATE_FILE_HANDLER
-                data:
-                    command: "status"
-                dataType: "json"
-            }
-        ).then(
-            (data) ->
-                if data.update_file_version && data.update_file_checksum && data.update_file_platform_bits
-                    $scope.struct.update_file_version = data.update_file_version
-                    $scope.struct.update_file_module_fingerprint = data.update_file_checksum
-                    $scope.struct.update_file_platform_bits = data.update_file_platform_bits
+    $scope.uploader.onSuccessItem = (item, response, status, headers) ->
+        if response.version && response.checksum && response.platform_bits
+            $scope.struct.update_file_version = response.version
+            $scope.struct.update_file_module_fingerprint = response.checksum
+            $scope.struct.update_file_platform_bits = response.platform_bits
 
-                    for device in $scope.struct.devices
-                        if device.$$host_monitor_platform == "WINDOWS" && device.$$host_monitor_platform_bits == $scope.struct.update_file_platform_bits
-                            device.$$hm_full_update_disabled = false
-        )
+            full_update_count = 0
+            for device in $scope.struct.devices
+                if device.$$host_monitor_platform == "WINDOWS" && device.$$host_monitor_platform_bits == $scope.struct.update_file_platform_bits
+                    device.$$hm_full_update_disabled = false
+                    full_update_count += 1
+
+            toaster.pop("success", "", "Update file '" + item.file.name + "' accepted. (Full) update enabled for " + full_update_count + " devices.")
+        else
+            toaster.pop("error", "", "File '" + item.file.name + "' is not a valid update file!")
+
+
         angular.element("input[type='file']").val(null);
         $scope.upload_percentage = 0
         $scope.uploading = false
 
     $scope.uploader.onBeforeUploadItem = (item) ->
+        $scope.struct.update_file_version = undefined
+        $scope.struct.update_file_platform_bits = undefined
+        $scope.struct.update_file_module_fingerprint = undefined
+
         for device in $scope.struct.devices
             device.$$hm_full_update_disabled = true
 
@@ -566,7 +568,6 @@ setup_progress = angular.module(
             {
                 url: ICSW_URLS.DISCOVERY_UPDATE_FILE_HANDLER
                 data:
-                    command: "perform_update"
                     device_ids: [device.idx]
                 dataType: "json"
             }

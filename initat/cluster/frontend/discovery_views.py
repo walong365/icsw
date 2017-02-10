@@ -643,13 +643,19 @@ class HostMonitoringStatusLoader(View):
 
         return HttpResponse(json.dumps(result_dict))
 
-UPDATE_FILE_DATA = None
-UPDATE_FILE_VERSION = None
-UPDATE_FILE_CHECKSUM = None
-UPDATE_FILE_PLATFORM_BITS = None
+UPDATE_FILE_DICT = {}
 class UploadUpdateFile(View):
     @method_decorator(login_required)
     def post(self, request):
+        UPDATE_FILE_DICT["data"] = None
+        UPDATE_FILE_DICT["version"] = None
+        UPDATE_FILE_DICT["checksum"] = None
+        UPDATE_FILE_DICT["platform_bits"] = None
+
+        version = None
+        checksum = None
+        bits = None
+
         _file = request.FILES[list(request.FILES.keys())[0]]
         if _file.size < 100000000:
             import tarfile
@@ -670,7 +676,7 @@ class UploadUpdateFile(View):
                     raise Exception("Invalid Update File")
 
                 constants_py_str = tf.extractfile("Lib/site-packages/initat/constants.py").read().decode()
-                windows_hm_version = constants_py_str.split('WINDOWS_HM_VERSION = ')[1].strip().replace("\"", "")
+                version = constants_py_str.split('WINDOWS_HM_VERSION = ')[1].strip().replace("\"", "")
 
                 sha3_512_digester_all = hashlib.new("sha3_512")
                 path_list = [module for module in tf.getnames() if
@@ -679,62 +685,52 @@ class UploadUpdateFile(View):
                 for path in path_list:
                     sha3_512_digester_all.update(tf.extractfile(path).read())
 
-                windows_hm_checksum = sha3_512_digester_all.hexdigest()
+                checksum = sha3_512_digester_all.hexdigest()
             except Exception as e:
-                print(e)
-                raise e
+                _ = e
             else:
-                global UPDATE_FILE_DATA, UPDATE_FILE_VERSION, UPDATE_FILE_CHECKSUM, UPDATE_FILE_PLATFORM_BITS
-                UPDATE_FILE_DATA = data
-                UPDATE_FILE_VERSION = windows_hm_version
-                UPDATE_FILE_CHECKSUM = windows_hm_checksum
-                UPDATE_FILE_PLATFORM_BITS = bits
+                UPDATE_FILE_DICT["data"] = data
+                UPDATE_FILE_DICT["version"] = version
+                UPDATE_FILE_DICT["checksum"] = checksum
+                UPDATE_FILE_DICT["platform_bits"] = bits
 
-        return HttpResponse(json.dumps({}))
+        return HttpResponse(json.dumps({"version": version, "checksum": checksum, "platform_bits": bits}))
 
 class UpdateFileHandler(View):
     @method_decorator(login_required)
     def post(self, request):
-        command = request.POST.get("command")
-        if command == "status":
-            return HttpResponse(json.dumps({"update_file_version": UPDATE_FILE_VERSION,
-                                            "update_file_checksum": UPDATE_FILE_CHECKSUM,
-                                            "update_file_platform_bits": UPDATE_FILE_PLATFORM_BITS}))
-        else:
-            import pickle
-            import binascii
-            import io
-            from initat.cluster.backbone.server_enums import icswServiceEnum
-            from initat.cluster.frontend.helper_functions import contact_server
-            from initat.tools import server_command
+        import pickle
+        import binascii
+        from initat.cluster.backbone.server_enums import icswServiceEnum
+        from initat.cluster.frontend.helper_functions import contact_server
+        from initat.tools import server_command
 
-            device_ids = [int(value) for value in request.POST.getlist("device_ids[]")]
+        device_ids = [int(value) for value in request.POST.getlist("device_ids[]")]
 
-            schedule_handler_data = {
-                "device_ids": device_ids,
-                "update_file_data": UPDATE_FILE_DATA,
-                "update_file_version": UPDATE_FILE_VERSION,
-                "update_file_checksum": UPDATE_FILE_CHECKSUM,
-                "update_file_platform_bits": UPDATE_FILE_PLATFORM_BITS,
-            }
+        schedule_handler_data = {
+            "device_ids": device_ids,
+            "update_file_data": UPDATE_FILE_DICT["data"],
+            "update_file_version": UPDATE_FILE_DICT["version"],
+            "update_file_checksum": UPDATE_FILE_DICT["checksum"],
+            "update_file_platform_bits": UPDATE_FILE_DICT["platform_bits"],
+        }
 
-            schedule_handler_data = binascii.b2a_base64(pickle.dumps(schedule_handler_data)).decode()
+        schedule_handler_data = binascii.b2a_base64(pickle.dumps(schedule_handler_data)).decode()
 
-            new_schedule_item = ScheduleItem(
-                run_now=True,
-                schedule_handler="hostmonitor_full_update_handler",
-                schedule_handler_data=schedule_handler_data,
-            )
-            new_schedule_item.save()
+        new_schedule_item = ScheduleItem(
+            run_now=True,
+            schedule_handler="hostmonitor_full_update_handler",
+            schedule_handler_data=schedule_handler_data,
+        )
+        new_schedule_item.save()
 
-            srv_com = server_command.srv_command(command="status")
-            (result, _) = contact_server(
-                request,
-                icswServiceEnum.discovery_server,
-                srv_com,
-            )
+        srv_com = server_command.srv_command(command="status")
+        (result, _) = contact_server(
+            request,
+            icswServiceEnum.discovery_server,
+            srv_com,
+        )
 
-            discovery_server_state = int(
-                result.tree.xpath("ns0:result", namespaces=result.tree.nsmap)[0].attrib["state"])
+        discovery_server_state = int(result.tree.xpath("ns0:result", namespaces=result.tree.nsmap)[0].attrib["state"])
 
-            return HttpResponse(json.dumps({"discovery_server_state": discovery_server_state}))
+        return HttpResponse(json.dumps({"discovery_server_state": discovery_server_state}))
