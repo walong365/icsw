@@ -613,7 +613,9 @@
         </div>
         <div ng-if="struct.data_loaded">
             <h3 ng-show="!struct.is_sub_table">
-                {{ struct.config_tree.mon_basic_tree.mon_check_command_list.length }} Monitoringchecks, {{ struct.config_tree.$mcc_selected }} selected
+                {{ struct.config_tree.mon_basic_tree.mon_check_command_list.length }} Monitoringchecks,
+                {{ struct.filter.source_list.length }} filtered,
+                {{ struct.config_tree.$mcc_selected }} selected
                 <icsw-tools-button-static
                     type="create"
                     value="Create new Monitoring Check"
@@ -624,7 +626,7 @@
             </h3>
             <table
                 st-table="monccs_displayed"
-                st-safe-src="struct.monccs_list"
+                st-safe-src="struct.filter.source_list"
                 st-trigger-redraw="struct.redraw_table"
                 class="table table-condensed table-hover"
                 style="width:100%;"
@@ -650,6 +652,60 @@
                             </div>
                         </td>
                     </tr>
+                    <tr>
+                        <td colspan="99">
+                            <icsw-tools-show-hide-columns
+                                columns="Enabled SystemCommand SpecialCommand Volatile PerfData IsEventHandler EvHEnabled"
+                                columns-target="show_columns"
+                            ></icsw-tools-show-hide-columns>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="4""></td>
+                        <td ng-show="show_columns.Enabled">
+                            <icsw-table-filter
+                                icsw-table-filter="struct.filter"
+                                icsw-filter-name="enabled"
+                            ></icsw-table-filter>
+                        </td>
+                        <td ng-show="show_columns.SystemCommand">
+                            <icsw-table-filter
+                                icsw-table-filter="struct.filter"
+                                icsw-filter-name="system"
+                            ></icsw-table-filter>
+                        </td>
+                        <td ng-show="show_columns.SpecialCommand">
+                            <icsw-table-filter
+                                icsw-table-filter="struct.filter"
+                                icsw-filter-name="special"
+                            ></icsw-table-filter>
+                        </td>
+                        <td colspan="1"></td>
+                        <td ng-show="show_columns.Volatile">
+                            <icsw-table-filter
+                                icsw-table-filter="struct.filter"
+                                icsw-filter-name="volatile"
+                            ></icsw-table-filter>
+                        </td>
+                        <td ng-show="show_columns.PerfData">
+                            <icsw-table-filter
+                                icsw-table-filter="struct.filter"
+                                icsw-filter-name="perfdata"
+                            ></icsw-table-filter>
+                        </td>
+                        <td ng-show="show_columns.IsEventHandler">
+                            <icsw-table-filter
+                                icsw-table-filter="struct.filter"
+                                icsw-filter-name="isevh"
+                            ></icsw-table-filter>
+                        </td>
+                        <td ng-show="show_columns.EvHEnabled">
+                            <icsw-table-filter
+                                icsw-table-filter="struct.filter"
+                                icsw-filter-name="evhen"
+                            ></icsw-table-filter>
+                        </td>
+                    </tr>
                     <tr icsw-mon-check-command-header></tr>
                 </thead>
                 <tbody>
@@ -669,16 +725,16 @@
     <th>#Configs</th>
     <th>Template</th>
     <th st-sort="description">Description</th>
-    <th>Enabled</th>
-    <th>System</th>
-    <th>Special</th>
+    <th ng-show="show_columns.Enabled">Enabled</th>
+    <th ng-show="show_columns.SystemCommand">System</th>
+    <th ng-show="show_columns.SpecialCommand">Special</th>
     <th>Command Line</th>
     <!-- <th>active</th> -->
-    <th>Vol</th>
-    <th>Perf</th>
-    <th>Is Event</th>
+    <th ng-show="show_columns.Volatile">Vol</th>
+    <th ng-show="show_columns.PerfData">Perf</th>
+    <th ng-show="show_columns.IsEventHandler">Is Event</th>
     <th>Event Handler</th>
-    <th>EH Enabled</th>
+    <th ng-show="show_columns.EvHEnabled">EH Enabled</th>
     <th>Categories</th>
     <th colspan="4">Actions</th>
 </script>
@@ -688,9 +744,24 @@
     <td class="text-center">{{ obj.config_rel.length }}</td>
     <td>{{ obj.$$mon_service_templ_name }}</td>
     <td>{{ obj.description }}</td>
-    <td class="text-center"><span ng-bind-html="obj.enabled | yesno4"></span></td>
-    <td class="text-center"><span ng-bind-html="obj.system_command | yesno3"></span></td>
-    <td class="text-center"><span ng-bind-html="obj.is_special_command | yesno3"></span></td>
+    <td
+        class="text-center"
+        ng-show="show_columns.Enabled"
+    >
+        <span ng-bind-html="obj.enabled | yesno4"></span>
+    </td>
+    <td
+        class="text-center"
+        ng-show="show_columns.SystemCommand"
+    >
+        <span ng-bind-html="obj.system_command | yesno3"></span>
+    </td>
+    <td
+        class="text-center"
+        ng-show="show_columns.SpecialCommand"
+    >
+        <span ng-bind-html="obj.is_special_command | yesno3"></span>
+    </td>
     <td title="{{ obj.command_line }}" ng-if="obj.is_active">
         <input
             type="button"
@@ -704,11 +775,31 @@
     <td title="{{ obj.command_line }}" ng-if="!obj.is_active">
         Passive check
     </td>
-    <td class="text-center"><span ng-bind-html="obj.volatile | yesno3"></span></td>
-    <td class="text-center"><span ng-bind-html="obj.enable_perfdata | yesno3"></span></td>
-    <td class="text-center"><span ng-bind-html="obj.is_event_handler | yesno3"></span></td>
+    <td
+        class="text-center"
+        ng-show="show_columns.Volatile"
+    >
+        <span ng-bind-html="obj.volatile | yesno3"></span>
+    </td>
+    <td
+        class="text-center"
+        ng-show="show_columns.PerfData"
+    >
+        <span ng-bind-html="obj.enable_perfdata | yesno3"></span>
+    </td>
+    <td
+        class="text-center"
+        ng-show="show_columns.IsEventHandler"
+    >
+        <span ng-bind-html="obj.is_event_handler | yesno3"></span>
+    </td>
     <td>{{ obj.$$event_handler }}</td>
-    <td class="text-center"><span ng-bind-html="obj.event_handler_enabled | yesno3"></span></td>
+    <td
+        class="text-center"
+        ng-show="show_columns.EvHEnabled"
+    >
+        <span ng-bind-html="obj.event_handler_enabled | yesno3"></span>
+    </td>
     <td class="text-center">{{ obj.categories.length || '-' }}</td>
     <td>
         <input

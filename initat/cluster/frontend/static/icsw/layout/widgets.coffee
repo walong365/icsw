@@ -135,6 +135,9 @@ angular.module(
                             @selected = _new_entry
             return @
 
+        end: () =>
+            return @filterObj
+
         clear_choices: () ->
             _.remove(@choices, (entry) -> return not entry.default)
             # rebuild lut
@@ -159,10 +162,14 @@ angular.module(
             @selected_idxs = (entry.value for entry in @selected)
 
         filter: (entry) ->
+            # arguments for compare function
+            # - current entry
+            # - selection (list or value)
+            # - filter entry
             if @multiple
-                return @cmp_func(entry, @selected_idxs)
+                return @cmp_func(entry, @selected_idxs, @)
             else
-                return @cmp_func(entry, @selected)
+                return @cmp_func(entry, @selected, @)
 
     class icswFilter
         constructor: () ->
@@ -174,15 +181,46 @@ angular.module(
             @redraw_list = 0
 
         add: (name, placeholder, cmp_func, pre_sort_func) =>
+            # add a generic filter entry
             _nf = new icswFilterEntry(false, @, name, placeholder, cmp_func, pre_sort_func)
             @_filter_list.push(_nf)
             @_filter_lut[_nf.name] = _nf
             return _nf
 
         add_mult: (name, placeholder, cmp_func, pre_sort_func) =>
+            # add a generic filter entry where more than one item can be selected
             _nf = new icswFilterEntry(true, @, name, placeholder, cmp_func, pre_sort_func)
             @_filter_list.push(_nf)
             @_filter_lut[_nf.name] = _nf
+            return _nf
+
+        add_tri_state: (name, placeholder, cmp_name, default_sel) =>
+            # default_sel: 0, 1 or 2 (defaults to 0)
+            if not default_sel?
+                default_sel = 0
+            cmp_func = (entry, choice, fe) ->
+                if not choice.id
+                    # ignore
+                    return true
+                else if choice.id == 1
+                    # check for true
+                    return entry[fe.__cmp_name] == true
+                else
+                    # check for false
+                    return entry[fe.__cmp_name] == false
+
+            # add a tri-state filter for booleans
+            _nf = new icswFilterEntry(false, @, name, placeholder, cmp_func, undefined)
+            _nf.__cmp_name = cmp_name
+            @_filter_list.push(_nf)
+            @_filter_lut[_nf.name] = _nf
+            _nf.add_choice(
+                0, "ignore", null, default_sel == 0,
+            ).add_choice(
+                1, "Yes", null, default_sel == 1,
+            ).add_choice(
+                2, "No", null, default_sel == 2,
+            )
             return _nf
 
         get: (name) ->

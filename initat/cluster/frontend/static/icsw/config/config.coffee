@@ -1028,11 +1028,13 @@ config_module = angular.module(
     "icswTools", "Restangular", "ICSW_URLS",  "$q", "blockUI", "icswFormTools",
     "icswConfigTreeService", "icswMonitoringBasicTreeService", "icswMonCheckCommandBackup",
     "icswComplexModalService", "$compile", "$templateCache", "icswConfigMonTableService",
+    "icswTableFilterService",
 (
     $scope, icswSimpleAjaxCall, icswToolsSimpleModalService, toaster,
     icswTools, Restangular, ICSW_URLS, $q, blockUI, icswFormTools,
     icswConfigTreeService, icswMonitoringBasicTreeService, icswMonCheckCommandBackup,
     icswComplexModalService, $compile, $templateCache, icswConfigMonTableService,
+    icswTableFilterService,
 ) ->
     $scope.struct = {
         # mode, subtable true or false
@@ -1047,7 +1049,57 @@ config_module = angular.module(
         monccs_list: undefined
         # table redraw
         redraw_table: 0
+        # filter
+        filter: icswTableFilterService.get_instance()
     }
+    # init filter
+    $scope.struct.filter.add_tri_state(
+        "volatile"
+        "Volatile"
+        "volatile"
+    ).end().add_tri_state(
+        "perfdata"
+        "PerfData"
+        "enable_perfdata"
+    ).end().add_tri_state(
+        "isevh",
+        "IsEventHandler"
+        "is_event_handler"
+    ).end().add_tri_state(
+        "evhen",
+        "EventHEnabled"
+        "event_handler_enabled"
+    ).end().add_tri_state(
+        "evhen",
+        "EventHEnabled"
+        "event_handler_enabled"
+    ).end().add_tri_state(
+        "system"
+        "System"
+        "system_command"
+        2
+    ).end().add_tri_state(
+        "special"
+        "Special"
+        "is_special_command"
+    ).end().add_tri_state(
+        "enabled"
+        "Enabled"
+        "enabled"
+    )
+
+    _update_filter = () ->
+        $scope.struct.filter.filter($scope.struct.monccs_list)
+
+    $scope.struct.filter.notifier.promise.then(
+        () ->
+        () ->
+        () ->
+            _update_filter()
+    )
+
+    $scope.show_columns = {}
+
     _load = () ->
         $q.all(
             [
@@ -1058,6 +1110,8 @@ config_module = angular.module(
                 $scope.struct.config_tree = data[0]
                 $scope.struct.monccs_list = $scope.struct.config_tree.filtered_mcc_list
                 $scope.struct.data_loaded = true
+                _update_filter()
+
         )
 
     if $scope.config_tree?
@@ -1067,6 +1121,8 @@ config_module = angular.module(
         $scope.struct.config_tree = $scope.config_tree
         $scope.struct.config = $scope.config
         $scope.struct.monccs_list = $scope.struct.config.$$res_mcc_rel
+        _update_filter()
+
     else
         $scope.struct.is_sub_table = false
         $scope.struct.data_loaded = false
@@ -1091,6 +1147,10 @@ config_module = angular.module(
 
     $scope.create_mon_check = ($event) =>
         icswConfigMonTableService.create_or_edit($scope, $event, true, $scope.struct.config_tree, false)
+
+    $scope.$on("$destroy", () ->
+        $scope.struct.filter.close()
+    )
 
 ]).directive("icswConfigDownload",
 [

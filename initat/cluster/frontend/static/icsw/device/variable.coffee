@@ -497,6 +497,7 @@ device_variable_module = angular.module(
         () ->
             _update_filter()
     )
+
     $scope.toggle_expand = ($event, obj) ->
         obj.$vars_expanded = not obj.$vars_expanded
 
