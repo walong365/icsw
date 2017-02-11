@@ -289,11 +289,8 @@ class pgpool_nodes_command(PgPoolCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "84be4d12-9b40-4ec4-b404-b753d032215a"
-
-    info_str = (
-        "Check if the correct node count is returned and all nodes are not "
-        "in status NODE_DOWN"
-    )
+        description = "Check if the correct node count is returned and all"
+        " nodes are not in status NODE_DOWN"
     sql = "SHOW pool_nodes;"
     key = KEY
 
@@ -345,8 +342,7 @@ class pgpool_processes_command(PgPoolCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "9a312213-fbdd-4e41-95bc-8c1170efb1f8"
-
-    info_str = "Check for the correct count of pgpool processes"
+        description = "Check for the correct count of pgpool processes"
     sql = "SHOW pool_processes;"
     key = KEY
 
@@ -381,8 +377,7 @@ class pgpool_pools_command(PgPoolCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "27852f97-707d-446c-b08a-bee71c56f703"
-
-    info_str = "Check for the correct count of pgpool pools"
+        description = "Check for the correct count of pgpool pools"
     sql = "SHOW pool_pools;"
     key = KEY
     # Minimum and maximum count of pgpool pools - most likely to be used with min == max
@@ -426,8 +421,7 @@ class pgpool_version_command(PgPoolCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "e556a050-58f1-4021-9ada-c19bd49fbe3e"
-
-    info_str = "Check for a specific version of pgpool"
+        description = "Check for a specific version of pgpool"
     sql = "SHOW pool_version;"
     key = KEY
 

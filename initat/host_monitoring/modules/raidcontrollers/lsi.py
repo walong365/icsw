@@ -137,6 +137,7 @@ class lsi_status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "5c60b021-e27c-4de2-a980-461ac1fb3527"
+        description = "Check status of LSI Controllers"
 
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)

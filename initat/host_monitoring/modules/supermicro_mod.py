@@ -523,8 +523,7 @@ class smcipmi_command(hm_classes.MonitoringCommand, HMCCacheMixin):
         required_access = HMAccessClassEnum.level0
         cache_timeout = 60
         uuid = "b739a4a7-fbe0-4956-8396-7db02c41d729"
-
-    info_str = "SMCIPMITool frontend"
+        description = "Check Supermicro Chassis via SMCIPMITool"
 
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)

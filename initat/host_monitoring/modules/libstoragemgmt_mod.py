@@ -71,6 +71,7 @@ class libstoragemgmt_command(MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "dff5d4e7-3980-4dd4-8ed7-aacae07b46d2"
+        description = "Generic check of Storage devices via libstoragemgmt"
 
     """
     A generic libstoragemgmt check. Needs a URI specifying the device to check.

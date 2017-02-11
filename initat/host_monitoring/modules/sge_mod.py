@@ -52,6 +52,7 @@ class sge_queue_status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "893e1cd5-c7a3-4962-987b-05cb5dc3d2cb"
+        description = "Show status of given SGE queue instance"
 
     def __init__(self, name):
         super(sge_queue_status_command, self).__init__(name)

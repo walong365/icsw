@@ -46,6 +46,7 @@ class corosync_status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "add63b5c-5896-4f90-ad56-36a470c88126"
+        description = "show status of corosync HA-layer"
 
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=False)
@@ -128,6 +129,7 @@ class heartbeat_status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "8b2f8ea7-bf66-4e65-83b6-339a5d0190ea"
+        description = "Show current status of HA layer via crm_mon"
 
     def __call__(self, srv_com, cur_ns):
         srv_com["heartbeat_info"] = {

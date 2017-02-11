@@ -168,8 +168,7 @@ class hp_dimm_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "87086398-bc22-485f-b062-6147e50943db"
-
-    info_string = "check DIMM state via hpasmcli"
+        description = "check DIMM state via hpasmcli"
 
     def __call__(self, srv_com, cur_ns):
         return hp_health_bg(self.log, srv_com, HPDimm())
@@ -183,8 +182,7 @@ class hp_powersupply_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "a40c60fb-c553-40d6-a1fe-7aabd4ead4ec"
-
-    info_string = "check PSU state via hpasmcli"
+        description = "check PSU state via hpasmcli"
 
     def __call__(self, srv_com, cur_ns):
         return hp_health_bg(self.log, srv_com, HPPsu())

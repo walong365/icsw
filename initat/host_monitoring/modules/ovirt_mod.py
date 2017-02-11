@@ -421,6 +421,7 @@ class ovirt_overview_command(hm_classes.MonitoringCommand, OvirtBaseMixin):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "c9c76225-6c04-4c37-ab6d-e876498f3938"
+        description = "show overview of ovirt"
 
     def __init__(self, name):
         super(ovirt_overview_command, self).__init__(
@@ -555,6 +556,7 @@ class ovirt_storagedomains_command(hm_classes.MonitoringCommand, OvirtBaseMixin)
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "c2107fac-139c-4fef-91f8-213de033a417"
+        description = "Show ovirt StorageDomain status"
 
     def __init__(self, name):
         super(ovirt_storagedomains_command, self).__init__(
@@ -697,6 +699,7 @@ class ovirt_hosts_command(hm_classes.MonitoringCommand, OvirtBaseMixin):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "090e9dee-2f85-40c4-ad60-eac80fae1c77"
+        description = "Show ovirt Host status"
 
     def __init__(self, name):
         super(ovirt_hosts_command, self).__init__(

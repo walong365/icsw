@@ -344,6 +344,7 @@ class MonCheckCommandSystemNames(Enum):
     dummy_notify = MonCheckCommandSystemNameDef(
         'dummy-notify',
         'd201b06f-a8ef-4096-a461-da35302e9c97',
+        "Dummy notifier (does nothing)",
     )
     host_notify_by_mail = MonCheckCommandSystemNameDef(
         'host-notify-by-mail',

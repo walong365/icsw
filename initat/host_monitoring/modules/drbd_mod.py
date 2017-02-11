@@ -46,6 +46,7 @@ class drbd_status_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "d799b6dd-08fb-45d1-a80b-0bb6d824af35"
+        description = "show status of DRBD devices"
 
     def __call__(self, srv_com, cur_ns):
         if drbd_tools and self.module.drbd_config:

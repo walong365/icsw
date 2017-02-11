@@ -3093,6 +3093,8 @@ class windowshardware_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level0
         uuid = "ce9b9ec4-7014-4588-a784-fa5157ee82c4"
+        create_mon_check_command = False
+        description = "Return overview of Windows Hardware"
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:

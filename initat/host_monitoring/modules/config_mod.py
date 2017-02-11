@@ -170,6 +170,7 @@ class call_script_command(hm_classes.MonitoringCommand):
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level2
         uuid = "fa28d8d1-0523-4eca-8336-507385d721cf"
+        description = "call arbitrary script on target platform"
 
     def __init__(self, name):
         hm_classes.MonitoringCommand.__init__(self, name, positional_arguments=True)

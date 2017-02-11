@@ -24,8 +24,8 @@
 import sys
 from django.core.management.base import BaseCommand
 
-from initat.cluster.backbone.models import mon_check_command, BackendConfigFile, \
-    BackendConfigFileTypeEnum
+from initat.cluster.backbone.models import BackendConfigFile, \
+    BackendConfigFileTypeEnum, DBStructuredMonBaseConfig
 from initat.tools import logging_tools
 from django.db.models import Q
 import pprint
@@ -40,10 +40,22 @@ class Command(BaseCommand):
             print("nothing found to link")
             sys.exit(1)
         struct = cur_cc.structure
-        _json_uuids = {cmd["uuid"] for cmd in struct["command_list"]}
+        # get structure, build luts
+        luts = {
+            "icinga_cmdline": {},
+            "name": {},
+            "uuid": {},
+        }
+        for cmd in struct["command_list"]:
+            for key in luts.keys():
+                luts[key][cmd[key]] = cmd
+        json_uuids = set(luts["uuid"].keys())
         # mon_check_command.objects.filter(Q(uuid="50d6b312-b53f-4f52-9f61-bf7b2b6f4a51")).update(uuid="")
         # iterate over all mon_ccs witthout an UUID
-        undef_moncc = mon_check_command.objects.filter(Q(uuid=""))
+        undef_moncc = DBStructuredMonBaseConfig.objects.filter(Q(uuid=""))
+
+        # step 1: try to link already defined checks without UUID to the structure from json
+
         if undef_moncc.count():
             print(
                 "Found {}, matching against {}".format(
@@ -51,23 +63,15 @@ class Command(BaseCommand):
                     str(cur_cc),
                 )
             )
-            # get structure
-            luts = {
-                "cmd": {},
-                "name": {},
-            }
-            for cmd in struct["command_list"]:
-                luts["cmd"][cmd["icinga_cmdline"]] = cmd
-                luts["name"][cmd["name"]] = cmd
-            _used_uuids = set(mon_check_command.objects.all().values_list("uuid", flat=True))
-            for check_iter in ["cmd", "name"]:
-                for u_m in mon_check_command.objects.filter(Q(uuid="")):
+            _used_uuids = set(DBStructuredMonBaseConfig.objects.all().values_list("uuid", flat=True))
+            for check_iter in ["icinga_cmdline", "name"]:
+                for u_m in DBStructuredMonBaseConfig.objects.filter(Q(uuid="")):
                     _set = False
-                    if check_iter == "cmd":
-                        if u_m.command_line in luts["cmd"]:
+                    if check_iter == "icinga_cmdline":
+                        if u_m.command_line in luts["icinga_cmdline"]:
                             # command match, perfect
                             _set = True
-                            _cmd = luts["cmd"][u_m.command_line]
+                            _cmd = luts["icinga_cmdline"][u_m.command_line]
                     elif check_iter == "name":
                         if u_m.name in luts["name"]:
                             # match via name
@@ -79,5 +83,19 @@ class Command(BaseCommand):
                         u_m.json_linked = True
                         u_m.save(update_fields=["uuid", "json_linked"])
             # iterate over all still undefined (== without UUID)
-            for u_m in mon_check_command.objects.filter(Q(uuid="")):
+            for u_m in DBStructuredMonBaseConfig.objects.filter(Q(uuid="")):
                 u_m.save()
+        # step 2: add all unknown commands to the database
+        for new_uuid in sorted(
+            json_uuids - set(DBStructuredMonBaseConfig.objects.all().values_list("uuid", flat=True))
+        ):
+            cmd = luts["uuid"][new_uuid]
+            new_cmd = DBStructuredMonBaseConfig(
+                uuid=cmd["uuid"],
+                name=cmd["name"],
+                command_line=cmd["icinga_cmdline"],
+                description=cmd["description"],
+                enable_perfdata=cmd["has_perfdata"],
+                json_linked=True,
+            )
+            new_cmd.save()
