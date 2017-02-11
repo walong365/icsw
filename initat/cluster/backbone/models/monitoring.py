@@ -419,8 +419,11 @@ class mon_check_command(models.Model):
     is_special_command = models.BooleanField(default=False)
     # is container for other special commands (all SNMP checks for instance)
     is_special_meta = models.BooleanField(default=False)
+    # comes from / is linked to a json definition
+    json_linked = models.BooleanField(default=False)
     # for commands from a meta-command
     special_parent = models.ForeignKey("self", null=True, related_name="special_child")
+
 
     def get_configured_device_pks(self):
         if self.config_rel.all().count():

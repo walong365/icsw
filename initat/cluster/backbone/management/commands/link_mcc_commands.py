@@ -39,6 +39,9 @@ class Command(BaseCommand):
         if cur_cc is None:
             print("nothing found to link")
             sys.exit(1)
+        struct = cur_cc.structure
+        _json_uuids = {cmd["uuid"] for cmd in struct["command_list"]}
+        # mon_check_command.objects.filter(Q(uuid="50d6b312-b53f-4f52-9f61-bf7b2b6f4a51")).update(uuid="")
         # iterate over all mon_ccs witthout an UUID
         undef_moncc = mon_check_command.objects.filter(Q(uuid=""))
         if undef_moncc.count():
@@ -49,7 +52,6 @@ class Command(BaseCommand):
                 )
             )
             # get structure
-            struct = cur_cc.structure
             luts = {
                 "cmd": {},
                 "name": {},
@@ -57,23 +59,25 @@ class Command(BaseCommand):
             for cmd in struct["command_list"]:
                 luts["cmd"][cmd["icinga_cmdline"]] = cmd
                 luts["name"][cmd["name"]] = cmd
-            for u_m in undef_moncc:
-                matches = {
-                    "cmd": u_m.command_line in luts["cmd"],
-                    "name": u_m.name in luts["name"],
-                }
-                if any(matches.values()):
-                    if matches["cmd"]:
-                        # command match, perfect
-                        u_m.uuid = luts["cmd"][u_m.command_line]["uuid"]
-                        u_m.save(update_fields=["uuid"])
-                    elif matches["name"]:
-                        # match via name
-                        u_m.uuid = luts["name"][u_m.name]["uuid"]
-                        u_m.save(update_fields=["uuid"])
-                else:
-                    # print("m:", u_m.idx, u_m.command_line)
-                    pass
+            _used_uuids = set(mon_check_command.objects.all().values_list("uuid", flat=True))
+            for check_iter in ["cmd", "name"]:
+                for u_m in mon_check_command.objects.filter(Q(uuid="")):
+                    _set = False
+                    if check_iter == "cmd":
+                        if u_m.command_line in luts["cmd"]:
+                            # command match, perfect
+                            _set = True
+                            _cmd = luts["cmd"][u_m.command_line]
+                    elif check_iter == "name":
+                        if u_m.name in luts["name"]:
+                            # match via name
+                            _set = True
+                            _cmd = luts["name"][u_m.name]
+                    if _set and _cmd["uuid"] not in _used_uuids:
+                        _used_uuids.add(_cmd["uuid"])
+                        u_m.uuid = _cmd["uuid"]
+                        u_m.json_linked = True
+                        u_m.save(update_fields=["uuid", "json_linked"])
             # iterate over all still undefined (== without UUID)
             for u_m in mon_check_command.objects.filter(Q(uuid="")):
                 u_m.save()

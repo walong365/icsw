@@ -1091,6 +1091,10 @@ config_module = angular.module(
         "enabled"
         "Enabled"
         "enabled"
+    ).end().add_tri_state(
+        "linked",
+        "Linked"
+        "json_linked"
     )
 
     _update_filter = () ->

@@ -655,7 +655,7 @@
                     <tr>
                         <td colspan="99">
                             <icsw-tools-show-hide-columns
-                                columns="Enabled SystemCommand SpecialCommand Volatile PerfData IsEventHandler EvHEnabled"
+                                columns="Enabled SystemCommand SpecialCommand Volatile PerfData IsEventHandler EvHEnabled Linked"
                                 columns-target="show_columns"
                             ></icsw-tools-show-hide-columns>
                         </td>
@@ -705,6 +705,12 @@
                                 icsw-filter-name="evhen"
                             ></icsw-table-filter>
                         </td>
+                        <td ng-show="show_columns.Linked">
+                            <icsw-table-filter
+                                icsw-table-filter="struct.filter"
+                                icsw-filter-name="linked"
+                            ></icsw-table-filter>
+                        </td>
                     </tr>
                     <tr icsw-mon-check-command-header></tr>
                 </thead>
@@ -728,13 +734,14 @@
     <th ng-show="show_columns.Enabled">Enabled</th>
     <th ng-show="show_columns.SystemCommand">System</th>
     <th ng-show="show_columns.SpecialCommand">Special</th>
-    <th>Command Line</th>
     <!-- <th>active</th> -->
     <th ng-show="show_columns.Volatile">Vol</th>
     <th ng-show="show_columns.PerfData">Perf</th>
     <th ng-show="show_columns.IsEventHandler">Is Event</th>
     <th>Event Handler</th>
     <th ng-show="show_columns.EvHEnabled">EH Enabled</th>
+    <th ng-show="show_columns.Linked">Linked</th>
+    <th>Command Line</th>
     <th>Categories</th>
     <th colspan="4">Actions</th>
 </script>
@@ -767,19 +774,6 @@
     >
         <span ng-bind-html="obj.is_special_command | yesno3"></span>
     </td>
-    <td title="{{ obj.command_line }}" ng-if="obj.is_active">
-        <input
-            type="button"
-            title="expand / collapse full command line"
-            ng-class="obj._show_full_command && 'btn btn-xs btn-success' || 'btn btn-xs btn-default'"
-            value="e" ng-click="obj._show_full_command = !obj._show_full_command">
-        </input>
-        <span ng-if="!obj._show_full_command">{{ obj.command_line | limit_text:40:true }}</span>
-        <span ng-if="obj._show_full_command">{{ obj.command_line }}</span>
-    </td>
-    <td title="{{ obj.command_line }}" ng-if="!obj.is_active">
-        Passive check
-    </td>
     <td
         class="text-center"
         ng-show="show_columns.Volatile"
@@ -804,6 +798,25 @@
         ng-show="show_columns.EvHEnabled"
     >
         <span ng-bind-html="obj.event_handler_enabled | yesno3"></span>
+    </td>
+    <td
+        class="text-center"
+        ng-show="show_columns.Linked"
+    >
+        <span ng-bind-html="obj.json_linked | yesno3"></span>
+    </td>
+    <td title="{{ obj.command_line }}" ng-if="!obj.is_active">
+        Passive check
+    </td>
+    <td title="{{ obj.command_line }}" ng-if="obj.is_active">
+        <input
+            type="button"
+            title="expand / collapse full command line"
+            ng-class="obj._show_full_command && 'btn btn-xs btn-success' || 'btn btn-xs btn-default'"
+            value="e" ng-click="obj._show_full_command = !obj._show_full_command">
+        </input>
+        <span ng-if="!obj._show_full_command">{{ obj.command_line | limit_text:40:true }}</span>
+        <span ng-if="obj._show_full_command">{{ obj.command_line }}</span>
     </td>
     <td class="text-center">{{ obj.categories.length || '-' }}</td>
     <td>
