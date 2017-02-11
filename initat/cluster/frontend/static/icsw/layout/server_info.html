@@ -114,7 +114,11 @@
                 <ng-pluralize count="struct.server_info_list.length" when="{'0': 'No Servers checked', 'one': 'One Server checked', 'other': '{} Servers checked'}"></ng-pluralize>
                 <span class="text-warning" ng-show="struct.loading">Updating ...</span>
             </uib-accordion-heading>
-            <table class="table table-hover table-striped" style="width:auto;" ng-show="struct.instance_list.length && struct.server_info_list.length">
+            <table
+                class="table table-hover table-striped"
+                style="width:auto;"
+                ng-show="struct.instance_name_list.length && struct.server_info_list.length"
+            >
                 <thead>
                     <tr>
                         <th>Instance</th>
@@ -133,12 +137,15 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr ng-repeat="instance in struct.instance_list">
-                        <td>{{ instance }}</td>
-                        <td class="text-center">{{ get_runs_on(instance) }}</td>
-                        <td class="text-center">{{ struct.server_info_list[0].get_check_source(instance) }}</td>
+                    <tr ng-repeat="inst_name in struct.instance_name_list">
+                        <td>{{ inst_name }}</td>
+                        <td class="text-center">{{ get_runs_on(inst_name) }}</td>
+                        <td class="text-center">{{ struct.server_info_list[0].get_check_source(inst_name) }}</td>
                         <td ng-repeat="srv_info in struct.server_info_list">
-                            <icsw-layout-server-info-instance icsw-server-info="srv_info" icsw-service-name="instance"></icsw-layout-server-info-instance>
+                            <icsw-layout-server-info-instance
+                                icsw-server-info="srv_info"
+                                icsw-service-name="inst_name"
+                            ></icsw-layout-server-info-instance>
                         </td>
                     </tr>
                 </tbody>

@@ -51,9 +51,13 @@ angular.module(
         routing_info: {}
         # current timeout object
         cur_to: null
+        # list of all instance names
+        instance_name_list: []
         # unroutable config objects
         unroutable_configs: undefined 
         unroutable_config_names: []
+        # lut instance_name -> runs_on (server, client, system)
+        runs_on: {}
     }
     $scope.$watch(
         () ->
@@ -82,19 +86,31 @@ angular.module(
             show_error: false
         ).then(
             (xml) ->
+                server_name_lut = {}
+                for entry in $scope.struct.server_info_list
+                    server_name_lut[entry.$$srv_name] = entry
                 $scope.struct.server_info_list = []
-                $scope.struct.instance_list = []
+                $scope.struct.instance_name_list.length = 0
                 $scope.struct.runs_on = {}
                 $(xml).find("ics_batch").each (idx, res_xml) ->
                     res_xml = $(res_xml)
-                    cur_si = new icswLayoutServerInfoService($scope, res_xml)
+                    # build lookup list
+                    srv_name = $(xml).find("command").attr("server_name")
+                    if srv_name of server_name_lut
+                        cur_si = server_name_lut[srv_name]
+                        cur_si.update(res_xml)
+                    else
+                        cur_si = new icswLayoutServerInfoService($scope, res_xml)
                     $scope.struct.server_info_list.push(cur_si)
                     _cur_inst = cur_si.$$instance_names
                     for _name in _cur_inst
                         if _name not of $scope.struct.runs_on
                             $scope.struct.runs_on[_name] = res_xml.find("instance[name='#{_name}']").attr("runs_on")
-                    $scope.struct.instance_list = _.uniq(_.concat($scope.struct.instance_list, _cur_inst))
+                    # pure instance names
+                    $scope.struct.instance_name_list = _.uniq(_.concat($scope.struct.instance_name_list, _cur_inst))
                 $scope.struct.loading = false
+                $scope.struct.cur_to = $timeout($scope.reload_server_info, 15000)
+            (error) ->
                 $scope.struct.cur_to = $timeout($scope.reload_server_info, 15000)
         )
 
@@ -161,8 +177,13 @@ angular.module(
 ]).service("icswLayoutServerInfoService", () ->
 
     class icswLayoutServerInfoService
-        constructor: (@scope, @xml) ->
+        constructor: (@scope, xml) ->
             _round = 8 * 1024 * 1024
+            @service_lut = {}
+            @update(xml)
+
+        update: (xml) =>
+            @xml = xml
             @result = @xml.find("result")
             @server_state = parseInt(@result.attr("state"))
             @server_reply = @result.attr("reply")
@@ -181,7 +202,6 @@ angular.module(
                 @version_software = @xml.find("version_info > sys").attr("software")
             else
                 @version_set = false
-            @service_lut = {}
             @salt()
 
         has_service: (name) ->
