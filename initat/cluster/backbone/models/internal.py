@@ -111,6 +111,23 @@ class BackendConfigFile(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     @classmethod
+    def get(
+        cls,
+        file_type: enumerate,
+    ) -> object:
+        try:
+            _current = cls.objects.get(
+                Q(
+                    file_type=file_type.name,
+                    most_recent=True,
+                )
+            )
+        except cls.DoesNotExist:
+            print("No BackendConfigType {} found".format(file_type.name))
+            _current = None
+        return _current
+
+    @classmethod
     def store(
         cls,
         structure: object,
@@ -146,6 +163,11 @@ class BackendConfigFile(models.Model):
                 most_recent=True
             )
         return cfile
+
+    @property
+    def structure(self):
+        from initat.tools import server_command
+        return server_command.decompress(self.content, json=True)
 
     def __str__(self):
         return "BackendConfigFile {} (size={:d}, idx={:d}, su={:d})".format(

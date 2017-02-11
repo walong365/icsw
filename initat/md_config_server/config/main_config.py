@@ -379,13 +379,13 @@ class MainConfig(dict, NagVisMixin):
                         ("service_perfdata_file_processing_interval", "15"),
                         (
                             "service_perfdata_file_processing_command",
-                            MonCheckCommandSystemNames.process_service_perfdata_file.value,
+                            MonCheckCommandSystemNames.process_service_perfdata_file.value.name,
                         ),
                         ("host_perfdata_file_mode", "a"),
                         ("host_perfdata_file_processing_interval", "15"),
                         (
                             "host_perfdata_file_processing_command",
-                            MonCheckCommandSystemNames.process_host_perfdata_file.value,
+                            MonCheckCommandSystemNames.process_host_perfdata_file.value.name,
                         ),
                     ]
                 )
@@ -395,11 +395,11 @@ class MainConfig(dict, NagVisMixin):
                 [
                     (
                         "ochp_command",
-                        MonCheckCommandSystemNames.ochp_command.value,
+                        MonCheckCommandSystemNames.ochp_command.value.name,
                     ),
                     (
                         "ocsp_command",
-                        MonCheckCommandSystemNames.ocsp_command.value,
+                        MonCheckCommandSystemNames.ocsp_command.value.name,
                     ),
                     ("stalking_event_handlers_for_hosts", 1),
                     ("stalking_event_handlers_for_services", 1),

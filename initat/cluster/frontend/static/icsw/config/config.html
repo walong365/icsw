@@ -740,7 +740,12 @@
 </script>
 
 <script type="text/ng-template" id="icsw.mon.check.command.line">
-    <td>{{ obj.name }}</td>
+    <td
+        title="{{ obj.uuid }}"
+        ng-class="!obj.uuid && 'text-danger'"
+    >
+        {{ obj.name }}
+    </td>
     <td class="text-center">{{ obj.config_rel.length }}</td>
     <td>{{ obj.$$mon_service_templ_name }}</td>
     <td>{{ obj.description }}</td>

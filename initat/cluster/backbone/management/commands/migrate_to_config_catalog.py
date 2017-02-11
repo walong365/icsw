@@ -21,8 +21,6 @@
 #
 """ migrate to configuration catalogs """
 
-
-
 from django.core.management.base import BaseCommand
 
 from initat.cluster.backbone.models import config, config_catalog

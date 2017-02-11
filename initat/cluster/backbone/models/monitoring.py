@@ -305,22 +305,66 @@ class host_check_command(models.Model):
         return "hcc_{}".format(self.name)
 
 
+class MonCheckCommandSystemNameDef(object):
+    def __init__(self, name, uuid, description=""):
+        self.name = name
+        self.uuid = uuid
+        self.description = description
+
+
 class MonCheckCommandSystemNames(Enum):
     # process commands
-    process_service_perfdata_file = "process-service-perfdata-file"
-    process_host_perfdata_file = "process-host-perfdata-file"
+    process_service_perfdata_file = MonCheckCommandSystemNameDef(
+        'process-service-perfdata-file',
+        '1a9ffb17-e7be-4146-b058-b9e2d1e6fb21'
+    )
+    process_host_perfdata_file = MonCheckCommandSystemNameDef(
+        'process-host-perfdata-file',
+        'f136418c-1875-4b62-a318-e24becd0dc0b'
+    )
     # oc{h,s}p commands
-    ochp_command = "ochp-command"
-    ocsp_command = "ocsp-command"
+    ochp_command = MonCheckCommandSystemNameDef(
+        'ochp-command',
+        'fc81e360-3a79-4651-b4b5-b4f9e591a2b3',
+    )
+    ocsp_command = MonCheckCommandSystemNameDef(
+        'ocsp-command',
+        '2fe49af7-d227-412e-8b22-9edc5c321690',
+    )
     # cluster commands
-    check_service_cluster = "check_service_cluster"
-    check_host_cluster = "check_host_cluster"
+    check_service_cluster = MonCheckCommandSystemNameDef(
+        'check_service_cluster',
+        'bfaf1ef9-1733-456f-a495-e64aa90bfd2a',
+    )
+    check_host_cluster = MonCheckCommandSystemNameDef(
+        'check_host_cluster',
+        'd4e32e3c-88ee-4a23-ae71-21de81e2bda1',
+    )
     # notify commands
-    dummy_notify = "dummy-notify"
-    host_notify_by_mail = "host-notify-by-mail"
-    host_notify_by_sms = "host-notify-by-sms"
-    service_notify_by_mail = "service-notify-by-mail"
-    service_notify_by_sms = "service-notify-by-sms"
+    dummy_notify = MonCheckCommandSystemNameDef(
+        'dummy-notify',
+        'd201b06f-a8ef-4096-a461-da35302e9c97',
+    )
+    host_notify_by_mail = MonCheckCommandSystemNameDef(
+        'host-notify-by-mail',
+        '83512022-a558-4e50-9eb1-9224ae9a0379',
+        "Notify users about Host issues via Mail",
+    )
+    host_notify_by_sms = MonCheckCommandSystemNameDef(
+        'host-notify-by-sms',
+        '72d86436-86fb-4157-a1f1-5fec91de102d',
+        "Notify users about Host issues via SMS",
+    )
+    service_notify_by_mail = MonCheckCommandSystemNameDef(
+        'service-notify-by-mail',
+        '6a693498-4649-40e9-bb4c-159724b9ec49',
+        "Notify users about Service issues via Mail",
+    )
+    service_notify_by_sms = MonCheckCommandSystemNameDef(
+        'service-notify-by-sms',
+        'b7a17953-de30-49a4-82ee-1d02f1158cb5',
+        "Notify users about Serice issues via SMS",
+    )
 
 
 class mon_check_command(models.Model):
@@ -704,7 +748,7 @@ def _check_unique_name(cur_inst: object) -> bool:
         unique_name = cur_inst.unique_name
     _other_uniques = mon_check_command.objects.all().exclude(Q(idx=cur_inst.idx)).values_list("unique_name", flat=True)
     if cur_inst.system_command:
-        if cur_inst.config_rel.all().count():
+        if cur_inst.idx and cur_inst.config_rel.all().count():
             raise ValidationError(
                 "{} mon_check_command ({}) should not be linked to any config".format(
                     cur_inst.command_type,

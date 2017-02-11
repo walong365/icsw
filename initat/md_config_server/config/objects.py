@@ -132,7 +132,7 @@ class MonAllCommands(MonFileContainer):
 
     def refresh(self, gen_conf):
         self.clear()
-        self._add_notify_commands()
+        self._add_notify_commands(gen_conf)
         self._add_commands_from_db(gen_conf)
         self.__log_counter += 1
 
@@ -147,7 +147,11 @@ class MonAllCommands(MonFileContainer):
             in_str = in_str.replace(key, value)
         return in_str
 
-    def _add_notify_commands(self):
+    def _add_notify_commands(self, gen_conf):
+        if self.__logging:
+            log_com = gen_conf.log
+        else:
+            log_com = None
         # get cluster_name
         cluster_name = device_variable.objects.get_cluster_name()
         md_vers = global_config["MD_VERSION_STRING"]
@@ -172,12 +176,16 @@ class MonAllCommands(MonFileContainer):
             "$ICSW_CLUSTER_NAME$": "{}".format(cluster_name),
         }
 
-        self.add_object(
-            StructuredMonBaseConfig(
-                "command",
-                MonCheckCommandSystemNames.dummy_notify.value,
-                command_name=MonCheckCommandSystemNames.dummy_notify.value,
+        # notification commands
+        notify_commands = []
+
+        notify_commands.append(
+            DBStructuredMonBaseConfig.get_system_check_command(
+                name=MonCheckCommandSystemNames.dummy_notify.value.name,
                 command_line="/usr/bin/true",
+                create=self.__create,
+                uuid=MonCheckCommandSystemNames.dummy_notify.value.uuid,
+                description=MonCheckCommandSystemNames.dummy_notify.value.description,
             )
         )
         _rewrite_dict = {
@@ -211,18 +219,29 @@ class MonAllCommands(MonFileContainer):
                 )
             _cn_l_name = cur_not.name.replace("-", "_")
             try:
-                _cn_name = MonCheckCommandSystemNames[_cn_l_name].value
+                _cn_enum = MonCheckCommandSystemNames[_cn_l_name]
             except KeyError:
-                self.log("Unknown notification command '{}', ignoring".format(_cn_l_name), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "Unknown notification command '{}', ignoring".format(
+                        _cn_l_name
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
-                self.add_object(
-                    StructuredMonBaseConfig(
-                        "command",
-                        _cn_name,
-                        command_name=_cn_name,
+                notify_commands.append(
+                    DBStructuredMonBaseConfig.get_system_check_command(
+                        name=_cn_enum.value.name,
                         command_line=command_line.replace("\n", "\\n"),
+                        create=self.__create,
+                        uuid=_cn_enum.value.uuid,
+                        description=_cn_enum.value.description,
                     )
                 )
+        safe_descr = global_config["SAFE_NAMES"]
+        for noc in notify_commands:
+            # print("*", ngc, type(ngc))
+            noc.generate_md_com_line(log_com, safe_descr)
+            self.add_object(noc)
 
     def _add_commands_from_db(self, gen_conf):
         # to log or not to log ...
@@ -310,22 +329,24 @@ class MonAllCommands(MonFileContainer):
             check_coms.extend(
                 [
                     DBStructuredMonBaseConfig.get_system_check_command(
-                        name=MonCheckCommandSystemNames.process_service_perfdata_file.value,
+                        name=MonCheckCommandSystemNames.process_service_perfdata_file.value.name,
                         command_line="{} {}/service-perfdata".format(
                             os.path.join(CLUSTER_SBIN, "send_collectd_zmq"),
                             gen_conf.var_dir,
                         ),
                         description="Process service performance data",
                         create=self.__create,
+                        uuid=MonCheckCommandSystemNames.process_service_perfdata_file.value.uuid,
                     ),
                     DBStructuredMonBaseConfig.get_system_check_command(
-                        name=MonCheckCommandSystemNames.process_host_perfdata_file.value,
+                        name=MonCheckCommandSystemNames.process_host_perfdata_file.value.name,
                         command_line="{} {}/host-perfdata".format(
                             os.path.join(CLUSTER_SBIN, "send_collectd_zmq"),
                             gen_conf.var_dir
                         ),
                         description="Process host performance data",
                         create=self.__create,
+                        uuid=MonCheckCommandSystemNames.process_host_perfdata_file.value.uuid,
                     ),
                 ]
             )
@@ -333,38 +354,42 @@ class MonAllCommands(MonFileContainer):
         check_coms.extend(
             [
                 DBStructuredMonBaseConfig.get_system_check_command(
-                    name=MonCheckCommandSystemNames.ochp_command.value,
+                    name=MonCheckCommandSystemNames.ochp_command.value.name,
                     command_line="{} ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"{}\"".format(
                         os.path.join(CLUSTER_SBIN, "csendsyncerzmq"),
                         "$HOSTOUTPUT$|$HOSTPERFDATA$" if enable_perfd else "$HOSTOUTPUT$"
                     ),
                     description="OCHP Command",
                     create=self.__create,
+                    uuid=MonCheckCommandSystemNames.ochp_command.value.uuid,
                 ),
                 DBStructuredMonBaseConfig.get_system_check_command(
-                    name=MonCheckCommandSystemNames.ocsp_command.value,
+                    name=MonCheckCommandSystemNames.ocsp_command.value.name,
                     command_line="{} ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"{}\" ".format(
                         os.path.join(CLUSTER_SBIN, "csendsyncerzmq"),
                         "$SERVICEOUTPUT$|$SERVICEPERFDATA$" if enable_perfd else "$SERVICEOUTPUT$"
                     ),
                     description="OCSP Command",
                     create=self.__create,
+                    uuid=MonCheckCommandSystemNames.ocsp_command.value.uuid,
                 ),
                 DBStructuredMonBaseConfig.get_system_check_command(
-                    name=MonCheckCommandSystemNames.check_service_cluster.value,
+                    name=MonCheckCommandSystemNames.check_service_cluster.value.name,
                     command_line="{} --service -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"".format(
                         os.path.join(CLUSTER_BIN, "check_icinga_cluster.py"),
                     ),
                     description="Check Service Cluster",
                     create=self.__create,
+                    uuid=MonCheckCommandSystemNames.check_service_cluster.value.uuid,
                 ),
                 DBStructuredMonBaseConfig.get_system_check_command(
-                    name=MonCheckCommandSystemNames.check_host_cluster.value,
+                    name=MonCheckCommandSystemNames.check_host_cluster.value.name,
                     command_line="{} --host -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"".format(
                         os.path.join(CLUSTER_BIN, "check_icinga_cluster.py"),
                     ),
                     description="Check Host Cluster",
                     create=self.__create,
+                    uuid=MonCheckCommandSystemNames.check_host_cluster.value.uuid,
                 ),
             ]
         )

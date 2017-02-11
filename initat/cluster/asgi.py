@@ -1,6 +1,6 @@
 """
 
-ASGI config for cluster project.
+ASGI config for ICSW
 
 """
 

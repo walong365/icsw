@@ -1095,7 +1095,7 @@ class BuildProcess(
                                                 gbc.mcc_lut_3[s_dep.dependent_mon_check_command_id],
                                                 gbc.mcc_lut[s_dep.dependent_mon_check_command_id][1],
                                             )
-                                            sc_check = cur_gc["command"][MonCheckCommandSystemNames.check_service_cluster.value]
+                                            sc_check = cur_gc["command"][MonCheckCommandSystemNames.check_service_cluster.value.name]
                                             # FIXME, my_co.mcc_lut[...][1] should be mapped to check_command().get_description()
                                             act_service_dep["service_description"] = "{} / {}".format(
                                                 sc_check.get_description(),
@@ -1209,7 +1209,7 @@ class BuildProcess(
         for mhc_check in mhc_checks:
             dev_names = [gbc.get_host(cur_dev).full_name for cur_dev in mhc_check.devices_list]
             if len(dev_names):
-                s_check = cur_gc["command"][MonCheckCommandSystemNames.check_host_cluster.value]
+                s_check = cur_gc["command"][MonCheckCommandSystemNames.check_host_cluster.value.name]
                 serv_temp = gbc.serv_templates[mhc_check.mon_service_templ_id]
                 serv_cgs = list(set(serv_temp.contact_groups).intersection(hbc.contact_groups))
                 sub_list = self.get_service(
@@ -1250,7 +1250,7 @@ class BuildProcess(
                 c_com = cur_gc["command"][msc_check.mon_check_command.name]
                 dev_names = [(gbc.get_host(cur_dev).full_name, c_com.get_description()) for cur_dev in msc_check.devices_list]
                 if len(dev_names):
-                    s_check = cur_gc["command"][MonCheckCommandSystemNames.check_service_cluster.value]
+                    s_check = cur_gc["command"][MonCheckCommandSystemNames.check_service_cluster.value.name]
                     serv_temp = gbc.serv_templates[msc_check.mon_service_templ_id]
                     serv_cgs = list(set(serv_temp.contact_groups).intersection(hbc.contact_groups))
                     sub_list = self.get_service(

@@ -678,6 +678,12 @@ def call_update_funcs(opts):
             os.path.join(CLUSTER_DIR, "share", "json_defs", JSON_DEFINITION_FILE)
         ]
     )
+    # install new monioring commands
+    call_manage(
+        [
+            "link_mcc_commands",
+        ]
+    )
     # then init ova system
     call_icsw(["license", "ova", "--init"])
 

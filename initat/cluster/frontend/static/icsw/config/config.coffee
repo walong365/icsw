@@ -960,7 +960,6 @@ config_module = angular.module(
                         ev_handlers.push(cc)
             return ev_handlers
 
-        cur_config = config_tree.lut[sub_scope.edit_obj.config]
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.mon.check.command.form"))(sub_scope)
@@ -1005,6 +1004,7 @@ config_module = angular.module(
         return r_defer.promise
 
     delete_entry = (scope, event, mon) ->
+        defer = $q.defer()
         icswToolsSimpleModalService("Really delete MonCheckCommand #{mon.name} ?").then(
             () =>
                 blockUI.start()
@@ -1012,10 +1012,15 @@ config_module = angular.module(
                     () ->
                         blockUI.stop()
                         console.log "mon deleted"
+                        defer.resolve("done")
                     () ->
                         blockUI.stop()
+                        defer.resolve("done")
                 )
+            (donot) =>
+                defer.reject("ignore")
         )
+        return defer.promise
 
     return {
         create_or_edit: create_or_edit
@@ -1143,10 +1148,22 @@ config_module = angular.module(
         )
 
     $scope.delete = ($event, obj) ->
-        icswConfigMonTableService.delete($scope, $event, obj)
+        icswConfigMonTableService.delete($scope, $event, obj).then(
+            (done) ->
+                _update_filter()
+        )
 
     $scope.create_mon_check = ($event) =>
-        icswConfigMonTableService.create_or_edit($scope, $event, true, $scope.struct.config_tree, false)
+        icswConfigMonTableService.create_or_edit(
+            $scope
+            $event
+            true
+            $scope.struct.config_tree
+            false
+        ).then(
+            (done) ->
+                _update_filter()
+        )
 
     $scope.$on("$destroy", () ->
         $scope.struct.filter.close()
