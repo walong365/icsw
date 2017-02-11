@@ -1,5 +1,8 @@
-#!/bin/bash
-# Copyright (C) 2013-2016 Andreas Lang-Nevyjel, init.at
+#!/usr/bin/python3-init -Otu
+#
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2017 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -16,22 +19,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" class runwork from in a safe way (survice redis restarts) """
 
-function kill_it() {
-    echo "Stopping daphne and workers"
-    kill $(ps auxw | grep daphne | grep 8085 | tr -s " " | cut -d " " -f 2)
-    kill $(ps auxw | grep clustermanage.py | grep runworker | tr -s " " | cut -d " " -f 2)
-    echo "done"
-}
+import time
 
-if [ "${1}" == "start" ] ; then
-    echo "Starting daphne and workers"
-    kill_it
-    /opt/cluster/bin/daphne initat.cluster.asgi:channel_layer --port 8085 --bind 0.0.0.0 --access-log=/var/log/icsw/daphne/daphne_access.log &
-    /opt/cluster/sbin/clustermanage.py runworker_safe --only-channels=websocket.* --threads=4 &
-    echo "done"
-else
-    kill_it
-fi
+from channels.management.commands import runworker
+from redis.exceptions import ConnectionError
 
-exit 0
+
+class Command(runworker.Command):
+    help = "Call runworker in a safe way "
+
+    def handle(self, **options):
+        _run = True
+        while _run:
+            try:
+                super(Command, self).handle(**options)
+            except ConnectionError:
+                print("a redis connection error occured, retrying ...")
+                time.sleep(2)
+            else:
+                _run = False
