@@ -37,22 +37,40 @@ from initat.cluster.backbone.models import mon_icinga_log_last_read,\
 class Command(BaseCommand):
     help = "Delete data parsed by the icinga log parser"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--empty-aggregated",
+            default=False,
+            action="store_true",
+            help="delete aggregated data"
+        )
+
     def handle(self, **options):
-        mon_icinga_log_last_read.objects.all().delete()
+        if False:
 
-        mon_icinga_log_full_system_dump.objects.all().delete()
+            for _class in [
+                mon_icinga_log_raw_service_alert_data,
+                mon_icinga_log_raw_service_flapping_data,
+                mon_icinga_log_raw_service_notification_data,
+                mon_icinga_log_raw_service_downtime_data,
+                mon_icinga_log_raw_host_alert_data,
+                mon_icinga_log_raw_host_flapping_data,
+                mon_icinga_log_raw_host_notification_data,
+                mon_icinga_log_raw_host_downtime_data,
+            ]:
+                print("Deleting {}".format(_class))
+                print(_class.objects.all().delete())
 
-        mon_icinga_log_raw_host_alert_data.objects.all().delete()
-        mon_icinga_log_raw_service_alert_data.objects.all().delete()
-        mon_icinga_log_raw_service_flapping_data.objects.all().delete()
-        mon_icinga_log_raw_host_flapping_data.objects.all().delete()
-        mon_icinga_log_raw_service_notification_data.objects.all().delete()
-        mon_icinga_log_raw_host_notification_data.objects.all().delete()
-        mon_icinga_log_raw_service_downtime_data.objects.filter().delete()
-        mon_icinga_log_raw_host_downtime_data.objects.filter().delete()
-        mon_icinga_log_file.objects.all().delete()
-
-        mon_icinga_log_aggregated_timespan.objects.all().delete()
-        mon_icinga_log_aggregated_host_data.objects.all().delete()
-        mon_icinga_log_aggregated_service_data.objects.all().delete()
-        print("Removed all parsed icinga log data")
+            mon_icinga_log_last_read.objects.all().delete()
+            mon_icinga_log_full_system_dump.objects.all().delete()
+            mon_icinga_log_file.objects.all().delete()
+            print("Removed all parsed icinga log data")
+        if options["empty_aggregated"]:
+            for _class in [
+                mon_icinga_log_aggregated_timespan,
+                mon_icinga_log_aggregated_host_data,
+                mon_icinga_log_aggregated_service_data,
+            ]:
+                print("Deleting {}".format(_class))
+                print(_class.objects.all().delete())
+            print("Removed all aggregated icinga log data")

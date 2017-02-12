@@ -28,7 +28,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple,\
     category
 from initat.cluster.backbone.models.kpi import DataSourceTuple
-from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
+from initat.md_config_server.icinga_log_reader.log_aggregation import IcingaLogAggregator
 from initat.md_config_server.icinga_log_reader.log_reader_utils import HostServiceIDUtil
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiRRDObject, \
     KpiServiceObject, KpiSet
@@ -92,7 +92,7 @@ class KpiData(object):
         if start is not None:
 
             timespan_hosts_qs, timespan_services_qs =\
-                icinga_log_aggregator.get_active_hosts_and_services_in_timespan_queryset(start, end)
+                IcingaLogAggregator.get_active_hosts_and_services_in_timespan_queryset(start, end)
 
             timespan_hosts_qs = timespan_hosts_qs.filter(device__in=dev_list)
 

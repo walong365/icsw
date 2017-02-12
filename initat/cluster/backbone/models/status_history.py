@@ -335,9 +335,10 @@ class _last_read_manager(models.Manager):
 class mon_icinga_log_last_read(models.Model):
     # this table contains only one row
     idx = models.AutoField(primary_key=True)
-    position = models.BigIntegerField()  # position of start of last line read
-    timestamp = models.IntegerField()  # time of last line read
-
+    position = models.BigIntegerField()           # position of start of last line read
+    timestamp = models.IntegerField()             # time of last line read
+    inode = models.IntegerField(default=0)        # inode of file
+    line_number = models.IntegerField(default=0)  # last lineenumber read
     objects = _last_read_manager()
 
     class ICSW_Meta:

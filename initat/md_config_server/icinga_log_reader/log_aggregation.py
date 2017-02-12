@@ -34,7 +34,7 @@ from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_hos
 from initat.tools import logging_tools
 
 __all__ = [
-    "icinga_log_aggregator"
+    "IcingaLogAggregator"
 ]
 
 
@@ -46,7 +46,7 @@ def pairwise(iterable):
     return zip(a, b)
 
 
-class icinga_log_aggregator(object):
+class IcingaLogAggregator(object):
     def __init__(self, log_reader):
         '''
         :param IcingaLogReader log_reader:
@@ -93,6 +93,7 @@ class icinga_log_aggregator(object):
                             earliest_date1 = mon_icinga_log_raw_host_alert_data.objects.earliest("date").date
                             earliest_date2 = mon_icinga_log_raw_service_alert_data.objects.earliest("date").date
                             earliest_date = min(earliest_date1, earliest_date2)
+                            # earliest_date = cluster_timezone.localize(datetime.datetime(2017, 1, 1))
                             next_start_time = duration_type.get_time_frame_start(earliest_date)
                             self.log(
                                 "no archive data for duration type {}, starting new data at {}".format(
@@ -100,8 +101,10 @@ class icinga_log_aggregator(object):
                                     next_start_time
                                 )
                             )
-                        except (mon_icinga_log_raw_host_alert_data.DoesNotExist,
-                                mon_icinga_log_raw_service_alert_data.DoesNotExist):
+                        except (
+                            mon_icinga_log_raw_host_alert_data.DoesNotExist,
+                            mon_icinga_log_raw_service_alert_data.DoesNotExist,
+                        ):
                             self.log("no log data, hence nothing to aggregate")
                             do_loop = False
 

@@ -31,6 +31,8 @@ from collections import defaultdict
 import psutil
 import pytz
 
+from django.db.models import Q
+
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, mon_check_command, \
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, mon_icinga_log_file, \
@@ -40,7 +42,7 @@ from initat.cluster.backbone.models import device, mon_check_command, \
     mon_icinga_log_raw_base, mon_icinga_log_full_system_dump, \
     mon_icinga_log_raw_host_downtime_data, mon_icinga_log_raw_service_downtime_data
 from initat.md_config_server.config import global_config
-from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
+from initat.md_config_server.icinga_log_reader.log_aggregation import IcingaLogAggregator
 from initat.tools import threading_tools, logging_tools, process_tools
 from .constants import ILRParserEnum, IcingaLogLine
 from .exceptions import *
@@ -98,25 +100,21 @@ class IcingaLogReader(threading_tools.icswProcessObj):
     def update(self):
         """ Called periodically. Only method to be called from outside of this class """
         if global_config["ENABLE_ICINGA_LOG_PARSING"]:
-            self._historic_service_map = {
-                description.replace(" ", "_").lower(): pk for (pk, description) in mon_check_command.objects.all().values_list(
-                    'pk', 'description'
-                )
-            }
+            self._service_map = {}
+            for mcc in mon_check_command.objects.all():
+                self._service_map[mcc.description.replace(" ", "_").lower()] = mcc.idx
+                self._service_map[mcc.uuid] = mcc.idx
+                self._service_map[mcc.idx] = mcc.idx
+
             self._historic_host_map = {
                 entry.full_name: entry.pk for entry in device.objects.all().prefetch_related(
                     'domain_tree_node'
                 )
             }
+            self._valid_host_ids = frozenset(device.objects.all().values_list('pk', flat=True))
 
             # logs might contain ids which are not present any more.
             # we discard such data (i.e. ids not present in these sets:)
-            self._valid_service_ids = frozenset(mon_check_command.objects.all().values_list('pk', flat=True))
-            self._valid_host_ids = frozenset(device.objects.all().values_list('pk', flat=True))
-            self._uuid_to_pk_map = {
-                _val["uuid"]: _val["pk"] for _val in mon_check_command.objects.all().values("uuid", "pk")
-            }
-            self._valid_service_uuids = frozenset(self._uuid_to_pk_map.keys())
 
             parse_start_time = time.time()
             self._update_raw_data()
@@ -132,7 +130,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             # self.log("profiling to {}".format(prof_file_name))
             # import cProfile
             # cProfile.runctx("self._icinga_log_aggregator.update()", globals(), locals(), prof_file_name)
-            icinga_log_aggregator(self).update()
+            IcingaLogAggregator(self).update()
             aggr_end_time = time.time()
             self.log(
                 "aggregation took {}".format(
@@ -149,7 +147,11 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         # check where we last have read for log rotation
         last_read = mon_icinga_log_last_read.objects.get_last_read()
         if last_read:
-            self.log("last icinga read until: {}".format(self._parse_timestamp(last_read.timestamp)))
+            self.log(
+                "last icinga read until: {}".format(
+                    self._parse_timestamp(last_read.timestamp)
+                )
+            )
         else:
             self.log("no earlier icinga log read, reading archive")
             files = glob.glob(
@@ -468,12 +470,15 @@ class IcingaLogReader(threading_tools.icswProcessObj):
 
         if cur_line:  # if at least something has been read
             position = 0 if is_archive_logfile else logfile.tell() - len(line_raw)  # start of last line read
+            # _inode = os.stat()
             self._update_last_read(position, cur_line.timestamp)
             return cur_line.timestamp
         return None
 
     def _update_last_read(self, position, timestamp):
-        """Keep track of which data was read. May be called with older timestamp (will be discarded)."""
+        """
+        Keep track of which data was read. May be called with older timestamp (will be discarded).
+        """
         last_read = mon_icinga_log_last_read.objects.get_last_read()
         if last_read:
             if last_read.timestamp > timestamp:
@@ -519,7 +524,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                 # binary-equivalent to original file and then open it in a
                 # unicode-aware manner
 
-                f = open(tempfilepath, "w")
+                f = open(tempfilepath, "wb")
                 f.write(bz2.BZ2File(logfilepath).read())
                 f.close()
                 actual_logfilepath = tempfilepath
@@ -556,7 +561,11 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         else:
             # log right away
             self.log(
-                "in file {} line {}: {}".format(logfilepath, cur_line_no, exception),
+                "in file {} line {}: {}".format(
+                    logfilepath,
+                    cur_line_no,
+                    exception,
+                ),
                 logging_tools.LOG_LEVEL_WARN
             )
 
@@ -788,18 +797,21 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         # primary method: check special service description
         host, service, service_info = HostServiceIDUtil.parse_host_service_description(service_spec, self.log)
 
+        # print("S", service_spec)
         # print("***", host, service, service_info)
         if host not in self._valid_host_ids:
             host = None  # host has been properly logged, but doesn't exist any more
-        if service in self._valid_service_uuids:
-            # is a valid service uuid, resolve to pk
+        # print("S=", service, service_spec)
+        if service in self._service_map:
+            # is a valid service uuid or pk (intermediate format) resolve to pk
             # print(service, self._uuid_to_pk_map[service])
-            service = self._uuid_to_pk_map[service]
-        elif service in self._valid_service_ids:
-            # is a valid service id
-            pass
+            service = self._service_map[service]
+        elif service_spec.replace(" ", "_").lower() in self._service_map:
+            # historic description
+            service = self._service_map[service_spec.replace(" ", "_").lower()]
         else:
-            service = None  # service has been properly logged, but doesn't exist any more
+            # service has been properly logged, but doesn't exist any more
+            service = None
         # print("->", host, service)
 
         if not host:
@@ -808,8 +820,6 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             # can't use data without host
             raise ILRUnknownHostError("Failed to resolve host: {} (error #2)".format(host_spec))
 
-        if not service:
-            service, service_info = self._resolve_service(service_spec)
         # TODO: generalise to other services
         if not service:
             # raise ILRUnknownServiceError("Failed to resolve service : {} (error #3)".format(service_spec))
@@ -817,7 +827,9 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             # however we want to keep the data, even if it's not nicely identifiable
             service = None
             service_info = service_spec
-
+        # print(" -> ", host, service, service_info)
+        # host and service should be pks
+        # service_info is a string
         return host, service, service_info
 
     def _parse_service_flapping_alert(self, cur_line):
@@ -848,8 +860,10 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             raise ILRMalformedLogEntry("Malformed host flapping entry: {} (error #1)".format(info))
 
         host = self._resolve_host(data[0])
-        flapping_state = {"STARTED": mon_icinga_log_raw_base.START,
-                          "STOPPED": mon_icinga_log_raw_base.STOP}.get(data[1], None)  # format as in db table
+        flapping_state = {
+            "STARTED": mon_icinga_log_raw_base.START,
+            "STOPPED": mon_icinga_log_raw_base.STOP
+        }.get(data[1], None)  # format as in db table
         if not flapping_state:
             raise ILRMalformedLogEntry("Malformed flapping state entry: {} (error #7)".format(info))
         msg = data[2]
@@ -960,48 +974,11 @@ class IcingaLogReader(threading_tools.icswProcessObj):
 
         return host, (service, service_info), state, state_type, msg
 
-    def _resolve_host(self, host_spec):
-        '''
-        @return int: pk of host or None
-        '''
-        # if self._current_host_service_data and timestamp >= self._current_host_service_data.timestamp:
-        #     # use map for data created with this map, guess for earlier ones (see below)
-        #     retval = self._current_host_service_data.hosts.get(host_spec, None)
-        #     if not retval:
-        #         self.log("host lookup for current host {} failed," +
-        #                  "this should not happen".format(host_spec), logging_tools.LOG_LEVEL_WARN)
-        # else:
-
-        retval = self._resolve_host_historic(host_spec)
-
-        return retval
-
-    def _resolve_host_historic(self, host_spec):
+    def _resolve_host(self, host_spec: str) -> int:
         '''
         @return int: pk of host or None
         '''
         return self._historic_host_map.get(host_spec, None)
-
-    def _resolve_service(self, service_spec):
-        # TODO: need to generalize for other service types
-        # if self._current_host_service_data and timestamp >= self._current_host_service_data.timestamp:
-        #     # use map for data created with this map, guess for earlier ones (see below)
-        #     retval = (self._current_host_service_data.services.get(service_spec, None), None)
-        #     if not retval[0]:
-        #         self.log("service lookup for current service {} failed," +
-        #                  "this should not happen".format(service_spec), logging_tools.LOG_LEVEL_WARN)
-        # else:
-        retval = (self._resolve_service_historic(service_spec), service_spec)
-        return retval
-
-    def _resolve_service_historic(self, service_spec):
-        '''
-        @return int: pk of mon_check_command or None
-        '''
-        # we can't really know which services have been defined in the past, so we just check
-        # the check command description. This works only for check commands with 1 service, so
-        # excludes all special commands and cluster commands.
-        return self._historic_service_map.get(service_spec.replace(" ", "_").lower(), None)
 
     def _create_icinga_down_entry(self, when, msg, logfile_db, save):
         host_entry = mon_icinga_log_raw_host_alert_data(
