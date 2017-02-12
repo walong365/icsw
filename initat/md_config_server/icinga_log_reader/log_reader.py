@@ -41,10 +41,11 @@ from initat.cluster.backbone.models import device, mon_check_command, \
     mon_icinga_log_raw_host_downtime_data, mon_icinga_log_raw_service_downtime_data
 from initat.md_config_server.config import global_config
 from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
-from initat.tools import threading_tools, logging_tools
+from initat.tools import threading_tools, logging_tools, process_tools
 # separated to enable flawless import from webfrontend
 
-from initat.md_config_server.icinga_log_reader.log_reader_utils import HostServiceIDUtil
+from .log_reader_utils import HostServiceIDUtil
+from .exceptions import *
 
 __all__ = [
     "IcingaLogReader",
@@ -53,24 +54,21 @@ __all__ = [
 
 
 class IcingaLogReader(threading_tools.icswProcessObj):
-    class malformed_icinga_log_entry(RuntimeError):
-        pass
-
-    class unknown_host_error(RuntimeError):
-        pass
-
-    class unknown_service_error(RuntimeError):
-        pass
-
     @staticmethod
     def get_icinga_log_archive_dir():
-        # TODO: can use value from main_config?
-        return os.path.join(global_config['MD_BASEDIR'], 'var', 'archives')
+        return os.path.join(
+            global_config['MD_BASEDIR'],
+            'var',
+            'archives'
+        )
 
     @staticmethod
     def get_icinga_log_file():
-        # TODO: can use value from main_config?
-        return os.path.join(global_config['MD_BASEDIR'], 'var', '{}.log'.format(global_config['MD_TYPE']))
+        return os.path.join(
+            global_config['MD_BASEDIR'],
+            'var',
+            '{}.log'.format(global_config['MD_TYPE'])
+        )
 
     class constants(object):
         icinga_service_alert = 'SERVICE ALERT'
@@ -113,10 +111,14 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         """ Called periodically. Only method to be called from outside of this class """
         if global_config["ENABLE_ICINGA_LOG_PARSING"]:
             self._historic_service_map = {
-                description.replace(" ", "_").lower(): pk for (pk, description) in mon_check_command.objects.all().values_list('pk', 'description')
+                description.replace(" ", "_").lower(): pk for (pk, description) in mon_check_command.objects.all().values_list(
+                    'pk', 'description'
+                )
             }
             self._historic_host_map = {
-                entry.full_name: entry.pk for entry in device.objects.all().prefetch_related('domain_tree_node')
+                entry.full_name: entry.pk for entry in device.objects.all().prefetch_related(
+                    'domain_tree_node'
+                )
             }
 
             # logs might contain ids which are not present any more.
@@ -126,7 +128,12 @@ class IcingaLogReader(threading_tools.icswProcessObj):
 
             parse_start_time = time.time()
             self._update_raw_data()
-            self.log("parsing took {}".format(logging_tools.get_diff_time_str(time.time() - parse_start_time)))
+            parse_end_time = time.time()
+            self.log(
+                "parsing took {}".format(
+                    logging_tools.get_diff_time_str(parse_end_time - parse_start_time)
+                )
+            )
 
             aggr_start_time = time.time()
             # prof_file_name = "/tmp/prof.out.{}".format(time.time())
@@ -134,7 +141,12 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             # import cProfile
             # cProfile.runctx("self._icinga_log_aggregator.update()", globals(), locals(), prof_file_name)
             icinga_log_aggregator(self).update()
-            self.log("aggregation took {}".format(logging_tools.get_diff_time_str(time.time() - aggr_start_time)))
+            aggr_end_time = time.time()
+            self.log(
+                "aggregation took {}".format(
+                    logging_tools.get_diff_time_str(aggr_end_time - aggr_start_time)
+                )
+            )
 
     def _update_raw_data(self):
         self.log("checking icinga log")
@@ -165,15 +177,24 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                 last_read = mon_icinga_log_last_read()
                 # safe time in past, but not too far cause we check logs of each day
                 last_read.timestamp = int(
-                    ((datetime.datetime.now() - datetime.timedelta(days=1)) - datetime.datetime(1970, 1, 1)).total_seconds()
+                    (
+                        (
+                            datetime.datetime.now() - datetime.timedelta(days=1)
+                        ) - datetime.datetime(1970, 1, 1)
+                    ).total_seconds()
                 )
                 last_read.position = 0
 
         try:
             logfile = codecs.open(self.get_icinga_log_file(), "r", "utf-8", errors='replace')
         except IOError as e:
-            self.log("Failed to open log file {} : {}".format(self.get_icinga_log_file(), e),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "Failed to open log file {} : {}".format(
+                    self.get_icinga_log_file(),
+                    process_tools.get_except_info(),
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
             # check for log rotation
             logfile.seek(last_read.position)
@@ -256,10 +277,13 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             if self._warnings:
                 self.log("warnings while parsing:")
                 for warning, multiplicity in self._warnings.items():
-                    self.log("{} ({})".format(warning, multiplicity), logging_tools.LOG_LEVEL_WARN)
-                self.log("end of warnings while parsing:")
+                    self.log(
+                        "{} ({})".format(warning, multiplicity),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
+                self.log("end of warnings while parsing")
 
-    def parse_log_file(self, logfile, logfilepath=None, start_at=None):
+    def parse_log_file(self, logfile: object, logfilepath: str=None, start_at=None):
         '''
         :param file logfile: Parsing starts at position of logfile. Must be the main icinga log file.
         :param logfilepath: Path to logfile if it is an archive logfile, not the current one
@@ -299,8 +323,9 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                     # self.log("detected icinga shutdown by log")
                     # create alerts for all devices: indeterminate (icinga not running)
                     # note: this relies on the fact that on startup, icinga writes a status update on start
-                    host_entry, service_entry, host_flapping_entry, service_flapping_entry = \
-                        self._create_icinga_down_entry(self._parse_timestamp(timestamp), msg, logfile_db, save=False)
+                    host_entry, service_entry, host_flapping_entry, service_flapping_entry = self._create_icinga_down_entry(
+                        self._parse_timestamp(timestamp), msg, logfile_db, save=False
+                    )
                     host_states.append(host_entry)
                     service_states.append(service_entry)
                     host_flapping_states.append(host_flapping_entry)
@@ -312,21 +337,25 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             # check for regular log entry
             try:
                 cur_line = self._parse_line(line_raw.rstrip("\n"), line_num if is_archive_logfile else None)
-                # only know line no for archive files
+                # only know line number for archive files
                 # we want to discard older (reread) entries if start_at is given,
                 # except for current states (these are at the beginning of each log file)
                 # (we don't need the initial states here because they don't occur at turnovers)
-                if start_at is None or (cur_line.timestamp > start_at or
-                                        cur_line.kind in (self.constants.icinga_current_host_state,
-                                                          self.constants.icinga_current_service_state)):
-
-                    if cur_line.kind in\
-                            (self.constants.icinga_current_host_state, self.constants.icinga_current_service_state,
-                             self.constants.icinga_initial_host_state, self.constants.icinga_initial_service_state):
+                if start_at is None or (
+                    cur_line.timestamp > start_at or cur_line.kind in (
+                        self.constants.icinga_current_host_state,
+                        self.constants.icinga_current_service_state
+                    )
+                ):
+                    if cur_line.kind in (
+                        self.constants.icinga_current_host_state, self.constants.icinga_current_service_state,
+                        self.constants.icinga_initial_host_state, self.constants.icinga_initial_service_state
+                    ):
                         full_system_dump_times.add(cur_line.timestamp)
-                    if cur_line.kind in\
-                            (self.constants.icinga_service_alert, self.constants.icinga_current_service_state,
-                             self.constants.icinga_initial_service_state):
+                    if cur_line.kind in (
+                        self.constants.icinga_service_alert, self.constants.icinga_current_service_state,
+                        self.constants.icinga_initial_service_state
+                    ):
                         entry = self.create_service_alert_entry(
                             cur_line,
                             cur_line.kind == self.constants.icinga_current_service_state,
@@ -337,8 +366,10 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                         if entry:
                             stats['service alerts'] += 1
                             service_states.append(entry)
-                    elif cur_line.kind in (self.constants.icinga_host_alert, self.constants.icinga_current_host_state,
-                                           self.constants.icinga_initial_host_state):
+                    elif cur_line.kind in (
+                        self.constants.icinga_host_alert, self.constants.icinga_current_host_state,
+                        self.constants.icinga_initial_host_state
+                    ):
                         entry = self.create_host_alert_entry(
                             cur_line,
                             cur_line.kind == self.constants.icinga_current_host_state,

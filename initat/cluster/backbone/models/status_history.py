@@ -24,6 +24,7 @@ import itertools
 import logging
 import operator
 from collections import defaultdict
+from functools import reduce
 
 import django
 from django.db import models
@@ -32,7 +33,6 @@ from django.db.models import Max, Min, Prefetch, Q
 from initat.cluster.backbone.models import mon_check_command
 from initat.cluster.backbone.models.functions import db_limit_1
 from initat.tools import server_mixins, logging_tools
-from functools import reduce
 
 logger = logging.getLogger("cluster.history")
 
@@ -238,7 +238,7 @@ class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
 class mon_icinga_log_full_system_dump(models.Model):
     # save dates of all full system dumps,
     # i.e. with log_rotation_state = True or inital_state = True in (host|service)-alerts table
-    # this is needed for faster access, the alerts-tables are too huge
+    # this is needed for faster access, the alert-tables are too huge
     idx = models.AutoField(primary_key=True)
     date = models.DateTimeField(db_index=True, unique=True)
 

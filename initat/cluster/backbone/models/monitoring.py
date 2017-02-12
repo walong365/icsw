@@ -21,8 +21,8 @@
 
 import enum
 import json
-import uuid
 import re
+import uuid
 from enum import Enum
 
 from django.conf import settings
@@ -32,9 +32,9 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer
-from initat.tools import logging_tools
 from initat.md_config_server.base_config.mon_base_config import StructuredContentEmitter, \
     build_safe_name
+from initat.tools import logging_tools
 
 __all__ = [
     "mon_host_cluster",
@@ -424,7 +424,6 @@ class mon_check_command(models.Model):
     json_linked = models.BooleanField(default=False)
     # for commands from a meta-command
     special_parent = models.ForeignKey("self", null=True, related_name="special_child")
-
 
     def get_configured_device_pks(self):
         if self.config_rel.all().count():

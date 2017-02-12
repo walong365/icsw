@@ -27,8 +27,8 @@ import datetime
 import django.utils.timezone
 from django.db import models
 
-from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.models.domain import category
+from initat.cluster.backbone.models.functions import duration
 
 
 __all__ = [

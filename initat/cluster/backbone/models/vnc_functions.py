@@ -34,7 +34,7 @@
 #  Copyright (c) 1988,1989,1990,1991,1992 by Richard Outerbridge.
 #  (GEnie : OUTER; CIS : [71755,204]) Graven Imagery, 1992.
 #
-
+""" helper functions for VNC display """
 
 import pdb
 import sys
