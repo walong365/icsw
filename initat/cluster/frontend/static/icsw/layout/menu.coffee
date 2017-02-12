@@ -1176,6 +1176,7 @@ menu_module = angular.module(
         $scope.struct.current_user = undefined
         $scope.struct.selection_list.length = 0
         $scope.struct.em_selection_list.length = 0
+        _update_selection_txt()
     )
 
     $scope.device_selection = ($event, side) ->
@@ -1251,6 +1252,7 @@ menu_module = angular.module(
         return _list
 
     _update_selection_txt = () ->
+        # console.log "ust"
         _em_list = _get_list($scope.struct.em_selection_list)
         _list = _get_list($scope.struct.selection_list)
         # console.log $scope.struct.em_selection_list.length, $scope.struct.selection_list.length

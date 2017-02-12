@@ -289,9 +289,9 @@ angular.module(
     }
 ]).directive('icswToolsShowHideColumns',
 [
-    "$q", "$templateCache",
+    "$q", "$templateCache", "icswUserService",
 (
-    $q, $templateCache,
+    $q, $templateCache, icswUserService,
 ) ->
     return {
         restrict: 'EA'
@@ -302,6 +302,7 @@ angular.module(
             columns_list: "=columnsList"
             columns_from_settings: "=columnsFromSettings"
             columns_target: "=columnsTarget"
+            user_var_name: "=icswUserVarName"
         }
         link: (scope, element, attrs) ->
             scope.struct = {
@@ -315,6 +316,12 @@ angular.module(
                 if scope.columns_target?
                     for key, value of scope.struct.show_column
                         scope.columns_target[key] = value
+                if scope.user_var_name?
+                    _store_user_var()
+
+            _store_user_var = () ->
+                _user = icswUserService.get()
+                _user.set_var(scope.__var_name, angular.toJson(scope.struct.show_column), "j")
 
             set_new_columns = (new_columns) ->
                 for k in _.keys(scope.struct.show_column)
@@ -331,6 +338,7 @@ angular.module(
                         # per default new columns are shown
                         scope.struct.show_column[entry] = true
                 if attrs.columnsFromSettings?
+                    # possible path: set columns via columns-from-settings
                     scope.$watch(
                         "columns_from_settings"
                         (new_val) ->
@@ -340,6 +348,21 @@ angular.module(
                                 scope.callback(scope.struct.show_column)
                             _copy_columns()
                     )
+                else if scope.user_var_name?
+                    # another possible path: set columns via user-variable
+                    _user = icswUserService.get()
+                    scope.__var_name = "$$show_columns$$-#{scope.user_var_name}"
+                    if _user.has_var(scope.__var_name)
+                        # get content
+                        _content = angular.fromJson(_user.get_var(scope.__var_name).json_value)
+                        # iterate
+                        for key, value of _content
+                            # set if key is known
+                            if key of scope.struct.show_column
+                                scope.struct.show_column[key] = value
+                    # create new user_var
+                    _store_user_var()
+
                 if scope.callback?
                     scope.callback(scope.struct.show_column)
                 _copy_columns()
@@ -354,11 +377,12 @@ angular.module(
                 set_new_columns(scope.columns.split(" "))
 
             if attrs.columnsList?
-                scope:$watch(
+                scope.$watch(
                     "columns_list"
                     (new_val) ->
                         console.log "ncls", new_val
                 )
+
      }
 ]).directive("icswToolsFloatingTableHeader",
 [

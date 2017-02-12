@@ -634,21 +634,20 @@
                 <thead>
                     <tr>
                         <td colspan="99">
-                            <div class="row">
-                                <div class="col-sm-3" style="width:250px;">
-                                    <div class="input-group">
-                                        <input st-search="" class="form-control" placeholder="filter">
-                                        </input>
-                                    </div>
-                                </div>
+                            <div class="form-inline">
                                 <div
                                     icsw-tools-pagination
                                     st-items-by-page="30"
                                     st-displayed-pages="11"
                                     possible-items-by-page="15,30,100,200"
-                                    class="col-sm-7"
+                                    class="pull-left"
                                     style="width:350px;"
                                 ></div>
+                                <input
+                                    st-search=""
+                                    class="form-control"
+                                    placeholder="filter"
+                                ></input>
                             </div>
                         </td>
                     </tr>
@@ -657,9 +656,11 @@
                             <icsw-tools-show-hide-columns
                                 columns="Enabled SystemCommand SpecialCommand Volatile PerfData IsEventHandler EvHEnabled Linked"
                                 columns-target="show_columns"
+                                icsw-user-var-name="'shc-monitor-checks'"
                             ></icsw-tools-show-hide-columns>
                         </td>
                     </tr>
+                    <tr icsw-mon-check-command-header></tr>
                     <tr>
                         <td colspan="4"></td>
                         <td ng-show="show_columns.Enabled">
@@ -711,7 +712,6 @@
                             ></icsw-table-filter>
                         </td>
                     </tr>
-                    <tr icsw-mon-check-command-header></tr>
                 </thead>
                 <tbody>
                     <tr
@@ -727,7 +727,7 @@
 
 <script type="text/ng-template" id="icsw.mon.check.command.header">
     <th st-sort="name">Name</th>
-    <th>#Configs</th>
+    <th st-sort="obj.config_rel.length">#Configs</th>
     <th>Template</th>
     <th st-sort="description">Description</th>
     <th ng-show="show_columns.Enabled">Enabled</th>

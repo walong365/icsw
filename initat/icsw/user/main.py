@@ -263,7 +263,6 @@ def get_quota_str(uqs):
 
 
 def _get_user(user_name):
-    user_name = user_name.decode("unicode_escape")
     from initat.cluster.backbone.models import user
     from django.db.models import Q
     _uo = user.objects
@@ -323,9 +322,9 @@ def do_info(cur_opts, log_com):
             _res = subprocess.check_output(
                 _cmd.split(),
                 stderr=subprocess.STDOUT,
-            )
+            ).decode("utf-8")
         except subprocess.CalledProcessError as sb_exc:
-            _res = sb_exc.output
+            _res = sb_exc.output.decode("utf-8")
             # print("error calling '{}': {}".format(_cmd, process_tools.get_except_info()))
             _ret_state = 1
         except OSError as sb_exc:
