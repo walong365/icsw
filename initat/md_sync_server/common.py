@@ -225,9 +225,9 @@ class LiveSocket(object):
                 value="LivestatusEnum",
                 names=_enum_list,
             )
-            e_time = time.time()
         else:
             log_com("num_list is empty, skipping init", logging_tools.LOG_LEVEL_WARN)
+        e_time = time.time()
         log_com("init_enum took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
 
     @classmethod

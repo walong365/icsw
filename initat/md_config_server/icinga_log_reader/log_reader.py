@@ -26,7 +26,7 @@ import glob
 import os
 import tempfile
 import time
-from collections import namedtuple, defaultdict
+from collections import defaultdict
 
 import psutil
 import pytz
@@ -42,10 +42,9 @@ from initat.cluster.backbone.models import device, mon_check_command, \
 from initat.md_config_server.config import global_config
 from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
 from initat.tools import threading_tools, logging_tools, process_tools
-# separated to enable flawless import from webfrontend
-
-from .log_reader_utils import HostServiceIDUtil
+from .constants import ILRParserEnum, IcingaLogLine
 from .exceptions import *
+from .log_reader_utils import HostServiceIDUtil
 
 __all__ = [
     "IcingaLogReader",
@@ -70,24 +69,6 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             '{}.log'.format(global_config['MD_TYPE'])
         )
 
-    class constants(object):
-        icinga_service_alert = 'SERVICE ALERT'
-        icinga_current_service_state = 'CURRENT SERVICE STATE'
-        icinga_initial_service_state = 'INITIAL SERVICE STATE'
-        icinga_service_flapping_alert = 'SERVICE FLAPPING ALERT'
-        icinga_service_notification = 'SERVICE NOTIFICATION'
-        icinga_service_downtime_alert = 'SERVICE DOWNTIME ALERT'
-
-        icinga_host_alert = 'HOST ALERT'
-        icinga_current_host_state = 'CURRENT HOST STATE'
-        icinga_initial_host_state = 'INITIAL HOST STATE'
-        icinga_host_notification = 'HOST NOTIFICATION'
-        icinga_host_flapping_alert = 'HOST FLAPPING ALERT'
-        icinga_host_downtime_alert = 'HOST DOWNTIME ALERT'
-
-        always_collect_warnings = True
-
-    #
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(
@@ -97,9 +78,16 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             context=self.zmq_context,
             init_logger=True
         )
+        # some global flags
+        self.always_collect_warnings = True
         db_tools.close_connection()
 
-        self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=False)
+        self.register_timer(
+            self.update,
+            30 if global_config["DEBUG"] else 300,
+            instant=False,
+            first_timeout=5,
+        )
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -125,6 +113,10 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             # we discard such data (i.e. ids not present in these sets:)
             self._valid_service_ids = frozenset(mon_check_command.objects.all().values_list('pk', flat=True))
             self._valid_host_ids = frozenset(device.objects.all().values_list('pk', flat=True))
+            self._uuid_to_pk_map = {
+                _val["uuid"]: _val["pk"] for _val in mon_check_command.objects.all().values("uuid", "pk")
+            }
+            self._valid_service_uuids = frozenset(self._uuid_to_pk_map.keys())
 
             parse_start_time = time.time()
             self._update_raw_data()
@@ -206,7 +198,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             if last_read_line:  # empty string (=False) means end, else we at least have '\n'
                 try:
                     cur_line = self._parse_line(last_read_line)
-                except self.malformed_icinga_log_entry:
+                except ILRMalformedLogEntry:
                     pass
                 else:
                     same_logfile_as_last_read = cur_line.timestamp == last_read.timestamp
@@ -252,7 +244,9 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                 # read archive
                 self.parse_archive_files(files_to_check, start_at=last_read.timestamp)
                 if not self["exit_requested"]:
-                    self.log("finished catching up with archive, continuing with current icinga log file")
+                    self.log(
+                        "finished catching up with archive, continuing with current icinga log file"
+                    )
                     # start reading cur file
                     logfile.seek(0)
                     self.parse_log_file(logfile)
@@ -273,12 +267,12 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                 self.log(msg)
                 self._create_icinga_down_entry(cluster_timezone.localize(datetime.datetime.now()), msg, None, save=True)
 
-        if self.constants.always_collect_warnings or not global_config["DEBUG"]:
+        if self.always_collect_warnings or not global_config["DEBUG"]:
             if self._warnings:
                 self.log("warnings while parsing:")
                 for warning, multiplicity in self._warnings.items():
                     self.log(
-                        "{} ({})".format(warning, multiplicity),
+                        "    {} ({})".format(warning, multiplicity),
                         logging_tools.LOG_LEVEL_WARN
                     )
                 self.log("end of warnings while parsing")
@@ -318,7 +312,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             line_num += 1
             # check for special entry
             try:
-                timestamp, msg = self._parse_line(line_raw.rstrip("\n"), only_parse_timestamp=True)
+                timestamp, msg = self._parse_line_timestamp(line_raw.rstrip("\n"))
                 if msg.startswith("Successfully shutdown"):
                     # self.log("detected icinga shutdown by log")
                     # create alerts for all devices: indeterminate (icinga not running)
@@ -331,35 +325,41 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                     host_flapping_states.append(host_flapping_entry)
                     service_flapping_states.append(service_flapping_entry)
 
-            except self.malformed_icinga_log_entry as e:
+            except ILRMalformedLogEntry as e:
                 self._handle_warning(e, logfilepath, cur_line.line_no if cur_line else None)
 
             # check for regular log entry
             try:
-                cur_line = self._parse_line(line_raw.rstrip("\n"), line_num if is_archive_logfile else None)
+                cur_line = self._parse_line(
+                    line_raw.rstrip("\n"),
+                    line_num if is_archive_logfile else None
+                )
                 # only know line number for archive files
                 # we want to discard older (reread) entries if start_at is given,
                 # except for current states (these are at the beginning of each log file)
                 # (we don't need the initial states here because they don't occur at turnovers)
                 if start_at is None or (
                     cur_line.timestamp > start_at or cur_line.kind in (
-                        self.constants.icinga_current_host_state,
-                        self.constants.icinga_current_service_state
+                        ILRParserEnum.icinga_current_host_state,
+                        ILRParserEnum.icinga_current_service_state
                     )
                 ):
                     if cur_line.kind in (
-                        self.constants.icinga_current_host_state, self.constants.icinga_current_service_state,
-                        self.constants.icinga_initial_host_state, self.constants.icinga_initial_service_state
+                        ILRParserEnum.icinga_current_host_state,
+                        ILRParserEnum.icinga_current_service_state,
+                        ILRParserEnum.icinga_initial_host_state,
+                        ILRParserEnum.icinga_initial_service_state,
                     ):
                         full_system_dump_times.add(cur_line.timestamp)
                     if cur_line.kind in (
-                        self.constants.icinga_service_alert, self.constants.icinga_current_service_state,
-                        self.constants.icinga_initial_service_state
+                        ILRParserEnum.icinga_service_alert,
+                        ILRParserEnum.icinga_current_service_state,
+                        ILRParserEnum.icinga_initial_service_state
                     ):
                         entry = self.create_service_alert_entry(
                             cur_line,
-                            cur_line.kind == self.constants.icinga_current_service_state,
-                            cur_line.kind == self.constants.icinga_initial_service_state,
+                            cur_line.kind == ILRParserEnum.icinga_current_service_state,
+                            cur_line.kind == ILRParserEnum.icinga_initial_service_state,
                             logfilepath,
                             logfile_db
                         )
@@ -367,45 +367,46 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                             stats['service alerts'] += 1
                             service_states.append(entry)
                     elif cur_line.kind in (
-                        self.constants.icinga_host_alert, self.constants.icinga_current_host_state,
-                        self.constants.icinga_initial_host_state
+                        ILRParserEnum.icinga_host_alert,
+                        ILRParserEnum.icinga_current_host_state,
+                        ILRParserEnum.icinga_initial_host_state
                     ):
                         entry = self.create_host_alert_entry(
                             cur_line,
-                            cur_line.kind == self.constants.icinga_current_host_state,
-                            cur_line.kind == self.constants.icinga_initial_host_state,
+                            cur_line.kind == ILRParserEnum.icinga_current_host_state,
+                            cur_line.kind == ILRParserEnum.icinga_initial_host_state,
                             logfilepath,
                             logfile_db
                         )
                         if entry:
                             stats['host alerts'] += 1
                             host_states.append(entry)
-                    elif cur_line.kind == self.constants.icinga_service_flapping_alert:
+                    elif cur_line.kind == ILRParserEnum.icinga_service_flapping_alert:
                         entry = self.create_service_flapping_entry(cur_line, logfilepath, logfile_db)
                         if entry:
                             stats['service flapping alerts'] += 1
                             service_flapping_states.append(entry)
-                    elif cur_line.kind == self.constants.icinga_host_flapping_alert:
+                    elif cur_line.kind == ILRParserEnum.icinga_host_flapping_alert:
                         entry = self.create_host_flapping_entry(cur_line, logfilepath, logfile_db)
                         if entry:
                             stats['host flapping alerts'] += 1
                             host_flapping_states.append(entry)
-                    elif cur_line.kind == self.constants.icinga_service_notification:
+                    elif cur_line.kind == ILRParserEnum.icinga_service_notification:
                         entry = self.create_service_notification_entry(cur_line, logfilepath, logfile_db)
                         if entry:
                             stats['service notification'] += 1
                             service_notifications.append(entry)
-                    elif cur_line.kind == self.constants.icinga_host_notification:
+                    elif cur_line.kind == ILRParserEnum.icinga_host_notification:
                         entry = self.create_host_notification_entry(cur_line, logfilepath, logfile_db)
                         if entry:
                             stats['host notification'] += 1
                             host_notifications.append(entry)
-                    elif cur_line.kind == self.constants.icinga_host_downtime_alert:
+                    elif cur_line.kind == ILRParserEnum.icinga_host_downtime_alert:
                         entry = self.create_host_downtime_entry(cur_line, logfilepath, logfile_db)
                         if entry:
                             stats['host downtime alert'] += 1
                             host_downtimes.append(entry)
-                    elif cur_line.kind == self.constants.icinga_service_downtime_alert:
+                    elif cur_line.kind == ILRParserEnum.icinga_service_downtime_alert:
                         entry = self.create_service_downtime_entry(cur_line, logfilepath, logfile_db)
                         if entry:
                             stats['service downtime alert'] += 1
@@ -415,7 +416,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                 else:
                     old_ignored += 1
 
-            except self.malformed_icinga_log_entry as e:
+            except ILRMalformedLogEntry as e:
                 self._handle_warning(e, logfilepath, cur_line.line_no if cur_line else None)
 
         self.log(
@@ -453,10 +454,17 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             except mon_icinga_log_full_system_dump.MultipleObjectsReturned:
                 # There really is no way how this can happen. However, it now has been
                 # observed twice. Ignore it since this isn't actually a problem
-                self.log("Detected multiple objects for time {}, ignoring".format(
-                    self._parse_timestamp(timestamp)
-                ))
-        self.log("read {} lines, ignored {} old ones".format(line_num, old_ignored))
+                self.log(
+                    "Detected multiple objects for time {}, ignoring".format(
+                        self._parse_timestamp(timestamp)
+                    )
+                )
+        self.log(
+            "read {} lines, ignored {} old ones".format(
+                line_num,
+                old_ignored,
+            )
+        )
 
         if cur_line:  # if at least something has been read
             position = 0 if is_archive_logfile else logfile.tell() - len(line_raw)  # start of last line read
@@ -472,7 +480,12 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                 return last_read  # tried to update with older timestamp
         else:
             last_read = mon_icinga_log_last_read()
-        self.log("updating last read icinga log to pos: {} time: {}".format(position, timestamp))
+        self.log(
+            "updating last read icinga log to pos: {} time: {}".format(
+                position,
+                timestamp,
+            )
+        )
         last_read.timestamp = timestamp
         last_read.position = position
         last_read.save()
@@ -537,7 +550,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         return retval
 
     def _handle_warning(self, exception, logfilepath, cur_line_no):
-        if self.constants.always_collect_warnings or not global_config["DEBUG"]:
+        if self.always_collect_warnings or not global_config["DEBUG"]:
             # in release mode, we don't want spam so we collect the errors and log each according to the multiplicity
             self._warnings[str(exception)] += 1
         else:
@@ -551,7 +564,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         retval = None
         try:
             host, state, state_type, msg = self._parse_host_alert(cur_line)
-        except self.unknown_host_error as e:
+        except ILRUnknownHostError as e:
             self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
             retval = mon_icinga_log_raw_host_alert_data(
@@ -571,7 +584,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         try:
             host, (service, service_info), state, state_type, msg = self._parse_service_alert(cur_line)
             # TODO: need to generalize for other service types
-        except (self.unknown_host_error, self.unknown_service_error) as e:
+        except (ILRUnknownHostError, ILRUnknownServiceError) as e:
             self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
             retval = mon_icinga_log_raw_service_alert_data(
@@ -592,7 +605,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         retval = None
         try:
             host, (service, service_info), flapping_state, msg = self._parse_service_flapping_alert(cur_line)
-        except (self.unknown_host_error, self.unknown_service_error) as e:
+        except (ILRUnknownHostError, ILRUnknownServiceError) as e:
             self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
             retval = mon_icinga_log_raw_service_flapping_data(
@@ -610,7 +623,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         retval = None
         try:
             host, flapping_state, msg = self._parse_host_flapping_alert(cur_line)
-        except (self.unknown_host_error, self.unknown_service_error) as e:
+        except (ILRUnknownHostError, ILRUnknownServiceError) as e:
             self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
             retval = mon_icinga_log_raw_host_flapping_data(
@@ -627,7 +640,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         try:
             user, host, (service, service_info), state, notification_type, msg =\
                 self._parse_service_notification(cur_line)
-        except (self.unknown_host_error, self.unknown_service_error) as e:
+        except (ILRUnknownHostError, ILRUnknownServiceError) as e:
             self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
             retval = mon_icinga_log_raw_service_notification_data(
@@ -647,7 +660,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         retval = None
         try:
             user, host, state, notification_type, msg = self._parse_host_notification(cur_line)
-        except (self.unknown_host_error, self.unknown_service_error) as e:
+        except (ILRUnknownHostError, ILRUnknownServiceError) as e:
             self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
             retval = mon_icinga_log_raw_host_notification_data(
@@ -665,7 +678,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         retval = None
         try:
             host, state, msg = self._parse_host_downtime_alert(cur_line)
-        except (self.unknown_host_error, self.unknown_service_error) as e:
+        except (ILRUnknownHostError, ILRUnknownServiceError) as e:
             self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
             retval = mon_icinga_log_raw_host_downtime_data(
@@ -681,7 +694,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         retval = None
         try:
             host, (service, service_info), state, msg = self._parse_service_downtime_alert(cur_line)
-        except (self.unknown_host_error, self.unknown_service_error) as e:
+        except (ILRUnknownHostError, ILRUnknownServiceError) as e:
             self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
             retval = mon_icinga_log_raw_service_downtime_data(
@@ -695,37 +708,51 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             )
         return retval
 
-    icinga_log_line = namedtuple('icinga_log_line', ('timestamp', 'kind', 'info', 'line_no'))
-
     @classmethod
-    def _parse_line(cls, line, line_no=None, only_parse_timestamp=False):
+    def _parse_line_timestamp(cls, line, line_no=None):
         '''
-        :return icinga_log_line
+        :return parsed timestamp and info_raw
         '''
         # format is:
         # [timestamp] line_type: info
         data = line.split(" ", 1)
         if len(data) != 2:
-            raise cls.malformed_icinga_log_entry("Malformed line {}: {} (error #1)".format(line_no, line))
+            raise ILRMalformedLogEntry("Malformed line {}: {} (error #1)".format(line_no, line))
         timestamp_raw, info_raw = data
 
         try:
             timestamp = int(timestamp_raw[1:-1])  # remove first and last char
         except:
-            raise cls.malformed_icinga_log_entry("Malformed line {}: {} (error #2)".format(line_no, line))
+            raise ILRMalformedLogEntry(
+                "Malformed line {}: {} (error #2)".format(line_no, line)
+            )
 
-        if only_parse_timestamp:
-            return timestamp, info_raw
+        return timestamp, info_raw
 
+    @classmethod
+    def _parse_line(cls, line: str, line_no=None):
+        """
+        :param line: line as string
+        :param line_no: optional
+        :return: parsed line as namedtuple
+        """
+        timestamp, info_raw = cls._parse_line_timestamp(line, line_no)
         data2 = info_raw.split(": ", 1)
         if len(data2) == 2:
             kind, info = data2
+            try:
+                kind_enum = ILRParserEnum(kind)
+            except:
+                print("-" * 20)
+                print("*", line, line_no)
+                print("X:", kind)
+                raise
+            _t_line = IcingaLogLine(timestamp, kind_enum, info, line_no)
         else:
             # no line formatted as we need it
-            kind = None
             info = info_raw
-
-        return cls.icinga_log_line(timestamp, kind, info, line_no)
+            _t_line = IcingaLogLine(timestamp, None, info, line_no)
+        return _t_line
 
     def _parse_host_alert(self, cur_line: str) -> tuple:
         '''
@@ -737,19 +764,19 @@ class IcingaLogReader(threading_tools.icswProcessObj):
 
         data = info.split(";", 4)
         if len(data) != 5:
-            raise self.malformed_icinga_log_entry("Malformed host entry: {} (error #1)".format(info))
+            raise ILRMalformedLogEntry("Malformed host entry: {} (error #1)".format(info))
 
         host = self._resolve_host(data[0])
         if not host:
-            raise self.unknown_host_error("Failed to resolve host: {} (error #2)".format(data[0]))
+            raise ILRUnknownHostError("Failed to resolve host: {} (error #2)".format(data[0]))
 
         state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[1], None)  # format as in db table
         if not state:
-            raise self.malformed_icinga_log_entry("Malformed state entry: {} (error #3) {} {} ".format(info))
+            raise ILRMalformedLogEntry("Malformed state entry: {} (error #3) {} {} ".format(info))
 
         state_type = {"SOFT": "S", "HARD": "H"}.get(data[2], None)  # format as in db table
         if not state_type:
-            raise self.malformed_icinga_log_entry("Malformed host entry: {} (error #4)".format(info))
+            raise ILRMalformedLogEntry("Malformed host entry: {} (error #4)".format(info))
 
         msg = data[4]
 
@@ -761,22 +788,31 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         # primary method: check special service description
         host, service, service_info = HostServiceIDUtil.parse_host_service_description(service_spec, self.log)
 
+        # print("***", host, service, service_info)
         if host not in self._valid_host_ids:
             host = None  # host has been properly logged, but doesn't exist any more
-        if service not in self._valid_service_ids:
+        if service in self._valid_service_uuids:
+            # is a valid service uuid, resolve to pk
+            # print(service, self._uuid_to_pk_map[service])
+            service = self._uuid_to_pk_map[service]
+        elif service in self._valid_service_ids:
+            # is a valid service id
+            pass
+        else:
             service = None  # service has been properly logged, but doesn't exist any more
+        # print("->", host, service)
 
         if not host:
             host = self._resolve_host(host_spec)
         if not host:
             # can't use data without host
-            raise self.unknown_host_error("Failed to resolve host: {} (error #2)".format(host_spec))
+            raise ILRUnknownHostError("Failed to resolve host: {} (error #2)".format(host_spec))
 
         if not service:
             service, service_info = self._resolve_service(service_spec)
         # TODO: generalise to other services
         if not service:
-            # raise self.unknown_service_error("Failed to resolve service : {} (error #3)".format(service_spec))
+            # raise ILRUnknownServiceError("Failed to resolve service : {} (error #3)".format(service_spec))
             # this is not an entry with new format and also not a uniquely identifiable one
             # however we want to keep the data, even if it's not nicely identifiable
             service = None
@@ -790,14 +826,14 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         info = cur_line.info
         data = info.split(";", 3)
         if len(data) != 4:
-            raise self.malformed_icinga_log_entry("Malformed service flapping entry: {} (error #1)".format(info))
+            raise ILRMalformedLogEntry("Malformed service flapping entry: {} (error #1)".format(info))
 
         host, service, service_info = self._parse_host_service(data[0], data[1])
 
         flapping_state = {"STARTED": mon_icinga_log_raw_base.START,
                           "STOPPED": mon_icinga_log_raw_base.STOP}.get(data[2], None)  # format as in db table
         if not flapping_state:
-            raise self.malformed_icinga_log_entry("Malformed flapping state entry: {} (error #7)".format(info))
+            raise ILRMalformedLogEntry("Malformed flapping state entry: {} (error #7)".format(info))
 
         msg = data[3]
 
@@ -809,13 +845,13 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         info = cur_line.info
         data = info.split(";", 2)
         if len(data) != 3:
-            raise self.malformed_icinga_log_entry("Malformed host flapping entry: {} (error #1)".format(info))
+            raise ILRMalformedLogEntry("Malformed host flapping entry: {} (error #1)".format(info))
 
         host = self._resolve_host(data[0])
         flapping_state = {"STARTED": mon_icinga_log_raw_base.START,
                           "STOPPED": mon_icinga_log_raw_base.STOP}.get(data[1], None)  # format as in db table
         if not flapping_state:
-            raise self.malformed_icinga_log_entry("Malformed flapping state entry: {} (error #7)".format(info))
+            raise ILRMalformedLogEntry("Malformed flapping state entry: {} (error #7)".format(info))
         msg = data[2]
         return host, flapping_state, msg
 
@@ -825,7 +861,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         info = cur_line.info
         data = info.split(";", 3)
         if len(data) != 4:
-            raise self.malformed_icinga_log_entry("Malformed service downtime entry: {} (error #1)".format(info))
+            raise ILRMalformedLogEntry("Malformed service downtime entry: {} (error #1)".format(info))
 
         host, service, service_info = self._parse_host_service(data[0], data[1])
 
@@ -834,7 +870,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             "STOPPED": mon_icinga_log_raw_base.STOP
         }.get(data[2], None)  # format as in db table
         if not state:
-            raise self.malformed_icinga_log_entry("Malformed service downtime state entry: {} (error #2)".format(info))
+            raise ILRMalformedLogEntry("Malformed service downtime state entry: {} (error #2)".format(info))
 
         msg = data[3]
 
@@ -847,14 +883,14 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         info = cur_line.info
         data = info.split(";", 2)
         if len(data) != 3:
-            raise self.malformed_icinga_log_entry("Malformed host downtime entry: {} (error #1)".format(info))
+            raise ILRMalformedLogEntry("Malformed host downtime entry: {} (error #1)".format(info))
         host = self._resolve_host(data[0])
         state = {
             "STARTED": mon_icinga_log_raw_base.START,
             "STOPPED": mon_icinga_log_raw_base.STOP
         }.get(data[1], None)  # format as in db table
         if not state:
-            raise self.malformed_icinga_log_entry("Malformed host downtime state entry: {} (error #2)".format(info))
+            raise ILRMalformedLogEntry("Malformed host downtime state entry: {} (error #2)".format(info))
         msg = data[2]
 
         return host, state, msg
@@ -865,14 +901,14 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         info = cur_line.info
         data = info.split(";", 5)
         if len(data) != 6:
-            raise self.malformed_icinga_log_entry("Malformed service notification entry: {} (error #1)".format(info))
+            raise ILRMalformedLogEntry("Malformed service notification entry: {} (error #1)".format(info))
 
         user = data[0]
         host, service, service_info = self._parse_host_service(data[1], data[2])
         state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[3], None)
         # format as in db table
         if not state:
-            raise self.malformed_icinga_log_entry("Malformed state in entry: {} (error #6)".format(info))
+            raise ILRMalformedLogEntry("Malformed state in entry: {} (error #6)".format(info))
         notification_type = data[4]
         msg = data[5]
         return user, host, (service, service_info), state, notification_type, msg
@@ -883,14 +919,14 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         info = cur_line.info
         data = info.split(";", 4)
         if len(data) != 5:
-            raise self.malformed_icinga_log_entry("Malformed service notification entry: {} (error #1)".format(info))
+            raise ILRMalformedLogEntry("Malformed service notification entry: {} (error #1)".format(info))
 
         user = data[0]
         host = self._resolve_host(data[1])
         state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)
         # format as in db table
         if not state:
-            raise self.malformed_icinga_log_entry("Malformed state in entry: {} (error #6)".format(info))
+            raise ILRMalformedLogEntry("Malformed state in entry: {} (error #6)".format(info))
         notification_type = data[3]
         msg = data[4]
         return user, host, state, notification_type, msg
@@ -904,21 +940,21 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         info = cur_line.info
         data = info.split(";", 5)
         if len(data) != 6:
-            raise self.malformed_icinga_log_entry("Malformed service entry: {} (error #1)".format(info))
+            raise ILRMalformedLogEntry("Malformed service entry: {} (error #1)".format(info))
 
         host, service, service_info = self._parse_host_service(data[0], data[1])
 
         state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)
         # format as in db table
         if not state:
-            raise self.malformed_icinga_log_entry("Malformed state entry: {} (error #6)".format(info))
+            raise ILRMalformedLogEntry("Malformed state entry: {} (error #6)".format(info))
 
         state_type = {
             "SOFT": "S",
             "HARD": "H"
         }.get(data[3], None)  # format as in db table
         if not state_type:
-            raise self.malformed_icinga_log_entry("Malformed host entry: {} (error #5)".format(info))
+            raise ILRMalformedLogEntry("Malformed host entry: {} (error #5)".format(info))
 
         msg = data[5]
 

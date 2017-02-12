@@ -89,6 +89,10 @@ class MainConfig(dict, NagVisMixin):
         self.allow_write_entries = True
 
     @property
+    def read_directory_dict(self):
+        return self.__r_dir_dict
+
+    @property
     def allow_write_entries(self):
         return self.__allow_write_entries
 
@@ -318,22 +322,6 @@ class MainConfig(dict, NagVisMixin):
                 shutil.rmtree(sub_dir)
         main_values.extend(
             [
-                (
-                    "broker_module", [],
-                ),
-                (
-                    "broker_module", "{} {}".format(
-                        os.path.join(
-                            self.__r_dir_dict[lib_dir_name],
-                            "mk-livestatus",
-                            "livestatus.o"
-                        ),
-                        os.path.join(
-                            self.__r_dir_dict["var"],
-                            "live"
-                        )
-                    )
-                ),
                 (
                     "event_broker_options", -1
                 )

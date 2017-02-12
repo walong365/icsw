@@ -43,6 +43,7 @@ __all__ = [
     "MonAllContacts",
     "MonAllContactGroups",
     "MonAllHostGroups",
+    "MonModuleDefinitions",
 ]
 
 CLUSTER_BIN = os.path.join(CLUSTER_DIR, "bin")
@@ -52,6 +53,35 @@ CLUSTER_SBIN = os.path.join(CLUSTER_DIR, "sbin")
 class MonAllHostDependencies(MonFileContainer):
     def __init__(self, gen_conf):
         MonFileContainer.__init__(self, "hostdependency")
+
+
+class MonModuleDefinitions(MonFileContainer):
+    def __init__(self, gen_conf):
+        MonFileContainer.__init__(self, "moduledefinitions")
+        self.refresh(gen_conf)
+
+    def refresh(self, gen_conf):
+        if gen_conf.master:
+            # add livestatus if this build is for a master
+            self._add_livestatus(gen_conf)
+
+    def _add_livestatus(self, gen_conf):
+        broker_conf = StructuredMonBaseConfig(
+            "module",
+            "livestatus",
+            module_name="mklivestatus",
+            path=os.path.join(
+                gen_conf.read_directory_dict["lib64"],
+                "mk-livestatus",
+                "livestatus.o",
+            ),
+            module_type="neb",
+            args=os.path.join(
+                gen_conf.read_directory_dict["var"],
+                "live"
+            )
+        )
+        self.add_object(broker_conf)
 
 
 class MonAllTimePeriods(MonFileContainer):

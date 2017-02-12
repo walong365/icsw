@@ -38,7 +38,7 @@ from .ipc_comtool import IPCClientHandler
 from ..config import global_config, MainConfig, MonAllCommands, \
     MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, \
     MonDeviceTemplates, MonServiceTemplates, MonAllHostDependencies, build_safe_name, StructuredMonBaseConfig, \
-    MON_VAR_IP_NAME, SpecialTypesEnum
+    MON_VAR_IP_NAME, SpecialTypesEnum, MonModuleDefinitions
 from ..config.build_cache import GlobalBuildCache, HostBuildCache, MonCheckEmitter
 from ..constants import BuildModesEnum
 from ..mixins import ImageMapMixin, DistanceMapMixin, NagVisMixin
@@ -511,6 +511,8 @@ class BuildProcess(
         cur_gc.add_config(MonDirContainer("device", full_build=mode in [BuildModesEnum.all_master, BuildModesEnum.all_slave]))
         # host_dependencies
         cur_gc.add_config(MonAllHostDependencies(cur_gc))
+        # module definitions
+        cur_gc.add_config(MonModuleDefinitions(cur_gc)),
         cur_gc.dump_logs()
 
     def create_all_host_configs(self, gbc):
