@@ -95,7 +95,9 @@ class raw_host_alert_manager(models.Manager):
         queryset = self
         if additional_filter is not None:
             queryset = queryset.filter(additional_filter)
-        for entry in queryset.filter(Q(device_independent=False) & Q(date__range=(start_time, end_time))):
+        for entry in queryset.filter(
+            Q(device_independent=False) & Q(date__range=(start_time, end_time))
+        ):
             host_alerts[entry.device_id].append(entry)
         # calc dev independent afterwards and add to all keys
         for entry in mon_icinga_log_raw_host_alert_data.objects.filter(
@@ -404,7 +406,7 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
             data_merged_state_types.append({'state': undetermined_state, 'value': 1})
         return data_merged_state_types
 
-    def get_data(self, devices, timespans, license, merge_services=False, use_client_name=True):
+    def get_data(self, devices, timespans, license, merge_services: bool=False, use_client_name: bool=True) -> tuple:
         from initat.cluster.backbone.server_enums import icswServiceEnum
         """
         :param devices: either [device_pk] (meaning all services of these) or {device_pk: (service_pk, service_info)}
@@ -537,7 +539,9 @@ class mon_icinga_log_aggregated_service_data(models.Model):
     objects = mon_icinga_log_aggregated_service_data_manager()
 
     STATE_FLAPPING = "FL"
-    STATE_CHOICES = mon_icinga_log_raw_service_alert_data.STATE_CHOICES + [(STATE_FLAPPING, "FLAPPING")]
+    STATE_CHOICES = mon_icinga_log_raw_service_alert_data.STATE_CHOICES + [
+        (STATE_FLAPPING, "FLAPPING")
+    ]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
     STATE_CHOICES_READABLE = {k: v.capitalize() for (k, v) in STATE_CHOICES}
@@ -545,7 +549,9 @@ class mon_icinga_log_aggregated_service_data(models.Model):
     idx = models.AutoField(primary_key=True)
     timespan = models.ForeignKey(mon_icinga_log_aggregated_timespan)
 
-    STATE_TYPES = mon_icinga_log_raw_service_alert_data.STATE_TYPES + [(STATE_FLAPPING, STATE_FLAPPING)]
+    STATE_TYPES = mon_icinga_log_raw_service_alert_data.STATE_TYPES + [
+        (STATE_FLAPPING, STATE_FLAPPING)
+    ]
 
     device = models.ForeignKey("backbone.device")
     state_type = models.CharField(max_length=2, choices=STATE_TYPES)

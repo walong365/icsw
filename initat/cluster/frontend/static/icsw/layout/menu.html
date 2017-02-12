@@ -8,11 +8,11 @@
         ng-cloak
     >
         <div class="container-fluid">
-            <icsw-menu-device-selection>
-            </icsw-menu-device-selection>
             <icsw-menu-progress-bars
                 user="struct.current_user"
             ></icsw-menu-progress-bars>
+            <icsw-menu-device-selection>
+            </icsw-menu-device-selection>
             <div class="collapse navbar-collapse">
                 <icsw-menu
                     icsw-menu-side="left"
@@ -117,22 +117,25 @@
             ng-click="device_selection($event, 'left')"
             title="{{ struct.he_title }}"
         >
-            <span class="fa fa-desktop fa-lg" ng-class="struct.he_class"></span>
+            <!-- <span class="fa fa-desktop fa-lg" ng-class="struct.he_class"></span> -->
+            <span class="fa fa-star fa-lg" ng-class="struct.he_class"></span>
         </a>
     </div>
 </script>
 
 <script type="text/ng-template" id="icsw.layout.menubar.progress">
-    <ul class="nav navbar-nav">
-        <li class="active">
+    <div class="navbar-header">
+        <a
+            class="navbar-brand"
+            ng-click="go_mainboard($event)"
+            title="{{ initProduct.name }}"
+        >
             <img
                 ng-class="overall_style"
                 ng-attr-src="{{ initProduct.menu_gfx_url }}"
-                ng-click="go_mainboard($event)"
-                style="cursor: pointer; margin-top: 5px; padding-right: 15px;"
-                title="{{ initProduct.name }}"
+                style="cursor: pointer; margin-top: -14px; margin-left: -4px; margin-right: 10px;"
                 alt="{{ initProduct.name }}"
             />
-        </li>
-    </ul>
+        </a>
+    </div>
 </script>

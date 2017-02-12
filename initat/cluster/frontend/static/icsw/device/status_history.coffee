@@ -289,7 +289,13 @@ angular.module(
                     else
                         serv_name = check_command_name
                 else  # legacy data, only have some kind of id string to show
-                    serv_name = description
+                    if _.startsWith(description, "uuid_hc")
+                        # new format, encoded as UUIDs
+                        # todo: move to service
+                        serv_name = description.split(":")[3]
+                    else
+                        # old format
+                        serv_name = description
                 return serv_name
 
             scope.float_format = (n) ->

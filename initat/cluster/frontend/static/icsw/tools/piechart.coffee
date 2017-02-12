@@ -203,6 +203,7 @@ angular.module(
                     preserveAspectRatio: "xMidYMid meet"
                     style: {
                         maxWidth: if @props.maxWidth then "#{@props.maxWidth}px" else null
+                        minWidth: "10px"
                     }
                     # style: {
                         # width: "#{diameter + 2}px"

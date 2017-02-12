@@ -696,7 +696,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
 
         return cls.icinga_log_line(timestamp, kind, info, line_no)
 
-    def _parse_host_alert(self, cur_line):
+    def _parse_host_alert(self, cur_line: str) -> tuple:
         '''
         :return (int, str, str, str)
         '''
@@ -724,7 +724,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
 
         return host, state, state_type, msg
 
-    def _parse_host_service(self, host_spec, service_spec):
+    def _parse_host_service(self, host_spec, service_spec: str) -> tuple:
         # used for service and service flapping alerts as well as service notifications
 
         # primary method: check special service description
