@@ -113,8 +113,8 @@ menu_module = angular.module(
         window.location = "http://www.initat.org"
         return false
 
-    $scope.device_selection = ($event) ->
-        icswLayoutSelectionDialogService.quick_dialog("right")
+    $scope.device_selection = ($event, side) ->
+        console.error "DS not defined"
 
     $scope.handbook_url = "/"
     $scope.handbook_url_valid = false
@@ -133,11 +133,6 @@ menu_module = angular.module(
         (data) ->
     )
 
-    # $scope.device_selection = () ->
-    #    console.log "SHOW_DIALOG"
-    #     icswLayoutSelectionDialogService.show_dialog()
-
-    # apply selected theme if theme is set in session
 ]).service("icswMenuSettings",
 [
     "$rootScope", "ICSW_SIGNALS",
@@ -977,158 +972,10 @@ menu_module = angular.module(
 ) ->
     return {
         restrict: "E"
-        controller: "icswLayoutSubMenubarCtrl"
+        controller: "icswMenuDeviceSelectionCtrl"
         template: $templateCache.get("icsw.layout.submenubar")
         scope: true
     }
-]).controller("icswLayoutSubMenubarCtrl"
-[
-    "$scope", "icswLayoutSelectionDialogService", "$rootScope", "icswBreadcrumbs",
-    "icswUserService", "$state", "$q", "icswDeviceTreeService", "ICSW_SIGNALS",
-    "icswDispatcherSettingTreeService", "icswAssetPackageTreeService",
-    "icswActiveSelectionService", "icswMenuPath", "icswOverallStyle",
-(
-    $scope, icswLayoutSelectionDialogService, $rootScope, icswBreadcrumbs,
-    icswUserService, $state, $q, icswDeviceTreeService, ICSW_SIGNALS
-    icswDispatcherSettingTreeService, icswAssetPackageTreeService,
-    icswActiveSelectionService, icswMenuPath, icswOverallStyle,
-) ->
-    $scope.struct = {
-        current_user: undefined
-        # any devices / groups selected
-        any_selected: false
-        # selection string
-        select_txt: "---"
-        # breadcrumb list
-        bc_list: []
-        # current selection is in sync (coupled with a saved selection)
-        sel_synced: false
-        # negated sel_synced
-        sel_unsynced: true
-        # selection
-        selection_list: []
-        # emitted selection
-        em_selection_list: []
-        # emitted and selected list in sync
-        in_sync: false
-        # selection button title
-        title_str: ""
-        # info string for lock icon
-        lock_info: ""
-        # menu path
-        menupath: []
-        # overall style
-        overall_style: icswOverallStyle.get()
-    }
-
-    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
-        $scope.struct.overall_style = icswOverallStyle.get()
-    )
-
-    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
-        $scope.struct.current_user = icswUserService.get().user
-    )
-
-    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
-        $scope.struct.current_user = undefined
-        $scope.struct.selection_list.length = 0
-        $scope.struct.em_selection_list.length = 0
-    )
-
-    $scope.device_selection = ($event) ->
-        icswLayoutSelectionDialogService.quick_dialog("right", "Dd")
-
-    $scope.device_selection_ss = ($event) ->
-        icswLayoutSelectionDialogService.quick_dialog("right", "Ss")
-
-    $rootScope.$on(ICSW_SIGNALS("ICSW_BREADCRUMBS_CHANGED"), (event, bc_list) ->
-        $scope.struct.bc_list.length = 0
-        for entry in bc_list
-            $scope.struct.bc_list.push(entry)
-    )
-    $rootScope.$on(ICSW_SIGNALS("ICSW_STATE_CHANGED"), () ->
-        $scope.struct.menupath = icswMenuPath.generate_path()
-    )
-
-    _fetch_selection_list = (l_type) ->
-        # list to handle, can be selection or em_selection (for emitted)
-        _cur_sel = icswActiveSelectionService.current()
-        # console.log "FeSeLi", l_type, _cur_sel.get_devsel_list()
-        d_list = $scope.struct["#{l_type}_list"]
-        d_list.length = 0
-        for entry in _cur_sel.get_devsel_list()
-            # store as copy of sorted list
-            d_list.push((_val for _val in entry).sort())
-        # also check sync state
-        _update_sync_state()
-
-    _update_sync_state = () ->
-        _cur_sel = icswActiveSelectionService.current()
-        $scope.struct.sel_synced = if _cur_sel.db_idx then true else false
-        $scope.struct.sel_unsynced = ! $scope.struct.sel_synced
-        if $scope.struct.sel_synced
-            $scope.struct.lock_info = "In sync with saved selection '#{_cur_sel.db_obj.name}'"
-        else
-            $scope.struct.lock_info = "Not in sync with a saved selection"
-        _update_selection_txt()
-
-    # wait for domain_tree_loaded save flags
-    $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTION_CHANGED_DTL"), (event) ->
-        _fetch_selection_list("selection")
-        # should be discussed ...
-        # $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"), (event) ->
-        #     console.log("may this cause an error????")
-        #     _fetch_selection_list("em_selection")
-        # )
-    )
-
-    $rootScope.$on(ICSW_SIGNALS("ICSW_SEL_SYNC_STATE_CHANGED_DTL"), (event) ->
-        _update_sync_state()
-    )
-
-    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION_DTL"), (event) ->
-        _fetch_selection_list("em_selection")
-    )
-
-    _get_list = (in_sel) ->
-        if in_sel.length
-            sel_groups = in_sel[3].length
-            sel_devices = in_sel[1].length
-        else
-            console.warn "empty selection list"
-            sel_groups = 0
-            sel_devices = 0
-        group_plural = if sel_groups == 1 then "Group" else "Groups"
-        device_plural = if sel_devices == 1 then "Device" else "Devices"
-        _list = []
-        if sel_devices
-            _list.push("#{sel_devices} #{device_plural}")
-        if sel_groups
-            _list.push("#{sel_groups} #{group_plural}")
-        return _list
-
-    _update_selection_txt = () ->
-        _em_list = _get_list($scope.struct.em_selection_list)
-        _list = _get_list($scope.struct.selection_list)
-        # console.log $scope.struct.em_selection_list.length, $scope.struct.selection_list.length
-        # console.log $scope.struct.em_selection_list, $scope.struct.selection_list
-        $scope.struct.in_sync = _.isEqual($scope.struct.selection_list, $scope.struct.em_selection_list)
-        if $scope.struct.in_sync
-            $scope.struct.title_str = "Current selection, in sync"
-        else
-            $scope.struct.title_str = "Current selection, not in sync"
-        $scope.struct.any_selected = if _em_list.length > 0 then true else false
-        $scope.struct.select_txt = _em_list.join(", ")
-
-    $scope.select_all = ($event) ->
-        icswActiveSelectionService.current().select_all().then(
-            (done) ->
-                icswActiveSelectionService.send_selection(icswActiveSelectionService.current())
-        )
-
-    $scope.activate_state = (entry) ->
-        $state.go(entry.sref, null, {icswRegister: false})
-
 ]).service('icswBreadcrumbs',
 [
     "$state", "icswRouteHelper", "$rootScope", "ICSW_SIGNALS",
@@ -1257,4 +1104,185 @@ menu_module = angular.module(
         generate_path: () ->
             generate_path()
     }
+]).directive("icswMenuDeviceSelection",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.menu.device.selection")
+        scope: true
+        controller: "icswMenuDeviceSelectionCtrl",
+    }
+]).controller("icswMenuDeviceSelectionCtrl",
+[
+    "$scope", "icswLayoutSelectionDialogService", "$rootScope", "icswBreadcrumbs",
+    "icswUserService", "$state", "$q", "icswDeviceTreeService", "ICSW_SIGNALS",
+    "icswDispatcherSettingTreeService", "icswAssetPackageTreeService",
+    "icswActiveSelectionService", "icswMenuPath", "icswOverallStyle",
+(
+    $scope, icswLayoutSelectionDialogService, $rootScope, icswBreadcrumbs,
+    icswUserService, $state, $q, icswDeviceTreeService, ICSW_SIGNALS
+    icswDispatcherSettingTreeService, icswAssetPackageTreeService,
+    icswActiveSelectionService, icswMenuPath, icswOverallStyle,
+) ->
+    $scope.struct = {
+        current_user: undefined
+        # any devices / groups selected
+        any_selected: false
+        # selection string
+        select_txt: "---"
+        # breadcrumb list
+        bc_list: []
+        # current selection is in sync (coupled with a saved selection)
+        sel_synced: false
+        # negated sel_synced
+        sel_unsynced: true
+        # selection
+        selection_list: []
+        # emitted selection
+        em_selection_list: []
+        # emitted and selected list in sync
+        in_sync: false
+        # selection button title
+        title_str: ""
+        # info string for lock icon
+        lock_info: ""
+        # menu path
+        menupath: []
+        # overall style
+        overall_style: icswOverallStyle.get()
+        # header element style
+        he_style: {
+            "background-color": "#cbcbcb"
+        }
+        # header element style
+        he_class: "text-default"
+        # header element title
+        he_title: "---"
+    }
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
+        $scope.struct.overall_style = icswOverallStyle.get()
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
+        $scope.struct.current_user = icswUserService.get().user
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
+        $scope.struct.current_user = undefined
+        $scope.struct.selection_list.length = 0
+        $scope.struct.em_selection_list.length = 0
+    )
+
+    $scope.device_selection = ($event, side) ->
+        icswLayoutSelectionDialogService.quick_dialog(side, "Dd")
+
+    $scope.device_selection_ss = ($event, side) ->
+        icswLayoutSelectionDialogService.quick_dialog(side, "Ss")
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_BREADCRUMBS_CHANGED"), (event, bc_list) ->
+        $scope.struct.bc_list.length = 0
+        for entry in bc_list
+            $scope.struct.bc_list.push(entry)
+    )
+    $rootScope.$on(ICSW_SIGNALS("ICSW_STATE_CHANGED"), () ->
+        $scope.struct.menupath = icswMenuPath.generate_path()
+    )
+
+    _fetch_selection_list = (l_type) ->
+        # list to handle, can be selection or em_selection (for emitted)
+        _cur_sel = icswActiveSelectionService.current()
+        # console.log "FeSeLi", l_type, _cur_sel.get_devsel_list()
+        d_list = $scope.struct["#{l_type}_list"]
+        d_list.length = 0
+        for entry in _cur_sel.get_devsel_list()
+            # store as copy of sorted list
+            d_list.push((_val for _val in entry).sort())
+        # also check sync state
+        _update_sync_state()
+
+    _update_sync_state = () ->
+        _cur_sel = icswActiveSelectionService.current()
+        $scope.struct.sel_synced = if _cur_sel.db_idx then true else false
+        $scope.struct.sel_unsynced = ! $scope.struct.sel_synced
+        if $scope.struct.sel_synced
+            $scope.struct.lock_info = "In sync with saved selection '#{_cur_sel.db_obj.name}'"
+        else
+            $scope.struct.lock_info = "Not in sync with a saved selection"
+        _update_selection_txt()
+
+    # wait for domain_tree_loaded save flags
+    $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTION_CHANGED_DTL"), (event) ->
+        _fetch_selection_list("selection")
+        # should be discussed ...
+        # $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"), (event) ->
+        #     console.log("may this cause an error????")
+        #     _fetch_selection_list("em_selection")
+        # )
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_SEL_SYNC_STATE_CHANGED_DTL"), (event) ->
+        _update_sync_state()
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION_DTL"), (event) ->
+        _fetch_selection_list("em_selection")
+    )
+
+    _get_list = (in_sel) ->
+        if in_sel.length
+            sel_groups = in_sel[3].length
+            sel_devices = in_sel[1].length
+        else
+            console.warn "empty selection list"
+            sel_groups = 0
+            sel_devices = 0
+        group_plural = if sel_groups == 1 then "Group" else "Groups"
+        device_plural = if sel_devices == 1 then "Device" else "Devices"
+        _list = []
+        if sel_devices
+            _list.push("#{sel_devices} #{device_plural}")
+        if sel_groups
+            _list.push("#{sel_groups} #{group_plural}")
+        return _list
+
+    _update_selection_txt = () ->
+        _em_list = _get_list($scope.struct.em_selection_list)
+        _list = _get_list($scope.struct.selection_list)
+        # console.log $scope.struct.em_selection_list.length, $scope.struct.selection_list.length
+        # console.log $scope.struct.em_selection_list, $scope.struct.selection_list
+        $scope.struct.in_sync = _.isEqual($scope.struct.selection_list, $scope.struct.em_selection_list)
+        if $scope.struct.in_sync
+            $scope.struct.title_str = "Current selection, in sync"
+        else
+            $scope.struct.title_str = "Current selection, not in sync"
+        $scope.struct.he_title = _list.join("\n")
+        $scope.struct.any_selected = if _em_list.length > 0 then true else false
+        $scope.struct.select_txt = _em_list.join(", ")
+        if $scope.struct.any_selected
+            if $scope.struct.in_sync
+                $scope.struct.he_style["background-color"] = "#c6e0b5"
+            else
+                $scope.struct.he_style["background-color"] = "#f7eb68"
+            if $scope.struct.sel_unsynced
+                $scope.struct.he_class = "text-danger"
+            else
+                $scope.struct.he_class = "text-success"
+        else
+            $scope.struct.he_style["background-color"] = "#ddd677"
+            $scope.struct.he_class = "text-default"
+
+    $scope.select_all = ($event) ->
+        icswActiveSelectionService.current().select_all().then(
+            (done) ->
+                icswActiveSelectionService.send_selection(icswActiveSelectionService.current())
+        )
+
+    $scope.activate_state = (entry) ->
+        $state.go(entry.sref, null, {icswRegister: false})
+
 ])

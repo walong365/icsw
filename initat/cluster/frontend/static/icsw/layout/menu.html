@@ -8,10 +8,15 @@
         ng-cloak
     >
         <div class="container-fluid">
-            <icsw-menu-progress-bars user="struct.current_user"></icsw-menu-progress-bars>
-
+            <icsw-menu-device-selection>
+            </icsw-menu-device-selection>
+            <icsw-menu-progress-bars
+                user="struct.current_user"
+            ></icsw-menu-progress-bars>
             <div class="collapse navbar-collapse">
-                <icsw-menu icsw-menu-side="left"></icsw-menu>
+                <icsw-menu
+                    icsw-menu-side="left"
+                ></icsw-menu>
                 <!-- @if DEBUG -->
                 <!-- <form class="navbar-form navbar-left" ng-class="struct.overall_style">
                     <div class="input-group">
@@ -39,7 +44,11 @@
 </script>
 
 <script type="text/ng-template" id="icsw.layout.submenubar">
-    <nav class="navbar navbar-default submenu-bar" ng-if="struct.current_user" style="position:fixed; width:100%; z-index:1029;">
+    <nav
+        class="navbar navbar-default submenu-bar"
+        ng-if="struct.current_user && struct.overall_style != 'condensed'"
+        style="position:fixed; width:100%; z-index:1029;"
+    >
         <ul class="sub-breadcrumb">
             <li class="menupath pull-left">
                 <span ng-repeat="obj in struct.menupath track by $index">
@@ -63,14 +72,14 @@
                     ng-class="{'label-success': struct.in_sync, 'label-danger': !struct.in_sync}"
                     ng-show="struct.any_selected"
                     title="{{ struct.title_str }}"
-                    ng-click="device_selection($event)"
+                    ng-click="device_selection($event, 'right')"
                 >{{ struct.select_txt }} selected</span>
                 <span
                     class="label"
                     ng-class="{'label-warning': struct.in_sync, 'label-danger': !struct.in_sync}"
                     ng-show="!struct.any_selected"
                     title="{{ struct.title_str }}"
-                    ng-click="device_selection($event)"
+                    ng-click="device_selection($event, 'right')"
                 >No Devices selected</span>
                 <icsw-tools-button
                     type="lock"
@@ -78,7 +87,7 @@
                     value=""
                     size="xs"
                     title="{{ struct.lock_info }}"
-                    ng-click="device_selection_ss($event)"
+                    ng-click="device_selection_ss($event, 'right')"
                 ></icsw-tools-button>
                 <icsw-tools-button
                     type="unlock"
@@ -86,12 +95,31 @@
                     value=""
                     size="xs"
                     title="{{ struct.lock_info }}"
-                    ng-click="device_selection_ss($event)"
+                    ng-click="device_selection_ss($event, 'right')"
                 ></icsw-tools-button>
-                <icsw-tools-button ng-show="!struct.any_selected" type="select" size="xs" value="Select all" ng-click="select_all($event)"></icsw-tools-button>
+                <icsw-tools-button
+                    ng-show="!struct.any_selected"
+                    type="select"
+                    size="xs"
+                    value="Select all"
+                    ng-click="select_all($event)"
+                ></icsw-tools-button>
             </li>
         </ul>
     </nav>
+</script>
+
+<script type="text/ng-template" id="icsw.menu.device.selection">
+    <div class="navbar-header">
+        <a
+            class="navbar-brand"
+            ng-style="struct.he_style"
+            ng-click="device_selection($event, 'left')"
+            title="{{ struct.he_title }}"
+        >
+            <span class="fa fa-desktop fa-lg" ng-class="struct.he_class"></span>
+        </a>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.layout.menubar.progress">
