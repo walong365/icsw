@@ -483,6 +483,8 @@ class full_update_command(hm_classes.MonitoringCommand):
 
     def __call__(self, srv_com, cur_ns):
         if self.update_thread:
+            import time
+            time.sleep(1)
             srv_com["update_status"] = self.update_progress
         else:
             import binascii
@@ -548,10 +550,14 @@ class full_update_command(hm_classes.MonitoringCommand):
                         if config_files[config_file]:
                             f.write(bytes(config_files[config_file]))
 
+                print("**************")
+                print("Killing myself")
+                print("**************")
+
                 time.sleep(1)
                 os._exit(1)
 
-            srv_com["update_status"] = "started"
+            srv_com["update_status"] = self.update_progress
 
             self.update_thread = Thread(target=update_func, kwargs={"update_progress_obj": self})
             self.update_thread.start()
