@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2014,2016-2017 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -29,10 +29,9 @@ from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 
-from initat.cluster.backbone.models.functions import check_integer, check_empty_string
+from .functions import check_integer, check_empty_string
 
 __all__ = [
-    "config_catalog",
     "config",
     "ConfigServiceEnum",
     "config_str",
@@ -45,49 +44,6 @@ __all__ = [
 
 
 logger = logging.getLogger(__name__)
-
-
-class config_catalog(models.Model):
-    idx = models.AutoField(primary_key=True)
-    # MySQL restriction
-    name = models.CharField(max_length=254, unique=True, blank=False, null=False)
-    url = models.URLField(max_length=256, default="", blank=True)
-    author = models.CharField(max_length=256, default="", blank=True)
-    # gets increased by one on every download
-    version = models.IntegerField(default=1)
-    # is system catalog
-    system_catalog = models.BooleanField(default=False)
-    # priority
-    priority = models.IntegerField(default=0)
-    # extraction time
-    extraction_time = models.DateTimeField(null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-
-    @staticmethod
-    def create_local_catalog():
-        def_cc = config_catalog.objects.create(
-            name="local",
-            system_catalog=True,
-            url="http://www.initat.org/",
-            author="Andreas Lang-Nevyjel",
-        )
-        return def_cc
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        verbose_name = 'Configuration catalog'
-
-
-@receiver(signals.pre_save, sender=config_catalog)
-def config_catalog_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        if cur_inst.system_catalog:
-            _all_c = config_catalog.objects.exclude(Q(idx=cur_inst.idx)).filter(Q(system_catalog=True))
-            if len(_all_c):
-                raise ValidationError("Only one config_catalog with system_catalog=True allowed")
 
 
 class ConfigServiceEnum(models.Model):
@@ -127,7 +83,6 @@ class ConfigServiceEnum(models.Model):
 class config(models.Model):
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)
     name = models.CharField(max_length=192, blank=False)
-    config_catalog = models.ForeignKey(config_catalog, null=True)
     description = models.CharField(max_length=765, default="", blank=True)
     priority = models.IntegerField(null=True, default=0)
     # valid for servers (activate special functionalities)
@@ -158,8 +113,8 @@ class config(models.Model):
 
     class Meta:
         db_table = 'new_config'
-        ordering = ["name", "config_catalog__name"]
-        unique_together = (("name", "config_catalog"),)
+        ordering = ["name"]
+        unique_together = (("name",),)
         verbose_name = "Configuration"
 
     class ICSW_Meta:
@@ -180,20 +135,6 @@ def config_pre_save(sender, **kwargs):
         check_empty_string(cur_inst, "name")
         # priority
         check_integer(cur_inst, "priority", min_val=-9999, max_val=9999)
-        # if cur_inst.system_config:
-        #    if cur_inst.config_catalog is None:
-        #        try:
-        #            sys_cc = config_catalog.objects.get(Q(system_catalog=True))
-        #        except config_catalog.DoesNotExist:
-        #            raise ValidationError("no System catalog available")
-        #        else:
-        #            cur_inst.config_catalog = sys_cc
-        #    if not cur_inst.config_catalog.system_catalog:
-        #        raise ValidationError(
-        #            "System config '{}' has to reside inside the system config_catalog".format(
-        #                cur_inst.name,
-        #            )
-        #        )
 
 
 @receiver(signals.post_save, sender=config)
@@ -245,10 +186,6 @@ def config_post_save(sender, **kwargs):
             for _cvs in var_add_list + script_add_list:
                 _cvs.config = cur_inst
                 _cvs.save()
-        if not cur_inst.config_catalog_id:
-            if not config_catalog.objects.all().count():
-                config_catalog.create_local_catalog()
-            cur_inst.config_catalog = config_catalog.objects.all()[0]
 
 
 class device_config(models.Model):

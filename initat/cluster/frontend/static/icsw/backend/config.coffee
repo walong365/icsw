@@ -31,11 +31,11 @@ config_module = angular.module(
     icswTools, ICSW_URLS, $q, Restangular, $rootScope, icswSimpleAjaxCall, ICSW_SIGNALS,
 ) ->
     EL_LIST = [
-        "list", "cse_list", "catalog_list",
+        "list", "cse_list",
         "hint_list",
     ]
     class icswConfigTree
-        constructor: (list, cse_list, catalog_list, hint_list, cat_tree, mon_basic_tree) ->
+        constructor: (list, cse_list, hint_list, cat_tree, mon_basic_tree) ->
             @uploaded_configs = []
             @filtered_list = []
             @filtered_mcc_list = []
@@ -44,7 +44,7 @@ config_module = angular.module(
             for entry in EL_LIST
                 @[entry] = []
             # monitoring check command list
-            @update(list, cse_list, catalog_list, hint_list)
+            @update(list, cse_list, hint_list)
 
         update: (args...) =>
             for [entry, _list] in _.zip(EL_LIST, args)
@@ -58,7 +58,6 @@ config_module = angular.module(
             # new entries added
             @lut = _.keyBy(@list, "idx")
             @cse_lut = _.keyBy(@cse_list, "idx")
-            @catalog_lut = _.keyBy(@catalog_list, "idx")
             @hint_lut = _.keyBy(@hint_list, "idx")
             # init mccs
             for mcc in @mon_basic_tree.mon_check_command_list
@@ -132,11 +131,6 @@ config_module = angular.module(
         reorder: () =>
             # sort
             icswTools.order_in_place(
-                @catalog_list
-                ["name"]
-                ["asc"]
-            )
-            icswTools.order_in_place(
                 @list
                 ["name", "priority"]
                 ["asc", "desc"]
@@ -189,10 +183,6 @@ config_module = angular.module(
 
         _set_config_line_fields: (config) =>
             config.$$config_line_class = if config.$selected then "info" else ""
-            if config.config_catalog of @catalog_lut
-                config.$$catalog_name = @catalog_lut[config.config_catalog].name
-            else
-                config.$$catalog_name = "???"
             # console.log "C", config
             if config.categories.length
                 config.$$cat_info_str = "#{config.categories.length}"
@@ -235,13 +225,6 @@ config_module = angular.module(
                 config.$$cse = @cse_lut[config.config_service_enum]
             else
                 config.$$cse = null
-            if config.config_catalog
-                @catalog_lut[config.config_catalog].configs.push(config.idx)
-            else
-                # hm, config has no catalog ...
-                if not config.$$config_error_reported?
-                    config.$$config_error_reported = true
-                    console.error "*** Config #{config.name} has no valid config_catalog"
             # device config set
             config.$$usecount = config.device_config_set.length
             # populate helper fields
@@ -279,13 +262,8 @@ config_module = angular.module(
             config.mon_sel = (true for entry in config.$$res_mcc_rel when entry.$selected).length
             config.mon_check_command_lut = _.keyBy(config.$$res_mcc_rel, "idx")
             # build info strings for device-config
-            if @_multi_name_dict[config.name] > 1
-                _name = "#{config.name} [" + @catalog_lut[config.config_catalog].name + "]"
-                # flag, can be used in frontend
-                config.$mulitple_names = true
-            else
-                _name = "#{config.name}"
-                config.$mulitple_names = false
+            _name = "#{config.name}"
+            config.$mulitple_names = false
             # @_init_expansion_fields(config)
             config.$$info_str = "#{_name}"
             config.$$long_info_str = "#{_name} (#{config.$$num_var}, #{config.$$num_script}, #{config.$$num_mon})"
@@ -308,15 +286,6 @@ config_module = angular.module(
                 entry.$$info_str = info_str
             # create links between elements
             # how often a config name is used
-            @_multi_name_dict = _.countBy((config.name for config in @list))
-            for cat in @catalog_list
-                cat.$$info_str = cat.name
-                if cat.system_catalog
-                    cat.$$info_str = "#{cat.$$info_str} (SYS)"
-                if cat.configs?
-                    cat.configs.length = 0
-                else
-                    cat.configs = []
             for config in @list
                 @_enrich_config(config)
             for mcc in @mon_basic_tree.mon_check_command_list
@@ -446,40 +415,6 @@ config_module = angular.module(
 
         update_category_tree: () =>
             @cat_tree.feed_config_tree(@)
-
-        # config catalog create / delete catalogs
-        create_config_catalog: (new_cc) =>
-            defer = $q.defer()
-            Restangular.all(ICSW_URLS.REST_CONFIG_CATALOG_LIST.slice(1)).post(new_cc).then(
-                (new_obj) =>
-                    @_fetch_config_catalog(new_obj.idx, defer, "created config_catalog")
-                (not_ok) ->
-                    defer.reject("config catalog not created")
-            )
-            return defer.promise
-
-        delete_config_catalog: (del_cc) =>
-            # ensure REST hooks
-            Restangular.restangularizeElement(null, del_cc, ICSW_URLS.REST_CONFIG_CATALOG_DETAIL.slice(1).slice(0, -2))
-            defer = $q.defer()
-            del_cc.remove().then(
-                (ok) =>
-                    _.remove(@catalog_list, (entry) -> return entry.idx == del_cc.idx)
-                    @build_luts()
-                    defer.resolve("deleted")
-                (error) ->
-                    defer.reject("not deleted")
-            )
-            return defer.promise
-
-        _fetch_config_catalog: (pk, defer, msg) =>
-            Restangular.one(ICSW_URLS.REST_CONFIG_CATALOG_LIST.slice(1)).get({idx: pk}).then(
-                (new_cc) =>
-                    new_cc = new_cc[0]
-                    @catalog_list.push(new_cc)
-                    @build_luts()
-                    defer.resolve(msg)
-            )
 
         # config create / delete catalogs
         create_config: (new_conf) =>
@@ -703,7 +638,6 @@ config_module = angular.module(
     rest_map = [
         ICSW_URLS.REST_CONFIG_LIST,
         ICSW_URLS.REST_CONFIG_SERVICE_ENUM_LIST,
-        ICSW_URLS.REST_CONFIG_CATALOG_LIST,
         ICSW_URLS.REST_CONFIG_HINT_LIST,
     ]
     class icswConfigTreeService extends icswTreeBase

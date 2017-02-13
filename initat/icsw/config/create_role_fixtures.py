@@ -29,7 +29,7 @@ import sys
 from django.db.models import Q
 
 from initat.cluster.backbone import factories
-from initat.cluster.backbone.models import config_catalog, category_tree, \
+from initat.cluster.backbone.models import category_tree, \
     user, network_type, netdevice_speed, network_device_type, group, \
     host_check_command, domain_name_tree, ConfigServiceEnum
 from initat.cluster.backbone.server_enums import icswServiceEnum
@@ -81,7 +81,6 @@ def get_broadcast_by_interface(interface):
 def create_noctua_fixtures():
     print("Creating Noctua fixtures...")
     # first config catalog
-    first_cc = config_catalog.objects.all()[0]
 
     # category tree
     ct = category_tree()
@@ -95,43 +94,33 @@ def create_noctua_fixtures():
         print("Creating configurations.")
         ping_config = factories.Config(
             name="check_ping",
-            config_catalog=first_cc,
         )
         snmp_config = factories.Config(
             name="check_snmp_info",
-            config_catalog=first_cc,
         )
         ssh_config = factories.Config(
             name="check_ssh",
-            config_catalog=first_cc,
         )
         http_config = factories.Config(
             name="check_http",
-            config_catalog=first_cc,
         )
         https_config = factories.Config(
             name="check_https",
-            config_catalog=first_cc,
         )
         ldap_config = factories.Config(
             name="check_ldap",
-            config_catalog=first_cc,
         )
         imap_config = factories.Config(
             name="check_imap",
-            config_catalog=first_cc,
         )
         imaps_config = factories.Config(
             name="check_imaps",
-            config_catalog=first_cc,
         )
         pop3s_config = factories.Config(
             name="check_pop3s",
-            config_catalog=first_cc,
         )
         smtps_config = factories.Config(
             name="check_smtps",
-            config_catalog=first_cc,
         )
         print("Creating monitoring checks.")
         snmp_check = factories.MonCheckCommand(
@@ -200,32 +189,34 @@ def create_noctua_fixtures():
     factories.DeviceGroup(name="switch_group")
 
     print("Creating device configurations.")
-    configs = [
-        # (name of the service, should be assigned?, part icswServiceEnum?)
-        ("cluster-server", True, True),
-        ("collectd-server", True, True),
-        ("grapher-server", True, True),
-        ("discovery-server", True, True),
-        ("monitor-server", True, True),
-        ("monitor-slave", True, True),
-        ("rrd-collector", True, False),
-        ("server", True, False),
-    ]
-    for (service_name, assign, enum_service) in configs:
-        config_service_enum = None
-        if enum_service:
-            enum_name = icswServiceEnum[service_name.replace('-', '_')].name
-            config_service_enum = ConfigServiceEnum.objects.get(
-                enum_name=enum_name,
+    # no longer needed, now done via icsw config --sync
+    if False:
+        configs = [
+            # (name of the service, should be assigned?, part icswServiceEnum?)
+            ("cluster-server", True, True),
+            ("collectd-server", True, True),
+            ("grapher-server", True, True),
+            ("discovery-server", True, True),
+            ("monitor-server", True, True),
+            ("monitor-slave", True, True),
+            ("rrd-collector", True, False),
+            ("server", True, False),
+        ]
+        for (service_name, assign, enum_service) in configs:
+            config_service_enum = None
+            if enum_service:
+                enum_name = icswServiceEnum[service_name.replace('-', '_')].name
+                config_service_enum = ConfigServiceEnum.objects.get(
+                    enum_name=enum_name,
+                )
+            config = factories.Config(
+                name=service_name,
+                # config_catalog=first_cc,
+                config_service_enum=config_service_enum,
+                server_config=True,
             )
-        config = factories.Config(
-            name=service_name,
-            config_catalog=first_cc,
-            config_service_enum=config_service_enum,
-            server_config=True,
-        )
-        if assign:
-            factories.DeviceConfig(device=first_dev, config=config)
+            if assign:
+                factories.DeviceConfig(device=first_dev, config=config)
 
     print("Creating monitoring periods.")
     initial_mon_period = factories.MonPeriod(

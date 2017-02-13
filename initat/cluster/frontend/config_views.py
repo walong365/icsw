@@ -44,7 +44,7 @@ from rest_framework_xml.renderers import XMLRenderer
 from initat.cluster.backbone import serializers
 from initat.cluster.backbone.models import device, device_config, ConfigTreeNode, \
     get_related_models, mon_check_command, category, config_str, config, \
-    config_script, config_bool, config_blob, config_int, config_catalog
+    config_script, config_bool, config_blob, config_int
 from initat.cluster.backbone.serializers import config_dump_serializer, mon_check_command_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import logging_tools, process_tools, server_command
@@ -664,7 +664,7 @@ class handle_cached_config(View):
         for _entry in _struct["list"]:
             if _entry["name"] == _post["name"]:
                 # make a copy because take_config alters entry
-                _entry["_taken"] = self._take_config(request, copy.deepcopy(_entry), config_catalog.objects.get(Q(pk=_post["catalog"])))
+                _entry["_taken"] = self._take_config(request, copy.deepcopy(_entry))  # , config_catalog.objects.get(Q(pk=_post["catalog"])))
                 store_cached_upload(_struct)
 
     def _handle_ignore(self, request, _struct, _post):

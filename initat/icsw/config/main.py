@@ -37,10 +37,9 @@ from initat.tools import logging_tools, process_tools, server_command
 def _service_enum_show_command(options):
 
     from initat.cluster.backbone.server_enums import icswServiceEnum
-    from initat.cluster.backbone.models import ConfigServiceEnum, config, config_catalog
+    from initat.cluster.backbone.models import ConfigServiceEnum, config
     from initat.cluster.backbone import factories
     from django.core.exceptions import ValidationError
-    from django.db.models import Q
 
     _c_dict = {entry.enum_name: entry for entry in ConfigServiceEnum.objects.all()}
     print("")
@@ -105,7 +104,6 @@ def _service_enum_show_command(options):
                             _change_list.append(c_con)
                             break
         _create_list = []
-        sys_cc = config_catalog.objects.get(Q(system_catalog=True))
         for db_enum in _c_dict.values():
             if not db_enum.config_set.all().count():
                 _create_list.append(
@@ -113,9 +111,7 @@ def _service_enum_show_command(options):
                         name=db_enum.name,
                         description=db_enum.info,
                         config_service_enum=db_enum,
-                        config_catalog=sys_cc,
                         server_config=True,
-                        # system_config=True,
                     )
                 )
 

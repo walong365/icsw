@@ -609,14 +609,7 @@ class server_check(object):
                                 (
                                     True,
                                     Q(config_service_enum__enum_name=self.__service_type_enum.name) &
-                                    Q(device_config__device=self.device) &
-                                    Q(config_catalog__system_catalog=True)
-                                ),
-                                (
-                                    True,
-                                    Q(config_service_enum__enum_name=self.__service_type_enum.name) &
-                                    Q(device_config__device=self.device) &
-                                    Q(config_catalog__system_catalog=False),
+                                    Q(device_config__device=self.device)
                                 ),
                                 (
                                     False,
@@ -630,14 +623,7 @@ class server_check(object):
                             (
                                 True,
                                 Q(name=self.__server_type) &
-                                Q(device_config__device=self.device) &
-                                Q(config_catalog__system_catalog=True),
-                            ),
-                            (
-                                True,
-                                Q(name=self.__server_type) &
-                                Q(device_config__device=self.device) &
-                                Q(config_catalog__system_catalog=False),
+                                Q(device_config__device=self.device)
                             ),
                             (
                                 False,
@@ -815,13 +801,10 @@ class server_check(object):
                 if self.__server_type is None:
                     _queries = [
                         Q(config_service_enum__enum_name=self.__service_type_enum.name),
-                        Q(config_service_enum__enum_name=self.__service_type_enum.name) &
-                        Q(config_catalog__system_catalog=True),
                     ]
                 else:
                     _queries = [
                         Q(name=self.__server_type),
-                        Q(name=self.__server_type) & Q(config_catalog__system_catalog=True),
                     ]
                 self.config = None
                 for _query in _queries:

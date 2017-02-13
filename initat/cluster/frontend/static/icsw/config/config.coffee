@@ -51,111 +51,6 @@ config_module = angular.module(
         scope: true
         # controller: "icswConfigConfigCtrl"
     }
-]).directive("icswConfigCatalogTable",
-[
-    "$templateCache",
-(
-    $templateCache
-) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.config.catalog.table")
-        scope: true
-        controller: "icswConfigCatalogTableCtrl"
-    }
-]).controller("icswConfigCatalogTableCtrl",
-[
-    "icswConfigTreeService", "$q", "icswTools", "ICSW_URLS", "icswUserService",
-    "icswComplexModalService", "icswConfigCatalogBackup", "$compile", "$templateCache",
-    "icswToolsSimpleModalService", "$scope", "blockUI",
-(
-    icswConfigTreeService, $q, icswTools, ICSW_URLS, icswUserService,
-    icswComplexModalService, icswConfigCatalogBackup, $compile, $templateCache,
-    icswToolsSimpleModalService, $scope, blockUI,
-) ->
-    $scope.struct = {
-        # data present
-        data_present: false
-        # config tree
-        config_tree: undefined
-    }
-
-    _load = () ->
-        icswConfigTreeService.load($scope.$id).then(
-            (tree) ->
-                $scope.struct.config_tree = tree
-                $scope.struct.data_present = true
-        )
-
-    _load()
-
-    $scope.create_or_edit = (event, create, obj_or_parent) ->
-        if create
-            obj_or_parent = {
-                name: "new catalog"
-                url: "http://localhost"
-                author: icswUserService.get().user.login
-            }
-        else
-            dbu = new icswConfigCatalogBackup()
-            dbu.create_backup(obj_or_parent)
-        sub_scope = $scope.$new(true)
-        sub_scope.edit_obj = obj_or_parent
-        icswComplexModalService(
-            {
-                message: $compile($templateCache.get("config.catalog.form"))(sub_scope)
-                title: "Configure Catalog"
-                css_class: "modal-wide modal-form"
-                ok_label: if create then "Create" else "Modify"
-                closable: true
-                ok_callback: (modal) ->
-                    d = $q.defer()
-                    if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "")
-                        d.reject("form not valid")
-                    else
-                        if create
-                            $scope.struct.config_tree.create_config_catalog(sub_scope.edit_obj).then(
-                                (ok) ->
-                                    d.resolve("created")
-                                (notok) ->
-                                    d.reject("not created")
-                            )
-                        else
-                            sub_scope.edit_obj.put().then(
-                                (ok) ->
-                                    $scope.struct.config_tree.reorder()
-                                    d.resolve("updated")
-                                (not_ok) ->
-                                    d.reject("not updated")
-                            )
-                    return d.promise
-                cancel_callback: (modal) ->
-                    if not create
-                        dbu.restore_backup(obj_or_parent)
-                    d = $q.defer()
-                    d.resolve("cancel")
-                    return d.promise
-            }
-        ).then(
-            (fin) ->
-                console.log "finish"
-                sub_scope.$destroy()
-        )
-
-    $scope.delete = ($event, cc) ->
-        icswToolsSimpleModalService("Really delete ConfigCatalog #{cc.name} ?").then(
-            () =>
-                blockUI.start()
-                $scope.struct.config_tree.delete_config_catalog(cc).then(
-                    () ->
-                        blockUI.stop()
-                        console.log "cc deleted"
-                    () ->
-                        # error
-                        blockUI.stop()
-                )
-        )
 ]).directive("icswConfigConfigTable",
 [
     "$templateCache",
@@ -286,7 +181,6 @@ config_module = angular.module(
             server_config: false
             system_config: false
             categories: []
-            config_catalog: (entry.idx for entry in $scope.struct.config_tree.catalog_list)[0]
         }
         $scope.modify_config($event, new_config, false)
 
@@ -1169,6 +1063,9 @@ config_module = angular.module(
                 _update_filter()
         )
 
+    $scope.get_check_details = ($event, check) =>
+        console.log "c=", check
+
     $scope.$on("$destroy", () ->
         $scope.struct.filter.close()
     )
@@ -1261,7 +1158,7 @@ config_module = angular.module(
                 icswConfigTreeService.load(scope.$id).then(
                     (tree) ->
                         scope.config_tree = tree
-                        scope.use_catalog = scope.config_tree.catalog_list[0].idx
+                        # scope.use_catalog = scope.config_tree.catalog_list[0].idx
             )
             $rootScope.$on(ICSW_SIGNALS("ICSW_CONFIG_UPLOADED"), (event) ->
                 # react on all furhter config uploads

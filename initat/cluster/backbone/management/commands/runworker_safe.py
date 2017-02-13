@@ -27,6 +27,9 @@ from channels.management.commands import runworker
 from redis.exceptions import ConnectionError
 
 
+RETRY_TIMEOUT = 5
+
+
 class Command(runworker.Command):
     help = "Call runworker in a safe way "
 
@@ -36,7 +39,11 @@ class Command(runworker.Command):
             try:
                 super(Command, self).handle(**options)
             except ConnectionError:
-                print("a redis connection error occured, retrying ...")
-                time.sleep(2)
+                print(
+                    "a redis connection error occured, retrying in {:d} seconds ...".format(
+                        RETRY_TIMEOUT,
+                    )
+                )
+                time.sleep(RETRY_TIMEOUT)
             else:
                 _run = False

@@ -57,17 +57,10 @@
             <div
                 ng-if="struct.mode == 'gen'"
                 class="form-group"
-                ng-show="acl_create(null, 'backbone.config.modify_config') && struct.helper.config_tree.catalog_list.length > 0"
+                ng-show="acl_create(null, 'backbone.config.modify_config')"
             >
                 <input placeholder="new config" ng-model="struct.new_config_name" class="form-control"/>
-                <div class="btn-group" ng-show="struct.new_config_name">
-                    <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
-                        Create in Catalog <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="entry in struct.helper.config_tree.catalog_list" ng-click="create_config(entry)"><a>{{ entry.name }}</a></li>
-                    </ul>
-                </div>
+                <icsw-tools-button type="create" size="xs" ng-click="create_config($event)"></icsw-tools-button>
             </div>
             <icsw-widget></icsw-widget>
         </div>

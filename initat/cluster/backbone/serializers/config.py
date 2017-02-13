@@ -23,13 +23,12 @@
 
 from rest_framework import serializers
 
-from initat.cluster.backbone.models import config_catalog, config, config_str, \
+from initat.cluster.backbone.models import config, config_str, \
     config_int, config_bool, config_blob, config_script, device_config, \
     ConfigServiceEnum
 from initat.cluster.backbone.serializers.monitoring import mon_check_command_serializer
 
 __all__ = [
-    "config_catalog_serializer",
     "config_str_serializer",
     "config_int_serializer",
     "config_bool_serializer",
@@ -40,12 +39,6 @@ __all__ = [
     "device_config_serializer",
     "ConfigServiceEnumSerializer",
 ]
-
-
-class config_catalog_serializer(serializers.ModelSerializer):
-    class Meta:
-        fields = "__all__"
-        model = config_catalog
 
 
 class config_str_serializer(serializers.ModelSerializer):

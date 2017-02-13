@@ -293,14 +293,8 @@ class ldap_mixin(object):
                 "base of automounts",
             ),
         }
-        try:
-            # FIXME, ToDo
-            ldap_config = config.objects.get(Q(name="ldap_server"))
-        except config.MultipleObjectsReturned:
-            try:
-                ldap_config = config.objects.get(Q(name="ldap_server") & Q(config_catalog__system_catalog=True))
-            except:
-                ldap_config = None
+        # FIXME, ToDo
+        ldap_config = config.objects.get(Q(name="ldap_server"))
         if not ldap_config:
             self.log("No ldap_config found (or more than one or none in system catalog)", logging_tools.LOG_LEVEL_ERROR)
             return {}

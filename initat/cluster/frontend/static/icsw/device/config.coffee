@@ -735,11 +735,10 @@ angular.module(
         if $scope.struct.helper?
             $scope.new_filter_set($scope.struct.name_filter, true)
 
-    $scope.create_config = (cur_cat) ->
+    $scope.create_config = ($event) ->
         blockUI.start()
         new_obj = {
             name: $scope.struct.new_config_name
-            config_catalog: cur_cat.idx
             description: "QuickConfig"
             priority: 0
         }

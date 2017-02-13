@@ -658,7 +658,6 @@ def call_update_funcs(opts):
     create_fixtures()
     call_manage(["create_cdg", "--name", opts.system_group_name])
     call_manage(["migrate_to_domain_name"])
-    call_manage(["migrate_to_config_catalog"])
     # at first sync config enums
     call_icsw(["config", "enum", "--sync"])
     # install new moncc file

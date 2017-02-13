@@ -2210,6 +2210,7 @@ class umount_command(hm_classes.MonitoringCommand):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY
         required_access = HMAccessClassEnum.level1
+        create_mon_check_command = False
         uuid = "7f2c2820-cd76-4ebf-bfc5-e514c35a44ab"
         description = "umount the given partition"
         parameters = hm_classes.MCParameters(
