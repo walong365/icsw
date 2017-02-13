@@ -178,14 +178,9 @@ def _input(in_str, default, **kwargs):
 
     while sys.stdin.isatty():
         try:
-            _cur_inp = input(
-                "{:<30s} : ".format(
-                    "{} ({})".format(
-                        in_str,
-                        _def_str,
-                    )
-                )
-            )
+            sys.__stdout__.write("{:<30s} : ".format("{} ({})".format(in_str, _def_str)))
+            sys.__stdout__.flush()
+            _cur_inp = input()
         except (KeyboardInterrupt, EOFError):
             print("\nenter exit to abort\n")
         else:
