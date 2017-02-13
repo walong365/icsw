@@ -442,7 +442,8 @@ class update_modules_command(hm_classes.MonitoringCommand):
             modules_updated = 0
 
             for module_name in new_modules_dict.keys():
-                f = open(local_mc.HM_PATH_DICT[module_name], "wb")
+                path = os.path.normpath(os.path.join(local_mc.get_root_dir(), module_name))
+                f = open(path, "wb")
                 f.write(new_modules_dict[module_name])
                 f.close()
 
@@ -476,12 +477,17 @@ class full_update_command(hm_classes.MonitoringCommand):
         description = "Perform a full update of the windows host monitoring software."
         create_mon_check_command = False
 
+    def mc_init(self):
+        self.update_progress = 0.0
+        self.update_thread = None
+        self.killing_allowed = False
+
     def __call__(self, srv_com, cur_ns):
-        if "update_file_data" not in srv_com:
-            srv_com.set_result(
-                "Missing update_file_data",
-                server_command.SRV_REPLY_STATE_ERROR,
-            )
+        if self.update_thread:
+            time.sleep(1)
+            srv_com["update_status"] = self.update_progress
+            if self.update_progress == 100:
+                self.killing_allowed = True
         else:
             import binascii
             import tarfile
@@ -498,53 +504,66 @@ class full_update_command(hm_classes.MonitoringCommand):
             lzma_file = lzma.LZMAFile(filename=io.BytesIO(update_file_data))
             tar_file = tarfile.TarFile(fileobj=lzma_file)
 
-            config_files = {
-                "Lib\site-packages\opt\cluster\etc\.cluster_device_uuid": None,
-                "Lib\site-packages\opt\cluster\etc\cstores.d\client_config.xml": None,
-                "Lib\site-packages\opt\cluster\etc\cstores.d\icsw.device_config.xml": None,
-                "Lib\site-packages\opt\cluster\etc\cstores.d\icsw.hm.0mq-mapping_config.xml": None,
-                "Lib\site-packages\opt\cluster\etc\cstores.d\icsw.hm.machvector_config.xml": None
-            }
+            def update_func(**kwargs):
+                config_files = {
+                    "Lib\site-packages\opt\cluster\etc\.cluster_device_uuid": None,
+                    "Lib\site-packages\opt\cluster\etc\cstores.d\client_config.xml": None,
+                    "Lib\site-packages\opt\cluster\etc\cstores.d\icsw.device_config.xml": None,
+                    "Lib\site-packages\opt\cluster\etc\cstores.d\icsw.hm.0mq-mapping_config.xml": None,
+                    "Lib\site-packages\opt\cluster\etc\cstores.d\icsw.hm.machvector_config.xml": None
+                }
 
-            for config_file in config_files.keys():
-                with open(config_file, "rb") as f:
-                    config_files[config_file] = f.read()
+                for config_file in config_files.keys():
+                    with open(config_file, "rb") as f:
+                        config_files[config_file] = f.read()
 
-            shutil.rmtree(".", ignore_errors=True)
-            for old_path in os.listdir("."):
-                # ignore log files
-                if old_path.startswith("log"):
-                    continue
+                shutil.rmtree(".", ignore_errors=True)
+                for old_path in os.listdir("."):
+                    # ignore log files
+                    if old_path.startswith("log"):
+                        continue
 
-                # ignore icsw_old files
-                _, ext = os.path.splitext(old_path)
-                if ext == ".icsw_old":
-                    continue
+                    # ignore icsw_old files
+                    _, ext = os.path.splitext(old_path)
+                    if ext == ".icsw_old":
+                        continue
 
+                    idx = 0
+                    while True:
+                        new_path = "{}.{}.{}".format(old_path, idx, "icsw_old")
+                        if not os.path.exists(new_path):
+                            break
+                        idx += 1
+
+                    shutil.move(old_path, new_path)
+
+                update_progress_obj = kwargs["update_progress_obj"]
+
+                num_files = len(tar_file.getmembers())
                 idx = 0
-                while True:
-                    new_path = "{}.{}.{}".format(old_path, idx, "icsw_old")
-                    if not os.path.exists(new_path):
-                        break
+                for member in tar_file.getmembers():
                     idx += 1
+                    tar_file.extract(member, path=".")
 
-                shutil.move(old_path, new_path)
+                    update_progress_obj.update_progress = (idx / num_files) * 100
 
-            tar_file.extractall()
+                for config_file in config_files.keys():
+                    with open(config_file, "wb") as f:
+                        if config_files[config_file]:
+                            f.write(bytes(config_files[config_file]))
 
-            for config_file in config_files.keys():
-                with open(config_file, "wb") as f:
-                    if config_files[config_file]:
-                        f.write(bytes(config_files[config_file]))
+                while not update_progress_obj.killing_allowed:
+                    time.sleep(1)
 
-            srv_com["update_status"] = "ok"
-
-            def killme():
-                time.sleep(1)
                 os._exit(1)
 
-            t = Thread(target=killme)
-            t.start()
+            srv_com["update_status"] = -1
+
+            self.update_thread = Thread(target=update_func, kwargs={"update_progress_obj": self})
+            self.update_thread.start()
+
+    def interpret(self, srv_com, cur_ns):
+        return limits.mon_STATE_OK, srv_com["update_status"].text
 
 
 class platform_command(hm_classes.MonitoringCommand):

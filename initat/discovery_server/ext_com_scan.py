@@ -928,16 +928,20 @@ class Dispatcher(object):
         import pickle
         import binascii
         import bz2
+        import os
 
         update_dict = {}
 
-        for module in local_mc.HM_PATH_DICT.keys():
-            path = local_mc.HM_PATH_DICT[module]
-            f = open(path, "rb")
-            data = f.read()
-            f.close()
+        for root, dirs, files in os.walk(local_mc.get_root_dir()):
+            for _file in files:
+                _, ext = os.path.splitext(_file)
+                if ext == ".py":
+                    path = os.path.join(root, _file)
 
-            update_dict[module] = data
+                    with open(path, "rb") as f:
+                        data = f.read()
+                        path = path.replace(local_mc.get_root_dir(), ".")
+                        update_dict[path] = data
 
         update_dict_s = pickle.dumps(update_dict)
         update_dict_s = bz2.compress(update_dict_s)
@@ -991,6 +995,7 @@ class Dispatcher(object):
             new_srv_com["update_file_data"] = update_file_data
 
             callback_dict = {
+                "device": _device,
                 "device_pk": _device.idx,
                 "update_file_version": data["update_file_version"],
                 "update_file_checksum": data["update_file_checksum"],
@@ -1000,7 +1005,7 @@ class Dispatcher(object):
 
             hm_command = HostMonitoringCommand(self.hostmonitor_full_update_handler_callback,
                 callback_dict,
-                timeout=300)
+                timeout=30)
 
             self.discovery_process.send_pool_message(
                 "send_host_monitor_command",
@@ -1009,8 +1014,7 @@ class Dispatcher(object):
                 str(new_srv_com)
             )
 
-    @staticmethod
-    def hostmonitor_full_update_handler_callback(callback_dict, result):
+    def hostmonitor_full_update_handler_callback(self, callback_dict, result):
         callback_dict["command"] = "full_update_status"
         callback_dict["result"] = -1
         callback_dict["error_string"] = None
@@ -1018,10 +1022,32 @@ class Dispatcher(object):
         if result:
             if "update_status" in result:
                 callback_dict["result"] = 1
+
+                progress = float(result["update_status"].text)
+                if progress < 100.00:
+                    _device = callback_dict["device"]
+                    conn_str = "tcp://{}:{:d}".format(_device.target_ip, self.__hm_port)
+                    new_srv_com = server_command.srv_command(command="full_update")
+                    hm_command = HostMonitoringCommand(self.hostmonitor_full_update_handler_callback,
+                        callback_dict,
+                        timeout=5)
+
+                    self.discovery_process.send_pool_message(
+                        "send_host_monitor_command",
+                        hm_command.run_index,
+                        conn_str,
+                        str(new_srv_com)
+                    )
+                callback_dict["progress"] = progress
             else:
                 callback_dict["error_string"], _ = result.get_result()
 
-        propagate_channel_object("hm_status", callback_dict)
+        callback_dict_copy = {}
+        for key in callback_dict:
+            if key == "device":
+                continue
+            callback_dict_copy[key] = callback_dict[key]
+        propagate_channel_object("hm_status", callback_dict_copy)
 
     @staticmethod
     def handle_hm_result(run_index, srv_result):
