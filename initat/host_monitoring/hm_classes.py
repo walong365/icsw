@@ -98,15 +98,17 @@ class MCParameters(object):
         return True if len(self.parameters) else False
 
     def build_icinga_command(self):
-        return " ".join(
-            [
-                _para.build_icinga_command(index) for index, _para in enumerate(self.parameters, 1)
-            ]
-        )
+        index = 1
+        para_list = []
+        for para in self.parameters:
+            para_list.append(para.build_icinga_command(index))
+            if para.increase_index:
+                index += 1
+        return " ".join(para_list)
 
 
 class MCParameter(object):
-    def __init__(self, arg_name, destination, default, description, devvar_name=None, expand=True):
+    def __init__(self, arg_name, destination, default, description, devvar_name=None, expand=True, macro_name=None):
         # for argument parsing (-w, -l, --speed for instance)
         self.arg_name = arg_name
         # destination for comandline parsing
@@ -121,6 +123,9 @@ class MCParameter(object):
         self.description = description
         # add magic icinga command expansion ($ARG$)
         self.expand = expand
+        # macro name to use
+        self.macro_name = macro_name
+        self.increase_index = True if not self.macro_name else False
 
     def build_icinga_command(self, index):
         def _to_string(value):
@@ -141,7 +146,9 @@ class MCParameter(object):
             _arg_name_str()
         ]
 
-        if self.devvar_name:
+        if self.macro_name:
+            _r_v.append(self.macro_name)
+        elif self.devvar_name:
             _r_v.append(
                 "${{ARG{:d}:{}:{}}}$".format(
                     index,
@@ -656,10 +663,16 @@ class MonitoringCommand(MMMCBase):
         super(MonitoringCommand, self).__init__()
         self.__log_cache = []
         # argument parser
+        if self.Meta.check_instance == DynamicCheckServer.native:
+            _prog = "{}".format(
+                self.get_native_exe(True),
+            )
+        else:
+            _prog = "collclient.py --host HOST {}".format(self.Meta.name),
         self.parser = argparse.ArgumentParser(
             description="description: {}".format(self.Meta.description) if self.Meta.description else "",
             add_help=False,
-            prog="collclient.py --host HOST {}".format(self.Meta.name),
+            prog=_prog,
         )
 
         if self.Meta.parameters.any_args_defined():
@@ -733,21 +746,38 @@ class MonitoringCommand(MMMCBase):
             unknown.extend(res_ns.arguments)
         return res_ns, unknown
 
-    def build_icinga_command(self):
-        if self.Meta.check_instance == DynamicCheckServer.collrelay:
-            _server = "$USER2$"
-        elif self.Meta.check_instance == DynamicCheckServer.snmp_relay:
-            _server = "$USER3$"
-        if self.Meta.send_to_localhost:
-            _target = "127.0.0.1"
+    def get_native_exe(self, expand):
+        if expand:
+            _path = "/opt/cluster/icinga/libexec"
         else:
-            _target = "$HOSTADDRESS$"
-        return "{} -m {} {} {}".format(
-            _server,
-            _target,
+            _path = "$USER1$"
+        return "{}/{}".format(
+            _path,
             self.Meta.name,
-            self.Meta.parameters.build_icinga_command(),
-        ).strip()
+        )
+
+    def build_icinga_command(self):
+        if self.Meta.check_instance == DynamicCheckServer.native:
+            # native calls
+            return "{} {}".format(
+                self.get_native_exe(False),
+                self.Meta.parameters.build_icinga_command(),
+            )
+        else:
+            if self.Meta.check_instance == DynamicCheckServer.collrelay:
+                _server = "$USER2$"
+            elif self.Meta.check_instance == DynamicCheckServer.snmp_relay:
+                _server = "$USER3$"
+            if self.Meta.send_to_localhost:
+                _target = "127.0.0.1"
+            else:
+                _target = "$HOSTADDRESS$"
+            return "{} -m {} {} {}".format(
+                _server,
+                _target,
+                self.Meta.name,
+                self.Meta.parameters.build_icinga_command(),
+            ).strip()
 
     @property
     def checksum(self):
