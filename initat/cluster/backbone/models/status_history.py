@@ -321,25 +321,28 @@ class mon_icinga_log_file(models.Model):
         backup = False
 
 
-class _last_read_manager(models.Manager):
-    def get_last_read(self):
-        """
-        @return int timestamp
-        """
-        if self.all():
-            return self.all()[0]
-        else:
-            return None
-
-
-class mon_icinga_log_last_read(models.Model):
+class MonIcingaLastRead(models.Model):
     # this table contains only one row
     idx = models.AutoField(primary_key=True)
     position = models.BigIntegerField()           # position of start of last line read
+    line_number = models.IntegerField(default=0)  # last lineenumber read
     timestamp = models.IntegerField()             # time of last line read
     inode = models.IntegerField(default=0)        # inode of file
-    line_number = models.IntegerField(default=0)  # last lineenumber read
-    objects = _last_read_manager()
+
+    @classmethod
+    def get_last_read(cls):
+        if cls.objects.all().count():
+            return cls.objects.all()[0]
+        else:
+            return None
+
+    def __str__(self):
+        return "position={:d}, line_number={:d}, timestamp={:d}, inode={:d}".format(
+            self.position,
+            self.line_number,
+            self.timestamp,
+            self.inode,
+        )
 
     class ICSW_Meta:
         backup = False

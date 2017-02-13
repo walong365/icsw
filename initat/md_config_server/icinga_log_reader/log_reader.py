@@ -24,19 +24,16 @@ import collections
 import datetime
 import glob
 import os
-import tempfile
 import time
 from collections import defaultdict
 
 import psutil
 import pytz
 
-from django.db.models import Q
-
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, mon_check_command, \
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, mon_icinga_log_file, \
-    mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
+    MonIcingaLastRead, mon_icinga_log_raw_service_flapping_data, \
     mon_icinga_log_raw_service_notification_data, cluster_timezone, \
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, \
     mon_icinga_log_raw_base, mon_icinga_log_full_system_dump, \
@@ -55,19 +52,24 @@ __all__ = [
 
 
 class IcingaLogReader(threading_tools.icswProcessObj):
-    @staticmethod
-    def get_icinga_log_archive_dir():
+    @classmethod
+    def get_icinga_var_dir(cls):
         return os.path.join(
             global_config['MD_BASEDIR'],
             'var',
+        )
+
+    @classmethod
+    def get_icinga_log_archive_dir(cls):
+        return os.path.join(
+            cls.get_icinga_var_dir(),
             'archives'
         )
 
-    @staticmethod
-    def get_icinga_log_file():
+    @classmethod
+    def get_icinga_log_file(cls):
         return os.path.join(
-            global_config['MD_BASEDIR'],
-            'var',
+            cls.get_icinga_var_dir(),
             '{}.log'.format(global_config['MD_TYPE'])
         )
 
@@ -130,7 +132,8 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             # self.log("profiling to {}".format(prof_file_name))
             # import cProfile
             # cProfile.runctx("self._icinga_log_aggregator.update()", globals(), locals(), prof_file_name)
-            IcingaLogAggregator(self).update()
+            if True:
+                IcingaLogAggregator(self).update()
             aggr_end_time = time.time()
             self.log(
                 "aggregation took {}".format(
@@ -145,7 +148,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         self._warnings = defaultdict(lambda: 0)
 
         # check where we last have read for log rotation
-        last_read = mon_icinga_log_last_read.objects.get_last_read()
+        last_read = MonIcingaLastRead.get_last_read()
         if last_read:
             self.log(
                 "last icinga read until: {}".format(
@@ -153,22 +156,29 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                 )
             )
         else:
-            self.log("no earlier icinga log read, reading archive")
+            _arch_dir = IcingaLogReader.get_icinga_log_archive_dir()
+            self.log(
+                "no earlier icinga log read, reading archive ({})".format(
+                    _arch_dir,
+                )
+            )
+            # print("***", _arch_dir)
             files = glob.glob(
                 os.path.join(
-                    IcingaLogReader.get_icinga_log_archive_dir(),
+                    _arch_dir,
                     "{}*".format(global_config['MD_TYPE'])
                 )
             )
-            last_read_timestamp = self.parse_archive_files(files)
-            if last_read_timestamp:
-                last_read = self._update_last_read(0, last_read_timestamp)
+            last_read_element = self.parse_archive_files(files)
+            if last_read_element:
+                # store from archive but with empty position and line_number
+                last_read = self._update_last_read(0, last_read_element.timestamp, last_read_element.inode, 0)
                 # this is a duplicate update, but ensures that we have a valid value here
             else:
                 self.log("no earlier icinga log read and no archive data")
                 # there was no earlier read and we weren't able to read anything from the archive,
                 # so assume there is none
-                last_read = mon_icinga_log_last_read()
+                last_read = MonIcingaLastRead()
                 # safe time in past, but not too far cause we check logs of each day
                 last_read.timestamp = int(
                     (
@@ -178,10 +188,12 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                     ).total_seconds()
                 )
                 last_read.position = 0
+                last_read.inode = 0
+                last_read.line_number = 1
 
         try:
             logfile = codecs.open(self.get_icinga_log_file(), "r", "utf-8", errors='replace')
-        except IOError as e:
+        except IOError:
             self.log(
                 "Failed to open log file {} : {}".format(
                     self.get_icinga_log_file(),
@@ -192,28 +204,20 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         else:
             # check for log rotation
             logfile.seek(last_read.position)
-
-            last_read_line = logfile.readline().rstrip("\n")
-            self.log("last read line: {}".format(last_read_line))
-
-            same_logfile_as_last_read = False
-            if last_read_line:  # empty string (=False) means end, else we at least have '\n'
-                try:
-                    cur_line = self._parse_line(last_read_line)
-                except ILRMalformedLogEntry:
-                    pass
-                else:
-                    same_logfile_as_last_read = cur_line.timestamp == last_read.timestamp
-                    # self.log("cur line timestamp {}, last read timestamp {}".format(
-                    # cur_line.timestamp, last_read.timestamp))
-                    # self.log("cur line timestamp {}, last read timestamp {}".format(
-                    # self._parse_timestamp(cur_line.timestamp), self._parse_timestamp(last_read.timestamp)))
-
+            cur_inode = os.stat(self.get_icinga_log_file()).st_ino
+            same_logfile_as_last_read = cur_inode == last_read.inode
+            self.log(
+                "Inode check: current={:d}, last={:d}, {}".format(
+                    cur_inode,
+                    last_read.inode,
+                    "same" if same_logfile_as_last_read else "file changed",
+                )
+            )
             if same_logfile_as_last_read:
                 self.log("continuing to read in current icinga log file")
                 # no log rotation, continue reading current file
                 # the current position of the file must be the next byte to read!
-                self.parse_log_file(logfile)
+                self.parse_log_file(logfile, self.get_icinga_log_file(), last_read.line_number)
             else:
                 self.log("detected icinga log rotation")
                 # cur log file does not correspond to where we last read.
@@ -251,7 +255,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                     )
                     # start reading cur file
                     logfile.seek(0)
-                    self.parse_log_file(logfile)
+                    self.parse_log_file(logfile, self.get_icinga_log_file(), 1)
 
         # check if icinga is even running
         # (we do this after parsing to have events in proper order in db, which is nice)
@@ -279,14 +283,22 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                     )
                 self.log("end of warnings while parsing")
 
-    def parse_log_file(self, logfile: object, logfilepath: str=None, start_at=None):
+    def parse_log_file(self, logfile: object, logfilepath: str, line_num: int, start_at=None) -> object:
         '''
         :param file logfile: Parsing starts at position of logfile. Must be the main icinga log file.
         :param logfilepath: Path to logfile if it is an archive logfile, not the current one
         :param int start_at: only consider entries older than start_at
-        :return int: last read timestamp or None
+        :return object: last_read element
         '''
-        is_archive_logfile = logfilepath is not None
+        inode = os.stat(logfilepath).st_ino
+        is_archive_logfile = os.path.basename(logfilepath).count("-")
+        self.log(
+            "parsing file {} (inode={:d}, archive={})".format(
+                logfilepath,
+                inode,
+                "yes" if is_archive_logfile else "no",
+            )
+        )
         logfile_db = None
         if is_archive_logfile:
             try:
@@ -295,7 +307,6 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                 logfile_db = mon_icinga_log_file(filepath=logfilepath)
                 logfile_db.save()
 
-        line_num = 0
         old_ignored = 0
         stats = collections.defaultdict(lambda: 0)
 
@@ -309,12 +320,14 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         service_downtimes = []
         full_system_dump_times = set()
 
+        # lines actually read
+        lines_read = 0
+        start_line_num = line_num
         cur_line = None
         for line_raw in logfile:
-            line_num += 1
             # check for special entry
             try:
-                timestamp, msg = self._parse_line_timestamp(line_raw.rstrip("\n"))
+                timestamp, msg = self._parse_line_timestamp(line_raw.rstrip("\n"), line_num)
                 if msg.startswith("Successfully shutdown"):
                     # self.log("detected icinga shutdown by log")
                     # create alerts for all devices: indeterminate (icinga not running)
@@ -334,7 +347,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             try:
                 cur_line = self._parse_line(
                     line_raw.rstrip("\n"),
-                    line_num if is_archive_logfile else None
+                    line_num,
                 )
                 # only know line number for archive files
                 # we want to discard older (reread) entries if start_at is given,
@@ -420,17 +433,25 @@ class IcingaLogReader(threading_tools.icswProcessObj):
 
             except ILRMalformedLogEntry as e:
                 self._handle_warning(e, logfilepath, cur_line.line_no if cur_line else None)
+            line_num += 1
+            lines_read += 1
 
+        if stats:
+            num_inserts = sum(stats.values())
+        else:
+            num_inserts = 0
+        num_inserts = max(1, num_inserts)
         self.log(
-            "created from {}: {} ".format(
-                logfilepath if logfilepath else "cur icinga log file",
+            "created: {}, starting db-update (total {:d} inserts)".format(
                 ", ".join(
                     [
                         "{} ({:d})".format(key, value) for key, value in stats.items()
                     ]
                 ) or "nothing",
+                num_inserts,
             )
         )
+        s_time = time.time()
 
         # there can be really many host and service entries (up to 1000000),
         # so we save them in several stages
@@ -461,42 +482,52 @@ class IcingaLogReader(threading_tools.icswProcessObj):
                         self._parse_timestamp(timestamp)
                     )
                 )
+        e_time = time.time()
         self.log(
-            "read {} lines, ignored {} old ones".format(
-                line_num,
+            "read {:d} lines [{:d}:{:d}], ignored {:d} old ones, db-update took {} ({} per entry)".format(
+                lines_read,
+                start_line_num,
+                start_line_num + lines_read,
                 old_ignored,
+                logging_tools.get_diff_time_str(e_time - s_time),
+                logging_tools.get_diff_time_str((e_time - s_time) / num_inserts),
             )
         )
 
         if cur_line:  # if at least something has been read
-            position = 0 if is_archive_logfile else logfile.tell() - len(line_raw)  # start of last line read
-            # _inode = os.stat()
-            self._update_last_read(position, cur_line.timestamp)
-            return cur_line.timestamp
-        return None
+            if is_archive_logfile:
+                position = 0
+                line_num = 1
+            else:
+                position = logfile.tell()
+            return self._update_last_read(position, cur_line.timestamp, inode, line_num)
+        else:
+            return None
 
-    def _update_last_read(self, position, timestamp):
+    def _update_last_read(self, position: int, timestamp: int, inode: int, cur_line: int) -> object:
         """
         Keep track of which data was read. May be called with older timestamp (will be discarded).
         """
-        last_read = mon_icinga_log_last_read.objects.get_last_read()
+        last_read = MonIcingaLastRead.get_last_read()
         if last_read:
             if last_read.timestamp > timestamp:
+                # early return
                 return last_read  # tried to update with older timestamp
         else:
-            last_read = mon_icinga_log_last_read()
-        self.log(
-            "updating last read icinga log to pos: {} time: {}".format(
-                position,
-                timestamp,
-            )
-        )
+            last_read = MonIcingaLastRead()
         last_read.timestamp = timestamp
         last_read.position = position
+        last_read.inode = inode
+        last_read.line_number = cur_line
         last_read.save()
+        self.log(
+            "updating last read icinga log to {}".format(
+                str(last_read),
+            )
+        )
         return last_read
 
-    def parse_archive_files(self, files, start_at=None):
+    def parse_archive_files(self, files: list, start_at=None):
         '''
         :param list files: list of files to consider (will be sorted here)
         :param int start_at: only consider entries older than start_at
@@ -508,49 +539,45 @@ class IcingaLogReader(threading_tools.icswProcessObj):
             try:
                 unused, month, day, year, hour = logfilepath.split("-")
             except ValueError:
-                pass  # filename not appropriate
+                # filename not appropriate
+                self.log(
+                    "invalid filename encountered in parse_archive_fikles: {}".format(logfilepath),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 logfilepath = os.path.join(IcingaLogReader.get_icinga_log_archive_dir(), logfilepath)
                 logfiles_date_data.append((year, month, day, hour, logfilepath))
 
         retval = None
 
-        (unused, tempfilepath) = tempfile.mkstemp("icinga_log_decompress")
         for unused1, unused2, unused3, unused4, logfilepath in sorted(logfiles_date_data):
 
-            if logfilepath.lower().endswith('bz2'):
-                # it seems to be hard to get bz2 to return unicode
-                # hence we decompress to a temporary file which then should be
-                # binary-equivalent to original file and then open it in a
-                # unicode-aware manner
-
-                f = open(tempfilepath, "wb")
-                f.write(bz2.BZ2File(logfilepath).read())
-                f.close()
-                actual_logfilepath = tempfilepath
-
-            else:
-                actual_logfilepath = logfilepath
-
             try:
-                logfile = codecs.open(actual_logfilepath, "r", "utf-8", errors='replace')
-            except IOError as e:
+                if logfilepath.lower().endswith('bz2'):
+                    logfile = bz2.open(logfilepath, "rt", encoding="utf-8", errors="replace")
+                else:
+                    logfile = codecs.open(logfilepath, "r", "utf-8", errors='replace')
+            except:
                 self.log(
-                    "failed to open archive log file {} : {}".format(logfilepath, e),
+                    "failed to open archive log file {} : {}".format(
+                        logfilepath,
+                        process_tools.get_except_info(),
+                    ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
             else:
-                last_read_timestamp = self.parse_log_file(logfile, logfilepath, start_at)
+                last_read_element = self.parse_log_file(logfile, logfilepath, 1, start_at)
                 if retval is None:
-                    retval = last_read_timestamp
+                    retval = last_read_element
                 else:
-                    retval = max(retval, last_read_timestamp)
+                    if last_read_element.timestamp > retval.timestamp:
+                        retval = last_read_element
+                logfile.close()
                 # check if we are supposed to die
                 self.step()
                 if self["exit_requested"]:
                     self.log("exit requested")
                     break
-        os.remove(tempfilepath)
 
         return retval
 
@@ -718,7 +745,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         return retval
 
     @classmethod
-    def _parse_line_timestamp(cls, line, line_no=None):
+    def _parse_line_timestamp(cls, line: str, line_no: int) -> tuple:
         '''
         :return parsed timestamp and info_raw
         '''
@@ -726,7 +753,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         # [timestamp] line_type: info
         data = line.split(" ", 1)
         if len(data) != 2:
-            raise ILRMalformedLogEntry("Malformed line {}: {} (error #1)".format(line_no, line))
+            raise ILRMalformedLogEntry("Malformed line {:d}: {} (error #1)".format(line_no, line))
         timestamp_raw, info_raw = data
 
         try:
@@ -739,7 +766,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         return timestamp, info_raw
 
     @classmethod
-    def _parse_line(cls, line: str, line_no=None):
+    def _parse_line(cls, line: str, line_no: int) -> tuple:
         """
         :param line: line as string
         :param line_no: optional
@@ -747,7 +774,8 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         """
         timestamp, info_raw = cls._parse_line_timestamp(line, line_no)
         data2 = info_raw.split(": ", 1)
-        if len(data2) == 2 and data2[0].upper() == data2[0]:
+        _kind_str = data2[0]
+        if len(data2) == 2 and _kind_str.upper() == _kind_str and not any(_kind_str.count(_chr) for _chr in {"[", "]"}):
             kind, info = data2
             try:
                 kind_enum = ILRParserEnum(kind)

@@ -101,7 +101,7 @@ class BackendConfigFile(models.Model):
         ],
     )
     # install device
-    install_device = models.ForeignKey("backbone.device")
+    install_device = models.ForeignKey("backbone.device", null=True)
     # most recent, only one for can be most recent for each type
     most_recent = models.BooleanField(default=False)
     # same uploads, increase by one for every upload try on same file

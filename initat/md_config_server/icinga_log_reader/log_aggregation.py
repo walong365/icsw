@@ -27,7 +27,7 @@ from django.db.models.query_utils import Q
 
 from initat.cluster.backbone.models.functions import cluster_timezone, duration
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, \
-    mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
+    MonIcingaLastRead, mon_icinga_log_raw_service_flapping_data, \
     mon_icinga_log_raw_host_flapping_data, mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base,\
     mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump, StatusHistoryUtils, AlertList, mon_icinga_log_raw_host_downtime_data, \
     mon_icinga_log_raw_service_downtime_data
@@ -112,7 +112,7 @@ class IcingaLogAggregator(object):
                     next_last_service_alert_cache = None
                     while do_loop:
                         next_end_time = duration_type.get_end_time_for_start(next_start_time)
-                        last_read_obj = mon_icinga_log_last_read.objects.get_last_read()
+                        last_read_obj = MonIcingaLastRead.get_last_read()
                         if last_read_obj and next_end_time < datetime.datetime.fromtimestamp(
                             last_read_obj.timestamp,
                             cluster_timezone
