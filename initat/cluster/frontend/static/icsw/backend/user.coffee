@@ -154,6 +154,8 @@ angular.module(
             # user is in fact a list with only one element
             # (to simplify the framework layers)
             @user = user[0]
+            # dict of variable save requests, name -> list
+            @__vars_to_save = {}
             icswUserGroupRoleTools.salt_user(@user)
             @build_luts()
 
@@ -269,14 +271,22 @@ angular.module(
 
         get_var_names: (cur_re) =>
             return (key for key of @var_lut when key.match(cur_re))
-            
-        set_var: (name, value, var_type) =>
-            # modify var (if exists) otherwise create new
+
+        _handle_var: (name) =>
+            _remove_latest = () =>
+                # remove latest var
+                @__vars_to_save[name].shift()
+                if @__vars_to_save[name].length
+                    # any requests left ?
+                    @_handle_var(name)
+
+            [name, value, var_type, _result] = @__vars_to_save[name][0]
             _wait = $q.defer()
             if name of @var_lut
                 _var = @get_var(name)
                 _wait.resolve(_var)
             else
+                # create before update
                 new_var = {
                     user: @user.idx
                     name: name
@@ -288,7 +298,7 @@ angular.module(
                     new_var.json_value = value
                 else
                     new_var.value = value
-                    
+
                 Restangular.all(
                     ICSW_URLS.REST_USER_VARIABLE_LIST.slice(1)
                 ).post(
@@ -303,6 +313,7 @@ angular.module(
                 (_var) =>
                     if _var.var_type != var_type
                         console.error "trying to change var_type for '#{_var.name}'' from '#{_var.var_type}' to '#{var_type}'"
+                        _remove_latest()
                         _result.reject("wrong type")
                     else
                         if var_type == "j"
@@ -318,11 +329,30 @@ angular.module(
                                     _.remove(@user.user_variable_set, (entry) -> return entry.idx == new_var.idx)
                                 @user.user_variable_set.push(new_var)
                                 @build_luts()
+                                _remove_latest()
                                 _result.resolve(new_var)
-                            (not_ok) ->
+                            (not_ok) =>
+                                _remove_latest()
                                 _result.reject("not modifed")
                         )
             )
+
+        set_var: (name, value, var_type) =>
+            # modify var (if exists) otherwise create new
+            if name not of @__vars_to_save
+                @__vars_to_save[name] = []
+            _result = $q.defer()
+            # save / store action for this var pending, buffer request
+            @__vars_to_save[name].push(
+                [
+                    name
+                    value
+                    var_type
+                    _result
+                ]
+            )
+            if @__vars_to_save[name].length == 1
+                @_handle_var(name)
             return _result.promise
 
 ]).service("icswUserService",

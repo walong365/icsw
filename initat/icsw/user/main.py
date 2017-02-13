@@ -290,7 +290,8 @@ def do_info(cur_opts, log_com):
     if _user is None:
         _ret_state = 1
     else:
-        from initat.cluster.backbone.models import user_quota_setting
+        from initat.cluster.backbone.models import user_quota_setting, user_variable
+        from django.db.models import Q
         print("")
         print(
             "User with loginname '{}' (user {}), uid={:d}, group={} (gid={:d})".format(
@@ -355,11 +356,21 @@ def do_info(cur_opts, log_com):
                         get_quota_str(_local),
                     )
                 )
+        if cur_opts.delete_var:
+            print("")
+            try:
+                _cv = user_variable.objects.get(Q(user=_user) & Q(idx=cur_opts.delete_var))
+            except user_variable.DoesNotExist:
+                print("Variable to delete does not exist")
+            else:
+                print("Deleting '{}'".format(str(_cv)))
+                _cv.delete()
         if cur_opts.show_vars:
             out_list = logging_tools.NewFormList()
             for _var in _user.user_variable_set.all().order_by("name"):
                 out_list.append(
                     [
+                        logging_tools.form_entry(_var.idx, header="idx"),
                         logging_tools.form_entry(_var.name, header="name"),
                         logging_tools.form_entry(_var.var_type, header="type"),
                         logging_tools.form_entry_right(_var.value if _var.var_type != "j" else "{:d} Bytes".format(len(_var.json_value)), header="value"),
