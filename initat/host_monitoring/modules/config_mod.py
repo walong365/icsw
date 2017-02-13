@@ -480,12 +480,14 @@ class full_update_command(hm_classes.MonitoringCommand):
     def mc_init(self):
         self.update_progress = 0.0
         self.update_thread = None
+        self.killing_allowed = False
 
     def __call__(self, srv_com, cur_ns):
         if self.update_thread:
-            import time
             time.sleep(1)
             srv_com["update_status"] = self.update_progress
+            if self.update_progress == 100:
+                self.killing_allowed = True
         else:
             import binascii
             import tarfile
@@ -550,14 +552,12 @@ class full_update_command(hm_classes.MonitoringCommand):
                         if config_files[config_file]:
                             f.write(bytes(config_files[config_file]))
 
-                print("**************")
-                print("Killing myself")
-                print("**************")
+                while not update_progress_obj.killing_allowed:
+                    time.sleep(1)
 
-                time.sleep(1)
                 os._exit(1)
 
-            srv_com["update_status"] = self.update_progress
+            srv_com["update_status"] = -1
 
             self.update_thread = Thread(target=update_func, kwargs={"update_progress_obj": self})
             self.update_thread.start()

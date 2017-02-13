@@ -123,11 +123,19 @@ setup_progress = angular.module(
                 if result == -1
                     toaster.pop("error", "", "Full update of device '" + device.full_name + "' failed with: " + data.error_string)
                 else
-                    toaster.pop("success", "", "Full update of device '" + device.full_name + "' done!")
-                    device.$$host_monitor_fingerprint = data.update_file_checksum
-                    device.$$host_monitor_version = data.update_file_version
-                    device.$$host_monitor_platform = data.update_file_platform
-                    device.$$host_monitor_platform_bits = data.update_file_platform_bits
+                    if data.progress < 0
+                        toaster.pop("success", "", "Full update of device '" + device.full_name + "' started.")
+
+                    if data.progress >= 100
+                        toaster.pop("success", "", "Full update of device '" + device.full_name + "' finished!")
+
+                    if data.progress >= 0
+                        device.$$host_monitor_fingerprint = data.update_file_checksum
+                        device.$$host_monitor_version = data.update_file_version
+                        device.$$host_monitor_platform = data.update_file_platform
+                        device.$$host_monitor_platform_bits = data.update_file_platform_bits
+                        device.$$host_monitor_full_update_progress = Number(data.progress).toFixed(1)
+
             else if result_type == "update_modules"
                 if result == -1
                     toaster.pop("error", "", "Module update of device '" + device.full_name + "' failed with: " + data.error_string)
@@ -573,6 +581,7 @@ setup_progress = angular.module(
     )
 
     $scope.perform_full_update = (device) ->
+        device.$$host_monitor_full_update_progress = 0.0
         device.$$update_modules_disabled = true
         device.$$hm_full_update_disabled = true
         icswSimpleAjaxCall(
