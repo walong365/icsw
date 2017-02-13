@@ -24,22 +24,9 @@ import datetime
 import logging
 import os
 import tempfile
-from io import BytesIO
-
 import PollyReports
 
-
-PollyReports.Element.text_conversion = str
-
-
-def pollyreports_gettext(self, row):
-    value = self.getvalue(row)
-    if value is None:
-        return ""
-    return str(value)
-
-PollyReports.Element.gettext = pollyreports_gettext
-
+from io import BytesIO
 from PIL import Image as PILImage
 from PollyReports import Element, Rule, Band
 from PollyReports import Report as PollyReportsReport
@@ -62,6 +49,7 @@ from reportlab.platypus import SimpleDocTemplate, Spacer, Table, Paragraph, Imag
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
+from unidecode import unidecode
 
 from initat.cluster.backbone.models import network, AssetBatch
 from initat.cluster.backbone.models import user
@@ -70,10 +58,18 @@ from initat.cluster.backbone.models.user import AC_READONLY, AC_MODIFY, AC_CREAT
 from initat.cluster.backbone.models import device, AssetType, PackageTypeEnum
 from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
 
-try:
-    from unidecode import unidecode
-except ImportError:
-    pass
+
+PollyReports.Element.text_conversion = str
+
+
+def pollyreports_gettext(self, row):
+    value = self.getvalue(row)
+    if value is None:
+        return ""
+    return str(value)
+
+PollyReports.Element.gettext = pollyreports_gettext
+
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +136,8 @@ class RowCollector(object):
 
             try:
                 install_date = install_date.strftime(ASSET_DATETIMEFORMAT)
-            except:
+            except Exception as e:
+                _ = e
                 install_date = "N/A"
 
             o = {
@@ -224,7 +221,8 @@ class RowCollector(object):
 
             try:
                 package_install_date = package_install_date.strftime(ASSET_DATETIMEFORMAT)
-            except:
+            except Exception as e:
+                _ = e
                 package_install_date = "N/A"
 
             o = {
@@ -628,8 +626,8 @@ class TabbedCanvas(Canvas):
 
 
 class PDFReportGenerator(ReportGenerator):
-    def __init__(self, settings, devices, report_history):
-        super(PDFReportGenerator, self).__init__(settings, devices, report_history)
+    def __init__(self, _settings, devices, report_history):
+        super(PDFReportGenerator, self).__init__(_settings, devices, report_history)
 
         # logo and styling options/settings
         system_device = None
@@ -993,7 +991,7 @@ class PDFReportGenerator(ReportGenerator):
         data = [[paragraph_header]]
 
         t_head = Table(data,
-                       colWidths=(available_width),
+                       colWidths=[available_width],
                        rowHeights=[35],
                        style=[('LEFTPADDING', (0, 0), (-1, -1), 0),
                               ('RIGHTPADDING', (0, 0), (-1, -1), 0), ])
@@ -1273,8 +1271,6 @@ class PDFReportGenerator(ReportGenerator):
                     logger.info("PDF generation for packages failed, error was: {}".format(str(e)))
                     packages = []
 
-
-
                 section_number = report.get_section_number()
 
                 data = [package.get_as_row() for package in packages]
@@ -1539,6 +1535,8 @@ class PDFReportGenerator(ReportGenerator):
                     continue
 
                 hardware_report_ar = ar
+            else:
+                report = None
 
             canvas.save()
             report.add_buffer_to_report(_buffer)
@@ -1806,7 +1804,7 @@ class PDFReportGenerator(ReportGenerator):
         data = [[p_h]]
 
         t_head = Table(data,
-                       colWidths=(available_width),
+                       colWidths=[available_width],
                        rowHeights=[35],
                        style=[])
 
@@ -2288,7 +2286,8 @@ class PDFReportGenerator(ReportGenerator):
 
             try:
                 bookmark_name = unidecode(bookmark_name)
-            except:
+            except Exception as e:
+                _ = e
                 bookmark_name = bookmark_name.encode("ascii", "replace")
 
             _report.bookmark = output_pdf.addBookmark(bookmark_name,
@@ -2900,13 +2899,12 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
             package_version = package_install_info.package_version
             asset_package = package_version.asset_package
 
-            row = []
-            row.append(asset_package.name)
-            row.append(package_version.version)
-            row.append(package_version.release)
-            row.append(package_install_info.size)
-            row.append(package_install_info.install_time)
-            row.append(PackageTypeEnum(package_version.asset_package.package_type).name)
+            row = [asset_package.name,
+                   package_version.version,
+                   package_version.release,
+                   package_install_info.size,
+                   package_install_info.install_time,
+                   PackageTypeEnum(package_version.asset_package.package_type).name]
 
             row_writer_func(row)
 
@@ -2920,12 +2918,10 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
         row_writer_func(base_header)
 
         for hardware_item in ar.assethardwareentry_set.all():
-            row = []
-
-            row.append(hardware_item.type)
-            row.append(hardware_item.depth)
-            row.append(hardware_item.attributes)
-            row.append(hardware_item.info_list)
+            row = [hardware_item.type,
+                   hardware_item.depth,
+                   hardware_item.attributes,
+                   hardware_item.info_list]
 
             row_writer_func(row)
 
@@ -2940,10 +2936,8 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
         row_writer_func(base_header)
 
         for _license in ar.assetlicenseentry_set.all():
-            row = []
-
-            row.append(_license.name)
-            row.append(_license.license_key)
+            row = [_license.name,
+                   _license.license_key]
 
             row_writer_func(row)
 
@@ -2962,16 +2956,14 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
         row_writer_func(base_header)
 
         for update in ar.asset_batch.installed_updates.all():
-            row = []
-
-            row.append(update.name)
-            row.append(update.version)
-            row.append(update.release)
-            row.append(update.kb_idx)
-            row.append(update.install_date)
-            row.append(update.status)
-            row.append(update.optional)
-            row.append(update.installed)
+            row = [update.name,
+                   update.version,
+                   update.release,
+                   update.kb_idx,
+                   update.install_date,
+                   update.status,
+                   update.optional,
+                   update.installed]
 
             row_writer_func(row)
 
@@ -2984,10 +2976,8 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
         row_writer_func(base_header)
 
         for process in ar.assetprocessentry_set.all():
-            row = []
-
-            row.append(str(process.name))
-            row.append(str(process.pid))
+            row = [str(process.name),
+                   str(process.pid)]
 
             row_writer_func(row)
 
@@ -3007,17 +2997,15 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
         row_writer_func(base_header)
 
         for update in ar.asset_batch.pending_updates.all():
-            row = []
-
-            row.append(update.name)
-            row.append(update.version)
-            row.append(update.release)
-            row.append(update.kb_idx)
-            row.append(update.install_date)
-            row.append(update.status)
-            row.append(update.optional)
-            row.append(update.installed)
-            row.append(update.new_version)
+            row = [update.name,
+                   update.version,
+                   update.release,
+                   update.kb_idx,
+                   update.install_date,
+                   update.status,
+                   update.optional,
+                   update.installed,
+                   update.new_version]
 
             row_writer_func(row)
 
@@ -3037,18 +3025,15 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
         row_writer_func(base_header)
 
         for pci_entry in ar.assetpcientry_set.all():
-            row = []
-
-            row.append(str(pci_entry.domain))
-            row.append(str(pci_entry.bus))
-            row.append(str(pci_entry.slot))
-            row.append(str(pci_entry.func))
-            row.append("{:04x}:{:02x}:{:02x}.{:x}".format(pci_entry.domain, pci_entry.bus,
-                                                          pci_entry.slot, pci_entry.func))
-            row.append(str(pci_entry.subclassname))
-            row.append(str(pci_entry.vendorname))
-            row.append(str(pci_entry.devicename))
-            row.append(str(pci_entry.revision))
+            row = [str(pci_entry.domain),
+                   str(pci_entry.bus),
+                   str(pci_entry.slot),
+                   str(pci_entry.func),
+                   "{:04x}:{:02x}:{:02x}.{:x}".format(pci_entry.domain, pci_entry.bus, pci_entry.slot, pci_entry.func),
+                   str(pci_entry.subclassname),
+                   str(pci_entry.vendorname),
+                   str(pci_entry.devicename),
+                   str(pci_entry.revision)]
 
             row_writer_func(row)
 
@@ -3073,13 +3058,7 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
                     key = dmi_value.key
                     value = dmi_value.value
 
-                    row = []
-
-                    row.append(handle)
-                    row.append(dmi_type)
-                    row.append(header)
-                    row.append(key)
-                    row.append(value)
+                    row = [handle, dmi_type, header, key, value]
 
                     row_writer_func(row)
 
