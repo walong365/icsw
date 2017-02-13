@@ -126,15 +126,16 @@ setup_progress = angular.module(
                     if data.progress < 0
                         toaster.pop("success", "", "Full update of device '" + device.full_name + "' started.")
 
-                    if data.progress >= 100
-                        toaster.pop("success", "", "Full update of device '" + device.full_name + "' finished!")
-
                     if data.progress >= 0
                         device.$$host_monitor_fingerprint = data.update_file_checksum
                         device.$$host_monitor_version = data.update_file_version
                         device.$$host_monitor_platform = data.update_file_platform
                         device.$$host_monitor_platform_bits = data.update_file_platform_bits
                         device.$$host_monitor_full_update_progress = Number(data.progress).toFixed(1)
+
+                    if data.progress >= 100
+                        toaster.pop("success", "", "Full update of device '" + device.full_name + "' finished!")
+                        device.$$host_monitor_full_update_progress = undefined
 
             else if result_type == "update_modules"
                 if result == -1
