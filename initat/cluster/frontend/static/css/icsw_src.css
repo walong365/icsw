@@ -423,6 +423,13 @@ div.yamm hr {
     padding-top: 16.5px;
     line-height: 17px;
 }
+.navbar.condensed .navbar-brand {
+    float: left;
+    padding: 17.5px 15px;
+    font-size: 14px;
+    line-height: 15px;
+    height: 50px;
+}
 .navbar form.normal {
     /* menu searchfield */
     margin-top: 22px;
