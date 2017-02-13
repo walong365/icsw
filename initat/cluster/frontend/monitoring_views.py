@@ -453,6 +453,34 @@ class search_similar_names(View):
 
 class _device_status_history_util(object):
     @staticmethod
+    def get_merged_state_types_from_request(request):
+        device_ids = json.loads(request.GET.get("device_ids"))
+
+        timespans_db = _device_status_history_util.get_timespans_db_from_request(request)
+        data = []
+        if len(timespans_db):
+            data = mon_icinga_log_aggregated_host_data.objects.filter(
+                device_id__in=device_ids,
+                timespan__in=timespans_db
+            ).values('device_id', 'state', 'state_type', 'value')
+
+        data_per_device = {device_id: [] for device_id in device_ids}
+        for d in data:
+            data_per_device[d['device_id']].append(d)
+
+        data_merged_state_types = {}
+        _eco = server_mixins.EggConsumeObject(DummyLogger())
+        _eco.init({"SERVICE_ENUM_NAME": icswServiceEnum.monitor_server.name})
+        for device_id, device_data in data_per_device.items():
+            if _eco.consume("dashboard", device_id):
+                data_merged_state_types[device_id] = mon_icinga_log_aggregated_service_data.objects.merge_state_types(
+                    device_data,
+                    mon_icinga_log_raw_base.STATE_UNDETERMINED,
+                    normalize=True,
+                )
+        return data_merged_state_types
+
+    @staticmethod
     def get_timespan_tuple_from_request(request):
         date = duration_utils.parse_date(request.GET["date"])
         duration_type = {
@@ -641,32 +669,8 @@ class get_hist_device_data(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        device_ids = json.loads(request.GET.get("device_ids"))
-
-        timespans_db = _device_status_history_util.get_timespans_db_from_request(request)
-        data = []
-        if len(timespans_db):
-            data = mon_icinga_log_aggregated_host_data.objects.filter(
-                device_id__in=device_ids,
-                timespan__in=timespans_db
-            ).values('device_id', 'state', 'state_type', 'value')
-
-        data_per_device = {device_id: [] for device_id in device_ids}
-        for d in data:
-            data_per_device[d['device_id']].append(d)
-
-        data_merged_state_types = {}
-        _eco = server_mixins.EggConsumeObject(DummyLogger())
-        _eco.init({"SERVICE_ENUM_NAME": icswServiceEnum.monitor_server.name})
-        for device_id, device_data in data_per_device.items():
-            if _eco.consume("dashboard", device_id):
-                data_merged_state_types[device_id] = mon_icinga_log_aggregated_service_data.objects.merge_state_types(
-                    device_data,
-                    mon_icinga_log_raw_base.STATE_UNDETERMINED,
-                    normalize=True,
-                )
-
-        return Response([data_merged_state_types])  # fake a list, see coffeescript
+        response_data = _device_status_history_util.get_merged_state_types_from_request(request)
+        return Response([response_data])  # fake a list, see coffeescript
 
 
 class get_hist_service_data(ListAPIView):
