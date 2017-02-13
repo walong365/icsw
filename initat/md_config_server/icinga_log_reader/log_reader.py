@@ -747,7 +747,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         """
         timestamp, info_raw = cls._parse_line_timestamp(line, line_no)
         data2 = info_raw.split(": ", 1)
-        if len(data2) == 2:
+        if len(data2) == 2 and data2[0].upper() == data2[0]:
             kind, info = data2
             try:
                 kind_enum = ILRParserEnum(kind)
@@ -842,8 +842,10 @@ class IcingaLogReader(threading_tools.icswProcessObj):
 
         host, service, service_info = self._parse_host_service(data[0], data[1])
 
-        flapping_state = {"STARTED": mon_icinga_log_raw_base.START,
-                          "STOPPED": mon_icinga_log_raw_base.STOP}.get(data[2], None)  # format as in db table
+        flapping_state = {
+            "STARTED": mon_icinga_log_raw_base.START,
+            "STOPPED": mon_icinga_log_raw_base.STOP
+        }.get(data[2], None)  # format as in db table
         if not flapping_state:
             raise ILRMalformedLogEntry("Malformed flapping state entry: {} (error #7)".format(info))
 

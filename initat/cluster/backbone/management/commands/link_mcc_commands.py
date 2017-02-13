@@ -22,13 +22,13 @@
 """ link moncheck commands with defined commands or set own uuids """
 
 import sys
+
 from django.core.management.base import BaseCommand
+from django.db.models import Q
 
 from initat.cluster.backbone.models import BackendConfigFile, \
     BackendConfigFileTypeEnum, DBStructuredMonBaseConfig
 from initat.tools import logging_tools
-from django.db.models import Q
-import pprint
 
 
 class Command(BaseCommand):

@@ -332,8 +332,12 @@ class KpiServiceObject(KpiObject):
         else:
             self.check_command = mcc.name
             self.check_command_description = mcc.description
-            self.config = mcc.config.name
-            self.config_description = mcc.config.description
+            self.config = ", ".join(
+                [_conf.name for _conf in mcc.config_rel]
+            )
+            self.config_description = ", ".join(
+                [_conf.description for _conf in mcc.config_rel]
+            )
 
             # this is actually a list of strings
             self.monitoring_category = KpiGlobals.mcc_category_cache[mcc.pk]

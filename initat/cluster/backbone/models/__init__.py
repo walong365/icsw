@@ -426,7 +426,7 @@ def _register_models():
         # category
         category,
         # mon
-        mon_check_command,
+        mon_check_command, DBStructuredMonBaseConfig,
         # kpi
         Kpi, KpiDataSourceTuple,
         # lic

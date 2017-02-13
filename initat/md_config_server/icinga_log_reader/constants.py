@@ -42,11 +42,9 @@ class ILRParserEnum(Enum):
     icinga_host_flapping_alert = 'HOST FLAPPING ALERT'
     icinga_host_downtime_alert = 'HOST DOWNTIME ALERT'
 
+    icinga_service_event_handler = "SERVICE EVENT HANDLER"
+
     # timeperiod
     timeperiod_transition = "TIMEPERIOD TRANSITION"
-    # special entries
-    livestatus = "livestatus"
-    warning = "Warning"
-    error = "Error"
 
     log_version = "LOG VERSION"
