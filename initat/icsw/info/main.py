@@ -31,7 +31,7 @@ def show_hm_help(options):
     from initat.host_monitoring.modules import local_mc
 
     def dummy_print(what, log_level=logging_tools.LOG_LEVEL_OK):
-        print("{} {}".format(logging_tools.map_log_level_to_log_status(log_level), what))
+        print("{} {}".format(logging_tools.get_log_level_str(log_level), what))
 
     local_mc.set_log_command(dummy_print)
     local_mc.build_structure()
