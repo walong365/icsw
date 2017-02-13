@@ -928,16 +928,20 @@ class Dispatcher(object):
         import pickle
         import binascii
         import bz2
+        import os
 
         update_dict = {}
 
-        for module in local_mc.HM_PATH_DICT.keys():
-            path = local_mc.HM_PATH_DICT[module]
-            f = open(path, "rb")
-            data = f.read()
-            f.close()
+        for root, dirs, files in os.walk(local_mc.get_root_dir()):
+            for _file in files:
+                _, ext = os.path.splitext(_file)
+                if ext == ".py":
+                    path = os.path.join(root, _file)
 
-            update_dict[module] = data
+                    with open(path, "rb") as f:
+                        data = f.read()
+                        path = path.replace(local_mc.get_root_dir(), ".")
+                        update_dict[path] = data
 
         update_dict_s = pickle.dumps(update_dict)
         update_dict_s = bz2.compress(update_dict_s)

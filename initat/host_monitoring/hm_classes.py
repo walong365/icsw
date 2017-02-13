@@ -246,13 +246,8 @@ class ModuleContainer(object):
             )
         )
         import_errors = []
-        hm_path_dict = {}
         _mod_list = []
         for mod_name in _all_files:
-            mod_name_full = "{}.py".format(mod_name)
-            mod_path = os.path.join(self.__root_dir, mod_name_full)
-            hm_path_dict[mod_name_full] = mod_path
-
             try:
                 new_mod = importlib.import_module(
                     "{}.{}".format(
@@ -273,13 +268,15 @@ class ModuleContainer(object):
                 exc_info = process_tools.icswExceptionInfo()
                 for log_line in exc_info.log_lines:
                     import_errors.append((mod_name, "import", log_line))
-        self.HM_PATH_DICT = hm_path_dict
         # list of modules
         self.__pure_module_list = _mod_list
         self.reload_module_checksum()
         self._log_import_errors(import_errors)
 
         # self.init_modules(import_errors)
+
+    def get_root_dir(self):
+        return self.__root_dir
 
     def reload_module_checksum(self):
         sha3_512_digester_all = hashlib.new("sha3_512")
