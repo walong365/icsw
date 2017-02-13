@@ -333,10 +333,10 @@ class KpiServiceObject(KpiObject):
             self.check_command = mcc.name
             self.check_command_description = mcc.description
             self.config = ", ".join(
-                [_conf.name for _conf in mcc.config_rel]
+                [_conf.name for _conf in mcc.config_rel.all()]
             )
             self.config_description = ", ".join(
-                [_conf.description for _conf in mcc.config_rel]
+                [_conf.description for _conf in mcc.config_rel.all()]
             )
 
             # this is actually a list of strings
