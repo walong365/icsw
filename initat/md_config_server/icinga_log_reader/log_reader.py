@@ -504,7 +504,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         else:
             return None
 
-    def _update_last_read(self, position: int, timestamp: int, inode: int, cur_line: int) -> object:
+    def _update_last_read(self, position: int, timestamp: int, inode: int, cur_line: int) -> MonIcingaLastRead:
         """
         Keep track of which data was read. May be called with older timestamp (will be discarded).
         """
