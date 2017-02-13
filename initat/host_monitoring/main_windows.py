@@ -52,6 +52,8 @@ def cleanup_old_files():
                     os.remove(path)
                 except PermissionError:
                     pass
+            except PermissionError:
+                pass
 
 if __name__ == "__main__":
     cleanup_old_files()

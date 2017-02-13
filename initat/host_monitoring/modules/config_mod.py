@@ -539,11 +539,9 @@ class full_update_command(hm_classes.MonitoringCommand):
                 idx = 0
                 for member in tar_file.getmembers():
                     idx += 1
-                    tar_file.extract(member)
+                    tar_file.extract(member, path=".")
 
                     update_progress_obj.update_progress = (idx / num_files) * 100
-
-                    print(update_progress_obj.update_progress)
 
                 for config_file in config_files.keys():
                     with open(config_file, "wb") as f:
@@ -557,6 +555,9 @@ class full_update_command(hm_classes.MonitoringCommand):
 
             self.update_thread = Thread(target=update_func, kwargs={"update_progress_obj": self})
             self.update_thread.start()
+
+    def interpret(self, srv_com, cur_ns):
+        return limits.mon_STATE_OK, srv_com["update_status"].text
 
 
 class platform_command(hm_classes.MonitoringCommand):
