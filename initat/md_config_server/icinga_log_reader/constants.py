@@ -45,6 +45,7 @@ class ILRParserEnum(Enum):
     icinga_service_event_handler = "SERVICE EVENT HANDLER"
 
     # timeperiod
-    timeperiod_transition = "TIMEPERIOD TRANSITION"
+    icinga_timeperiod_transition = "TIMEPERIOD TRANSITION"
 
-    log_version = "LOG VERSION"
+    icinga_log_version = "LOG VERSION"
+    icinga_log_rotation = "LOG ROTATION"
