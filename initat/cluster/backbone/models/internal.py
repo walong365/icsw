@@ -160,7 +160,7 @@ class BackendConfigFile(models.Model):
             ).exclude(
                 Q(idx=cfile.idx)
             ).update(
-                most_recent=True
+                most_recent=False
             )
         return cfile
 
