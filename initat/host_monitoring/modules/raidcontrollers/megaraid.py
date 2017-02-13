@@ -850,7 +850,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
 
 class megaraid_sas_status_command(hm_classes.MonitoringCommand):
     class Meta:
-        required_platform = PlatformSystemTypeEnum.ANY
+        required_platform = PlatformSystemTypeEnum.LINUX
         required_access = HMAccessClassEnum.level0
         uuid = "e27fe0c5-35f2-49b8-bbaa-37dba6d21387"
         description = "Check status of RaidControllers via megarc command"

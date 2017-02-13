@@ -17,13 +17,13 @@
 #
 """ checks for HPACU Controllers """
 
-
-
 import re
 
-from initat.host_monitoring import limits, hm_classes
+from initat.constants import PlatformSystemTypeEnum
 from initat.tools import logging_tools, server_command
-from initat.host_monitoring.modules.raidcontrollers.base import ctrl_type, ctrl_check_struct
+from .base import ctrl_type, ctrl_check_struct
+from ... import limits, hm_classes
+from ...constants import HMAccessClassEnum
 
 
 def get_size(in_str):
@@ -322,6 +322,12 @@ class ctrl_type_hpacu(ctrl_type):
 
 
 class hpacu_status_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.LINUX
+        required_access = HMAccessClassEnum.level0
+        uuid = "bd5a5c34-b0c7-4ce7-87af-c7cc25ab6231"
+        description = "Check status of RaidControllers via hpacu"
+
     def __call__(self, srv_com, cur_ns):
         ctrl_type.update("hpacu")
         ctrl_list = []

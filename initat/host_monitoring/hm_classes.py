@@ -381,10 +381,13 @@ class ModuleContainer(object):
             ]
             if len(loc_coms):
                 coms_added = []
+                # loc_coms after parsing (removed _command postfix)
+                coms_parsed = set()
                 for loc_com in loc_coms:
                     com_obj = getattr(mod_object, loc_com)
                     if loc_com.endswith("_command"):
                         loc_com = loc_com[:-8]
+                    coms_parsed.add(loc_com)
                     MonitoringCommand.salt_meta(loc_com, com_obj)
                     if MonitoringCommand.verify_meta(com_obj, platform, access_class):
                         if com_obj.Meta.uuid in used_uuids:
@@ -451,7 +454,7 @@ class ModuleContainer(object):
                         ", ".join(coms_added),
                     )
                 )
-                not_added = set(loc_coms) - set(coms_added)
+                not_added = set(coms_parsed) - set(coms_added)
                 if not_added:
                     self.log(
                         "{} not added for module {}: {}".format(
