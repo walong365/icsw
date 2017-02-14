@@ -191,7 +191,7 @@ angular.module(
                             cx: 0
                             cy: 0
                             r: ring_radius - 1
-                            stroke: "#222222"
+                            className: "svg-pie-border"
                             strokeWidth: _cr
                         }
                     )
