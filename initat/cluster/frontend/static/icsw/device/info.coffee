@@ -127,9 +127,9 @@ angular.module(
 
 ]).service("icswDeviceOverviewTabs",
 [
-    "icswDeviceOverviewTabTemplate",
+    "icswDeviceOverviewTabTemplate", "icswAccessLevelService",
 (
-    icswDeviceOverviewTabTemplate,
+    icswDeviceOverviewTabTemplate, icswAccessLevelService
 ) ->
     _list = [
         new icswDeviceOverviewTabTemplate("general", true, "", "General")
@@ -139,8 +139,13 @@ angular.module(
         new icswDeviceOverviewTabTemplate("location", false, "backbone.device.change_location", "Locations")
         new icswDeviceOverviewTabTemplate("variable", true, "backbone.device.change_variables", "Device Variables")
         new icswDeviceOverviewTabTemplate("devicelogs", false, "", "Device Logs")
-        new icswDeviceOverviewTabTemplate("assets", false, "", "Assets")
     ]
+
+    if icswAccessLevelService.has_valid_license("md_config_server")
+        _list.splice(1, 0, new icswDeviceOverviewTabTemplate("monitoring", false, "", "Monitoring"))
+    if icswAccessLevelService.has_valid_license("asset")
+        _list.splice(5, 0, new icswDeviceOverviewTabTemplate("assets", false, "", "Assets"))
+
     return _list
 ]).directive("icswDeviceOverview",
 [
@@ -625,7 +630,7 @@ angular.module(
                 title: title
                 # removed modal-form due to horrible display
                 css_class: "modal-wide"
-                ok_label: "Modify"
+                ok_label: "Save"
                 closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
@@ -689,3 +694,4 @@ angular.module(
         )
 
 ])
+

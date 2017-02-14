@@ -30,7 +30,7 @@ from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device_group
-from initat.collectd.config import global_config
+from .config import global_config
 from initat.tools import logging_tools, process_tools, server_mixins, threading_tools
 
 
@@ -438,8 +438,7 @@ class AGObj(object):
 
 class AggregateProcess(threading_tools.icswProcessObj, server_mixins.OperationalErrorMixin):
     def process_init(self):
-        import memcache
-        global_config.close()
+        global_config.enable_pm(self)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],

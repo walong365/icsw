@@ -34,7 +34,7 @@ def run_code():
 def main():
     global_config.add_config_entries(
         [
-            ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1", help_string="memcache address")),
+            ("MEMCACHE_ADDRESS", configfile.StringConfigVar("127.0.0.1", help_string="memcache address")),
         ]
     )
     # enable connection debugging

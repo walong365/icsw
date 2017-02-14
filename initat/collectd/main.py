@@ -51,11 +51,11 @@ def kill_previous():
 def main():
     global_config.add_config_entries(
         [
-            ("RRD_DIR", configfile.str_c_var("/var/cache/rrd", help_string="directory of rrd-files on local disc", database=True)),
-            ("RRD_CACHED_DIR", configfile.str_c_var("/var/run/rrdcached", database=True)),
-            ("RRD_CACHED_SOCKET", configfile.str_c_var("/var/run/rrdcached/rrdcached.sock", database=True)),
-            ("RRD_STEP", configfile.int_c_var(60, help_string="RRD step value", database=True)),
-            ("AGGREGATE_DIR", configfile.str_c_var("/opt/cluster/share/collectd", help_string="base dir for collectd aggregates")),
+            ("RRD_DIR", configfile.StringConfigVar("/var/cache/rrd", help_string="directory of rrd-files on local disc", database=True)),
+            ("RRD_CACHED_DIR", configfile.StringConfigVar("/var/run/rrdcached", database=True)),
+            ("RRD_CACHED_SOCKET", configfile.StringConfigVar("/var/run/rrdcached/rrdcached.sock", database=True)),
+            ("RRD_STEP", configfile.IntegerConfigVar(60, help_string="RRD step value", database=True)),
+            ("AGGREGATE_DIR", configfile.StringConfigVar("/opt/cluster/share/collectd", help_string="base dir for collectd aggregates")),
         ]
     )
     kill_previous()

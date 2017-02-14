@@ -39,10 +39,10 @@ from initat.cluster.backbone.models import rms_job, rms_job_run, rms_pe_info, \
     rms_project, rms_department, rms_pe, rms_queue, user, device, RMSJobVariable, \
     rms_user
 from initat.cluster.backbone.models.functions import cluster_timezone
-from initat.rms.config import global_config
-from initat.rms.functions import call_command
 from initat.tools import logging_tools, server_command, threading_tools, process_tools, \
     server_mixins
+from .config import global_config
+from .functions import call_command
 
 _OBJ_DICT = {
     "rms_queue": rms_queue,
@@ -55,7 +55,7 @@ _OBJ_DICT = {
 
 class AccountingProcess(threading_tools.icswProcessObj, server_mixins.EggConsumeMixin):
     def process_init(self):
-        global_config.close()
+        global_config.enable_pm(self)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],

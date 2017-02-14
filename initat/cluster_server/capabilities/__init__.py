@@ -17,36 +17,33 @@
 #
 """ cluster-server, capability process """
 
-
 import importlib
 import inspect
 import os
 import time
 
 import zmq
-from django.db.models import Q
 from lxml import etree
 
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import icswEggConsumer, icswEggBasket
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.cluster_server.capabilities import base
-from initat.cluster_server.config import global_config
 from initat.host_monitoring import hm_classes
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import config_tools, logging_tools, process_tools, server_command, threading_tools
+from . import base
+from ..config import global_config
 
 
 class CapabilityProcess(threading_tools.icswProcessObj):
     def process_init(self):
-        global_config.close()
+        global_config.enable_pm(self)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
             zmq=True,
             context=self.zmq_context
         )
-        # print("CC", os.getpid())
         # db_tools.close_connection()
         self._instance = InstanceXML(log_com=self.log)
         self._init_network()

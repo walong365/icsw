@@ -47,7 +47,7 @@ class ServerProcess(
         db_tools.close_connection()
         global_config.add_config_entries(
             [
-                ("REPORT_BASE_PATH", configfile.str_c_var("/opt/cluster/share/reports"))
+                ("REPORT_BASE_PATH", configfile.StringConfigVar("/opt/cluster/share/reports"))
             ]
         )
         self.CC.re_insert_config()

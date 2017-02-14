@@ -52,11 +52,11 @@ def main(options=None):
     if prog_name == "collclient":
         global_config.add_config_entries(
             [
-                ("IDENTITY_STRING", configfile.str_c_var(options.IDENTITY_STRING)),
-                ("TIMEOUT", configfile.int_c_var(options.TIMEOUT)),
-                ("COMMAND_PORT", configfile.int_c_var(options.COMMAND_PORT)),
-                ("HOST", configfile.str_c_var(options.HOST)),
-                ("ARGUMENTS", configfile.array_c_var(options.ARGUMENTS)),
+                ("IDENTITY_STRING", configfile.StringConfigVar(options.IDENTITY_STRING)),
+                ("TIMEOUT", configfile.IntegerConfigVar(options.TIMEOUT)),
+                ("COMMAND_PORT", configfile.IntegerConfigVar(options.COMMAND_PORT)),
+                ("HOST", configfile.StringConfigVar(options.HOST)),
+                ("ARGUMENTS", configfile.ArrayConfigVar(options.ARGUMENTS)),
             ]
         )
     ret_state = run_code(prog_name, global_config)

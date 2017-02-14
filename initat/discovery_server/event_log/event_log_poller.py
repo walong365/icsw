@@ -28,11 +28,11 @@ from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, ComCapability, net_ip
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.routing import SrvTypeRouting
-from initat.discovery_server.config import global_config
-from initat.discovery_server.event_log.ipmi_event_log_scanner import IpmiLogJob
-from initat.discovery_server.event_log.wmi_event_log_scanner import WmiLogEntryJob, WmiLogFileJob
 from initat.tools import logging_tools, threading_tools, config_tools, process_tools
 from initat.tools.mongodb import MongoDbConnector
+from .ipmi_event_log_scanner import IpmiLogJob
+from .wmi_event_log_scanner import WmiLogEntryJob, WmiLogFileJob
+from ..config import global_config
 
 
 class EventLogPollerProcess(threading_tools.icswProcessObj):
@@ -41,8 +41,8 @@ class EventLogPollerProcess(threading_tools.icswProcessObj):
 
     MAX_CONCURRENT_JOBS = 5
 
-    def process_init(self):#
-        global_config.close()
+    def process_init(self):
+        global_config.enable_pm(self)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],

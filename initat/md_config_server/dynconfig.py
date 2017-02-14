@@ -31,16 +31,16 @@ from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, monitoring_hint, \
-    mon_check_command, DeviceLogEntry
+    mon_check_command
 from initat.host_monitoring import limits
-from initat.md_config_server.config import global_config
-from initat.md_config_server.icinga_log_reader.log_reader import HostServiceIDUtil
 from initat.tools import logging_tools, server_command, process_tools, threading_tools
+from .config import global_config
+from .icinga_log_reader.log_reader import HostServiceIDUtil
 
 
 class DynConfigProcess(threading_tools.icswProcessObj):
     def process_init(self):
-        global_config.close()
+        global_config.enable_pm(self)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],

@@ -33,13 +33,13 @@ def main():
     prog_name = global_config.name()
     global_config.add_config_entries(
         [
-            ("BASEDIR_NAME", configfile.str_c_var("/etc/sysconfig/snmp-relay.d")),
-            ("SNMP_PROCESSES", configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]")),
-            ("MAIN_TIMER", configfile.int_c_var(60, help_string="main timer [%(default)d]")),
-            ("MAX_CALLS", configfile.int_c_var(100, help_string="number of calls per helper process [%(default)d]")),
+            ("BASEDIR_NAME", configfile.StringConfigVar("/etc/sysconfig/snmp-relay.d")),
+            ("SNMP_PROCESSES", configfile.IntegerConfigVar(4, help_string="number of SNMP processes [%(default)d]")),
+            ("MAIN_TIMER", configfile.IntegerConfigVar(60, help_string="main timer [%(default)d]")),
+            ("MAX_CALLS", configfile.IntegerConfigVar(100, help_string="number of calls per helper process [%(default)d]")),
             (
                 "PID_NAME",
-                configfile.str_c_var(
+                configfile.StringConfigVar(
                     os.path.join(
                         prog_name,
                         prog_name

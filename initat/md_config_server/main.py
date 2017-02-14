@@ -39,8 +39,8 @@ def run_code():
 def main():
     global_config.add_config_entries(
         [
-            ("INITIAL_CONFIG_RUN", configfile.bool_c_var(False, help_string="make a config build run on startup [%(default)s]")),
-            ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1", help_string="memcache address")),
+            ("INITIAL_CONFIG_RUN", configfile.BoolConfigVar(False, help_string="make a config build run on startup [%(default)s]")),
+            ("MEMCACHE_ADDRESS", configfile.StringConfigVar("127.0.0.1", help_string="memcache address")),
         ]
     )
     run_code()

@@ -52,7 +52,7 @@ class MainProcess(ICSWBasePoolClient):
         )
         global_config.add_config_entries(
             [
-                ("STATE_DIR", configfile.str_c_var(os.path.join(self.CC.CS["meta.maindir"], ".srvstate"), source="dynamic")),
+                ("STATE_DIR", configfile.StringConfigVar(os.path.join(self.CC.CS["meta.maindir"], ".srvstate"), source="dynamic")),
             ]
         )
         self.__debug = global_config["DEBUG"]

@@ -580,11 +580,11 @@ class ConfigStore(object):
         for _src, _dst in mapping:
             _val = self[_src]
             if isinstance(_val, int):
-                _obj = configfile.int_c_var
+                _obj = configfile.IntegerConfigVar
             elif isinstance(_val, bool):
-                _obj = configfile.bool_c_var
+                _obj = configfile.BoolConfigVar
             else:
-                _obj = configfile.str_c_var
+                _obj = configfile.StringConfigVar
             _adds.append(
                 (_dst, _obj(_val, database=False, source="ConfigStore"))
             )

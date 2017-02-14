@@ -183,10 +183,11 @@ class ConfigCheckObject(object):
             # srv_type_enum is None, use value stored in global config
             from initat.cluster.backbone.server_enums import icswServiceEnum
             # force reload of global-config
-            global_config.close()
             srv_type_enum = getattr(icswServiceEnum, global_config["SERVICE_ENUM_NAME"])
         self.srv_type_enum = srv_type_enum
         self.global_config = global_config
+        # enable process mode
+        self.global_config.enable_pm(self.__process)
         self.__native_logging = native_logging
         self.__init_msi_block = init_msi_block
         self._inst_xml = InstanceXML(self.log)
@@ -199,7 +200,7 @@ class ConfigCheckObject(object):
             self.__cs = None
         global_config.add_config_entries(
             [
-                ("SERVICE_ENUM_NAME", configfile.str_c_var(self.srv_type_enum.name))
+                ("SERVICE_ENUM_NAME", configfile.StringConfigVar(self.srv_type_enum.name))
             ]
         )
         if init_logging:
@@ -208,7 +209,7 @@ class ConfigCheckObject(object):
                     [
                         (
                             "LOG_DESTINATION",
-                            configfile.str_c_var(
+                            configfile.StringConfigVar(
                                 get_log_path(
                                     icswLogHandleTypes.log_py
                                 )
@@ -222,19 +223,19 @@ class ConfigCheckObject(object):
                     [
                         (
                             "DEBUG",
-                            configfile.bool_c_var(
+                            configfile.BoolConfigVar(
                                 ICSW_DEBUG_MODE,
                             )
                         ),
                         (
                             "DEBUG_LEVEL",
-                            configfile.int_c_var(
+                            configfile.IntegerConfigVar(
                                 ICSW_DEBUG_LEVEL,
                             )
                         ),
                         (
                             "VERBOSE",
-                            configfile.int_c_var(
+                            configfile.IntegerConfigVar(
                                 ICSW_DEBUG_LEVEL,
                             )
                         ),
@@ -251,7 +252,7 @@ class ConfigCheckObject(object):
                     [
                         (
                             "LOG_NAME",
-                            configfile.str_c_var(
+                            configfile.StringConfigVar(
                                 _log_name,
                                 source="instance"
                             )
@@ -311,14 +312,14 @@ class ConfigCheckObject(object):
         _opts = [
             (
                 "PID_NAME",
-                configfile.str_c_var(self._inst_xml.get_pid_file_name(self._instance), source="instance", database=False)
+                configfile.StringConfigVar(self._inst_xml.get_pid_file_name(self._instance), source="instance", database=False)
             ),
         ]
         for _name, _value in self._inst_xml.get_port_dict(self._instance).items():
             _opts.append(
                 (
                     "{}_PORT".format(_name.upper()),
-                    configfile.int_c_var(_value, source="instance", database=False)
+                    configfile.IntegerConfigVar(_value, source="instance", database=False)
                 ),
             )
         if self.srv_type_enum.value.server_service:
@@ -334,34 +335,34 @@ class ConfigCheckObject(object):
                     [
                         (
                             "SERVICE_ENUM_NAME",
-                            configfile.str_c_var(self.srv_type_enum.name),
+                            configfile.StringConfigVar(self.srv_type_enum.name),
                         ),
                         (
                             "SERVER_SHORT_NAME",
-                            configfile.str_c_var(process_tools.get_machine_name(True)),
+                            configfile.StringConfigVar(process_tools.get_machine_name(True)),
                         ),
                         (
                             "SERVER_IDX",
-                            configfile.int_c_var(self.__sql_info.device.pk, database=False, source="instance")
+                            configfile.IntegerConfigVar(self.__sql_info.device.pk, database=False, source="instance")
                         ),
                         (
                             "CONFIG_IDX",
-                            configfile.int_c_var(self.__sql_info.config.pk, database=False, source="instance")
+                            configfile.IntegerConfigVar(self.__sql_info.config.pk, database=False, source="instance")
                         ),
                         (
                             "EFFECTIVE_DEVICE_IDX",
-                            configfile.int_c_var(self.__sql_info.effective_device.pk, database=False, source="instance")
+                            configfile.IntegerConfigVar(self.__sql_info.effective_device.pk, database=False, source="instance")
                         ),
                         (
                             "LOG_SOURCE_IDX",
-                            configfile.int_c_var(
+                            configfile.IntegerConfigVar(
                                 LogSource.new(self.srv_type_enum.name, device=self.__sql_info.effective_device).pk,
                                 source="instance",
                             )
                         ),
                         (
                             "MEMCACHE_PORT",
-                            configfile.int_c_var(self._inst_xml.get_port_dict("memcached", command=True), source="instance")
+                            configfile.IntegerConfigVar(self._inst_xml.get_port_dict("memcached", command=True), source="instance")
                         ),
                     ]
                 )

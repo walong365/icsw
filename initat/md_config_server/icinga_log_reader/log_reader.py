@@ -38,12 +38,12 @@ from initat.cluster.backbone.models import device, mon_check_command, \
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, \
     mon_icinga_log_raw_base, mon_icinga_log_full_system_dump, \
     mon_icinga_log_raw_host_downtime_data, mon_icinga_log_raw_service_downtime_data
-from initat.md_config_server.config import global_config
-from initat.md_config_server.icinga_log_reader.log_aggregation import IcingaLogAggregator
 from initat.tools import threading_tools, logging_tools, process_tools
 from .constants import ILRParserEnum, IcingaLogLine
 from .exceptions import *
+from .log_aggregation import IcingaLogAggregator
 from .log_reader_utils import HostServiceIDUtil
+from ..config import global_config
 
 __all__ = [
     "IcingaLogReader",
@@ -74,7 +74,7 @@ class IcingaLogReader(threading_tools.icswProcessObj):
         )
 
     def process_init(self):
-        global_config.close()
+        global_config.enable_pm(self)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],

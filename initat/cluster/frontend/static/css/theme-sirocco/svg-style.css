@@ -59,6 +59,7 @@
 .sb-lines-selected { stroke: #dddddd ; stroke-width: 1; }
 .svg-stroke { stroke: #aaaaaa; stroke-width: 0.5; }
 .pie-segment { stroke-width: 0.5; stroke-miterlimit: 2; stroke: #fff; }
+.svg-pie-border { stroke: transparent; }
 .svg-sel { opacity: 0.7; }
 .svg-clicked-outer {
     stroke-width: 3px !important;

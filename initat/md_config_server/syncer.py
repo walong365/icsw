@@ -37,14 +37,14 @@ from initat.md_sync_server.base_config import RemoteServer
 from initat.tools import config_tools, logging_tools, server_command, threading_tools
 
 __all__ = [
-    b"RemoteServer",
-    b"SyncerProcess",
+    "RemoteServer",
+    "SyncerProcess",
 ]
 
 
 class SyncerProcess(threading_tools.icswProcessObj):
     def process_init(self):
-        # global_config.close()
+        global_config.enable_pm(self)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],

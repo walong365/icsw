@@ -47,8 +47,8 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         db_tools.close_connection()
         self.CC.read_config_from_db(
             [
-                ("SNMP_PROCESSES", configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]")),
-                ("MAX_CALLS", configfile.int_c_var(100, help_string="number of calls per helper process [%(default)d]")),
+                ("SNMP_PROCESSES", configfile.IntegerConfigVar(4, help_string="number of SNMP processes [%(default)d]")),
+                ("MAX_CALLS", configfile.IntegerConfigVar(100, help_string="number of calls per helper process [%(default)d]")),
             ]
         )
         self.CC.re_insert_config()

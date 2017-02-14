@@ -451,13 +451,13 @@ def get_config_var_list(config_obj, config_dev):
                 var_global = True
                 _local_host_name, var_name = (config_dev.name, db_rec.name)
             if isinstance(db_rec.value, array.array):
-                new_val = configfile.str_c_var(db_rec.value.tostring(), source="{}_table".format(short))
+                new_val = configfile.StringConfigVar(db_rec.value.tostring(), source="{}_table".format(short))
             elif short == "int":
-                new_val = configfile.int_c_var(int(db_rec.value), source="{}_table".format(short))
+                new_val = configfile.IntegerConfigVar(int(db_rec.value), source="{}_table".format(short))
             elif short == "bool":
-                new_val = configfile.bool_c_var(bool(db_rec.value), source="{}_table".format(short))
+                new_val = configfile.BoolConfigVar(bool(db_rec.value), source="{}_table".format(short))
             else:
-                new_val = configfile.str_c_var(db_rec.value, source="{}_table".format(short))
+                new_val = configfile.StringConfigVar(db_rec.value, source="{}_table".format(short))
             new_val.is_global = var_global
             r_dict[var_name.upper()] = new_val
     return r_dict

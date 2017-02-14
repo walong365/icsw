@@ -39,22 +39,22 @@ def main(options=None):
     global_config.add_config_entries(
         [
             (
-                "COMMAND", configfile.str_c_var(
+                "COMMAND", configfile.StringConfigVar(
                     options.COMMAND if options else "",
                 )
             ),
             (
-                "BACKUP_DATABASE", configfile.bool_c_var(
+                "BACKUP_DATABASE", configfile.BoolConfigVar(
                     options.BACKUP_DATABASE if options else False,
                 )
             ),
             (
-                "OPTION_KEYS", configfile.array_c_var(
+                "OPTION_KEYS", configfile.ArrayConfigVar(
                     options.OPTION_KEYS if options else [],
                 )
             ),
             (
-                "SHOW_RESULT", configfile.bool_c_var(
+                "SHOW_RESULT", configfile.BoolConfigVar(
                     options.SHOW_RESULT if options else False,
                 )
             ),

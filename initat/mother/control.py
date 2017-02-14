@@ -1271,7 +1271,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
 
 class ICMPProcess(threading_tools.icswProcessObj):
     def process_init(self):
-        global_config.close()
+        global_config.enable_pm(self)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
@@ -1304,7 +1304,7 @@ class ICMPProcess(threading_tools.icswProcessObj):
 
 class NodeControlProcess(threading_tools.icswProcessObj, server_mixins.EggConsumeMixin):
     def process_init(self):
-        global_config.close()
+        global_config.enable_pm(self)
         # check log type (queue or direct)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
@@ -1410,7 +1410,7 @@ class NodeControlProcess(threading_tools.icswProcessObj, server_mixins.EggConsum
         _iso_dir = os.path.join(global_config["ETHERBOOT_DIR"], "isos")
         global_config.add_config_entries(
             [
-                ("ISO_DIR", configfile.str_c_var(_iso_dir)),
+                ("ISO_DIR", configfile.StringConfigVar(_iso_dir)),
             ]
         )
         if not os.path.isdir(_iso_dir):
