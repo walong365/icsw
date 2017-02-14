@@ -47,19 +47,19 @@ class server_process(server_mixins.ICSWBasePool):
         self.CC.check_config()
         self.CC.read_config_from_db(
             [
-                ("TFTP_DIR", configfile.str_c_var("/tftpboot")),
-                ("MONITORING_PORT", configfile.int_c_var(InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True))),
-                ("LOCALHOST_IS_EXCLUSIVE", configfile.bool_c_var(True)),
-                ("HOST_CACHE_TIME", configfile.int_c_var(10 * 60)),
-                ("WRITE_REDHAT_HWADDR_ENTRY", configfile.bool_c_var(True)),
-                ("ADD_NETDEVICE_LINKS", configfile.bool_c_var(False)),
+                ("TFTP_DIR", configfile.StringConfigVar("/tftpboot")),
+                ("MONITORING_PORT", configfile.IntegerConfigVar(InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True))),
+                ("LOCALHOST_IS_EXCLUSIVE", configfile.BoolConfigVar(True)),
+                ("HOST_CACHE_TIME", configfile.IntegerConfigVar(10 * 60)),
+                ("WRITE_REDHAT_HWADDR_ENTRY", configfile.BoolConfigVar(True)),
+                ("ADD_NETDEVICE_LINKS", configfile.BoolConfigVar(False)),
             ]
         )
         global_config.add_config_entries(
             [
-                ("CONFIG_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "config"))),
-                ("IMAGE_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "images"))),
-                ("KERNEL_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "kernels"))),
+                ("CONFIG_DIR", configfile.StringConfigVar(os.path.join(global_config["TFTP_DIR"], "config"))),
+                ("IMAGE_DIR", configfile.StringConfigVar(os.path.join(global_config["TFTP_DIR"], "images"))),
+                ("KERNEL_DIR", configfile.StringConfigVar(os.path.join(global_config["TFTP_DIR"], "kernels"))),
             ]
         )
         self.__pid_name = global_config["PID_NAME"]

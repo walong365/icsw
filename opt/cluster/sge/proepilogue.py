@@ -39,6 +39,14 @@ import pwd
 import socket
 import stat
 import time
+try:
+    from initat.tools.configfile import StringConfigVar, IntegerConfigVar, BoolConfigVar
+except:
+    from initat.tools.configfile import str_c_var, int_c_var, bool_c_var
+    StringConfigVar = str_c_var
+    IntegerConfigVar = int_c_var
+    BoolConfigVar = bool_c_var
+
 from initat.tools import threading_tools, configfile, logging_tools, net_tools, \
     process_tools, server_command
 from initat.icsw.service.instance import InstanceXML
@@ -473,7 +481,7 @@ class RMSJob(object):
                     logging_tools.LOG_LEVEL_ERROR
                 )
                 act_val = default
-            global_config.add_config_entries([(key, configfile.str_c_var(act_val, source=src_file))])
+            global_config.add_config_entries([(key, StringConfigVar(act_val, source=src_file))])
 
     def _set_localhost_stuff(self):
         try:
@@ -487,7 +495,7 @@ class RMSJob(object):
                 logging_tools.LOG_LEVEL_ERROR
             )
             host_ip = "127.0.0.1"
-        global_config.add_config_entries([("HOST_IP", configfile.str_c_var(host_ip, source="env"))])
+        global_config.add_config_entries([("HOST_IP", StringConfigVar(host_ip, source="env"))])
 
     def _parse_job_script(self):
         self.script_is_special = False
@@ -540,11 +548,11 @@ class RMSJob(object):
                                     if key and value:
                                         init_dict[key] = value
                                         self.log("recognised init option '{}' (value '{}')".format(key, value))
-                                        global_config.add_config_entries([(key, configfile.str_c_var(value, source="jobscript"))])
+                                        global_config.add_config_entries([(key, StringConfigVar(value, source="jobscript"))])
                                 for key in [x[0].strip().upper() for x in line_parts if len(x) == 1]:
                                     init_dict[key] = True
                                     self.log("recognised init option '{}' (value '{}')".format(key, True))
-                                    global_config.add_config_entries([(key, configfile.bool_c_var(True, source="jobscript"))])
+                                    global_config.add_config_entries([(key, BoolConfigVar(True, source="jobscript"))])
                     self.log(
                         "Scriptfile '{}' has {} ({} and {})".format(
                             script_file,
@@ -564,9 +572,9 @@ class RMSJob(object):
     def _parse_sge_env(self):
         # pe name
         if "PE" in os.environ and "PE_HOSTFILE" in os.environ:
-            global_config.add_config_entries([("PE", configfile.str_c_var(os.environ["PE"], source="env"))])
+            global_config.add_config_entries([("PE", StringConfigVar(os.environ["PE"], source="env"))])
         else:
-            global_config.add_config_entries([("PE", configfile.str_c_var("", source="env"))])
+            global_config.add_config_entries([("PE", StringConfigVar("", source="env"))])
         # TASK_ID
         if "SGE_TASK_FIRST" in os.environ and "SGE_TASK_LAST" in os.environ and "SGE_TASK_ID" in os.environ and "SGE_TASK_STEPSIZE" in os.environ:
             if os.environ["SGE_TASK_ID"] == "undefined":
@@ -590,8 +598,8 @@ class RMSJob(object):
         )
         global_config.add_config_entries(
             [
-                ("TASK_ID", configfile.int_c_var(task_id, source="env")),
-                ("FULL_JOB_ID", configfile.str_c_var(full_job_id, source="env"))
+                ("TASK_ID", IntegerConfigVar(task_id, source="env")),
+                ("FULL_JOB_ID", StringConfigVar(full_job_id, source="env"))
             ]
         )
 
@@ -629,9 +637,9 @@ class RMSJob(object):
                 group = grp_data[0]
         global_config.add_config_entries(
             [
-                ("GROUP", configfile.str_c_var(group, source="env")),
-                ("UID", configfile.int_c_var(uid, source="env")),
-                ("GID", configfile.int_c_var(gid, source="env"))
+                ("GROUP", StringConfigVar(group, source="env")),
+                ("UID", IntegerConfigVar(uid, source="env")),
+                ("GID", IntegerConfigVar(gid, source="env"))
             ]
         )
 
@@ -1121,7 +1129,7 @@ class RMSJob(object):
             ("HOSTFILE_WITH_CPUS", "/tmp/hostfile_wcpu_{}".format(global_config["FULL_JOB_ID"]), self._whf_wcpu),
             ("HOSTFILE_WITH_SLOTS", "/tmp/hostfile_wslot_{}".format(global_config["FULL_JOB_ID"]), self._whf_wslot)
         ]:
-            global_config.add_config_entries([(var_name, configfile.str_c_var(file_name))])
+            global_config.add_config_entries([(var_name, StringConfigVar(file_name))])
             self._add_script_var(var_name, file_name)
             if action == "save":
                 open(file_name, "w").write("\n".join(generator()) + "\n")
@@ -1543,10 +1551,10 @@ class ProcessPool(threading_tools.icswProcessPool):
                 )
                 # sys.exit(1)
             global_config.add_config_entries([
-                (v_name, configfile.str_c_var(v_val, source=v_src))])
+                (v_name, StringConfigVar(v_val, source=v_src))])
         if "SGE_ROOT" in global_config and "SGE_CELL" in global_config:
             global_config.add_config_entries([
-                ("SGE_VERSION", configfile.str_c_var("6", source="intern"))])
+                ("SGE_VERSION", StringConfigVar("6", source="intern"))])
 
     def _read_config(self):
         # reading the config
@@ -1570,7 +1578,7 @@ class ProcessPool(threading_tools.icswProcessPool):
                     print("")
                 self.show_cnf()
             else:
-                global_config.add_config_entries([("CONFIG_FILE", configfile.str_c_var(conf_file))])
+                global_config.add_config_entries([("CONFIG_FILE", StringConfigVar(conf_file))])
                 self.log("reading config from {}".format(conf_file))
                 parse_file(global_config, global_config["CONFIG_FILE"])
 
@@ -1605,18 +1613,18 @@ def main_code():
         LPATH = "ipc:///var/lib/logging-server/py_log_zmq"
     global_config.add_config_entries(
         [
-            ("LOG_DESTINATION", configfile.str_c_var("uds:{}".format(LPATH))),
-            ("LOG_NAME", configfile.str_c_var("proepilogue")),
-            ("MAX_RUN_TIME", configfile.int_c_var(60)),
-            ("SEP_LEN", configfile.int_c_var(80)),
-            ("HAS_MPI_INTERFACE", configfile.bool_c_var(True)),
-            ("MPI_POSTFIX", configfile.str_c_var("mp")),
-            ("REMOVE_IPCS", configfile.bool_c_var(False)),
-            ("SIMULTANEOUS_PINGS", configfile.int_c_var(128)),
-            ("PING_PACKETS", configfile.int_c_var(5)),
-            ("PING_TIMEOUT", configfile.float_c_var(5.0)),
-            ("MIN_KILL_UID", configfile.int_c_var(110)),
-            ("UMOUNT_CALL", configfile.bool_c_var(True)),
+            ("LOG_DESTINATION", StringConfigVar("uds:{}".format(LPATH))),
+            ("LOG_NAME", StringConfigVar("proepilogue")),
+            ("MAX_RUN_TIME", IntegerConfigVar(60)),
+            ("SEP_LEN", IntegerConfigVar(80)),
+            ("HAS_MPI_INTERFACE", BoolConfigVar(True)),
+            ("MPI_POSTFIX", StringConfigVar("mp")),
+            ("REMOVE_IPCS", BoolConfigVar(False)),
+            ("SIMULTANEOUS_PINGS", IntegerConfigVar(128)),
+            ("PING_PACKETS", IntegerConfigVar(5)),
+            ("PING_TIMEOUT", FloatConfigVar(5.0)),
+            ("MIN_KILL_UID", IntegerConfigVar(110)),
+            ("UMOUNT_CALL", BoolConfigVar(True)),
         ]
     )
 
@@ -1627,19 +1635,19 @@ def main_code():
     if len(options.arguments) in [5, 8]:
         global_config.add_config_entries(
             [
-                ("HOST_LONG", configfile.str_c_var(options.arguments[0], source="cmdline")),
-                ("JOB_OWNER", configfile.str_c_var(options.arguments[1], source="cmdline")),
-                ("JOB_ID", configfile.str_c_var(options.arguments[2], source="cmdline")),
-                ("JOB_NAME", configfile.str_c_var(options.arguments[3], source="cmdline")),
-                ("JOB_QUEUE", configfile.str_c_var(options.arguments[4], source="cmdline")),
+                ("HOST_LONG", StringConfigVar(options.arguments[0], source="cmdline")),
+                ("JOB_OWNER", StringConfigVar(options.arguments[1], source="cmdline")),
+                ("JOB_ID", StringConfigVar(options.arguments[2], source="cmdline")),
+                ("JOB_NAME", StringConfigVar(options.arguments[3], source="cmdline")),
+                ("JOB_QUEUE", StringConfigVar(options.arguments[4], source="cmdline")),
             ]
         )
         if len(options.arguments) == 8:
             global_config.add_config_entries(
                 [
-                    ("PE_HOSTFILE", configfile.str_c_var(options.arguments[5], source="cmdline")),
-                    ("PE", configfile.str_c_var(options.arguments[6], source="cmdline")),
-                    ("PE_SLOTS", configfile.str_c_var(options.arguments[7], source="cmdline"))
+                    ("PE_HOSTFILE", StringConfigVar(options.arguments[5], source="cmdline")),
+                    ("PE", StringConfigVar(options.arguments[6], source="cmdline")),
+                    ("PE_SLOTS", StringConfigVar(options.arguments[7], source="cmdline"))
                 ]
             )
     elif len(options.arguments) == 0:
@@ -1668,9 +1676,9 @@ def main_code():
             # add more entries
             global_config.add_config_entries(
                 [
-                    ("HOST_SHORT", configfile.str_c_var(global_config["HOST_LONG"].split(".")[0], source="cmdline")),
-                    ("CALLER_NAME", configfile.str_c_var(global_config.name(), source="cmdline")),
-                    ("HOST_IP", configfile.str_c_var("unknown", source="cmdline")),
+                    ("HOST_SHORT", StringConfigVar(global_config["HOST_LONG"].split(".")[0], source="cmdline")),
+                    ("CALLER_NAME", StringConfigVar(global_config.name(), source="cmdline")),
+                    ("HOST_IP", StringConfigVar("unknown", source="cmdline")),
                 ]
             )
             return ProcessPool().loop()

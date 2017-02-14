@@ -19,8 +19,6 @@
 #
 """ db-syncer for the NESTOR / CORVUS / NOCTUA graphing solution """
 
-
-
 from django.db.models import Q
 from initat.tools import logging_tools, server_mixins, threading_tools, process_tools
 from lxml import etree
@@ -177,7 +175,7 @@ class MVValueEntryCache(GenCache):
 
 class SyncProcess(threading_tools.icswProcessObj, server_mixins.OperationalErrorMixin):
     def process_init(self):
-        global_config.close()
+        global_config.enable_pm(self)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],

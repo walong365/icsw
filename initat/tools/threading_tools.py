@@ -797,6 +797,9 @@ class icswProcessObj(multiprocessing.Process, TimerBase, PollerBase, icswProcess
     def __getitem__(self, fn):
         return self.__flags[fn]
 
+    def send_to_all_processes(self, m_type, *args, **kwargs):
+        self.send_pool_message(m_type, *args, **kwargs, target="$ALL$", target_process="main")
+
     def send_pool_message(self, *args, **kwargs):
         # for relaying via pool
         target = kwargs.pop("target", "main")
@@ -1335,6 +1338,11 @@ class icswProcessPool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingM
             self._flush_process_buffers(t_obj.getName())
             return self.__com_socket
 
+    def send_to_all_processes(self, m_type, *args, **kwargs):
+        # send message to all processes
+        for name, proc in self.__processes.items():
+            self.send_to_process(name, m_type, *args, **kwargs)
+
     def send_to_process(self, t_process, m_type, *args, **kwargs):
         """ send message to target_process, type is m_type """
         sent = False
@@ -1574,7 +1582,10 @@ class icswProcessPool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingM
         mes_parts = zmq_socket.recv_pyobj()
         if mes_parts["target"] != "main":
             # redirect
-            self.send_to_process(mes_parts["target"], mes_parts["type"], *mes_parts["args"], **mes_parts.get("kwargs", {}))
+            if mes_parts["target"] == "$ALL$":
+                self.send_to_all_processes(mes_parts["type"], *mes_parts["args"], **mes_parts.get("kwargs", {}))
+            else:
+                self.send_to_process(mes_parts["target"], mes_parts["type"], *mes_parts["args"], **mes_parts.get("kwargs", {}))
         else:
             src_pid = mes_parts["pid"]
             msg_type = mes_parts["type"]

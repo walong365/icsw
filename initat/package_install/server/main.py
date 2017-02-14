@@ -39,8 +39,8 @@ def run_code():
 def main():
     global_config.add_config_entries(
         [
-            ("DELETE_MISSING_REPOS", configfile.bool_c_var(False, help_string="delete non-existing repos from DB", database=True)),
-            ("SUPPORT_OLD_CLIENTS", configfile.bool_c_var(False, help_string="support old clients [%(default)s]", database=True)),
+            ("DELETE_MISSING_REPOS", configfile.BoolConfigVar(False, help_string="delete non-existing repos from DB", database=True)),
+            ("SUPPORT_OLD_CLIENTS", configfile.BoolConfigVar(False, help_string="support old clients [%(default)s]", database=True)),
         ]
     )
     run_code()

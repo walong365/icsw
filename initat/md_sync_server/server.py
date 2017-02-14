@@ -209,9 +209,9 @@ class server_process(
             self.config_store[_key] = self.config_store.get(_key, _default)
         global_config.add_config_entries(
             [
-                ("MON_TARGET_STATE", configfile.bool_c_var(self.config_store["start_process"])),
+                ("MON_TARGET_STATE", configfile.BoolConfigVar(self.config_store["start_process"])),
                 # just a guess
-                ("MON_CURRENT_STATE", configfile.bool_c_var(False)),
+                ("MON_CURRENT_STATE", configfile.BoolConfigVar(False)),
             ]
         )
         self.config_store.write()

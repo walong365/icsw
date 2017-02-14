@@ -206,23 +206,23 @@ def main():
     loc_config = configfile.configuration(
         "bonnie",
         {
-            "USER": configfile.str_c_var(user_name),
-            "GROUP": configfile.str_c_var(group_name),
-            "TMP_DIR": configfile.str_c_var("/tmp"),
-            "UID": configfile.int_c_var(0),
-            "GID": configfile.int_c_var(0),
-            "SET_RAM_SIZE": configfile.bool_c_var(False),
-            "RAM_SIZE": configfile.int_c_var(0),
-            "DAEMONIZE": configfile.bool_c_var(False),
-            "WAIT_SEMAPHORE": configfile.bool_c_var(True),
-            "SYNC_GLOBAL": configfile.bool_c_var(False),
-            "SYNC_LOCAL": configfile.bool_c_var(False),
-            "NUM_TESTS": configfile.int_c_var(1),
-            "BONNIE_SIZE": configfile.int_c_var(1024),
-            "LOG_NAME": configfile.str_c_var("bonnie"),
-            "LOG_DESTINATION": configfile.str_c_var("uds:/var/lib/logging-server/py_log"),
-            "THREADS": configfile.str_c_var("1"),
-            "RESULT_FILE": configfile.str_c_var("/tmp/bonnie_res_%s" % (time.ctime().replace(" ", "_").replace("__", "_")))
+            "USER": configfile.StringConfigVar(user_name),
+            "GROUP": configfile.StringConfigVar(group_name),
+            "TMP_DIR": configfile.StringConfigVar("/tmp"),
+            "UID": configfile.IntegerConfigVar(0),
+            "GID": configfile.IntegerConfigVar(0),
+            "SET_RAM_SIZE": configfile.BoolConfigVar(False),
+            "RAM_SIZE": configfile.IntegerConfigVar(0),
+            "DAEMONIZE": configfile.BoolConfigVar(False),
+            "WAIT_SEMAPHORE": configfile.BoolConfigVar(True),
+            "SYNC_GLOBAL": configfile.BoolConfigVar(False),
+            "SYNC_LOCAL": configfile.BoolConfigVar(False),
+            "NUM_TESTS": configfile.IntegerConfigVar(1),
+            "BONNIE_SIZE": configfile.IntegerConfigVar(1024),
+            "LOG_NAME": configfile.StringConfigVar("bonnie"),
+            "LOG_DESTINATION": configfile.StringConfigVar("uds:/var/lib/logging-server/py_log"),
+            "THREADS": configfile.StringConfigVar("1"),
+            "RESULT_FILE": configfile.StringConfigVar("/tmp/bonnie_res_%s" % (time.ctime().replace(" ", "_").replace("__", "_")))
         }
     )
     for opt, arg in opts:

@@ -27,9 +27,9 @@ from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import cd_connection, device_variable, \
     netdevice, DeviceLogEntry, user
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.mother.command_tools import MotherSimpleCommand
 from initat.snmp.sink import SNMPSink
 from initat.tools import config_tools, logging_tools, process_tools, server_command, threading_tools
+from .command_tools import MotherSimpleCommand
 from .config import global_config
 
 
@@ -275,7 +275,7 @@ class HardControlCommand(object):
 
 class ExternalCommandProcess(threading_tools.icswProcessObj):
     def process_init(self):
-        global_config.close()
+        global_config.enable_pm(self)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],

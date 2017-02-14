@@ -637,17 +637,17 @@ class ServerProcess(threading_tools.icswProcessPool):
 def build_main(opt_ns):
     global_config.add_config_entries(
         [
-            ("VERBOSE", configfile.bool_c_var(opt_ns.verbose)),
-            ("IGNORE_ERRORS", configfile.bool_c_var(opt_ns.ignore_errors)),
-            ("LOG_DESTINATION", configfile.str_c_var(get_log_path(icswLogHandleTypes.log_py))),
-            ("LOG_NAME", configfile.str_c_var("build_image")),
-            ("BUILDERS", configfile.int_c_var(4)),
-            ("OVERRIDE", configfile.bool_c_var(opt_ns.override)),
-            ("CLEAR_LOCK", configfile.bool_c_var(opt_ns.clear_lock)),
-            ("SET_LOCK", configfile.bool_c_var(opt_ns.set_lock)),
-            ("SKIPCLEANUP", configfile.bool_c_var(opt_ns.skip_cleanup)),
-            ("CHECK_SIZE", configfile.bool_c_var(True)),
-            ("IMAGE_NAME", configfile.str_c_var(opt_ns.image)),
+            ("VERBOSE", configfile.BoolConfigVar(opt_ns.verbose)),
+            ("IGNORE_ERRORS", configfile.BoolConfigVar(opt_ns.ignore_errors)),
+            ("LOG_DESTINATION", configfile.StringConfigVar(get_log_path(icswLogHandleTypes.log_py))),
+            ("LOG_NAME", configfile.StringConfigVar("build_image")),
+            ("BUILDERS", configfile.IntegerConfigVar(4)),
+            ("OVERRIDE", configfile.BoolConfigVar(opt_ns.override)),
+            ("CLEAR_LOCK", configfile.BoolConfigVar(opt_ns.clear_lock)),
+            ("SET_LOCK", configfile.BoolConfigVar(opt_ns.set_lock)),
+            ("SKIPCLEANUP", configfile.BoolConfigVar(opt_ns.skip_cleanup)),
+            ("CHECK_SIZE", configfile.BoolConfigVar(True)),
+            ("IMAGE_NAME", configfile.StringConfigVar(opt_ns.image)),
         ]
     )
     return ServerProcess().loop()

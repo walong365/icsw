@@ -68,7 +68,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         self.STRS_SOCKET_NAME = "com_socket"
         global_config.add_config_entries(
             [
-                ("MEMCACHE_PORT", configfile.int_c_var(self.CC.Instance.get_port_dict("memcached", command=True))),
+                ("MEMCACHE_PORT", configfile.IntegerConfigVar(self.CC.Instance.get_port_dict("memcached", command=True))),
             ]
         )
         self.__verbose = global_config["VERBOSE"]
@@ -78,36 +78,36 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             [
                 (
                     "RRD_DISK_CACHE",
-                    configfile.str_c_var(
+                    configfile.StringConfigVar(
                         "/opt/cluster/system/rrd",
                         help_string="persistent directory to use when /var/cache/rrd is a RAM-disk",
                         database=True
                     )
                 ),
-                ("RRD_DISK_CACHE_SYNC", configfile.int_c_var(3600, help_string="seconds between syncs from RAM to disk", database=True)),
-                ("RRD_COVERAGE_1", configfile.str_c_var("1min for 2days", database=True)),
-                ("RRD_COVERAGE_2", configfile.str_c_var("5min for 2 week", database=True)),
-                ("RRD_COVERAGE_3", configfile.str_c_var("15mins for 1month", database=True)),
-                ("RRD_COVERAGE_4", configfile.str_c_var("4 hours for 1 year", database=True)),
-                ("RRD_COVERAGE_5", configfile.str_c_var("1day for 5 years", database=True)),
+                ("RRD_DISK_CACHE_SYNC", configfile.IntegerConfigVar(3600, help_string="seconds between syncs from RAM to disk", database=True)),
+                ("RRD_COVERAGE_1", configfile.StringConfigVar("1min for 2days", database=True)),
+                ("RRD_COVERAGE_2", configfile.StringConfigVar("5min for 2 week", database=True)),
+                ("RRD_COVERAGE_3", configfile.StringConfigVar("15mins for 1month", database=True)),
+                ("RRD_COVERAGE_4", configfile.StringConfigVar("4 hours for 1 year", database=True)),
+                ("RRD_COVERAGE_5", configfile.StringConfigVar("1day for 5 years", database=True)),
                 (
                     "MODIFY_RRD_COVERAGE",
-                    configfile.bool_c_var(False, help_string="alter RRD files on disk when coverage differs from configured one", database=True)
+                    configfile.BoolConfigVar(False, help_string="alter RRD files on disk when coverage differs from configured one", database=True)
                 ),
-                ("ENABLE_SENSOR_THRESHOLDS", configfile.bool_c_var(True, help_string="globaly enable sensor thresholds [%(default)s]")),
-                ("SERVER_FULL_NAME", configfile.str_c_var(long_host_name)),
-                ("FROM_NAME", configfile.str_c_var("collectd", help_string="from address for event (threshold) mails [%(default)s]")),
-                ("FROM_ADDRESS", configfile.str_c_var(long_host_name)),
-                ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1", help_string="memcache address")),
-                ("SNMP_PROCS", configfile.int_c_var(4, help_string="number of SNMP processes to use [%(default)s]")),
-                ("MAX_SNMP_JOBS", configfile.int_c_var(40, help_string="maximum number of jobs a SNMP process shall handle [%(default)s]")),
+                ("ENABLE_SENSOR_THRESHOLDS", configfile.BoolConfigVar(True, help_string="globaly enable sensor thresholds [%(default)s]")),
+                ("SERVER_FULL_NAME", configfile.StringConfigVar(long_host_name)),
+                ("FROM_NAME", configfile.StringConfigVar("collectd", help_string="from address for event (threshold) mails [%(default)s]")),
+                ("FROM_ADDRESS", configfile.StringConfigVar(long_host_name)),
+                ("MEMCACHE_ADDRESS", configfile.StringConfigVar("127.0.0.1", help_string="memcache address")),
+                ("SNMP_PROCS", configfile.IntegerConfigVar(4, help_string="number of SNMP processes to use [%(default)s]")),
+                ("MAX_SNMP_JOBS", configfile.IntegerConfigVar(40, help_string="maximum number of jobs a SNMP process shall handle [%(default)s]")),
                 # ("RECV_PORT", configfile.int_c_var(8002, help_string="receive port, do not change [%(default)s]")),
-                ("MD_SERVER_HOST", configfile.str_c_var("127.0.0.1", help_string="md-config-server host [%(default)s]")),
+                ("MD_SERVER_HOST", configfile.StringConfigVar("127.0.0.1", help_string="md-config-server host [%(default)s]")),
                 # ("MD_SERVER_PORT", configfile.int_c_var(8010, help_string="md-config-server port, do not change [%(default)s]")),
-                ("MEMCACHE_HOST", configfile.str_c_var("127.0.0.1", help_string="host where memcache resides [%(default)s]")),
-                ("MEMCACHE_TIMEOUT", configfile.int_c_var(2 * 60, help_string="timeout in seconds for values stored in memcache [%(default)s]")),
-                ("RRD_CACHED_WRITETHREADS", configfile.int_c_var(4, help_string="number of write threads for RRD-cached")),
-                ("AGGREGATE_STRUCT_UPDATE", configfile.int_c_var(600, help_string="timer for aggregate struct updates")),
+                ("MEMCACHE_HOST", configfile.StringConfigVar("127.0.0.1", help_string="host where memcache resides [%(default)s]")),
+                ("MEMCACHE_TIMEOUT", configfile.IntegerConfigVar(2 * 60, help_string="timeout in seconds for values stored in memcache [%(default)s]")),
+                ("RRD_CACHED_WRITETHREADS", configfile.IntegerConfigVar(4, help_string="number of write threads for RRD-cached")),
+                ("AGGREGATE_STRUCT_UPDATE", configfile.IntegerConfigVar(600, help_string="timer for aggregate struct updates")),
             ]
         )
         if global_config["RRD_CACHED_SOCKET"] == "/var/run/rrdcached.sock":

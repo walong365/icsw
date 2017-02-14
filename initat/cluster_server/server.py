@@ -58,32 +58,29 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
             )
         self.CC.check_config()
         # close DB conncetion (daemonize)
-        if self.__run_command:
-            global_config.mc_prefix = global_config["COMMAND"]
-        else:
+        if not self.__run_command:
             # create hardware fingerprint
             self.CC.create_hfp()
         # enable memcache backend
-        global_config.enable_mc()
         db_tools.close_connection()
         self.CC.read_config_from_db(
             [
-                ("IMAGE_SOURCE_DIR", configfile.str_c_var("/opt/cluster/system/images")),
-                ("MAILSERVER", configfile.str_c_var("localhost")),
-                ("FROM_NAME", configfile.str_c_var("quotawarning")),
-                ("FROM_ADDR", configfile.str_c_var(long_host_name)),
-                ("VERSION", configfile.str_c_var(VERSION_STRING, database=False)),
-                ("QUOTA_ADMINS", configfile.str_c_var("cluster@init.at")),
-                ("MONITOR_QUOTA_USAGE", configfile.bool_c_var(False, help_string="enabled quota usage tracking")),
-                ("TRACK_ALL_QUOTAS", configfile.bool_c_var(False, help_string="also track quotas without limit")),
-                ("QUOTA_CHECK_TIME_SECS", configfile.int_c_var(3600)),
-                ("USER_MAIL_SEND_TIME", configfile.int_c_var(3600, help_string="time in seconds between two mails")),
-                ("SERVER_FULL_NAME", configfile.str_c_var(long_host_name, database=False)),
-                ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name, database=False)),
-                ("DATABASE_DUMP_DIR", configfile.str_c_var("/opt/cluster/share/db_backup")),
-                ("DATABASE_KEEP_DAYS", configfile.int_c_var(30)),
-                ("USER_SCAN_TIMER", configfile.int_c_var(7200, help_string="time in seconds between two user_scan runs")),
-                ("NEED_ALL_NETWORK_BINDS", configfile.bool_c_var(True, help_string="raise an error if not all bind() calls are successfull")),
+                ("IMAGE_SOURCE_DIR", configfile.StringConfigVar("/opt/cluster/system/images")),
+                ("MAILSERVER", configfile.StringConfigVar("localhost")),
+                ("FROM_NAME", configfile.StringConfigVar("quotawarning")),
+                ("FROM_ADDR", configfile.StringConfigVar(long_host_name)),
+                ("VERSION", configfile.StringConfigVar(VERSION_STRING, database=False)),
+                ("QUOTA_ADMINS", configfile.StringConfigVar("cluster@init.at")),
+                ("MONITOR_QUOTA_USAGE", configfile.BoolConfigVar(False, help_string="enabled quota usage tracking")),
+                ("TRACK_ALL_QUOTAS", configfile.BoolConfigVar(False, help_string="also track quotas without limit")),
+                ("QUOTA_CHECK_TIME_SECS", configfile.IntegerConfigVar(3600)),
+                ("USER_MAIL_SEND_TIME", configfile.IntegerConfigVar(3600, help_string="time in seconds between two mails")),
+                ("SERVER_FULL_NAME", configfile.StringConfigVar(long_host_name, database=False)),
+                ("SERVER_SHORT_NAME", configfile.StringConfigVar(mach_name, database=False)),
+                ("DATABASE_DUMP_DIR", configfile.StringConfigVar("/opt/cluster/share/db_backup")),
+                ("DATABASE_KEEP_DAYS", configfile.IntegerConfigVar(30)),
+                ("USER_SCAN_TIMER", configfile.IntegerConfigVar(7200, help_string="time in seconds between two user_scan runs")),
+                ("NEED_ALL_NETWORK_BINDS", configfile.BoolConfigVar(True, help_string="raise an error if not all bind() calls are successfull")),
             ]
         )
         if not self.__run_command:

@@ -22,17 +22,13 @@
 import array
 import base64
 import bz2
-import datetime
 import functools
 import json
-import os
-import uuid
 
-from initat.icsw.service import instance
-from initat.tools import logging_tools, process_tools
+from initat.tools import logging_tools
 
 
-class _conf_var(object):
+class BaseConfigVar(object):
     argparse_type = None
 
     def __init__(self, def_val, **kwargs):
@@ -157,14 +153,14 @@ class _conf_var(object):
         )
 
 
-class int_c_var(_conf_var):
+class IntegerConfigVar(BaseConfigVar):
     descr = "Integer"
     short_type = "i"
     long_type = "int"
     argparse_type = int
 
     def __init__(self, def_val, **kwargs):
-        _conf_var.__init__(self, def_val, **kwargs)
+        BaseConfigVar.__init__(self, def_val, **kwargs)
 
     def str_to_val(self, val):
         return int(val)
@@ -173,14 +169,14 @@ class int_c_var(_conf_var):
         return isinstance(val, int)
 
 
-class float_c_var(_conf_var):
+class FloatConfigVar(BaseConfigVar):
     descr = "Float"
     short_type = "f"
     long_type = "float"
     argparse_type = float
 
     def __init__(self, def_val, **kwargs):
-        _conf_var.__init__(self, def_val, **kwargs)
+        BaseConfigVar.__init__(self, def_val, **kwargs)
 
     def str_to_val(self, val):
         return float(val)
@@ -189,14 +185,14 @@ class float_c_var(_conf_var):
         return isinstance(val, float)
 
 
-class str_c_var(_conf_var):
+class StringConfigVar(BaseConfigVar):
     descr = "String"
     short_type = "s"
     long_type = "str"
     argparse_type = str
 
     def __init__(self, def_val, **kwargs):
-        _conf_var.__init__(self, def_val, **kwargs)
+        BaseConfigVar.__init__(self, def_val, **kwargs)
 
     def str_to_val(self, val):
         return str(val)
@@ -205,14 +201,14 @@ class str_c_var(_conf_var):
         return isinstance(val, str)
 
 
-class blob_c_var(_conf_var):
+class BlobConfigVar(BaseConfigVar):
     # holds bytestrings
     descr = "Blob"
     short_type = "B"
     long_type = "blob"
 
     def __init__(self, def_val, **kwargs):
-        _conf_var.__init__(self, def_val, **kwargs)
+        BaseConfigVar.__init__(self, def_val, **kwargs)
 
     def str_to_val(self, val):
         return str(val)
@@ -224,13 +220,13 @@ class blob_c_var(_conf_var):
         return "blob with len {:d}".format(len(self.act_val))
 
 
-class bool_c_var(_conf_var):
+class BoolConfigVar(BaseConfigVar):
     descr = "Bool"
     short_type = "b"
     long_type = "bool"
 
     def __init__(self, def_val, **kwargs):
-        _conf_var.__init__(self, def_val, **kwargs)
+        BaseConfigVar.__init__(self, def_val, **kwargs)
 
     def str_to_val(self, val):
         if isinstance(val, str):
@@ -248,220 +244,133 @@ class bool_c_var(_conf_var):
         return "True" if self.act_val else "False"
 
 
-class array_c_var(_conf_var):
+class ArrayConfigVar(BaseConfigVar):
     descr = "Array"
     short_type = "a"
     long_type = "array"
     argparse_type = str
 
     def __init__(self, def_val, **kwargs):
-        _conf_var.__init__(self, def_val, **kwargs)
+        BaseConfigVar.__init__(self, def_val, **kwargs)
 
     def check_type(self, val):
         return isinstance(val, list) or isinstance(val, str)
 
 
-class dict_c_var(_conf_var):
-    descr = "Dict"
-    short_type = "d"
-    long_type = "dict"
-
-    def __init__(self, def_val, **kwargs):
-        _conf_var.__init__(self, def_val, **kwargs)
-
-    def check_type(self, val):
-        return isinstance(val, dict)
-
-
-class datetime_c_var(_conf_var):
-    descr = "Datetime"
-    short_type = "ddt"
-    long_type = "datetime"
-
-    def __init__(self, def_val, **kwargs):
-        _conf_var.__init__(self, def_val, **kwargs)
-
-    def check_type(self, val):
-        return isinstance(val, datetime.datetime)
-
-
-class timedelta_c_var(_conf_var):
-    descr = "Timedelta"
-    short_type = "dtd"
-    long_time = "timedelta"
-
-    def __init__(self, def_val, **kwargs):
-        _conf_var.__init__(self, def_val, **kwargs)
-
-    def check_type(self, val):
-        return isinstance(val, datetime.timedelta)
-
-
-CONFIG_PREFIX = "__ICSW__$conf$__"
+# the following 3 vars are no longer in use, commented them out
+# class dict_c_var(_conf_var):
+#     descr = "Dict"
+#     short_type = "d"
+#     long_type = "dict"
+#
+#     def __init__(self, def_val, **kwargs):
+#         _conf_var.__init__(self, def_val, **kwargs)
+#
+#     def check_type(self, val):
+#         return isinstance(val, dict)
+#
+#
+# class datetime_c_var(_conf_var):
+#     descr = "Datetime"
+#     short_type = "ddt"
+#     long_type = "datetime"
+#
+#     def __init__(self, def_val, **kwargs):
+#         _conf_var.__init__(self, def_val, **kwargs)
+#
+#     def check_type(self, val):
+#         return isinstance(val, datetime.datetime)
+#
+#
+# class timedelta_c_var(_conf_var):
+#     descr = "Timedelta"
+#     short_type = "dtd"
+#     long_time = "timedelta"
+#
+#     def __init__(self, def_val, **kwargs):
+#         _conf_var.__init__(self, def_val, **kwargs)
+#
+#     def check_type(self, val):
+#         return isinstance(val, datetime.timedelta)
 
 
-class MemCacheBasedDict(object):
-    def __init__(self, mc_client, prefix, single_process_mode, enabled):
-        self.__spm = single_process_mode
-        self.__enabled = enabled
-        self.mc_client = mc_client
-        self.prefix = prefix
+class ProcessBasedDict(object):
+    def __init__(self):
+        self.__process_obj = None
         self._dict = {}
-        self._keys = []
-        # version tag
-        self._version = None
-        # update mode, used for faster updates
-        self.__update_mode = False
-        self._check_mc()
+        self._keys = set()
 
-    def enable(self):
-        if not self.__enabled:
-            self.__enabled = True
-            if not self.__spm:
-                self._store_full_dict()
+    def set_process_obj(self, process_obj: object):
+        self.__process_obj = process_obj
+        self.__process_obj.register_func("gc_operation", self.gc_operation)
 
-    @property
-    def update_mode(self):
-        return self.__update_mode
-
-    @update_mode.setter
-    def update_mode(self, mode):
-        self.__update_mode = mode
-        if not self.__update_mode:
-            self._store_full_dict()
-
-    def _mc_key(self, key):
-        return "{}_{}".format(self.prefix, key)
-
-    def _get(self, key):
-        return self.mc_client.get(self._mc_key(key))
-
-    def _set(self, key, value):
-        return self.mc_client.set(self._mc_key(key), value)
-
-    def _check_mc(self):
-        if not self.__spm and self.__enabled:
-            _mc_vers = self._get("version")
-            if not self._version:
-                # get version
-                if _mc_vers is None:
-                    # version not found, store full dict
-                    self._store_full_dict()
-                else:
-                    # read full dict
-                    self._read_full_dict()
-            elif self._version != _mc_vers:
-                # reread
-                self._read_full_dict()
-
-    def _change_version(self):
-        self._version = uuid.uuid4().urn
-        # print os.getpid(), "CV ->", self._version
-        self._set("version", self._version)
-
-    def _store_full_dict(self):
-        if not self.__spm and self.__enabled:
-            for _key in self._keys:
-                self._update_key(_key)
-            self._store_keys()
-
-    def _store_keys(self):
-        self._set("keys", json.dumps(self._keys))
-        self._change_version()
-
-    def _update_key(self, key):
-        self._set("k_{}".format(key), self._dict[key].serialize())
-
-    def _key_modified(self, key):
-        if not self.__spm and self.__enabled:
-            self._update_key(key)
-            self._store_keys()
-
-    def _dummy_init(self):
-        self._keys = []
-        self._dict = {}
-        self._store_full_dict()
-
-    def _read_full_dict(self):
-        try:
-            self._version = self._get("version")
-            self._keys = json.loads(self._get("keys"))
-            self._dict = {}
-            for _key in self._keys:
-                # print "*", _key
-                # deserialize dict
-                _raw = self._get("k_{}".format(_key))
-                try:
-                    _json = json.loads(_raw)
-                except:
-                    # print os.getpid(), "JSON", _key, _raw, "*"
-                    raise
-                _is_blob = _json["descr"] in ["Blob"]
-                if _is_blob:
-                    _json["default_value"] = bz2.decompress(base64.b64decode(_json["default_value"]))
-                # print _raw
-                _obj = {
-                    "Timedelta": timedelta_c_var,
-                    "Datetime": datetime_c_var,
-                    "Dict": dict_c_var,
-                    "Array": array_c_var,
-                    "Bool": bool_c_var,
-                    "Blob": blob_c_var,
-                    "String": str_c_var,
-                    "Float": float_c_var,
-                    "Integer": int_c_var,
-                }[_json["descr"]](_json["default_value"], **_json["kwargs"])
-                if _is_blob:
-                    _obj.value = bz2.decompress(base64.b64decode(_json["value"]))
-                else:
-                    _obj.value = _json["value"]
-                self._dict[_key] = _obj
-        except:
-            print(
-                "Something went wrong in deserializing config with prefix {}: {}, pid={:d}".format(
-                    self.prefix,
-                    process_tools.get_except_info(),
-                    os.getpid(),
-                )
-            )
-            # something went wrong, start with empty dict
-            self._dummy_init()
+    def gc_operation(self, *args, **kwargs):
+        if args[0] == "change":
+            # change operation
+            key, ser_str = args[1:3]
+            _json = json.loads(ser_str)
+            _is_blob = _json["descr"] in ["Blob"]
+            if _is_blob:
+                _json["default_value"] = bz2.decompress(base64.b64decode(_json["default_value"]))
+            # get correct variable type for instantiation
+            _obj = {
+                # "Timedelta": timedelta_c_var,
+                # "Datetime": datetime_c_var,
+                # "Dict": dict_c_var,
+                "Array": ArrayConfigVar,
+                "Bool": BoolConfigVar,
+                "Blob": BlobConfigVar,
+                "String": StringConfigVar,
+                "Float": FloatConfigVar,
+                "Integer": IntegerConfigVar,
+            }[_json["descr"]](_json["default_value"], **_json["kwargs"])
+            if _is_blob:
+                _obj.value = bz2.decompress(base64.b64decode(_json["value"]))
+            else:
+                _obj.value = _json["value"]
+            # print("*", self.__process_obj.name, key, self._dict[key], "->",  _obj)
+            self._dict[key] = _obj
+        elif args[0] == "delete":
+            key = args[1]
+            # print("d", key)
+            if key in self._keys:
+                self._keys.remove(key)
+                del self._dict[key]
+        else:
+            print("unknown gc_operation", args, kwargs)
 
     # public functions
 
     def keys(self):
-        self._check_mc()
         return self._keys
 
     def __contains__(self, _key):
-        self._check_mc()
         return _key in self._keys
 
     def __setitem__(self, key, value):
         # print os.getpid(), "store", key
-        self._check_mc()
         if key not in self._keys:
-            self._keys.append(key)
+            self._keys.add(key)
         self._dict[key] = value
-        if not self.__update_mode:
-            self._key_modified(key)
+        if self.__process_obj:
+            self.__process_obj.send_to_all_processes("gc_operation", "change", key, self._dict[key].serialize())
 
     def __getitem__(self, key):
-        self._check_mc()
-        # print os.getpid(), "get", key
-        # print self._dict
         return self._dict[key]
 
     def __delitem__(self, key):
-        self._check_mc()
+        # self._check_mc()
         self._keys.remove(key)
         del self._dict[key]
-        if not self.__spm and self.__enabled:
-            self.mc_client.delete(self._mc_key(key))
-            self._store_keys()
+        if self.__process_obj:
+            # we will get the message back if we send this from a child process
+            # so we have to check for key existance in the delete operation above
+            self.__process_obj.send_to_all_processes("gc_operation", "delete", key)
 
     def key_changed(self, key):
-        self._key_modified(key)
+        # called when a key has changed from Configuration
+        if self.__process_obj:
+            self.__process_obj.send_to_all_processes("gc_operation", "change", key, self._dict[key].serialize())
 
 
 class ConfigKeyError(object):
@@ -486,10 +395,8 @@ class Configuration(object):
     def __init__(self, name, *args, **kwargs):
         self.__mc_enabled = kwargs.get("mc_enabled", True)
         self.__name = name
-        self.__backend_init = False
-        self.mc_prefix = ""
         self.__spm = kwargs.pop("single_process_mode", False)
-        self._reopen_mc(True)
+        self.__c_dict = ProcessBasedDict()
         self.clear_log()
         if args:
             self.add_config_entries(*args)
@@ -497,49 +404,15 @@ class Configuration(object):
     def as_dict(self):
         return {key: self.__c_dict[key].value for key in self.keys()}
 
-    @property
-    def mc_prefix(self):
-        return self.__mc_prefix
-
-    @mc_prefix.setter
-    def mc_prefix(self, prefix):
-        self.__mc_prefix = "{}{}{}".format(CONFIG_PREFIX, self.__name, prefix)
-        if self.__backend_init:
-            self.__c_dict.prefix = self.__mc_prefix
-
-    def enable_mc(self):
-        # enable memcached backend, can only be enabled (not disabled)
-        if not self.__mc_enabled:
-            self.__mc_enabled = True
-            self.__c_dict.enable()
+    def enable_pm(self, process_obj: object):
+        # enable process backend, set process pool (or process object) for key changes
+        self.__c_dict.set_process_obj(process_obj)
 
     def delete(self):
         # remove global config
         _keys = list(self.keys())
         for key in _keys:
             del self[key]
-
-    def close(self):
-        # to be called for every new process
-        self._reopen_mc()
-
-    def _reopen_mc(self, first=False):
-        if self.__spm:
-            self.__mc_client = None
-        else:
-            import memcache
-            if not first:
-                self.__mc_client.disconnect_all()
-            try:
-                inst_xml = instance.InstanceXML(quiet=True)
-                _mc_addr = "127.0.0.1"
-                _mc_port = inst_xml.get_port_dict("memcached", command=True)
-                self.__mc_addr = "{}:{:d}".format(_mc_addr, _mc_port)
-                self.__mc_client = memcache.Client([self.__mc_addr])
-            except:
-                raise
-        self.__backend_init = True
-        self.__c_dict = MemCacheBasedDict(self.__mc_client, self.__mc_prefix, self.__spm, self.__mc_enabled)
 
     def get_log(self, **kwargs):
         ret_val = [entry for entry in self.__log_array]
@@ -600,11 +473,17 @@ class Configuration(object):
                 value, source = value
             else:
                 source = None
+            print("G", key, value, source)
             self.__c_dict[key].set_value(value, source)
             # import the signal changes
             self.__c_dict.key_changed(key)
         else:
-            raise KeyError("Key {} not known ({})".format(key, self.key_info))
+            raise KeyError(
+                "Key {} not known ({})".format(
+                    key,
+                    self.key_info,
+                )
+            )
 
     def get_config_info(self):
         gk = sorted(self.keys())
@@ -708,13 +587,13 @@ class Configuration(object):
                     var_name = db_rec.name
                     source = "{}_table (pk={})".format(short, db_rec.pk)
                     if isinstance(db_rec.value, array.array):
-                        new_val = configfile.str_c_var(db_rec.value.tostring(), source=source)
+                        new_val = configfile.StringConfigVar(db_rec.value.tostring(), source=source)
                     elif short == "int":
-                        new_val = configfile.int_c_var(int(db_rec.value), source=source)
+                        new_val = configfile.IntegerConfigVar(int(db_rec.value), source=source)
                     elif short == "bool":
-                        new_val = configfile.bool_c_var(bool(db_rec.value), source=source)
+                        new_val = configfile.BoolConfigVar(bool(db_rec.value), source=source)
                     else:
-                        new_val = configfile.str_c_var(db_rec.value, source=source)
+                        new_val = configfile.StringConfigVar(db_rec.value, source=source)
                     _present_in_config = var_name in self
                     if _present_in_config:
                         # copy settings from config

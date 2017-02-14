@@ -26,13 +26,13 @@ from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models.report import ReportHistory
 from initat.tools import logging_tools, threading_tools
-from initat.report_server.config import global_config
-from initat.report_server.report import PDFReportGenerator, XlsxReportGenerator
+from .config import global_config
+from .report import PDFReportGenerator, XlsxReportGenerator
 
 
 class ReportGenerationProcess(threading_tools.icswProcessObj):
     def process_init(self):
-        global_config.close()
+        global_config.enable_pm(self)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],

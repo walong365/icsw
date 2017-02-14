@@ -52,7 +52,7 @@ class ServerProcess(
             [
                 (
                     "GRAPH_ROOT_DEBUG",
-                    configfile.str_c_var(
+                    configfile.StringConfigVar(
                         os.path.abspath(
                             os.path.join(
                                 settings.STATIC_ROOT_DEBUG,
@@ -64,7 +64,7 @@ class ServerProcess(
                 ),
                 (
                     "GRAPH_ROOT",
-                    configfile.str_c_var(
+                    configfile.StringConfigVar(
                         os.path.abspath(
                             os.path.join(
                                 settings.STATIC_ROOT_DEBUG if global_config["DEBUG"] else settings.STATIC_ROOT,

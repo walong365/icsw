@@ -18,8 +18,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-
-
 import json
 import traceback
 
@@ -28,10 +26,10 @@ import django.utils.timezone
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models import Kpi, License
-from initat.md_config_server.config.objects import global_config
-from initat.md_config_server.kpi.kpi_data import KpiData
-from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, KpiGlobals
 from initat.tools import logging_tools, process_tools, server_command, threading_tools
+from .kpi_data import KpiData
+from .kpi_language import KpiObject, KpiResult, KpiSet, KpiGlobals
+from ..config.objects import global_config
 
 
 class KpiEvaluationError(Exception):
@@ -44,7 +42,7 @@ class KpiEvaluationError(Exception):
 class KpiProcess(threading_tools.icswProcessObj):
 
     def process_init(self):
-        global_config.close()
+        global_config.enable_pm(self)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
@@ -250,7 +248,7 @@ class KpiProcess(threading_tools.icswProcessObj):
         try:
             # KpiGlobals are used for evaluation, but not exposed to kpi user
             KpiGlobals.current_kpi = kpi_db
-            exec (eval_formula, eval_globals, eval_locals)
+            exec(eval_formula, eval_globals, eval_locals)
         except Exception as e:
             self.log(e)
             error_report = [

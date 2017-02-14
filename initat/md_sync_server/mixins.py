@@ -60,13 +60,13 @@ class VersionCheckMixin(object):
                 md_version, md_release = md_versrel.split("-", 1)
                 global_config.add_config_entries(
                     [
-                        ("MD_TYPE", configfile.str_c_var(md_type)),
-                        ("MD_VERSION_STRING", configfile.str_c_var(md_versrel)),
-                        ("MD_VERSION", configfile.str_c_var(md_version)),
-                        ("MD_RELEASE", configfile.str_c_var(md_release)),
-                        ("MD_BASEDIR", configfile.str_c_var(os.path.join("/opt", "cluster", md_type))),
-                        ("MAIN_CONFIG_NAME", configfile.str_c_var(md_type)),
-                        ("MD_LOCK_FILE", configfile.str_c_var("{}.lock".format(md_type))),
+                        ("MD_TYPE", configfile.StringConfigVar(md_type)),
+                        ("MD_VERSION_STRING", configfile.StringConfigVar(md_versrel)),
+                        ("MD_VERSION", configfile.StringConfigVar(md_version)),
+                        ("MD_RELEASE", configfile.StringConfigVar(md_release)),
+                        ("MD_BASEDIR", configfile.StringConfigVar(os.path.join("/opt", "cluster", md_type))),
+                        ("MAIN_CONFIG_NAME", configfile.StringConfigVar(md_type)),
+                        ("MD_LOCK_FILE", configfile.StringConfigVar("{}.lock".format(md_type))),
                     ]
                 )
                 self.log(

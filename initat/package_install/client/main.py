@@ -48,15 +48,15 @@ def main():
     try:
         global_config.add_config_entries(
             [
-                ("PACKAGE_SERVER", configfile.str_c_var(open(ps_file_name, "r").read().strip().split("\n")[0].strip())),
-                ("VERSION", configfile.str_c_var(VERSION_STRING)),
+                ("PACKAGE_SERVER", configfile.StringConfigVar(open(ps_file_name, "r").read().strip().split("\n")[0].strip())),
+                ("VERSION", configfile.StringConfigVar(VERSION_STRING)),
             ]
         )
     except:
         print("error reading from {}: {}".format(ps_file_name, process_tools.get_except_info()))
         ret_code = 5
     if not ret_code:
-        global_config.add_config_entries([("DEBIAN", configfile.bool_c_var(os.path.isfile("/etc/debian_version")))])
+        global_config.add_config_entries([("DEBIAN", configfile.BoolConfigVar(os.path.isfile("/etc/debian_version")))])
         run_code(global_config)
         # exit
         os._exit(0)

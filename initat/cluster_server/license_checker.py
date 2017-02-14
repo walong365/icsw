@@ -18,18 +18,16 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-
-
 import zmq
 
 from initat.cluster.backbone import db_tools
-from initat.md_config_server.config import global_config
+from .config import global_config
 from initat.tools import threading_tools, logging_tools, process_tools
 
 
 class LicenseChecker(threading_tools.icswProcessObj):
     def process_init(self):
-        global_config.close()
+        global_config.enable_pm(self)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
@@ -58,4 +56,5 @@ class LicenseChecker(threading_tools.icswProcessObj):
         self.__log_template.log(log_level, what)
 
     def loop_post(self):
+        self.vector_socket.close()
         self.__log_template.close()

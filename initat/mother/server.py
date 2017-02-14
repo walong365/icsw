@@ -62,27 +62,27 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
         # log config
         self.CC.read_config_from_db(
             [
-                ("TFTP_LINK", configfile.str_c_var("/tftpboot")),
-                ("TFTP_DIR", configfile.str_c_var(os.path.join(CLUSTER_DIR, "system", "tftpboot"))),
-                ("CLUSTER_DIR", configfile.str_c_var(CLUSTER_DIR)),
+                ("TFTP_LINK", configfile.StringConfigVar("/tftpboot")),
+                ("TFTP_DIR", configfile.StringConfigVar(os.path.join(CLUSTER_DIR, "system", "tftpboot"))),
+                ("CLUSTER_DIR", configfile.StringConfigVar(CLUSTER_DIR)),
                 # in 10th of seconds
-                ("NODE_BOOT_DELAY", configfile.int_c_var(50)),
-                ("FANCY_PXE_INFO", configfile.bool_c_var(False)),
-                ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name)),
-                ("WRITE_DHCP_CONFIG", configfile.bool_c_var(True)),
-                ("DHCP_AUTHORITATIVE", configfile.bool_c_var(False)),
-                ("DHCP_ONLY_BOOT_NETWORKS", configfile.bool_c_var(True)),
-                ("MODIFY_NFS_CONFIG", configfile.bool_c_var(True)),
-                ("NEED_ALL_NETWORK_BINDS", configfile.bool_c_var(True)),
+                ("NODE_BOOT_DELAY", configfile.IntegerConfigVar(50)),
+                ("FANCY_PXE_INFO", configfile.BoolConfigVar(False)),
+                ("SERVER_SHORT_NAME", configfile.StringConfigVar(mach_name)),
+                ("WRITE_DHCP_CONFIG", configfile.BoolConfigVar(True)),
+                ("DHCP_AUTHORITATIVE", configfile.BoolConfigVar(False)),
+                ("DHCP_ONLY_BOOT_NETWORKS", configfile.BoolConfigVar(True)),
+                ("MODIFY_NFS_CONFIG", configfile.BoolConfigVar(True)),
+                ("NEED_ALL_NETWORK_BINDS", configfile.BoolConfigVar(True)),
             ]
         )
         global_config.add_config_entries(
             [
-                ("CONFIG_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "config"))),
-                ("ETHERBOOT_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "etherboot"))),
-                ("KERNEL_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "kernels"))),
-                ("SHARE_DIR", configfile.str_c_var(os.path.join(global_config["CLUSTER_DIR"], "share", "mother"))),
-                ("NODE_SOURCE_IDX", configfile.int_c_var(LogSource.new("node").pk)),
+                ("CONFIG_DIR", configfile.StringConfigVar(os.path.join(global_config["TFTP_DIR"], "config"))),
+                ("ETHERBOOT_DIR", configfile.StringConfigVar(os.path.join(global_config["TFTP_DIR"], "etherboot"))),
+                ("KERNEL_DIR", configfile.StringConfigVar(os.path.join(global_config["TFTP_DIR"], "kernels"))),
+                ("SHARE_DIR", configfile.StringConfigVar(os.path.join(global_config["CLUSTER_DIR"], "share", "mother"))),
+                ("NODE_SOURCE_IDX", configfile.IntegerConfigVar(LogSource.new("node").pk)),
             ]
         )
         self.CC.log_config()
@@ -426,49 +426,49 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
             [
                 (
                     "PXELINUX.0",
-                    configfile.blob_c_var(
+                    configfile.BlobConfigVar(
                         open(os.path.join(syslinux_dir, "bios", "core", "pxelinux.0"), "rb").read(),
                         source="filesystem"
                     )
                 ),
                 (
                     "BOOTX64.EFI",
-                    configfile.blob_c_var(
+                    configfile.BlobConfigVar(
                         open(os.path.join(syslinux_dir, "efi64", "efi", "syslinux.efi"), "rb").read(),
                         source="filesystem"
                     )
                 ),
                 (
                     "LDLINUX.E64",
-                    configfile.blob_c_var(
+                    configfile.BlobConfigVar(
                         open(os.path.join(syslinux_dir, "efi64", "com32", "elflink", "ldlinux", "ldlinux.e64"), "rb").read(),
                         source="filesystem"
                     )
                 ),
                 (
                     "BOOTIA32.EFI",
-                    configfile.blob_c_var(
+                    configfile.BlobConfigVar(
                         open(os.path.join(syslinux_dir, "efi32", "efi", "syslinux.efi"), "rb").read(),
                         source="filesystem"
                     )
                 ),
                 (
                     "MEMDISK",
-                    configfile.blob_c_var(
+                    configfile.BlobConfigVar(
                         open(os.path.join(syslinux_dir, "bios", "memdisk", "memdisk"), "rb").read(),
                         source="filesystem"
                     )
                 ),
                 (
                     "LDLINUX.C32",
-                    configfile.blob_c_var(
+                    configfile.BlobConfigVar(
                         open(os.path.join(syslinux_dir, "bios", "com32", "elflink", "ldlinux", "ldlinux.c32"), "rb").read(),
                         source="filesystem"
                     )
                 ),
                 (
                     "MBOOT.C32",
-                    configfile.blob_c_var(
+                    configfile.BlobConfigVar(
                         open(os.path.join(syslinux_dir, "bios", "com32", "mboot", "mboot.c32"), "rb").read(),
                         source="filesystem"
                     )
