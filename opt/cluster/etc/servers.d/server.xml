@@ -11,7 +11,6 @@
         </config-enums>
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <network>
             <ports>
@@ -34,7 +33,6 @@
         <old-binary>package-server</old-binary>
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <network>
             <ports>
@@ -52,7 +50,6 @@
         <node-split/>
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <network>
             <ports>
@@ -149,7 +146,6 @@
         </config-enums>
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <network>
             <ports>
@@ -182,7 +178,6 @@
         </start-argument>
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <network>
             <ports>
@@ -199,7 +194,6 @@
     <instance check_type="meta" name="cluster-server" alias="server" uuid-postfix="cluster-server">
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <network>
             <ports>
@@ -216,7 +210,6 @@
         </config-enums>
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <network>
             <ports>
@@ -236,7 +229,6 @@
         </config-enums>
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <network>
             <ports>
@@ -265,7 +257,6 @@
         <old-binary>collrelay</old-binary>
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <network>
             <ports>
@@ -276,7 +267,6 @@
     <instance check_type="meta" name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid" uuid-postfix="snmp-relay">
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <config-enums>
             <config-enum>snmp_relay</config-enum>
@@ -301,7 +291,6 @@
         <module-name>initat.md_sync_server.main</module-name>
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <start-argument>
             <arg key="user">idmon</arg>
@@ -334,7 +323,6 @@
         </start-argument>
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <network>
             <ports>
@@ -364,7 +352,6 @@
         </config-enums>
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
-            <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <network>
             <ports>
