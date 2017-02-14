@@ -133,6 +133,7 @@ angular.module(
 ) ->
     _list = [
         new icswDeviceOverviewTabTemplate("general", true, "", "General")
+        new icswDeviceOverviewTabTemplate("monitoring", false, "", "Monitoring")
         new icswDeviceOverviewTabTemplate("network", false, "backbone.device.change_network", "Network")
         new icswDeviceOverviewTabTemplate("config", true, "backbone.device.change_config", "Configuration")
         new icswDeviceOverviewTabTemplate("category", false, "backbone.device.change_category", "Categories")
@@ -625,7 +626,7 @@ angular.module(
                 title: title
                 # removed modal-form due to horrible display
                 css_class: "modal-wide"
-                ok_label: "Modify"
+                ok_label: "Save"
                 closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
@@ -689,3 +690,4 @@ angular.module(
         )
 
 ])
+
