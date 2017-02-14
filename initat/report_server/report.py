@@ -25,6 +25,7 @@ import logging
 import os
 import tempfile
 import PollyReports
+import time
 
 from io import BytesIO
 from PIL import Image as PILImage
@@ -37,9 +38,12 @@ from openpyxl import Workbook
 from openpyxl.writer.excel import save_virtual_workbook
 from openpyxl.styles import Font
 from openpyxl.utils.cell import get_column_letter
-from reportlab.graphics.shapes import Drawing, Rect, String
+from reportlab.graphics.shapes import Drawing, Rect, String, _DrawingEditorMixin
+from reportlab.graphics.charts.piecharts import Pie
+from reportlab.graphics.charts.legends import Legend
+from reportlab.graphics.charts.textlabels import Label
 from reportlab.lib import colors
-from reportlab.lib.colors import HexColor
+from reportlab.lib.colors import HexColor, black
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
 from reportlab.lib.pagesizes import landscape, letter, A4, A3
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -51,12 +55,14 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 from unidecode import unidecode
 
-from initat.cluster.backbone.models import network, AssetBatch
-from initat.cluster.backbone.models import user
+from initat.cluster.frontend.monitoring_views import _device_status_history_util
 from initat.cluster.backbone.models.report import ReportHistory
 from initat.cluster.backbone.models.user import AC_READONLY, AC_MODIFY, AC_CREATE, AC_FULL
 from initat.cluster.backbone.models import device, AssetType, PackageTypeEnum
 from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
+from initat.cluster.backbone.models import network, AssetBatch, user, mon_icinga_log_aggregated_host_data, \
+    mon_icinga_log_aggregated_service_data
+
 
 
 PollyReports.Element.text_conversion = str
@@ -342,7 +348,7 @@ class DeviceReport(GenericReport):
         for setting in report_settings:
             self.report_settings[setting] = report_settings[setting]
 
-    def module_selected(self, assetrun):
+    def assetrun_selected(self, assetrun):
         if AssetType(assetrun.run_type) == AssetType.PACKAGE:
             return self.report_settings["packages_selected"]
         elif AssetType(assetrun.run_type) == AssetType.HARDWARE:
@@ -965,6 +971,169 @@ class PDFReportGenerator(ReportGenerator):
         # create generic overview page
         self.__generate_device_overview_report(_device, report_settings, device_report)
         self.__generate_device_assetrun_reports(_device, report_settings, device_report)
+        self.__generate_device_availabilty_report(_device, report_settings, device_report)
+
+    def __generate_device_availabilty_report(self, _device, report_settings, root_report):
+        class DummyRequest(object):
+            pass
+
+        report = DeviceReport(_device, report_settings, "Availability Report")
+        root_report.add_child(report)
+
+        section_number = report.get_section_number()
+
+        _buffer = BytesIO()
+        doc = SimpleDocTemplate(_buffer,
+                                pagesize=self.page_format,
+                                rightMargin=0,
+                                leftMargin=0,
+                                topMargin=10,
+                                bottomMargin=25)
+        elements = []
+
+        style_sheet = getSampleStyleSheet()
+
+        available_width = self.page_format[0] - 60
+
+        paragraph_header = Paragraph('<font face="{}" size="16">{} Availability Report for {}</font>'.format(
+            self.bold_font, section_number, _device.name), style_sheet["BodyText"])
+
+        data = [[paragraph_header]]
+
+        t_head = Table(data,
+                       colWidths=[available_width],
+                       rowHeights=[35],
+                       style=[('LEFTPADDING', (0, 0), (-1, -1), 0),
+                              ('RIGHTPADDING', (0, 0), (-1, -1), 0), ])
+
+        body_data = []
+
+        # add piecharts
+        host_status_color_map = {
+            "UP": HexColor("#92aa00"), # up
+            "D": HexColor("#bb3d1e"), # down
+            "UR": HexColor("#ff0000"), # unreach
+            "U": HexColor("#e2972d"), # unknown
+            "FL": HexColor("#666666"), # flapping
+            "PD": HexColor("#ccccff"), # pending
+            "UD": HexColor("#dddddd"), # unselected
+        }
+
+        service_status_color_map = {
+            "O": HexColor("#92aa00"),  # ok
+            "W": HexColor("#e2972d"),  # warning
+            "C": HexColor("#bb3d1e"),  # critical
+            "U": HexColor("#d6644a"),  # unknown
+            "FL": HexColor("#666666"),  # flapping
+            "PD": HexColor("#ccccff"),  # pending
+            "UD": HexColor("#dddddd"),  # unselected
+        }
+
+
+        host_state_type_transformation = {
+            k: v.capitalize() for (k, v) in mon_icinga_log_aggregated_host_data.STATE_CHOICES
+        }
+        service_trans_type_transformation = {
+            k: v.capitalize() for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES
+        }
+
+        def create_pie_chart_from_state_data(state_data, label_transformation, color_map, description, timespan=None):
+            pie_data = []
+            pie_labels = []
+            pie_colors = []
+
+            sort_by_state_dict = {}
+
+            for state_dict in state_data:
+                sort_by_state_dict[state_dict["state"]] = state_dict["value"]
+
+            for state in sorted(sort_by_state_dict.keys()):
+                pie_data.append(sort_by_state_dict[state] * 100)
+                pie_labels.append(label_transformation[state])
+                pie_colors.append(color_map[state])
+
+            width, height = self.page_format
+            if width > height:
+                format = "landscape"
+            else:
+                format = "portrait"
+
+            timeframe_string = "N/A"
+            if timespan:
+                timeframe_string = "{} - {}".format(timespan.start_date.ctime(), timespan.end_date.ctime())
+
+            return BreakdownPieDrawing(timeframe_string=timeframe_string,
+                                       description=description,
+                                       format=format,
+                                       width=available_width * 0.83 * 0.50,
+                                       height=(height / 3.0) - 50,
+                                       data=pie_data,
+                                       labels=pie_labels,
+                                       colors=pie_colors)
+
+        # get and add charts
+        start_time = int(time.time())
+        chart_info_map = [
+            ("24 Hours", "day", start_time - (24 * 60 * 60)),
+            ("Weekly", "week", start_time - (24 * 60 * 60 * 7)),
+            ("Monthly", "month", start_time - (24 * 60 * 60 * 30)),
+        ]
+
+        for line_header, duration_type, timeframe in chart_info_map:
+            row = []
+            dummy_request = DummyRequest()
+            dummy_request.GET = {
+                "device_ids": "[{}]".format(_device.idx),
+                "date": timeframe,
+                "duration_type": duration_type
+            }
+
+            timespans = _device_status_history_util.get_timespans_db_from_request(dummy_request)
+            timespan = None
+            if timespans:
+                timespan = timespans[0]
+
+            host_state_data = _device_status_history_util.get_hist_device_data_from_request(dummy_request)
+            if host_state_data and host_state_data[_device.idx]:
+                row.append(create_pie_chart_from_state_data(host_state_data[_device.idx],
+                                                            host_state_type_transformation,
+                                                            host_status_color_map,
+                                                            "Host Status",
+                                                            timespan=timespan))
+            else:
+                row.append("No host state data found!")
+
+            dummy_request.GET["merge_services"] = 1
+            service_state_data = _device_status_history_util.get_hist_service_data_from_request(dummy_request)
+            if service_state_data and service_state_data[_device.idx]:
+                row.append(create_pie_chart_from_state_data(service_state_data[_device.idx],
+                                                            service_trans_type_transformation,
+                                                            service_status_color_map,
+                                                            "Service Status",
+                                                            timespan=timespan))
+            else:
+                row.append("No Service state data found!")
+
+            data = [row]
+
+            text_block = Paragraph('<b>{}:</b>'.format(line_header), style_sheet["BodyText"])
+            t = Table(data, colWidths=(available_width * 0.83 * 0.50),
+                      style=[]
+                      )
+            body_data.append((text_block, t))
+
+        t_body = Table(body_data, colWidths=(available_width * 0.15, available_width * 0.85),
+                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
+                              ('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                              ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                              ])
+
+        elements.append(t_head)
+        elements.append(Spacer(1, 30))
+        elements.append(t_body)
+
+        doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
+        report.add_buffer_to_report(_buffer)
 
     def __generate_device_overview_report(self, _device, report_settings, root_report):
         report = DeviceReport(_device, report_settings, "Overview")
@@ -2353,7 +2522,7 @@ class XlsxReportGenerator(ReportGenerator):
             selected_runs = select_assetruns_for_device(_device, self.device_settings[_device.idx]["assetbatch_id"])
 
             for ar in selected_runs:
-                if not device_report.module_selected(ar):
+                if not device_report.assetrun_selected(ar):
                     continue
 
                 if ar.run_type == AssetType.PRETTYWINHW or ar.run_type == AssetType.LSHW:
@@ -3094,3 +3263,104 @@ def postprocess_workbook(workbook):
             sheet.column_dimensions[get_column_letter(col_idx)].width = max(max_len, 20)
 
     return workbook
+
+
+class BreakdownPieDrawing(_DrawingEditorMixin, Drawing):
+    @staticmethod
+    def setItems(n, obj, attr, values):
+        m = len(values)
+        i = m // n
+        for j in range(n):
+            setattr(obj[j], attr, values[j * i % m])
+
+    def __init__(self, timeframe_string="N/A", description="N/A", format="landscape", width=400, height=100,
+                 data=(), labels=(), colors=(), *args, **kw):
+        if not colors:
+            colors = [
+                HexColor("#0000e5"),
+                HexColor("#1f1feb"),
+                HexColor("#5757f0"),
+                HexColor("#8f8ff5"),
+                HexColor("#c7c7fa"),
+                HexColor("#f5c2c2"),
+                HexColor("#eb8585"),
+                HexColor("#e04747"),
+                HexColor("#d60a0a"),
+                HexColor("#cc0000"),
+                HexColor("#ff0000"),
+            ]
+
+        Drawing.__init__(*(self,width,height)+args, **kw)
+
+        # add piechart
+        self._add(self, Pie(), name='pie', validate=None, desc=None)
+        if format == "landscape":
+            self.pie.width = height - 10
+            self.pie.height = height - 10
+            self.pie.x = 0
+            self.pie.y = (height - self.pie.height) / 2
+        else:
+            self.pie.width = height - 75
+            self.pie.height = height - 75
+            self.pie.x = (width - self.pie.width) / 2.0
+            self.pie.y = height - self.pie.height
+
+        self.pie.data = data
+        self.pie.labels = labels
+        self.pie.simpleLabels = 1
+        self.pie.slices.label_visible = 0
+        self.pie.slices.fontColor = None
+        self.pie.slices.strokeColor = black
+        self.pie.slices.strokeWidth = 0.5
+        self.pie.slices.popout = 4
+
+        # add legend
+        self._add(self, Legend(), name='legend', validate=None, desc=None)
+        if format == "landscape":
+            self.legend.x = 160
+            self.legend.y = height / 2.0
+        else:
+            self.legend.x = 0
+            self.legend.y = 40
+
+        self.legend.dx = 8
+        self.legend.dy = 8
+        self.legend.fontName = 'Helvetica'
+        self.legend.fontSize = 7
+        self.legend.boxAnchor = 'w'
+        self.legend.columnMaximum = 10
+        self.legend.strokeWidth = 1
+        self.legend.strokeColor = black
+        self.legend.deltax = 75
+        self.legend.deltay = 10
+        self.legend.autoXPadding = 5
+        self.legend.yGap = 0
+        self.legend.dxTextSpace = 5
+        self.legend.alignment = 'right'
+        self.legend.dividerLines = 1|2|4
+        self.legend.dividerOffsY = 4.5
+        self.legend.subCols.rpad = 30
+
+        # add description
+        self._add(self, Label(), name="label", validate=None, desc=None)
+        self.label.x = 10
+        self.label.y = height
+        self.label.setText(description)
+        self.label.fontName = 'Helvetica'
+        self.label.fontSize = 7
+
+        # add timeframe label
+        self._add(self, Label(), name="tflabel", validate=None, desc=None)
+        if format == "landscape":
+            self.tflabel.x = (width / 2.0) + 25
+            self.tflabel.y = height
+        else:
+            self.tflabel.x = (width / 2.0)
+            self.tflabel.y = 0
+        self.tflabel.setText(timeframe_string)
+        self.tflabel.fontName = 'Helvetica'
+        self.tflabel.fontSize = 7
+
+        n = len(self.pie.data)
+        self.setItems(n, self.pie.slices, 'fillColor', colors)
+        self.legend.colorNamePairs = [(self.pie.slices[i].fillColor, (self.pie.labels[i][0:20], '%0.2f' % self.pie.data[i])) for i in range(n)]

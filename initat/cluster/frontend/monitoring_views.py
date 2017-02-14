@@ -453,7 +453,24 @@ class search_similar_names(View):
 
 class _device_status_history_util(object):
     @staticmethod
-    def get_merged_state_types_from_request(request):
+    def get_hist_service_data_from_request(request):
+        from initat.cluster.backbone.available_licenses import LicenseEnum
+        device_ids = json.loads(request.GET.get("device_ids"))
+
+        timespans_db = _device_status_history_util.get_timespans_db_from_request(request)
+
+        merge_services = bool(int(request.GET.get("merge_services", 0)))
+        return_data = mon_icinga_log_aggregated_service_data.objects.get_data(
+            devices=device_ids,
+            timespans=timespans_db,
+            license=LicenseEnum.reporting,
+            merge_services=merge_services
+        )
+
+        return return_data
+
+    @staticmethod
+    def get_hist_device_data_from_request(request):
         device_ids = json.loads(request.GET.get("device_ids"))
 
         timespans_db = _device_status_history_util.get_timespans_db_from_request(request)
@@ -669,27 +686,15 @@ class get_hist_device_data(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        response_data = _device_status_history_util.get_merged_state_types_from_request(request)
-        return Response([response_data])  # fake a list, see coffeescript
+        return_data = _device_status_history_util.get_hist_device_data_from_request(request)
+        return Response([return_data])  # fake a list, see coffeescript
 
 
 class get_hist_service_data(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        from initat.cluster.backbone.available_licenses import LicenseEnum
-        device_ids = json.loads(request.GET.get("device_ids"))
-
-        timespans_db = _device_status_history_util.get_timespans_db_from_request(request)
-
-        merge_services = bool(int(request.GET.get("merge_services", 0)))
-        return_data = mon_icinga_log_aggregated_service_data.objects.get_data(
-            devices=device_ids,
-            timespans=timespans_db,
-            license=LicenseEnum.reporting,
-            merge_services=merge_services
-        )
-
+        return_data = _device_status_history_util.get_hist_service_data_from_request(request)
         return Response([return_data])  # fake a list, see coffeescript
 
 
