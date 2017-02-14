@@ -859,6 +859,7 @@ menu_module = angular.module(
                                 src: ICSW_URLS.STATIC_URL + "/openissues-danger.svg"
                                 title: "Open Issues: #{@state.num_unfulfilled}"
                                 height: 23
+                                className: "pull-left"
                             }
                         )
                         div(
