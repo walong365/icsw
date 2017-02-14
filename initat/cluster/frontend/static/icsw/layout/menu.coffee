@@ -1122,12 +1122,12 @@ menu_module = angular.module(
     "$scope", "icswLayoutSelectionDialogService", "$rootScope", "icswBreadcrumbs",
     "icswUserService", "$state", "$q", "icswDeviceTreeService", "ICSW_SIGNALS",
     "icswDispatcherSettingTreeService", "icswAssetPackageTreeService",
-    "icswActiveSelectionService", "icswMenuPath", "icswOverallStyle",
+    "icswActiveSelectionService", "icswMenuPath", "icswOverallStyle", "ICSW_URLS",
 (
     $scope, icswLayoutSelectionDialogService, $rootScope, icswBreadcrumbs,
     icswUserService, $state, $q, icswDeviceTreeService, ICSW_SIGNALS
     icswDispatcherSettingTreeService, icswAssetPackageTreeService,
-    icswActiveSelectionService, icswMenuPath, icswOverallStyle,
+    icswActiveSelectionService, icswMenuPath, icswOverallStyle, ICSW_URLS,
 ) ->
     $scope.struct = {
         current_user: undefined
@@ -1156,13 +1156,14 @@ menu_module = angular.module(
         # overall style
         overall_style: icswOverallStyle.get()
         # header element style
-        he_style: {
-            "background-color": "#cbcbcb"
-        }
+        #he_style: {
+        #    "background-color": "#cbcbcb"
+        #}
         # header element style
-        he_class: "text-default"
+        #he_class: "text-default"
         # header element title
         he_title: "---"
+        devselimg: "#{ICSW_URLS.STATIC_URL}/icon-devsel-default-default.svg"
     }
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
@@ -1253,6 +1254,8 @@ menu_module = angular.module(
         return _list
 
     _update_selection_txt = () ->
+        up_class = "default"
+        sub_class = "default"
         # console.log "ust"
         _em_list = _get_list($scope.struct.em_selection_list)
         _list = _get_list($scope.struct.selection_list)
@@ -1268,16 +1271,23 @@ menu_module = angular.module(
         $scope.struct.select_txt = _em_list.join(", ")
         if $scope.struct.any_selected
             if $scope.struct.in_sync
-                $scope.struct.he_style["background-color"] = "#c6e0b5"
+                #$scope.struct.he_style["background-color"] = "#c6e0b5"
+                sub_class = "success"
             else
-                $scope.struct.he_style["background-color"] = "#f7eb68"
+                #$scope.struct.he_style["background-color"] = "#f7eb68"
+                sub_class = "warning"
             if $scope.struct.sel_unsynced
-                $scope.struct.he_class = "text-danger"
+                #$scope.struct.he_class = "text-danger"
+                up_class = "danger"
             else
-                $scope.struct.he_class = "text-success"
+                #$scope.struct.he_class = "text-success"
+                up_class = "success"
         else
-            $scope.struct.he_style["background-color"] = "#ddd677"
-            $scope.struct.he_class = "text-default"
+            #$scope.struct.he_style["background-color"] = "#ddd677"
+            sub_class = "warning"
+            #$scope.struct.he_class = "text-default"
+            up_class = "default"
+        $scope.struct.devselimg = "#{ICSW_URLS.STATIC_URL}/icon-devsel-#{up_class}-#{sub_class}.svg"
 
     $scope.select_all = ($event) ->
         icswActiveSelectionService.current().select_all().then(
