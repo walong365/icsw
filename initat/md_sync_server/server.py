@@ -66,7 +66,7 @@ class server_process(
         # from mixins
         self._icinga_pc = None
         self.register_timer(self._check_for_pc_control, 10, instant=True)
-        self.VCM_check_md_version()
+        self.VCM_check_md_version(global_config)
         self._init_network_sockets()
         self.add_process(StatusProcess("status"), start=True)
         self.register_func("send_command", self._send_command)

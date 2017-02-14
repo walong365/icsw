@@ -115,7 +115,7 @@ class ServerProcess(
         # sync master uuid
         self.__sync_master_uuid = None
         # from mixins
-        self.VCM_check_md_version()
+        self.VCM_check_md_version(global_config)
         self._init_network_sockets()
 
         if "MD_TYPE" in global_config:
@@ -139,6 +139,7 @@ class ServerProcess(
             #    unicode(server_command.srv_command(command="statusd")),
             # )
         else:
+            self.log("MD_TYPE not defined in global_config, exiting...", logging_tools.LOG_LEVEL_ERROR)
             self._int_error("no MD found")
 
     def _distribution_info(self, *args, **kwarg):

@@ -23,12 +23,11 @@ import os
 import time
 
 from initat.constants import MON_DAEMON_INFO_FILE
-from initat.md_sync_server.config import global_config
 from initat.tools import configfile, logging_tools, process_tools
 
 
 class VersionCheckMixin(object):
-    def VCM_check_md_version(self):
+    def VCM_check_md_version(self, global_config):
         start_time = time.time()
         _info_file = MON_DAEMON_INFO_FILE
         self.log(

@@ -325,7 +325,7 @@ class BuildProcess(
         if self.build_mode == BuildModesEnum.all_master:
             # from mixin
             # todo, remove, move to syncer
-            self.VCM_check_md_version()
+            self.VCM_check_md_version(global_config)
             self._cleanup_db()
             # check for SNMP container config
             self._check_for_snmp_container()
