@@ -351,6 +351,9 @@ class SGEInfo(object):
             else:
                 job_xml = etree.parse(StringIO(c_out), self.xml_parser)
             job_name = job_xml.findtext(".//JB_job_name")
+            # get submission time
+            sub_time = job_xml.findtext(".//JB_submission_time")
+            # print("*", sub_time)
             # check for non-standard path
             # get home
             home_var = job_xml.xpath(".//job_sublist/VA_variable[text() = 'HOME']", smart_strings=False)
@@ -366,7 +369,11 @@ class SGEInfo(object):
             else:
                 # dummy pwd, FIXME
                 cur_pwd = "/tmp/"
-            ext_xml = E.job_ext_info(E.file_info(), E.pinning_info())
+            ext_xml = E.job_ext_info(
+                E.submission_time(sub_time),
+                E.file_info(),
+                E.pinning_info(),
+            )
             for _std_type, _short in [("stdout", "o"), ("stderr", "e")]:
                 if job_xml.find(".//JB_{}_path_list".format(_std_type)) is not None:
                     _pn_path = job_xml.findtext(".//JB_{}_path_list/path_list/PN_path".format(_std_type))
@@ -983,7 +990,9 @@ class SGEInfo(object):
             cur_job.attrib["job_id"] = cur_job.findtext("JB_job_number")
             cur_job.attrib["full_id"] = "{}{}".format(
                 cur_job.attrib["job_id"],
-                ".{}".format(cur_job.findtext("tasks")) if cur_job.find("tasks") is not None else ""
+                ".{}".format(
+                    cur_job.findtext("tasks")
+                ) if cur_job.find("tasks") is not None else ""
             )
         # print etree.tostring(all_jobs, pretty_print=True)
         # add info for running jobs
@@ -1045,23 +1054,6 @@ class SGEInfo(object):
                     )
                 )
             )
-        # update submission timestamps
-        _cur_subm_data = self.get_cache("subm_times")
-        if _cur_subm_data:
-            try:
-                _cur_subm_data = json.loads(_cur_subm_data)
-            except:
-                self.log(
-                    "error interpreting stored submission times: {}".format(
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-                _cur_subm_data = {}
-        else:
-            _cur_subm_data = {}
-        # print("in", _cur_subm_data)
-        _now = time.time()
         for node_name, attr_name in [
             ("JAT_start_time", "start_time"),
             ("JB_submission_time", "submit_time")
@@ -1072,37 +1064,7 @@ class SGEInfo(object):
                     "%Y-%m-%dT%H:%M:%S"
                 ).strftime("%s")
                 job_id = time_el.getparent().attrib["job_id"]
-                if attr_name == "submit_time":
-                    _cur_subm_data[job_id] = {
-                        "parsed": _parsed_dt,
-                        "touched": _now,
-                    }
                 time_el.getparent().attrib[attr_name] = _parsed_dt
-        # set submission times for all jobs
-        for cur_job in all_jobs.findall(".//job_list"):
-            job_id = cur_job.attrib["job_id"]
-            if "submit_time" not in cur_job.attrib:
-                # submission time mssing
-                if job_id in _cur_subm_data:
-                    # copy from dict
-                    cur_job.attrib["submit_time"] = _cur_subm_data[job_id]["parsed"]
-                    # set touched attribute
-                    _cur_subm_data[job_id]["touched"] = _now
-                else:
-                    # hm, best way would be to call qstat again ...
-                    # fix: pretent to be submitted a few secons before the start time
-                    if "start_time" in cur_job.attrib:
-                        cur_job.attrib["submit_time"] = "{:d}".format(
-                            int(cur_job.attrib["start_time"]) - 15
-                        )
-        # delete old values
-        _cur_subm_data = {
-            # everything not touched in the latest week is deleted
-            key: value for key, value in _cur_subm_data.items() if abs(value["touched"] - _now) < 7 * 24 * 3600
-        }
-        # print("out", _cur_subm_data)
-        # store submission time cache
-        self.set_cache("subm_times", json.dumps(_cur_subm_data))
         return all_jobs
 
     def _add_stdout_stderr_info(self, all_jobs):
@@ -1403,8 +1365,9 @@ def build_running_list(s_info, options, **kwargs):
             ]
         )
         if not options.suppress_times:
-            if "submit_time" in act_job.attrib:
-                submit_time = datetime.datetime.fromtimestamp(int(act_job.attrib["submit_time"]))
+            submit_el = act_job.find("job_ext_info/submission_time")
+            if submit_el is not None:
+                submit_time = datetime.datetime.fromtimestamp(int(submit_el.text))
             else:
                 submit_time = None
             start_time = datetime.datetime.fromtimestamp(int(act_job.attrib["start_time"]))
