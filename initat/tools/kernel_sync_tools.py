@@ -190,7 +190,7 @@ class KernelHelper(object):
                             os.path.basename(md5_file)
                         ),
                     )
-                    self.__option_dict[md5_name] = (hashlib.md5(open(src_file, "r").read())).hexdigest()
+                    self.__option_dict[md5_name] = (hashlib.md5(open(src_file, "rb").read())).hexdigest()
                     open(md5_file, "w").write(self.__option_dict[md5_name])
                 else:
                     self.__option_dict[md5_name] = open(md5_file, "r").read()
@@ -321,7 +321,7 @@ class KernelHelper(object):
                 checked = False
                 for present_key in present_keys:
                     check_path = self.__initrd_paths[present_key]
-                    self.log("trying to get modules via {}-flavour ({})".format(present_key, self.__initrd_paths[key]))
+                    self.log("trying to get modules via {}-flavour ({})".format(present_key, self.__initrd_paths[present_key]))
                     # flavour-dependend mod_list extraction
                     setup_ok, do_umount = (True, False)
                     if present_key in ["lo", "cramfs"]:

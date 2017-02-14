@@ -35,7 +35,7 @@ from lxml import etree
 from lxml.builder import E
 
 from initat.icsw.service.instance import InstanceXML
-from initat.tools import logging_tools, process_tools, server_command
+from . import logging_tools, process_tools, server_command
 
 
 def get_empty_job_options(**kwargs):
@@ -288,15 +288,18 @@ class SGEInfo(object):
             debug=0
         )
 
+    def _cache_key(self, key):
+        return "sgeinfo:{}".format(key)
+
     def get_cache(self, key):
         if self._cache_socket:
-            return self._cache_socket.get(key)
+            return self._cache_socket.get(self._cache_key(key))
         else:
             return None
 
     def set_cache(self, key, value):
         if self._cache_socket:
-            self._cache_socket.set(key, value)
+            self._cache_socket.set(self._cache_key(key), value)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_com:
@@ -339,7 +342,7 @@ class SGEInfo(object):
     # extended job id
 
     def add_run_job_info(self, job_id, qstat_com):
-        job_key = "sgeinfo:job:r{}".format(job_id)
+        job_key = "job:r{}".format(job_id)
         _cache = self.get_cache(job_key)
         if _cache is None:
             _c_stat, c_out = self._execute_command("{} -u \* -xml -j {}".format(qstat_com, job_id))
@@ -387,7 +390,7 @@ class SGEInfo(object):
         # determine missing job ids / cache info too old
         renew_ids = set()
         for job_id in job_ids:
-            job_key = "sgeinfo:job:wait:{}".format(job_id)
+            job_key = "job:wait:{}".format(job_id)
             _cache = self.get_cache(job_key)
             if _cache is None:
                 renew_ids.add(job_id)
@@ -977,8 +980,9 @@ class SGEInfo(object):
         all_jobs.tag = "qstat"
         # modify job_ids
         for cur_job in all_jobs.findall(".//job_list"):
+            cur_job.attrib["job_id"] = cur_job.findtext("JB_job_number")
             cur_job.attrib["full_id"] = "{}{}".format(
-                cur_job.findtext("JB_job_number"),
+                cur_job.attrib["job_id"],
                 ".{}".format(cur_job.findtext("tasks")) if cur_job.find("tasks") is not None else ""
             )
         # print etree.tostring(all_jobs, pretty_print=True)
@@ -1041,15 +1045,64 @@ class SGEInfo(object):
                     )
                 )
             )
+        # update submission timestamps
+        _cur_subm_data = self.get_cache("subm_times")
+        if _cur_subm_data:
+            try:
+                _cur_subm_data = json.loads(_cur_subm_data)
+            except:
+                self.log(
+                    "error interpreting stored submission times: {}".format(
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                _cur_subm_data = {}
+        else:
+            _cur_subm_data = {}
+        # print("in", _cur_subm_data)
+        _now = time.time()
         for node_name, attr_name in [
             ("JAT_start_time", "start_time"),
             ("JB_submission_time", "submit_time")
         ]:
             for time_el in all_jobs.findall(".//{}".format(node_name)):
-                time_el.getparent().attrib[attr_name] = datetime.datetime.strptime(
+                _parsed_dt = datetime.datetime.strptime(
                     time_el.text,
                     "%Y-%m-%dT%H:%M:%S"
                 ).strftime("%s")
+                job_id = time_el.getparent().attrib["job_id"]
+                if attr_name == "submit_time":
+                    _cur_subm_data[job_id] = {
+                        "parsed": _parsed_dt,
+                        "touched": _now,
+                    }
+                time_el.getparent().attrib[attr_name] = _parsed_dt
+        # set submission times for all jobs
+        for cur_job in all_jobs.findall(".//job_list"):
+            job_id = cur_job.attrib["job_id"]
+            if "submit_time" not in cur_job.attrib:
+                # submission time mssing
+                if job_id in _cur_subm_data:
+                    # copy from dict
+                    cur_job.attrib["submit_time"] = _cur_subm_data[job_id]["parsed"]
+                    # set touched attribute
+                    _cur_subm_data[job_id]["touched"] = _now
+                else:
+                    # hm, best way would be to call qstat again ...
+                    # fix: pretent to be submitted a few secons before the start time
+                    if "start_time" in cur_job.attrib:
+                        cur_job.attrib["submit_time"] = "{:d}".format(
+                            int(cur_job.attrib["start_time"]) - 15
+                        )
+        # delete old values
+        _cur_subm_data = {
+            # everything not touched in the latest week is deleted
+            key: value for key, value in _cur_subm_data.items() if abs(value["touched"] - _now) < 7 * 24 * 3600
+        }
+        # print("out", _cur_subm_data)
+        # store submission time cache
+        self.set_cache("subm_times", json.dumps(_cur_subm_data))
         return all_jobs
 
     def _add_stdout_stderr_info(self, all_jobs):
@@ -1350,10 +1403,21 @@ def build_running_list(s_info, options, **kwargs):
             ]
         )
         if not options.suppress_times:
+            if "submit_time" in act_job.attrib:
+                submit_time = datetime.datetime.fromtimestamp(int(act_job.attrib["submit_time"]))
+            else:
+                submit_time = None
             start_time = datetime.datetime.fromtimestamp(int(act_job.attrib["start_time"]))
             cur_job.extend(
                 [
-                    E.start_time(logging_tools.get_relative_dt(start_time), raw=json.dumps(int(time.mktime(start_time.timetuple())))),
+                    E.submit_time(
+                        logging_tools.get_relative_dt(submit_time) if submit_time else "---",
+                        raw=json.dumps(int(time.mktime(submit_time.timetuple())) if submit_time else 0)
+                    ),
+                    E.start_time(
+                        logging_tools.get_relative_dt(start_time),
+                        raw=json.dumps(int(time.mktime(start_time.timetuple())))
+                    ),
                     E.run_time(s_info.get_run_time(start_time)),
                     E.left_time(s_info.get_left_time(start_time, act_job.findtext("hard_request[@name='h_rt']")))
                 ]
@@ -1507,6 +1571,7 @@ def get_running_headers(options):
     if not options.suppress_times:
         cur_job.extend(
             [
+                E.submit_time(),
                 E.start_time(),
                 E.run_time(),
                 E.left_time()

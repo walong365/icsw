@@ -21,8 +21,6 @@
 #
 """ frontend for SGE qstat """
 
-
-
 import argparse
 import os
 import sys

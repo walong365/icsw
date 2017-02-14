@@ -473,7 +473,7 @@ class Configuration(object):
                 value, source = value
             else:
                 source = None
-            print("G", key, value, source)
+            # print("G", key, value, source)
             self.__c_dict[key].set_value(value, source)
             # import the signal changes
             self.__c_dict.key_changed(key)

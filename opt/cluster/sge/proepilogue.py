@@ -40,12 +40,14 @@ import socket
 import stat
 import time
 try:
-    from initat.tools.configfile import StringConfigVar, IntegerConfigVar, BoolConfigVar
+    from initat.tools.configfile import StringConfigVar, IntegerConfigVar, BoolConfigVar, \
+        FloatConfigVar
 except:
-    from initat.tools.configfile import str_c_var, int_c_var, bool_c_var
+    from initat.tools.configfile import str_c_var, int_c_var, bool_c_var, float_c_var
     StringConfigVar = str_c_var
     IntegerConfigVar = int_c_var
     BoolConfigVar = bool_c_var
+    FloatConfigVar = float_c_var
 
 from initat.tools import threading_tools, configfile, logging_tools, net_tools, \
     process_tools, server_command
@@ -1613,7 +1615,7 @@ def main_code():
         LPATH = "ipc:///var/lib/logging-server/py_log_zmq"
     global_config.add_config_entries(
         [
-            ("LOG_DESTINATION", StringConfigVar("uds:{}".format(LPATH))),
+            ("LOG_DESTINATION", StringConfigVar(LPATH)),
             ("LOG_NAME", StringConfigVar("proepilogue")),
             ("MAX_RUN_TIME", IntegerConfigVar(60)),
             ("SEP_LEN", IntegerConfigVar(80)),

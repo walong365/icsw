@@ -346,7 +346,7 @@ class RMSMonProcess(threading_tools.icswProcessObj):
         # total vector
         _rms_vector.append(
             hm_classes.MachineVectorEntry(
-                "rms.user.slots".format(_name),
+                "rms.user.slots",
                 info="Slots used by all users",
                 default=0,
                 value=_total,

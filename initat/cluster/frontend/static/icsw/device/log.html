@@ -15,7 +15,12 @@
             class="alert-warning"
             ng-show="!struct.data_loaded"
         >
-            Fetching Data from Server ...
+            <span ng-show="!struct.devs_present">
+                Awaiting devicelist ...
+            </span>
+            <span ng-show="struct.devs_present">
+                Fetching Data from Server ...
+            </span>
         </div>
         <div ng-if="struct.data_loaded">
             <uib-tabset active="struct.activetab">
@@ -99,7 +104,12 @@
         class="alert-warning"
         ng-show="!struct.data_loaded"
     >
-        Fetching Data from Server ...
+        <span ng-show="!struct.devs_present">
+            Awaiting devicelist ...
+        </span>
+        <span ng-show="struct.devs_present">
+            Fetching Data from Server ...
+        </span>
     </div>
     <div ng-if="struct.data_loaded">
         <table

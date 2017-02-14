@@ -47,6 +47,7 @@ device_logs = angular.module(
 ) ->
     $scope.struct = {
         data_loaded: false
+        devs_present: false
         log_entries: []
         devices: []
         tabs: []
@@ -84,7 +85,6 @@ device_logs = angular.module(
         ).then(
             (result) ->
                 $scope.struct.devices.length = 0
-
                 for device in devices
                     if !device.is_meta_device
                         $scope.struct.device_lut[device.idx] = device
@@ -96,7 +96,7 @@ device_logs = angular.module(
                             device.$$device_log_entries_bg_color_class = info_available_class
 
                         $scope.struct.devices.push(device)
-
+                $scope.struct.devs_present = true
                 $scope.struct.data_loaded = true
         )
 
@@ -171,6 +171,9 @@ device_logs = angular.module(
     $scope.struct = {
         # filter
         filter: icswTableFilterService.get_instance()
+        # devices present
+        devs_present: false
+        # data loaded
         data_loaded: false
         user_tree: undefined
         websocket: undefined
@@ -261,7 +264,6 @@ device_logs = angular.module(
     $scope.$watch(
         "device_list"
         (new_val) ->
-            # console.log "nv", new_val
             new_fp = ("#{dev.idx}" for dev in new_val).join("::")
             if new_fp != $scope.struct.def_fp
                 $scope.struct.def_fp = new_fp
@@ -274,6 +276,10 @@ device_logs = angular.module(
                     $scope.struct.filter.get("devices").add_choice(entry.idx, entry.$$print_name, entry.idx, false)
                 # filter all device log entries where device_idx is not in device_idxs
                 $scope.struct.device_log_entries.length = 0
+                if $scope.struct.device_idxs.length
+                    $scope.struct.devs_present = true
+                else
+                    $scope.struct.devs_present = false
                 reload()
         true
     )
