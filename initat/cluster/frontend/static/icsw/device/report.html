@@ -9,45 +9,10 @@
             <uib-tabset>
                 <uib-tab>
                     <uib-tab-heading>
-                        <span>Layout Settings</span>
+                        <span>Report Settings</span>
                     </uib-tab-heading>
                     <br/>
-                    <div class="panel panel-default">
-                        <div class="panel-body" style="padding: 6px 15px">
-                            <div class="input-group">
-                                <br/><label class="control-label">Current Report Logo</label><br/>
-                                <img ng-if="struct.gfx_b64_data.length > 0" data-ng-src="data:image/png;base64,{{struct.gfx_b64_data}}"/>
-                                <label ng-if="struct.gfx_b64_data.length == 0" style="padding: 0px 15px" class="control-label"><i>No Report Logo uploaded yet</i></label>
-                            </div>
-
-                            <div class="input-group">
-                                <br/><label class="control-label">Change Report Logo</label><br/>
-                                <input type="file" class="btn btn-sm btn-primary form-control-inline" nv-file-select uploader="uploader"/><br/><br/>
-                                <!-- <icsw-tools-button type="create" size="xs" value="Upload Report Logo" ng-click="create_or_edit($event, true, loc.location)"></icsw-tools-button> -->
-                                <div ng-if="uploading" class="progress">
-                                  <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100" ng-style="{width : ( getPercentage() + '%' ) }">
-                                  </div>
-                                </div>
-                            </div>
-                            <div class="input-group">
-                                <br/><label class="control-label">PDF Page Format</label><br/>
-                                <select class="form-control" ng-model="struct.pdf_page_format">
-                                    <option value="A4">A4</option>
-                                    <option value="landscape(A4)">A4 landscape</option>
-                                    <!--<option value="A3">A3</option>
-                                    <option value="landscape(A3)">A3 landscape</option>
-                                    <option value="letter">letter</option>
-                                    <option value="landscape(letter)">letter landscape</option>-->
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </uib-tab>
-
-                <uib-tab>
-                    <uib-tab-heading>
-                        <span>Report Settings (General)</span>
-                    </uib-tab-heading>
+                    <label class="control-label">General Report Settings:</label>
                     <br/>
                     <div class="panel panel-default">
                         <div class="panel-body" style="padding: 6px 15px">
@@ -87,25 +52,10 @@
                             </table>
                         </div>
                     </div>
-                </uib-tab>
-
-                <uib-tab>
-                    <uib-tab-heading>
-                        <span>Report Settings (Devices)</span>
-                    </uib-tab-heading>
+                    <label ng-if="struct.devices.length > 0" class="control-label">Device Report Settings:</label>
                     <br/>
-                    <div class="panel panel-default">
+                    <div ng-if="struct.devices.length > 0" class="panel panel-default">
                         <div class="panel-body" style="padding: 6px 15px">
-                            <!--<div class="input-group">
-                                <br/>
-                                <label class="control-label">AssetBatch Selection Mode</label><br/>
-                                <select class="form-control" ng-model="struct.assetbatch_selection_mode" ng-change="assetbatch_selection_mode_change()">
-                                    <option value="-1">---Please select---</option>
-                                    <option value="0">Latest assetbatch</option>
-                                    <option value="1">Latest complete assetbatch without errors</option>
-                                    <option value="2">Mixed mode</option>
-                                </select>
-                            </div>-->
                             <table
                                 class="table table-hover table-condensed table-striped"
                                 style="width:auto;"
@@ -279,6 +229,37 @@
                                     </tbody>
                                 </table>
                             </td>
+                            <td>
+                                <table
+                                    st-table="entries_displayed"
+                                    st-safe-src="struct.devices"
+                                    class="table table-hover table-condensed table-striped"
+                                    style="width:auto;"
+                                >
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center" colspan=3>Monitoring Information Modules</th>
+                                        </tr>
+                                        <tr>
+                                            <th class="text-center">Availability Overview</th>
+                                        </tr>
+                                        <tr>
+                                            <th>
+                                                <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(9)" value="Select" style="display: block; margin: 0 auto;"/>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="obj in entries_displayed" ng-class="get_tr_class(obj)">
+                                            <td style="height:40px; vertical-align: middle;">
+                                                <div class="text-center">
+                                                    <input type="button" ng-disabled="obj.$availability_overview_button_disabled" ng-class="obj.$availability_overview_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 9)"/>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </td>
                         </tr>
                         </thead>
                         </table>
@@ -341,8 +322,8 @@
                             <table
                                     st-table="report_entries_displayed"
                                     st-safe-src="struct.available_reports"
+                                    st-set-filter="reportHistoryFilter"
                                     class="table table-hover table-condensed table-striped"
-                                    style="width:auto;"
                                 >
                                 <thead>
                                     <tr>
@@ -356,7 +337,26 @@
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th>Report ID</th>
+                                        <td>
+                                            Actions:
+                                        </td>
+                                        <td colspan="99">
+                                            <button type="button" ng-disabled="struct.selected_report_history_objects == 0" ng-click="delete_selected_report_history_objects()" class="btn btn-danger btn-xs">Delete Selection ({{ struct.selected_report_history_objects }} Selected)</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            Selection Actions:
+                                        </td>
+                                        <td colspan="99">
+                                            <button type="button" ng-click="select_all_report_history_objects()" class="btn btn-success btn-xs">Select All</button>
+                                            <button type="button" ng-click="deselect_all_report_history_objects()" class="btn btn-success btn-xs">Unselect All</button>
+                                            <button type="button" ng-click="inverse_report_history_object_selection()" class="btn btn-success btn-xs">Inverse Selection</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th st-sort="report_id" st-sort-default="reverse">Report ID</th>
+                                        <th class="text-center">Selection</th>
                                         <th>Generated by (user)</th>
                                         <th>Generated at (time)</th>
                                         <th>Pages</th>
@@ -365,10 +365,41 @@
                                         <th>Downloads</th>
                                         <th>Download</th>
                                     </tr>
+                                    <tr>
+                                        <th>
+                                            <input st-search="report_id" placeholder="filter by ID" class="input-sm form-control" type="search"/>
+                                        </th>
+                                        <th></th>
+                                        <th>
+                                            <input st-search="created_by_user" placeholder="filter by user" class="input-sm form-control" type="search"/>
+                                        </th>
+                                        <th>
+                                            <input st-search="created_at_time_pretty" placeholder="filter by date" class="input-sm form-control" type="search"/>
+                                        </th>
+                                        <th>
+                                            <input st-search="number_of_pages" placeholder="filter by number of pages" class="input-sm form-control" type="search"/>
+                                        </th>
+                                        <th>
+                                            <input st-search="size" placeholder="filter by size" class="input-sm form-control" type="search"/>
+                                        </th>
+                                        <th>
+                                            <input st-search="type" placeholder="filter by type" class="input-sm form-control" type="search"/>
+                                        </th>
+                                        <th>
+                                            <input st-search="number_of_downloads" placeholder="filter by downloads" class="input-sm form-control" type="search"/>
+                                        </th>
+                                        <th>
+                                        </th>
+                                    </tr>
                                 </thead>
                                 <tbody>
                                     <tr ng-repeat="obj in report_entries_displayed">
                                         <td>{{ obj.report_id }}</td>
+                                        <td class="vertical-align text-center">
+                                            <button type="button" class="btn btn-xs" ng-class="obj.$$selected && 'btn-success' || 'btn-default'" ng-click="select_report_history(obj)" value="sel">
+                                                <span class="glyphicon" ng-class="obj.$$selected && 'glyphicon-ok' || 'glyphicon-minus'"></span>
+                                            </button>
+                                        </td>
                                         <td>{{ obj.created_by_user }}</td>
                                         <td>{{ obj.created_at_time_pretty }}</td>
                                         <td>{{ obj.number_of_pages }}</td>
@@ -392,6 +423,38 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </uib-tab>
+                <uib-tab>
+                    <uib-tab-heading>
+                        <span>Layout Settings</span>
+                    </uib-tab-heading>
+                    <br/>
+                    <div class="panel panel-default">
+                        <div class="panel-body" style="padding: 6px 15px">
+                            <div class="input-group">
+                                <br/><label class="control-label">Current Report Logo</label><br/>
+                                <img ng-if="struct.gfx_b64_data.length > 0" data-ng-src="data:image/png;base64,{{struct.gfx_b64_data}}"/>
+                                <label ng-if="struct.gfx_b64_data.length == 0" style="padding: 0px 15px" class="control-label"><i>No Report Logo uploaded yet</i></label>
+                            </div>
+
+                            <div class="input-group">
+                                <br/><label class="control-label">Change Report Logo</label><br/>
+                                <input type="file" class="btn btn-sm btn-primary form-control-inline" nv-file-select uploader="uploader"/><br/><br/>
+                                <!-- <icsw-tools-button type="create" size="xs" value="Upload Report Logo" ng-click="create_or_edit($event, true, loc.location)"></icsw-tools-button> -->
+                                <div ng-if="uploading" class="progress">
+                                  <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100" ng-style="{width : ( getPercentage() + '%' ) }">
+                                  </div>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <br/><label class="control-label">PDF Page Format</label><br/>
+                                <select class="form-control" ng-model="struct.pdf_page_format">
+                                    <option value="A4">A4</option>
+                                    <option value="landscape(A4)">A4 landscape</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </uib-tab>

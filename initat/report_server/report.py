@@ -341,7 +341,8 @@ class DeviceReport(GenericReport):
             "lstopo_report_selected": True,
             "process_report_selected": True,
             "dmi_report_selected": True,
-            "pci_report_selected": True
+            "pci_report_selected": True,
+            "availability_overview_selected": True
         }
 
         # update default settings with new settings
@@ -971,7 +972,9 @@ class PDFReportGenerator(ReportGenerator):
         # create generic overview page
         self.__generate_device_overview_report(_device, report_settings, device_report)
         self.__generate_device_assetrun_reports(_device, report_settings, device_report)
-        self.__generate_device_availabilty_report(_device, report_settings, device_report)
+
+        if device_report.report_settings["availability_overview_selected"] == True:
+            self.__generate_device_availabilty_report(_device, report_settings, device_report)
 
     def __generate_device_availabilty_report(self, _device, report_settings, root_report):
         class DummyRequest(object):
@@ -2018,7 +2021,7 @@ class PDFReportGenerator(ReportGenerator):
         available_width = self.page_format[0] - (self.margin * 4)
 
         data = [
-            [Paragraph("Asset report", style_sheet['heading_1'])],
+            [Paragraph("PDF Report", style_sheet['heading_1'])],
             [Paragraph("Report #{}".format(self.report_id), style_sheet['heading_2'])]
             ]
 

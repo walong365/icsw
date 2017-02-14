@@ -50,14 +50,14 @@ device_report_module = angular.module(
     "icswDeviceTreeService", "icswDeviceTreeHelperService", "$timeout",
     "icswDispatcherSettingTreeService", "Restangular", "icswActiveSelectionService",
     "icswComplexModalService", "$interval", "icswUserService", "icswAssetHelperFunctions",
-    "$http", "icswReportHelperFunctions"
+    "$http", "icswReportHelperFunctions", "icswToolsSimpleModalService"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, FileUploader, icswCSRFService
     icswDeviceTreeService, icswDeviceTreeHelperService, $timeout,
     icswDispatcherSettingTreeService, Restangular, icswActiveSelectionService,
     icswComplexModalService, $interval, icswUserService, icswAssetHelperFunctions,
-    $http, icswReportHelperFunctions
+    $http, icswReportHelperFunctions, icswToolsSimpleModalService
 ) ->
     $scope.struct = {
         # list of devices
@@ -89,6 +89,8 @@ device_report_module = angular.module(
 
         available_reports: []
         available_reports_dict: {}
+
+        selected_report_history_objects: 0
     }
 
     refresh_available_reports = () ->
@@ -99,7 +101,7 @@ device_report_module = angular.module(
             (result) ->
                 for report_id in result.report_ids
                     if $scope.struct.available_reports_dict.hasOwnProperty(report_id)
-                       $scope.struct.available_reports_dict[report_id].number_of_downloads =  result.report_history[report_id].number_of_downloads
+                       $scope.struct.available_reports_dict[report_id].number_of_downloads = result.report_history[report_id].number_of_downloads
                     else
                         prettier_time_string = moment(result.report_history[report_id].created_at_time).format("YYYY-MM-DD HH:mm:ss")
                         result.report_history[report_id].created_at_time_pretty = prettier_time_string
@@ -282,6 +284,9 @@ device_report_module = angular.module(
         else if selection_type == 8
             select_salt_obj(obj, "$lstopo_report_selected", "$lstopo_report_button_disabled")
 
+        else if selection_type == 9
+            select_salt_obj(obj, "$availability_overview_selected", "$availability_overview_button_disabled")
+
     icswSimpleAjaxCall({
                 url: ICSW_URLS.REPORT_GET_REPORT_GFX
                 dataType: 'json'
@@ -306,7 +311,6 @@ device_report_module = angular.module(
             ]
         ).then(
             (data) ->
-                console.log(data[1])
                 $scope.struct.device_tree = data[0]
                 $scope.struct.devices.length = 0
 
@@ -348,7 +352,46 @@ device_report_module = angular.module(
                 initialize_buttons()
                 blockUI.stop()
         )
-        
+
+    $scope.select_report_history = (report_history_obj) ->
+        if report_history_obj.$$selected == undefined
+            report_history_obj.$$selected = true
+        else
+            report_history_obj.$$selected = !report_history_obj.$$selected
+
+        if report_history_obj.$$selected
+            $scope.struct.selected_report_history_objects += 1
+        else
+            $scope.struct.selected_report_history_objects -= 1
+
+    $scope.select_all_report_history_objects = () ->
+        for report_obj in $scope.struct.available_reports
+            report_obj.$$selected = true
+        $scope.struct.selected_report_history_objects = $scope.struct.available_reports.length
+
+    $scope.deselect_all_report_history_objects = () ->
+        for report_obj in $scope.struct.available_reports
+            report_obj.$$selected = false
+        $scope.struct.selected_report_history_objects = 0
+
+    $scope.inverse_report_history_object_selection = () ->
+        $scope.struct.selected_report_history_objects = 0
+        for report_obj in $scope.struct.available_reports
+            if report_obj.$$selected == undefined
+                report_obj.$$selected = true
+            else
+                report_obj.$$selected = !report_obj.$$selected
+
+            if report_obj.$$selected
+                $scope.struct.selected_report_history_objects += 1
+
+    $scope.delete_selected_report_history_objects = () ->
+        icswToolsSimpleModalService("Really delete " + $scope.struct.selected_report_history_objects + " items?").then(
+            (_yes) ->
+                console.log("Yo")
+            (_no) ->
+        )
+
     $scope.get_tr_class = (obj) ->
         return if obj.is_meta_device then "success" else ""
 
@@ -383,6 +426,7 @@ device_report_module = angular.module(
                     dmi_report_selected: device.$dmi_report_selected
                     pci_report_selected: device.$pci_report_selected
                     lstopo_report_selected: device.$lstopo_report_selected
+                    availability_overview_selected: device.$availability_overview_selected
                     assetbatch_id: device.$$selected_assetbatch
                 }
                 settings.push(setting)
@@ -559,6 +603,9 @@ device_report_module = angular.module(
             else if column_id == 8
                 if device.$lstopo_report_selected == true
                     return true
+            else if column_id == 9
+                if device.$availability_overview_selected == true
+                    return true
 
         return false
 
@@ -611,6 +658,11 @@ device_report_module = angular.module(
                     device.$lstopo_report_selected = !this_column_selected
                     if !this_column_selected
                         device.$selected_for_report = true
+            else if column_id == 9
+                if !device.$availability_overview_button_disabled
+                    device.$availability_overview_selected = !this_column_selected
+                    if !this_column_selected
+                        device.$selected_for_report = true
 
     $scope.select_software_information = () ->
         selected = false
@@ -660,8 +712,6 @@ device_report_module = angular.module(
                 device.$lstopo_report_selected = !selected
 
     $scope.update_download_counter = (report_obj) ->
-        console.log(report_obj)
-
         if report_obj == undefined
             report_id = $scope.struct.report_id
         else
@@ -799,7 +849,6 @@ device_report_module = angular.module(
 (
     icswAssetHelperFunctions,
 ) ->
-
     _disable_device_buttons = (device) ->
         device.$packages_selected = false
         device.$packages_selected_button_disabled = true
@@ -828,7 +877,13 @@ device_report_module = angular.module(
         device.$lstopo_report_selected = false
         device.$lstopo_report_button_disabled = true
 
+        device.$$availability_overview_selected = false
+        device.$availability_overview_button_disabled = true
+
     _enable_device_buttons = (device, device_info_obj) ->
+        # general device buttons are always enabled
+        device.$availability_overview_button_disabled = false
+
         for obj in device_info_obj
             button_title_str = ""
             if obj.hasOwnProperty("length")
@@ -881,4 +936,21 @@ device_report_module = angular.module(
         enable_device_buttons: (device, device_info_obj) ->
             return _enable_device_buttons(device, device_info_obj)
     }
+]).filter('reportHistoryFilter'
+[
+    "$filter",
+(
+    $filter,
+) ->
+    return (input, predicate) ->
+        strict = false
+
+        strict_predicate_names = ["report_id", "number_of_pages", "number_of_downloads"]
+
+        for strict_predicate_name in strict_predicate_names
+            if predicate.hasOwnProperty(strict_predicate_name)
+                strict = true
+                predicate[strict_predicate_name] = parseInt(predicate[strict_predicate_name])
+
+        return $filter('filter')(input, predicate, strict)
 ])

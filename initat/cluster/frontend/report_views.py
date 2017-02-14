@@ -350,14 +350,14 @@ class ReportHistoryAvailable(View):
                 continue
 
             o = {
-                'report_id': str(report_history.idx),
+                'report_id': report_history.idx,
                 'created_by_user': str(report_history.created_by_user),
                 'created_at_time': str(report_history.created_at_time),
-                'number_of_pages': str(report_history.number_of_pages),
+                'number_of_pages': report_history.number_of_pages,
                 'size': sizeof_fmt(report_history.size),
                 'raw_size': report_history.b64_size,
                 'type': str(report_history.type),
-                'number_of_downloads': str(report_history.number_of_downloads)
+                'number_of_downloads': report_history.number_of_downloads
             }
 
             report_ids.append(report_history.idx)
@@ -391,6 +391,23 @@ class UpdateDownloadCount(View):
             json.dumps(
                 {
                     'download_count': report_history.number_of_downloads
+                }
+            )
+        )
+
+
+class ReportHistoryDeleter(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        import json
+        from django.http import HttpResponse
+
+        idx_list = request.POST.getlist("idx_list[]", [])
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'status': 0
                 }
             )
         )
