@@ -757,6 +757,7 @@
                 <menuEntry icon="fa-key" routeName="main.syslicenseoverview" name="License"/>
                 <menuEntry icon="fa-check-square" routeName="main.devicesrvconfig" name="Assign System Service"/>
                 <menuEntry icon="fa-history" routeName="main.history" name="Database History"/>
+                <menuEntry icon="fa-list-alt" routeName="main.devicelog" name="Device Log"/>
                 <menuEntry icon="fa-book" routeName="main.report" name="Report History" limitedTo="NOCTUA"/>
                 <menuEntry icon="fa-bars" routeName="main.statelist" name="Internal State List"/>
                 <menuEntry icon="fa-list" routeName="main.backgroundinfo" name="Background Job Info"/>

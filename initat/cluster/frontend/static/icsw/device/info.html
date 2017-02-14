@@ -49,6 +49,7 @@
     <uib-tab-heading>
         Device Logs{{ addon_text }}
     </uib-tab-heading>
+    <h3>Device Logs</h3>
     <icsw-device-log-table
         icsw-device-list="devicelist"
         ng-if="active_tab == 'devicelogs'"
@@ -151,7 +152,7 @@
 
 <script type="text/ng-template" id="icsw.device.info.tab.modify">
     <fieldset>
-        <legend>Please select active Tabs</legend>
+        <legend><h3>Please select active Tabs</h3></legend>
         <div ng-repeat="tab in struct.tab_list" class="form-group row">
             <label class="control-label col-sm-4 icsw-formlabel">
                 {{ tab.shownname }}
@@ -287,7 +288,7 @@
                         {{ edit_obj.$$category_info }}
                     </div>
                 </div>
-                <div class="row">
+                <div class="row" ng-if="has_valid_license('asset')">
                     <label class="control-label col-xs-3">
                         Asset Categories
                     </label>
@@ -301,7 +302,7 @@
     </fieldset>
     <fieldset>
         <legend>
-            Network Information
+            <h3>Network Information</h3>
         </legend>
         <div class="form-group row">
             <div class="col-md-6 col-xs-12">
@@ -353,26 +354,21 @@
     </fieldset>
     <fieldset>
         <legend>
-            Static Asset Templates and fixed Variables
+            <h3>Fixed Variables
             <icsw-tools-button
                 type="show"
                 size="xs"
                 is-show="edit_obj.$$show_atfv"
                 ng-click="edit_obj.$$show_atfv = !edit_obj.$$show_atfv"
-            ></icsw-tools-button>
+            ></icsw-tools-button></h3>
         </legend>
         <div class="panel panel-default" ng-if="edit_obj.$$show_atfv">
             <div class="panel-body">
                 <div class="row">
-                    <div class="col-lg-6 col-md-6 col-xs-12">
+                    <div class="col-md-12">
                         <icsw-device-fixed-scope-vars-overview
                             icsw-device="edit_obj"
                         ></icsw-device-fixed-scope-vars-overview>
-                    </div>
-                    <div class="col-lg-6 col-md-6 col-xs-12">
-                        <icsw-device-static-asset-overview
-                            icsw-device="edit_obj"
-                        ></icsw-device-static-asset-overview>
                     </div>
                 </div>
             </div>
@@ -456,13 +452,13 @@
                     </div>
                     <div class="form-group row">
                         <label class="control-label col-xs-4 icsw-formlabel">Categories</label>
-                        <div class="col-sm-8">
+                        <div class="col-sm-8 control-label" style="text-align:left;">
                             {{ edit_obj.$$category_info }}
                         </div>
                     </div>
-                    <div class="form-group row">
+                    <div class="form-group row" ng-if="has_valid_license('asset')">
                         <label class="control-label col-xs-4 icsw-formlabel">Asset Categories</label>
-                        <div class="col-sm-8">
+                        <div class="col-sm-8 control-label" style="text-align:left;">
                             {{ edit_obj.$$asset_category_info }}
                         </div>
                     </div>

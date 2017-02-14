@@ -998,7 +998,7 @@ angular.module(
                 show_select: true
                 show_descendants: true
                 # show_childs: false
-                name: "CategorySelectTree"
+                name: "Category Select Tree"
                 # mode
                 mode: $scope.struct.mode
                 # objects list

@@ -127,21 +127,25 @@ angular.module(
 
 ]).service("icswDeviceOverviewTabs",
 [
-    "icswDeviceOverviewTabTemplate",
+    "icswDeviceOverviewTabTemplate", "icswAccessLevelService",
 (
-    icswDeviceOverviewTabTemplate,
+    icswDeviceOverviewTabTemplate, icswAccessLevelService
 ) ->
     _list = [
         new icswDeviceOverviewTabTemplate("general", true, "", "General")
-        new icswDeviceOverviewTabTemplate("monitoring", false, "", "Monitoring")
         new icswDeviceOverviewTabTemplate("network", false, "backbone.device.change_network", "Network")
         new icswDeviceOverviewTabTemplate("config", true, "backbone.device.change_config", "Configuration")
         new icswDeviceOverviewTabTemplate("category", false, "backbone.device.change_category", "Categories")
         new icswDeviceOverviewTabTemplate("location", false, "backbone.device.change_location", "Locations")
         new icswDeviceOverviewTabTemplate("variable", true, "backbone.device.change_variables", "Device Variables")
         new icswDeviceOverviewTabTemplate("devicelogs", false, "", "Device Logs")
-        new icswDeviceOverviewTabTemplate("assets", false, "", "Assets")
     ]
+
+    if icswAccessLevelService.has_valid_license("md_config_server")
+        _list.splice(1, 0, new icswDeviceOverviewTabTemplate("monitoring", false, "", "Monitoring"))
+    if icswAccessLevelService.has_valid_license("asset")
+        _list.splice(5, 0, new icswDeviceOverviewTabTemplate("assets", false, "", "Assets"))
+
     return _list
 ]).directive("icswDeviceOverview",
 [
