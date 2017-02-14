@@ -42,16 +42,16 @@ angular.module(
 ]).controller("icswDeviceMonitoringOverviewInfoCtrl",
 [
     "$scope", "Restangular", "$q", "ICSW_URLS",
-    "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
-    "icswAccessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
+    "$rootScope", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
+    "icswAccessLevelService", "icswActiveSelectionService", "icswDeviceBackup",
     "icswDeviceTreeHelperService", "icswComplexModalService", "toaster", "$compile", "$templateCache",
-    "icswCategoryTreeService", "icswToolsSimpleModalService", "icswDialogDeleteService",
+    "icswToolsSimpleModalService",
 (
     $scope, Restangular, $q, ICSW_URLS,
-    $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
-    icswAccessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
+    $rootScope, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
+    icswAccessLevelService, icswActiveSelectionService, icswDeviceBackup,
     icswDeviceTreeHelperService, icswComplexModalService, toaster, $compile, $templateCache,
-    icswCategoryTreeService, icswToolsSimpleModalService, icswDialogDeleteService,
+    icswToolsSimpleModalService,
 ) ->
     $scope.struct = {
         # data is valid
