@@ -19,7 +19,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-
 import os
 import base64
 import hashlib
@@ -83,6 +82,10 @@ class ReportHistory(models.Model):
             self.file_hash,
         )
 
+    @property
+    def _full_filename_path(self):
+        return os.path.join(self._data_storage_path, self.filename)
+
     def generate_filename(self):
         file_ending = "pdf" if self.type == "pdf" else "zip"
 
@@ -92,10 +95,17 @@ class ReportHistory(models.Model):
             file_ending
         )
 
+    def delete_storage_file(self):
+        try:
+            os.remove(self._full_filename_path)
+        except Exception as e:
+            _ = e
+
 
 ########################################################################################################################
 # Serializers
 ########################################################################################################################
+
 
 class ReportHistorySerializer(serializers.ModelSerializer):
     class Meta:

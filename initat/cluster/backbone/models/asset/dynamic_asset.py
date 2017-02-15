@@ -1378,6 +1378,7 @@ ASSETTYPE_HM_COMMAND_MAP = {
     AssetType.PRETTYWINHW: "windowshardware",
 }
 
+
 @receiver(models.signals.post_save, sender=AssetBatch)
 def asset_batch_post_save(sender, **kwargs):
     _ = sender

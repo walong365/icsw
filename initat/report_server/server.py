@@ -87,6 +87,22 @@ class ServerProcess(
         )
 
     @RemoteCall()
+    def delete_report_history_objects(self, srv_com, **kwargs):
+        deleted = 0
+        if "idx_list" in srv_com:
+            import json
+            idx_list = json.loads(srv_com["idx_list"].text)
+            report_history_objects = ReportHistory.objects.filter(idx__in=idx_list)
+
+            for report_history_object in report_history_objects:
+                report_history_object.delete_storage_file()
+
+            deleted, _ = report_history_objects.delete()
+
+        srv_com["deleted"] = str(deleted)
+        return srv_com
+
+    @RemoteCall()
     def generate_report(self, srv_com, **kwargs):
         # create an empty report history
         report_history = ReportHistory()
