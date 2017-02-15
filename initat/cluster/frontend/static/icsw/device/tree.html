@@ -38,16 +38,16 @@
                     ></icsw-tools-tri-button>
                 </div>
                 &nbsp;
-                <div class="form-group">
-                    <label class="control-label">MonServer:</label>
+                <div class="form-group" ng-if="has_valid_license('md_config_server')">
+                    <label class="control-label">Monitoring Server:</label>
                     <select class="form-control input-sm" ng-model="filter_settings.mon_filter">
                         <option value="i">Ignore</option>
                         <option ng-repeat="obj in struct.monitor_server_list" ng-value="obj.idx">{{ obj.$$full_name_with_type }})</option>
                     </select>
                 </div>
                 &nbsp;
-                <div class="form-group">
-                    <label class="control-label">BootServer:</label>
+                <div class="form-group" ng-if="has_valid_license('netboot')">
+                    <label class="control-label">Bootserver:</label>
                     <select class="form-control" ng-model="filter_settings.boot_filter">
                         <option value="i">Ignore</option>
                         <option ng-repeat="obj in struct.mother_server_list" ng-value="obj.idx">{{ obj.full_name }}</option>
