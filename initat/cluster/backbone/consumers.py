@@ -24,12 +24,14 @@ daphne consumers
 
 """
 
+import json
+
 from channels import Group
 from channels.generic.websockets import JsonWebsocketConsumer, WebsocketDemultiplexer
 from django.conf import settings
 
 
-class icswConsumer(JsonWebsocketConsumer):
+class icswGeneralConsumer(JsonWebsocketConsumer):
     http_user = True
 
     def connect(self, message, multiplexer, **kwargs):
@@ -46,6 +48,13 @@ class icswConsumer(JsonWebsocketConsumer):
     def connection_groups(self, **kwargs):
         return []
 
+
+class icswConsumer(JsonWebsocketConsumer):
+    http_user = True
+
+    def connection_groups(self, **kwargs):
+        return []
+
     def receive(self, content, multiplexer, **kwargs):
         """
         Called when a message is received with either text or bytes
@@ -55,10 +64,28 @@ class icswConsumer(JsonWebsocketConsumer):
             Group(multiplexer.stream).add(self.message.reply_channel)
         elif content["action"] == "remove":
             Group(multiplexer.stream).discard(self.message.reply_channel)
+        else:
+            # error, unknown action
+            pass
+        self.message.reply_channel.send(
+            {
+                "text": json.dumps(
+                    {
+                        "status": "ok",
+                        "action": content["action"],
+                        "streamId": content["streamId"]
+                    }
+                )
+            }
+        )
 
 
 class icswDemultiplexer(WebsocketDemultiplexer):
     consumers = {
+        "general": icswGeneralConsumer,
         "device_log_entries": icswConsumer,
-        "general": icswConsumer,
+        "rrd_graph": icswConsumer,
+        "background_jobs": icswConsumer,
+        "ova_counter": icswConsumer,
+        "device_scan_lock": icswConsumer,
     }

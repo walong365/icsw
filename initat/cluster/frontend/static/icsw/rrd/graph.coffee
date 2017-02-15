@@ -292,11 +292,12 @@ angular.module(
             @close_ws()
             _q = $q.defer()
             icswWebSocketService.add_stream(
-                "rrd_grap"
+                "rrd_graph"
                 @feed_result
             ).then(
                 (stream_id) =>
                     @stream_id = stream_id
+                    console.log "gi", @stream_id
                     _q.resolve("go")
             )
             return _q.promise
@@ -739,6 +740,7 @@ angular.module(
             # open websocket
             graph_result.start_feed().then(
                 (done) =>
+                    console.log "start"
                     # ws init, start drawing
                     # get keys
                     _keys = graph_result.filter_keys((_key for _key in @cur_selected))

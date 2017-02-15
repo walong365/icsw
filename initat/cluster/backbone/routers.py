@@ -22,8 +22,6 @@
 """ simple db-router """
 
 
-
-
 class icswDBRouter(object):
     def db_for_read(self, model, **hints):
         return None

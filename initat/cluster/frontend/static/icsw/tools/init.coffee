@@ -2032,6 +2032,8 @@ angular.module(
         web_socket: null
         # stream lut
         stream_lut: {}
+        # luts of waiting streams
+        wait_streams_lut: {}
     }
 
     _get_ws_url = () ->
@@ -2049,31 +2051,39 @@ angular.module(
 
     add_stream = (stream_name, cb_func) ->
         _defer = $q.defer()
+        stream_id = icswTools.get_unique_id("ws-stream-#{stream_name}")
+        _wait = $q.defer()
         if stream_name not of struct.active_streams
             struct.active_streams[stream_name] = {}
             # console.log "send to ", struct.web_socket
             if not struct.web_socket?
                 console.error "web_socket not set for stream #{stream_name}"
+            struct.wait_streams_lut[stream_id] = _wait
             struct.web_socket.send(
                 angular.toJson(
                     stream: stream_name
                     payload: {
                         action: "add"
+                        streamId: stream_id
                     }
                 )
             )
-        stream_id = icswTools.get_unique_id("ws-stream-#{stream_name}")
-        struct.stream_lut[stream_id] = stream_name
-        struct.active_streams[stream_name][stream_id] = cb_func
-        _defer.resolve(stream_id)
-        console.log "stream setup:", struct.active_streams
+        else
+            _wait.resolve("ok")
+        _wait.promise.then(
+            (done) ->
+                struct.stream_lut[stream_id] = stream_name
+                struct.active_streams[stream_name][stream_id] = cb_func
+                _defer.resolve(stream_id)
+                console.log "stream setup:", struct.active_streams
+        )
         return _defer.promise
 
-    remove_stream = (stream_name, stream_id) ->
+    remove_stream = (stream_id) ->
         stream_name = struct.stream_lut[stream_id]
         _defer = $q.defer()
         if stream_id not of struct.stream_lut
-            console.error "WS stream #{stream_name} not in lut (#{struct.stream_lut})"
+            console.error "remove_stream: Stream #{stream_id} not in lut (#{struct.stream_lut})"
             _defer.reject("stream_id not found")
         else
             stream_name = struct.stream_lut[stream_id]
@@ -2084,16 +2094,17 @@ angular.module(
             else
                 delete struct.active_streams[stream_name][stream_id]
                 if _.keys(struct.active_streams[stream_name]).length == 0
+                    delete struct.active_streams[stream_name]
                     struct.web_socket.send(
                         angular.toJson(
                             stream: stream_name
                             payload: {
                                 action: "remove"
+                                streamId: stream_id
                             }
                         )
                     )
-                    delete struct.active_streams[stream_name]
-                    _defer.resolve("removed id and stream")
+                    struct.wait_streams_lut[stream_id] = _defer
                 else
                     _defer.resolve("removed")
         return _defer.promise
@@ -2105,14 +2116,19 @@ angular.module(
             ws.onmessage = (msg) =>
                 data = angular.fromJson(msg.data)
                 if data.payload?
-                    console.log "payload for #{data.stream}"
+                    # console.log "payload for #{data.stream}:", data.payload
                     if data.stream of struct.active_streams
-                        console.log "*", struct.active_streams[data.stream]
                         (cb_func(data.payload) for stream_id, cb_func of struct.active_streams[data.stream])
                     else
                         console.log "No callback functions for stream #{data.stream}"
                 else
-                    console.warn "no payload / stream found in msg #{msg}"
+                    # response to remove / add stream messages
+                    if data.streamId not of struct.wait_streams_lut
+                        console.error "invalid response received:", data
+                    else
+                        _defer = struct.wait_streams_lut[data.streamId]
+                        _defer.resolve(data.action)
+                        delete struct.wait_streams_lut[data.streamId]
             struct.web_socket = ws
             _defer.resolve(ws)
         ws.onerror = (_close_msg) =>
