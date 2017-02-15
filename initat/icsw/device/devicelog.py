@@ -46,10 +46,11 @@ def populate_log_parser(child_parser):
             choices=["list", "create"],
             help="operation mode [%(default)s]"
         )
+        # print("*", def_source)
         parser.add_argument(
             "--level",
             type=str,
-            default="",
+            default="o",
             choices=LogLevel.objects.values_list("identifier", flat=True),
             help="log status [%(default)s]"
         )

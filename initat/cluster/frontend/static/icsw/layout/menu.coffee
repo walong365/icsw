@@ -724,8 +724,8 @@ menu_module = angular.module(
         displayName: "icswBackgroundJobInfo"
 
         getInitialState: () ->
-            # websocket
-            @ws = undefined
+            # stream id
+            @stream_id = undefined
             @setup_web_socket()
 
             $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () =>
@@ -755,6 +755,7 @@ menu_module = angular.module(
             return {
                 num_jobs: 0
             }
+
         componentWillMount: () =>
             @backg_timer = null
 
@@ -798,18 +799,30 @@ menu_module = angular.module(
         )
 
         close_web_socket: () ->
-            if @ws? and @ws
-                @ws.close()
+            defer = $q.defer()
+            if @stream_id? and @stream_id
+                icswWebSocketService.remove_stream(@stream_id).then(
+                    () =>
+                        @stream_id = ""
+                        defer.resolve("done")
+                )
+            else
+                defer.resolve("done")
+            return defer.promise
 
         setup_web_socket: () ->
-            @close_web_socket()
-            if icswUserService.user_present() and icswUserService.get().is_authenticated()
-                @ws = icswWebSocketService.register_ws("background_jobs")
-                if @ws
-                    @ws.onmessage = (msg) =>
-                        data = angular.fromJson(msg.data)
-                        # console.log "d=", data
-                        @setState({num_jobs: data["background_jobs"]})
+            @close_web_socket().then(
+                (done) =>
+                    if icswUserService.user_present() and icswUserService.get().is_authenticated() and icswWebSocketService.valid()
+                        icswWebSocketService.add_stream(
+                            "background_jobs"
+                            (msg) =>
+                                @setState({num_jobs: msg["background_jobs"]})
+                        ).then(
+                            (stream_id) =>
+                                @stream_id = stream_id
+                        )
+            )
 
     )
 ]).service("icswReactOpenIssuesFactory",

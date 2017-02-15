@@ -421,6 +421,13 @@ class RouteViewSet(viewsets.ViewSet):
         return Response([])
 
 
+class UpdateWebSocketView(viewsets.ViewSet):
+    def update(self, request):
+        if request.user.is_authenticated():
+            print("*", request.data)
+        return Response([])
+
+
 class BackgroundJobViewSet(viewsets.ViewSet):
     def get_bg_jobs(self, request):
         serializer = background_job_serializer(

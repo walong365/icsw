@@ -1870,7 +1870,6 @@ angular.module(
                     _extra_len = _tot_len - _map_len
                     _end = new Date().getTime()
                     # runtime in milliseconds
-                    #noinspection JSUnresolvedVariable
                     _run_time = icswTools.get_diff_time_ms(_end - _start)
                     console.log " -> #{@name} loaded in #{_run_time} (#{_map_len} + #{_extra_len})"
                     if @_cancel_load
@@ -1882,14 +1881,26 @@ angular.module(
                             @update_result(data...)
                         else
                             @init_result(data...)
+                        _nd_defer = $q.defer()
                         if @new_data_set?
-                            @new_data_set()
-                        @send_results()
-                        # signal if required
-                        _send_signal = @_get_load_signal(@_result)
-                        if _send_signal
-                            # console.log "emit", _send_signal, @_result
-                            $rootScope.$emit(ICSW_SIGNALS(_send_signal), @_result)
+                            # new_data_set should return a promise we have to wait for
+                            @new_data_set().then(
+                                (done) ->
+                                    _nd_defer.resolve("done")
+                                (not_ok) ->
+                                    _nd_defer.resolve("not done")
+                            )
+                        else
+                            _nd_defer.resolve("done")
+                        _nd_defer.promise.then(
+                            (done) =>
+                                @send_results()
+                                # signal if required
+                                _send_signal = @_get_load_signal(@_result)
+                                if _send_signal
+                                    # console.log "emit", _send_signal, @_result
+                                    $rootScope.$emit(ICSW_SIGNALS(_send_signal), @_result)
+                        )
                 (error) =>
                     _end = new Date().getTime()
                     # runtime in milliseconds
@@ -2010,42 +2021,115 @@ angular.module(
 
 ]).service("icswWebSocketService",
 [
-    "$q", "$window",
+    "$q", "$window", "ICSW_URLS", "Restangular", "icswTools",
 (
-    $q, $window,
+    $q, $window, ICSW_URLS, Restangular, icswTools,
 ) ->
-    get_url = (model_name) ->
+    struct = {
+        # active streams, stream_name -> callbacks
+        active_streams: {}
+        # current websocket
+        web_socket: null
+        # stream lut
+        stream_lut: {}
+    }
+
+    _get_ws_url = () ->
         if $window.location.protocol == "http:"
             _prot = "ws:"
         else
             _prot = "wss:"
-        return "#{_prot}//#{$window.location.host}/icsw/ws/#{model_name}/"
+        return "#{_prot}//#{$window.location.host}/icsw/ws/"
 
-    register_ws = (model_name) ->
-        try
-            ws = new WebSocket(get_url(model_name))
-        catch error
-            console.error "WebSocket error: #{error}"
-            ws = null
-        return ws
+    valid = () ->
+        if struct.web_socket?
+            return true
+        else
+            return false
 
-    get_ws = (model_name, msg_func) ->
+    add_stream = (stream_name, cb_func) ->
         _defer = $q.defer()
-        try
-            ws = new WebSocket(get_url(model_name))
-            ws.onopen = (_open_msg) =>
-                ws.onmessage = (msg) =>
-                    data = angular.fromJson(msg.data)
-                    msg_func(data)
-                _defer.resolve(ws)
-            ws.onerror = (_close_msg) =>
-                _defer.reject("ws connection error for #{model_name}")
-        catch error
-            _defer.reject("WebSocket error: #{error}")
+        if stream_name not of struct.active_streams
+            struct.active_streams[stream_name] = {}
+            # console.log "send to ", struct.web_socket
+            if not struct.web_socket?
+                console.error "web_socket not set for stream #{stream_name}"
+            struct.web_socket.send(
+                angular.toJson(
+                    stream: stream_name
+                    payload: {
+                        action: "add"
+                    }
+                )
+            )
+        stream_id = icswTools.get_unique_id("ws-stream-#{stream_name}")
+        struct.stream_lut[stream_id] = stream_name
+        struct.active_streams[stream_name][stream_id] = cb_func
+        _defer.resolve(stream_id)
+        console.log "stream setup:", struct.active_streams
         return _defer.promise
 
+    remove_stream = (stream_name, stream_id) ->
+        stream_name = struct.stream_lut[stream_id]
+        _defer = $q.defer()
+        if stream_id not of struct.stream_lut
+            console.error "WS stream #{stream_name} not in lut (#{struct.stream_lut})"
+            _defer.reject("stream_id not found")
+        else
+            stream_name = struct.stream_lut[stream_id]
+            delete struct.stream_lut[stream_id]
+            if stream_id not of struct.active_streams[stream_name]
+                console.error "stream-id '#{stream_id}' not defined for stream '#{stream_name}'"
+                _defer.reject("stream_id not found")
+            else
+                delete struct.active_streams[stream_name][stream_id]
+                if _.keys(struct.active_streams[stream_name]).length == 0
+                    struct.web_socket.send(
+                        angular.toJson(
+                            stream: stream_name
+                            payload: {
+                                action: "remove"
+                            }
+                        )
+                    )
+                    delete struct.active_streams[stream_name]
+                    _defer.resolve("removed id and stream")
+                else
+                    _defer.resolve("removed")
+        return _defer.promise
+
+    create_ws = () ->
+        _defer = $q.defer()
+        ws = new WebSocket(_get_ws_url())
+        ws.onopen = (_open_msg) =>
+            ws.onmessage = (msg) =>
+                data = angular.fromJson(msg.data)
+                if data.payload?
+                    console.log "payload for #{data.stream}"
+                    if data.stream of struct.active_streams
+                        console.log "*", struct.active_streams[data.stream]
+                        (cb_func(data.payload) for stream_id, cb_func of struct.active_streams[data.stream])
+                    else
+                        console.log "No callback functions for stream #{data.stream}"
+                else
+                    console.warn "no payload / stream found in msg #{msg}"
+            struct.web_socket = ws
+            _defer.resolve(ws)
+        ws.onerror = (_close_msg) =>
+            _defer.reject("ws connection error for #{model_name}", _close_msg)
+        return _defer.promise
+
+    close_ws = () ->
+        defer = $q.defer()
+        struct.web_socket.close()
+        defer.resolve("done")
+        return defer.promise
+
     return {
-        register_ws: register_ws
-        get_ws: get_ws
+        add_stream: add_stream
+        remove_stream: remove_stream
+        create_ws: create_ws
+        close_ws: close_ws
+        valid: valid
     }
 ])

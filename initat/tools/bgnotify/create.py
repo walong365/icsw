@@ -34,9 +34,9 @@ from initat.tools import server_command, logging_tools
 
 
 __all__ = [
-    b"create_bg_job",
-    b"notify_command",
-    b"propagate_channel_object",
+    "create_bg_job",
+    "notify_command",
+    "propagate_channel_object",
 ]
 
 
@@ -133,7 +133,17 @@ def propagate_channel_object(group, dict_obj):
         # send to backend, only text is allowed as key
         # print("g", group, dict_obj)
         try:
-            Group(group).send({"text": json.dumps(dict_obj)}, immediately=True)
+            Group(group).send(
+                {
+                    "text": json.dumps(
+                        {
+                            "payload": dict_obj,
+                            "stream": group,
+                        }
+                    )
+                },
+                immediately=True
+            )
         except redis.ConnectionError:
             print("Error connecting to redis, ignoring ...")
     else:

@@ -871,10 +871,15 @@ angular.module(
                 # domain name tree changed, build full_names and reorder
                 @reorder()
             )
-            # init scan infrastructure via websockets
-            @dsl_websocket = icswWebSocketService.register_ws("device_scan_lock")
-            @dsl_websocket.onmessage = (data) =>
-                @add_scanlock_to_device(angular.fromJson(data.data))
+            # init scan infrastructure via websockets, we never close this stream ...
+            icswWebSocketService.add_stream(
+                "device_scan_lock"
+                (msg) ->
+                    @add_scanlock_to_device(msg)
+            ).then(
+                (stream_id) =>
+                    @stream_id = stream_id
+            )
 
         reorder: () =>
             # device/group names or device <-> group relationships might have changed, sort

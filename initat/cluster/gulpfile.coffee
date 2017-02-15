@@ -21,7 +21,6 @@
 """ gulpfile for icsw """
 
 gulp = require("gulp")
-del = require("del")
 concat = require("gulp-concat")
 uglify = require('gulp-uglify')
 gulpif = require('gulp-if')
@@ -252,12 +251,11 @@ DEPLOY_DIR = options["deploy-dir"]
 
 gulp.task("clean", (cb) ->
     del(
-        [
-            COMPILE_DIR
-            DEPLOY_DIR
-        ]
+        ["#{COMPILE_DIR}/**", "#{DEPLOY_DIR}/**"]
+    ).then(
+        (paths) ->
+            cb()
     )
-    cb()
 )
 
 create_task = (key) ->
@@ -478,9 +476,12 @@ gulp.task("deploy-themes", () ->
         .pipe(gulp.dest(DEPLOY_DIR + "/static/"))
 )
 
-gulp.task("deploy-media", gulp.parallel(
-    "deploy-fonts", "deploy-images", "deploy-d3",
-    "deploy-svgcss-default", "deploy-svgcss-cora", "deploy-svgcss-sirocco")
+gulp.task(
+    "deploy-media"
+    gulp.parallel(
+        "deploy-fonts", "deploy-images", "deploy-d3",
+        "deploy-svgcss-default", "deploy-svgcss-cora", "deploy-svgcss-sirocco"
+    )
 )
 
 gulp.task("transform-main", (cb) ->
@@ -676,14 +677,14 @@ gulp.task("serve-main", (cb) ->
                         }
                     )
                     middleware(
-                        "/icsw/api/v2/static/icinga/",
+                        "/icsw/api/v2/static/icinga/"
                         {
                             pathRewrite: {"/icsw/api/v2/static/icinga/": "/"}
                             target: "http://localhost:8083"
                         }
                     )
                     middleware(
-                        "/icsw/api/v2/static/graphs/",
+                        "/icsw/api/v2/static/graphs/"
                         {
                             pathRewrite: {"/icsw/api/v2/static/graphs/": "/"}
                             target: "http://localhost:8082"
@@ -705,14 +706,14 @@ gulp.task("serve-main", (cb) ->
 gulp.task(
     "create-content",
     gulp.series(
-        "clean",
+        "clean"
         gulp.parallel(
             # static media
-            "deploy-media",
+            "deploy-media"
             # static js
-            "staticbuild",
-        ),
-        "dynamicbuild",
+            "staticbuild"
+        )
+        "dynamicbuild"
         "deploy-and-transform-all"
     )
 )

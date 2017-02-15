@@ -40,10 +40,10 @@ device_logs = angular.module(
 ]).controller("icswDeviceLogCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI", "DeviceOverviewService"
-    "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "$timeout", "icswWebSocketService",
+    "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "$timeout", "icswWebSocketService", "icswUserService",
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI, DeviceOverviewService
-    icswTools, icswSimpleAjaxCall, ICSW_URLS, $timeout, icswWebSocketService,
+    icswTools, icswSimpleAjaxCall, ICSW_URLS, $timeout, icswWebSocketService, icswUserService,
 ) ->
     $scope.struct = {
         data_loaded: false
@@ -54,25 +54,31 @@ device_logs = angular.module(
         activetab: 0
         device_lut: {}
         log_lut: {}
-
-        websocket: undefined
+        # id of websocket stream callback
+        stream_id: ""
     }
 
     info_available_class = "alert-success"
     info_warning_class = "alert-warning"
 
-    $scope.struct.websocket = icswWebSocketService.register_ws("device_log_entries")
-
-    $scope.struct.websocket.onmessage = (data) ->
-        json_dict = JSON.parse(data.data)
-        if $scope.struct.device_lut[json_dict.device]? and not $scope.struct.log_lut[json_dict.idx]?
-            $scope.struct.log_lut[json_dict.idx] = true
-            $timeout(
-                () ->
-                    $scope.struct.device_lut[json_dict.device].$$device_log_entries_count += 1
-                    $scope.struct.device_lut[json_dict.device].$$device_log_entries_bg_color_class = info_available_class
-                0
+    icswUserService.load($scope.$id).then(
+        (user) ->
+            icswWebSocketService.add_stream(
+                "device_log_entries"
+                (json_dict) =>
+                    if $scope.struct.device_lut[json_dict.device]? and not $scope.struct.log_lut[json_dict.idx]?
+                        $scope.struct.log_lut[json_dict.idx] = true
+                        $timeout(
+                            () ->
+                                $scope.struct.device_lut[json_dict.device].$$device_log_entries_count += 1
+                                $scope.struct.device_lut[json_dict.device].$$device_log_entries_bg_color_class = info_available_class
+                            0
+                        )
+            ).then(
+                (stream_id) ->
+                    $scope.struct.stream_id = stream_id
             )
+    )
 
     $scope.new_devsel = (devices) ->
         icswSimpleAjaxCall(
@@ -139,9 +145,8 @@ device_logs = angular.module(
         )
 
     $scope.$on("$destroy", () ->
-        if $scope.struct.websocket?
-            $scope.struct.websocket.close()
-            $scope.struct.websocket = undefined
+        if $scope.struct.stream_id
+            icswWebSocketService.remove_stream($scope.struct.stream_id)
     )
 
 ]).directive("icswDeviceLogTable",
@@ -162,10 +167,10 @@ device_logs = angular.module(
 ]).controller("icswDeviceLogTableCtrl",
 [
     "$q", "Restangular", "ICSW_URLS", "$scope", "icswUserGroupRoleTreeService", "$timeout", "icswSimpleAjaxCall",
-    "icswWebSocketService", "icswTableFilterService",
+    "icswWebSocketService", "icswTableFilterService", "icswUserService",
 (
     $q, Restangular, ICSW_URLS, $scope, icswUserGroupRoleTreeService, $timeout, icswSimpleAjaxCall,
-    icswWebSocketService, icswTableFilterService,
+    icswWebSocketService, icswTableFilterService, icswUserService,
 ) ->
 
     $scope.struct = {
@@ -176,7 +181,6 @@ device_logs = angular.module(
         # data loaded
         data_loaded: false
         user_tree: undefined
-        websocket: undefined
 
         device_log_entries: []
         device_log_entries_lut: {}
@@ -188,6 +192,8 @@ device_logs = angular.module(
         def_fp: ""
         # max logs per device or 0 for all
         max_days_per_device: 0
+        # id of websocket stream callback
+        stream_id: ""
     }
     if $scope.max_days_per_device?
         $scope.struct.max_days_per_device = $scope.max_days_per_device
@@ -377,21 +383,24 @@ device_logs = angular.module(
 
                 start_timer()
 
-                $scope.struct.websocket = icswWebSocketService.register_ws("device_log_entries")
-                $scope.struct.websocket.onmessage = (data) ->
-                    json_dict = angular.fromJson(data.data)
-                    $timeout(
-                        () ->
-                            handle_log_entry(json_dict)
-                            _update_filter()
-                        0
-                    )
+                icswWebSocketService.add_stream(
+                    "device_log_entries"
+                    (json_dict) =>
+                        $timeout(
+                            () ->
+                                handle_log_entry(json_dict)
+                                _update_filter()
+                            0
+                        )
+                ).then(
+                    (stream_id) ->
+                        $scope.struct.stream_id = stream_id
+                )
         )
 
     $scope.$on("$destroy", () ->
-        if $scope.struct.websocket?
-            $scope.struct.websocket.close()
-            $scope.struct.websocket = undefined
+        if $scope.struct.stream_id
+            icswWebSocketService.remove_stream($scope.struct.stream_id)
         stop_timer()
         $scope.struct.filter.close()
     )

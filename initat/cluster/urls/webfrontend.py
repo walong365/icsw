@@ -114,6 +114,7 @@ session_patterns = [
     url(r"get_background_jobs$", session_views.BackgroundJobViewSet.as_view({"get": "get_bg_jobs"}), name="background_jobs"),
     url(r"get_theme_setup$", session_views.ThemeViewSet.as_view({"get": "get_all_themes"}), name="get_theme_setup"),
     url(r"register_rc$", session_views.RouteViewSet.as_view({"post": "register"}), name="register_rc"),
+    url(r"update_ws$", session_views.UpdateWebSocketView.as_view({"post": "update"}), name="update_ws"),
 ]
 
 rms_patterns = [

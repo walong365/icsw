@@ -42,7 +42,7 @@ angular.module(
             @on_update = $q.defer()
             @update(c_list)
 
-            @ws = undefined
+            @stream_id = undefined
             @setup_web_socket()
 
             $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () =>
@@ -97,20 +97,20 @@ angular.module(
             usage.status_class = _class
 
         close_web_socket: () =>
-            if @ws? and @ws
-                @ws.close()
+            if @stream_id?
+                icswWebSocketService.remove_stream(@stream_id)
 
         setup_web_socket: () ->
             @close_web_socket()
             if icswUserService.user_present() and icswUserService.get().is_authenticated()
-                icswWebSocketService.get_ws(
+                icswWebSocketService.add_stream(
                     "ova_counter"
-                    (data) =>
+                    (data) ->
                         @update_plain(data)
                         @on_update.notify(@system_cradle)
                 ).then(
-                    (ws) ->
-                        @ws = ws
+                    (stream_id) ->
+                        @stream_id = stream_id
                 )
 
 ]).service("icswSystemOvaCounterService",

@@ -141,8 +141,10 @@ angular.module(
 ]).service("icswUser",
 [
     "$q", "Restangular", "ICSW_URLS", "icswUserGroupRoleTools",
+    "icswWebSocketService",
 (
     $q, Restangular, ICSW_URLS, icswUserGroupRoleTools,
+    icswWebSocketService,
 ) ->
     class icswUser
         constructor: (user) ->
@@ -158,6 +160,32 @@ angular.module(
             @__vars_to_save = {}
             icswUserGroupRoleTools.salt_user(@user)
             @build_luts()
+
+        open_websocket: () =>
+            defer = $q.defer()
+            icswWebSocketService.create_ws().then(
+                (ws) =>
+                    @websocket = ws
+                    defer.resolve(@websocket)
+                (error) =>
+                    console.error "unable to create websocket (no valid session ?)"
+                    @websocket = null
+                    defer.reject("not open")
+            )
+            return defer.promise
+
+        close_websocket: () =>
+            defer = $q.defer()
+            if @websocket?
+                icswWebSocketService.close_ws(@websocket).then(
+                    (one) =>
+                        @websocket = null
+                        defer.resolve("done")
+                )
+            else
+                console.error "websocket not defined for user"
+                defer.resolve("not found")
+            return defer.promise
 
         is_authenticated: () =>
             return @user.is_authenticated
@@ -372,15 +400,18 @@ angular.module(
 
         logout: () =>
             q = $q.defer()
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.SESSION_LOGOUT
-                    dataType: "json"
-                }
-            ).then(
-                (json) =>
-                    @clear_result()
-                    q.resolve(json)
+            @get_result().close_websocket().then(
+                (done) =>
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.SESSION_LOGOUT
+                            dataType: "json"
+                        }
+                    ).then(
+                        (json) =>
+                            @clear_result()
+                            q.resolve(json)
+                    )
             )
             return q.promise
 
@@ -398,18 +429,27 @@ angular.module(
 
         update_user: () =>
             # update user, called from account
-            @new_data_set()
-            result = @get_result()
-            return result.update_user()
+            return @user_send_signals().update_user()
 
         new_data_set: () =>
             # called from icswTreeBase
+            user = @user_send_signals()
+            if user.is_authenticated()
+                return user.open_websocket()
+            else
+                console.warn "user not authenticated, skipping websocket setup"
+                _q = $q.defer()
+                _q.resolve("done")
+                return _q.promise
+
+        user_send_signals: () =>
             result = @get_result()
             # send theme to themeservice and menusetting
             if result.has_var("$$ICSW_THEME_SELECTION$$")
                 icswThemeService.setcurrent(result.get_var("$$ICSW_THEME_SELECTION$$").value)
             if result.has_var("$$ICSW_MENU_LAYOUT_SELECTION$$")
                 icswMenuSettings.set_menu_layout(result.get_var("$$ICSW_MENU_LAYOUT_SELECTION$$").value)
+            return result
 
     return new icswUserService(
         "User"

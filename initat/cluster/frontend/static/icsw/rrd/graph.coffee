@@ -230,7 +230,7 @@ angular.module(
             @list = []
             @clear()
             @generation = 0
-            @ws = undefined
+            @stream_id = undefined
             @time_range_str = ""
             @tree.link_result(@)
             @auto_select_re = null
@@ -249,9 +249,11 @@ angular.module(
 
         close_ws: () =>
             # close websocket
-            if @ws? and @ws
-                @ws.close()
-                @ws = undefined
+            if @stream_id? and @stream_id
+                icswWebSocketService.remove_stream(@stream_id).then(
+                    (done) =>
+                        @stream_id = undefined
+                )
 
         close: () =>
             @close_ws()
@@ -289,15 +291,13 @@ angular.module(
             # start websocket
             @close_ws()
             _q = $q.defer()
-            return icswWebSocketService.get_ws(
-                "rrd_graph"
+            icswWebSocketService.add_stream(
+                "rrd_grap"
                 @feed_result
             ).then(
-                (ws) =>
-                    @ws = ws
+                (stream_id) =>
+                    @stream_id = stream_id
                     _q.resolve("go")
-                (notok) =>
-                    _q.reject("notok")
             )
             return _q.promise
 

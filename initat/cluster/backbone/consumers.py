@@ -25,60 +25,40 @@ daphne consumers
 """
 
 from channels import Group
-from channels.generic import BaseConsumer
+from channels.generic.websockets import JsonWebsocketConsumer, WebsocketDemultiplexer
 from django.conf import settings
 
-from channels.auth import channel_session_user_from_http
 
-GROUP_KEY = "model_name"
+class icswConsumer(JsonWebsocketConsumer):
+    http_user = True
 
-
-# testcode, not working / needed
-class icswConsumer(BaseConsumer):
-    method_mapping = {
-        "device_log_entries": "test_name"
-    }
-
-    def test_name(self, message, **kwargs):
-        print("X", message, kwargs)
-
-
-@channel_session_user_from_http
-def ws_add(message, model_name):
-    if settings.DEBUG:
-        print("ws_add for group {}".format(model_name))
-    if message.http_session:
-        message.reply_channel.send({"accept": True})
-        # print("add", model_name)
-        message.channel_session[GROUP_KEY] = model_name
-        # print("d", message.channel_session[GROUP_KEY])
-        Group(message.channel_session[GROUP_KEY]).add(message.reply_channel)
-        # channels 1.0.0
-    else:
+    def connect(self, message, multiplexer, **kwargs):
         if settings.DEBUG:
-            print("no valid session for {}".format(model_name))
-
-
-@channel_session_user_from_http
-def ws_disconnect(message):
-    if GROUP_KEY not in list(message.channel_session.keys()):
-        print(
-            "GROUP_KEY '{}' missing from channel_session keys(): {}".format(
-                GROUP_KEY,
-                ", ".join(sorted(message.channel_session.keys()))
+            print(
+                "ws_connect called, session is {}".format(
+                    "valid" if message.http_session else "not valid",
+                )
             )
-        )
-    else:
-        model_name = message.channel_session[GROUP_KEY]
-        Group(
-            model_name,
-        ).discard(message.reply_channel)
+        if message.http_session:
+            message.reply_channel.send({"accept": True})
+            Group("general").add(message.reply_channel)
+
+    def connection_groups(self, **kwargs):
+        return []
+
+    def receive(self, content, multiplexer, **kwargs):
+        """
+        Called when a message is received with either text or bytes
+        filled out.
+        """
+        if content["action"] == "add":
+            Group(multiplexer.stream).add(self.message.reply_channel)
+        elif content["action"] == "remove":
+            Group(multiplexer.stream).discard(self.message.reply_channel)
 
 
-@channel_session_user_from_http
-def ws_message(message):
-    message.reply_channel.send(
-        {
-            "text": message.content['text'],
-        },
-    )
+class icswDemultiplexer(WebsocketDemultiplexer):
+    consumers = {
+        "device_log_entries": icswConsumer,
+        "general": icswConsumer,
+    }

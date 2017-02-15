@@ -22,14 +22,10 @@
 Channel settings
 """
 
-from channels.routing import route
+from channels.routing import route_class
 
-from initat.cluster.backbone.consumers import ws_add, ws_disconnect, ws_message
+from initat.cluster.backbone.consumers import icswDemultiplexer
 
 channel_routing = [
-    #  route_class(icswConsumer, path=r"^/icsw/ws/device_log_entries/$"),
-    # route("websocket.connect", ws_add, path=r"^/icsw/ws/(?P<model_name>[0-9a-zA-Z_]+)/$"),
-    route("websocket.connect", ws_add, path=r"^/icsw/ws/(?P<model_name>[0-9a-zA-Z_]+)/$"),
-    route("websocket.receive", ws_message),
-    route("websocket.disconnect", ws_disconnect),
+    route_class(icswDemultiplexer, path=r"^/icsw/ws/"),
 ]
