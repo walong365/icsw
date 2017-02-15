@@ -71,7 +71,7 @@
                     <value>backbone.device.change_config</value>
                 </rights>
                 <description>
-                    <infoText language="en"></infoText>
+                    <infoText language="en">Assign configurations to particular devices</infoText>
                 </description>
             </icswData>
         </route>
@@ -85,7 +85,7 @@
                     <value>md_config_server</value>
                 </licenses>
                 <description>
-                    <infoText language="en">Perform monitoring checks on particular devices</infoText>
+                    <infoText language="en">Assign monitoring checks to particular devices</infoText>
                 </description>
             </icswData>
         </route>
@@ -493,6 +493,9 @@
                 <licenses>
                     <value>netboot</value>
                 </licenses>
+                <description>
+                    <infoText language="en">Control, install, boot or shutdown nodes</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.imagekernel">
@@ -505,6 +508,9 @@
                     <value>backbone.image.modify_images</value>
                     <value>backbone.kernel.modify_kernels</value>
                 </rights>
+                <description>
+                    <infoText language="en">Manage available kernels and package images for nodes</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.partition">
@@ -516,6 +522,9 @@
                 <rights>
                     <value>backbone.partition_fs.modify_partitions</value>
                 </rights>
+                <description>
+                    <infoText language="en">Manage your partition layouts for new installed nodes</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.packageinstall">
@@ -527,6 +536,9 @@
                 <rights>
                     <value>backbone.package.package_install</value>
                 </rights>
+                <description>
+                    <infoText language="en">Browser based package manager</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.rmsoverview">
@@ -539,6 +551,9 @@
                 <rights>
                     <value>backbone.user.rms_show</value>
                 </rights>
+                <description>
+                    <infoText language="en">Resource Management System, overview and basic control of cluster jobs and user</infoText>
+                </description>
                 <licenses>
                     <value>rms</value>
                 </licenses>
@@ -557,6 +572,9 @@
                 <licenses>
                     <value>ext_license</value>
                 </licenses>
+                <description>
+                    <infoText language="en">Displays usage of external licenses</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.backgroundinfo">
@@ -740,7 +758,7 @@
                 <menuEntry icon="fa-download" routeName="main.packageinstall" name="Package install"/>
                 <menuEntry icon="fa-line-chart" routeName="main.licoverview" name="License Liveview"/>
                 <menuEntry icon="fa-table" routeName="main.rmsoverview" name="RMS Overview"/>
-                <menuEntry icon="fa-heartbeat" routeName="main.rmsoverview" name="Workbench"/>
+                <!--<menuEntry icon="fa-heartbeat" routeName="main.rmsoverview" name="Workbench"/>-->
             </routeSubGroup>
         </menuHeader>
         <menuHeader name="$$USER_INFO" icon="fa-cog" side="right">
