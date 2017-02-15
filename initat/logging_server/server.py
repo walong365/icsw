@@ -629,10 +629,13 @@ class MainProcess(ICSWBasePool):
                 self.__handle_usecount[handle.handle_name] += 1
                 if handle.disabled:
                     self.log(
-                        "disabled was true for handler {}, re-renabled".format(handle.name),
+                        "disabled was True for handler {}, re-renabled".format(handle.name),
                         logging_tools.LOG_LEVEL_ERROR,
                     )
                     handle.disabled = False
+                # print("***", log_com, log_com.msg, type(log_com.msg))
+                # print(log_com.msg)
+                # print("h=", handle)
                 handle.handle(log_com)
             except:
                 self.log(

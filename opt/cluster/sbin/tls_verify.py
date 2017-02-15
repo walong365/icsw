@@ -19,15 +19,14 @@
 #
 """ small script to verify TLS of openvpn """
 
-
 import datetime
 import os
 import sys
 
 import zmq
 
-from initat.tools import logging_tools, process_tools
 from initat.logging_server.constants import icswLogHandleTypes, get_log_path
+from initat.tools import logging_tools, process_tools
 
 
 class AllowedStruct(object):
@@ -134,7 +133,9 @@ def main():
                         )
                     )
                     # get CN (common name)
-                    parts = [part.strip().split("=", 1) for part in sum([_part.split(",") for _part in sys.argv[2].split("/")], []) if part.strip().count("=")]
+                    parts = [
+                        part.strip().split("=", 1) for part in sum([_part.split(",") for _part in sys.argv[2].split("/")], []) if part.strip().count("=")
+                    ]
                     value_dict = dict([(key, value) for key, value in parts])
                     if "CN" in value_dict:
                         cn = value_dict["CN"]

@@ -24,7 +24,6 @@
 """ thin wrapper for old send_mail.py, calls icsw user mail """
 
 
-
 import argparse
 import subprocess
 import sys

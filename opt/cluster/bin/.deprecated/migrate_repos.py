@@ -30,14 +30,11 @@ deprecated script, no longer in use
 
 """
 
-
-
 import argparse
 import os
 import re
 
 from initat.tools import process_tools
-
 
 REPO_DIR = "/etc/zypp/repos.d"
 KV_RE = re.compile("^\s*(?P<key>\S+)\s*=\s*(?P<value>.*)\s*$")

@@ -22,7 +22,6 @@
 """ calculates N for HPL from memory """
 
 
-
 import argparse
 import math
 import sys

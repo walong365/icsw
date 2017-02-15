@@ -19,8 +19,6 @@
 #
 """ set the result of a passive checkcommand """
 
-
-
 import argparse
 import os
 import sys

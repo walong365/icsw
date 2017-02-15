@@ -21,8 +21,6 @@
 #
 """ parses and improves VASP xml files """
 
-
-
 import os
 
 from lxml import etree
