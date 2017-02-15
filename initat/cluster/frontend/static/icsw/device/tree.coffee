@@ -42,14 +42,14 @@ angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "icswComplexModalService",
     "$uibModal", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
     "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster", "icswDialogDeleteService", "icswDeviceBackup",
-    "icswDeviceTreeService", "icswDomainTreeService", "ICSW_SIGNALS", "$rootScope", "icswActiveSelectionService", "icswDeviceGroupBackup",
-    "icswConfigTreeService", "DeviceOverviewService",
+    "icswDeviceTreeService", "icswDomainTreeService", "ICSW_SIGNALS", "$rootScope", "icswActiveSelectionService",
+    "icswDeviceGroupBackup", "icswConfigTreeService", "DeviceOverviewService", "icswAccessLevelService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, icswComplexModalService,
     $uibModal, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
     icswSimpleAjaxCall, icswToolsSimpleModalService, toaster, icswDialogDeleteService, icswDeviceBackup,
-    icswDeviceTreeService, icswDomainTreeService, ICSW_SIGNALS, $rootScope, icswActiveSelectionService, icswDeviceGroupBackup,
-    icswConfigTreeService, DeviceOverviewService,
+    icswDeviceTreeService, icswDomainTreeService, ICSW_SIGNALS, $rootScope, icswActiveSelectionService,
+    icswDeviceGroupBackup, icswConfigTreeService, DeviceOverviewService, icswAccessLevelService,
 ) ->
     $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
 
@@ -74,14 +74,23 @@ angular.module(
         trigger_redraw: 0
     }
 
-    $scope.hide_list = [
-        # short, full, default
-        ["tln", "DTN", false, "Show top level node"]
-        ["rrd_store", "RRD Store", false, "Show if sensor data is store on disk"]
-        ["passwd", "Password", false, "Show if a password is set"]
-        ["mon_master", "Monitoring Master", false, "Show monitoring master"]
-        ["boot_master", "Boot Master", false, "Show boot master"]
-    ]
+    $scope.hide_list = []
+    create_flags = () ->
+        $scope.hide_list = [
+            # short, full, default
+            ["tln", "DTN", false, "Show top level node"]
+            ["rrd_store", "RRD Store", false, "Show if sensor data is store on disk"]
+            ["passwd", "Password", false, "Show if a password is set"]
+        ]
+        if icswAccessLevelService.has_valid_license("md_config_server")
+            $scope.hide_list.push ["mon_master", "Monitoring Master", false, "Show Monitoring Master"]
+        if icswAccessLevelService.has_valid_license("netboot")
+            $scope.hide_list.push ["boot_master", "Boot Master", false, "Show Boot Master"]
+    $rootScope.$on(ICSW_SIGNALS("ICSW_ACLS_CHANGED"), (event, acls) ->
+        create_flags()
+    )
+    create_flags()
+
     $scope.column_list = [
         ['name', 'Name'],
         ["class", "Class"]
@@ -511,8 +520,10 @@ angular.module(
 ]).directive("icswDeviceTreeFilters",
 [
     "icswDeviceTreeService", "icswActiveSelectionService", "ICSW_SIGNALS", "$rootScope",
+    "icswAccessLevelService",
 (
-    icswDeviceTreeService, icswActiveSelectionService, ICSW_SIGNALS, $rootScope
+    icswDeviceTreeService, icswActiveSelectionService, ICSW_SIGNALS, $rootScope,
+    icswAccessLevelService,
 ) ->
     # controller to set the _show flag of entries according to filters
     return {
@@ -526,7 +537,7 @@ angular.module(
                 mon_filter: "i"
                 boot_filter: "i"
             }
-
+            icswAccessLevelService.install(scope)
             scope.update_filter = (f_name, value) ->
                 scope.filter_settings[f_name] = value
                 #console.log "nv=", f_type, new_val

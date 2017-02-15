@@ -388,7 +388,26 @@ device_report_module = angular.module(
     $scope.delete_selected_report_history_objects = () ->
         icswToolsSimpleModalService("Really delete " + $scope.struct.selected_report_history_objects + " items?").then(
             (_yes) ->
-                console.log("Yo")
+                blockUI.start("Please wait...")
+
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.REPORT_DELETE_REPORT_HISTORY_OBJECTS
+                        data:
+                            idx_list: (report_history_obj.report_id for report_history_obj in $scope.struct.available_reports when report_history_obj.$$selected == true)
+                        dataType: 'json'
+                    }
+                ).then(
+                    (result) ->
+                        if result.deleted == 0
+                            toaster.pop("warning", "", "Could not contact report server.")
+                        else
+                            to_be_deleted_items = (report_history_obj for report_history_obj in $scope.struct.available_reports when report_history_obj.$$selected == true)
+                            _.pullAll($scope.struct.available_reports, to_be_deleted_items)
+                            $scope.struct.selected_report_history_objects = 0
+
+                        blockUI.stop()
+                )
             (_no) ->
         )
 

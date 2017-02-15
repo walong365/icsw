@@ -402,12 +402,31 @@ class ReportHistoryDeleter(View):
         import json
         from django.http import HttpResponse
 
+        from initat.cluster.backbone.server_enums import icswServiceEnum
+        from initat.cluster.frontend.helper_functions import contact_server
+        from initat.tools import server_command
+
+
         idx_list = request.POST.getlist("idx_list[]", [])
+        idx_list = [int(item) for item in idx_list]
+
+        srv_com = server_command.srv_command(command="delete_report_history_objects")
+        srv_com["idx_list"] = json.dumps(idx_list)
+
+        (result, _) = contact_server(
+            request,
+            icswServiceEnum.report_server,
+            srv_com,
+        )
+
+        deleted = 0
+        if result:
+            deleted = int(result["deleted"].text)
 
         return HttpResponse(
             json.dumps(
                 {
-                    'status': 0
+                    'deleted': deleted
                 }
             )
         )
