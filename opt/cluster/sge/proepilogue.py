@@ -130,10 +130,11 @@ def parse_file(global_config, file_name, section="global"):
                                             # escape strings
                                             value = "\"{}\"".format(value)
                                 try:
-                                    global_config[key] = (
-                                        eval("{}".format(value)),
-                                        "{}, sec {}".format(file_name, act_section)
-                                    )
+                                    if key not in {"LOG_DESTINATION"}:
+                                        global_config[key] = (
+                                            eval("{}".format(value)),
+                                            "{}, sec {}".format(file_name, act_section)
+                                        )
                                 except KeyError:
                                     global_config.log(
                                         "Error: key {} not defined in dictionary".format(

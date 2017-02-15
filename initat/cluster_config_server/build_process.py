@@ -25,7 +25,8 @@ from django.db import connection
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import network, config, LogSource, net_ip, device
+from initat.cluster.backbone.models import network, config, LogSource, net_ip, device, \
+    log_level_lookup
 from initat.cluster.backbone.routing import get_server_uuid, get_type_from_config
 from initat.tools import config_tools, logging_tools, threading_tools
 from .build_client import build_client
@@ -223,7 +224,7 @@ class BuildProcess(threading_tools.icswProcessObj):
         if dev_sc:
             dev_sc.device.add_log_entry(
                 source=self.config_src,
-                level=device.log_level_lookup(int(cur_c.state_level)),
+                level=log_level_lookup(int(cur_c.state_level)),
                 text="built config in {}".format(logging_tools.get_diff_time_str(e_time - s_time))
             )
         cur_c.log("built took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))

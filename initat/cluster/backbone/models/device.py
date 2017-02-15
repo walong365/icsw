@@ -64,7 +64,8 @@ __all__ = [
     "DeviceBootHistory",
     "log_source_lookup",
     "HardwareFingerPrint",
-    "DeviceFlagsAndSettings"
+    "DeviceFlagsAndSettings",
+    "log_level_lookup"
 ]
 
 

@@ -111,6 +111,9 @@ def do_nets(conf):
             if sys_dict["vendor"] == "suse":
                 new_co = conf.add_file_object("/etc/HOSTNAME")
                 new_co += "{}{}.{}".format(conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
+                # new style
+                new_co2 = conf.add_file_object("/etc/hostname")
+                new_co2 += "{}{}.{}".format(conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
             elif sys_dict["vendor"] == "debian":
                 new_co = conf.add_file_object("/etc/hostname")
                 new_co += "{}{}.{}".format(conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
