@@ -259,33 +259,26 @@ device_report_module = angular.module(
     $scope.select = (obj, selection_type) ->
         if selection_type == 0
             select_salt_obj(obj, "$packages_selected", "$packages_selected_button_disabled")
-
         else if selection_type == 1
             select_salt_obj(obj, "$licenses_selected", "$licenses_selected_button_disabled")
-
         else if selection_type == 2
             select_salt_obj(obj, "$installed_updates_selected", "$installed_updates_button_disabled")
-
         else if selection_type == 3
             select_salt_obj(obj, "$avail_updates_selected", "$avail_updates_button_disabled")
-
         else if selection_type == 4
             select_salt_obj(obj, "$process_report_selected", "$process_report_button_disabled")
-
         else if selection_type == 5
             select_salt_obj(obj, "$hardware_report_selected", "$hardware_report_button_disabled")
-
         else if selection_type == 6
             select_salt_obj(obj, "$dmi_report_selected", "$dmi_report_button_disabled")
-
         else if selection_type == 7
             select_salt_obj(obj, "$pci_report_selected", "$pci_report_button_disabled")
-
         else if selection_type == 8
             select_salt_obj(obj, "$lstopo_report_selected", "$lstopo_report_button_disabled")
-
         else if selection_type == 9
             select_salt_obj(obj, "$availability_overview_selected", "$availability_overview_button_disabled")
+        else if selection_type == 10
+            select_salt_obj(obj, "$availability_details_selected", "$availability_details_button_disabled")
 
     icswSimpleAjaxCall({
                 url: ICSW_URLS.REPORT_GET_REPORT_GFX
@@ -446,6 +439,7 @@ device_report_module = angular.module(
                     pci_report_selected: device.$pci_report_selected
                     lstopo_report_selected: device.$lstopo_report_selected
                     availability_overview_selected: device.$availability_overview_selected
+                    availability_details_selected: device.$availability_details_selected
                     assetbatch_id: device.$$selected_assetbatch
                 }
                 settings.push(setting)
@@ -490,7 +484,6 @@ device_report_module = angular.module(
                                                 }
                                             ).then(
                                                 (result) ->
-                                                    console.log(result)
                                                     if result.hasOwnProperty("pdf")
                                                         $scope.struct.report_download_url_name = "Download PDF Report"
                                                         $scope.struct.report_download_name = "Report.pdf"
@@ -625,6 +618,9 @@ device_report_module = angular.module(
             else if column_id == 9
                 if device.$availability_overview_selected == true
                     return true
+            else if column_id == 10
+                if device.$availability_details_selected == true
+                    return true
 
         return false
 
@@ -680,6 +676,11 @@ device_report_module = angular.module(
             else if column_id == 9
                 if !device.$availability_overview_button_disabled
                     device.$availability_overview_selected = !this_column_selected
+                    if !this_column_selected
+                        device.$selected_for_report = true
+            else if column_id == 10
+                if !device.$availability_details_button_disabled
+                    device.$availability_details_selected = !this_column_selected
                     if !this_column_selected
                         device.$selected_for_report = true
 
@@ -896,12 +897,16 @@ device_report_module = angular.module(
         device.$lstopo_report_selected = false
         device.$lstopo_report_button_disabled = true
 
-        device.$$availability_overview_selected = false
+        device.$availability_overview_selected = false
         device.$availability_overview_button_disabled = true
+
+        device.$availability_details_selected = false
+        device.$availability_details_button_disabled = true
 
     _enable_device_buttons = (device, device_info_obj) ->
         # general device buttons are always enabled
         device.$availability_overview_button_disabled = false
+        device.$availability_details_button_disabled = false
 
         for obj in device_info_obj
             button_title_str = ""
