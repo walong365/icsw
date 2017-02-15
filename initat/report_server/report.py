@@ -38,7 +38,7 @@ from openpyxl import Workbook
 from openpyxl.writer.excel import save_virtual_workbook
 from openpyxl.styles import Font
 from openpyxl.utils.cell import get_column_letter
-from reportlab.graphics.shapes import Drawing, Rect, String, _DrawingEditorMixin
+from reportlab.graphics.shapes import Drawing, Rect, String, _DrawingEditorMixin, Line
 from reportlab.graphics.charts.piecharts import Pie
 from reportlab.graphics.charts.legends import Legend
 from reportlab.graphics.charts.textlabels import Label
@@ -342,7 +342,8 @@ class DeviceReport(GenericReport):
             "process_report_selected": True,
             "dmi_report_selected": True,
             "pci_report_selected": True,
-            "availability_overview_selected": True
+            "availability_overview_selected": True,
+            "availability_details_selected": True
         }
 
         # update default settings with new settings
@@ -698,6 +699,48 @@ class PDFReportGenerator(ReportGenerator):
 
         self.reports = []
 
+    def __create_pie_chart_from_state_data(self, state_data=None, description=None,
+                                           timespan=None, available_width=None, for_host=True):
+        if for_host:
+            color_map = HOST_STATUS_COLOR_MAP
+            label_transformation = HOST_STATE_TYPE_TRANSFORMATION
+        else:
+            color_map = SERVICE_STATUS_COLOR_MAP
+            label_transformation = SERVICE_TRANS_TYPE_TRANSFORMATION
+
+        pie_data = []
+        pie_labels = []
+        pie_colors = []
+
+        sort_by_state_dict = {}
+
+        for state_dict in state_data:
+            sort_by_state_dict[state_dict["state"]] = state_dict["value"]
+
+        for state in sorted(sort_by_state_dict.keys()):
+            pie_data.append(sort_by_state_dict[state] * 100)
+            pie_labels.append(label_transformation[state])
+            pie_colors.append(color_map[state])
+
+        width, height = self.page_format
+        if width > height:
+            format = "landscape"
+        else:
+            format = "portrait"
+
+        timeframe_string = "N/A"
+        if timespan:
+            timeframe_string = "{} - {}".format(timespan.start_date.ctime(), timespan.end_date.ctime())
+
+        return StatusPieDrawing(timeframe_string=timeframe_string,
+            description=description,
+            format=format,
+            width=available_width * 0.83 * 0.50,
+            height=(height / 3.0) - 50,
+            data=pie_data,
+            labels=pie_labels,
+            colors=pie_colors)
+
     def __scale_logo(self, drawheight_max=None, drawwidth_max=None):
         im = PILImage.open(self.logo_buffer)
         logo_width = im.size[0]
@@ -973,14 +1016,17 @@ class PDFReportGenerator(ReportGenerator):
         self.__generate_device_overview_report(_device, report_settings, device_report)
         self.__generate_device_assetrun_reports(_device, report_settings, device_report)
 
-        if device_report.report_settings["availability_overview_selected"] == True:
-            self.__generate_device_availabilty_report(_device, report_settings, device_report)
+        if device_report.report_settings["availability_overview_selected"]:
+            self.__generate_device_availability_overview_report(_device, report_settings, device_report)
 
-    def __generate_device_availabilty_report(self, _device, report_settings, root_report):
+        if device_report.report_settings["availability_details_selected"]:
+            self.__generate_device_availability_detailed_report(_device, report_settings, device_report)
+
+    def __generate_device_availability_detailed_report(self, _device, report_settings, root_report):
         class DummyRequest(object):
             pass
 
-        report = DeviceReport(_device, report_settings, "Availability Report")
+        report = DeviceReport(_device, report_settings, "Availability Timeline (Host)")
         root_report.add_child(report)
 
         section_number = report.get_section_number()
@@ -998,7 +1044,119 @@ class PDFReportGenerator(ReportGenerator):
 
         available_width = self.page_format[0] - 60
 
-        paragraph_header = Paragraph('<font face="{}" size="16">{} Availability Report for {}</font>'.format(
+        paragraph_header = Paragraph('<font face="{}" size="16">{} Availability Timeline (Host) for {}</font>'.format(
+            self.bold_font, section_number, _device.name), style_sheet["BodyText"])
+
+        data = [[paragraph_header]]
+
+        t_head = Table(data,
+                       colWidths=[available_width],
+                       rowHeights=[35],
+                       style=[('LEFTPADDING', (0, 0), (-1, -1), 0),
+                              ('RIGHTPADDING', (0, 0), (-1, -1), 0), ])
+
+
+        # add piecharts
+        dummy_request = DummyRequest()
+        dummy_request.GET = {
+            "date": int(time.time()) - (24 * 60 * 60),
+            "duration_type": "day",
+            "device_ids": "[{}]".format(_device.idx)
+        }
+
+        body_data = []
+
+        # get and add charts
+        start_time = int(time.time())
+        chart_info_map = [
+            ("24 Hours", "day", start_time - (24 * 60 * 60)),
+            ("Weekly", "week", start_time - (24 * 60 * 60 * 7)),
+            ("Monthly", "month", start_time - (24 * 60 * 60 * 30)),
+        ]
+
+        for line_header, duration_type, timeframe in chart_info_map:
+            dummy_request = DummyRequest()
+            dummy_request.GET = {
+                "device_ids": "[{}]".format(_device.idx),
+                "date": timeframe,
+                "duration_type": duration_type
+            }
+
+            timespans = _device_status_history_util.get_timespans_db_from_request(dummy_request)
+            timespan = None
+            if timespans:
+                timespan = timespans[0]
+
+            row = []
+            # host_state_data = _device_status_history_util.get_hist_device_data_from_request(dummy_request)
+            # if host_state_data and host_state_data[_device.idx]:
+            #     row.append(self.__create_pie_chart_from_state_data(state_data=host_state_data[_device.idx],
+            #                                                        description="Host Status",
+            #                                                        timespan=timespan,
+            #                                                        available_width=available_width,
+            #                                                        for_host=True))
+            # else:
+            #     row.append("No host state data found!")
+
+            line_graph_data = _device_status_history_util.get_line_graph_data(dummy_request, for_host=True)
+            if line_graph_data and timespan:
+                line_graph_data = line_graph_data[_device.idx]
+
+                width, height = self.page_format
+
+                row.append(LineHistoryRect(line_graph_data=line_graph_data,
+                                           timespan=timespan,
+                                           width=available_width * 0.83,
+                                           height=(height / 3.0) - 50))
+            else:
+                row.append("No valid line graph data found!")
+
+            data = [row]
+
+            text_block = Paragraph('<b>{}:</b>'.format(line_header), style_sheet["BodyText"])
+            t = Table(data, colWidths=(available_width * 0.83 * 0.50),
+                      style=[]
+                      )
+            body_data.append((text_block, t))
+
+
+
+        t_body = Table(body_data, colWidths=(available_width * 0.15, available_width * 0.85),
+                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
+                              ('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                              ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                              ])
+
+        elements.append(t_head)
+        elements.append(Spacer(1, 30))
+        elements.append(t_body)
+
+        doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
+        report.add_buffer_to_report(_buffer)
+
+    def __generate_device_availability_overview_report(self, _device, report_settings, root_report):
+        class DummyRequest(object):
+            pass
+
+        report = DeviceReport(_device, report_settings, "Availability Overview")
+        root_report.add_child(report)
+
+        section_number = report.get_section_number()
+
+        _buffer = BytesIO()
+        doc = SimpleDocTemplate(_buffer,
+                                pagesize=self.page_format,
+                                rightMargin=0,
+                                leftMargin=0,
+                                topMargin=10,
+                                bottomMargin=25)
+        elements = []
+
+        style_sheet = getSampleStyleSheet()
+
+        available_width = self.page_format[0] - 60
+
+        paragraph_header = Paragraph('<font face="{}" size="16">{} Availability Overview for {}</font>'.format(
             self.bold_font, section_number, _device.name), style_sheet["BodyText"])
 
         data = [[paragraph_header]]
@@ -1010,69 +1168,6 @@ class PDFReportGenerator(ReportGenerator):
                               ('RIGHTPADDING', (0, 0), (-1, -1), 0), ])
 
         body_data = []
-
-        # add piecharts
-        host_status_color_map = {
-            "UP": HexColor("#92aa00"), # up
-            "D": HexColor("#bb3d1e"), # down
-            "UR": HexColor("#ff0000"), # unreach
-            "U": HexColor("#e2972d"), # unknown
-            "FL": HexColor("#666666"), # flapping
-            "PD": HexColor("#ccccff"), # pending
-            "UD": HexColor("#dddddd"), # unselected
-        }
-
-        service_status_color_map = {
-            "O": HexColor("#92aa00"),  # ok
-            "W": HexColor("#e2972d"),  # warning
-            "C": HexColor("#bb3d1e"),  # critical
-            "U": HexColor("#d6644a"),  # unknown
-            "FL": HexColor("#666666"),  # flapping
-            "PD": HexColor("#ccccff"),  # pending
-            "UD": HexColor("#dddddd"),  # unselected
-        }
-
-
-        host_state_type_transformation = {
-            k: v.capitalize() for (k, v) in mon_icinga_log_aggregated_host_data.STATE_CHOICES
-        }
-        service_trans_type_transformation = {
-            k: v.capitalize() for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES
-        }
-
-        def create_pie_chart_from_state_data(state_data, label_transformation, color_map, description, timespan=None):
-            pie_data = []
-            pie_labels = []
-            pie_colors = []
-
-            sort_by_state_dict = {}
-
-            for state_dict in state_data:
-                sort_by_state_dict[state_dict["state"]] = state_dict["value"]
-
-            for state in sorted(sort_by_state_dict.keys()):
-                pie_data.append(sort_by_state_dict[state] * 100)
-                pie_labels.append(label_transformation[state])
-                pie_colors.append(color_map[state])
-
-            width, height = self.page_format
-            if width > height:
-                format = "landscape"
-            else:
-                format = "portrait"
-
-            timeframe_string = "N/A"
-            if timespan:
-                timeframe_string = "{} - {}".format(timespan.start_date.ctime(), timespan.end_date.ctime())
-
-            return BreakdownPieDrawing(timeframe_string=timeframe_string,
-                                       description=description,
-                                       format=format,
-                                       width=available_width * 0.83 * 0.50,
-                                       height=(height / 3.0) - 50,
-                                       data=pie_data,
-                                       labels=pie_labels,
-                                       colors=pie_colors)
 
         # get and add charts
         start_time = int(time.time())
@@ -1098,22 +1193,22 @@ class PDFReportGenerator(ReportGenerator):
 
             host_state_data = _device_status_history_util.get_hist_device_data_from_request(dummy_request)
             if host_state_data and host_state_data[_device.idx]:
-                row.append(create_pie_chart_from_state_data(host_state_data[_device.idx],
-                                                            host_state_type_transformation,
-                                                            host_status_color_map,
-                                                            "Host Status",
-                                                            timespan=timespan))
+                row.append(self.__create_pie_chart_from_state_data(state_data=host_state_data[_device.idx],
+                                                                   description="Host Status",
+                                                                   timespan=timespan,
+                                                                   available_width=available_width,
+                                                                   for_host=True))
             else:
                 row.append("No host state data found!")
 
             dummy_request.GET["merge_services"] = 1
             service_state_data = _device_status_history_util.get_hist_service_data_from_request(dummy_request)
             if service_state_data and service_state_data[_device.idx]:
-                row.append(create_pie_chart_from_state_data(service_state_data[_device.idx],
-                                                            service_trans_type_transformation,
-                                                            service_status_color_map,
-                                                            "Service Status",
-                                                            timespan=timespan))
+                row.append(self.__create_pie_chart_from_state_data(state_data=service_state_data[_device.idx],
+                                                                   description="Service Status",
+                                                                   timespan=timespan,
+                                                                   available_width=available_width,
+                                                                   for_host=False))
             else:
                 row.append("No Service state data found!")
 
@@ -3268,7 +3363,49 @@ def postprocess_workbook(workbook):
     return workbook
 
 
-class BreakdownPieDrawing(_DrawingEditorMixin, Drawing):
+HOST_STATUS_COLOR_MAP = {
+    "UP": HexColor("#92aa00"),  # up
+    "D": HexColor("#bb3d1e"),  # down
+    "UR": HexColor("#ff0000"),  # unreach
+    "U": HexColor("#e2972d"),  # unknown
+    "FL": HexColor("#666666"),  # flapping
+    "PD": HexColor("#ccccff"),  # pending
+    "UD": HexColor("#dddddd"),  # unselected
+}
+
+HOST_STATUS_SIZE_RATIOS = {
+    "UP": 0.5,
+    "D": 1,
+    "UR": 0.75,
+    "U": 0.6,
+    "FL": 0.6,
+    "PD": 0.6,
+    "UD": 0.6
+}
+
+
+SERVICE_STATUS_COLOR_MAP = {
+    "O": HexColor("#92aa00"),  # ok
+    "W": HexColor("#e2972d"),  # warning
+    "C": HexColor("#bb3d1e"),  # critical
+    "U": HexColor("#d6644a"),  # unknown
+    "FL": HexColor("#666666"),  # flapping
+    "PD": HexColor("#ccccff"),  # pending
+    "UD": HexColor("#dddddd"),  # unselected
+}
+
+
+HOST_STATE_TYPE_TRANSFORMATION = {
+    k: v.capitalize() for (k, v) in mon_icinga_log_aggregated_host_data.STATE_CHOICES
+    }
+
+
+SERVICE_TRANS_TYPE_TRANSFORMATION = {
+    k: v.capitalize() for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES
+    }
+
+
+class StatusPieDrawing(_DrawingEditorMixin, Drawing):
     @staticmethod
     def setItems(n, obj, attr, values):
         m = len(values)
@@ -3367,3 +3504,177 @@ class BreakdownPieDrawing(_DrawingEditorMixin, Drawing):
         n = len(self.pie.data)
         self.setItems(n, self.pie.slices, 'fillColor', colors)
         self.legend.colorNamePairs = [(self.pie.slices[i].fillColor, (self.pie.labels[i][0:20], '%0.2f' % self.pie.data[i])) for i in range(n)]
+
+
+class LineHistoryRect(_DrawingEditorMixin, Drawing):
+    def __init__(self, line_graph_data=(), timespan=None, for_host=True, format="landscape", width=400, height=100, *args, **kw):
+        from dateutil import tz
+        Drawing.__init__(*(self, width, height) + args, **kw)
+
+        gfx_width_percentage = 0.83
+        legend_width_percentage = 0.17
+
+        if for_host:
+            color_map = HOST_STATUS_COLOR_MAP
+            size_ratios = HOST_STATUS_SIZE_RATIOS
+            state_transformation = HOST_STATE_TYPE_TRANSFORMATION
+        else:
+            color_map = SERVICE_STATUS_COLOR_MAP
+            size_ratios = HOST_STATUS_SIZE_RATIOS
+            state_transformation = SERVICE_TRANS_TYPE_TRANSFORMATION
+
+        date_to_state_dict = {}
+        for state_dict in line_graph_data:
+            date_to_state_dict[state_dict["date"]] = state_dict
+
+        rects = []
+        start_date = timespan.start_date.replace(tzinfo=tz.tzlocal())
+        end_date = timespan.end_date.replace(tzinfo=tz.tzlocal())
+        date_list = list(date_to_state_dict.keys())
+        date_list.sort()
+
+        last_date = start_date
+        last_state_info = None
+
+        total_percentage = 0.0
+
+        # if state data does not begin exactly with the beginning of the timeframe, insert a "unknown" status rectangle
+        # local_date = date_list[0].replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal())
+        # if local_date.ctime() != start_date.ctime():
+        #     rect_percentage = (local_date - last_date).total_seconds() / timespan.duration
+        #     rects.append(["U", "Unknown", rect_percentage])
+        #
+        #     total_percentage += rect_percentage
+
+        for date in date_list:
+            local_date = date.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal())
+
+            if last_state_info:
+                rect_percentage = (local_date - last_date).total_seconds() / timespan.duration
+                rects.append([last_state_info["state"], last_state_info["msg"], rect_percentage])
+
+                total_percentage += rect_percentage
+
+            last_date = local_date
+            last_state_info = date_to_state_dict[date]
+
+        rect_percentage = (last_date - end_date).total_seconds() / timespan.duration
+        total_percentage += rect_percentage
+        rects.append([last_state_info["state"], last_state_info["msg"], rect_percentage])
+
+        state_to_percentages_dict = {}
+
+
+        rect_idx = 0
+        last_rect_x = width * legend_width_percentage
+        for rect_list in rects:
+            rect_width_percentage = rect_list[2] / total_percentage
+            rect_width = rect_width_percentage * width * gfx_width_percentage
+            rect_height = (size_ratios[rect_list[0]] * height) * 0.75
+
+            rect_name = "rect".format(rect_idx)
+            rect_idx += 1
+            self._add(self, Rect(last_rect_x, 15, rect_width, rect_height), name=rect_name, validate=None, desc=None)
+            getattr(self, rect_name).fillColor = color_map[rect_list[0]]
+            getattr(self, rect_name).strokeWidth = 0
+            getattr(self, rect_name).strokeOpacity = 0
+            last_rect_x += rect_width
+
+            if rect_list[0] not in state_to_percentages_dict:
+                state_to_percentages_dict[rect_list[0]] = rect_width_percentage
+            else:
+                state_to_percentages_dict[rect_list[0]] += rect_width_percentage
+
+        # add description
+        if for_host:
+            description = "Host Status"
+        else:
+            description = "Service Status"
+        self._add(self, Label(), name="label", validate=None, desc=None)
+        self.label.x = 10
+        self.label.y = height
+        self.label.setText(description)
+        self.label.fontName = 'Helvetica'
+        self.label.fontSize = 7
+
+        # add timeframe label
+        self._add(self, Label(), name="tflabel", validate=None, desc=None)
+        if format == "landscape":
+            self.tflabel.x = (width / 2.0)
+            self.tflabel.y = height
+        else:
+            self.tflabel.x = (width / 2.0)
+            self.tflabel.y = 0
+        self.tflabel.setText("{} - {}".format(timespan.start_date.ctime(), timespan.end_date.ctime()))
+        self.tflabel.fontName = 'Helvetica'
+        self.tflabel.fontSize = 7
+
+        # add timeline
+        x_value = width * legend_width_percentage
+        self._add(self, Line(x_value, 0, width, 0), name="tfline", validate=None, desc=None)
+        self.tfline.strokeColor = black
+        self.tfline.strokeWidth = 1.0
+
+        time_axis_elements = ["00", "03", "06", "09", "12", "15", "18", "21"]
+
+        if timespan.duration > (24 * 60 * 60):
+            time_axis_elements = []
+
+            current_date = start_date
+
+            while current_date < end_date:
+                time_axis_elements.append(current_date.strftime("%d"))
+
+                current_date = current_date + datetime.timedelta(days=1)
+
+
+        for i in range(len(time_axis_elements) + 1):
+            element_name = "tfline{}".format(i)
+            self._add(self, Line(x_value, 0, x_value, 10), name=element_name, validate=None, desc=None)
+
+            getattr(self, element_name).strokeColor = black
+            getattr(self, element_name).strokeWidth = 0.5
+
+            if i < len(time_axis_elements):
+                element_name = "tflabel{}".format(i)
+                self._add(self, Label(), name=element_name, validate=None, desc=None)
+                text = "{}".format(time_axis_elements[i])
+                getattr(self, element_name).x = x_value + 5.0
+                getattr(self, element_name).y = 5
+                getattr(self, element_name).fontName = 'Helvetica'
+                getattr(self, element_name).fontSize = 7
+                getattr(self, element_name).setText(text)
+
+            x_value += (width * gfx_width_percentage) / len(time_axis_elements)
+
+        # add legend
+        self._add(self, Legend(), name='legend', validate=None, desc=None)
+        if format == "landscape":
+            self.legend.x = 0
+            self.legend.y = height / 2.0
+        else:
+            self.legend.x = 0
+            self.legend.y = 40
+
+        self.legend.dx = 8
+        self.legend.dy = 8
+        self.legend.fontName = 'Helvetica'
+        self.legend.fontSize = 7
+        self.legend.boxAnchor = 'w'
+        self.legend.columnMaximum = 10
+        self.legend.strokeWidth = 1
+        self.legend.strokeColor = black
+        self.legend.deltax = 75
+        self.legend.deltay = 10
+        self.legend.autoXPadding = 50
+        self.legend.yGap = 0
+        self.legend.dxTextSpace = 5
+        self.legend.alignment = 'right'
+        self.legend.dividerLines = 1|2|4
+        self.legend.dividerOffsY = 4.5
+        self.legend.subCols.rpad = 30
+
+        self.legend.colorNamePairs = [(color_map[state],
+                                       (state_transformation[state],
+                                        "{:.2f}".format(state_to_percentages_dict[state] * 100))) for
+                                      state in state_to_percentages_dict.keys()]
