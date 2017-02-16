@@ -285,6 +285,10 @@ angular.module(
                     {
                         key: "name"
                         className: "fancytree-title"
+                        # onMouseEnter: (event) =>
+                        #     console.log "me"
+                        # onMouseLeave: (event) =>
+                        #     console.log "ml"
                         onClick: (event) =>
                             _tc.handle_click(event, _tn)
                             @force_redraw()

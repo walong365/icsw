@@ -56,7 +56,6 @@ angular.module(
             top_offset = if top_scroll then t_os else (struct.divlayer[0].offsetHeight + t_os) * -1
             left_scroll = $window.innerWidth - event.clientX - struct.divlayer[0].offsetWidth - t_os > 0
             left_offset = if left_scroll then t_os else (struct.divlayer[0].offsetWidth + t_os) * -1
-
             struct.divlayer.css('left', "#{event.clientX + left_offset}px")
             struct.divlayer.css('top', "#{event.clientY + top_offset}px")
 

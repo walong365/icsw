@@ -753,10 +753,10 @@ angular.module(
 ]).service("icswDeviceConfigTableReact",
 [
     "$q", "blockUI", "icswConfigMonTableService", "icswMonitoringBasicTreeService",
-    "$rootScope", "$window",
+    "$rootScope", "$window", "icswTooltipTools",
 (
     $q, blockUI, icswConfigMonTableService, icswMonitoringBasicTreeService,
-    $rootScope, $window,
+    $rootScope, $window, icswTooltipTools,
 )->
     {table, thead, div, tr, span, th, td, tbody, button, tbody, del, i} = React.DOM
 
@@ -961,45 +961,10 @@ angular.module(
                 [_class, _icon] = @props.configHelper.get_td_class_and_icon(_el, _conf, @props.device)
                 if @props.configHelper.mode in ["mon"]
                     # overlay
-                    _overlay = div(
-                        {
-                            key: "overlay"
-                            display: "block"
-                            className: "panel panel-default svg-tooltip"
-                        }
-                        div(
-                            {
-                                key: "heading"
-                                className: "panel-heading"
-                            }
-                            _info_str
-                        )
-                        table(
-                            {
-                                key: "table"
-                                className: "table table-striped table-condensed"
-                            }
-                            tbody(
-                                {
-                                    key: "tbody"
-                                }
-                                tr(
-                                    {
-                                        key: "first"
-                                    }
-                                    td(
-                                        {
-                                            key: "td0"
-                                        }
-                                        _el.$$command_str
-                                    )
-                                )
-                            )
-                        )
-                    )
+                    do_overlay = true
                     _title_str = null
                 else
-                    _overlay = null
+                    do_overlay = false
                     _title_str = _info_str
 
                 if @state.focus
@@ -1023,14 +988,25 @@ angular.module(
                         onMouseEnter: (event) =>
                             @setState({focus: true})
                             @props.focusCallback(_el, _conf, @props.device, true)
-                            @props.configHelper.tooltip.show(_overlay)
+                            if do_overlay
+                                icswTooltipTools.show(
+                                    @props.configHelper.tooltip
+                                    {
+                                        node_type: "config"
+                                        info_str: _info_str
+                                        command_str: _el.$$command_str
+                                    }
+                                )
 
                         onMouseLeave: (event) =>
-                            @props.configHelper.tooltip.hide()
+                            if do_overlay
+                                icswTooltipTools.hide(@props.configHelper.tooltip)
                             @setState({focus: false})
                             @props.focusCallback(_el, _conf, @props.device, false)
 
-                        onMouseMove: @props.configHelper.tooltip.pos
+                        onMouseMove: (event) =>
+                            if do_overlay
+                                icswTooltipTools.position(@props.configHelper.tooltip, event)
 
                         title: _title_str
                     }
@@ -1195,10 +1171,10 @@ angular.module(
 ]).directive("icswDeviceConfigReact",
 [
     "$templateCache", "$compile", "$rootScope", "ICSW_SIGNALS", "blockUI",
-    "icswDeviceConfigTableReact",
+    "icswDeviceConfigTableReact", "icswTooltipTools",
 (
     $templateCache, $compile, $rootScope, ICSW_SIGNALS, blockUI,
-    icswDeviceConfigTableReact
+    icswDeviceConfigTableReact, icswTooltipTools,
 ) ->
     return {
         restrict: "EA"
@@ -1206,6 +1182,7 @@ angular.module(
             helper: "=icswConfigHelper"
         }
         link: (scope, element, attrs) ->
+            scope.helper.tooltip = icswTooltipTools.create_struct(element)
             _element = ReactDOM.render(
                 React.createElement(
                     icswDeviceConfigTableReact
@@ -1216,57 +1193,11 @@ angular.module(
                 )
                 element[0],
             )
-            $compile(element.contents())(scope)
             $rootScope.$on(ICSW_SIGNALS("_ICSW_DEVICE_CONFIG_CHANGED"), (event, helper) ->
                 _element.forceUpdate()
             )
+            scope.$on("$destroy", () ->
+                icswTooltipTools.delete_struct(scope.helper.tooltip)
+            )
     }
-]).directive('icswAssignTooltipContainer',
-[
-    "$window",
-(
-    $window
-) ->
-    return {
-        restrict: "EA"
-        scope: {
-            helper: "=icswConfigHelper"
-        }
-        link: (scope, element, attrs) ->
-            struct =
-                divlayer: undefined
-
-            struct.show = (content) ->
-                if content?
-                    _element = ReactDOM.render(
-                        React.createElement(
-                            React.createClass(
-                                render: () -> content
-                            )
-                        )
-                        element[0]
-                    )
-                    struct.divlayer = element.children().first()
-
-            struct.pos = (event) ->
-                if struct.divlayer?
-                    t_os = 10  # Tooltip offset
-                    top_scroll = $window.innerHeight - event.clientY - struct.divlayer[0].offsetHeight - t_os > 0
-                    top_offset = if top_scroll then t_os else (struct.divlayer[0].offsetHeight + t_os) * -1
-                    left_scroll = $window.innerWidth - event.clientX - struct.divlayer[0].offsetWidth - t_os > 0
-                    left_offset = if left_scroll then t_os else (struct.divlayer[0].offsetWidth + t_os) * -1
-
-                    struct.divlayer.css('left', "#{event.clientX + left_offset}px")
-                    struct.divlayer.css('top', "#{event.clientY + top_offset}px")
-
-            struct.hide = () ->
-                if struct.divlayer?
-                    struct.divlayer.css('left', "-10000px")
-                    struct.divlayer.css('top', "-10000px")
-                    struct.divlayer = undefined
-
-            # link with confighelper
-             scope.helper.tooltip = struct
-    }
-
 ])
