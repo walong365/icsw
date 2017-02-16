@@ -41,9 +41,11 @@ device_logs = angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI", "DeviceOverviewService"
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "$timeout", "icswWebSocketService", "icswUserService",
+    "ICSW_ENUMS",
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI, DeviceOverviewService
     icswTools, icswSimpleAjaxCall, ICSW_URLS, $timeout, icswWebSocketService, icswUserService,
+    ICSW_ENUMS,
 ) ->
     $scope.struct = {
         data_loaded: false
@@ -64,7 +66,7 @@ device_logs = angular.module(
     icswUserService.load($scope.$id).then(
         (user) ->
             icswWebSocketService.add_stream(
-                "device_log_entries"
+                ICSW_ENUMS.WSStreamEnum.device_log_entries
                 (json_dict) =>
                     if $scope.struct.device_lut[json_dict.device]? and not $scope.struct.log_lut[json_dict.idx]?
                         $scope.struct.log_lut[json_dict.idx] = true
@@ -167,10 +169,10 @@ device_logs = angular.module(
 ]).controller("icswDeviceLogTableCtrl",
 [
     "$q", "Restangular", "ICSW_URLS", "$scope", "icswUserGroupRoleTreeService", "$timeout", "icswSimpleAjaxCall",
-    "icswWebSocketService", "icswTableFilterService", "icswUserService",
+    "icswWebSocketService", "icswTableFilterService", "icswUserService", "ICSW_ENUMS",
 (
     $q, Restangular, ICSW_URLS, $scope, icswUserGroupRoleTreeService, $timeout, icswSimpleAjaxCall,
-    icswWebSocketService, icswTableFilterService, icswUserService,
+    icswWebSocketService, icswTableFilterService, icswUserService, ICSW_ENUMS,
 ) ->
 
     $scope.struct = {
@@ -384,7 +386,7 @@ device_logs = angular.module(
                 start_timer()
 
                 icswWebSocketService.add_stream(
-                    "device_log_entries"
+                    ICSW_ENUMS.WSStreamEnum.device_log_entries
                     (json_dict) =>
                         $timeout(
                             () ->

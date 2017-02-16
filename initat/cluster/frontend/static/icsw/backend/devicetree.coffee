@@ -839,12 +839,12 @@ angular.module(
 [
     "icswTools", "ICSW_URLS", "$q", "Restangular", "icswEnrichmentInfo",
     "icswSimpleAjaxCall", "$rootScope", "$timeout", "icswDeviceTreeGraph",
-    "ICSW_SIGNALS", "icswDeviceTreeHelper", "icswNetworkTreeService",
+    "ICSW_SIGNALS", "icswDeviceTreeHelper", "icswNetworkTreeService", "ICSW_ENUMS",
     "icswEnrichmentRequest", "icswDomainTreeService", "icswWebSocketService",
 (
     icswTools, ICSW_URLS, $q, Restangular, icswEnrichmentInfo,
     icswSimpleAjaxCall, $rootScope, $timeout, icswDeviceTreeGraph,
-    ICSW_SIGNALS, icswDeviceTreeHelper, icswNetworkTreeService,
+    ICSW_SIGNALS, icswDeviceTreeHelper, icswNetworkTreeService, ICSW_ENUMS,
     icswEnrichmentRequest, icswDomainTreeService, icswWebSocketService,
 ) ->
     class icswDeviceTree
@@ -873,7 +873,7 @@ angular.module(
             )
             # init scan infrastructure via websockets, we never close this stream ...
             icswWebSocketService.add_stream(
-                "device_scan_lock"
+                ICSW_ENUMS.WSStreamEnum.device_scan_lock
                 (msg) ->
                     @add_scanlock_to_device(msg)
             ).then(

@@ -532,6 +532,7 @@ class CategoryReferences(ListAPIView):
 @csrf_exempt
 def propagate_channel_message(request, group):
     from initat.tools.bgnotify.create import propagate_channel_object
+    from initat.cluster.backbone.websockets.constants import WSStreamEnum
     # data = json.loads(request.body)
-    propagate_channel_object(group, json.loads(request.body))
+    propagate_channel_object(getattr(WSStreamEnum, group), json.loads(request.body))
     return HttpResponse("ok")

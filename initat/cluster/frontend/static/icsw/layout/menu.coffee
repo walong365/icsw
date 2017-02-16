@@ -713,11 +713,11 @@ menu_module = angular.module(
 [
     "$q", "$timeout", "$rootScope", "ICSW_SIGNALS", "icswSimpleAjaxCall",
     "$state", "ICSW_URLS", "icswMenuSettings", "icswWebSocketService",
-    "icswUserService",
+    "icswUserService", "ICSW_ENUMS",
 (
     $q, $timeout, $rootScope, ICSW_SIGNALS, icswSimpleAjaxCall,
     $state, ICSW_URLS, icswMenuSettings, icswWebSocketService,
-    icswUserService,
+    icswUserService, ICSW_ENUMS,
 ) ->
     {ul, li, div, a, button, span, img} = React.DOM
     return React.createClass(
@@ -815,7 +815,7 @@ menu_module = angular.module(
                 (done) =>
                     if icswUserService.user_present() and icswUserService.get().is_authenticated() and icswWebSocketService.valid()
                         icswWebSocketService.add_stream(
-                            "background_jobs"
+                            ICSW_ENUMS.WSStreamEnum.background_jobs
                             (msg) =>
                                 @setState({num_jobs: msg["background_jobs"]})
                         ).then(

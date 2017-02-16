@@ -499,9 +499,10 @@ def icsw_egg_cradle_pre_save(sender, **kwargs):
 def icsw_egg_cradle_post_save(sender, **kwargs):
     if "instance" in kwargs:
         from initat.cluster.backbone.serializers import icswEggCradleSerializer
+        from ..websockets.constants import WSStreamEnum
         _inst = kwargs["instance"]
         propagate_channel_object(
-            "ova_counter",
+            WSStreamEnum.ova_counter,
             icswEggCradleSerializer(_inst).data,
         )
 

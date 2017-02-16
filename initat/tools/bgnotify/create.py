@@ -124,7 +124,10 @@ def notify_command():
     return server_command.srv_command(command="wf_notify")
 
 
-def propagate_channel_object(group, dict_obj):
+def propagate_channel_object(ws_enum, dict_obj):
+    from initat.cluster.backbone.websockets.constants import WSStreamEnum
+    if not isinstance(ws_enum, WSStreamEnum):
+        raise TypeError("not of type WSStreamEnum: {}".format(str(ws_enum)))
     # json_obj is an already jsonified object
     _hosts = settings.CHANNEL_LAYERS["default"]["CONFIG"]["hosts"]
     # print("G", group, dict_obj)
@@ -133,12 +136,12 @@ def propagate_channel_object(group, dict_obj):
         # send to backend, only text is allowed as key
         # print("g", group, dict_obj)
         try:
-            Group(group).send(
+            Group(ws_enum.name).send(
                 {
                     "text": json.dumps(
                         {
                             "payload": dict_obj,
-                            "stream": group,
+                            "stream": ws_enum.name,
                         }
                     )
                 },
@@ -148,7 +151,7 @@ def propagate_channel_object(group, dict_obj):
             print("Error connecting to redis, ignoring ...")
     else:
         requests.post(
-            web_target.address.format(group),
+            web_target.address.format(ws_enum.name),
             data=json.dumps(dict_obj),
             headers=PROPAGATE_URL_HEADERS
         )

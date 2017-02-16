@@ -660,10 +660,11 @@ def device_scan_lock_post_save(sender, **kwargs):
     if "instance" in kwargs:
         from initat.tools.bgnotify.create import propagate_channel_object
         from ..serializers import DeviceScanLockSerializer
+        from ..websockets.constants import WSStreamEnum
         _inst = kwargs["instance"]
         # print("create", _inst)
         propagate_channel_object(
-            "device_scan_lock",
+            WSStreamEnum.device_scan_lock,
             DeviceScanLockSerializer(_inst).data
         )
 
@@ -1004,8 +1005,9 @@ class DeviceLogEntry(models.Model):
 def device_log_entry_post_save(sender, **kwargs):
     from initat.cluster.backbone.serializers import DeviceLogEntrySerializer
     from initat.tools.bgnotify.create import propagate_channel_object
+    from ..websockets.constants import WSStreamEnum
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         info_obj = DeviceLogEntrySerializer(cur_inst).data
-        propagate_channel_object("device_log_entries", info_obj)
+        propagate_channel_object(WSStreamEnum.device_log_entries, info_obj)
         # print("[{}] pushed into channel... {}".format(datetime.datetime.now().ctime(),  cur_inst.text))

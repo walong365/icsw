@@ -32,6 +32,7 @@ from lxml.builder import E
 
 from initat.cluster.backbone.models import device, rms_job_run, GraphScaleModeEnum, License
 from initat.tools import logging_tools, process_tools
+from initat.cluster.backbone.websockets.constants import WSStreamEnum
 from initat.tools.bgnotify.create import propagate_channel_object
 from .base_functions import FLOAT_FMT, full_graph_key, rrd_escape, strftime
 from .graph_struct import GraphVar, GraphTarget, DataSource
@@ -563,7 +564,7 @@ class RRDGraph(object):
                         ]
                     )
                     propagate_channel_object(
-                        "rrd_graph",
+                        WSStreamEnum.rrd_graph,
                         {
                             "list": [
                                 _graph_target.graph_json(dev_dict) for _graph_target in _graph_line

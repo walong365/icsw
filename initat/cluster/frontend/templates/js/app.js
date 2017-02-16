@@ -1,4 +1,4 @@
-// Copyright (C) 2012-2016 init.at
+// Copyright (C) 2012-2017 init.at
 //
 // Send feedback to: <lang-nevyjel@init.at>
 //
@@ -161,6 +161,11 @@ icsw_app = angular.module(
         "D3_MIN_JS": "/icsw/static/d3.min.js",
         "DIMPLE_MIN_JS": "/icsw/static/dimple.v2.1.6.min.js",
         "STATIC_URL": "/icsw/static"
+    }
+).constant(
+    "ICSW_ENUMS", {
+        // <!-- ICSWAPPS:ENUMS:START -->
+        // <!-- ICSWAPPS:ENUMS:END -->
     }
 ).filter('capitalize', function() {
     return function (input) {

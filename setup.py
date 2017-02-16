@@ -64,6 +64,7 @@ setup(
         "initat.cluster.backbone.exceptions",
         "initat.cluster.backbone.migrations",
         "initat.cluster.backbone.serializers",
+        "initat.cluster.backbone.websockets",
         "initat.cluster.backbone.management",
         "initat.cluster.backbone.management.commands",
         "initat.cluster.backbone.management.commands.fixtures",

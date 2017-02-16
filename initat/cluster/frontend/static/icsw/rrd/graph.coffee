@@ -36,14 +36,14 @@ angular.module(
     "toaster", "$timeout", "icswRRDGraphBasicSetting", "icswTimeFrameService",
     "icswRRDGraphUserSettingService", "icswParseXMLResponseService",
     "icswUserGroupRoleTreeService", "icswSavedSelectionService",
-    "icswWebSocketService",
+    "icswWebSocketService", "ICSW_ENUMS",
 (
     $q, icswDeviceTreeHelperService, icswReactTreeConfig,
     icswDeviceTreeService, icswTools, icswSimpleAjaxCall, ICSW_URLS,
     toaster, $timeout, icswRRDGraphBasicSetting, icswTimeFrameService,
     icswRRDGraphUserSettingService, icswParseXMLResponseService,
     icswUserGroupRoleTreeService, icswSavedSelectionService,
-    icswWebSocketService,
+    icswWebSocketService, ICSW_ENUMS,
 
 ) ->
     {span} = React.DOM
@@ -292,7 +292,7 @@ angular.module(
             @close_ws()
             _q = $q.defer()
             icswWebSocketService.add_stream(
-                "rrd_graph"
+                ICSW_ENUMS.WSStreamEnum.rrd_graph
                 @feed_result
             ).then(
                 (stream_id) =>

@@ -37,6 +37,17 @@ from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools
 
 
+def get_enums():
+    # return a dict of all enums to add as constant
+    from initat.cluster.backbone.websockets.constants import WSStreamEnum
+    _enums = [WSStreamEnum]
+    return dict(
+        {
+            _enum.__name__: [_entry.name for _entry in _enum] for _enum in _enums
+        }
+    )
+
+
 class ConfigRelax(object):
     def __init__(self):
         _inst = InstanceXML(quiet=True)
@@ -330,6 +341,29 @@ class FileModify(object):
                         for _url, _reverse in urls:
                             _injected += 1
                             new_content.append("        \"{}\": \"{}\",".format(_url, _reverse))
+                    elif marker_type == "ENUMS":
+                        enums = get_enums()
+                        _lines = []
+                        for key, e_list in enums.items():
+                            if _lines:
+                                _lines[-1] = "{},".format(_lines[-1])
+                            _lines.extend(
+                                [
+                                    "{}: {{".format(key),
+                                ] + [
+                                    "    {}: \"{}\"{}".format(
+                                        value,
+                                        value,
+                                        "," if _idx < len(e_list) else ""
+                                    ) for _idx, value in enumerate(e_list, 1)
+                                ] + [
+                                    "}",
+                                ]
+                            )
+                        _lines = [
+                            "{}{}".format(" " * 8, _line) for _line in _lines
+                        ]
+                        new_content.extend(_lines)
                     else:
                         self.debug(
                             " *** marker {} is unknown ***".format(

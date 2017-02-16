@@ -30,8 +30,7 @@ from django.core.urlresolvers import RegexURLPattern, RegexURLResolver, reverse
 
 
 def _rewrite(name):
-    rw = re.sub("([A-Z]+)", r"_\1", name.replace(":", "_")).lower().replace("__", "_").upper()
-    return rw
+    return re.sub("([A-Z]+)", r"_\1", name.replace(":", "_")).lower().replace("__", "_").upper()
 
 
 def extract_views_from_urlpatterns(urlpatterns, base='', namespace=None):
@@ -88,30 +87,16 @@ def get_urls():
         except Exception as e:
             import traceback
             traceback.print_exc()
-            print("Error occurred while trying to load {}: {}".format(settings_mod.ROOT_URLCONF, str(e)))
+            print(
+                "Error occurred while trying to load {}: {}".format(
+                    settings_mod.ROOT_URLCONF,
+                    str(e)
+                )
+            )
             continue
 
         view_functions = extract_views_from_urlpatterns(urlconf.urlpatterns)
         for (func, regex, url_name) in view_functions:
-
-            if hasattr(func, '__globals__'):
-                func_globals = func.__globals__
-            elif hasattr(func, 'func_globals'):
-                func_globals = func.__globals__
-            else:
-                func_globals = {}
-
-            # decorators = [d for d in decorator if d in func_globals]
-            # if isinstance(func, functools.partial):
-            #    func = func.func
-            #    decorators.insert(0, 'functools.partial')
-
-            if hasattr(func, '__name__'):
-                func_name = func.__name__
-            elif hasattr(func, '__class__'):
-                func_name = '{}()'.format(func.__class__.__name__)
-            else:
-                func_name = re.sub(r' at 0x[0-9a-f]+', '', repr(func))
 
             # print regex, func, url_name
             if url_name:
@@ -121,8 +106,13 @@ def get_urls():
                 except:
                     pass
                 else:
-                    _url = _rewrite(url_name)
-                    urls.append((_url, _reverse))
+
+                    urls.append(
+                        (
+                            _rewrite(url_name),
+                            _reverse
+                        )
+                    )
     return urls
 
 
@@ -132,4 +122,4 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         urls = get_urls()
         for _url, _reverse in urls:
-            print("        \"{}\": \"{}\",".format(_url, _reverse))
+            print("        {}: \"{}\",".format(_url, _reverse))

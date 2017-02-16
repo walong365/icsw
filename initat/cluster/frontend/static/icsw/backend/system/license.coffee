@@ -26,10 +26,10 @@ angular.module(
 ).service("icswSystemOvaCounter",
 [
     "Restangular", "ICSW_URLS", "$q", "icswWebSocketService", "$rootScope", "ICSW_SIGNALS",
-    "icswUserService",
+    "icswUserService", "ICSW_ENUMS",
 (
     Restangular, ICSW_URLS, $q, icswWebSocketService, $rootScope, ICSW_SIGNALS,
-    icswUserService,
+    icswUserService, ICSW_ENUMS,
 ) ->
     class icswSystemOvaCounter
         constructor: (c_list) ->
@@ -104,7 +104,7 @@ angular.module(
             @close_web_socket()
             if icswUserService.user_present() and icswUserService.get().is_authenticated()
                 icswWebSocketService.add_stream(
-                    "ova_counter"
+                    ICSW_ENUMS.WSStreamEnum.ova_counter
                     (data) ->
                         @update_plain(data)
                         @on_update.notify(@system_cradle)

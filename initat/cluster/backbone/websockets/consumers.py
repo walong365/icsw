@@ -19,9 +19,7 @@
 #
 
 """
-
 daphne consumers
-
 """
 
 import json
@@ -29,6 +27,7 @@ import json
 from channels import Group
 from channels.generic.websockets import JsonWebsocketConsumer, WebsocketDemultiplexer
 from django.conf import settings
+from .constants import WSStreamEnum
 
 
 class icswGeneralConsumer(JsonWebsocketConsumer):
@@ -43,7 +42,7 @@ class icswGeneralConsumer(JsonWebsocketConsumer):
             )
         if message.http_session:
             message.reply_channel.send({"accept": True})
-            Group("general").add(message.reply_channel)
+            Group(WSStreamEnum.general.name).add(message.reply_channel)
 
     def connection_groups(self, **kwargs):
         return []
@@ -81,11 +80,6 @@ class icswConsumer(JsonWebsocketConsumer):
 
 
 class icswDemultiplexer(WebsocketDemultiplexer):
-    consumers = {
-        "general": icswGeneralConsumer,
-        "device_log_entries": icswConsumer,
-        "rrd_graph": icswConsumer,
-        "background_jobs": icswConsumer,
-        "ova_counter": icswConsumer,
-        "device_scan_lock": icswConsumer,
-    }
+    consumers = {}
+    for _enum in WSStreamEnum:
+        consumers[_enum.name] = icswGeneralConsumer if _enum.value.general else icswConsumer

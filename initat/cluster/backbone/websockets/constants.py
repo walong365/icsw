@@ -19,13 +19,21 @@
 #
 
 """
-Channel settings
+constants for websockets
 """
 
-from channels.routing import route_class
+from enum import Enum
 
-from initat.cluster.backbone.websockets.consumers import icswDemultiplexer
 
-channel_routing = [
-    route_class(icswDemultiplexer, path=r"^/icsw/ws/"),
-]
+class WSStreamDefinition(object):
+    def __init__(self, general: bool):
+        self.general = general
+
+
+class WSStreamEnum(Enum):
+    general = WSStreamDefinition(True)
+    device_log_entries = WSStreamDefinition(False)
+    rrd_graph = WSStreamDefinition(False)
+    background_jobs = WSStreamDefinition(False)
+    ova_counter = WSStreamDefinition(False)
+    device_scan_lock = WSStreamDefinition(False)
