@@ -372,17 +372,11 @@ class SNMPNetworkType(factory.django.DjangoModelFactory):
         model = snmp_network_type
         django_get_or_create = ("if_type",)
 
-
-def _check_boolean(obj, new_val, attr_name):
-    if getattr(obj, attr_name) != new_val:
-        setattr(obj, attr_name, new_val)
-        obj.save()
-
     @factory.post_generation
-    def label(self, create, extracted, **kwargs):
+    def if_label(self, create, extracted, **kwargs):
         extracted = extracted or ""
-        if self.label != extracted:
-            self.label = extracted
+        if self.if_label != extracted:
+            self.if_label = extracted
             self.save()
 
     @factory.post_generation
@@ -405,6 +399,12 @@ def _check_boolean(obj, new_val, attr_name):
         if self.mac_bytes != extracted:
             self.mac_bytes = extracted
             self.save()
+
+
+def _check_boolean(obj, new_val, attr_name):
+    if getattr(obj, attr_name) != new_val:
+        setattr(obj, attr_name, new_val)
+        obj.save()
 
 
 class SNMPScheme(factory.django.DjangoModelFactory):
