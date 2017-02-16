@@ -624,3 +624,7 @@ icsw-livestatus-tooltip .table,
 icsw-livestatus-tooltip .panel {
     margin:0;
 }
+.fscr-hide {
+    /* hide for fullscreen mode */
+    display: none;
+}

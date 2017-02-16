@@ -1384,9 +1384,10 @@ def asset_batch_post_save(sender, **kwargs):
     _ = sender
     if "instance" in kwargs:
         from initat.cluster.backbone.serializers import SimpleAssetBatchSerializer
+        from initat.cluster.backbone.websockets.constants import WSStreamEnum
 
         cur_inst = kwargs["instance"]
 
         serializer = SimpleAssetBatchSerializer(cur_inst)
 
-        propagate_channel_object("asset_batch", serializer.data)
+        propagate_channel_object(WSStreamEnum.asset_batch, serializer.data)

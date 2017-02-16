@@ -55,12 +55,12 @@ device_asset_module = angular.module(
     }
 ]).controller("icswDeviceAssetCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
+    "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI", "ICSW_ENUMS"
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",
     "icswDeviceTreeService", "icswDeviceTreeHelperService", "$timeout",
     "icswDispatcherSettingTreeService", "Restangular", "icswAssetPackageTreeService", "icswWebSocketService", "toaster"
 (
-    $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
+    $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI, ICSW_ENUMS
     icswTools, icswSimpleAjaxCall, ICSW_URLS, icswAssetHelperFunctions,
     icswDeviceTreeService, icswDeviceTreeHelperService, $timeout,
     icswDispatcherSettingTreeService, Restangular, icswAssetPackageTreeService, icswWebSocketService, toaster
@@ -88,7 +88,7 @@ device_asset_module = angular.module(
         # reload timer
         reload_timer: undefined
 
-        websocket: undefined
+        ws_stream_id: undefined
 
         package_list: []
     }
@@ -127,9 +127,9 @@ device_asset_module = angular.module(
             500
         )
 
-    icswWebSocketService.get_ws("asset_batch", ws_handle_func).then(
-        (new_ws) ->
-            $scope.struct.websocket = new_ws
+    icswWebSocketService.add_stream(ICSW_ENUMS.WSStreamEnum.asset_batch, ws_handle_func).then(
+        (ws_stream_id) ->
+            $scope.struct.ws_stream_id = ws_stream_id
     )
 
     reload_data = () ->
@@ -200,8 +200,8 @@ device_asset_module = angular.module(
             obj.$$device.schedule_items.push(obj)
 
     $scope.$on("$destroy", () ->
-        if $scope.struct.websocket?
-            $scope.struct.websocket.close()
+        if $scope.struct.ws_stream_id != undefined
+            icswWebSocketService.remove_stream($scope.struct.ws_stream_id)
             $scope.struct.websocket = undefined
 
         stop_timer()

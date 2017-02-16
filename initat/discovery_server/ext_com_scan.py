@@ -46,6 +46,7 @@ from initat.cluster.backbone.models.asset.dynamic_asset import ASSETTYPE_HM_COMM
 from initat.tools.bgnotify import create_bg_job
 from initat.tools.bgnotify.create import propagate_channel_object
 from initat.constants import PlatformSystemTypeEnum
+from initat.cluster.backbone.websockets.constants import WSStreamEnum
 
 DEFAULT_NRPE_PORT = 5666
 
@@ -917,7 +918,7 @@ class Dispatcher(object):
             except Exception as e:
                 _ = e
 
-        propagate_channel_object("hm_status", callback_dict)
+        propagate_channel_object(WSStreamEnum.hm_status, callback_dict)
 
     def hostmonitor_update_modules_handler(self, schedule_item):
         device_pk = int(schedule_item.schedule_handler_data)
@@ -977,7 +978,7 @@ class Dispatcher(object):
             callback_dict["result"] = -1
             callback_dict["error_string"], _ = result.get_result()
 
-        propagate_channel_object("hm_status", callback_dict)
+        propagate_channel_object(WSStreamEnum.hm_status, callback_dict)
 
     def hostmonitor_full_update_handler(self, schedule_item):
         import pickle
@@ -1004,8 +1005,8 @@ class Dispatcher(object):
             }
 
             hm_command = HostMonitoringCommand(self.hostmonitor_full_update_handler_callback,
-                callback_dict,
-                timeout=30)
+                                               callback_dict,
+                                               timeout=30)
 
             self.discovery_process.send_pool_message(
                 "send_host_monitor_command",
@@ -1029,8 +1030,8 @@ class Dispatcher(object):
                     conn_str = "tcp://{}:{:d}".format(_device.target_ip, self.__hm_port)
                     new_srv_com = server_command.srv_command(command="full_update")
                     hm_command = HostMonitoringCommand(self.hostmonitor_full_update_handler_callback,
-                        callback_dict,
-                        timeout=5)
+                                                       callback_dict,
+                                                       timeout=5)
 
                     self.discovery_process.send_pool_message(
                         "send_host_monitor_command",
@@ -1047,7 +1048,7 @@ class Dispatcher(object):
             if key == "device":
                 continue
             callback_dict_copy[key] = callback_dict[key]
-        propagate_channel_object("hm_status", callback_dict_copy)
+        propagate_channel_object(WSStreamEnum.hm_status, callback_dict_copy)
 
     @staticmethod
     def handle_hm_result(run_index, srv_result):

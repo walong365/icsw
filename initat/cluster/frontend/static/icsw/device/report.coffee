@@ -50,14 +50,16 @@ device_report_module = angular.module(
     "icswDeviceTreeService", "icswDeviceTreeHelperService", "$timeout",
     "icswDispatcherSettingTreeService", "Restangular", "icswActiveSelectionService",
     "icswComplexModalService", "$interval", "icswUserService", "icswAssetHelperFunctions",
-    "$http", "icswReportHelperFunctions", "icswToolsSimpleModalService"
+    "$http", "icswReportHelperFunctions", "icswToolsSimpleModalService", "DeviceOverviewService",
+    "icswStatusHistorySettings"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, FileUploader, icswCSRFService
     icswDeviceTreeService, icswDeviceTreeHelperService, $timeout,
     icswDispatcherSettingTreeService, Restangular, icswActiveSelectionService,
     icswComplexModalService, $interval, icswUserService, icswAssetHelperFunctions,
-    $http, icswReportHelperFunctions, icswToolsSimpleModalService
+    $http, icswReportHelperFunctions, icswToolsSimpleModalService, DeviceOverviewService,
+    icswStatusHistorySettings
 ) ->
     $scope.struct = {
         # list of devices
@@ -174,6 +176,8 @@ device_report_module = angular.module(
             $scope.struct.user = data[0].user
     )
 
+    $scope.show_device = ($event, dev) ->
+        DeviceOverviewService($event, [dev])
 
     $scope.uploading = false
     $scope.percentage = 0
@@ -341,6 +345,25 @@ device_report_module = angular.module(
 
                         $scope.struct.devices.push(dev)
                         idx_list.push(dev.idx)
+
+                    dev.$$reportstruct = {}
+                    dev.$$reportstruct.startdate = undefined
+                    dev.$$reportstruct.startdate_dp = undefined
+                    dev.$$reportstruct.duration_type = undefined
+                    dev.$$reportstruct.date_options = {
+                        format: "dd.MM.yyyy"
+                        formatYear: "yyyy"
+                        maxDate: new Date()
+                        minDate: new Date(2000, 1, 1)
+                        startingDay: 1
+                        minMode: "day"
+                        datepickerMode: "day"
+                        $$opened: false
+                    }
+
+                    dev.$$reportstruct.startdate = moment().startOf("day").subtract(1, "days")
+                    $scope.set_duration_type("day", dev)
+                    dev.$$reportstruct.startdate_dp = dev.$$reportstruct.startdate.toDate()
 
                 initialize_buttons()
                 blockUI.stop()
@@ -779,12 +802,33 @@ device_report_module = angular.module(
                 console.log(error)
         )
 
-
     $scope.getReportHistoryDownloadPercentage = (report_obj) ->
         if report_obj.download_progress_percentage == undefined
             return 0
 
         return report_obj.download_progress_percentage
+
+########################################################################################################################
+# Timeframe setting functions
+########################################################################################################################
+
+    $scope.get_allowed_durations = () ->
+        return icswStatusHistorySettings.get_allowed_durations()
+
+    $scope.set_duration_type = (d, device) ->
+        device.$$reportstruct.duration_type = d
+        _mode = {
+            day: "day"
+            week: "day"
+            month: "month"
+            year: "year"
+            decade: "year"
+        }[d]
+        device.$$reportstruct.date_options.minMode = _mode
+        device.$$reportstruct.date_options.datepickerMode = _mode
+
+    $scope.open_popup = (device) ->
+        device.$$reportstruct.date_options.$$opened = true
 
 ]).directive("icswDeviceTreeReportRow",
 [

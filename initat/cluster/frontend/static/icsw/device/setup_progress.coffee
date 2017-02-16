@@ -45,11 +45,13 @@ setup_progress = angular.module(
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions", "FileUploader"
     "icswDeviceTreeService", "$timeout", "DeviceOverviewService", "icswUserGroupRoleTreeService",
     "icswToolsSimpleModalService", "SetupProgressHelper", "ICSW_SIGNALS", "$rootScope", "toaster", "icswCSRFService"
+    "ICSW_ENUMS"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI, icswWebSocketService
     icswTools, icswSimpleAjaxCall, ICSW_URLS, icswAssetHelperFunctions, FileUploader
     icswDeviceTreeService, $timeout, DeviceOverviewService, icswUserGroupRoleTreeService,
-    icswToolsSimpleModalService, SetupProgressHelper, ICSW_SIGNALS, $rootScope, toaster, icswCSRFService
+    icswToolsSimpleModalService, SetupProgressHelper, ICSW_SIGNALS, $rootScope, toaster, icswCSRFService,
+    ICSW_ENUMS
 ) ->
     $scope.struct = {
         # selected devices
@@ -93,7 +95,7 @@ setup_progress = angular.module(
         update_file_platform_bits: undefined
         update_file_module_fingerprint: undefined
 
-        hm_status_websocket: undefined
+        ws_stream_id: undefined
 
         host_monitor_refresh_button_counter: 10
         host_monitor_refresh_button_text: "Refresh (10)"
@@ -180,9 +182,9 @@ setup_progress = angular.module(
 
         $timeout(angular.noop)
 
-    icswWebSocketService.get_ws("hm_status", ws_handle_func).then(
-        (ws) ->
-            $scope.struct.websocket = ws
+    icswWebSocketService.add_stream(ICSW_ENUMS.WSStreamEnum.hm_status, ws_handle_func).then(
+        (ws_stream_id) ->
+            $scope.struct.ws_stream_id = ws_stream_id
     )
 
     $scope.update_modules = (device) ->
@@ -470,8 +472,8 @@ setup_progress = angular.module(
     setup_tasks()
 
     $scope.$on("$destroy", () ->
-        if $scope.struct.hm_status_websocket?
-            $scope.struct.hm_status_websocket.close()
+        if $scope.struct.ws_stream_id != undefined
+            icswWebSocketService.remove_stream($scope.struct.ws_stream_id)
             $scope.struct.hm_status_websocket = undefined
 
         $rootScope.$emit(ICSW_SIGNALS("ICSW_OPEN_SETUP_TASKS_CHANGED"))
