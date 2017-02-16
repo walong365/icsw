@@ -58,12 +58,12 @@ menu_module = angular.module(
     "$scope", "hotkeys", "icswLayoutSelectionDialogService", "icswUserService",
     "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswSystemLicenseDataService",
     "icswBreadcrumbs", "$state", "$window", "Restangular", "ICSW_URLS", "icswThemeService",
-    "icswMenuSettings",
+    "icswMenuSettings", "icswFullscreenService",
 (
     $scope, hotkeys, icswLayoutSelectionDialogService, icswUserService,
     $rootScope, ICSW_SIGNALS, icswRouteHelper, icswSystemLicenseDataService,
     icswBreadcrumbs, $state, $window, Restangular, ICSW_URLS, icswThemeService,
-    icswMenuSettings,
+    icswMenuSettings, icswFullscreenService,
 ) ->
     _bind_keys = () ->
         hotkeys.bindTo($scope).add(
@@ -117,6 +117,13 @@ menu_module = angular.module(
             callback: (event) ->
                 event.preventDefault()
                 icswMenuSettings.set_menu_help(!icswMenuSettings.get_menu_help())
+        ).add(
+            combo: "f10"
+            allowIn: ["INPUT", "SELECT", "TEXTAREA"]
+            description: "Toggle Fullscreen Mode"
+            callback: (event) ->
+                event.preventDefault()
+                icswFullscreenService.toggle()
         )
 
     $scope.struct = {
