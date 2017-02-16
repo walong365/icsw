@@ -567,7 +567,7 @@ class netdevice(models.Model):
     # snmp related fields, zero for non-SNMP fetched network devices
     snmp_idx = models.IntegerField(default=0)
     # snmp network type
-    snmp_network_type = models.ForeignKey("backbone.snmp_network_type", null=True, blank=True)
+    snmp_network_type = models.ForeignKey("backbone.snmp_network_type")
     # admin / oper stats
     snmp_admin_status = models.IntegerField(default=0)
     snmp_oper_status = models.IntegerField(default=0)
@@ -633,7 +633,8 @@ class netdevice(models.Model):
                         len(ndt.regex),
                         ndt
                     ) for ndt in match_list
-                ]
+                ],
+                reverse=True
             )[0][1]
 
     def get_dummy_macaddr(self):
