@@ -38,7 +38,7 @@ import argparse
 
 from initat.cluster.backbone.models import device, cd_connection, domain_tree_node, netdevice, network, device_group, \
     net_ip, peer_information
-from initat.cluster.backbone.models.network import netdevice_speed, network_device_type
+from initat.cluster.backbone.models.network import netdevice_speed, snmp_network_type
 
 
 """
@@ -65,7 +65,7 @@ netdevice(
     device=dev,
     devname=netdevice_name,
     netdevice_speed=netdevice_speed,
-    network_device_type=network_device_type,
+    snmp_network_type=snmp_network_type,
 )
 
 net_ip(
@@ -82,7 +82,7 @@ cd_connection(
 """
 
 IPInfo = collections.namedtuple("IPInfo", ("ip", "network", "domain_tree_node"))
-NetDeviceInfo = collections.namedtuple("NetDeviceInfo", ("name", "mac", "iplist", "speed", "network_device_type"))
+NetDeviceInfo = collections.namedtuple("NetDeviceInfo", ("name", "mac", "iplist", "speed", "snmp_network_type"))
 
 
 def create_device(args, name, group, domain_tree_node, netdevices, bootserver):
@@ -103,7 +103,7 @@ def create_device(args, name, group, domain_tree_node, netdevices, bootserver):
             macaddr=nd_data.mac,
             devname=nd_data.name,
             netdevice_speed=nd_data.speed,
-            network_device_type=nd_data.network_device_type,
+            snmp_network_type=nd_data.snmp_network_type,
         )
         nds.append(nd_inst)
         if args.write_to_db:
@@ -152,9 +152,9 @@ def handle_csv(csv_reader, config, args):
     # cd_device_type = device_type.objects.get(identifier="CD")
     # host_device_type = device_type.objects.get(identifier="H")
 
-    lo_netdevice_type = network_device_type.objects.get(identifier="lo")
-    eth_netdevice_type = network_device_type.objects.get(identifier="eth")
-    ib_netdevice_type = network_device_type.objects.get(identifier="ib")
+    lo_netdevice_type = snmp_network_type.objects.get(if_type=24)
+    eth_netdevice_type = snmp_network_type.objects.get(if_type=6)
+    ib_netdevice_type = snmp_network_type.objects.get(if_type=199)
 
     CSV_NAME_COLUMN = 0
     CSV_DEV_MAC_COLUMN = 3
@@ -241,21 +241,21 @@ def handle_csv(csv_reader, config, args):
                             IPInfo(ip=dev_boot_ip, network=boot_network, domain_tree_node=ac2t_boot_dtn),
                         ],
                         speed=mbps100_half_duplex,
-                        network_device_type=eth_netdevice_type,
+                        snmp_network_type=eth_netdevice_type,
                     ),
                     NetDeviceInfo(
                         name="lo",
                         mac="00:00:00:00:00:00",
                         iplist=[IPInfo(ip="127.0.0.1", network=loopback_network, domain_tree_node=local_dtn)],
                         speed=gbps1_full_duplex,
-                        network_device_type=lo_netdevice_type,
+                        snmp_network_type=lo_netdevice_type,
                     ),
                     NetDeviceInfo(
                         name="ib0",
                         mac="00:00:00:00:00:00",
                         iplist=[IPInfo(ip=ib_ip, network=ib_network, domain_tree_node=ac2t_ib_dtn)],
                         speed=gbps1_full_duplex,
-                        network_device_type=ib_netdevice_type,
+                        snmp_network_type=ib_netdevice_type,
                     )
                 ],
                 bootserver=bootserver,
@@ -274,7 +274,7 @@ def handle_csv(csv_reader, config, args):
                             IPInfo(ip=ipmi_ip, network=apc_network, domain_tree_node=ac2t_apc_dtn),
                         ],
                         speed=gbps1_full_duplex,
-                        network_device_type=eth_netdevice_type,
+                        snmp_network_type=eth_netdevice_type,
                     )
                 ],
                 bootserver=None
@@ -297,7 +297,7 @@ def handle_csv(csv_reader, config, args):
                         pi.save()
 
             for actual_nd in actual_nds:
-                if actual_nd.network_device_type == ib_netdevice_type:
+                if actual_nd.snmp_network_type == ib_netdevice_type:
                     devices_per_switch = int(math.ceil(num_devices / len(ib_switches_nds)))
                     id_of_switch = nth_device // devices_per_switch
                     print('adding ib peer info to {}, using ib switch no {}'.format(actual_nd, id_of_switch))
@@ -309,7 +309,7 @@ def handle_csv(csv_reader, config, args):
                     if args.write_to_db:
                         pi.save()
 
-                elif actual_nd.network_device_type == eth_netdevice_type:
+                elif actual_nd.snmp_network_type == eth_netdevice_type:
                     print('adding eth peer info to {}'.format(actual_nd))
                     for dev_switch_nd in dev_switches_nds:
                         pi = peer_information(
@@ -319,7 +319,7 @@ def handle_csv(csv_reader, config, args):
                         if args.write_to_db:
                             pi.save()
 
-                elif actual_nd.network_device_type == lo_netdevice_type:
+                elif actual_nd.snmp_network_type == lo_netdevice_type:
                     print('adding lo peer info to {}'.format(actual_nd))
                     pi = peer_information(
                         s_netdevice=actual_nd,

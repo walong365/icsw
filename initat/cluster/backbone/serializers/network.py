@@ -25,7 +25,7 @@ import logging
 
 from rest_framework import serializers
 
-from initat.cluster.backbone.models import network_type, network_device_type, network, net_ip, \
+from initat.cluster.backbone.models import network_type, network, net_ip, \
     netdevice, netdevice_speed, peer_information, snmp_network_type, NmapScan
 
 __all__ = [
@@ -33,7 +33,6 @@ __all__ = [
     "network_with_ip_serializer",
     "network_type_serializer",
     "net_ip_serializer",
-    "network_device_type_serializer",
     "netdevice_serializer",
     "netdevice_speed_serializer",
     "peer_information_serializer",
@@ -43,14 +42,6 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
-
-
-class network_device_type_serializer(serializers.ModelSerializer):
-    info_string = serializers.CharField(read_only=True)
-
-    class Meta:
-        fields = "__all__"
-        model = network_device_type
 
 
 class network_type_serializer(serializers.ModelSerializer):

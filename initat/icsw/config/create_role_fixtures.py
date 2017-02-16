@@ -30,7 +30,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import category_tree, \
-    user, network_type, netdevice_speed, network_device_type, group, \
+    user, network_type, netdevice_speed, snmp_network_type, group, \
     host_check_command, domain_name_tree, ConfigServiceEnum
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import ipvx_tools
@@ -334,7 +334,7 @@ def create_noctua_fixtures():
         devname=if_name,
         routing=True,
         netdevice_speed=netdevice_speed.objects.get(Q(speed_bps=1000000000) & Q(full_duplex=True) & Q(check_via_ethtool=True)),
-        network_device_type=network_device_type.objects.get(Q(identifier="eth")),
+        snmp_network_type=snmp_network_type.objects.get(Q(if_type=6)),
     )
     _net_ip = factories.NetIp(
         ip=if_address,

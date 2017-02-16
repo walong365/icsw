@@ -24,7 +24,7 @@
 import factory
 
 from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
-    partition_fs, status, network_device_type, \
+    partition_fs, status, \
     network_type, host_check_command, config, mon_check_command, device_group, \
     device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
     network, netdevice, net_ip, device_config, LogSource, \
@@ -106,12 +106,6 @@ class Status(factory.django.DjangoModelFactory):
     do_install = False
     is_clean = False
     allow_boolean_modify = False
-
-
-class NetworkDeviceType(factory.django.DjangoModelFactory):
-    class Meta:
-        model = network_device_type
-        django_get_or_create = ("identifier",)
 
 
 class NetworkType(factory.django.DjangoModelFactory):

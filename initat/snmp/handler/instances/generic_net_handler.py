@@ -101,7 +101,6 @@ class Handler(SNMPHandler):
                 _dev_nd = netdevice(
                     device=dev,
                     snmp_idx=if_idx,
-                    force_network_device_type_match=False,
                 )
                 # update lut
                 pnd_lut[if_idx] = _dev_nd

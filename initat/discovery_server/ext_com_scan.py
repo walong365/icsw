@@ -19,14 +19,13 @@
 #
 """ discovery-server, base scan functions """
 
-
+import ast
 import collections
 import datetime
 import time
 import traceback
-import netaddr
-import ast
 
+import netaddr
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.utils import timezone
@@ -36,17 +35,17 @@ from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_s
     device_variable, AssetRun, RunStatus, BatchStatus, ScanType, AssetBatch, RunResult, \
     DispatcherSettingScheduleEnum, ScheduleItem, device, DispatcherLink, NmapScan, BackgroundJobState, \
     background_job
-from initat.discovery_server.wmi_struct import WmiUtils
+from initat.cluster.backbone.models.asset.dynamic_asset import ASSETTYPE_HM_COMMAND_MAP
+from initat.cluster.backbone.websockets.constants import WSStreamEnum
+from initat.constants import PlatformSystemTypeEnum
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools, process_tools, server_command, ipvx_tools
-from .config import global_config
-from .discovery_struct import ExtCom
-from initat.cluster.backbone.models.asset.dynamic_asset import ASSETTYPE_HM_COMMAND_MAP
 from initat.tools.bgnotify import create_bg_job
 from initat.tools.bgnotify.create import propagate_channel_object
-from initat.constants import PlatformSystemTypeEnum
-from initat.cluster.backbone.websockets.constants import WSStreamEnum
+from .config import global_config
+from .discovery_struct import ExtCom
+from .wmi_struct import WmiUtils
 
 DEFAULT_NRPE_PORT = 5666
 
@@ -332,7 +331,6 @@ class WmiScanBatch(ScanBatch):
                             nd = netdevice(
                                 device=self.device,
                                 wmi_interface_index=adapter_index,
-                                force_network_device_type_match=False,
                             )
                             created_nds.append(nd)
 

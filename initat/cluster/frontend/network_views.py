@@ -91,7 +91,7 @@ class CopyNetwork(View):
         ).prefetch_related(
             "netdevice_set",
             "netdevice_set__netdevice_speed",
-            "netdevice_set__network_device_type",
+            "netdevice_set__snmp_network_type",
             "netdevice_set__net_ip_set",
             "netdevice_set__net_ip_set__network",
             "netdevice_set__net_ip_set__network__network_type"
@@ -151,7 +151,7 @@ class CopyNetwork(View):
                 # copy from source
                 for cur_nd in source_dev.netdevice_set.all().prefetch_related(
                     "netdevice_speed",
-                    "network_device_type",
+                    "snmp_network_type",
                     "net_ip_set",
                     "net_ip_set__network",
                     "net_ip_set__domain_tree_node",
