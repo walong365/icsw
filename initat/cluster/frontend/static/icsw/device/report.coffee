@@ -463,6 +463,7 @@ device_report_module = angular.module(
                     lstopo_report_selected: device.$lstopo_report_selected
                     availability_overview_selected: device.$availability_overview_selected
                     availability_details_selected: device.$availability_details_selected
+                    availability_timeframe_start: moment(device.$$reportstruct.startdate_dp).unix()
                     assetbatch_id: device.$$selected_assetbatch
                 }
                 settings.push(setting)

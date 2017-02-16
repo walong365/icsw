@@ -25,7 +25,6 @@ import logging
 import os
 import tempfile
 import PollyReports
-import time
 
 from io import BytesIO
 from PIL import Image as PILImage
@@ -43,7 +42,7 @@ from reportlab.graphics.charts.piecharts import Pie
 from reportlab.graphics.charts.legends import Legend
 from reportlab.graphics.charts.textlabels import Label
 from reportlab.lib import colors
-from reportlab.lib.colors import HexColor, black
+from reportlab.lib.colors import HexColor, black, CMYKColor
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
 from reportlab.lib.pagesizes import landscape, letter, A4, A3
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -343,7 +342,8 @@ class DeviceReport(GenericReport):
             "dmi_report_selected": True,
             "pci_report_selected": True,
             "availability_overview_selected": True,
-            "availability_details_selected": True
+            "availability_details_selected": True,
+            "availability_timeframe_start": None,
         }
 
         # update default settings with new settings
@@ -1057,28 +1057,21 @@ class PDFReportGenerator(ReportGenerator):
 
 
         # add piecharts
-        dummy_request = DummyRequest()
-        dummy_request.GET = {
-            "date": int(time.time()) - (24 * 60 * 60),
-            "duration_type": "day",
-            "device_ids": "[{}]".format(_device.idx)
-        }
-
         body_data = []
 
         # get and add charts
-        start_time = int(time.time())
+        start_time = int(report.report_settings["availability_timeframe_start"])
         chart_info_map = [
-            ("24 Hours", "day", start_time - (24 * 60 * 60)),
-            ("Weekly", "week", start_time - (24 * 60 * 60 * 7)),
-            ("Monthly", "month", start_time - (24 * 60 * 60 * 30)),
+            ("24 Hours", "day"),
+            ("Weekly", "week"),
+            ("Monthly", "month"),
         ]
 
-        for line_header, duration_type, timeframe in chart_info_map:
+        for line_header, duration_type in chart_info_map:
             dummy_request = DummyRequest()
             dummy_request.GET = {
                 "device_ids": "[{}]".format(_device.idx),
-                "date": timeframe,
+                "date": start_time,
                 "duration_type": duration_type
             }
 
@@ -1170,19 +1163,19 @@ class PDFReportGenerator(ReportGenerator):
         body_data = []
 
         # get and add charts
-        start_time = int(time.time())
+        start_time = int(report.report_settings["availability_timeframe_start"])
         chart_info_map = [
-            ("24 Hours", "day", start_time - (24 * 60 * 60)),
-            ("Weekly", "week", start_time - (24 * 60 * 60 * 7)),
-            ("Monthly", "month", start_time - (24 * 60 * 60 * 30)),
+            ("24 Hours", "day"),
+            ("Weekly", "week"),
+            ("Monthly", "month"),
         ]
 
-        for line_header, duration_type, timeframe in chart_info_map:
+        for line_header, duration_type in chart_info_map:
             row = []
             dummy_request = DummyRequest()
             dummy_request.GET = {
                 "device_ids": "[{}]".format(_device.idx),
-                "date": timeframe,
+                "date": start_time,
                 "duration_type": duration_type
             }
 
@@ -3364,23 +3357,23 @@ def postprocess_workbook(workbook):
 
 
 HOST_STATUS_COLOR_MAP = {
-    "UP": HexColor("#92aa00"),  # up
-    "D": HexColor("#bb3d1e"),  # down
+    "UP": CMYKColor(cyan=0.1412, magenta=0.0000, yellow=1.000, black=0.3333, knockout=False),#HexColor("#92aa00"),  # up
+    "D": CMYKColor(cyan=0.0, magenta=0.6738, yellow=0.8396, black=0.2667, knockout=False), #HexColor("#bb3d1e"),  # down
     "UR": HexColor("#ff0000"),  # unreach
     "U": HexColor("#e2972d"),  # unknown
     "FL": HexColor("#666666"),  # flapping
     "PD": HexColor("#ccccff"),  # pending
-    "UD": HexColor("#dddddd"),  # unselected
+    "UD": CMYKColor(cyan=0.0, magenta=0.0, yellow=0.0, black=0.5, knockout=True), #HexColor("#dddddd"),  # unselected
 }
 
 HOST_STATUS_SIZE_RATIOS = {
     "UP": 0.5,
     "D": 1,
-    "UR": 0.75,
+    "UR": 0.8,
     "U": 0.6,
-    "FL": 0.6,
-    "PD": 0.6,
-    "UD": 0.6
+    "FL": 0.65,
+    "PD": 0.7,
+    "UD": 0.75
 }
 
 
@@ -3523,58 +3516,54 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
             size_ratios = HOST_STATUS_SIZE_RATIOS
             state_transformation = SERVICE_TRANS_TYPE_TRANSFORMATION
 
-        date_to_state_dict = {}
-        for state_dict in line_graph_data:
-            date_to_state_dict[state_dict["date"]] = state_dict
-
-        rects = []
         start_date = timespan.start_date.replace(tzinfo=tz.tzlocal())
         end_date = timespan.end_date.replace(tzinfo=tz.tzlocal())
+
+        date_to_state_dict = {}
+        for state_dict in line_graph_data:
+            cleaned_up_date = state_dict["date"].replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal())
+
+            if cleaned_up_date <= end_date and cleaned_up_date >= start_date:
+                date_to_state_dict[cleaned_up_date] = state_dict
+
+            if cleaned_up_date < start_date:
+                date_to_state_dict[start_date] = state_dict
+
+        rects = []
         date_list = list(date_to_state_dict.keys())
         date_list.sort()
 
         last_date = start_date
         last_state_info = None
 
-        total_percentage = 0.0
-
-        # if state data does not begin exactly with the beginning of the timeframe, insert a "unknown" status rectangle
-        # local_date = date_list[0].replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal())
-        # if local_date.ctime() != start_date.ctime():
-        #     rect_percentage = (local_date - last_date).total_seconds() / timespan.duration
-        #     rects.append(["U", "Unknown", rect_percentage])
-        #
-        #     total_percentage += rect_percentage
-
         for date in date_list:
-            local_date = date.replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal())
-
             if last_state_info:
-                rect_percentage = (local_date - last_date).total_seconds() / timespan.duration
+                rect_percentage = (date - last_date).total_seconds() / timespan.duration
                 rects.append([last_state_info["state"], last_state_info["msg"], rect_percentage])
 
-                total_percentage += rect_percentage
-
-            last_date = local_date
+            last_date = date
             last_state_info = date_to_state_dict[date]
 
-        rect_percentage = (last_date - end_date).total_seconds() / timespan.duration
-        total_percentage += rect_percentage
-        rects.append([last_state_info["state"], last_state_info["msg"], rect_percentage])
+        # rect_percentage = (last_date - end_date).total_seconds() / timespan.duration
+        # rects.append([last_state_info["state"], last_state_info["msg"], rect_percentage])
 
         state_to_percentages_dict = {}
-
 
         rect_idx = 0
         last_rect_x = width * legend_width_percentage
         for rect_list in rects:
-            rect_width_percentage = rect_list[2] / total_percentage
+            rect_width_percentage = rect_list[2]
             rect_width = rect_width_percentage * width * gfx_width_percentage
+
+            print(rect_width)
+
             rect_height = (size_ratios[rect_list[0]] * height) * 0.75
 
             rect_name = "rect".format(rect_idx)
             rect_idx += 1
             self._add(self, Rect(last_rect_x, 15, rect_width, rect_height), name=rect_name, validate=None, desc=None)
+            getattr(self, rect_name).fillOpacity = 1
+            getattr(self, rect_name).fillOverprint = True
             getattr(self, rect_name).fillColor = color_map[rect_list[0]]
             getattr(self, rect_name).strokeWidth = 0
             getattr(self, rect_name).strokeOpacity = 0
@@ -3615,7 +3604,7 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
         self.tfline.strokeColor = black
         self.tfline.strokeWidth = 1.0
 
-        time_axis_elements = ["00", "03", "06", "09", "12", "15", "18", "21"]
+        time_axis_elements = ["00", "02", "04", "06", "08", "10", "12", "14", "16", "18", "20", "22"]
 
         if timespan.duration > (24 * 60 * 60):
             time_axis_elements = []
@@ -3677,4 +3666,4 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
         self.legend.colorNamePairs = [(color_map[state],
                                        (state_transformation[state],
                                         "{:.2f}".format(state_to_percentages_dict[state] * 100))) for
-                                      state in state_to_percentages_dict.keys()]
+                                      state in sorted(state_to_percentages_dict.keys())]

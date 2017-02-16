@@ -220,7 +220,7 @@ class GetReportGfx(View):
         id(request)
         val_blob = ""
         system_device = None
-        for _device in device.objects.all():
+        for _device in device.objects.all().select_related("device_group"):
             if _device.is_cluster_device_group():
                 system_device = _device
                 break
@@ -343,10 +343,8 @@ class ReportHistoryAvailable(View):
         data = {}
         report_ids = []
 
-        for report_history in ReportHistory.objects.all():
-            if not report_history.created_by_user:
-                continue
-            if not report_history.created_at_time:
+        for report_history in ReportHistory.objects.all().select_related("created_by_user"):
+            if not report_history.created_by_user or not report_history.created_at_time:
                 continue
 
             o = {

@@ -127,18 +127,6 @@
                                             <td>
                                                 <div class="form-inline">
                                                     <div class="form-group">
-                                                        &nbsp;
-                                                        <div class="btn-group">
-                                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-                                                                <span class="glyphicon glyphicon-time"></span>
-                                                                {{ obj.$$reportstruct.duration_type }} <span class="caret"></span>
-                                                            </button>
-                                                            <ul class="dropdown-menu">
-                                                                <li ng-repeat="dur in get_allowed_durations()" ng-click="set_duration_type(dur, obj)">
-                                                                    <a>{{ dur }}</a>
-                                                                </li>
-                                                            </ul>
-                                                        </div>
                                                         <div class="input-group">
                                                             <input type="text"
                                                                 class="form-control"
