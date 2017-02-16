@@ -681,7 +681,7 @@ angular.module(
         # create or edit
         if create_mode
             # nd_obj is the parent device
-            new_type = $scope.struct.network_tree.nw_device_type_list[0]
+            new_type = $scope.struct.network_tree.nw_snmp_lut[6]
             mac_bytes = new_type.mac_bytes
             default_ms = ("00" for idx in [0..mac_bytes]).join(":")
             edit_obj = {
@@ -701,7 +701,7 @@ angular.module(
                 "macaddr": default_ms
                 "fake_macaddr": default_ms
                 # dummy value
-                "network_device_type": new_type.idx
+                "snmp_network_type": new_type.idx
             }
             title = "Create new Netdevice on '#{nd_obj.full_name}'"
         else
@@ -1168,13 +1168,13 @@ angular.module(
         if name == "cluster"
             $scope.reload()
     )
-]).service('icswNetworkDeviceTypeService',
+]).service('icswSNMPNetworkTypeService',
 [
     "ICSW_URLS", "icswNetworkTreeService", "$q", "icswComplexModalService", "$compile", "$templateCache",
-    "toaster", "icswNetworkDeviceTypeBackup", "icswToolsSimpleModalService",
+    "toaster", "icswSNMPNetworkTypeBackup", "icswToolsSimpleModalService",
 (
     ICSW_URLS, icswNetworkTreeService, $q, icswComplexModalService, $compile, $templateCache,
-    toaster, icswNetworkDeviceTypeBackup, icswToolsSimpleModalService
+    toaster, icswSNMPNetworkTypeBackup, icswToolsSimpleModalService
 ) ->
     nw_tree = undefined
     return {
@@ -1184,7 +1184,7 @@ angular.module(
             icswNetworkTreeService.load(scope.$id).then(
                 (net_tree) ->
                     nw_tree = net_tree
-                    defer.resolve(net_tree.nw_device_type_list)
+                    defer.resolve(net_tree.nw_snmp_type_list)
             )
             return defer.promise
 
@@ -1198,13 +1198,13 @@ angular.module(
                     "allow_virtual_interfaces" : true
                 }
             else
-                dbu = new icswNetworkDeviceTypeBackup()
+                dbu = new icswSNMPNetworkTypeBackup()
                 dbu.create_backup(obj_or_parent)
             scope.edit_obj = obj_or_parent
             sub_scope = scope.$new(false)
             icswComplexModalService(
                 {
-                    message: $compile($templateCache.get("network.device.type.form"))(sub_scope)
+                    message: $compile($templateCache.get("snmp.network.type.form"))(sub_scope)
                     title: "Network Device Type"
                     css_class: "modal-wide modal-form"
                     ok_label: if create then "Create" else "Modify"
@@ -1245,9 +1245,9 @@ angular.module(
             )
 
         delete: (scope, event, obj) ->
-            icswToolsSimpleModalService("Really delete Network DeviceType '#{obj.description}' ?").then(
+            icswToolsSimpleModalService("Really delete SNMPNetworkType '#{obj.if_label}' ?").then(
                 (ok) ->
-                    nw_tree.delete_network_device_type(obj).then(
+                    nw_tree.delete_snmp_network_type(obj).then(
                         (ok) ->
                     )
             )
@@ -1795,12 +1795,6 @@ angular.module(
         preferred_dtn: (edit_obj) ->
             if edit_obj.preferred_domain_tree_node
                 return domain_tree.lut[edit_obj.preferred_domain_tree_node].full_name
-            else
-                return "---"
-
-        get_network_device_types: (edit_obj) ->
-            if edit_obj.network_device_type.length
-                return (nw_tree.nw_device_type_lut[nd].identifier for nd in edit_obj.network_device_type).join(", ")
             else
                 return "---"
 

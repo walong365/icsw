@@ -37,17 +37,16 @@ angular.module(
     icswTools, ICSW_URLS, $q, Restangular,
 ) ->
     class icswNetworkTree
-        constructor: (@nw_list, @nw_speed_list, @nw_type_list, @nw_device_type_list, @nw_snmp_type_list) ->
+        constructor: (@nw_list, @nw_speed_list, @nw_type_list, @nw_snmp_type_list) ->
             @build_luts()
 
-        update_all: (nw_list, nw_speed_list, nw_type_list, nw_device_type_list, nw_snmp_type_list) =>
+        update_all: (nw_list, nw_speed_list, nw_type_list, nw_snmp_type_list) =>
             # overwrite all entries
             # console.log "Overwrite all networktree entries"
             _dict = {
                 nw_list: nw_list
                 nw_speed_list: nw_speed_list
                 nw_type_list: nw_type_list
-                nw_device_type_list: nw_device_type_list
                 nw_snmp_type_list: nw_snmp_type_list
             }
             for key, val of _dict
@@ -57,8 +56,10 @@ angular.module(
             @build_luts()
 
         build_luts: () =>
-            for entry in ["nw", "nw_speed", "nw_type", "nw_device_type", "nw_snmp_type"]
+            for entry in ["nw", "nw_speed", "nw_type", "nw_snmp_type"]
                 @["#{entry}_lut"] = icswTools.build_lut(@["#{entry}_list"])
+            # lut per if-type
+            @nw_snmp_lut = _.keyBy(@nw_snmp_type_list, "if_type")
             # add description and identifier lut
             for entry in @nw_type_list
                 @nw_type_lut[entry.description] = entry
@@ -111,13 +112,13 @@ angular.module(
                 nw.$$info_string = "#{nw.identifier} (#{_info.join(', ')})"
 
         # reload functions
-        reload_network_device_types: () =>
+        reload_snmp_network_types: () =>
             d = $q.defer()
-            Restangular.all(ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST.slice(1)).getList().then(
+            Restangular.all(ICSW_URLS.REST_SNMP_NETWORK_TYPE_LIST.slice(1)).getList().then(
                 (data) =>
-                    @nw_device_type_list.length = 0
+                    @nw_snmp_type_list.length = 0
                     for entry in data
-                        @nw_device_type_list.push(entry)
+                        @nw_snmp_type_list.push(entry)
                     @build_luts()
                     d.resolve("loaded")
             )
@@ -137,17 +138,18 @@ angular.module(
             )
             return d.promise
 
-        create_network_device_type: (obj_def) =>
-            d = $q.defer()
-            Restangular.all(ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST.slice(1)).post(obj_def).then(
-                (new_obj) =>
-                    @nw_device_type_list.push(new_obj)
-                    @reorder()
-                    d.resolve("created")
-                (not_ok) =>
-                    d.reject("create error")
-            )
-            return d.promise
+        # not supported right now
+        # create_snmp_network_type: (obj_def) =>
+        #    d = $q.defer()
+        #    Restangular.all(ICSW_URLS.REST_SNMP_NETWORK_TYPE_LIST.slice(1)).post(obj_def).then(
+        #        (new_obj) =>
+        #            @nw_snmp_type_list.push(new_obj)
+        #            @reorder()
+        #            d.resolve("created")
+        #        (not_ok) =>
+        #            d.reject("create error")
+        #    )
+        #    return d.promise
 
         create_network: (obj_def) =>
             d = $q.defer()
@@ -168,18 +170,6 @@ angular.module(
             obj.remove().then(
                 (ok) =>
                     _.remove(@nw_type_list, (entry) -> return entry.idx == obj.idx)
-                    @reorder()
-                    d.resolve("deleted")
-                (notok) =>
-                    d.reject("not deleted")
-            )
-            return d.promise
-
-        delete_network_device_type: (obj) =>
-            d = $q.defer()
-            obj.remove().then(
-                (ok) =>
-                    _.remove(@nw_device_type_list, (entry) -> return entry.idx == obj.idx)
                     @reorder()
                     d.resolve("deleted")
                 (notok) =>
@@ -213,9 +203,6 @@ angular.module(
         ]
         [
             ICSW_URLS.REST_NETWORK_TYPE_LIST, {}
-        ]
-        [
-            ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST, {}
         ]
         [
             ICSW_URLS.REST_SNMP_NETWORK_TYPE_LIST, {}

@@ -670,12 +670,7 @@ angular.module(
                     net_dev.$$bridge_info_string = "-"
 
                 # network type
-                if net_dev.snmp_network_type
-                    net_dev.$$type_string = _net.nw_snmp_type_lut[net_dev.snmp_network_type].if_label
-                else if net_dev.$$type_string = _net.nw_device_type_lut[net_dev.network_device_type] == undefined
-                    net_dev.$$type_string = "unknown"
-                else
-                    net_dev.$$type_string = _net.nw_device_type_lut[net_dev.network_device_type].info_string
+                net_dev.$$type_string = _net.nw_snmp_type_lut[net_dev.snmp_network_type].if_label
 
                 for net_ip in net_dev.net_ip_set
                     @device.$$num_netips++
@@ -736,18 +731,7 @@ angular.module(
             dev = @device
             dev.netdevice_set.push(new_nd)
             @post_network_info()
-            # check if something is missing (new network_device_type or so)
-            current = icswNetworkTreeService.current()
-            if new_nd.network_device_type of current.nw_device_type_lut
-                # network device type present, no problem
-                defer.resolve("done")
-            else
-                # reload network_device_type
-                current.reload_network_device_types().then(
-                    (done) =>
-                        @post_network_info()
-                        defer.resolve("done")
-                )
+            defer.resolve("done")
             return defer.promise
 
         delete_netdevice: (del_nd) =>

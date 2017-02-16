@@ -450,39 +450,41 @@
                         </icsw-tools-rest-table-new>
                     </uib-tab>
                     <uib-tab heading="Network Device Types">
-                        <icsw-tools-rest-table-new target-list="entries" config-service="icswNetworkDeviceTypeService">
+                        <icsw-tools-rest-table-new target-list="entries" config-service="icswSNMPNetworkTypeService">
                             <h3>Network Device Types ({{entries.length}} Entries)</h3>
-                            <icsw-tools-button type="create" ng-click="create($event)" size="sm"/>
+                            <!-- <icsw-tools-button type="create" ng-click="create($event)" size="sm"/> -->
                             <table st-table="entries_displayed" st-safe-src="entries"
                                    class="table table-hover table-condensed table-striped" style="width:auto;">
                                 <thead>
                                     <tr>
                                         <td colspan="99">
-                                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                                            <div
+                                                icsw-tools-pagination
+                                                st-items-by-page="25" st-displayed-pages="11"
+                                                possible-items-by-page="10,25,50,100,200,500,1000"
+                                            ></div>
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th st-sort="identifier" st-sort-default="true">ID</th>
+                                        <th st-sort="if_type" st-sort-default="true">IfType</th>
+                                        <th st-sort="if_label">IfLabel</th>
                                         <th st-sort="description">Description</th>
-                                        <th st-sort="name_re">RegExp</th>
+                                        <th>RegExp</th>
                                         <th st-sort="mac_bytes">MAC bytes</th>
-                                        <th st-sort="allow_virtual_interfaces">virtIF allowed</th>
-                                        <th st-sort="for_matching">For matching</th>
-                                        <th st-sort="auto_created">Autocreated</th>
                                         <th colspan="2">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr ng-repeat="obj in entries_displayed">
-                                        <td>{{ obj.identifier }}</td>
+                                        <td>{{ obj.if_type }}</td>
+                                        <td>{{ obj.if_label }}</td>
                                         <td>{{ obj.description  }}</td>
-                                        <td>{{ obj.name_re }}</td>
+                                        <td>{{ obj.regex }}</td>
                                         <td class="text-center">{{ obj.mac_bytes }}</td>
-                                        <td class="text-center">{{ obj.allow_virtual_interfaces | yesno1 }}</td>
-                                        <td class="text-center">{{ obj.for_matching | yesno2 }}</td>
-                                        <td class="text-center">{{ obj.auto_created | yesno2 }}</td>
                                         <td><icsw-tools-button type="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button></td>
-                                        <td><icsw-tools-button type="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button></td>
+                                        <td>
+                                            <!-- <icsw-tools-button type="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button> -->
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -921,7 +923,6 @@
                     <th st-sort="network_type">Type</th>
                     <th st-sort="master_network">Master</th>
                     <th ng-show="show_column.prefDTN">Preferred DTN</th>
-                    <th st-sort="network_device_type">Devtype(s)</th>
                     <th colspan="4" class="text-center">Actions</th>
                 </tr>
             </thead>
@@ -963,9 +964,6 @@
                     <td ng-show="show_column.prefDTN" class="text-center">
                         {{ config_service.preferred_dtn(obj) }}
                     </td>
-                    <td class="text-center">
-                        {{ config_service.get_network_device_types(obj) }}
-                    </td>
                     <td>
                         <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"/>
                     </td>
@@ -999,17 +997,17 @@
     </icsw-tools-rest-table-new>
 </script>
 
-<script type="text/ng-template" id="network.device.type.form">
+<script type="text/ng-template" id="snmp.network.type.form">
     <form class="form-horizontal" name="form_data">
         <fieldset>
             <legend>Base Data</legend>
-            <div class="form-group ng-class:form_error('identifier')">
+            <!-- <div class="form-group ng-class:form_error('identifier')">
                 <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Identifier<span class="asteriskField">*</span></label>
                 <div class="controls col-sm-7">
                     <input class="textinput textInput form-control maxwidth500" maxlength="48" ng-model="edit_obj.identifier" placeholder="Identifier" required="True" type="text"/>
                 </div>
-            </div>
+            </div> -->
             <div class="form-group ng-class:form_error('description')">
                 <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Description<span class="asteriskField">*</span>
@@ -1018,7 +1016,7 @@
                     <input class="textinput textInput form-control maxwidth500" maxlength="192" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"/>
                 </div>
             </div>
-            <div class="form-group ng-class:form_error('name_re')">
+            <!-- <div class="form-group ng-class:form_error('name_re')">
                 <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Name Regexp<span class="asteriskField">*</span></label>
                 <div class="controls col-sm-7">
@@ -1032,30 +1030,7 @@
                 <div class="controls col-sm-7">
                     <input class="numberinput form-control maxwidth500" max="24" min="6" ng-model="edit_obj.mac_bytes" placeholder="MAC bytes" required="True" type="number" value="6"/>
                 </div>
-            </div>
-        </fieldset>
-        <fieldset>
-            <legend>Flags</legend>
-            <div class="form-group row">
-                <div class="col-sm-5 icsw-formlabel">
-                    <label>
-                        Allow Virtual Interfaces
-                    </label>
-                </div>
-                <div class="controls col-sm-7">
-                    <icsw-tools-yes-no flag="edit_obj.allow_virtual_interfaces"></icsw-tools-yes-no>
-                </div>
-            </div>
-            <div class="form-group row">
-                <div class="col-sm-5 icsw-formlabel">
-                    <label>
-                        Used for matching
-                    </label>
-                </div>
-                <div class="controls col-sm-7">
-                    <icsw-tools-yes-no flag="edit_obj.for_matching"></icsw-tools-yes-no>
-                </div>
-            </div>
+            </div> -->
         </fieldset>
     </form>
 </script>
@@ -1499,19 +1474,6 @@
                                     </button>
                                 </span>
                             </div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-3 icsw-formlabel">
-                            Network Device Type
-                        </label>
-                        <div class="controls col-sm-7">
-                            <ui-select multiple="multiple" ng-model="edit_obj.network_device_type" class="maxwidth500" ng-disabled="false">
-                                <ui-select-match class="ui-select-match" placeholder="network device types">{{$item.identifier}}</ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.nw_tree().nw_device_type_list | props_filter:{identifier:$select.search}">
-                                    <div ng-bind-html="value.identifier | highlight: $select.search"></div>
-                                </ui-select-choices>
-                            </ui-select>
                         </div>
                     </div>
                 </fieldset>

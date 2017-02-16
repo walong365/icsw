@@ -161,6 +161,14 @@ angular.module(
             super()
             @simple_attributes = ["identifier", "description"]
 
+]).service("icswSNMPNetworkTypeBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswSNMPNetworkTypeBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = ["if_type", "if_label", "description", "mac_bytes", "regex"]
+
 ]).service("icswNetworkDeviceTypeBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
 
     class icswNetworkDeviceTypeBackupDefinition extends icswBackupDefinition
@@ -178,9 +186,9 @@ angular.module(
             @simple_attributes = [
                 "devname", "macaddr", "driver_options", "speed", "netdevice_speed",
                 "ignore_netdevice_speed", "driver", "routing", "inter_device_routing",
-                "penalty", "dhcp_device", "fake_macaddr", "network_device_type", "description",
+                "penalty", "dhcp_device", "fake_macaddr", "description",
                 "is_bridge", "is_bond", "bridge_device", "bond_master", "bridge_name", "vlan_id",
-                "master_device", "enabled", "mtu", "snmp_idx", "force_network_device_type_match",
+                "master_device", "enabled", "mtu", "snmp_idx",
                 "snmp_network_type", "snmp_admin_status", "snmp_oper_status", "desired_status",
                 "wmi_interface_index",
             ]
@@ -204,9 +212,6 @@ angular.module(
             @simple_attributes = [
                 "identifier", "nework", "netmask", "gateway", "broadcast", "penalty", "enforce_unique_ips",
                 "preferred_domain_tree_node", "start_range", "end_range", "master_network", "network_type"
-            ]
-            @list_attributes = [
-                "network_device_type"
             ]
 
 ]).service("icswPeerInformationBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
