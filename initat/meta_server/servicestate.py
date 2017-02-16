@@ -303,6 +303,19 @@ class ServiceState(object):
             self.__target_dict[_key] = constants.TARGET_STATE_STOPPED
 
     def check_schema(self, conn):
+        # 'hack' to check repair old version
+        _descr = conn.execute("PRAGMA table_info(state)").fetchall()
+        _field_names = [_f[1] for _f in _descr]
+        if "pstate" not in _field_names:
+            self.log(
+                "Old Version detected, removing old database and restarting",
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            conn.close()
+            os.unlink(self._db_path)
+            conn = sqlite3.connect(self._db_path)
+            self.conn = conn
+
         _table_dict = {
             "schema_version": [
                 "version INTEGER NOT NULL",
