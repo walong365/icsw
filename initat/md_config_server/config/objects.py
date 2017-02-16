@@ -291,6 +291,10 @@ class MonAllCommands(MonFileContainer):
             # self.__dict[cur_nc["command_name"]] = cur_nc
 
         def get_special_db_inst(inst: object, name: str) -> object:
+            # mapping dict for historic problems
+            map_dict = {
+                "eon_stor": "eonstor"
+            }
             # inst: Object with a Meta (with an uuid entry)
             # name: name to search for in case no uuid match was found
             try:
@@ -298,10 +302,20 @@ class MonAllCommands(MonFileContainer):
                     Q(uuid=inst.Meta.uuid)
                 )
             except DBStructuredMonBaseConfig.DoesNotExist:
-                _db_inst = DBStructuredMonBaseConfig.objects.get(
-                    Q(name=name) &
-                    Q(is_special_command=True)
-                )
+                try:
+                    _db_inst = DBStructuredMonBaseConfig.objects.get(
+                        Q(name=name) &
+                        Q(is_special_command=True)
+                    )
+                except DBStructuredMonBaseConfig.DoesNotExist:
+                    if name in map_dict:
+                        name = map_dict[name]
+                        _db_inst = DBStructuredMonBaseConfig.objects.get(
+                            Q(name=name) &
+                            Q(is_special_command=True)
+                        )
+                    else:
+                        raise
                 _db_inst.uuid = inst.Meta.uuid
                 _db_inst.save(update_fields=["uuid"])
             _update_fields = []

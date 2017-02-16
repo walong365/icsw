@@ -1103,6 +1103,10 @@ class snmp_network_type(models.Model):
     idx = models.AutoField(primary_key=True)
     if_type = models.IntegerField(default=0)
     if_label = models.CharField(max_length=128, default="")
+    description = models.CharField(max_length=256, default="")
+    regex = models.CharField(max_length=64, default="")
+    # number of bytes in macaddress
+    mac_bytes = models.PositiveIntegerField(default=6)
     date = models.DateTimeField(auto_now_add=True)
 
 

@@ -22,8 +22,6 @@
 
 """ DB definitions for background jobs """
 
-
-
 import logging
 
 from enum import Enum
@@ -148,10 +146,9 @@ class background_job(models.Model):
 @receiver(signals.post_save, sender=background_job)
 def background_job_post_save(sender, **kwargs):
     if "instance" in kwargs:
-        # from initat.cluster.backbone.serializers import background_job_serializer
-
+        from ..websockets.constants import WSStreamEnum
         propagate_channel_object(
-            "background_jobs",
+            WSStreamEnum.background_jobs,
             {
                 "background_jobs": background_job.objects.get_number_of_pending_jobs()
             }

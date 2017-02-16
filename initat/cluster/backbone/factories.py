@@ -384,6 +384,34 @@ def _check_boolean(obj, new_val, attr_name):
         setattr(obj, attr_name, new_val)
         obj.save()
 
+    @factory.post_generation
+    def label(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.label != extracted:
+            self.label = extracted
+            self.save()
+
+    @factory.post_generation
+    def description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.description != extracted:
+            self.description = extracted
+            self.save()
+
+    @factory.post_generation
+    def regex(self, create, extracted, **kwargs):
+        extracted = extracted or "^$"
+        if self.regex != extracted:
+            self.regex = extracted
+            self.save()
+
+    @factory.post_generation
+    def mac_bytes(self, create, extracted, **kwargs):
+        extracted = extracted or 6
+        if self.mac_bytes != extracted:
+            self.mac_bytes = extracted
+            self.save()
+
 
 class SNMPScheme(factory.django.DjangoModelFactory):
     class Meta:

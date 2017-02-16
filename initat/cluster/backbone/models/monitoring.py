@@ -492,15 +492,7 @@ class DBStructuredMonBaseConfig(mon_check_command, StructuredContentEmitter):
         # _special = kwargs.pop("special_command", None)
         _changed = False
         try:
-            # if _special:
-            #    if _special.dummy_mcc_id:
-            #        # already linked
-            #        _obj = _special.dummy_mcc
-            #    else:
-            #        # no link set, generate a new mon_check_command
-            #        _obj = None
-            # else:
-            # non-special command, create a system command from the given (kw)args
+            # create a system command from the given (kw)args
             _obj = cls.objects.get(Q(system_command=True) & Q(name=kwargs["name"]))
         except cls.DoesNotExist:
             _obj = None
