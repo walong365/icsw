@@ -19,18 +19,19 @@
 #
 """ cluster-config-server, config control """
 
+import base64
+import bz2
 import crypt
 import os
 import time
-import base64
-import bz2
 
 from django.db.models import Q
+
 from initat.cluster.backbone.models import device, partition, DeviceBootHistory
-from initat.cluster_config_server.config import global_config
-from initat.cluster_config_server.simple_request import simple_request, var_cache
-from initat.tools import config_tools, logging_tools, module_dependency_tools, process_tools
 from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.tools import config_tools, logging_tools, module_dependency_tools, process_tools
+from .config import global_config
+from .simple_request import simple_request, var_cache
 
 
 class ConfigControl(object):

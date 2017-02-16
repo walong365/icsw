@@ -27,12 +27,12 @@ import time
 from django.db.models import Q
 
 from initat.cluster.backbone.models import WrittenConfigFile, ConfigTreeNode
-from initat.cluster_config_server.base_objects import new_config_object, dir_object, copy_object, \
-    link_object, delete_object, file_object
-from initat.cluster_config_server.generators import do_fstab, do_nets, do_routes, do_ssh, do_uuid, \
-    do_etc_hosts, do_hosts_equiv, do_uuid_old
-from initat.cluster_config_server.partition_setup import icswPartitionSetup
 from initat.tools import logging_tools, process_tools
+from .base_objects import new_config_object, dir_object, copy_object, \
+    link_object, delete_object, file_object
+from .generators import do_fstab, do_nets, do_routes, do_ssh, do_uuid, \
+    do_etc_hosts, do_hosts_equiv, do_uuid_old
+from .partition_setup import icswPartitionSetup
 
 
 class GeneralTreeNode(object):

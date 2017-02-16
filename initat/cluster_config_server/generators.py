@@ -20,9 +20,9 @@
 """ cluster-config-server, config generators """
 
 import base64
-import subprocess
 import os
 import re
+import subprocess
 import tempfile
 
 import networkx
@@ -31,9 +31,9 @@ from lxml import etree
 from lxml.builder import E
 
 from initat.cluster.backbone.models import device_variable, domain_tree_node, netdevice
-from initat.cluster_config_server.config import global_config, GATEWAY_THRESHOLD
-from initat.cluster_config_server.partition_setup import icswPartitionSetup
 from initat.tools import logging_tools, config_store, uuid_tools
+from .config import global_config, GATEWAY_THRESHOLD
+from .partition_setup import icswPartitionSetup
 
 
 def do_uuid(conf):
@@ -138,7 +138,8 @@ def do_nets(conf):
                             "BROADCAST": cur_net.broadcast,
                             "IPADDR": cur_ip.ip,
                             "NETMASK": cur_net.netmask,
-                            "NETWORK": cur_net.network}
+                            "NETWORK": cur_net.network
+                        }
                     else:
                         # FIXME; take netdevice even with zero macaddr
                         if int(cur_nd.macaddr.replace(":", ""), 16) != 0 or True:
@@ -272,13 +273,16 @@ def get_default_gw(conf):
     if gw_list:
         print("Possible gateways:")
         for netdev_idx, net_devname, gw_pri, gw_ip, net_mac in gw_list:
-            print(" idx %3d, dev %6s, gw_pri %6d, gw_ip %15s, mac %s%s" % (
-                netdev_idx,
-                net_devname,
-                gw_pri,
-                gw_ip,
-                net_mac,
-                gw_pri > GATEWAY_THRESHOLD and "(*)" or ""))
+            print(
+                " idx %3d, dev %6s, gw_pri %6d, gw_ip %15s, mac %s%s" % (
+                    netdev_idx,
+                    net_devname,
+                    gw_pri,
+                    gw_ip,
+                    net_mac,
+                    gw_pri > GATEWAY_THRESHOLD and "(*)" or ""
+                )
+            )
     max_gw_pri = max([gw_pri for netdev_idx, net_devname, gw_pri, gw_ip, net_mac in gw_list])
     if max_gw_pri > GATEWAY_THRESHOLD:
         gw_source = "network setting (gw_pri %d > %d)" % (max_gw_pri, GATEWAY_THRESHOLD)
@@ -293,7 +297,10 @@ def get_default_gw(conf):
                     gw_pri,
                     net_mac
                 ) for netdev_idx, net_devname, gw_pri, gw_ip, net_mac in gw_list if netdev_idx == conf_dict["device"].bootnetdevice_id
-            ] + [("", 0, "")])[0]
+            ] + [
+                ("", 0, "")
+            ]
+        )[0]
         gw_source = "server address taken as ip from mother_server (gw_pri %d < %d and bootnetdevice_idx ok)" % (act_gw_pri, GATEWAY_THRESHOLD)
         def_ip = server_ip
     else:
@@ -489,19 +496,28 @@ def do_etc_hosts(conf):
         max_len = max(max_len, len(out_names) + 1)
     for pen, stuff in loc_dict.items():
         for l_e in stuff:
-            l_e.extend([""] * (max_len - len(l_e)) + ["# %d" % (pen)])
+            l_e.extend(
+                [""] * (max_len - len(l_e)) +
+                ["# %d" % (pen)]
+            )
     for p_value in sorted(loc_dict.keys()):
         act_list = sorted(loc_dict[p_value])
         max_len = [0] * len(act_list[0])
         for line in act_list:
             max_len = [max(max_len[entry], len(line[entry])) for entry in range(len(max_len))]
-        form_str = " ".join(["%%-%ds" % (part) for part in max_len])
+        form_str = " ".join(
+            [
+                "%%-%ds" % (part) for part in max_len
+            ]
+        )
         new_co += [
             "# penalty {:d}".format(p_value),
             ""
         ] + [
             form_str % (tuple(entry)) for entry in act_list
-        ] + [""]
+        ] + [
+            ""
+        ]
 
 
 def do_hosts_equiv(conf):

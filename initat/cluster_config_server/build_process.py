@@ -339,13 +339,18 @@ class BuildProcess(threading_tools.icswProcessObj):
                         r_type = get_type_from_config(server_type)
                         if r_type:
                             conf_dict["{}_uuid".format(server_type)] = get_server_uuid(r_type, act_server.device.uuid)
-                        cur_c.log("  %20s: %-25s (IP %15s)%s" % (
-                            server_type,
-                            conf_dict[server_type],
-                            server_ip,
-                            " (best of %d)" % (routes_found) if routes_found > 1 else ""))
+                        cur_c.log(
+                            "  {:<20s: {:<25s} (IP {:15s}){}".format(
+                                server_type,
+                                conf_dict[server_type],
+                                server_ip,
+                                " (best of {} found)".format(
+                                    logging_tools.get_plural("route", routes_found)
+                                ) if routes_found > 1 else ""
+                            )
+                        )
                     else:
-                        cur_c.log("  %20s: not found" % (server_type))
+                        cur_c.log("  {:20s}: not found".format(server_type))
             new_img = b_dev.new_image
             if new_img:
                 conf_dict["system"] = {
@@ -380,12 +385,14 @@ class BuildProcess(threading_tools.icswProcessObj):
             pseudo_config_list = config.objects.all().prefetch_related(
                 "config_str_set", "config_int_set", "config_bool_set", "config_blob_set", "config_script_set"
             ).order_by("-priority", "name")
-            config_dict = dict([(cur_pc.pk, cur_pc) for cur_pc in pseudo_config_list])
+            config_dict = {
+                cur_pc.pk: cur_pc for cur_pc in pseudo_config_list
+            }
             # copy variables
             for p_config in pseudo_config_list:
                 for var_type in ["str", "int", "bool", "blob"]:
-                    for cur_var in getattr(p_config, "config_%s_set" % (var_type)).all():
-                        conf_dict["%s.%s" % (p_config.name, cur_var.name)] = cur_var.value
+                    for cur_var in getattr(p_config, "config_{}_set".format(var_type)).all():
+                        conf_dict["{}.{}".format(p_config.name, cur_var.name)] = cur_var.value
             for _cur_conf in pseudo_config_list:
                 # cur_conf.show_variables(cur_c.log, detail=global_config["DEBUG"])
                 pass
@@ -425,18 +432,24 @@ class BuildProcess(threading_tools.icswProcessObj):
                         not_taken_list.append((cur_ip, cause))
             cur_c.log("%s in taken_list" % (logging_tools.get_plural("Netdevice", len(taken_list))))
             for entry, cause in taken_list:
-                cur_c.log("  - %-6s (IP %-15s, network %-20s) : %s" % (
-                    entry.netdevice.devname,
-                    entry.ip,
-                    str(entry.network),
-                    cause))
+                cur_c.log(
+                    "  - {:<6s} (IP {:<15s}, network {:<20s}) : {}".format(
+                        entry.netdevice.devname,
+                        entry.ip,
+                        str(entry.network),
+                        cause
+                    )
+                )
             cur_c.log("%s in not_taken_list" % (logging_tools.get_plural("Netdevice", len(not_taken_list))))
             for entry, cause in not_taken_list:
-                cur_c.log("  - %-6s (IP %-15s, network %-20s) : %s" % (
-                    entry.netdevice.devname,
-                    entry.ip,
-                    str(entry.network),
-                    cause))
+                cur_c.log(
+                    "  - {:<6s} (IP {:<15s}, network {:<20s}) : {}".format(
+                        entry.netdevice.devname,
+                        entry.ip,
+                        str(entry.network),
+                        cause
+                    )
+                )
             if cur_c.command == "get_config_vars":
                 cur_c.var_tuple_list = self._generate_vtl(conf_dict)
                 cur_c.add_set_keys("var_tuple_list")
@@ -456,13 +469,21 @@ class BuildProcess(threading_tools.icswProcessObj):
                     cur_c.log(
                         "error in scripts for {}: {}".format(
                             logging_tools.get_plural("config", len(conf_dict["called"][False])),
-                            ", ".join(sorted([str(config_dict[pk]) for pk, err_lines in conf_dict["called"][False]]))
+                            ", ".join(
+                                sorted(
+                                    [
+                                        str(config_dict[pk]) for pk, err_lines in conf_dict["called"][False]
+                                    ]
+                                )
+                            )
                         ),
                         logging_tools.LOG_LEVEL_ERROR,
                         state="done"
                     )
                     cur_c.add_set_keys("error_dict")
-                    cur_c.error_dict = dict([(str(config_dict[pk]), err_lines) for pk, err_lines in conf_dict["called"][False]])
+                    cur_c.error_dict = {
+                        str(config_dict[pk]): err_lines for pk, err_lines in conf_dict["called"][False]
+                    }
                 else:
                     cur_c.log("config built", state="done")
                 cur_bc.close()

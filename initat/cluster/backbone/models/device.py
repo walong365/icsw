@@ -22,28 +22,26 @@
 """ models for NOCTUA and CORVUS, device definition file """
 
 import crypt
+import datetime
 import logging
 import random
 import time
-import datetime
 import uuid
-import json
+from enum import Enum
 
-from django.db import models
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.db.models import signals, CASCADE, Q
 from django.dispatch import receiver
 from django.utils.crypto import get_random_string
 from django.utils.lru_cache import lru_cache
-from enum import Enum
 from lxml.builder import E
-from django.contrib.postgres.fields import JSONField
-from initat.cluster.backbone.models.asset import *
-from initat.cluster.backbone.models.variable import device_variable
+
 from initat.cluster.backbone.models.capability import ComCapability
 from initat.cluster.backbone.models.domain import *
 from initat.cluster.backbone.models.functions import check_empty_string, \
     check_integer, to_system_tz, cluster_timezone
+from initat.cluster.backbone.models.variable import device_variable
 from initat.cluster.backbone.signals import BootsettingsChanged
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store, logging_tools, server_command

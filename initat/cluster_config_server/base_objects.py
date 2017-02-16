@@ -36,7 +36,9 @@ class new_config_object(object):
         self.uid, self.gid = (0, 0)
         if self.c_type not in ["i", "?"]:
             cur_config = kwargs["config"]
-            self.mode = cur_config.dir_mode if self.c_type == "d" else (cur_config.link_mode if self.c_type == "l" else cur_config.file_mode)
+            self.mode = cur_config.dir_mode if self.c_type == "d" else (
+                cur_config.link_mode if self.c_type == "l" else cur_config.file_mode
+            )
             if "config" not in kwargs:
                 cur_config._add_object(self)
         for key, value in kwargs.items():
@@ -116,7 +118,7 @@ class file_object(new_config_object):
         if kwargs.get("from_image", False):
             s_dir = kwargs["dev_dict"]["image"].get("source", None)
             if s_dir:
-                s_content = open("%s/%s" % (s_dir, destination), "r").read()
+                s_content = open(os.path.join(s_dir, destination), "r").read()
                 self += s_content.split("\n")
 
     def set_config(self, ref_config):
