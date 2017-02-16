@@ -262,3 +262,21 @@
         </div>
     </div>
 </script>
+
+<script type="text/ng-template" id="icsw.livestatus.tooltip.dts_device">
+    <div class="panel panel-default svg-tooltip">
+        <div class="panel-heading">
+            <b>{{ node.data.name }}</b>
+        </div>
+        <div class="svg-tooltip-content">
+            <table class="table table-condensed">
+                <tbody>
+                    <tr>
+                        <td>IP:</td>
+                        <td>{{ node.data.ip_list }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</script>

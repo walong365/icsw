@@ -732,6 +732,10 @@ menu_module = angular.module(
                 @setup_web_socket()
             )
 
+            $rootScope.$on(ICSW_SIGNALS("ICSW_WEBSOCKET_VALID"), () =>
+                @setup_web_socket()
+            )
+
             _reload = () =>
                 # if @backg_timer
                 #     $timeout.cancel(@back_timer)

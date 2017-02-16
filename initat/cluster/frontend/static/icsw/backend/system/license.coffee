@@ -49,6 +49,10 @@ angular.module(
                 @setup_web_socket()
             )
 
+            $rootScope.$on(ICSW_SIGNALS("ICSW_WEBSOCKET_VALID"), () =>
+                @setup_web_socket()
+            )
+
         update: (c_list) ->
             @counter++
             _c = c_list.plain()[0]
@@ -102,7 +106,7 @@ angular.module(
 
         setup_web_socket: () ->
             @close_web_socket()
-            if icswUserService.user_present() and icswUserService.get().is_authenticated()
+            if icswUserService.user_present() and icswUserService.get().is_authenticated() and icswWebSocketService.valid()
                 icswWebSocketService.add_stream(
                     ICSW_ENUMS.WSStreamEnum.ova_counter
                     (data) ->

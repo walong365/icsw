@@ -696,6 +696,7 @@ angular.module(
             name: "DeviceTree"
             show_tree_expand_buttons: false
             show_descendants: true
+            tooltip_template_name: "dts_device"
         }
     )
     # treeconfig for groups
@@ -1333,8 +1334,10 @@ angular.module(
 ]).service("icswLayoutSelectionTreeService",
 [
     "DeviceOverviewService", "icswReactTreeConfig", "icswDeviceTreeService",
+    "icswDeviceTreeHelperService",
 (
     DeviceOverviewService, icswReactTreeConfig, icswDeviceTreeService,
+    icswDeviceTreeHelperService,
 ) ->
     {span} = React.DOM
     class icswLayoutSelectionTree extends icswReactTreeConfig
@@ -1427,4 +1430,34 @@ angular.module(
 
         selection_changed: () =>
             @notifier.notify("go")
+
+        get_tooltip_data: (t_entry) =>
+            _set_ip_list = (dev, data) ->
+                ip_list = []
+                for nd in dev.netdevice_set
+                    for ip in nd.net_ip_set
+                        ip_list.push(ip.ip)
+                if ip_list.length
+                    data.ip_list = ip_list.join(", ")
+                else
+                    data.ip_list = "none"
+            dev = @scope.struct.device_tree.all_lut[t_entry.obj]
+            data = {
+                name: dev.$$print_name
+                ip_list: "---"
+            }
+            if not dev.netdevice_set?
+                @scope.struct.device_tree.enrich_devices(
+                    icswDeviceTreeHelperService.create(
+                        @scope.struct.device_tree
+                        [dev]
+                    )
+                    ["network_info"]
+                ).then(
+                    (done) ->
+                        _set_ip_list(dev, data)
+                )
+            else
+                _set_ip_list(dev, data)
+            return data
 ])

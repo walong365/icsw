@@ -25,9 +25,9 @@ angular.module(
     []
 ).factory("icswReactTreeDrawNode",
 [
-    "$q", "$timeout",
+    "$q", "$timeout", "icswTooltipTools",
 (
-    $q, $timeout,
+    $q, $timeout, icswTooltipTools,
 ) ->
     {div, input, span, ul, li} = React.DOM
     icswReactTreeDrawNode = React.createClass(
@@ -35,6 +35,7 @@ angular.module(
             parent_cb: React.PropTypes.func
             tree_node: React.PropTypes.object
             tree_config: React.PropTypes.object
+            tooltip: React.PropTypes.object
         }
 
         get_span_class: () ->
@@ -62,7 +63,6 @@ angular.module(
             return r_class.join(" ")
 
         getInitialState: () ->
-            # console.log @props
             return {
                 draw_counter: 0
                 expand: @props.tree_node.expand
@@ -279,16 +279,27 @@ angular.module(
                         "#{_tn._num_descendants} / #{_tn._num_nd_descendants} / #{_tn._num_sel_descendants} / #{_tn._num_sel_childs}"
                     )
                 )
+            has_tooltip = if @props.tree_config.tooltip_template_name then true else false
             # add name
             _main_spans.push(
                 span(
                     {
                         key: "name"
                         className: "fancytree-title"
-                        # onMouseEnter: (event) =>
-                        #     console.log "me"
-                        # onMouseLeave: (event) =>
-                        #     console.log "ml"
+                        onMouseEnter: (event) =>
+                            if has_tooltip
+                                icswTooltipTools.show(
+                                    @props.tooltip
+                                    {
+                                        node_type: @props.tree_config.tooltip_template_name
+                                        data: @props.tree_config.get_tooltip_data(@props.tree_node)
+                                    }
+                                )
+                        onMouseLeave: (event) =>
+                            if has_tooltip
+                                icswTooltipTools.hide(
+                                    @props.tooltip
+                                )
                         onClick: (event) =>
                             _tc.handle_click(event, _tn)
                             @force_redraw()
@@ -297,9 +308,9 @@ angular.module(
                             _tc.handle_context_menu(event, _tn)
                             @force_redraw()
                             @props.parent_cb()
-                        # onDoubleClick: (event) =>
-                        #    console.log "DBL"
-                        #    _tc.handle_dbl_click(event, _tn)
+                        onMouseMove: (event) =>
+                            if has_tooltip
+                                icswTooltipTools.position(@props.tooltip, event)
                     }
                     _name_span_list
                 )
@@ -326,6 +337,7 @@ angular.module(
                                     parent_cb: @parent_cb
                                     tree_node: child
                                     tree_config: _tc
+                                    tooltip: @props.tooltip
                                 }
                             ) for child in _tn.children
                         ]
@@ -351,6 +363,7 @@ angular.module(
     return React.createClass(
         propTypes: {
             tree_config: React.PropTypes.object
+            tooltip: React.PropTypes.object
         }
 
         getInitialState: () ->
@@ -402,6 +415,7 @@ angular.module(
                                 parent_cb: @top_callback
                                 tree_node: root_node
                                 tree_config: _tc
+                                tooltip: @props.tooltip
                             }
                         ) for root_node in _tc.root_nodes
                     ]
@@ -580,6 +594,8 @@ angular.module(
             @single_select = false
             # search field
             @search_field = false
+            # name of tooltip template
+            @tooltip_template_name = ""
             # extra args for nodes
             @extra_args = []
             @root_nodes = []
@@ -907,6 +923,10 @@ angular.module(
             console.warn "node_search called with RE '#{s_re}' for #{entry}"
             return true
 
+        # access tooltip
+        get_tooltip_data: (entry) =>
+            console.warn "get_tooltip_data not implement for #{@name}", entry
+
         # selection changed callback
         selection_changed: (entry) =>
             console.warn "selection_changed not implemented for #{@name}"
@@ -923,9 +943,11 @@ angular.module(
 
 ]).directive("icswReactTree",
 [
-    "icswReactTreeDrawContainer", "icswReactTreeConfig", "$injector",
+    "icswReactTreeDrawContainer", "icswReactTreeConfig",
+    "icswTooltipTools",
 (
-    icswReactTreeDrawContainer, icswReactTreeConfig, $injector,
+    icswReactTreeDrawContainer, icswReactTreeConfig,
+    icswTooltipTools,
 ) ->
     return {
         restrict: "E"
@@ -955,14 +977,24 @@ angular.module(
                 tree_config = dummy_config
             else
                 tree_config = scope.tree_config
+            tooltip = icswTooltipTools.create_struct(
+                element
+                {
+                    offset_y: -10
+                }
+            )
             ReactDOM.render(
                 React.createElement(
                     icswReactTreeDrawContainer
                     {
                         tree_config: tree_config
+                        tooltip: tooltip
                     }
                 )
                 element[0]
+            )
+            scope.$on("$destroy", () ->
+                icswTooltipTools.delete_struct(tooltip)
             )
     }
 ])

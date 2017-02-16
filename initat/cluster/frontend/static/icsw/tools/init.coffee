@@ -811,6 +811,8 @@ angular.module(
         ICSW_LIVESTATUS_DEVICE_FOCUS: "icsw.device.livestatus.focus"
         # menu layout changed
         ICSW_MENU_LAYOUT_CHANGED: "icsw.menu.layout.changed"
+        # WebSocket valid
+        ICSW_WEBSOCKET_VALID: "icsw.websocket.valid"
 
         # local signals (for local $emit / $on)
 
@@ -2021,9 +2023,11 @@ angular.module(
 
 ]).service("icswWebSocketService",
 [
-    "$q", "$window", "ICSW_URLS", "Restangular", "icswTools",
+    "$q", "$window", "ICSW_URLS", "Restangular", "icswTools", "$rootScope",
+    "ICSW_SIGNALS",
 (
-    $q, $window, ICSW_URLS, Restangular, icswTools,
+    $q, $window, ICSW_URLS, Restangular, icswTools, $rootScope,
+    ICSW_SIGNALS,
 ) ->
     struct = {
         # active streams, stream_name -> callbacks
@@ -2130,6 +2134,7 @@ angular.module(
                         _defer.resolve(data.action)
                         delete struct.wait_streams_lut[data.streamId]
             struct.web_socket = ws
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_WEBSOCKET_VALID"))
             _defer.resolve(ws)
         ws.onerror = (_close_msg) =>
             _defer.reject("ws connection error for #{model_name}", _close_msg)

@@ -32,8 +32,8 @@ angular.module(
 (
     $q, $window, $rootScope, $templateCache, $compile,
 ) ->
-    create_struct = (anchor_element) ->
-        return {
+    create_struct = (anchor_element, kwargs) ->
+        _struct = {
             # anchor element
             element: anchor_element
             # dummy scope
@@ -44,7 +44,18 @@ angular.module(
             is_shown: false
             # node type, to create new tooltips on the fly
             node_type: null
+            # offsets x / y
+            offset_x: 0
+            offset_y: 0
         }
+        if kwargs?
+            for key, value of kwargs
+                if not _struct[key]?
+                    console.error "unknown key #{key} for icswTooltipTools.struct"
+                else
+                    _struct[key] = value
+        console.log _struct
+        return _struct
 
     delete_struct = (struct) ->
         struct.scope.$destroy()
@@ -56,6 +67,8 @@ angular.module(
             top_offset = if top_scroll then t_os else (struct.divlayer[0].offsetHeight + t_os) * -1
             left_scroll = $window.innerWidth - event.clientX - struct.divlayer[0].offsetWidth - t_os > 0
             left_offset = if left_scroll then t_os else (struct.divlayer[0].offsetWidth + t_os) * -1
+            left_offset += struct.offset_x
+            top_offset += struct.offset_y
             struct.divlayer.css('left', "#{event.clientX + left_offset}px")
             struct.divlayer.css('top', "#{event.clientY + top_offset}px")
 
