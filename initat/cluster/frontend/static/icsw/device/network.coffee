@@ -1442,13 +1442,13 @@ angular.module(
     "icswNetworkTreeService", "icswNetworkBackup", "icswComplexModalService", "$compile", "$templateCache",
     "toaster", "icswToolsSimpleModalService", "$timeout", "icswDispatcherSettingTreeService", "icswUserService",
     "icswDeviceTreeService", "icswWebSocketService", "icswConfigTreeService", "DeviceOverviewService",
-    "icswDeviceTreeHelperService"
+    "icswDeviceTreeHelperService", "ICSW_ENUMS"
 (
     Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI,
     icswNetworkTreeService, icswNetworkBackup, icswComplexModalService, $compile, $templateCache,
     toaster, icswToolsSimpleModalService, $timeout, icswDispatcherSettingTreeService, icswUserService,
     icswDeviceTreeService, icswWebSocketService, icswConfigTreeService, DeviceOverviewService,
-    icswDeviceTreeHelperService
+    icswDeviceTreeHelperService, ICSW_ENUMS
 ) ->
 
     # networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
@@ -1555,7 +1555,7 @@ angular.module(
     dispatcher_links = undefined
     nmap_scan_to_network_lut = {}
     nmap_scan_lut = {}
-    nmap_scans_websocket = undefined
+    ws_stream_id = undefined
 
     selected_button_class = "btn btn-success"
     unselected_button_class = "btn btn-default"
@@ -1636,11 +1636,15 @@ angular.module(
                             0
                         )
 
-                    nmap_scans_websocket = icswWebSocketService.get_ws("nmap_scans", nmap_scan_websocket_func)
+                    ws_stream_id = undefined
+                    icswWebSocketService.add_stream(ICSW_ENUMS.WSStreamEnum.nmap_scans, nmap_scan_websocket_func).then(
+                        (_ws_stream_id) ->
+                            ws_stream_id = _ws_stream_id
+                    )
 
                     scope.$on("$destroy", () ->
-                        if nmap_scans_websocket?
-                            nmap_scans_websocket.close()
+                        if ws_stream_id != undefined
+                            icswWebSocketService.remove_stream(ws_stream_id)
                             nmap_scans_websocket = undefined
                     )
 

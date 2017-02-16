@@ -71,27 +71,94 @@
                                 >
                                     <thead>
                                         <tr>
-                                            <th class="text-center" colspan=4>Device Information Module</th>
+                                            <th class="text-center" colspan=4>Device Selection</th>
 
                                         </tr>
                                         <tr>
                                             <th class="text-center">Name</th>
                                             <th class="text-center">Selection</th>
-                                            <th class="text-center">Description</th>
-                                            <th class="text-center">Selected Scan</th>
                                         </tr>
                                         <tr>
                                             <th></th>
                                             <th>
                                                 <input type="button" class="btn btn-sm btn-primary" ng-click="select_device_modules()" value="Select" style="display: block; margin: 0 auto;"/>
                                             </th>
-                                            <th></th>
-                                            <th></th>
                                         </tr>
                                     </thead>
 
                                     <tbody>
                                         <tr icsw-device-tree-report-row device="obj" ng-repeat="obj in entries_displayed" ng-class="get_tr_class(obj)"></tr>
+                                    </tbody>
+                                </table>
+                            </td>
+
+                            <td>
+                                <table
+                                    st-table="entries_displayed"
+                                    st-safe-src="struct.devices"
+                                    class="table table-hover table-condensed table-striped"
+                                    style="width:auto;"
+                                >
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center" colspan=3>Report Selection Settings</th>
+                                        </tr>
+                                        <tr>
+                                            <th class="text-center">Asset Scan Selection</th>
+                                            <th class="text-center">Monitoring Timerange</th>
+                                        </tr>
+                                        <tr>
+                                            <th>
+                                                <input type="button" class="btn btn-sm btn-primary" ng-click="select_device_modules()" ng-disabled="true" value="Select" style="display: block; margin: 0 auto;"/>
+                                            </th>
+                                            <th>
+                                                <input type="button" class="btn btn-sm btn-primary" ng-click="select_device_modules()" ng-disabled="true" value="Select" style="display: block; margin: 0 auto;"/>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="obj in entries_displayed" ng-class="get_tr_class(obj)">
+                                            <td style="height:40px; vertical-align: middle;">
+                                                <select class="form-control" ng-show="obj.$$available_scans.length > 0" ng-model="obj.$$selected_assetbatch" ng-change="assetbatch_selection_change(obj)">
+                                                    <option ng-repeat="scan in obj.$$available_scans" value="{{scan.idx}}">{{scan.$$report_option_string}}</option>
+                                                </select>
+                                                <div class="text-center" ng-show="obj.$$available_scans.length == 0">No scan data available!</div>
+                                            </td>
+                                            <td>
+                                                <div class="form-inline">
+                                                    <div class="form-group">
+                                                        &nbsp;
+                                                        <div class="btn-group">
+                                                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+                                                                <span class="glyphicon glyphicon-time"></span>
+                                                                {{ obj.$$reportstruct.duration_type }} <span class="caret"></span>
+                                                            </button>
+                                                            <ul class="dropdown-menu">
+                                                                <li ng-repeat="dur in get_allowed_durations()" ng-click="set_duration_type(dur, obj)">
+                                                                    <a>{{ dur }}</a>
+                                                                </li>
+                                                            </ul>
+                                                        </div>
+                                                        <div class="input-group">
+                                                            <input type="text"
+                                                                class="form-control"
+                                                                uib-datepicker-popup="{{ obj.$$reportstruct.date_options.format }}"
+                                                                ng-model="obj.$$reportstruct.startdate_dp"
+                                                                is-open="obj.$$reportstruct.date_options.$$opened"
+                                                                datepicker-options="obj.$$reportstruct.date_options"
+                                                                close-text="Close"
+                                                            >
+                                                                <span class="input-group-btn">
+                                                                    <button type="button" class="btn btn-default" ng-click="open_popup(obj)">
+                                                                        <i class="glyphicon glyphicon-calendar"></i>
+                                                                    </button>
+                                                                </span>
+                                                            </input>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </td>
@@ -473,16 +540,9 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.tree.report.row">
-    <td style="height:40px; vertical-align: middle;">{{ obj.name }}</td>
+    <td style="height:40px; vertical-align: middle;"><button type="button" class="btn btn-xs btn-success" ng-click="show_device($event, device)">{{ obj.full_name }}</button></td>
     <td style="height:40px; vertical-align: middle;">
         <input type="button" ng-class="get_dev_sel_class()" ng-click="toggle_dev_sel()" value="enabled"/>
-    </td>
-    <td style="height:40px; vertical-align: middle;">{{ obj.comment }}</td>
-    <td style="height:40px; vertical-align: middle;">
-        <select class="form-control" ng-show="obj.$$available_scans.length > 0" ng-model="obj.$$selected_assetbatch" ng-change="assetbatch_selection_change(obj)">
-            <option ng-repeat="scan in obj.$$available_scans" value="{{scan.idx}}">{{scan.$$report_option_string}}</option>
-        </select>
-        <div class="text-center" ng-show="obj.$$available_scans.length == 0">No scan data available!</div>
     </td>
 </script>
 
@@ -493,6 +553,4 @@
             <input type="button" ng-class="get_dev_sel_class()" ng-click="change_dg_sel()" value="enabled"/>
         </div>
     </td>
-    <td style="height:40px; vertical-align: middle;">{{ group.description }}</td>
-    <td style="height:40px; vertical-align: middle;"></td>
 </script>

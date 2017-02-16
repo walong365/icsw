@@ -1309,9 +1309,10 @@ def nmap_scan_post_save(sender, **kwargs):
     _ = sender
     if "instance" in kwargs:
         from initat.cluster.backbone.serializers import NmapScanSerializerSimple
+        from initat.cluster.backbone.websockets.constants import WSStreamEnum
 
         cur_inst = kwargs["instance"]
 
         serializer = NmapScanSerializerSimple(cur_inst)
 
-        propagate_channel_object("nmap_scans", serializer.data)
+        propagate_channel_object(WSStreamEnum.nmap_scans, serializer.data)

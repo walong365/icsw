@@ -37,3 +37,6 @@ class WSStreamEnum(Enum):
     background_jobs = WSStreamDefinition(False)
     ova_counter = WSStreamDefinition(False)
     device_scan_lock = WSStreamDefinition(False)
+    nmap_scans = WSStreamDefinition(False)
+    hm_status = WSStreamDefinition(False)
+    asset_batch = WSStreamDefinition(False)
