@@ -149,9 +149,10 @@ class background_job(models.Model):
 def background_job_post_save(sender, **kwargs):
     if "instance" in kwargs:
         # from initat.cluster.backbone.serializers import background_job_serializer
+        from initat.cluster.backbone.websockets.constants import WSStreamEnum
 
         propagate_channel_object(
-            "background_jobs",
+            WSStreamEnum.background_jobs,
             {
                 "background_jobs": background_job.objects.get_number_of_pending_jobs()
             }
