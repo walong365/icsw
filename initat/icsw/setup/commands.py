@@ -287,9 +287,15 @@ def create_db_cf(opts):
         "_engine": opts.engine,
     }
     if c_dict['database'] is None:
-        c_dict['database'] = DEFAULT_DATABASE
+        c_dict['database'] = 'cdbase'
     if c_dict['_engine'] is None:
         c_dict['_engine'] = DEFAULT_ENGINE
+    if c_dict['user'] is None:
+        c_dict['user'] = 'cdbuser'
+    if c_dict['passwd'] is None:
+        c_dict['passwd'] = generate_password()
+    if c_dict['host'] is None:
+        c_dict['host'] = 'localhost'
 
     all_parameters_forced = all(entry is not None for entry in c_dict.values())
 

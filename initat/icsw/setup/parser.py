@@ -26,7 +26,6 @@ import os
 
 from .commands import DB_CS_FILENAME
 from .constants import AVAILABLE_DATABASES
-from .utils import generate_password
 from ..icsw_logging import install_global_logger
 
 
@@ -60,19 +59,18 @@ class Parser(object):
             help="choose database engine [%(default)s]", 
         )
         group.add_argument(
-            "--user", type=str, default="cdbuser",
+            "--user", type=str,
             help="set name of database user"
         )
         group.add_argument(
-            "--passwd", type=str, default=generate_password(),
+            "--passwd", type=str,
             help="set password for database user"
         )
         group.add_argument(
-            "--database", type=str, help="set name of cluster database",
-            default="cdbase"
+            "--database", type=str, help="set name of cluster database"
         )
         group.add_argument(
-            "--host", type=str, default="localhost", help="set database host"
+            "--host", type=str, help="set database host"
         )
         group.add_argument(
             "--port", type=int, help="set database port"
