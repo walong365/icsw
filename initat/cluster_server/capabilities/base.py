@@ -38,7 +38,7 @@ class BackgroundBase(object):
         self.__last_call = None
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.server_process.log("[bg %s] %s" % (self.Meta.name, what), level)
+        self.server_process.log("[bg {}] {}".format(self.Meta.service_enum.name, what), level)
 
     def init_bg_stuff(self):
         pass
@@ -57,8 +57,8 @@ class BackgroundBase(object):
                     # machine vectors
                     mach_vectors.extend(add_obj)
                 else:
-                    drop_com["vector_{}".format(self.Meta.name)] = add_obj
-                    drop_com["vector_{}".format(self.Meta.name)].attrib["type"] = "vector"
+                    drop_com["vector_{}".format(self.Meta.icsw_service.name)] = add_obj
+                    drop_com["vector_{}".format(self.Meta.icsw_service.name)].attrib["type"] = "vector"
 
     def _call(self, cur_time, drop_com):
         self.log("dummy __call__()")
