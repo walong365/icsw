@@ -463,8 +463,8 @@ def get_config_var_list(config_obj, config_dev):
     return r_dict
 
 
-class server_check(object):
-    """ is called server_check, but can also be used for nodes """
+class icswServerCheck(object):
+    """ is called icswServerCheck, but can also be used for nodes """
     def __init__(self, **kwargs):
         # server_type: name of server, no wildcards supported (!)
         if "service_type_enum" in kwargs:
@@ -873,7 +873,13 @@ class server_check(object):
                         dest_ip_lut.setdefault(ip_id_lut[str(d_ip)], []).append(str(d_ip))
                     # print source_ip_lut, dest_ip_lut
                     # common identifiers, ignore localhost
-                    common_identifiers = (set(source_ip_lut.keys()) & set(dest_ip_lut.keys())) - set(["l"])
+                    common_identifiers = (
+                        set(
+                            source_ip_lut.keys()
+                        ) & set(
+                            dest_ip_lut.keys()
+                        )
+                    ) - set(["l"])
                     if common_identifiers:
                         for act_id in common_identifiers:
                             add_actual = True
@@ -937,7 +943,13 @@ class server_check(object):
                 for d_ip in other.netdevice_ip_lut[d_nd_pk]:
                     dest_ip_lut.setdefault(other.ip_identifier_lut[str(d_ip)], []).append(str(d_ip))
                 # common identifiers, ignore localhost
-                common_identifiers = (set(source_ip_lut.keys()) & set(dest_ip_lut.keys())) - set(["l"])
+                common_identifiers = (
+                    set(
+                        source_ip_lut.keys()
+                    ) & set(
+                        dest_ip_lut.keys()
+                    )
+                ) - set(["l"])
                 if common_identifiers:
                     for act_id in common_identifiers:
                         add_actual = True
@@ -1112,7 +1124,7 @@ class device_with_config(dict):
             for conf_or_srv_name, conf_pk, m_type, src_type in conf_list:
                 # print "%s (%s/%s), %s" % (conf_name, m_type, src_type, dev_key[0])
                 if self.__config_name:
-                    cur_struct = server_check(
+                    cur_struct = icswServerCheck(
                         short_host_name=dev_name,
                         server_type=conf_or_srv_name,
                         config=conf_dict[conf_pk],
@@ -1120,7 +1132,7 @@ class device_with_config(dict):
                         effective_device=dev_dict[dev_pk] if m_type == src_type else dev_dict[group_md_lut[devg_pk]],
                     )
                 else:
-                    cur_struct = server_check(
+                    cur_struct = icswServerCheck(
                         short_host_name=dev_name,
                         service_type_enum=self.__service_type_enum,
                         config=conf_dict[conf_pk],

@@ -55,7 +55,7 @@ class SyncConfig(object):
                 icswServiceEnum.monitor_slave,
                 master_cfg[icswServiceEnum.monitor_server][0].effective_device.uuid,
             )
-            slave_cfg = config_tools.server_check(
+            slave_cfg = config_tools.icswServerCheck(
                 host_name=monitor_server.full_name,
                 service_type_enum=icswServiceEnum.monitor_slave,
                 fetch_network_info=True

@@ -1193,7 +1193,7 @@ def main_normal():
     kernel_server_idx = 0
     # check for kernel_server
     mother_configs = config_tools.device_with_config(service_type_enum=icswServiceEnum.kernel_server)
-    ks_check = config_tools.server_check(service_type_enum=icswServiceEnum.kernel_server)
+    ks_check = config_tools.icswServerCheck(service_type_enum=icswServiceEnum.kernel_server)
     if not ks_check.effective_device:
         print("Host '{}' is not a kernel_server, exiting ...".format(short_host_name))
         sys.exit(1)

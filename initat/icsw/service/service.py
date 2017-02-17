@@ -161,17 +161,18 @@ class Service(object):
                 from initat.host_monitoring.client_enums import icswServiceEnum
             if self.entry.find(".//config-enums/config-enum") is not None:
                 _enum_names = [_entry.text for _entry in self.entry.findall(".//config-enums/config-enum")]
+                # print("_enum", _enum_names)
                 for _enum_name in _enum_names:
                     _enum = getattr(icswServiceEnum, _enum_name)
                     try:
-                        _cr = config_tools.server_check(service_type_enum=_enum)
+                        _cr = config_tools.icswServerCheck(service_type_enum=_enum)
                     except (threading_tools.int_error, threading_tools.term_error):
                         self.log("got int or term error, reraising", logging_tools.LOG_LEVEL_ERROR)
                         raise
                     except:
                         config_tools.close_db_connection()
                         try:
-                            _cr = config_tools.server_check(service_type_enum=_enum)
+                            _cr = config_tools.icswServerCheck(service_type_enum=_enum)
                         except:
                             # cannot get server_check instance, set config_check_ok to False
                             self.config_check_ok = False

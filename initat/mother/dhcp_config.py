@@ -112,7 +112,7 @@ class DHCPConfigMixin(object):
         is_authoritative = global_config["DHCP_AUTHORITATIVE"]
         self.log("writing dhcp-config, {}".format("auth" if is_authoritative else "not auth"))
 
-        my_c = config_tools.server_check(service_type_enum=icswServiceEnum.mother_server)
+        my_c = config_tools.icswServerCheck(service_type_enum=icswServiceEnum.mother_server)
         boot_ips = my_c.identifier_ip_lut.get("b", [])
         if not boot_ips:
             self.log(

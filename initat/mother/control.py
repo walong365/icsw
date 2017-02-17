@@ -1319,7 +1319,7 @@ class NodeControlProcess(threading_tools.icswProcessObj, server_mixins.EggConsum
         self.EC.init(global_config)
         # close database connection
         MotherSimpleCommand.setup(self)
-        self.sc = config_tools.server_check(service_type_enum=icswServiceEnum.mother_server)
+        self.sc = config_tools.icswServerCheck(service_type_enum=icswServiceEnum.mother_server)
         if "b" in self.sc.identifier_ip_lut:
             _boot_ips = self.sc.identifier_ip_lut["b"]
             self.log(

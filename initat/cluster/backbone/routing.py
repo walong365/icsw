@@ -34,7 +34,7 @@ from initat.cluster.backbone.models import device
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import uuid_tools, logging_tools, server_command
-from initat.tools.config_tools import server_check, device_with_config, RouterObject
+from initat.tools.config_tools import icswServerCheck, device_with_config, RouterObject
 
 logger = logging.getLogger("cluster.routing")
 
@@ -227,7 +227,7 @@ class SrvTypeRouting(object):
 
     def _build_resolv_dict(self):
         # local device
-        _myself = server_check(server_type="", fetch_network_info=True)
+        _myself = icswServerCheck(server_type="", fetch_network_info=True)
         _router = RouterObject(self.logger)
         enum_names = set()
         # build reverse lut

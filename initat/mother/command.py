@@ -288,7 +288,7 @@ class ExternalCommandProcess(threading_tools.icswProcessObj):
         MotherSimpleCommand.setup(self)
         self.router_obj = config_tools.RouterObject(self.log)
         self.snmp_sink = SNMPSink(self.log)
-        self.sc = config_tools.server_check(service_type_enum=icswServiceEnum.mother_server)
+        self.sc = config_tools.icswServerCheck(service_type_enum=icswServiceEnum.mother_server)
         self.register_func("delay_command", self._delay_command)
         self.register_func("hard_control", self._hard_control)
         self.register_func("snmp_finished", self._snmp_finished)

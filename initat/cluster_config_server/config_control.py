@@ -76,8 +76,10 @@ class ConfigControl(object):
     def create_logger(self):
         if self.__log_template is None:
             self.__log_template = logging_tools.get_logger(
-                "%s.%s" % (global_config["LOG_NAME"],
-                           self.device.full_name.replace(".", r"\.")),
+                "{}.{}".format(
+                    global_config["LOG_NAME"],
+                    self.device.full_name.replace(".", r"\.")
+                ),
                 global_config["LOG_DESTINATION"],
                 zmq=True,
                 context=ConfigControl.srv_process.zmq_context,
