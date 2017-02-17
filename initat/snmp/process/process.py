@@ -47,7 +47,6 @@ class SNMPProcess(threading_tools.icswProcessObj):
         self.__log_template = logging_tools.get_logger(
             self.__log_name,
             self.__log_destination,
-            zmq=True,
             context=self.zmq_context
         )
         self.__return_proc_name = None

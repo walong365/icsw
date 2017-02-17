@@ -114,7 +114,6 @@ def main():
     logger = logging_tools.get_logger(
         "openvpn_tls_check",
         get_log_path(icswLogHandleTypes.log_py),
-        zmq=True,
         context=zmq_context
     )
     # for key in sorted(os.environ):

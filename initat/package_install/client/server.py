@@ -38,7 +38,6 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         threading_tools.icswProcessPool.__init__(
             self,
             "main",
-            zmq=True,
             global_config=global_config,
         )
         self.CC.init(icswServiceEnum.package_client, self.global_config)

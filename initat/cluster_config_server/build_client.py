@@ -107,9 +107,7 @@ class build_client(object):
                 self.name.replace(".", r"\.")
             ),
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=build_client.srv_process.zmq_context,
-            init_logger=True
         )
         self.log("added client ({} [{:d})".format(self.name, self.pk))
 

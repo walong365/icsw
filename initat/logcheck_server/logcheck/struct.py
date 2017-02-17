@@ -258,9 +258,7 @@ class Machine(object):
                 cur_dev.full_name.replace(".", r"\.")
             ),
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=Machine.srv_proc.zmq_context,
-            init_logger=True,
         )
         self.device = cur_dev
         self.name = cur_dev.name

@@ -35,6 +35,27 @@ from .generators import do_fstab, do_nets, do_routes, do_ssh, do_uuid, \
 from .partition_setup import icswPartitionSetup
 
 
+class dummy_ios(object):
+    """
+    dummy container for I/O redirection
+    used for example in cluster-config-server.py
+    """
+    def __init__(self):
+        self.out_buffer = []
+
+    def write(self, what):
+        self.out_buffer.append(what)
+
+    def close(self):
+        pass
+
+    def __del__(self):
+        pass
+
+    def get_content(self):
+        return "".join(self.out_buffer)
+
+
 class GeneralTreeNode(object):
     """ tree node representation for intermediate creation of tree_node structure """
     def __init__(self, path="", c_node=None, is_dir=True, parent=None, intermediate=False):
@@ -430,7 +451,7 @@ class BuildContainer(object):
                 compile_time = time.time() - start_c_time
                 # prepare stdout / stderr
                 start_time = time.time()
-                stdout_c, stderr_c = (logging_tools.dummy_ios(), logging_tools.dummy_ios())
+                stdout_c, stderr_c = (dummy_ios(), dummy_ios())
                 old_stdout, old_stderr = (sys.stdout, sys.stderr)
                 sys.stdout, sys.stderr = (stdout_c, stderr_c)
                 self.__touched_objects, self.__touched_links, self.__deleted_files = ([], [], [])

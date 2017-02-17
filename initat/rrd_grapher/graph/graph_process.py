@@ -45,9 +45,7 @@ class GraphProcess(threading_tools.icswProcessObj, server_mixins.OperationalErro
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context,
-            init_logger=True,
         )
         db_tools.close_connection()
         self.EC.init(global_config)

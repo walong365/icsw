@@ -131,9 +131,7 @@ class BuildProcess(threading_tools.icswProcessObj):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context,
-            init_logger=True
         )
         db_tools.close_connection()
         self.register_func("compress", self._compress)
@@ -220,7 +218,6 @@ class ServerProcess(threading_tools.icswProcessPool):
         threading_tools.icswProcessPool.__init__(
             self,
             "main",
-            zmq=True,
         )
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
@@ -228,7 +225,6 @@ class ServerProcess(threading_tools.icswProcessPool):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context
         )
         # log config

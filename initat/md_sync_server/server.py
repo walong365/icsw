@@ -52,7 +52,7 @@ class server_process(
 ):
     def __init__(self):
         process_tools.ALLOW_MULTIPLE_INSTANCES = False
-        threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
+        threading_tools.icswProcessPool.__init__(self, "main")
         self.CC.init(icswServiceEnum.monitor_slave, global_config)
         self.CC.check_config()
         self.__verbose = global_config["VERBOSE"]

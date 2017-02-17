@@ -37,7 +37,7 @@ from initat.tools import server_mixins, configfile, logging_tools, \
 @server_mixins.RemoteCallProcess
 class ServerProcess(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, server_mixins.SendToRemoteServerMixin):
     def __init__(self):
-        threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
+        threading_tools.icswProcessPool.__init__(self, "main")
         self.CC.init(icswServiceEnum.logcheck_server, global_config)
         self.CC.check_config()
         self.CC.read_config_from_db(

@@ -290,7 +290,6 @@ def main():
     logger = logging_tools.get_logger(
         loc_config["LOG_NAME"],
         loc_config["LOG_DESTINATION"],
-        init_logger=True
     )
     if loc_config["DAEMONIZE"]:
         process_tools.become_daemon()  # deprecated call

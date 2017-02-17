@@ -39,7 +39,6 @@ class server_process(server_mixins.ICSWBasePool):
         threading_tools.icswProcessPool.__init__(
             self,
             "main",
-            zmq=True,
         )
         self.CC.init(icswServiceEnum.snmp_relay, global_config)
         self.CC.check_config()

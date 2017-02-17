@@ -52,7 +52,11 @@ class MyLogProcess(threading_tools.icswProcessObj):
         threading_tools.icswProcessObj.__init__(self, t_name)
 
     def process_init(self):
-        self.__log_template = logging_tools.get_logger(self.__options.log_name, get_log_path(icswLogHandleTypes(self.__options.handle)), zmq=True, context=self.zmq_context)
+        self.__log_template = logging_tools.get_logger(
+            self.__options.log_name,
+            get_log_path(icswLogHandleTypes(self.__options.handle)),
+            context=self.zmq_context
+        )
         self.__log_template.log_command("set_max_line_length {:d}".format(256))
         self.__log_str = self.__options.mult * (" ".join(self.__options.args))
         self.log("log_str has {}".format(logging_tools.get_plural("byte", len(self.__log_str))))
@@ -78,11 +82,10 @@ class MyProcessPool(threading_tools.icswProcessPool):
     def __init__(self, options):
         self.__options = options
         self.__log_template, self.__log_cache = (None, [])
-        threading_tools.icswProcessPool.__init__(self, self.__options.log_name, zmq=True)
+        threading_tools.icswProcessPool.__init__(self, self.__options.log_name)
         self.__log_template = logging_tools.get_logger(
             options.log_name,
             get_log_path(icswLogHandleTypes(options.handle)),
-            zmq=True,
             context=self.zmq_context
         )
         self.__log_template.log_command("set_max_line_length {:d}".format(256))
@@ -125,7 +128,7 @@ def main():
     if options.use_log_com:
         MyProcessPool(options).loop()
     else:
-        io_stream_helper.icswIOStream(icswLogHandleTypes(options.handle), zmq=True).write(" ".join(options.args))
+        io_stream_helper.icswIOStream(icswLogHandleTypes(options.handle)).write(" ".join(options.args))
 
 
 if __name__ == "__main__":

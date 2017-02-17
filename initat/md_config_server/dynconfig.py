@@ -44,9 +44,7 @@ class DynConfigProcess(threading_tools.icswProcessObj):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context,
-            init_logger=True,
         )
         db_tools.close_connection()
         self.register_func("monitoring_info", self._monitoring_info)

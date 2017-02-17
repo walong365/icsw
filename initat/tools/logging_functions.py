@@ -53,7 +53,7 @@ def get_logger(cs, handle_name, logger_name):
     _dir, _fname = os.path.split(full_name)
     if not os.path.isdir(_dir):
         os.makedirs(_dir)
-    new_h = logging_tools.logfile(
+    new_h = logging_tools.icswLogfile(
         full_name,
         max_bytes=cs["log.max.size.logs"],
         max_age_days=cs["log.max.age.logs"],

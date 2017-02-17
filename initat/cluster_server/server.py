@@ -40,7 +40,7 @@ from .license_checker import LicenseChecker
 
 class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServerMixin, ServerBackgroundNotifyMixin):
     def __init__(self):
-        threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
+        threading_tools.icswProcessPool.__init__(self, "main")
         long_host_name, mach_name = process_tools.get_fqdn()
         self.__run_command = True if global_config["COMMAND"].strip() else False
         # rewrite LOG_NAME if necessary

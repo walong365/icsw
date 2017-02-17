@@ -81,9 +81,8 @@ class ConfigControl(object):
                     self.device.full_name.replace(".", r"\.")
                 ),
                 global_config["LOG_DESTINATION"],
-                zmq=True,
                 context=ConfigControl.srv_process.zmq_context,
-                init_logger=True)
+            )
             self.log("added client %s (%s)" % (str(self.device), self.device.uuid))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):

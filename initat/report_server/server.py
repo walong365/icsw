@@ -37,7 +37,7 @@ class ServerProcess(
     server_mixins.SendToRemoteServerMixin
 ):
     def __init__(self):
-        threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
+        threading_tools.icswProcessPool.__init__(self, "main")
         self.CC.init(icswServiceEnum.report_server, global_config)
         self.CC.check_config()
         self.CC.log_config()

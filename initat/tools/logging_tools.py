@@ -361,44 +361,6 @@ class progress_counter(object):
         return True if not self.__start_count else False
 
 
-class dummy_ios(object):
-    """
-    dummy container for I/O redirection
-    used for example in cluster-config-server.py
-    """
-    def __init__(self):
-        self.out_buffer = []
-
-    def write(self, what):
-        self.out_buffer.append(what)
-
-    def close(self):
-        pass
-
-    def __del__(self):
-        pass
-
-    def get_content(self):
-        return "".join(self.out_buffer)
-
-
-class dummy_ios_low(object):
-    def __init__(self, save_fd):
-        self.orig_fd = save_fd
-        self.save_fd = os.dup(self.orig_fd)
-        self.tmp_fo = os.tmpfile()
-        self.new_fd = self.tmp_fo.fileno()
-        os.dup2(self.new_fd, self.orig_fd)
-
-    def close(self):
-        self.tmp_fo.seek(0)
-        self.data = self.tmp_fo.read()
-        os.dup2(self.save_fd, self.orig_fd)
-        del self.orig_fd
-        del self.tmp_fo
-        os.close(self.save_fd)
-
-
 class form_list(object):
     def __init__(self):
         self.lines = []
@@ -859,7 +821,7 @@ class my_formatter(logging.Formatter):
         return logging.Formatter.format(self, message)
 
 
-class logfile(logging.handlers.BaseRotatingHandler):
+class icswLogfile(logging.handlers.BaseRotatingHandler):
     def __init__(self, filename, mode="a", max_bytes=1000000, encoding=None, max_age_days=365):
         # always append if max_size > 0
         if max_bytes > 0:

@@ -56,9 +56,7 @@ class Host(object):
                 self.name.replace(".", r"\.")
             ),
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=Host.process.zmq_context,
-            init_logger=True
         )
         self.log("added client, type is {}".format("META" if self.device.is_meta_device else "real"))
         self.additional_lut_keys = set()
@@ -1275,7 +1273,6 @@ class ICMPProcess(threading_tools.icswProcessObj):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context
         )
         self.__verbose = global_config["VERBOSE"]
@@ -1309,9 +1306,7 @@ class NodeControlProcess(threading_tools.icswProcessObj, server_mixins.EggConsum
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context,
-            init_logger=True
         )
         db_tools.close_connection()
         self.node_src = log_source_lookup("node", None)

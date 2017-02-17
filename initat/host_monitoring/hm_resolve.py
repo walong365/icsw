@@ -48,7 +48,6 @@ class ResolveProcess(threading_tools.icswProcessObj):
         self.__log_template = logging_tools.get_logger(
             self.global_config["LOG_NAME"],
             self.global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context
         )
         # log.startLoggingWithObserver(my_observer, setStdout=False)

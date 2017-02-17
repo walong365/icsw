@@ -41,7 +41,6 @@ class ServerProcess(
         threading_tools.icswProcessPool.__init__(
             self,
             "main",
-            zmq=True,
         )
         self.CC.init(icswServiceEnum.rms_server, global_config)
         self.CC.check_config()

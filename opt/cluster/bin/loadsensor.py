@@ -140,8 +140,6 @@ def main():
     log_template = logging_tools.get_logger(
         "loadsensor",
         get_log_path(icswLogHandleTypes.log_py),
-        init_logger=True,
-        zmq=True,
         context=zmq_context,
     )
     base_dir = "/etc/sysconfig/licenses"

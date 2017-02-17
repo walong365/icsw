@@ -172,7 +172,6 @@ class RMSJob(object):
                 self.__log_name.replace(".", "\.")
             ),
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.p_pool.zmq_context
         )
         self._init_exit_code()
@@ -410,7 +409,6 @@ class RMSJob(object):
                 name
             ),
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.p_pool.zmq_context
         )
         if isinstance(content, str) and content.startswith("/"):
@@ -1459,7 +1457,6 @@ class ProcessPool(threading_tools.icswProcessPool):
         threading_tools.icswProcessPool.__init__(
             self,
             "main",
-            zmq=True,
             blocking_loop=False,
             # zmq_debug=True,
             zmq_contexts=1,
@@ -1468,7 +1465,6 @@ class ProcessPool(threading_tools.icswProcessPool):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context
         )
         self.install_signal_handlers()

@@ -40,7 +40,7 @@ from .config_control import ConfigControl
 
 class server_process(server_mixins.ICSWBasePool):
     def __init__(self):
-        threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
+        threading_tools.icswProcessPool.__init__(self, "main")
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.CC.init(icswServiceEnum.config_server, global_config)
