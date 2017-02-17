@@ -107,11 +107,11 @@ rm -f /etc/sysconfig/cluster/.disable_rrdcached_start
 
 # add idg to webserver group
 if [ -f /etc/debian_version ] ; then
-    usermod -G idg www-data
+    usermod -a -G idg www-data
 elif [ -f /etc/redhat-release ] ; then
-    usermod -G idg apache
+    usermod -a -G idg apache
 else
-    usermod -G idg wwwrun
+    usermod -a -G idg wwwrun
 fi
 
 [ ! -d ${STATIC_DIR} ] && mkdir -p ${STATIC_DIR}
