@@ -57,8 +57,8 @@ class BackgroundBase(object):
                     # machine vectors
                     mach_vectors.extend(add_obj)
                 else:
-                    drop_com["vector_{}".format(self.Meta.icsw_service.name)] = add_obj
-                    drop_com["vector_{}".format(self.Meta.icsw_service.name)].attrib["type"] = "vector"
+                    drop_com["vector_{}".format(self.Meta.service_enum.name)] = add_obj
+                    drop_com["vector_{}".format(self.Meta.service_enum.name)].attrib["type"] = "vector"
 
     def _call(self, cur_time, drop_com):
         self.log("dummy __call__()")
