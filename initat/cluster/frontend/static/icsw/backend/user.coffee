@@ -303,10 +303,11 @@ angular.module(
         _handle_var: (name) =>
             _remove_latest = () =>
                 # remove latest var
-                @__vars_to_save[name].shift()
+                [_name, _value, _type, _defer] = @__vars_to_save[name].shift()
                 if @__vars_to_save[name].length
                     # any requests left ?
                     @_handle_var(name)
+                return _defer
 
             [name, value, var_type, _result] = @__vars_to_save[name][0]
             _wait = $q.defer()
@@ -336,13 +337,11 @@ angular.module(
                         console.log "create new user_variable: ", nv
                         _wait.resolve(nv)
                 )
-            _result = $q.defer()
             _wait.promise.then(
                 (_var) =>
                     if _var.var_type != var_type
                         console.error "trying to change var_type for '#{_var.name}'' from '#{_var.var_type}' to '#{var_type}'"
-                        _remove_latest()
-                        _result.reject("wrong type")
+                        _remove_latest().reject("wrong type")
                     else
                         if var_type == "j"
                             _var.json_value = value
@@ -357,11 +356,9 @@ angular.module(
                                     _.remove(@user.user_variable_set, (entry) -> return entry.idx == new_var.idx)
                                 @user.user_variable_set.push(new_var)
                                 @build_luts()
-                                _remove_latest()
-                                _result.resolve(new_var)
+                                _remove_latest().resolve(new_var)
                             (not_ok) =>
-                                _remove_latest()
-                                _result.reject("not modifed")
+                                _remove_latest().reject("not modifed")
                         )
             )
 
