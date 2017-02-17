@@ -441,6 +441,13 @@ class update_modules_command(hm_classes.MonitoringCommand):
 
             modules_updated = 0
 
+            # remove _all_ old module files
+            for root, dirs, files in os.walk(local_mc.get_root_dir()):
+                for _file in files:
+                    path = os.path.join(root, _file)
+                    if not os.path.isdir(path):
+                        os.remove(path)
+
             for module_name in new_modules_dict.keys():
                 path = os.path.normpath(os.path.join(local_mc.get_root_dir(), module_name))
                 f = open(path, "wb")

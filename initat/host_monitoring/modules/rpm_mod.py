@@ -498,6 +498,16 @@ def rpmlist_int(rpm_root_dir, re_strs, is_debian):
     except subprocess.CalledProcessError as e:
         ret_dict = e.output.decode()
         returncode = e.returncode
+    except Exception as e:
+        if not is_debian:
+            # see http://rpm.org/user_doc/db_recovery.html
+            rpm_db_dir = "/var/lib/rpm"
+            for _file in os.listdir(rpm_db_dir):
+                if _file.startswith("__db"):
+                    path = os.path.join(rpm_db_dir, _file)
+                    os.remove(path)
+
+        raise e
     else:
         ret_dict = {}
         if is_debian:
@@ -576,8 +586,6 @@ def get_update_list():
     update_commands = []
     update_list = []
     log_list = []
-    errors_happened = False
-    update_command = None
 
     if os.path.isdir("/etc/zypp"):
         def update_command_handler():
@@ -638,16 +646,9 @@ def get_update_list():
             output = subprocess.check_output(update_command_args, stderr=subprocess.STDOUT).decode()
         except subprocess.CalledProcessError as e:
             log_list.append('"{}" failed with return code {}'.format(" ".join(update_command_args), e.returncode))
-            errors_happened = True
             break
         else:
             if update_command_handler:
                 update_command_handler()
-
-    if errors_happened:
-        try:
-            subprocess.check_output(["killall", "-s9", update_command], stderr=subprocess.STDOUT)
-        except Exception as e:
-            _ = e
 
     return update_list, log_list
