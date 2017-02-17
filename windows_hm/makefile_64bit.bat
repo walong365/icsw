@@ -16,14 +16,14 @@ bin\7z -o.\tmp\zero x WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH
 MOVE .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64 .\host_monitor_windows
 .\host_monitor_windows\python.exe -m pip install --upgrade pip
 .\host_monitor_windows\python.exe -m pip install lxml==3.7.2
-.\host_monitor_windows\python.exe -m pip install netifaces==0.10.4
+.\host_monitor_windows\python.exe -m pip install netifaces==0.10.5
 .\host_monitor_windows\python.exe -m pip install setproctitle==1.1.10
 .\host_monitor_windows\python.exe -m pip install pyzmq==16.0.2
 .\host_monitor_windows\python.exe -m pip install psutil==5.1.3
+.\host_monitor_windows\python.exe -m pip install inflection==0.3.1
 .\host_monitor_windows\python.exe -m pip install wmi
 .\host_monitor_windows\python.exe -m pip install pypiwin32
 
-XCOPY .\inflection.py .\host_monitor_windows\Lib\site-packages\
 XCOPY .\syslog.py .\host_monitor_windows\Lib\site-packages\
 XCOPY .\service_manager.py .\host_monitor_windows\
 
