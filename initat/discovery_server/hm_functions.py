@@ -137,7 +137,8 @@ class HostMonitoringMixin(object):
         hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         res_node = ResultNode()
         s_time = time.time()
-        self.get_route_to_devices([scan_dev])
+        # global config should be a kwarg
+        self.get_route_to_devices(self.global_config, [scan_dev])
         self.log(
             "scanning system for device '{}' ({:d}), scan_address is '{}'".format(
                 str(scan_dev),

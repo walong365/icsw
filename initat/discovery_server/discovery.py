@@ -39,8 +39,15 @@ from .snmp_functions import SNMPBatch
 
 class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.icswProcessObj, HostMonitoringMixin, BaseScanMixin, WmiScanMixin, EggConsumeMixin):
     def process_init(self):
+        # hm ...
+        self.global_config = global_config
         global_config.enable_pm(self)
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context
+        )
         db_tools.close_connection()
         self.register_func("fetch_partition_info", self._fetch_partition_info)
         self.register_func("scan_network_info", self._scan_network_info)

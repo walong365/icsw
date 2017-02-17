@@ -84,7 +84,7 @@ class ScanBatch(object):
         if "scan_address" in dev_com.attrib:
             self.device.target_ip = dev_com.attrib["scan_address"]
         else:
-            self.__class__.process.get_route_to_devices([self.device])
+            self.__class__.process.get_route_to_devices(global_config, [self.device])
 
         if not self.device.target_ip:
             self.log("no valid IP found for {}".format(str(self.device)), logging_tools.LOG_LEVEL_ERROR)
@@ -689,7 +689,7 @@ class Dispatcher(object):
                     _com.matchcode: True for _com in target_device.com_capability_list.all()
                     }
 
-                self.discovery_process.get_route_to_devices([target_device])
+                self.discovery_process.get_route_to_devices(global_config, [target_device])
 
                 new_asset_batch = AssetBatch(device=target_device, user=schedule_item.user)
                 new_asset_batch.manual_scan = schedule_item.run_now
@@ -811,7 +811,7 @@ class Dispatcher(object):
         _network = network.objects.get(idx=schedule_item.object_id)
         network_str = str(netaddr.IPNetwork("{}/{}".format(_network.network, _network.netmask)))
 
-        self.discovery_process.get_route_to_devices([target_device])
+        self.discovery_process.get_route_to_devices(global_config, [target_device])
 
         conn_str = "tcp://{}:{:d}".format(target_device.target_ip, self.__hm_port)
         new_srv_com = server_command.srv_command(command="nmap_scan", network=network_str)
@@ -868,7 +868,7 @@ class Dispatcher(object):
     def hostmonitor_status_schedule_handler(self, schedule_item):
         device_pks = ast.literal_eval(schedule_item.schedule_handler_data)
         devices = device.objects.filter(idx__in=device_pks)
-        self.discovery_process.get_route_to_devices(devices)
+        self.discovery_process.get_route_to_devices(global_config, devices)
 
         status_commands = ["platform", "version", "modules_fingerprint"]
 
@@ -921,7 +921,7 @@ class Dispatcher(object):
     def hostmonitor_update_modules_handler(self, schedule_item):
         device_pk = int(schedule_item.schedule_handler_data)
         _device = device.objects.get(idx=device_pk)
-        self.discovery_process.get_route_to_devices([_device])
+        self.discovery_process.get_route_to_devices(global_config, [_device])
 
         from initat.host_monitoring.modules import local_mc
         import pickle
@@ -986,7 +986,7 @@ class Dispatcher(object):
 
         devices = device.objects.filter(idx__in=data["device_ids"])
         update_file_data = binascii.b2a_base64(data["update_file_data"]).decode()
-        self.discovery_process.get_route_to_devices(devices)
+        self.discovery_process.get_route_to_devices(global_config, devices)
 
         for _device in devices:
             conn_str = "tcp://{}:{:d}".format(_device.target_ip, self.__hm_port)

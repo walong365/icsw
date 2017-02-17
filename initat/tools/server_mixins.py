@@ -1272,11 +1272,10 @@ class ICSWBasePoolClient(threading_tools.icswProcessPool, NetworkBindMixin, Serv
 
 
 class GetRouteToDevicesMixin(object):
-    def get_route_to_devices(self, dev_list):
+    def get_route_to_devices(self, global_config, dev_list):
         from initat.cluster.backbone.models import device, net_ip
         from initat.tools import config_tools
         from django.db.models import Q
-        global_config = configfile.get_global_config(process_tools.get_programm_name())
 
         src_dev = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         src_nds = src_dev.netdevice_set.all().values_list("pk", flat=True)

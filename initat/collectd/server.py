@@ -1167,7 +1167,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         target_dev = device.objects.get(idx=device_pk)
         collectd_dev = device.objects.get(pk=global_config["SERVER_IDX"])
 
-        self.get_route_to_devices([collectd_dev, target_dev])
+        self.get_route_to_devices(global_config, [collectd_dev, target_dev])
 
         if target_dev.target_ip and collectd_dev.target_ip:
             device_flags = DeviceFlagsAndSettings.objects.filter(device=target_dev)
