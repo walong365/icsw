@@ -396,7 +396,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             )
         )
         s_time = time.time()
-        _sc = config_tools.server_check(service_type_enum=_srv_type)
+        _sc = config_tools.icswServerCheck(service_type_enum=_srv_type)
         res_dict = _sc.get_route_to_other_devices(_router, devs, allow_route_to_other_networks=True)
         _reachable, _unreachable = ([], [])
         for dev in devs:

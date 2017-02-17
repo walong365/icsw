@@ -1079,7 +1079,12 @@ class ServiceState(object):
                 "command {} not defined".format(srv_com["command"].text),
                 server_command.SRV_REPLY_STATE_ERROR,
             )
-        self.log("handled command {} in {}".format(_com, logging_tools.get_diff_time_str(time.time() - cur_time)))
+        self.log(
+            "handled command {} in {}".format(
+                _com,
+                logging_tools.get_diff_time_str(time.time() - cur_time)
+            )
+        )
         return trigger
 
     def _enable_command(self, srv_com):

@@ -51,6 +51,23 @@ logging.addLevelName(LOG_LEVEL_CRITICAL, "crit")
 UNIFIED_NAME = "unified"
 
 
+class MeasureTime(object):
+    def __init__(self, quiet=False):
+        self._quiet = quiet
+        self._time = time.time()
+
+    def step(self, what):
+        cur_time = time.time()
+        if not self._quiet:
+            print(
+                "{:<20s} : {:>8.3f} ms".format(
+                    what,
+                    (cur_time - self._time) * 1000.
+                )
+            )
+        self._time = cur_time
+
+
 def rewrite_log_destination(log_dest):
     if log_dest.startswith("uds:"):
         log_dest = log_dest.replace("uds:", "ipc://")

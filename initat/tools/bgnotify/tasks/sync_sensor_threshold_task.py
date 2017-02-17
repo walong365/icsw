@@ -34,7 +34,7 @@ class SyncSensorThresholdTask(BGInotifyTask):
         _src_com = server_command.srv_command(source=cur_bg.command_xml)
         # target command
         srv_com = server_command.srv_command(command="sync_sensor_threshold")
-        _sc = config_tools.server_check(service_type_enum=icswServiceEnum.collectd_server)
+        _sc = config_tools.icswServerCheck(service_type_enum=icswServiceEnum.collectd_server)
         to_run = []
         if _sc.effective_device:
             to_run.append(

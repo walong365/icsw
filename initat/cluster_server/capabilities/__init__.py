@@ -112,7 +112,7 @@ class CapabilityProcess(threading_tools.icswProcessObj):
                         server_config=True,
                         # system_config=True,
                     )
-                    _sql_info = config_tools.server_check(server_type=cap_name)
+                    _sql_info = config_tools.icswServerCheck(server_type=cap_name)
                     if _sql_info.effective_device:
                         self.__cap_list.append(cap_name)
                         self.__server_cap_dict[cap_name] = _srv_cap(self, _sql_info)

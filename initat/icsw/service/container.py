@@ -265,15 +265,22 @@ class ServiceContainer(object):
 
     # main entry point: check_system
     def check_system(self, opt_ns, instance_xml):
+        mt = logging_tools.MeasureTime(quiet=True)
         check_list = self.apply_filter(opt_ns.service, instance_xml)
+        mt.step("filter")
         self.update_proc_dict()
+        mt.step("proc")
         self.update_valid_licenses()
+        mt.step("lic")
         self.update_version_tuple()
+        mt.step("vers")
         if opt_ns.meta:
             from initat.host_monitoring.client_enums import icswServiceEnum
             # print(icswServiceEnum.meta_server.value.msi_block_name)
             if os.path.exists(process_tools.MSIBlock.path_name(icswServiceEnum.meta_server.value.msi_block_name)):
+                # print("*")
                 meta_result = query_local_meta_server(instance_xml, "overview", services=[_srv.name for _srv in check_list])
+                # print("+")
                 # check for valid meta-server result
                 if meta_result is not None:
                     if meta_result.get_log_tuple()[1] > logging_tools.LOG_LEVEL_WARN:
@@ -283,8 +290,10 @@ class ServiceContainer(object):
         else:
             meta_result = None
         instance_xml.tree.attrib["start_time"] = "{:.3f}".format(time.time())
+        # print("-")
         for entry in check_list:
             self.check_service(entry, use_cache=True, refresh=True, version_changed=self.model_version_mismatch, meta_result=meta_result)
+        # print("--")
         instance_xml.tree.attrib["end_time"] = "{:.3f}".format(time.time())
 
         # if self._config_check_errors:

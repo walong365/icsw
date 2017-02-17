@@ -146,12 +146,12 @@ class BuildProcess(threading_tools.icswProcessObj):
         except device.MultipleObjectsReturned:
             cur_c.log("more than one device with name '{}' found".format(cur_c.name), logging_tools.LOG_LEVEL_ERROR, state="done")
         else:
-            dev_sc = config_tools.server_check(
+            dev_sc = config_tools.icswServerCheck(
                 host_name=cur_c.name,
                 server_type="node",
                 fetch_network_info=True
             )
-            cur_c.log("server_check report(): {}".format(dev_sc.report()))
+            cur_c.log("icswServerCheck report(): {}".format(dev_sc.report()))
             cur_net_tree = NetworkTree()
             # sanity checks
             if not cur_c.create_config_dir():
@@ -430,7 +430,7 @@ class BuildProcess(threading_tools.icswProcessObj):
                         taken_list.append((cur_ip, cause))
                     else:
                         not_taken_list.append((cur_ip, cause))
-            cur_c.log("%s in taken_list" % (logging_tools.get_plural("Netdevice", len(taken_list))))
+            cur_c.log("{} in taken_list".format(logging_tools.get_plural("Netdevice", len(taken_list))))
             for entry, cause in taken_list:
                 cur_c.log(
                     "  - {:<6s} (IP {:<15s}, network {:<20s}) : {}".format(
@@ -440,7 +440,7 @@ class BuildProcess(threading_tools.icswProcessObj):
                         cause
                     )
                 )
-            cur_c.log("%s in not_taken_list" % (logging_tools.get_plural("Netdevice", len(not_taken_list))))
+            cur_c.log("{} in not_taken_list".format(logging_tools.get_plural("Netdevice", len(not_taken_list))))
             for entry, cause in not_taken_list:
                 cur_c.log(
                     "  - {:<6s} (IP {:<15s}, network {:<20s}) : {}".format(

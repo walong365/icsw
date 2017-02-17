@@ -323,7 +323,7 @@ class ConfigCheckObject(object):
                 ),
             )
         if self.srv_type_enum.value.server_service:
-            self.__sql_info = config_tools.server_check(service_type_enum=self.srv_type_enum)
+            self.__sql_info = config_tools.icswServerCheck(service_type_enum=self.srv_type_enum)
             if self.__sql_info is None or not self.__sql_info.effective_device:
                 # this can normally not happen due to start / stop via meta-server
                 self.log("Not a valid {}".format(self.srv_type_enum.name), logging_tools.LOG_LEVEL_ERROR)

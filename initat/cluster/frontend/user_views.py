@@ -81,7 +81,7 @@ class sync_users(View):
             _result = contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=30, target_server_id=create_user.export.device_id)
         # force sync_users
         request.user.save()
-        if config_tools.server_check(service_type_enum=icswServiceEnum.monitor_server).effective_device:
+        if config_tools.icswServerCheck(service_type_enum=icswServiceEnum.monitor_server).effective_device:
             srv_com = server_command.srv_command(command="sync_http_users")
             _result = contact_server(request, icswServiceEnum.monitor_server, srv_com)
 
@@ -227,7 +227,7 @@ class get_device_ip(View):
         )
 
         # from-device is where virtual desktop client config is set
-        server_by_type = config_tools.server_check(server_type="virtual_desktop_client")
+        server_by_type = config_tools.icswServerCheck(server_type="virtual_desktop_client")
         from_dev = server_by_type.effective_device
 
         if from_dev is None:
@@ -235,8 +235,8 @@ class get_device_ip(View):
             cur_routing = routing.SrvTypeRouting(force=True)
             from_dev = cur_routing.local_device
 
-        from_server_check = config_tools.server_check(device=from_dev, config=None, server_type="node")
-        to_server_check = config_tools.server_check(device=to_dev, config=None, server_type="node")
+        from_server_check = config_tools.icswServerCheck(device=from_dev, config=None, server_type="node")
+        to_server_check = config_tools.icswServerCheck(device=to_dev, config=None, server_type="node")
 
         # calc route to it and use target ip
         _router = config_tools.RouterObject(logger)

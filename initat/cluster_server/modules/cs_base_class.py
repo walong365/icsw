@@ -243,7 +243,7 @@ class icswCSServerCom(object):
             for act_c in self.Meta.needed_configs:
                 # todo, move to icswServiceEnum
                 _a = icswServiceEnum
-                sql_info = config_tools.server_check(service_type_enum=act_c)  # server_type="{}".format(act_c))
+                sql_info = config_tools.icswServerCheck(service_type_enum=act_c)  # server_type="{}".format(act_c))
                 if sql_info.effective_device:
                     doit, srv_origin = (True, sql_info.server_origin)
                     if not self.server_idx:

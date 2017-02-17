@@ -96,7 +96,7 @@ class simple_request(object):
         self.cc.log(what, log_level)
 
     def _find_best_server(self, conf_list):
-        dev_sc = config_tools.server_check(
+        dev_sc = config_tools.icswServerCheck(
             short_host_name=self.cc.device.name,
             server_type="node",
             fetch_network_info=True
@@ -158,13 +158,13 @@ class simple_request(object):
                 break
         if valid_server_struct and type_name in map_to_mother:
             # remap to mother_server
-            valid_server_struct = config_tools.server_check(
+            valid_server_struct = config_tools.icswServerCheck(
                 service_type_enum=icswServiceEnum.mother_server,
                 short_host_name=valid_server_struct.short_host_name,
                 fetch_network_info=True
             )
         if valid_server_struct:
-            dev_sc = config_tools.server_check(
+            dev_sc = config_tools.icswServerCheck(
                 short_host_name=self.cc.device.name,
                 service_type_enum=None,
                 fetch_network_info=True

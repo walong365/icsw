@@ -27,7 +27,6 @@ NGINX_CONF=/etc/nginx/sites-enabled/localhost
 PYTHON3_SITE=/opt/cluster/lib/python3.6/site-packages
 SCRIPTDIR=/usr/bin
 USRSBIN=/usr/sbin
-VARDIR=/var/lib/cluster/package-client
 # icsw will be installed below this dir
 STATICWEBDIR=/srv/www/init.at
 
@@ -228,7 +227,6 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} src/kcompile ${DESTDIR}/${KERNEL_CONFIGS}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/log/hosts
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_TFTP}
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${VARDIR}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/lib/logging-server
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/log/icsw
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${META_DIR}

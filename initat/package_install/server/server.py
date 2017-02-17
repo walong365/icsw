@@ -165,7 +165,7 @@ class ServerProcess(
             else:
                 for target_name in Client.name_set:
                     cur_c = Client.get(target_name)
-                    dev_sc = config_tools.server_check(
+                    dev_sc = config_tools.icswServerCheck(
                         device=cur_c.device,
                         config="",
                         server_type="node",
