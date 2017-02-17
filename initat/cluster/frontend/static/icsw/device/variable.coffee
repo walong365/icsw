@@ -27,7 +27,7 @@ device_variable_module = angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.devvars")
-]).controller("icswConfigVarsCtrl",
+]).controller("icswConfigVarsCtrl",  # FIXME - NOT USED NOT FUNCTIONAL
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q",
     "$uibModal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService",
@@ -116,7 +116,7 @@ device_variable_module = angular.module(
             filter_re
         )
         $scope.devvar_tree.show_selected(false)
-]).directive("icswDeviceConfigurationVarOverview",
+]).directive("icswDeviceConfigurationVarOverview",  # FIXME - NOT USED NOT FUNCTIONAL
 [
     "$templateCache",
 (
