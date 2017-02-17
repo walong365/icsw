@@ -31,11 +31,12 @@ import psutil
 
 
 class ExternalProcess(object):
-    def __init__(self, log_com, name, command, create_files):
+    def __init__(self, log_com, name, command, create_files, delete_files):
         self.__name = name
         self.__command = command
         self.__log_com = log_com
         self.__create_files = create_files
+        self.__delete_files = delete_files
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(
@@ -50,6 +51,14 @@ class ExternalProcess(object):
         self.log("closed")
 
     def run(self):
+        self.log(
+            "starting process {} (com_str {}), {} to create, {} to delete".format(
+                self.__name,
+                self.__command,
+                logging_tools.get_plural("file", len(self.__create_files)),
+                logging_tools.get_plural("file", len(self.__delete_files)),
+            )
+        )
         for _name, _cf in self.__create_files.items():
             if not os.path.isfile(_name):
                 try:
@@ -66,6 +75,24 @@ class ExternalProcess(object):
                     self.log("created {}".format(_name))
             else:
                 self.log("file {} already present".format(_name))
+        for _ftd in self.__delete_files:
+            if os.path.exists(_ftd):
+                try:
+                    os.unlink(_ftd)
+                except:
+                    self.log(
+                        "cannot delete {}: {}".format(
+                            _ftd,
+                            process_tools.get_except_info(),
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                else:
+                    self.log(
+                        "removed {}".format(_ftd)
+                    )
+            else:
+                self.log("file {} does not exist".format(_ftd))
         self.start_time = time.time()
         self.log("starting command '{}'".format(self.__command))
         self.popen = subprocess.Popen(
@@ -322,9 +349,8 @@ class ProcessControl(object):
         _check_proc.close()
         return _valid
 
-    def _start_ext_proc(self, com_str):
+    def _start_ext_proc(self, com_str, files_to_delete=[]):
         # start external process with command string com_tr
-        self.log("starting process (com_str {})".format(com_str))
         ext_proc = ExternalProcess(
             self.log,
             self.__proc_name,
@@ -345,7 +371,8 @@ class ProcessControl(object):
                     "var",
                     "icinga.lock",
                 ): True,
-            }
+            },
+            files_to_delete,
         )
         ext_proc.run()
         ext_proc.wait()
@@ -366,12 +393,15 @@ class ProcessControl(object):
                 "icinga.cfg",
             ),
         )
-
-        self.__ext_process = self._start_ext_proc(_com)
         self.__external_cmd_file = os.path.join(
             global_config["MD_BASEDIR"],
             "var",
             "icinga.cmd"
+        )
+
+        self.__ext_process = self._start_ext_proc(
+            _com,
+            files_to_delete=[self.__external_cmd_file]
         )
         if self.__ext_process.popen.returncode is not None:
             self.log(
