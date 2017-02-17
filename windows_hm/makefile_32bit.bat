@@ -20,10 +20,10 @@ MOVE .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR% .\host_monitor_windows
 .\host_monitor_windows\python.exe -m pip install setproctitle==1.1.10
 .\host_monitor_windows\python.exe -m pip install pyzmq==16.0.2
 .\host_monitor_windows\python.exe -m pip install psutil==5.1.3
-.\host_monitor_windows\python.exe -m pip install inflection==0.3.1
 .\host_monitor_windows\python.exe -m pip install wmi
 .\host_monitor_windows\python.exe -m pip install pypiwin32
 
+XCOPY .\inflection.py .\host_monitor_windows\Lib\site-packages\
 XCOPY .\syslog.py .\host_monitor_windows\Lib\site-packages\
 XCOPY .\service_manager.py .\host_monitor_windows\
 
