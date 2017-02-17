@@ -181,17 +181,17 @@ class installedupdates_command(hm_classes.MonitoringCommand):
             import pywintypes
 
             update = win32com.client.Dispatch('Microsoft.Update.Session')
-            updateSearcher = update.CreateUpdateSearcher()
-            count = updateSearcher.GetTotalHistoryCount()
+            update_searcher = update.CreateUpdateSearcher()
+            count = update_searcher.GetTotalHistoryCount()
 
-            updateHistory = updateSearcher.QueryHistory(0, count)
+            update_history = update_searcher.QueryHistory(0, count)
 
-            for i in range(updateHistory.Count):
+            for i in range(update_history.Count):
                 update = installedupdates_command.Update()
-                update.title = updateHistory.Item(i).Title
-                update.date = updateHistory.Item(i).Date
+                update.title = update_history.Item(i).Title
+                update.date = update_history.Item(i).Date
                 try:
-                    update.status = updateHistory.Item(i).ResultCode
+                    update.status = update_history.Item(i).ResultCode
                 except pywintypes.com_error:
                     update.status = "Unknown"
 
@@ -240,8 +240,8 @@ class rpmlist_command(hm_classes.MonitoringCommand):
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
-            UNINSTALL_PATH1 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
-            UNINSTALL_PATH2 = "SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
+            uninstall_path1 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
+            uninstall_path2 = "SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
 
             import winreg
 
@@ -257,7 +257,7 @@ class rpmlist_command(hm_classes.MonitoringCommand):
                         subkey_str = winreg.EnumKey(key, i)
                         i += 1
                         subkey = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, keypath + "\\" + subkey_str,
-                            0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY)
+                                                0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY)
                         # print subkey_str
 
                         j = 0
@@ -292,8 +292,8 @@ class rpmlist_command(hm_classes.MonitoringCommand):
 
                 return packages
 
-            package_list1 = get_installed_packages_for_keypath(UNINSTALL_PATH1)
-            package_list2 = get_installed_packages_for_keypath(UNINSTALL_PATH2)
+            package_list1 = get_installed_packages_for_keypath(uninstall_path1)
+            package_list2 = get_installed_packages_for_keypath(uninstall_path2)
             package_list1.extend(package_list2)
 
             package_list = list(set(package_list1))
@@ -425,9 +425,9 @@ class updatelist_command(hm_classes.MonitoringCommand):
             import win32com.client
 
             update = win32com.client.Dispatch('Microsoft.Update.Session')
-            updateSearcher = update.CreateUpdateSearcher()
+            update_searcher = update.CreateUpdateSearcher()
 
-            search_result = updateSearcher.Search("( IsInstalled = 0 and IsHidden = 0 )")
+            search_result = update_searcher.Search("( IsInstalled = 0 and IsHidden = 0 )")
 
             update_list = []
             # Update items interface: IUpdate
@@ -440,7 +440,9 @@ class updatelist_command(hm_classes.MonitoringCommand):
             srv_com["update_list"] = server_command.compress(update_list, pickle=True)
         else:
             s_time = time.time()
-            update_list = get_update_list()
+            update_list, log_list = get_update_list()
+            for log_entry in log_list:
+                self.log(log_entry)
             e_time = time.time()
             srv_com.set_result(
                 "ok got list in {}".format(logging_tools.get_diff_time_str(e_time - s_time)),
@@ -448,7 +450,9 @@ class updatelist_command(hm_classes.MonitoringCommand):
             srv_com["format"] = "linux"
             srv_com["update_list"] = server_command.compress(update_list, pickle=True)
 
-    def interpret(self, srv_com, cur_ns):
+    @staticmethod
+    def interpret(srv_com, cur_ns):
+        _ = cur_ns
         update_list = server_command.decompress(srv_com["update_list"].text, pickle=True)
         if update_list:
             return limits.mon_STATE_OK, "{}: {}".format(
@@ -460,178 +464,190 @@ class updatelist_command(hm_classes.MonitoringCommand):
 
 
 def rpmlist_int(rpm_root_dir, re_strs, is_debian):
+    returncode = 0
     if is_debian:
+        namere = None
         log_list = [
             "doing dpkg -l command in dir {}".format(rpm_root_dir)
         ]
+
+        rpm_com = ["dpkg", '-l']
         if rpm_root_dir:
-            rpm_coms = [
-                'chroot {} dpkg -l'.format(rpm_root_dir),
-                'dpkg --root={} -l'.format(rpm_root_dir)
-            ]
-        else:
-            rpm_coms = ['dpkg -l']
-        for rpm_com in rpm_coms:
-            log_list.append(
-                "  dpkg-command is {}".format(rpm_com.strip())
-            )
-            stat, ipl = subprocess.getstatusoutput(rpm_com)
-            if not stat:
-                ret_dict = {}
-                lines = ipl.split("\n")
-                while True:
-                    line = lines.pop(0)
-                    if line.count("=") > 20:
-                        break
-                for line in lines:
-                    try:
-                        flags, name, verrel, info = line.split(None, 3)
-                    except:
-                        pass
-                    else:
-                        if verrel.count("-"):
-                            ver, rel = verrel.split("-", 1)
-                        else:
-                            ver, rel = (verrel, "0")
-                        if len(flags) == 2:
-                            desired_flag, status_flag = flags
-                            error_flag = ""
-                        else:
-                            desired_flag, status_flag, error_flag = flags
-                        ret_dict.setdefault(name, []).append({
-                            "flags": (desired_flag, status_flag, error_flag),
-                            "version": ver,
-                            "release": rel,
-                            "summary": info})
-                break
-            else:
-                ret_dict = ipl
+            rpm_com.insert(1, '--root={}'.format(rpm_root_dir))
+
+        log_list.append(
+            "  dpkg-command is {}".format(" ".join(rpm_com))
+        )
     else:
-        namere = re.compile("^(?P<name>\S+)\s+(?P<version>\S+)\s+(?P<release>\S+)\s+(?P<size>\S+)\s+(?P<arch>\S+)\s+(?P<installtimestamp>\S+)\s+(?P<summary>.*)$")
+        namere = re.compile("^(?P<name>\S+)\s+(?P<version>\S+)\s+(?P<release>\S+)\s+(?P<size>\S+)"
+                            "\s+(?P<arch>\S+)\s+(?P<installtimestamp>\S+)\s+(?P<summary>.*)$")
         log_list = [
             "doing rpm-call in dir {}, mode is {}".format(rpm_root_dir, "via rpm-command")
         ]
+        rpm_com = ['rpm',
+                   '-qa',
+                   '--queryformat=%{NAME} %{VERSION} %{RELEASE} %{SIZE} %{ARCH} %{INSTALLTIME} %{SUMMARY}\n']
+
         if rpm_root_dir:
-            rpm_coms = [
-                'chroot {} rpm -qa --queryformat="%{{NAME}} %{{VERSION}} %{{RELEASE}} %{{SIZE}} %{{ARCH}} %{{INSTALLTIME}} %{{SUMMARY}}\n" '.format(rpm_root_dir),
-                'rpm --root={} -qa --queryformat="%{{NAME}} %{{VERSION}} %{{RELEASE}} %{{SIZE}} %{{ARCH}} %{{INSTALLTIME}} %{{SUMMARY}}\n" '.format(rpm_root_dir),
-            ]
-        else:
-            rpm_coms = [
-                'rpm -qa --queryformat="%{NAME} %{VERSION} %{RELEASE} %{SIZE} %{ARCH} %{INSTALLTIME} %{SUMMARY}\n" '
-            ]
-        for rpm_com in rpm_coms:
-            log_list.append("  rpm-command is {}".format(rpm_com.strip()))
-            stat, ipl = subprocess.getstatusoutput(rpm_com)
-            num_tot, num_match = (0, 0)
-            if not stat:
-                ret_dict = {}
-                log_list.append(" - first line is {}".format(ipl.split("\n")[0].strip()))
-                for rfp in [x for x in [namere.match(actl.strip()) for actl in ipl.split("\n")] if x]:
-                    num_tot += 1
-                    name = rfp.group("name")
-                    add_it = 0
-                    # check for re_match
-                    if re_strs:
-                        for re_str in re_strs:
-                            if re.search(re_str, name):
-                                add_it = 1
-                                break
+            rpm_com.insert(1, '--root={}'.format(rpm_root_dir))
+
+        log_list.append("  rpm-command is {}".format(" ".join(rpm_com)))
+
+    try:
+        output = subprocess.check_output(rpm_com, stderr=subprocess.STDOUT).decode()
+    except subprocess.CalledProcessError as e:
+        ret_dict = e.output.decode()
+        returncode = e.returncode
+    else:
+        ret_dict = {}
+        if is_debian:
+            lines = output.split("\n")
+            while True:
+                line = lines.pop(0)
+                if line.count("=") > 20:
+                    break
+            for line in lines:
+                try:
+                    flags, name, verrel, info = line.split(None, 3)
+                except Exception as e:
+                    _ = e
+                    pass
+                else:
+                    if verrel.count("-"):
+                        ver, rel = verrel.split("-", 1)
                     else:
-                        add_it = 1
-                    if add_it:
-                        valid = 1
-                        num_match += 1
-                        ver = rfp.group("version")
-                        rel = rfp.group("release")
-                        try:
-                            size = int(rfp.group("size"))
-                        except:
-                            valid = 0
-                        arch = rfp.group("arch")
-                        summary = rfp.group("summary")
-                        installtimestamp = rfp.group("installtimestamp")
-                        if valid:
-                            ret_dict.setdefault(name, []).append(
-                                {
-                                    "version": ver,
-                                    "release": rel,
-                                    "arch": arch,
-                                    "size": size,
-                                    "installtimestamp": installtimestamp,
-                                    "summary": summary
-                                }
-                            )
-                log_list.append("Found {:d} packages ({:d} matches)".format(num_tot, num_match))
-                break
-            else:
-                ret_dict = ipl
-    return log_list, ret_dict, stat
+                        ver, rel = (verrel, "0")
+                    if len(flags) == 2:
+                        desired_flag, status_flag = flags
+                        error_flag = ""
+                    else:
+                        desired_flag, status_flag, error_flag = flags
+                    ret_dict.setdefault(name, []).append({
+                        "flags": (desired_flag, status_flag, error_flag),
+                        "version": ver,
+                        "release": rel,
+                        "summary": info})
+        else:
+            num_tot, num_match = (0, 0)
+            log_list.append(" - first line is {}".format(output.split("\n")[0].strip()))
+            for rfp in [x for x in [namere.match(actl.strip()) for actl in output.split("\n")] if x]:
+                num_tot += 1
+                name = rfp.group("name")
+                add_it = 0
+                # check for re_match
+                if re_strs:
+                    for re_str in re_strs:
+                        if re.search(re_str, name):
+                            add_it = 1
+                            break
+                else:
+                    add_it = 1
+                if add_it:
+                    valid = 1
+                    num_match += 1
+                    ver = rfp.group("version")
+                    rel = rfp.group("release")
+                    try:
+                        size = int(rfp.group("size"))
+                    except Exception as e:
+                        _ = e
+                        size = 0
+                        valid = 0
+                    arch = rfp.group("arch")
+                    summary = rfp.group("summary")
+                    installtimestamp = rfp.group("installtimestamp")
+                    if valid:
+                        ret_dict.setdefault(name, []).append(
+                            {
+                                "version": ver,
+                                "release": rel,
+                                "arch": arch,
+                                "size": size,
+                                "installtimestamp": installtimestamp,
+                                "summary": summary
+                            }
+                        )
+            log_list.append("Found {:d} packages ({:d} matches)".format(num_tot, num_match))
+
+    return log_list, ret_dict, returncode
 
 
 def get_update_list():
-    use_zypper = False
-    use_yum = False
-    use_apt = False
-    if os.path.isdir("/etc/zypp"):
-        use_zypper = True
-    if os.path.isdir("/etc/yum"):
-        use_yum = True
-    if os.path.isdir("/etc/apt"):
-        use_apt = True
-
+    update_commands = []
     update_list = []
+    log_list = []
+    errors_happened = False
+    update_command = None
 
-    if use_zypper:
-        status, output = subprocess.getstatusoutput("zypper refresh")
-        # todo error handling
-        status, output = subprocess.getstatusoutput("zypper list-updates")
-        # todo error handling
-        lines = output.split("\n")
+    if os.path.isdir("/etc/zypp"):
+        def update_command_handler():
+            lines = output.split("\n")
 
-        start_parse = False
-        for line in lines:
-            if start_parse:
+            start_parse = False
+            for line in lines:
+                if start_parse:
+                    line = line.strip()
+                    if line:
+                        components = line.split("|")
+                        update_list.append((components[2].strip(), components[4].strip()))
+
+                elif line.startswith("--"):
+                    start_parse = True
+                else:
+                    pass
+
+        update_command = "zypper"
+        update_commands.append(([update_command, "refresh"], None))
+        update_commands.append(([update_command, "list-updates"], update_command_handler))
+    elif os.path.isdir("/etc/yum"):
+        def update_command_handler():
+            lines = output.split("\n")
+
+            prevline = None
+            for line in lines:
                 line = line.strip()
                 if line:
-                    components = line.split("|")
-                    update_list.append((components[2].strip(), components[4].strip()))
-
-            elif line.startswith("--"):
-                start_parse = True
-            else:
-                pass
-    elif use_yum:
-        status, output = subprocess.getstatusoutput("yum check-update -q")
-        # todo error handling
-        lines = output.split("\n")
-
-        prevline = None
-        for line in lines:
-            line = line.strip()
-            if line:
-                if line.startswith("Obsoleting Packages"):
-                    break
-                comps = [s for s in line.split(" ") if s]
-                if prevline:
-                    update_list.append((prevline.strip(), comps[0].strip()))
-                    prevline = None
-                else:
-                    if len(comps) > 1:
-                        update_list.append((comps[0].strip(), comps[1].strip()))
+                    if line.startswith("Obsoleting Packages"):
+                        break
+                    comps = [s for s in line.split(" ") if s]
+                    if prevline:
+                        update_list.append((prevline.strip(), comps[0].strip()))
+                        prevline = None
                     else:
-                        prevline = comps[0].strip()
+                        if len(comps) > 1:
+                            update_list.append((comps[0].strip(), comps[1].strip()))
+                        else:
+                            prevline = comps[0].strip()
 
-    elif use_apt:
-        status, output = subprocess.getstatusoutput("apt-get update")
-        # todo error handling
-        status, output = subprocess.getstatusoutput("apt-get --just-print upgrade")
-        # todo error handling
+        update_command = "yum"
+        update_commands.append(([update_command, "check-update", "-q"], update_command_handler))
+    elif os.path.isdir("/etc/apt"):
+        def update_command_handler():
+            lines = output.split("\n")
+            for line in lines:
+                if line.startswith("Inst"):
+                    comps = line.split(" ")
+                    update_list.append((comps[1], comps[3][1:]))
 
-        lines = output.split("\n")
-        for line in lines:
-            if line.startswith("Inst"):
-                comps = line.split(" ")
-                update_list.append((comps[1], comps[3][1:]))
+        update_command = "apt-get"
+        update_commands.append(([update_command, "update"], None))
+        update_commands.append(([update_command, "--just-print", "upgrade"], update_command_handler))
 
-    return update_list
+    for update_command_args, update_command_handler in update_commands:
+        try:
+            output = subprocess.check_output(update_command_args, stderr=subprocess.STDOUT).decode()
+        except subprocess.CalledProcessError as e:
+            log_list.append('"{}" failed with return code {}'.format(" ".join(update_command_args), e.returncode))
+            errors_happened = True
+            break
+        else:
+            if update_command_handler:
+                update_command_handler()
+
+    if errors_happened:
+        try:
+            subprocess.check_output(["killall", "-s9", update_command], stderr=subprocess.STDOUT)
+        except Exception as e:
+            _ = e
+
+    return update_list, log_list
