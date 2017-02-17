@@ -616,6 +616,11 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             )
             if cur_com in self.local_mc:
                 delayed = self._handle_module_command(srv_com, cur_ns, rest_str)
+            elif cur_com in self.local_mc.rejected_commands:
+                srv_com.set_result(
+                    "rejected command '{}', {}".format(cur_com, self.local_mc.rejected_commands[cur_com]),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
             else:
                 c_matches = difflib.get_close_matches(cur_com, list(self.local_mc.keys()))
                 if c_matches:

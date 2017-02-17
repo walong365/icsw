@@ -230,6 +230,7 @@ class ModuleContainer(object):
             )
         )
         self.read()
+        self.rejected_commands = {}
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         _log_str = "[MC] {}".format(what)
@@ -439,6 +440,7 @@ class ModuleContainer(object):
                                 else:
                                     scom_dict[other_name] = loc_com
                     else:
+                        self.rejected_commands[str(loc_com)] = str(com_obj.Meta.reject_cause)
                         self.log(
                             "command {}@{} not added because of {}".format(
                                 loc_com,
