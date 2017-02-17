@@ -1,3 +1,5 @@
+SET HM_VERSION=3.0.11
+SET HM_PLATFORM=win64
 SET PCIUTILS_VERSION=3.4.0
 SET WINPYTH_MAJOR=6
 SET WINPYTH_MINOR=0
@@ -49,13 +51,13 @@ XCOPY .\bin\dmidecode212.exe .\host_monitor_windows\
 MOVE .\tmp\pciutils-%PCIUTILS_VERSION%-win64 .\host_monitor_windows\pciutils
 type nul > .\host_monitor_windows\hm_icsw_w64
 
-host_monitor_windows\python -c "import tarfile; tar = tarfile.open(name='ICSW_Windows_Client.tar.xz', mode='w:xz'); tar.add('host_monitor_windows', arcname=''); tar.close();"
+host_monitor_windows\python -c "import tarfile; tar = tarfile.open(name='ICSW_Windows_Client-%HM_VERSION%-%HM_PLATFORM%.tar.xz', mode='w:xz'); tar.add('host_monitor_windows', arcname=''); tar.close();"
 
 SET hm_path=host_monitor_windows
 "%WIX_BIN_PATH%heat.exe" dir host_monitor_windows -cg HostmonitorFiles -dr INSTALLDIR -gg -scom -sreg -sfrag -srd -var env.hm_path -out "Components.wxs"
 "%WIX_BIN_PATH%candle.exe" ICSW_Windows_Client.wxs
 "%WIX_BIN_PATH%candle.exe" Components.wxs
-"%WIX_BIN_PATH%light.exe" -ext WixUIExtension -dWixUILicenseRtf=legal_text.rtf -dWixUIBannerBmp=WixUIBannerBmp.bmp -dWixUIExclamationIco=WixUIExclamationIco.ico -dWixUIDialogBmp=WixUIDialogBmp.bmp ICSW_Windows_Client.wixobj Components.wixobj -o ICSW_Windows_Client.msi
+"%WIX_BIN_PATH%light.exe" -ext WixUIExtension -dWixUILicenseRtf=legal_text.rtf -dWixUIBannerBmp=WixUIBannerBmp.bmp -dWixUIExclamationIco=WixUIExclamationIco.ico -dWixUIDialogBmp=WixUIDialogBmp.bmp ICSW_Windows_Client.wixobj Components.wixobj -o ICSW_Windows_Client-%HM_VERSION%-%HM_PLATFORM%.msi
 
 :: Cleanup temporary files
 RMDIR /s /q .\tmp
