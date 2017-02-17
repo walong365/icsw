@@ -65,6 +65,6 @@ RMDIR /s /q .\host_monitor_windows
 DEL .\Components.wixobj
 DEL .\Components.wxs
 DEL .\ICSW_Windows_Client.wixobj
-DEL .\ICSW_Windows_Client.wixpdb
+DEL .\ICSW_Windows_Client-%HM_VERSION%-%HM_PLATFORM%.wixpdb
 
 @pause
