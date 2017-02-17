@@ -750,7 +750,10 @@ angular.module(
         ICSW_BREADCRUMBS_CHANGED: "icsw.breadcrumbs.changed"
         # new state reached
         ICSW_STATE_CHANGED: "icsw.state.changed"
+        # device trree loaded
         ICSW_DEVICE_TREE_LOADED: "icsw.device.tree.loaded"
+        # device tree changed (name or something similar)
+        ICSW_DEVICE_TREE_CHANGED: "icsw.device.tree.changed"
         ICSW_CATEGORY_TREE_LOADED: "icsw.category.tree.loaded"
         ICSW_NETWORK_TREE_LOADED: "icsw.network.tree.loaded"
         ICSW_CONFIG_TREE_LOADED: "icsw.config.tree.loaded"

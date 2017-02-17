@@ -734,6 +734,12 @@ angular.module(
             console.log "****-", $scope.devsel_receivers, $scope
         )
     )
+    stop_listen.push(
+        $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_CHANGED"), (event) ->
+            console.log "DTC"
+            _build_tree()
+        )
+    )
     ##stop_listen.push(
     #    $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTOR_SHOW"), (event, cur_state) ->
     #        # call when the requester is shown

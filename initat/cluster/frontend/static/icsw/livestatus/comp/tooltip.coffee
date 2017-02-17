@@ -54,7 +54,6 @@ angular.module(
                     console.error "unknown key #{key} for icswTooltipTools.struct"
                 else
                     _struct[key] = value
-        console.log _struct
         return _struct
 
     delete_struct = (struct) ->
@@ -95,7 +94,6 @@ angular.module(
             struct.element.append(struct.divlayer)
         # copy node_type to detect node_type changes
         struct.node_type = node.node_type
-        # bnode is a burstnode object with $$ct set
         struct.is_shown = true
         # display variables
         # console.log "node=", node

@@ -28,10 +28,10 @@ angular.module(
 ]).service("DeviceOverviewService",
 [
     "Restangular", "$rootScope", "$templateCache", "$compile", "$uibModal", "$q",
-    "icswComplexModalService", "DeviceOverviewSettings",
+    "icswComplexModalService", "DeviceOverviewSettings", "ICSW_SIGNALS",
 (
     Restangular, $rootScope, $templateCache, $compile, $uibModal, $q,
-    icswComplexModalService, DeviceOverviewSettings,
+    icswComplexModalService, DeviceOverviewSettings, ICSW_SIGNALS,
 ) ->
     return (event, device_list) ->
         # create new modal for device
@@ -54,6 +54,7 @@ angular.module(
                 console.log "close deviceoverview #{closeinfo}"
                 DeviceOverviewSettings.close()
                 sub_scope.$destroy()
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_TREE_CHANGED"))
         )
         return _defer.promise
         # my_mixin.edit(null, devicelist[0])
