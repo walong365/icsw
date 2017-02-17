@@ -17,20 +17,18 @@
 #
 """ cluster-server, USV handling """
 
-
-
 import subprocess
 
-from initat.cluster_server.capabilities.base import BackgroundBase
+from .base import BackgroundBase
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.host_monitoring import hm_classes
 from initat.tools import logging_tools
 
 
-class usv_server_stuff(BackgroundBase):
+class UsvServerCode(BackgroundBase):
     class Meta:
         creates_machvector = True
-        name = "usv_server"
-        description = "device has an USV from APC directly attached"
+        service_enum = icswServiceEnum.usv_server
 
     def do_apc_call(self):
         _c_stat, out = subprocess.getstatusoutput("apcaccess")

@@ -70,7 +70,7 @@ class SyncUserTask(BGInotifyTask):
             ("yp_server", "write_yp_config", icswServiceEnum.cluster_server),
             ("monitor_server", "sync_http_users", icswServiceEnum.monitor_server),
         ]:
-            _cdict = config_tools.device_with_config(_config)
+            _cdict = config_tools.icswDeviceWithConfig(service_type_enum=_srv_type)
             for _sc_list in _cdict.values():
                 for _sc in _sc_list:
                     if _sc.effective_device:

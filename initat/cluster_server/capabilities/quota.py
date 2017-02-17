@@ -29,11 +29,12 @@ from django.db.models import Q
 
 from initat.cluster.backbone.models import user, group, quota_capable_blockdevice, \
     user_quota_setting, group_quota_setting, partition_fs
-from initat.cluster_server.capabilities.base import BackgroundBase
-from initat.cluster_server.config import global_config
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.host_monitoring import hm_classes
 from initat.icsw.service import clusterid
 from initat.tools import logging_tools, process_tools
+from .base import BackgroundBase
+from ..config import global_config
 
 
 class quota_line(object):
@@ -155,10 +156,9 @@ class quota_line(object):
         return _keys
 
 
-class quota_stuff(BackgroundBase):
+class QuotaScanCode(BackgroundBase):
     class Meta:
-        name = "quota_scan"
-        description = "scan quotas for all users when device has quotas enabled"
+        service_enum = icswServiceEnum.quota_scan
 
     def init_bg_stuff(self):
         self.Meta.min_time_between_runs = global_config["QUOTA_CHECK_TIME_SECS"]
@@ -453,12 +453,15 @@ class quota_stuff(BackgroundBase):
             logging_tools.get_plural("device", len(prob_devs)),
         )
         self.log(log_line)
-        mail_lines[_admin_key].extend([
-            "Servername: {}".format(global_config["SERVER_FULL_NAME"]),
-            log_line,
-            "",
-            "device info:",
-            ""])
+        mail_lines[_admin_key].extend(
+            [
+                "Servername: {}".format(global_config["SERVER_FULL_NAME"]),
+                log_line,
+                "",
+                "device info:",
+                ""
+            ]
+        )
         # device overview
         for prob_dev in sorted(list(prob_devs)):
             if prob_dev in dev_dict:

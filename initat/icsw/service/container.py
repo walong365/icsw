@@ -289,10 +289,13 @@ class ServiceContainer(object):
                 meta_result = None
         else:
             meta_result = None
+        mt.step("query local")
         instance_xml.tree.attrib["start_time"] = "{:.3f}".format(time.time())
         # print("-")
         for entry in check_list:
             self.check_service(entry, use_cache=True, refresh=True, version_changed=self.model_version_mismatch, meta_result=meta_result)
+        mt.step("services")
+        mt.step()
         # print("--")
         instance_xml.tree.attrib["end_time"] = "{:.3f}".format(time.time())
 

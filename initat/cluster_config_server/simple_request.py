@@ -137,7 +137,7 @@ class simple_request(object):
         # list of server_types which has to be mapped to the mother-server
         map_to_mother = set([icswServiceEnum.kernel_server, icswServiceEnum.image_server])
         for type_name in s_list:
-            conf_list = config_tools.device_with_config(service_type_enum=type_name).get(type_name, [])
+            conf_list = config_tools.icswDeviceWithConfig(service_type_enum=type_name).get(type_name, [])
             if conf_list:
                 if type_name in bsl_servers:
                     # config name (from s_list) is in bsl_servers

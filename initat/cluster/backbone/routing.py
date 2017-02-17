@@ -34,7 +34,7 @@ from initat.cluster.backbone.models import device
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import uuid_tools, logging_tools, server_command
-from initat.tools.config_tools import icswServerCheck, device_with_config, RouterObject
+from initat.tools.config_tools import icswServerCheck, icswDeviceWithConfig, RouterObject
 
 logger = logging.getLogger("cluster.routing")
 
@@ -43,16 +43,6 @@ def _log(what, log_level):
     logger.log(log_level, what)
 
 _INSTANCE = InstanceXML(_log)
-
-
-def get_type_from_config(c_name):
-    _REVERSE_MAP = {
-        "package_server": "package",
-        "package-server": "package",
-        "config-server": "config",
-        "config_server": "config",
-    }
-    return _REVERSE_MAP.get(c_name, None)
 
 
 def get_server_uuid(srv_type=None, uuid=None):
@@ -260,7 +250,7 @@ class SrvTypeRouting(object):
         # get all configs
         for _enum_name in enum_names:
             _srv_type_list = _rv_lut[_enum_name]
-            _sc = device_with_config(service_type_enum=getattr(icswServiceEnum, _enum_name))
+            _sc = icswDeviceWithConfig(service_type_enum=getattr(icswServiceEnum, _enum_name))
             if _enum_name in _sc:
                 for _dev in _sc[_enum_name]:
                     if _dev.effective_device is None:

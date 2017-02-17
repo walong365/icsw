@@ -149,7 +149,7 @@ class ServerProcess(
     def reconnect_to_clients(self):
         router_obj = config_tools.RouterObject(self.log)
         self.log("reconnecting to {}".format(logging_tools.get_plural("client", len(Client.name_set))))
-        all_servers = config_tools.device_with_config(service_type_enum=icswServiceEnum.package_server)
+        all_servers = config_tools.icswDeviceWithConfig(service_type_enum=icswServiceEnum.package_server)
         if icswServiceEnum.package_server not in all_servers:
             self.log("no package_server defined, strange...", logging_tools.LOG_LEVEL_ERROR)
         else:

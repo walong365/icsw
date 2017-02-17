@@ -166,7 +166,7 @@ class DHCPConfigMixin(object):
                 )
             # get gateway and domain-servers for the various nets
             gw_pri, gateway = (-10000, "0.0.0.0")
-            cur_dc = config_tools.device_with_config(service_type_enum=icswServiceEnum.mother_server)
+            cur_dc = config_tools.icswDeviceWithConfig(service_type_enum=icswServiceEnum.mother_server)
             found_dict = {}
             for act_net in [boot_ip.network for boot_ip in boot_ips] + add_nets:
                 if act_net.gw_pri > gw_pri:

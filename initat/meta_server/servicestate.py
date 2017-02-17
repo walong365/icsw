@@ -1013,58 +1013,63 @@ class ServiceState(object):
                 server_command.SRV_REPLY_STATE_ERROR,
             )
         elif _com == "overview":
+            mt = logging_tools.MeasureTime(quiet=True)
             instances = _bldr.instances()
             if "services" in srv_com:
-                services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
+                services = [
+                    _name for _name in srv_com["*services"].strip().split(",") if _name.strip()
+                ]
             else:
                 services = []
             days_to_consider = int(srv_com.get("days_to_consider", "1"))
             db_limit = int(srv_com.get("db_limit", "100"))
-            with self.get_cursor() as crsr:
-                with self.get_cursor() as state_crsr:
-                    for _srv_id, name, target_state, active, ignore in crsr.execute(
-                        "SELECT idx, name, target_state, active, ignore FROM service ORDER BY name"
-                    ):
-                        if services and name not in services:
-                            continue
-                        instances.append(
-                            _bldr.instance(
-                                _bldr.states(
-                                    *[
-                                        _bldr.state(
-                                            pstate="{:d}".format(p_state),
-                                            cstate="{:d}".format(c_state),
-                                            license_state="{:d}".format(license_state),
-                                            created="{:d}".format(int(created)),
-                                            proc_info_str=proc_info_str,
-                                        ) for p_state, c_state, license_state, created, proc_info_str in state_crsr.execute(
-                                            "SELECT pstate, cstate, license_state, created, proc_info_str FROM state "
-                                            "WHERE service=? AND created > ? ORDER BY -created LIMIT ?",
-                                            (_srv_id, cur_time - days_to_consider * 24 * 3600, db_limit),
-                                        )
-                                    ]
-                                ),
-                                _bldr.actions(
-                                    *[
-                                        _bldr.action(
-                                            action="{:s}".format(action),
-                                            success="{:d}".format(success),
-                                            runtime="{:.2f}".format(runtime),
-                                            finished="{:d}".format(finished),
-                                            created="{:d}".format(int(created)),
-                                        ) for action, success, runtime, finished, created in state_crsr.execute(
-                                            "SELECT action, success, runtime, finished, created FROM action "
-                                            "WHERE service=? AND created > ? ORDER BY -created LIMIT ?",
-                                            (_srv_id, cur_time - days_to_consider * 24 * 3600, db_limit),
-                                        )
-                                    ]
-                                ),
-                                name=name,
-                                target_state="{:d}".format(target_state),
-                                active="{:d}".format(active),
-                                ignore="{:d}".format(ignore),
+            if True:
+                with self.get_cursor() as crsr:
+                    with self.get_cursor() as state_crsr:
+                        for _srv_id, name, target_state, active, ignore in crsr.execute(
+                            "SELECT idx, name, target_state, active, ignore FROM service ORDER BY name"
+                        ):
+                            if services and name not in services:
+                                continue
+                            instances.append(
+                                _bldr.instance(
+                                    _bldr.states(
+                                        *[
+                                            _bldr.state(
+                                                pstate="{:d}".format(p_state),
+                                                cstate="{:d}".format(c_state),
+                                                license_state="{:d}".format(license_state),
+                                                created="{:d}".format(int(created)),
+                                                proc_info_str=proc_info_str,
+                                            ) for p_state, c_state, license_state, created, proc_info_str in state_crsr.execute(
+                                                "SELECT pstate, cstate, license_state, created, proc_info_str FROM state "
+                                                "WHERE service=? AND created > ? ORDER BY -created LIMIT ?",
+                                                (_srv_id, cur_time - days_to_consider * 24 * 3600, db_limit),
+                                            )
+                                        ]
+                                    ),
+                                    _bldr.actions(
+                                        *[
+                                            _bldr.action(
+                                                action="{:s}".format(action),
+                                                success="{:d}".format(success),
+                                                runtime="{:.2f}".format(runtime),
+                                                finished="{:d}".format(finished),
+                                                created="{:d}".format(int(created)),
+                                            ) for action, success, runtime, finished, created in state_crsr.execute(
+                                                "SELECT action, success, runtime, finished, created FROM action "
+                                                "WHERE service=? AND created > ? ORDER BY -created LIMIT ?",
+                                                (_srv_id, cur_time - days_to_consider * 24 * 3600, db_limit),
+                                            )
+                                        ]
+                                    ),
+                                    name=name,
+                                    target_state="{:d}".format(target_state),
+                                    active="{:d}".format(active),
+                                    ignore="{:d}".format(ignore),
+                                )
                             )
-                        )
+            mt.step("core")
             srv_com["overview"] = instances
         elif _com == ServiceActionEnum.enable.value:
             trigger = self._enable_command(srv_com)

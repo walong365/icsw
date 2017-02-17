@@ -120,6 +120,11 @@ class AppEnum(Enum):
         "device has a virtual desktop client",
         root_service=False,
     )
+    virtual_desktop_server = icswServiceEnumBase(
+        "virtual-desktop-server",
+        "device can offer virtual desktops to users",
+        root_service=False,
+    )
     auto_etc_hosts = icswServiceEnumBase(
         "auto-etc-hosts",
         "/etc/hosts file can be created from local cluster-server",
@@ -153,6 +158,26 @@ class AppEnum(Enum):
     nmap_scan_device = icswServiceEnumBase(
         "nmap-scan-device",
         "Configure device to allow performing of nmap scans",
+        root_service=False,
+    )
+    quota_scan = icswServiceEnumBase(
+        "quota-scan",
+        "Tracks quota usage on a given server",
+        root_service=False,
+    )
+    infiniband_query = icswServiceEnumBase(
+        "infiniband-query",
+        "Queries attached IB Networks via ibqueryerrors",
+        root_service=False,
+    )
+    user_scan = icswServiceEnumBase(
+        "user-scan",
+        "scan user dirs for all users found on this device",
+        root_service=False,
+    )
+    usv_server = icswServiceEnumBase(
+        "usv-server",
+        "device has an USV from APC directly attached",
         root_service=False,
     )
 

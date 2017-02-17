@@ -21,10 +21,8 @@
 #
 """ serviceEnum Base for 'global' configenum object, for clients """
 
-
-
 __all__ = [
-    b"icswServiceEnumBaseClient"
+    "icswServiceEnumBaseClient"
 ]
 
 

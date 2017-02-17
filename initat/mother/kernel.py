@@ -97,7 +97,7 @@ class KernelSyncProcess(threading_tools.icswProcessObj):
             )
             srv_com.set_result("no kernel server", server_command.SRV_REPLY_STATE_ERROR)
         else:
-            all_k_servers = config_tools.device_with_config(service_type_enum=icswServiceEnum.kernel_server)
+            all_k_servers = config_tools.icswDeviceWithConfig(service_type_enum=icswServiceEnum.kernel_server)
             def_k_servers = all_k_servers.get(icswServiceEnum.kernel_server, [])
             self.log(
                 "found {}: {}".format(

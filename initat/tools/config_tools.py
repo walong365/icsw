@@ -1015,44 +1015,27 @@ class icswServerCheck(object):
             )
 
 
-class device_with_config(dict):
-    def __init__(self, config_name=None, service_type_enum=None, **kwargs):
+class icswDeviceWithConfig(dict):
+    def __init__(self, service_type_enum=None):
         dict.__init__(self)
-        self.__config_name = config_name
+        # service_type_enum may be None to get all defined servers
         self.__service_type_enum = service_type_enum
-        if self.__config_name:
-            if self.__config_name.count("%"):
-                self.__match_str = "name__icontains"
-                self.__m_config_name = self.__config_name.replace("%", "")
-            else:
-                self.__match_str = "name"
-                self.__m_config_name = self.__config_name
-        else:
-            pass
-        self._check(**kwargs)
+        self._check()
 
-    def _check(self, **kwargs):
+    def _check(self):
+        from initat.cluster.backbone.server_enums import icswServiceEnum
         # locates devices with the given config_name
         # right now we are fetching a little bit too much ...
-        # print "*** %s=%s" % (self.__match_str, self.__m_config_name)
-        if self.__config_name:
+        if self.__service_type_enum is None:
             direct_list = device_config.objects.filter(
                 Q(
                     **{
-                        "config__{}".format(self.__match_str): self.__m_config_name,
+                        "config__config_service_enum__isnull": False,
                         "device__enabled": True,
                         "device__device_group__enabled": True,
                     }
                 )
             )
-            _value_list = [
-                "config__name",
-                "config",
-                "device__name",
-                "device",
-                "device__device_group",
-                "device__is_meta_device",
-            ]
         else:
             direct_list = device_config.objects.filter(
                 Q(
@@ -1063,22 +1046,30 @@ class device_with_config(dict):
                     }
                 )
             )
-            _value_list = [
-                "config__config_service_enum__enum_name",
-                "config",
-                "device__name",
-                "device",
-                "device__device_group",
-                "device__is_meta_device",
-            ]
+        _value_list = [
+            "config__config_service_enum__enum_name",
+            "config",
+            "device__name",
+            "device",
+            "device__device_group",
+            "device__is_meta_device",
+        ]
         direct_list = direct_list.select_related(
             "config__config_service_enum",
             "device__device_group",
         ).values_list(
             *_value_list
         )
-        exp_group = set([cur_entry[4] for cur_entry in direct_list if cur_entry[5]])
-        conf_pks = set([cur_entry[1] for cur_entry in direct_list])
+        exp_group = set(
+            [
+                cur_entry[4] for cur_entry in direct_list if cur_entry[5]
+            ]
+        )
+        conf_pks = set(
+            [
+                cur_entry[1] for cur_entry in direct_list
+            ]
+        )
         # expand device groups
         group_dict, md_set, group_md_lut = ({}, set(), {})
         if exp_group:
@@ -1098,7 +1089,11 @@ class device_with_config(dict):
         all_list = []
         for cur_entry in direct_list:
             if cur_entry[5]:
-                all_list.extend([(cur_entry[0], cur_entry[1], g_list[0], g_list[1], g_list[2], g_list[3], "MD") for g_list in group_dict[cur_entry[4]]])
+                all_list.extend(
+                    [
+                        (cur_entry[0], cur_entry[1], g_list[0], g_list[1], g_list[2], g_list[3], "MD") for g_list in group_dict[cur_entry[4]]
+                    ]
+                )
             else:
                 all_list.append(cur_entry)
         # list format:
@@ -1123,23 +1118,15 @@ class device_with_config(dict):
             dev_name, dev_pk, devg_pk, _dev_type = dev_key
             for conf_or_srv_name, conf_pk, m_type, src_type in conf_list:
                 # print "%s (%s/%s), %s" % (conf_name, m_type, src_type, dev_key[0])
-                if self.__config_name:
-                    cur_struct = icswServerCheck(
-                        short_host_name=dev_name,
-                        server_type=conf_or_srv_name,
-                        config=conf_dict[conf_pk],
-                        device=dev_dict[dev_pk],
-                        effective_device=dev_dict[dev_pk] if m_type == src_type else dev_dict[group_md_lut[devg_pk]],
-                    )
-                else:
-                    cur_struct = icswServerCheck(
-                        short_host_name=dev_name,
-                        service_type_enum=self.__service_type_enum,
-                        config=conf_dict[conf_pk],
-                        device=dev_dict[dev_pk],
-                        effective_device=dev_dict[dev_pk] if m_type == src_type else dev_dict[group_md_lut[devg_pk]],
-                    )
-                    self.setdefault(self.__service_type_enum, []).append(cur_struct)
+                cur_srv_type = icswServiceEnum[conf_or_srv_name]
+                cur_struct = icswServerCheck(
+                    short_host_name=dev_name,
+                    service_type_enum=cur_srv_type,
+                    config=conf_dict[conf_pk],
+                    device=dev_dict[dev_pk],
+                    effective_device=dev_dict[dev_pk] if m_type == src_type else dev_dict[group_md_lut[devg_pk]],
+                )
+                self.setdefault(cur_srv_type, []).append(cur_struct)
                 self.setdefault(conf_or_srv_name, []).append(cur_struct)
 
 

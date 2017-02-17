@@ -50,7 +50,7 @@ class SyncConfig(object):
         self.master = True if not self.__slave_name else False
         if self.__slave_name:
             self.__dir_offset = os.path.join("slaves", self.__slave_name)
-            master_cfg = config_tools.device_with_config(service_type_enum=icswServiceEnum.monitor_server)
+            master_cfg = config_tools.icswDeviceWithConfig(service_type_enum=icswServiceEnum.monitor_server)
             self.master_uuid = routing.get_server_uuid(
                 icswServiceEnum.monitor_slave,
                 master_cfg[icswServiceEnum.monitor_server][0].effective_device.uuid,

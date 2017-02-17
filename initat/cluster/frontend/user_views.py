@@ -213,9 +213,11 @@ class clear_home_dir_created(View):
 
 
 class get_device_ip(View):
-    '''
+    """
     Retrieves ip address to communicate to from local device
-    '''
+    unly used in dashboard.coffee for icswUserVduOverview
+
+    """
     @method_decorator(login_required)
     def post(self, request):
         _post = request.POST

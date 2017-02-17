@@ -52,13 +52,17 @@ UNIFIED_NAME = "unified"
 
 
 class MeasureTime(object):
-    def __init__(self, quiet=False):
+    def __init__(self, quiet: bool=False):
         self._quiet = quiet
+        self._start_time = time.time()
         self._time = time.time()
 
-    def step(self, what):
+    def step(self, what: string=None):
         cur_time = time.time()
         if not self._quiet:
+            if not what:
+                self._time = self._start_time
+                what = "total"
             print(
                 "{:<20s} : {:>8.3f} ms".format(
                     what,

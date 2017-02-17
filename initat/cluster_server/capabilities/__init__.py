@@ -96,34 +96,27 @@ class CapabilityProcess(threading_tools.icswProcessObj):
                         _value = getattr(_mod, _key)
                         if inspect.isclass(_value) and issubclass(_value, base.BackgroundBase) and _value != base.BackgroundBase:
                             SRV_CAPS.append(_value)
-            self.log("checking {}".format(logging_tools.get_plural("capability", len(SRV_CAPS))))
+            self.log(
+                "checking {}".format(
+                    logging_tools.get_plural("capability", len(SRV_CAPS))
+                )
+            )
             self.__server_cap_dict = {}
             self.__cap_list = []
             for _srv_cap in SRV_CAPS:
-                cap_name = _srv_cap.Meta.name
-                try:
-                    cap_descr = _srv_cap.Meta.description
-                except:
-                    self.log("capability {} has no description set, ignoring...".format(cap_name), logging_tools.LOG_LEVEL_ERROR)
-                else:
-                    _new_c = factories.Config(
-                        name=cap_name,
-                        description=cap_descr,
-                        server_config=True,
-                        # system_config=True,
-                    )
-                    _sql_info = config_tools.icswServerCheck(server_type=cap_name)
-                    if _sql_info.effective_device:
-                        self.__cap_list.append(cap_name)
-                        self.__server_cap_dict[cap_name] = _srv_cap(self, _sql_info)
-                        self.log(
-                            "capability {} is enabled on {}".format(
-                                cap_name,
-                                str(_sql_info.effective_device),
-                            )
+                srv_type = _srv_cap.Meta.service_enum
+                _sql_info = config_tools.icswServerCheck(service_type_enum=srv_type)
+                if _sql_info.effective_device:
+                    self.__cap_list.append(srv_type.name)
+                    self.__server_cap_dict[srv_type.name] = _srv_cap(self, _sql_info)
+                    self.log(
+                        "capability {} is enabled on {}".format(
+                            srv_type.name,
+                            str(_sql_info.effective_device),
                         )
-                    else:
-                        self.log("capability {} is disabled".format(cap_name))
+                    )
+                else:
+                    self.log("capability {} is disabled".format(srv_type.name))
 
     def add_ova_statistics(self, cur_time, drop_com):
         def _vector_entry(v_type, csr):

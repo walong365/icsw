@@ -24,8 +24,9 @@ import time
 from django.db.models import Q
 
 from initat.cluster.backbone.models import home_export_list, user, user_scan_result, user_scan_run
-from initat.cluster_server.capabilities.base import BackgroundBase
-from initat.cluster_server.config import global_config
+from initat.cluster.backbone.server_enums import icswServiceEnum
+from .base import BackgroundBase
+from ..config import global_config
 from initat.tools import logging_tools, process_tools
 
 
@@ -77,10 +78,9 @@ class ScanSubDir(dict):
             self[key].create_db_entries(new_run, key, new_entry)
 
 
-class user_scan_stuff(BackgroundBase):
+class UserScanCode(BackgroundBase):
     class Meta:
-        name = "user_scan"
-        description = "scan user dirs for all users found on this device"
+        service_enum = icswServiceEnum.user_scan
 
     def init_bg_stuff(self):
         self.__last_user_scan = None
