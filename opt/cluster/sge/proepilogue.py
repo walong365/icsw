@@ -52,6 +52,7 @@ except:
 from initat.tools import threading_tools, configfile, logging_tools, net_tools, \
     process_tools, server_command
 from initat.icsw.service.instance import InstanceXML
+
 HM_PORT = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
 
 
@@ -59,6 +60,7 @@ SEP_LEN = 70
 LOCAL_IP = "127.0.0.1"
 # PROFILE_PREFIX = ".mon"
 CONFIG_FILE_NAME = "proepilogue.conf"
+# no RMS-Server present in clients .xml-files
 RMS_SERVER_PORT = 8009
 
 

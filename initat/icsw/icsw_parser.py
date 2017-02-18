@@ -71,6 +71,7 @@ SC_MAPPING = {
     # "server": ".service.service_parser",
     "config": ".config.config_parser",
     "call": ".call.call_parser",
+    "debug": ".debug.debug_parser",
 }
 
 

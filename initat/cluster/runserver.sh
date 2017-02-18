@@ -53,7 +53,7 @@ done
 
 # enable debugging
 
-export ICSW_DEBUG_SOFTWARE=1
+export ICSW_DEBUG_MODE=1
 
 # disable __pycache__
 

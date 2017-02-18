@@ -47,6 +47,7 @@ setup(
         "initat.icsw.config",
         "initat.icsw.collectd",
         "initat.icsw.user",
+        "initat.icsw.debug",
         "initat.tools",
         "initat.tools.mock",
         "initat.tools.bgnotify",
