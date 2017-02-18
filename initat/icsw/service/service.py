@@ -179,6 +179,7 @@ class Service(object):
                         try:
                             _cr = config_tools.icswServerCheck(service_type_enum=_enum)
                         except:
+                            raise
                             # cannot get server_check instance, set config_check_ok to False
                             self.config_check_ok = False
                             _cr = None
@@ -694,8 +695,11 @@ class MetaService(Service):
             # TODO : cache msi files
             ms_block = process_tools.MSIBlock(ms_name)
             start_time = ms_block.start_time
-            _check = ms_block.check_block(act_proc_dict)
-            diff_dict = {key: value for key, value in ms_block.bound_dict.items() if value}
+            # trigger check
+            _check = ms_block.do_check(act_proc_dict)
+            diff_dict = {
+                key: value for key, value in ms_block.bound_dict.items() if value
+            }
             diff_procs = sum([abs(_v) for _v in list(diff_dict.values())]) if diff_dict else 0
             act_pids = ms_block.pids_found
             # print "*", act_pids

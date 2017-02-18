@@ -497,7 +497,7 @@ class ServerStatusMixin(object):
     # populates the srv_command with the current server stats
     def server_status(self, srv_com, msi_block, global_config=None, spc=None):
         # spc is an optional snmp_process_container
-        _status = msi_block.check_block()
+        _status = msi_block.do_check()
         _proc_info_dict = self.get_info_dict()
         # add configfile manager
         if spc is not None:

@@ -691,18 +691,11 @@ class icswServerCheck(object):
 
     def _set_srv_info(self, sdsc, s_info_str):
         self.server_origin = sdsc
-        if self.__server_type:
-            self.server_info_str = "{} '{}'-server via server_type {}".format(
-                self.server_origin,
-                self.__server_type,
-                s_info_str
-            )
-        else:
-            self.server_info_str = "{} '{}'-server via service_type_enum {}".format(
-                self.server_origin,
-                self.__service_type_enum.name,
-                s_info_str
-            )
+        self.server_info_str = "{} '{}'-server via service_type_enum {}".format(
+            self.server_origin,
+            self.__service_type_enum.name,
+            s_info_str
+        )
 
     # utility funcitions
 
@@ -749,14 +742,9 @@ class icswServerCheck(object):
         my_ips = set(sum(list(ipv4_dict.values()), []))
         # check for virtual-device
         # get all real devices with the requested config, no meta-device handling possible
-        if self.__server_type is None:
-            dev_list = device.objects.select_related("domain_tree_node").filter(
-                Q(device_config__config__config_service_enum__enum_name=self.__service_type_enum.name)
-            )
-        else:
-            dev_list = device.objects.select_related("domain_tree_node").filter(
-                Q(device_config__config__name=self.__server_type)
-            )
+        dev_list = device.objects.select_related("domain_tree_node").filter(
+            Q(device_config__config__config_service_enum__enum_name=self.__service_type_enum.name)
+        )
         if not dev_list:
             # no device(s) found with IP and requested config
             return
@@ -775,26 +763,17 @@ class icswServerCheck(object):
             match_ips = my_ips & dev_ips
             if match_ips:
                 self.device = cur_dev
-                # always working ?
-                if self.__server_type is None:
-                    _queries = [
-                        Q(config_service_enum__enum_name=self.__service_type_enum.name),
-                    ]
-                else:
-                    _queries = [
-                        Q(name=self.__server_type),
-                    ]
                 self.config = None
-                for _query in _queries:
-                    try:
-                        _config = config.objects.get(_query)
-                    except config.DoesNotExist:
-                        pass
-                    except config.MultipleObjectsReturned:
-                        raise
-                    else:
-                        self.config = _config
-                        break
+                try:
+                    _config = config.objects.get(
+                        Q(config_service_enum__enum_name=self.__service_type_enum.name)
+                    )
+                except config.DoesNotExist:
+                    pass
+                except config.MultipleObjectsReturned:
+                    raise
+                else:
+                    self.config = _config
                 self.effective_device = cur_dev
                 self.short_host_name = cur_dev.name
                 self._set_srv_info("virtual", "IP address '{}'".format(list(match_ips)[0]))
