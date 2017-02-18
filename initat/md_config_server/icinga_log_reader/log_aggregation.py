@@ -143,13 +143,6 @@ class IcingaLogAggregator(object):
 
                         # i += 1
 
-                        # def printfun(s):
-                        #    import time
-                        #    prof_file_name = "/tmp/db_calls.out.{}".format(time.time())
-
-                        #    with open(prof_file_name, "a") as f:
-                        #        f.write(s)
-                        #        f.write("\n")
                         # show_database_calls(printfun=printfun, full=True)
 
                         # if i == 2:

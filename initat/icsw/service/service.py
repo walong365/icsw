@@ -160,14 +160,19 @@ class Service(object):
             except ImportError:
                 from initat.host_monitoring.client_enums import icswServiceEnum
             if self.entry.find(".//config-enums/config-enum") is not None:
-                _enum_names = [_entry.text for _entry in self.entry.findall(".//config-enums/config-enum")]
+                _enum_names = [
+                    _entry.text for _entry in self.entry.findall(".//config-enums/config-enum")
+                ]
                 # print("_enum", _enum_names)
                 for _enum_name in _enum_names:
                     _enum = getattr(icswServiceEnum, _enum_name)
                     try:
                         _cr = config_tools.icswServerCheck(service_type_enum=_enum)
                     except (threading_tools.int_error, threading_tools.term_error):
-                        self.log("got int or term error, reraising", logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "got int or term error, reraising",
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                         raise
                     except:
                         config_tools.close_db_connection()
@@ -182,7 +187,11 @@ class Service(object):
                             dev_config.append(_cr)
                         else:
                             dev_config_error.append(_cr.server_info_str)
-        required_ips = set(list(self.entry.xpath(".//required-ips/required-ip/text()", smart_strings=True)))
+        required_ips = set(
+            list(
+                self.entry.xpath(".//required-ips/required-ip/text()", smart_strings=True)
+            )
+        )
         if required_ips:
             _found_ips = set(
                 [
@@ -235,7 +244,15 @@ class Service(object):
                         run_info.append("relayer mode")
                     else:
                         c_state = CONF_STATE_STOP
-                        run_info.append(", ".join(sorted(list(set(dev_config_error)))) or "not configured")
+                        run_info.append(
+                            ", ".join(
+                                sorted(
+                                    list(
+                                        set(dev_config_error)
+                                    )
+                                )
+                            ) or "not configured"
+                        )
             if valid_licenses is not None:
                 from initat.cluster.backbone.models import License
                 _req_lic = self.entry.find(".//required-license")
@@ -612,9 +629,20 @@ class SimpleService(Service):
 
     def _handle_service_rc(self, command):
         if os.path.exists(self.init_script_name):
-            process_tools.call_command("{} {}".format(self.init_script_name, command), self.log)
+            process_tools.call_command(
+                "{} {}".format(
+                    self.init_script_name,
+                    command
+                ),
+                self.log
+            )
         else:
-            self.log("rc-script {} does not exist".format(self.init_script_name), logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                "rc-script {} does not exist".format(
+                    self.init_script_name
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
 
 
 class PIDService(Service):

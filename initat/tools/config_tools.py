@@ -44,7 +44,7 @@ from initat.cluster.backbone.models import config, device, net_ip, device_config
     netdevice, peer_information, config_int, config_blob, config_str, config_bool, \
     MonHostTraceGeneration
 from initat.constants import VERSION_CS_NAME
-from initat.tools import configfile, logging_tools, process_tools, config_store
+from . import configfile, logging_tools, process_tools, config_store
 
 try:
     from initat.cluster.backbone.models import ICSWVersion, VERSION_NAME_LIST
@@ -993,7 +993,11 @@ class icswServerCheck(object):
 
     def prefer_production_net(self, r_list):
         # puts production routes in front of the rest
-        return [entry for entry in r_list if entry[1] in ["p"]] + [entry for entry in r_list if entry[1] not in ["p"]]
+        return [
+            entry for entry in r_list if entry[1] in ["p"]
+        ] + [
+            entry for entry in r_list if entry[1] not in ["p"]
+        ]
 
     def report(self):
         # print self.effective_device
@@ -1018,7 +1022,7 @@ class icswServerCheck(object):
 class icswDeviceWithConfig(dict):
     def __init__(self, service_type_enum=None):
         dict.__init__(self)
-        # service_type_enum may be None to get all defined servers
+        # service_type_enum may be None to get all defined servers (like the old %server% call)
         self.__service_type_enum = service_type_enum
         self._check()
 

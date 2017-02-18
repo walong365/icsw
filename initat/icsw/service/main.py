@@ -172,7 +172,7 @@ def main(opt_ns):
                 from django.db import connection
                 _time = 0.0
                 for line in connection.queries:
-                    print("{} : {}".format(line["time"], line["sql"]))
+                    print("{} : {}".format(line["time"], line["sql"][:100]))
                     _time += float(line["time"])
                 print()
                 print("performed {:d} queries in {:.3f}".format(len(connection.queries), _time))

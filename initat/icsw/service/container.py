@@ -55,6 +55,8 @@ from .constants import *
 from .tools import query_local_meta_server
 from .service import Service
 
+from initat.debug import ICSW_DEBUG_SHOW_DB_CALLS, ICSW_DEBUG_MODE
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 try:
@@ -265,7 +267,7 @@ class ServiceContainer(object):
 
     # main entry point: check_system
     def check_system(self, opt_ns, instance_xml):
-        mt = logging_tools.MeasureTime(quiet=True)
+        mt = logging_tools.MeasureTime(quiet=not ICSW_DEBUG_MODE)
         check_list = self.apply_filter(opt_ns.service, instance_xml)
         mt.step("filter")
         self.update_proc_dict()
@@ -274,10 +276,17 @@ class ServiceContainer(object):
         mt.step("lic")
         self.update_version_tuple()
         mt.step("vers")
+        if ICSW_DEBUG_SHOW_DB_CALLS:
+            from django.db import connection
+            print("DB-calls: {:d}".format(len(connection.queries)))
         if opt_ns.meta:
             from initat.host_monitoring.client_enums import icswServiceEnum
             # print(icswServiceEnum.meta_server.value.msi_block_name)
-            if os.path.exists(process_tools.MSIBlock.path_name(icswServiceEnum.meta_server.value.msi_block_name)):
+            if os.path.exists(
+                process_tools.MSIBlock.path_name(
+                    icswServiceEnum.meta_server.value.msi_block_name
+                )
+            ):
                 # print("*")
                 meta_result = query_local_meta_server(instance_xml, "overview", services=[_srv.name for _srv in check_list])
                 # print("+")
@@ -293,8 +302,17 @@ class ServiceContainer(object):
         instance_xml.tree.attrib["start_time"] = "{:.3f}".format(time.time())
         # print("-")
         for entry in check_list:
-            self.check_service(entry, use_cache=True, refresh=True, version_changed=self.model_version_mismatch, meta_result=meta_result)
+            self.check_service(
+                entry,
+                use_cache=True,
+                refresh=True,
+                version_changed=self.model_version_mismatch,
+                meta_result=meta_result,
+            )
         mt.step("services")
+        if ICSW_DEBUG_SHOW_DB_CALLS:
+            from django.db import connection
+            print("DB-calls: {:d}".format(len(connection.queries)))
         mt.step()
         # print("--")
         instance_xml.tree.attrib["end_time"] = "{:.3f}".format(time.time())

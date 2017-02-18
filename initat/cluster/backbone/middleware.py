@@ -72,17 +72,19 @@ def get_terminal_size():
 
 def show_database_calls(*args, **kwargs):
     def output(s):
-        if 'printfun' in kwargs:
-            kwargs['printfun'](s)
-        else:
-            print(s)
+        print(s)
 
     DB_CALL_LIMIT = 10
     if DB_DEBUG:
         from django.db import connection  # @Reimport
         _path = kwargs.get("path", "/unknown")
         _runtime = kwargs.get("runtime", 0.0)
-        tot_time = sum([float(entry["time"]) for entry in connection.queries], 0.)
+        tot_time = sum(
+            [
+                float(entry["time"]) for entry in connection.queries
+            ],
+            0.
+        )
         try:
             cur_width = get_terminal_size()[0]
         except:
@@ -119,7 +121,7 @@ def show_database_calls(*args, **kwargs):
             time.ctime(),
             len(connection.queries),
             _runtime,
-            _path
+            _path,
         )
         open("database_calls", "a").write(_line)
     else:
