@@ -208,8 +208,7 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServer
         else:
             try:
                 self.network_bind(
-                    server_type="server",
-                    bind_port=global_config["COMMAND_PORT"],
+                    service_type_enum=icswServiceEnum.cluster_server,
                     need_all_binds=global_config["NEED_ALL_NETWORK_BINDS"],
                     pollin=self._recv_command,
                     bind_to_localhost=True,

@@ -98,7 +98,6 @@ class simple_request(object):
     def _find_best_server(self, conf_list):
         dev_sc = config_tools.icswServerCheck(
             short_host_name=self.cc.device.name,
-            server_type="node",
             fetch_network_info=True
         )
         bs_list = []

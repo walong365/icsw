@@ -123,7 +123,7 @@ class ServerProcess(
 
     def _init_network_sockets(self):
         self.network_bind(
-            server_type="rms",
+            service_type_enum=icswServiceEnum.rms_server,
             need_all_binds=False,
             pollin=self.remote_call,
         )

@@ -147,7 +147,6 @@ class BuildProcess(threading_tools.icswProcessObj):
         else:
             dev_sc = config_tools.icswServerCheck(
                 host_name=cur_c.name,
-                server_type="node",
                 fetch_network_info=True
             )
             cur_c.log("icswServerCheck report(): {}".format(dev_sc.report()))

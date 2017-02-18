@@ -98,8 +98,7 @@ class ServerProcess(
     def _init_network_sockets(self):
         self.socket_dict = {}
         self.network_bind(
-            server_type="package",
-            bind_port=global_config["COMMAND_PORT"],
+            service_type_enum=icswServiceEnum.package_server,
             need_all_binds=False,
             pollin=self.remote_call,
             ext_call=True,
@@ -167,7 +166,6 @@ class ServerProcess(
                     dev_sc = config_tools.icswServerCheck(
                         device=cur_c.device,
                         config="",
-                        server_type="node",
                         fetch_network_info=True
                     )
                     act_routing_info = _pserver.get_route_to_other_device(

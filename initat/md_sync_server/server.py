@@ -303,8 +303,8 @@ class server_process(
     def _init_network_sockets(self):
         self.network_bind(
             need_all_binds=False,
-            bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
+            service_type_enum=icswServiceEnum.monitor_slave,
             client_type=icswServiceEnum.monitor_slave,
             simple_server_bind=True,
             pollin=self.remote_call,

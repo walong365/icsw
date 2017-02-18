@@ -229,7 +229,9 @@ class get_device_ip(View):
         )
 
         # from-device is where virtual desktop client config is set
-        server_by_type = config_tools.icswServerCheck(server_type="virtual_desktop_client")
+        server_by_type = config_tools.icswServerCheck(
+            service_type_enum=icswServiceEnum.virtual_desktop_client
+        )
         from_dev = server_by_type.effective_device
 
         if from_dev is None:
@@ -237,12 +239,23 @@ class get_device_ip(View):
             cur_routing = routing.SrvTypeRouting(force=True)
             from_dev = cur_routing.local_device
 
-        from_server_check = config_tools.icswServerCheck(device=from_dev, config=None, server_type="node")
-        to_server_check = config_tools.icswServerCheck(device=to_dev, config=None, server_type="node")
+        from_server_check = config_tools.icswServerCheck(
+            device=from_dev,
+            config=None
+        )
+        to_server_check = config_tools.icswServerCheck(
+            device=to_dev,
+            config=None,
+        )
 
         # calc route to it and use target ip
         _router = config_tools.RouterObject(logger)
-        route = from_server_check.get_route_to_other_device(_router, to_server_check, allow_route_to_other_networks=True, prefer_production_net=True)
+        route = from_server_check.get_route_to_other_device(
+            _router,
+            to_server_check,
+            allow_route_to_other_networks=True,
+            prefer_production_net=True
+        )
 
         if route:
             ip = route[0][3][1][0]

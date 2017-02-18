@@ -465,14 +465,12 @@ def get_config_var_list(config_obj, config_dev):
 
 class icswServerCheck(object):
     """ is called icswServerCheck, but can also be used for nodes """
-    def __init__(self, **kwargs):
-        # server_type: name of server, no wildcards supported (!)
-        if "service_type_enum" in kwargs:
-            self.__service_type_enum = kwargs["service_type_enum"]
-            self.__server_type = None
-        else:
-            self.__service_type_enum = None
-            self.__server_type = kwargs["server_type"]
+    def __init__(self, service_type_enum: enumerate=None, **kwargs):
+        if "server_type" in kwargs:
+            print("*" * 20)
+            print("server_type set: '{}'".format(kwargs["server_type"]))
+            print("*" * 20)
+        self.__service_type_enum = service_type_enum
         if "db_version_dict" in kwargs:
             self.__db_version_dict = kwargs["db_version_dict"]
         else:
@@ -534,16 +532,11 @@ class icswServerCheck(object):
         self.nd_lut = {}
         # lookup table network_identifier -> ip_list
         self.identifier_ip_lut = {}
-        if self.__server_type is None:
-            if self.__service_type_enum is not None:
-                self.real_server_name = self.__service_type_enum.name
-            else:
-                self.real_server_name = ""
-            self.config_name = None
+        if self.__service_type_enum is not None:
+            self.real_server_name = self.__service_type_enum.name
         else:
-            # set dummy config_name
-            self.real_server_name = self.__server_type
-            self.config_name = self.__server_type
+            self.real_server_name = ""
+        self.config_name = None
         # config variable dict
         self.__config_vars = {}
         if self._vers_check():
@@ -600,34 +593,19 @@ class icswServerCheck(object):
                 if self.device:
                     # get config
                     _co = config.objects
-                    if self.__server_type is None:
-                        if self.__service_type_enum is None:
-                            # no service type enum specifed, take device (for node selection)
-                            _queries = []
-                        else:
-                            _queries = [
-                                (
-                                    True,
-                                    Q(config_service_enum__enum_name=self.__service_type_enum.name) &
-                                    Q(device_config__device=self.device)
-                                ),
-                                (
-                                    False,
-                                    Q(config_service_enum__enum_name=self.__service_type_enum.name) &
-                                    Q(device_config__device__is_meta_device=True) &
-                                    Q(device_config__device__device_group=self.device.device_group_id)
-                                ),
-                            ]
+                    if self.__service_type_enum is None:
+                        # no service type enum specifed, take device (for node selection)
+                        _queries = []
                     else:
                         _queries = [
                             (
                                 True,
-                                Q(name=self.__server_type) &
+                                Q(config_service_enum__enum_name=self.__service_type_enum.name) &
                                 Q(device_config__device=self.device)
                             ),
                             (
                                 False,
-                                Q(name=self.__server_type) &
+                                Q(config_service_enum__enum_name=self.__service_type_enum.name) &
                                 Q(device_config__device__is_meta_device=True) &
                                 Q(device_config__device__device_group=self.device.device_group_id)
                             ),

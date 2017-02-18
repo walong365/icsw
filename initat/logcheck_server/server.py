@@ -86,9 +86,8 @@ class ServerProcess(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, s
     def _init_network_sockets(self):
         self.network_bind(
             need_all_binds=False,
-            bind_port=global_config["COMMAND_PORT"],
             pollin=self.remote_call,
-            server_type="logcheck-server",
+            service_type_enum=icswServiceEnum.logcheck_server,
         )
         return True
 

@@ -547,18 +547,14 @@ class NetworkBindMixin(object):
         pollin = kwargs.get("pollin", None)
         ext_call = kwargs.get("ext_call", False)
         immediate = kwargs.get("immediate", True)
-        if "server_type" in kwargs:
-            _inst = InstanceXML(log_com=self.log)
-            _srv_type = kwargs["server_type"]
-            bind_port = _inst.get_port_dict(_srv_type, ptype="command")
-        elif "service_type_enum" in kwargs:
+        if "service_type_enum" in kwargs:
             _inst = InstanceXML(log_com=self.log)
             _srv_type = kwargs["service_type_enum"]
             bind_port = _inst.get_port_dict(_srv_type, ptype="command")
         elif "bind_port" in kwargs:
             bind_port = kwargs["bind_port"]
         else:
-            raise KeyError("neither bind_port, service_type_enum nor server_type defined in kwargs")
+            raise KeyError("neither bind_port nor service_type_enum defined in kwargs")
         main_socket_name = kwargs.get("main_socket_name", "main_socket")
         virtual_sockets_name = kwargs.get("virtual_sockets_name", "virtual_sockets")
         bind_to_localhost = kwargs.get("bind_to_localhost", False)
@@ -571,6 +567,7 @@ class NetworkBindMixin(object):
                 uuid,
                 InstanceXML(quiet=True).get_uuid_postfix(kwargs["client_type"]),
             )
+
             dev_r = None
         else:
             from initat.tools import cluster_location

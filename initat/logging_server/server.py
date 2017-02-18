@@ -263,9 +263,9 @@ class MainProcess(ICSWBasePool):
             client.bind(io_stream_helper.icswIOStream.zmq_socket_name(h_name, check_ipc_prefix=True))
             os.chmod(io_stream_helper.icswIOStream.zmq_socket_name(h_name), stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
         self.network_bind(
-            bind_port=self.global_config["COMMAND_PORT"],
             bind_to_localhost=True,
             pollin=self._recv_data,
+            service_type_enum=icswServiceEnum.logging_server,
             client_type=icswServiceEnum.logging_server,
         )
 

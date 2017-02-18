@@ -217,7 +217,8 @@ class SrvTypeRouting(object):
 
     def _build_resolv_dict(self):
         # local device
-        _myself = icswServerCheck(server_type="", fetch_network_info=True)
+        _myself = icswServerCheck(fetch_network_info=True)
+        print("***", _myself.device)
         _router = RouterObject(self.logger)
         enum_names = set()
         # build reverse lut
