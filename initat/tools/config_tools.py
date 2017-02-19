@@ -593,7 +593,7 @@ class icswServerCheck(object):
             }
         else:
             self._result = {
-                self.__service_type_enum: icswServerCheckResult(self, self.__service_type_enum)
+                self.__service_type_enum[0]: icswServerCheckResult(self, self.__service_type_enum[0])
             }
         if self._vers_check():
             self._db_check(**kwargs)
