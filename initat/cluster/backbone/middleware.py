@@ -25,7 +25,6 @@
 # from backend.models import site_call_log, session_call_log
 
 
-import shutil
 import time
 
 from django.conf import settings
@@ -65,74 +64,12 @@ class thread_local_middleware(object):
 REVISION_MIDDLEWARE_FLAG = "reversion.revision_middleware_active"
 
 
-def get_terminal_size():
-    width, height = shutil.get_terminal_size()
-    return width, height
-
-
-def show_database_calls(*args, **kwargs):
-    def output(s):
-        print(s)
-
-    DB_CALL_LIMIT = 10
-    if DB_DEBUG:
-        from django.db import connection  # @Reimport
-        _path = kwargs.get("path", "/unknown")
-        _runtime = kwargs.get("runtime", 0.0)
-        tot_time = sum(
-            [
-                float(entry["time"]) for entry in connection.queries
-            ],
-            0.
-        )
-        try:
-            cur_width = get_terminal_size()[0]
-        except:
-            # no regular TTY, ignore
-            cur_width = None
-        else:
-            if len(connection.queries) > DB_CALL_LIMIT:
-                # only output if stdout is a regular TTY
-                output(
-                    "queries: {:d} in {:.2f} seconds".format(
-                        len(connection.queries),
-                        tot_time,
-                    )
-                )
-        if len(connection.queries) > DB_CALL_LIMIT and cur_width:
-            for act_sql in connection.queries:
-                if act_sql["sql"]:
-                    out_str = act_sql["sql"].replace("\n", "<NL>")
-                    _len_pre = len(out_str)
-                    out_str = out_str[0:cur_width - 21]
-                    _len_post = len(out_str)
-                    if _len_pre == _len_post:
-                        _size_str = "     {:5d}".format(_len_pre)
-                    else:
-                        _size_str = "{:4d}/{:5d}".format(_len_post, _len_pre)
-                    output(
-                        "{:6.2f} [{}] {}".format(
-                            float(act_sql["time"]),
-                            _size_str,
-                            out_str
-                        )
-                    )
-        _line = "{} {:4d} {:8.4f} {:<50s}\n".format(
-            time.ctime(),
-            len(connection.queries),
-            _runtime,
-            _path,
-        )
-        open("database_calls", "a").write(_line)
-    else:
-        output("django.db.connection not loaded in backbone.middleware.py")
-
-
 class database_debug(object):
     def process_request(self, request):
         request.__start_time = time.time()
 
     def process_response(self, request, response):
         if settings.DEBUG and not request.path.count(settings.MEDIA_URL) and connection.queries:
+            from initat.debug import show_database_calls
             show_database_calls(path=request.path, runtime=time.time() - request.__start_time)
         return response

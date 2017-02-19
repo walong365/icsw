@@ -36,6 +36,8 @@ to log database calls set ICSW_DEUBG_SHOW_DB_CALLS
 """
 
 import os
+import time
+
 
 __all__ = [
     "ICSW_DEBUG_MODE",
@@ -43,8 +45,18 @@ __all__ = [
     "ICSW_DEBUG_MIN_DB_CALLS",
     "ICSW_DEBUG_MIN_RUN_TIME",
     "ICSW_DEBUG_SHOW_DB_CALLS",
+    "ICSW_DEBUG_LOG_DB_CALLS",
     "ICSW_DEBUG_VARS",
 ]
+
+
+# dummy defs
+ICSW_DEBUG_MODE = None
+ICSW_DEBUG_LEVEL = None
+ICSW_DEBUG_SHOW_DB_CALLS = None
+ICSW_DEBUG_MIN_DB_CALLS = None
+ICSW_DEBUG_MIN_RUN_TIME = None
+ICSW_DEBUG_LOG_DB_CALLS = None
 
 
 class icswDebugVar(object):
@@ -90,6 +102,9 @@ class icswDebugVar(object):
             self.name
         )
 
+    def set_environ_value(self, value):
+        os.environ[self.name] = str(value)
+
 
 ICSW_DEBUG_VARS = [
     icswDebugVar(
@@ -117,7 +132,83 @@ ICSW_DEBUG_VARS = [
         False,
         "display of database calls",
     ),
+    icswDebugVar(
+        "ICSW_DEBUG_LOG_DB_CALLS",
+        "",
+        "file to log database-call statistic",
+    )
 ]
 
+
+# set debug vars
 for _var in ICSW_DEBUG_VARS:
     _var.set_local_var()
+
+
+def get_debug_var(name):
+    return [_entry for _entry in ICSW_DEBUG_VARS if _entry.name == name][0]
+
+
+def get_terminal_size():
+    import shutil
+    width, height = shutil.get_terminal_size()
+    return width, height
+
+
+def show_database_calls(*args, **kwargs):
+    def output(s):
+        print(s)
+
+    DB_CALL_LIMIT = 10
+    if ICSW_DEBUG_MODE and ICSW_DEBUG_SHOW_DB_CALLS:
+        from django.db import connection
+        _path = kwargs.get("path", "/unknown")
+        _runtime = kwargs.get("runtime", 0.0)
+        tot_time = sum(
+            [
+                float(entry["time"]) for entry in connection.queries
+            ],
+            0.
+        )
+        try:
+            cur_width = get_terminal_size()[0]
+        except:
+            # no regular TTY, ignore
+            cur_width = None
+        else:
+            if len(connection.queries) > DB_CALL_LIMIT:
+                # only output if stdout is a regular TTY
+                output(
+                    "queries: {:d} in {:.2f} seconds".format(
+                        len(connection.queries),
+                        tot_time,
+                    )
+                )
+        if len(connection.queries) > DB_CALL_LIMIT and cur_width:
+            for act_sql in connection.queries:
+                if act_sql["sql"]:
+                    out_str = act_sql["sql"].replace("\n", "<NL>")
+                    _len_pre = len(out_str)
+                    out_str = out_str[0:cur_width - 21]
+                    _len_post = len(out_str)
+                    if _len_pre == _len_post:
+                        _size_str = "     {:5d}".format(_len_pre)
+                    else:
+                        _size_str = "{:4d}/{:5d}".format(_len_post, _len_pre)
+                    output(
+                        "{:6.2f} [{}] {}".format(
+                            float(act_sql["time"]),
+                            _size_str,
+                            out_str
+                        )
+                    )
+        if ICSW_DEBUG_LOG_DB_CALLS:
+            _line = "t={} q={:4d} t={:8.4f} p={:<50s}\n".format(
+                time.ctime(),
+                len(connection.queries),
+                _runtime,
+                _path,
+            )
+            open(ICSW_DEBUG_LOG_DB_CALLS, "a").write(_line)
+    else:
+        output("django.db.connection not loaded in backbone.middleware.py")

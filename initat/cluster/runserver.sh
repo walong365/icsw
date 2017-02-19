@@ -53,7 +53,7 @@ done
 
 # enable debugging
 
-export ICSW_DEBUG_MODE=1
+$(../icsw/main.py debug --enable-mode --enable-show-db-calls --log-db-calls=database_calls)
 
 # disable __pycache__
 

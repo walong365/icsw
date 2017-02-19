@@ -26,7 +26,7 @@ import os
 import sys
 import time
 
-from initat.debug import ICSW_DEBUG_MODE
+from initat.debug import show_database_calls
 from initat.tools import logging_tools
 from . import container
 from . import instance
@@ -168,15 +168,7 @@ def main(opt_ns):
             console.main(opt_ns, cur_c, inst_xml)
         else:
             cur_c.check_system(opt_ns, inst_xml)
-            if ICSW_DEBUG_MODE:
-                from django.db import connection
-                _time = 0.0
-                for line in connection.queries:
-                    print("{} : {}".format(line["time"], line["sql"][:100]))
-                    _time += float(line["time"])
-                print()
-                print("performed {:d} queries in {:.3f}".format(len(connection.queries), _time))
-                print()
+            show_database_calls()
             form_list = cur_c.instance_to_form_list(opt_ns, inst_xml.tree)
             start_time, end_time = (
                 float(inst_xml.tree.attrib["start_time"]),
