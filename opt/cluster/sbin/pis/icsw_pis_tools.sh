@@ -114,7 +114,7 @@ function restart_software() {
         [ -x /bin/systemctl ] && /bin/systemctl daemon-reload
 
         # clear debug state
-        ${ICSW_SBIN}/icsw debug --clear
+        $(${ICSW_SBIN}/icsw debug --clear)
         # logging-server
         echo -e "\n${GREEN}restarting logging-server${OFF}\n"
         ${ICSW_SBIN}/icsw --logger stdout --logall service restart logging-server
