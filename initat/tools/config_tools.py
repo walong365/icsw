@@ -634,6 +634,8 @@ class icswServerCheck(object):
                 ),
             )
         else:
+            # clear config
+            self.clear_results()
             try:
                 # resolve host
                 if self.host_name:
@@ -680,8 +682,6 @@ class icswServerCheck(object):
                     else:
                         # no service type enum specifed, take device (for node selection)
                         _queries = []
-                    # clear config
-                    self.clear_results()
                     if len(_queries):
                         for _direct_device, _query in _queries:
                             _configs = config.objects.filter(
@@ -723,34 +723,30 @@ class icswServerCheck(object):
                             _result.set_fields(
                                 effective_device=self.device
                             )
-                else:
-                    self.clear_results()
 
-        # self.num_servers = len(all_servers)
-        if self.all_configs_set:
-            # name matches ->
-            for _result in self._result.values():
+        if self.__fetch_network_info:
+            # fetch ip_info only if needed
+            self._fetch_network_info()
+        for _result in self._result.values():
+            if _result.config is not None:
                 _result.set_srv_info(
                     "real" if self.device.pk == _result.effective_device.pk else "meta",
                     "hostname '{}'".format(self.short_host_name)
                 )
-            if self.__fetch_network_info:
-                # fetch ip_info only if needed
-                self._fetch_network_info()
-        elif self.device:
+        if not self.all_configs_set and self.device:
             # no direct config found, check for matching IP
             # we need at least a device to check
             # fetch ip_info
-            if self.__service_type_enum is not None:
+            if self.__service_type_enum:
                 # hmm ... ? for node selection not necessary
                 self._db_check_ip()
             self._fetch_network_info()
-            for _result in self._result.values():
-                _result.set_result(
-                    "device {}".format(
-                        str(self.device),
-                    )
-                )
+            # for _result in self._result.values():
+            #    _result.set_result(
+            #        "device {}".format(
+            #            str(self.device),
+            #        )
+            #    )
 
     @property
     def all_configs_set(self):
@@ -851,17 +847,24 @@ class icswServerCheck(object):
         # get a unique list of devices for which the requested services are related
         dev_list = device.objects.select_related("domain_tree_node").filter(
             Q(device_config__config__config_service_enum__enum_name__in=_enum_names)
+        ).values_list(
+            "idx",
+            "device_config__config__config_service_enum__enum_name"
         ).distinct()
         if not dev_list.count():
             # no device(s) found with IP and requested config
             return
         # find matching IP-adresses
-        for cur_dev in dev_list:
+        # reorder, gather same dev_idxs
+        dev_ip_enum_lut = {}
+        for dev_idx, enum_name in dev_list:
+            dev_ip_enum_lut.setdefault(dev_idx, []).append(enum_name)
+        for dev_idx, enum_list in dev_ip_enum_lut.items():
             dev_ips = set(
                 net_ip.objects.exclude(
                     Q(network__network_type__identifier='l')
                 ).filter(
-                    Q(netdevice__device=cur_dev)
+                    Q(netdevice__device=dev_idx)
                 ).values_list(
                     "ip",
                     flat=True
@@ -869,10 +872,10 @@ class icswServerCheck(object):
             )
             match_ips = my_ips & dev_ips
             if match_ips:
-                self.device = cur_dev
-                self.clear_results()
+                # we dont change the local device attribute
+                # self.clear_results()
                 _configs = config.objects.filter(
-                    Q(config_service_enum__enum_name__in=_enum_names)
+                    Q(config_service_enum__enum_name__in=enum_list)
                 ).select_related(
                     "config_service_enum"
                 )
@@ -882,13 +885,13 @@ class icswServerCheck(object):
                     if _result.config is None:
                         _result.set_fields(
                             config=_config,
-                            effective_device=cur_dev,
+                            effective_device=device.objects.get(Q(idx=dev_idx)),
                         )
                         _result.set_srv_info(
                             "virtual",
                             "IP address '{}'".format(list(match_ips)[0])
                         )
-                self.short_host_name = cur_dev.name
+                # self.short_host_name = cur_dev.name
 
     def get_route_to_other_devices(self, router_obj, dev_list, **kwargs):
         # check routing from this node to other devices
