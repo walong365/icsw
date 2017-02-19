@@ -210,5 +210,3 @@ def show_database_calls(*args, **kwargs):
                 _path,
             )
             open(ICSW_DEBUG_LOG_DB_CALLS, "a").write(_line)
-    else:
-        output("django.db.connection not loaded in backbone.middleware.py")
