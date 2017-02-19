@@ -485,7 +485,6 @@ class icswServerCheckResult(object):
             self.real_server_name = self.service_type_enum.name
         else:
             self.real_server_name = ""
-        self.config_name = None
         # config variable dict
         self.__config_vars = {}
 
@@ -513,6 +512,33 @@ class icswServerCheckResult(object):
 
     def set_result(self, info_str):
         self.server_info_str = info_str
+
+    def fetch_config_vars(self):
+        self.__config_vars.update(get_config_var_list(self.config, self.effective_device))
+
+    def has_key(self, var_name):
+        return var_name in self.__config_vars
+
+    def __contains__(self, var_name):
+        return var_name in self.__config_vars
+
+    def keys(self):
+        return list(self.__config_vars.keys())
+
+    def is_fixed(self, var_name):
+        return self.__config_vars[var_name].fixed
+
+    def copy_flag(self, var_name, new_var):
+        self.__config_vars[var_name].set_is_global(new_var.is_global())
+
+    def get_source(self, var_name):
+        return self.__config_vars[var_name].source
+
+    def __setitem__(self, var_name, var_value):
+        self.__config_vars[var_name] = var_value
+
+    def __getitem__(self, var_name):
+        return self.__config_vars[var_name].value
 
 
 class icswServerCheck(object):
@@ -696,7 +722,6 @@ class icswServerCheck(object):
                                     # config is not already set
                                     _result.set_fields(
                                         config=_config,
-                                        config_name=config.name,
                                     )
                                     # found
                                     if _direct_device:
@@ -760,33 +785,6 @@ class icswServerCheck(object):
                 config=None,
                 effective_device=None,
             )
-
-    def fetch_config_vars(self):
-        self.__config_vars.update(get_config_var_list(self.config, self.effective_device))
-
-    def has_key(self, var_name):
-        return var_name in self.__config_vars
-
-    def __contains__(self, var_name):
-        return var_name in self.__config_vars
-
-    def keys(self):
-        return list(self.__config_vars.keys())
-
-    def is_fixed(self, var_name):
-        return self.__config_vars[var_name].fixed
-
-    def copy_flag(self, var_name, new_var):
-        self.__config_vars[var_name].set_is_global(new_var.is_global())
-
-    def get_source(self, var_name):
-        return self.__config_vars[var_name].source
-
-    def __setitem__(self, var_name, var_value):
-        self.__config_vars[var_name] = var_value
-
-    def __getitem__(self, var_name):
-        return self.__config_vars[var_name].value
 
     # utility funcitions
 
@@ -1177,9 +1175,6 @@ class icswDeviceWithConfig(dict):
                 )
             else:
                 all_list.append(cur_entry)
-        # list format:
-        # config_name, config_pk, device_name, device_pk, device_group, device_identifier, orig_device_identifier (may be MD)
-        # dict: device_name, device_pk, device_group, identifier -> config_list (config, config_pk, identifier, source_identifier)
         dev_conf_dict = {}
         for cur_entry in all_list:
             dev_conf_dict.setdefault(tuple(cur_entry[2:6]), []).append((cur_entry[0], cur_entry[1], cur_entry[5], cur_entry[5]))

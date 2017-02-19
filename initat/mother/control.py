@@ -113,7 +113,7 @@ class Host(object):
     @staticmethod
     def get_query(names=[], ips=[], pks=[], exclude_existing=True):
         query = device.all_real_enabled.filter(
-            Q(bootserver=Host.process.sc.effective_device)
+            Q(bootserver=Host.process.sc.get_result().effective_device)
         )
         if exclude_existing:
             query = query.exclude(
@@ -1523,7 +1523,7 @@ class NodeControlProcess(threading_tools.icswProcessObj, server_mixins.EggConsum
                 ip_dev = None
             else:
                 if ip_dev.bootserver:
-                    if ip_dev.bootserver.pk == self.sc.effective_device.pk:
+                    if ip_dev.bootserver.pk == self.sc.get_result().effective_device.pk:
                         boot_dev = Host.get_device(ip_dev.pk)
                         if boot_dev is None:
                             self.log(
@@ -1570,11 +1570,13 @@ class NodeControlProcess(threading_tools.icswProcessObj, server_mixins.EggConsum
                 # nothing found
                 try:
                     _used_dev = device.objects.get(
-                        Q(bootserver=self.sc.effective_device) & Q(netdevice__macaddr__iexact=in_dict["macaddr"].lower())
+                        Q(bootserver=self.sc.get_result().effective_device) &
+                        Q(netdevice__macaddr__iexact=in_dict["macaddr"].lower())
                     )
                 except device.DoesNotExist:
                     greedy_devs = device.objects.filter(
-                        Q(bootserver=self.sc.effective_device) & Q(dhcp_mac=True)
+                        Q(bootserver=self.sc.get_result().effective_device) &
+                        Q(dhcp_mac=True)
                     ).select_related("bootnetdevice").order_by("name")
                     if len(greedy_devs):
                         if mac_ignore.objects.filter(Q(macaddr__iexact=in_dict["macaddr"].lower())).count():

@@ -452,7 +452,7 @@ class ConfigCheckObject(object):
             self.log(
                 "re-inserting config for srv_type {} (config_name is {})".format(
                     self.srv_type_enum.name,
-                    self.__sc_result.config_name,
+                    self.__sc_result.config.name,
                 )
             )
             self.global_config.to_database(

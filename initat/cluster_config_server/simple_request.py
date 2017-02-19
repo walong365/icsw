@@ -182,7 +182,7 @@ class simple_request(object):
                 # check for updated network ?
                 self.log(
                     "found valid_server_struct {} but no route".format(
-                        valid_server_struct.server_info_str
+                        valid_server_struct.get_result().server_info_str
                     ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
@@ -192,7 +192,7 @@ class simple_request(object):
                 self.server_ip = srv_routing[0][2][1][0]
                 self.log(
                     "found valid_server_struct {} (device {}) with ip {}".format(
-                        valid_server_struct.server_info_str,
+                        valid_server_struct.get_result().server_info_str,
                         str(valid_server_struct.device),
                         self.server_ip
                     )

@@ -678,7 +678,7 @@ class Configuration(object):
                     else:
                         new_descr = "{} default value from {} on {}".format(
                             var_range_name,
-                            sc_result.config_name,
+                            sc_result.config.name,
                             sc_result.effective_device.name,
                         )
                     if new_descr and new_descr != _cur_descr and _cur_descr.count("default value from"):
