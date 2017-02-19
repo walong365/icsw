@@ -584,7 +584,7 @@ class icswServerCheck(object):
             return self._result
         else:
             # return result node for singular calls
-            return self._result.values()[0]
+            return list(self._result.values())[0]
 
     def _check(self, **kwargs):
         if self.multiple:
@@ -618,7 +618,7 @@ class icswServerCheck(object):
                 raise SyntaxError(
                     "db_check with set device and config only works for single checks"
                 )
-            self._result.values()[0].set_fields(
+            list(self._result.values())[0].set_fields(
                 config=kwargs["config"],
                 effective_device=kwargs.get(
                     "effective_device",
