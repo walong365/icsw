@@ -1192,9 +1192,9 @@ class icswDeviceWithConfig(dict):
         }
         for dev_key, conf_list in dev_conf_dict.items():
             dev_name, dev_pk, devg_pk, _dev_type = dev_key
-            for conf_or_srv_name, conf_pk, m_type, src_type in conf_list:
+            for srvc_name, conf_pk, m_type, src_type in conf_list:
                 # print "%s (%s/%s), %s" % (conf_name, m_type, src_type, dev_key[0])
-                cur_srv_type = icswServiceEnum[conf_or_srv_name]
+                cur_srv_type = icswServiceEnum[srvc_name]
                 cur_struct = icswServerCheck(
                     short_host_name=dev_name,
                     service_type_enum=cur_srv_type,
@@ -1203,7 +1203,6 @@ class icswDeviceWithConfig(dict):
                     effective_device=dev_dict[dev_pk] if m_type == src_type else dev_dict[group_md_lut[devg_pk]],
                 )
                 self.setdefault(cur_srv_type, []).append(cur_struct)
-                self.setdefault(conf_or_srv_name, []).append(cur_struct)
 
 
 def close_db_connection():

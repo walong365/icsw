@@ -297,7 +297,8 @@ class BuildProcess(threading_tools.icswProcessObj):
             # store in act_prod_net
             conf_dict = {}
             conf_dict["servers"] = srv_names
-            for srv_type in sorted(all_servers.keys()):
+            # custom Enum cannot be compared against each other
+            for srv_type in all_servers.keys():
                 if srv_type not in multiple_configs:
                     routing_info, act_server, routes_found = ([66666666], None, 0)
                     for actual_server in all_servers[srv_type]:
@@ -345,9 +346,12 @@ class BuildProcess(threading_tools.icswProcessObj):
                             )
                             raise
                         conf_dict["{}_ip".format(srv_type.name)] = server_ip
-                        conf_dict["{}_uuid".format(srv_type.name)] = get_server_uuid(srv_type, act_server.device.uuid)
+                        try:
+                            conf_dict["{}_uuid".format(srv_type.name)] = get_server_uuid(srv_type, act_server.device.uuid)
+                        except KeyError:
+                            self.log("  ... encountered slave config {}".format(srv_type.name), logging_tools.LOG_LEVEL_WARN)
                         cur_c.log(
-                            "  {:<20s: {:<25s} (IP {:15s}){}".format(
+                            "  {:<20s}: {:<25s} (IP {:15s}){}".format(
                                 srv_type.name,
                                 conf_dict[srv_type.name],
                                 server_ip,
