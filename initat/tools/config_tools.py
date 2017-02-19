@@ -534,7 +534,7 @@ class icswServerCheck(object):
             self.__service_type_enum = service_type_enum_list
         else:
             self.multiple = False
-            self.__service_type_enum = service_type_enum
+            self.__service_type_enum = [service_type_enum]
         if "db_version_dict" in kwargs:
             self.__db_version_dict = kwargs["db_version_dict"]
         else:
