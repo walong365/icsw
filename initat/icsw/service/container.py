@@ -53,7 +53,7 @@ else:
     is_debug_run = None
 from .constants import *
 from .tools import query_local_meta_server
-from .service import Service
+from .service import Service, check_config_enum
 
 from initat.debug import ICSW_DEBUG_MODE, show_db_call_counter
 
@@ -235,6 +235,7 @@ class ServiceContainer(object):
                             self.model_version_mismatch = False
 
     def check_service(self, entry, use_cache=True, refresh=True, version_changed=False, meta_result=None):
+        # check one service
         if not use_cache or not self.__act_proc_dict:
             self.update_proc_dict()
             self.update_valid_licenses()
@@ -246,6 +247,43 @@ class ServiceContainer(object):
             version_changed=version_changed,
             meta_result=meta_result,
         )
+
+    def check_services(self, service_list, use_cache=True, refresh=True, version_changed=False, meta_result=None):
+        # check multiple services at once
+        if not use_cache or not self.__act_proc_dict:
+            self.update_proc_dict()
+            self.update_valid_licenses()
+        try:
+            from initat.cluster.backbone.server_enums import icswServiceEnum
+        except ImportError:
+            from initat.host_monitoring.client_enums import icswServiceEnum
+        # build enum lut
+        enum_lut = {}
+        service_lut = {}
+        for service in service_list:
+            service_lut[service.name] = []
+            xml_enums = service.entry.findall(".//config-enums/config-enum")
+            for xml_enum in xml_enums:
+                _enum = getattr(icswServiceEnum, xml_enum.text)
+                if _enum in enum_lut:
+                    raise KeyError("enum {} already used".format(_enum))
+                enum_lut[_enum] = service
+        # import pprint
+        result = check_config_enum(list(enum_lut.keys()), config_tools, self.log)
+        for enum, result_node in result.items():
+            service_lut[enum_lut[enum].name].append(result_node)
+        # build service lut
+        # pprint.pprint(service_lut)
+        for service in service_list:
+            service.check(
+                self.__act_proc_dict,
+                refresh=refresh,
+                config_tools=config_tools,
+                valid_licenses=self.valid_licenses,
+                version_changed=version_changed,
+                meta_result=meta_result,
+                check_results=service_lut[service.name],
+            )
 
     def apply_filter(self, service_list, instance_xml):
         check_list = instance_xml.tree.xpath(".//instance[@runs_on]", smart_strings=False)
@@ -298,15 +336,22 @@ class ServiceContainer(object):
             meta_result = None
         mt.step("query local")
         instance_xml.tree.attrib["start_time"] = "{:.3f}".format(time.time())
+        self.check_services(
+            check_list,
+            use_cache=True,
+            refresh=True,
+            version_changed=self.model_version_mismatch,
+            meta_result=meta_result,
+        )
         # print("-")
-        for entry in check_list:
-            self.check_service(
-                entry,
-                use_cache=True,
-                refresh=True,
-                version_changed=self.model_version_mismatch,
-                meta_result=meta_result,
-            )
+        # for entry in check_list:
+        #    self.check_service(
+        #        entry,
+        #        use_cache=True,
+        #        refresh=True,
+        #        version_changed=self.model_version_mismatch,
+        #        meta_result=meta_result,
+        #    )
         mt.step("services")
 
         show_db_call_counter()

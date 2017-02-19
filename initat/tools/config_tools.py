@@ -42,7 +42,7 @@ from django.db.models import Q, Count
 
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
     netdevice, peer_information, config_int, config_blob, config_str, config_bool, \
-    MonHostTraceGeneration
+    MonHostTraceGeneration, network_type
 from initat.constants import VERSION_CS_NAME
 from . import configfile, logging_tools, process_tools, config_store
 
@@ -521,10 +521,20 @@ class icswServerCheck(object):
     checks if the device specified via kwargs (or the local device)
     has one or more service_type_enum set
     """
-    def __init__(self, service_type_enum: enumerate=None, **kwargs):
+    def __init__(
+        self,
+        service_type_enum: enumerate=None,
+        service_type_enum_list: list=None,
+        **kwargs
+    ):
         # device from database or None
         self.device = None
-        self.__service_type_enum = service_type_enum
+        if service_type_enum_list:
+            self.multiple = True
+            self.__service_type_enum = service_type_enum_list
+        else:
+            self.multiple = False
+            self.__service_type_enum = service_type_enum
         if "db_version_dict" in kwargs:
             self.__db_version_dict = kwargs["db_version_dict"]
         else:
@@ -570,10 +580,21 @@ class icswServerCheck(object):
         self._check(**kwargs)
 
     def get_result(self):
-        return self.result
+        if self.multiple:
+            return self._result
+        else:
+            # return result node for singular calls
+            return self._result.values()[0]
 
     def _check(self, **kwargs):
-        self.result = icswServerCheckResult(self, self.__service_type_enum)
+        if self.multiple:
+            self._result = {
+                _enum: icswServerCheckResult(self, _enum) for _enum in self.__service_type_enum
+            }
+        else:
+            self._result = {
+                self.__service_type_enum: icswServerCheckResult(self, self.__service_type_enum)
+            }
         if self._vers_check():
             self._db_check(**kwargs)
 
@@ -585,16 +606,19 @@ class icswServerCheck(object):
             if self.__db_version_dict["database"] == self.__sys_version_dict["database"]:
                 return True
             else:
-                self.result.set_result(
-                    "Database version mismatch",
-                )
+                res_str = "Database version mismatch"
+                (value.set_result(res_str) for value in self._result.values())
                 return False
 
     def _db_check(self, **kwargs):
         if "device" in kwargs:
             # got device, no need to query
             self.device = kwargs["device"]
-            self.result.set_fields(
+            if self.multiple:
+                raise SyntaxError(
+                    "db_check with set device and config only works for single checks"
+                )
+            self._result.values()[0].set_fields(
                 config=kwargs["config"],
                 effective_device=kwargs.get(
                     "effective_device",
@@ -627,71 +651,81 @@ class icswServerCheck(object):
             else:
                 if self.device:
                     # get config
-                    _co = config.objects
                     if self.__service_type_enum is None:
                         # no service type enum specifed, take device (for node selection)
                         _queries = []
                     else:
+                        _enum_lut = {
+                            _enum.name: _enum for _enum in self.__service_type_enum
+                        }
+                        _enum_names = _enum_lut.keys()
                         _queries = [
                             (
                                 True,
-                                Q(config_service_enum__enum_name=self.__service_type_enum.name) &
+                                Q(config_service_enum__enum_name__in=_enum_names) &
                                 Q(device_config__device=self.device)
                             ),
                             (
                                 False,
-                                Q(config_service_enum__enum_name=self.__service_type_enum.name) &
+                                Q(config_service_enum__enum_name__in=_enum_names) &
                                 Q(device_config__device__is_meta_device=True) &
                                 Q(device_config__device__device_group=self.device.device_group_id)
                             ),
                         ]
-                    self.device.config = None
+                    # clear config
+                    self.clear_results()
                     if len(_queries):
                         for _direct_device, _query in _queries:
-                            try:
-                                _config = _co.get(_query)
-                            except config.DoesNotExist:
-                                _config = None
-                            except config.MultipleObjectsReturned:
-                                # take first config
-                                _config = _co.filter(_query)[0]
-                            if _config is not None:
-                                self.result.set_fields(
-                                    config=_config,
-                                    config_name=config.name,
-                                )
-                                # found
-                                if _direct_device:
-                                    # direct device
-                                    self.result.set_fields(
-                                        effective_device=self.device
+                            _configs = config.objects.filter(
+                                _query
+                            ).select_related(
+                                "config_service_enum"
+                            )
+                            for _config in _configs:
+                                _enum = _enum_lut[_config.config_service_enum.enum_name]
+                                _result = self._result[_enum]
+                                if _result.config is None:
+                                    # config is not already set
+                                    _result.set_fields(
+                                        config=_config,
+                                        config_name=config.name,
                                     )
-                                else:
-                                    # via meta device
-                                    self.result.set_fields(
-                                        effective_device=device.objects.select_related(
-                                            "domain_tree_node"
-                                        ).get(
-                                            Q(device_group=self.device.device_group_id) &
-                                            Q(is_meta_device=True)
+                                    # found
+                                    if _direct_device:
+                                        # direct device
+                                        _result.set_fields(
+                                            effective_device=self.device
                                         )
-                                    )
+                                    else:
+                                        # via meta device
+                                        _result.set_fields(
+                                            effective_device=device.objects.select_related(
+                                                "domain_tree_node"
+                                            ).get(
+                                                Q(device_group=self.device.device_group_id) &
+                                                Q(is_meta_device=True)
+                                            )
+                                        )
+                            if self.all_configs_set:
+                                # all configs set, exit loop
+                                # print("BRK")
                                 break
                     else:
-                        self.result.set_fields(
-                            effective_device=self.device
-                        )
+                        for _result in self._result.values():
+                            _result.set_fields(
+                                effective_device=self.device
+                            )
                 else:
-                    self.result.set_fields(
-                        config=None
-                    )
+                    self.clear_results()
+
         # self.num_servers = len(all_servers)
-        if self.result.config:
+        if self.all_configs_set:
             # name matches ->
-            self.result.set_srv_info(
-                "real" if self.device.pk == self.result.effective_device.pk else "meta",
-                "hostname '{}'".format(self.short_host_name)
-            )
+            for _result in self._result.values():
+                _result.set_srv_info(
+                    "real" if self.device.pk == _result.effective_device.pk else "meta",
+                    "hostname '{}'".format(self.short_host_name)
+                )
             if self.__fetch_network_info:
                 # fetch ip_info only if needed
                 self._fetch_network_info()
@@ -703,10 +737,24 @@ class icswServerCheck(object):
                 # hmm ... ? for node selection not necessary
                 self._db_check_ip()
             self._fetch_network_info()
-            self.result.set_result(
-                "device {}".format(
-                    str(self.device),
+            for _result in self._result.values():
+                _result.set_result(
+                    "device {}".format(
+                        str(self.device),
+                    )
                 )
+
+    @property
+    def all_configs_set(self):
+        any_unset = any([_result.config is None for _result in self._result.values()])
+        return not any_unset
+
+    def clear_results(self):
+        # clear result structures (set config and effective_device to None)
+        for _result in self._result.values():
+            _result.set_fields(
+                config=None,
+                effective_device=None,
             )
 
     def fetch_config_vars(self):
@@ -746,17 +794,24 @@ class icswServerCheck(object):
         # commented force_flag, FIXME
         if self.device is not None:
             if not self.__network_info_fetched or kwargs.get("force", False):
-                for net_dev in self.device.netdevice_set.all():
-                    if net_dev.enabled:
-                        self.netdevice_idx_list.append(net_dev.pk)
-                        self.netdevice_ip_lut[net_dev.pk] = []
-                        self.nd_lut[net_dev.pk] = net_dev
-                        for net_ip in net_dev.net_ip_set.all():
-                            self.ip_list.append(net_ip)
-                            self.netdevice_ip_lut[net_dev.pk].append(net_ip)
-                            self.ip_netdevice_lut[net_ip.ip] = net_dev
-                            self.ip_identifier_lut[net_ip.ip] = net_ip.network.network_type.identifier
-                            self.identifier_ip_lut.setdefault(net_ip.network.network_type.identifier, []).append(net_ip)
+                nw_type_lut = {
+                    nwt.idx: nwt for nwt in network_type.objects.all()
+                }
+                for net_dev in self.device.netdevice_set.filter(
+                    Q(enabled=True)
+                ).prefetch_related(
+                    "net_ip_set__network__network__network_type"
+                ):
+                    self.netdevice_idx_list.append(net_dev.pk)
+                    self.netdevice_ip_lut[net_dev.pk] = []
+                    self.nd_lut[net_dev.pk] = net_dev
+                    for net_ip in net_dev.net_ip_set.all():
+                        self.ip_list.append(net_ip)
+                        self.netdevice_ip_lut[net_dev.pk].append(net_ip)
+                        self.ip_netdevice_lut[net_ip.ip] = net_dev
+                        nwt_id = nw_type_lut[net_ip.network.network_type_id].identifier
+                        self.ip_identifier_lut[net_ip.ip] = nwt_id
+                        self.identifier_ip_lut.setdefault(nwt_id, []).append(net_ip)
                 self.__network_info_fetched = True
 
     def _db_check_ip(self):
@@ -781,10 +836,15 @@ class icswServerCheck(object):
         my_ips = set(sum(list(ipv4_dict.values()), []))
         # check for virtual-device
         # get all real devices with the requested config, no meta-device handling possible
+        _enum_lut = {
+            _enum.name: _enum for _enum in self.__service_type_enum
+            }
+        _enum_names = _enum_lut.keys()
+        # get a unique list of devices for which the requested services are related
         dev_list = device.objects.select_related("domain_tree_node").filter(
-            Q(device_config__config__config_service_enum__enum_name=self.__service_type_enum.name)
-        )
-        if not dev_list:
+            Q(device_config__config__config_service_enum__enum_name__in=_enum_names)
+        ).distinct()
+        if not dev_list.count():
             # no device(s) found with IP and requested config
             return
         # find matching IP-adresses
@@ -802,25 +862,25 @@ class icswServerCheck(object):
             match_ips = my_ips & dev_ips
             if match_ips:
                 self.device = cur_dev
-                self.result.set_fields(
-                    config=None
+                self.clear_results()
+                _configs = config.objects.filter(
+                    Q(config_service_enum__enum_name__in=_enum_names)
+                ).select_related(
+                    "config_service_enum"
                 )
-                try:
-                    _config = config.objects.get(
-                        Q(config_service_enum__enum_name=self.__service_type_enum.name)
-                    )
-                except config.DoesNotExist:
-                    pass
-                except config.MultipleObjectsReturned:
-                    raise
-                else:
-                    self.config = _config
-                self.result.set_fields(
-                    effective_device=cur_dev
-                )
+                for _config in _configs:
+                    _enum = _enum_lut[_config.config_service_enum.enum_name]
+                    _result = self._result[_enum]
+                    if _result.config is None:
+                        _result.set_fields(
+                            config=_config,
+                            effective_device=cur_dev,
+                        )
+                        _result.set_srv_info(
+                            "virtual",
+                            "IP address '{}'".format(list(match_ips)[0])
+                        )
                 self.short_host_name = cur_dev.name
-                self.result.set_srv_info("virtual", "IP address '{}'".format(list(match_ips)[0]))
-                break
 
     def get_route_to_other_devices(self, router_obj, dev_list, **kwargs):
         # check routing from this node to other devices

@@ -35,6 +35,33 @@ from initat.tools import logging_tools, process_tools, config_store, threading_t
 from .constants import *
 
 
+def check_config_enum(c_enum, config_tools, log_com):
+    def _check(c_enum):
+        if isinstance(c_enum, list):
+            _cr = config_tools.icswServerCheck(service_type_enum_list=c_enum)
+        else:
+            _cr = config_tools.icswServerCheck(service_type_enum=c_enum)
+        return _cr.get_result()
+
+    try:
+        _cr = _check(c_enum)
+    except (threading_tools.int_error, threading_tools.term_error):
+        log_com(
+            "got int or term error, reraising",
+            logging_tools.LOG_LEVEL_ERROR
+        )
+        raise
+    except:
+        config_tools.close_db_connection()
+        try:
+            _cr = _check(c_enum)
+        except:
+            raise
+            # cannot get server_check instance, set config_check_ok to False
+            _cr = None
+    return _cr
+
+
 class Service(object):
     _COMPAT_DICT = {
         "rms-server": "rms_server",
@@ -145,7 +172,16 @@ class Service(object):
             else:
                 return "error"
 
-    def check(self, act_proc_dict, refresh=True, config_tools=None, valid_licenses=None, version_changed=False, meta_result=None):
+    def check(
+        self,
+        act_proc_dict,
+        refresh=True,
+        config_tools=None,
+        valid_licenses=None,
+        version_changed=False,
+        meta_result=None,
+        check_results=None,
+    ):
         if self.entry.find("result") is not None:
             if refresh:
                 # remove current result record
@@ -155,39 +191,35 @@ class Service(object):
                 return
         dev_config, dev_config_error = ([], [])
         if config_tools is not None:
-            try:
-                from initat.cluster.backbone.server_enums import icswServiceEnum
-            except ImportError:
-                from initat.host_monitoring.client_enums import icswServiceEnum
-            if self.entry.find(".//config-enums/config-enum") is not None:
-                _enum_names = [
-                    _entry.text for _entry in self.entry.findall(".//config-enums/config-enum")
-                ]
-                # print("_enum", _enum_names)
-                for _enum_name in _enum_names:
-                    _enum = getattr(icswServiceEnum, _enum_name)
-                    try:
-                        _cr = config_tools.icswServerCheck(service_type_enum=_enum).get_result()
-                    except (threading_tools.int_error, threading_tools.term_error):
-                        self.log(
-                            "got int or term error, reraising",
-                            logging_tools.LOG_LEVEL_ERROR
-                        )
-                        raise
-                    except:
-                        config_tools.close_db_connection()
-                        try:
-                            _cr = config_tools.icswServerCheck(service_type_enum=_enum).get_result()
-                        except:
-                            raise
+            if check_results is None:
+                # check config status via config_tools call
+                try:
+                    from initat.cluster.backbone.server_enums import icswServiceEnum
+                except ImportError:
+                    from initat.host_monitoring.client_enums import icswServiceEnum
+                if self.entry.find(".//config-enums/config-enum") is not None:
+                    _enum_names = [
+                        _entry.text for _entry in self.entry.findall(".//config-enums/config-enum")
+                    ]
+                    # print("_enum", _enum_names)
+                    for _enum_name in _enum_names:
+                        _enum = getattr(icswServiceEnum, _enum_name)
+                        _cr = check_config_enum(_enum, config_tools, self.log)
+                        if _cr is None:
                             # cannot get server_check instance, set config_check_ok to False
                             self.config_check_ok = False
-                            _cr = None
-                    if _cr is not None:
-                        if _cr.effective_device:
-                            dev_config.append(_cr)
                         else:
-                            dev_config_error.append(_cr.server_info_str)
+                            if _cr.effective_device:
+                                dev_config.append(_cr)
+                            else:
+                                dev_config_error.append(_cr.server_info_str)
+            else:
+                # check results already evaluated
+                for _cr in check_results:
+                    if _cr.effective_device:
+                        dev_config.append(_cr)
+                    else:
+                        dev_config_error.append(_cr.server_info_str)
         required_ips = set(
             list(
                 self.entry.xpath(".//required-ips/required-ip/text()", smart_strings=True)

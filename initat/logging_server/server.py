@@ -451,8 +451,12 @@ class MainProcess(ICSWBasePool):
     def _check_excess_log(self):
         cur_time = time.time()
         diff_time = max(1, abs(cur_time - self.__usecount_ts))
-        s_dict = {key: float(value) / diff_time for key, value in self.__handle_usecount.items()}
-        self.__handle_usecount = {key: 0 for key in self.__handle_usecount}
+        s_dict = {
+            key: float(value) / diff_time for key, value in self.__handle_usecount.items()
+        }
+        self.__handle_usecount = {
+            key: 0 for key in self.__handle_usecount
+        }
         # ("EXCESS_LIMIT", configfile.int_c_var(1000, help_string="log lines per second to trigger excess_log [%(default)s]")),
         # s_dict = {key: value for key, value in s_dict.iteritems() if value > self.global_config["EXCESS_LIMIT"]}
         # pprint.pprint(s_dict)
