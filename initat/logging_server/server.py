@@ -431,7 +431,11 @@ class MainProcess(ICSWBasePool):
             del self.__handle_usecount[h_name]
 
     def _update(self, **kwargs):
-        c_handles = sorted([key for key, value in list(self.__handles.items()) if isinstance(value, logging_tools.logfile) and value.check_for_temp_close()])
+        c_handles = sorted(
+            [
+                key for key, value in list(self.__handles.items()) if isinstance(value, logging_tools.icswLogfile) and value.check_for_temp_close()
+            ]
+        )
         if c_handles:
             self.log(
                 "temporarily closing {}: {}".format(
