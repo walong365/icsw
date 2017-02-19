@@ -29,11 +29,12 @@ def show_current(options):
     print("Current ICSW Debug settings")
     for _var in ICSW_DEBUG_VARS:
         print(
-            "{:<30s}: ({:>16s}) {:>20s}, current: {:>20s}".format(
+            "{:<30s}: ({:>16s}) {:>20s}, current: {:>20s} {}".format(
                 _var.name,
                 str(type(_var.default)),
                 str(_var.default),
                 str(_var.current),
+                _var.description,
             )
         )
 

@@ -167,7 +167,7 @@ class Service(object):
                 for _enum_name in _enum_names:
                     _enum = getattr(icswServiceEnum, _enum_name)
                     try:
-                        _cr = config_tools.icswServerCheck(service_type_enum=_enum)
+                        _cr = config_tools.icswServerCheck(service_type_enum=_enum).get_result()
                     except (threading_tools.int_error, threading_tools.term_error):
                         self.log(
                             "got int or term error, reraising",
@@ -177,7 +177,7 @@ class Service(object):
                     except:
                         config_tools.close_db_connection()
                         try:
-                            _cr = config_tools.icswServerCheck(service_type_enum=_enum)
+                            _cr = config_tools.icswServerCheck(service_type_enum=_enum).get_result()
                         except:
                             raise
                             # cannot get server_check instance, set config_check_ok to False

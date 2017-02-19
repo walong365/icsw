@@ -218,7 +218,6 @@ class SrvTypeRouting(object):
     def _build_resolv_dict(self):
         # local device
         _myself = icswServerCheck(fetch_network_info=True)
-        print("***", _myself.device)
         _router = RouterObject(self.logger)
         enum_names = set()
         # build reverse lut
@@ -254,21 +253,22 @@ class SrvTypeRouting(object):
             _sc = icswDeviceWithConfig(service_type_enum=getattr(icswServiceEnum, _enum_name))
             if _enum_name in _sc:
                 for _dev in _sc[_enum_name]:
-                    if _dev.effective_device is None:
+                    _dev_scr = _dev.get_result()
+                    if _dev_scr.effective_device is None:
                         # may be the case when the local system is too old (database-wise)
                         continue
                     # routing info
-                    if _dev.effective_device.is_meta_device:
+                    if _dev_scr.effective_device.is_meta_device:
                         # server-like config is set for an md-device, not good
                         self.log(
                             "device '{}' (srv_type_list {}) is a meta-device".format(
-                                _dev.effective_device.full_name,
+                                _dev_scr.effective_device.full_name,
                                 self._srv_type_to_string(_srv_type_list),
                             ),
                             logging_tools.LOG_LEVEL_ERROR
                         )
                     else:
-                        if _myself.device and _dev.effective_device.pk == _myself.device.pk:
+                        if _myself.device and _dev_scr.effective_device.pk == _myself.device.pk:
                             _first_ip = "127.0.0.1"
                             _penalty = 1
                         else:
@@ -291,20 +291,20 @@ class SrvTypeRouting(object):
                             # print "*", _srv_type_list
                             # for _srv_type in _srv_type_list:
                             if True:
-                                _add_t = (_srv_type, _enum_name, _dev.effective_device.pk)
+                                _add_t = (_srv_type, _enum_name, _dev_scr.effective_device.pk)
                                 if _add_t not in _used_tuples:
                                     _used_tuples.add(_add_t)
                                     # lookup for simply adding new config names
-                                    _dst_key = (_srv_type, _dev.effective_device.pk)
+                                    _dst_key = (_srv_type, _dev_scr.effective_device.pk)
                                     if _dst_key in _dev_srv_type_lut:
-                                        _ce = [_entry for _entry in _resolv_dict[_srv_type] if _entry[2] == _dev.effective_device.pk][0]
+                                        _ce = [_entry for _entry in _resolv_dict[_srv_type] if _entry[2] == _dev_scr.effective_device.pk][0]
                                         _ce[4].append(_enum_name)
                                     else:
                                         _resolv_dict.setdefault(_srv_type, []).append(
                                             (
-                                                _dev.effective_device.full_name,
+                                                _dev_scr.effective_device.full_name,
                                                 _first_ip,
-                                                _dev.effective_device.pk,
+                                                _dev_scr.effective_device.pk,
                                                 _penalty,
                                                 [_enum_name],
                                             )
@@ -312,9 +312,9 @@ class SrvTypeRouting(object):
                                     _dev_srv_type_lut.setdefault(_dst_key, []).append(_enum_name)
                                     self.log(
                                         "adding device '{}' (IP {}, EffPK={:d}) to srv_type {} (config {})".format(
-                                            _dev.effective_device.full_name,
+                                            _dev_scr.effective_device.full_name,
                                             _first_ip,
-                                            _dev.effective_device.pk,
+                                            _dev_scr.effective_device.pk,
                                             _srv_type,
                                             _enum_name,
                                         )
@@ -323,13 +323,13 @@ class SrvTypeRouting(object):
                             if not self.ignore_errors:
                                 self.log(
                                     "no route to device '{}' found (srv_type_list {}, config {})".format(
-                                        _dev.effective_device.full_name,
+                                        _dev_scr.effective_device.full_name,
                                         self._srv_type_to_string(_srv_type_list),
                                         _enum_name,
                                     ),
                                     logging_tools.LOG_LEVEL_ERROR,
                                 )
-                            _unroutable_configs.setdefault(_enum_name, []).append(_dev.effective_device.full_name)
+                            _unroutable_configs.setdefault(_enum_name, []).append(_dev_scr.effective_device.full_name)
         # missing routes
         _missing_srv = _INSTANCES_WITH_NAMES - set(_resolv_dict.keys())
         if _missing_srv:
@@ -345,7 +345,7 @@ class SrvTypeRouting(object):
         # set local device
         if _myself.device is not None:
             _resolv_dict["_local_device"] = (_myself.device.pk,)
-        _resolv_dict["_server_info_str"] = _myself.server_info_str
+        _resolv_dict["_server_info_str"] = _myself.get_result().server_info_str
         _resolv_dict["_alias_dict"] = _INSTANCE.get_alias_dict()
         _resolv_dict["_node_split_list"] = node_split_list
         _resolv_dict["_unroutable_configs"] = _unroutable_configs

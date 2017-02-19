@@ -553,7 +553,7 @@ class Configuration(object):
     def get_type(self, key):
         return self.__c_dict[key].short_type
 
-    def from_database(self, sql_info, init_list=[]):
+    def from_database(self, sc_result, init_list=[]):
         from django.db.models import Q
         from initat.tools import configfile
         from initat.cluster.backbone.models import config_blob, \
@@ -566,7 +566,7 @@ class Configuration(object):
         }
 
         self.add_config_entries(init_list, database=True)
-        if sql_info.effective_device:
+        if sc_result.effective_device:
             # dict of local vars without specified host
             for short in [
                 "str",
@@ -581,8 +581,8 @@ class Configuration(object):
                         Q(name__in=[var_name for var_name, _var_value in init_list])
                     )
                 for db_rec in src_sql_obj.filter(
-                    Q(config=sql_info.config) &
-                    Q(config__device_config__device=sql_info.effective_device)
+                    Q(config=sc_result.config) &
+                    Q(config__device_config__device=sc_result.effective_device)
                 ).order_by("name"):
                     var_name = db_rec.name
                     source = "{}_table (pk={})".format(short, db_rec.pk)
@@ -601,7 +601,7 @@ class Configuration(object):
                         new_val.help_string = self.help_string(var_name)
                     self.add_config_entries([(var_name.upper(), new_val)])
 
-    def to_database(self, sql_info):
+    def to_database(self, sc_result):
         from django.db.models import Q
         from initat.cluster.backbone.models import config_blob, \
             config_bool, config_int, config_str
@@ -621,7 +621,7 @@ class Configuration(object):
             "b": config_bool,
             "B": config_blob,
         }
-        if sql_info.effective_device and sql_info.config:
+        if sc_result.effective_device and sc_result.config:
             for key in sorted(self.keys()):
                 # print k,config.get_source(k)
                 # print "write", k, config.get_source(k)
@@ -638,8 +638,8 @@ class Configuration(object):
                     try:
                         cur_var = var_obj.objects.get(
                             Q(name=real_k_name) &
-                            Q(config=sql_info.config) &
-                            (Q(device=0) | Q(device=None) | Q(device=sql_info.effective_device.pk))
+                            Q(config=sc_result.config) &
+                            (Q(device=0) | Q(device=None) | Q(device=sc_result.effective_device.pk))
                         )
                     except var_obj.DoesNotExist:
                         # check other types
@@ -647,8 +647,8 @@ class Configuration(object):
                         for other_var_obj in other_types:
                             try:
                                 other_var = other_var_obj.objects.get(
-                                    Q(name=real_k_name) & Q(config=sql_info.config) & (
-                                        Q(device=0) | Q(device=None) | Q(device=sql_info.effective_device.pk)
+                                    Q(name=real_k_name) & Q(config=sc_result.config) & (
+                                        Q(device=0) | Q(device=None) | Q(device=sc_result.effective_device.pk)
                                     )
                                 )
                             except other_var_obj.DoesNotExist:
@@ -662,7 +662,7 @@ class Configuration(object):
                         cur_var = var_obj(
                             name=real_k_name,
                             description="",
-                            config=sql_info.config,
+                            config=sc_result.config,
                             device=None,
                             value=self[key],
                         )
@@ -678,8 +678,8 @@ class Configuration(object):
                     else:
                         new_descr = "{} default value from {} on {}".format(
                             var_range_name,
-                            sql_info.config_name,
-                            sql_info.short_host_name,
+                            sc_result.config_name,
+                            sc_result.effective_device.name,
                         )
                     if new_descr and new_descr != _cur_descr and _cur_descr.count("default value from"):
                         cur_var.description = new_descr

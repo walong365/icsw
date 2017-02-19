@@ -43,7 +43,7 @@ class KernelSyncProcess(threading_tools.icswProcessObj):
         # close database connection
         db_tools.close_connection()
         self.register_func("rescan_kernels", self._rescan_kernels)
-        self.kernel_dev = config_tools.icswServerCheck(service_type_enum=icswServiceEnum.kernel_server)
+        self.kernel_dev = config_tools.icswServerCheck(service_type_enum=icswServiceEnum.kernel_server).get_result()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)

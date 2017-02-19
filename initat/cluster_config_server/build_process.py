@@ -149,7 +149,8 @@ class BuildProcess(threading_tools.icswProcessObj):
                 host_name=cur_c.name,
                 fetch_network_info=True
             )
-            cur_c.log("icswServerCheck report(): {}".format(dev_sc.report()))
+            # FIXME, ToDo
+            # cur_c.log("icswServerCheck report(): {}".format(dev_sc.report()))
             cur_net_tree = NetworkTree()
             # sanity checks
             if not cur_c.create_config_dir():

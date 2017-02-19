@@ -127,7 +127,7 @@ class DHCPConfigMixin(object):
                     ) for cur_net in network.objects.exclude(
                         pk__in=[boot_ip.network.pk for boot_ip in boot_ips]
                     ).filter(
-                        Q(net_ip__netdevice__device=my_c.effective_device) &
+                        Q(net_ip__netdevice__device=my_c.get_result().effective_device) &
                         Q(network_type__identifier__in=["s", "p", "o"])
                     ).distinct()
                 ]

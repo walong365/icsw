@@ -463,13 +463,67 @@ def get_config_var_list(config_obj, config_dev):
     return r_dict
 
 
+class icswServerCheckResult(object):
+    def __init__(self, srv_check, service_type_enunm):
+        # link to icswServerCheck
+        self._srv_check = srv_check
+        # device for which the config is set
+        self.effective_device = None
+        # config or None
+        self.config = None
+        # server origin, one of unknown,
+        # ...... real (hostname matches and config set local)
+        # ...... meta (hostname matches and config set to meta_device)
+        # ...... virtual (hostname mismatch, ip match)
+        # ...... virtual meta (hostname mismatch, ip match, config set to meta_device)
+        self.server_origin = "unknown"
+        # info string
+        self.server_info_str = "not set"
+        # set service type enum
+        self.service_type_enum = service_type_enunm
+        if self.service_type_enum is not None:
+            self.real_server_name = self.service_type_enum.name
+        else:
+            self.real_server_name = ""
+        self.config_name = None
+        # config variable dict
+        self.__config_vars = {}
+
+    def set_fields(self, **kwargs):
+        for key, value in kwargs.items():
+            if not hasattr(self, key):
+                raise KeyError(
+                    "key {} not defined in {}".format(
+                        key,
+                        self.__class__.__name__
+                    )
+                )
+            else:
+                setattr(self, key, value)
+
+    def set_srv_info(self, sdsc, s_info_str):
+        self.server_origin = sdsc
+        self.set_result(
+            "{} '{}'-server via service_type_enum {}".format(
+                self.server_origin,
+                self.service_type_enum.name,
+                s_info_str
+            )
+        )
+
+    def set_result(self, info_str):
+        self.server_info_str = info_str
+
+
 class icswServerCheck(object):
-    """ is called icswServerCheck, but can also be used for nodes """
+    """
+    is called icswServerCheck, but can also be used for nodes
+    checks if the device specified via kwargs (or the local device)
+    has one or more service_type_enum set
+    """
     def __init__(self, service_type_enum: enumerate=None, **kwargs):
-        if "server_type" in kwargs:
-            print("*" * 20)
-            print("server_type set: '{}'".format(kwargs["server_type"]))
-            print("*" * 20)
+        # device from database or None
+        self.device = None
         self.__service_type_enum = service_type_enum
         if "db_version_dict" in kwargs:
             self.__db_version_dict = kwargs["db_version_dict"]
@@ -496,28 +550,6 @@ class icswServerCheck(object):
         else:
             self.host_name = None
             self.short_host_name = kwargs.get("short_host_name", process_tools.get_machine_name())
-        self.__fetch_network_info = kwargs.get("fetch_network_info", True)
-        self.__network_info_fetched = False
-        # self.set_hopcount_cache()
-        self._check(**kwargs)
-
-    def _check(self, **kwargs):
-        # src device, queried via name
-        self.src_device = None
-        # device from database or None
-        self.device = None
-        # device for which the config is set
-        self.effective_device = None
-        # config or None
-        self.config = None
-        # server origin, one of unknown,
-        # ...... real (hostname matches and config set local)
-        # ...... meta (hostname matches and config set to meta_device)
-        # ...... virtual (hostname mismatch, ip match)
-        # ...... virtual meta (hostname mismatch, ip match, config set to meta_device)
-        self.server_origin = "unknown"
-        # info string
-        self.server_info_str = "not set"
         # list of ip-addresses for server
         self.ip_list = []
         # list of netdevice-idxs for server
@@ -532,13 +564,16 @@ class icswServerCheck(object):
         self.nd_lut = {}
         # lookup table network_identifier -> ip_list
         self.identifier_ip_lut = {}
-        if self.__service_type_enum is not None:
-            self.real_server_name = self.__service_type_enum.name
-        else:
-            self.real_server_name = ""
-        self.config_name = None
-        # config variable dict
-        self.__config_vars = {}
+        self.__fetch_network_info = kwargs.get("fetch_network_info", True)
+        self.__network_info_fetched = False
+        # self.set_hopcount_cache()
+        self._check(**kwargs)
+
+    def get_result(self):
+        return self.result
+
+    def _check(self, **kwargs):
+        self.result = icswServerCheckResult(self, self.__service_type_enum)
         if self._vers_check():
             self._db_check(**kwargs)
 
@@ -550,43 +585,43 @@ class icswServerCheck(object):
             if self.__db_version_dict["database"] == self.__sys_version_dict["database"]:
                 return True
             else:
-                self.server_info_str = "Database version mismatch"
+                self.result.set_result(
+                    "Database version mismatch",
+                )
                 return False
 
     def _db_check(self, **kwargs):
         if "device" in kwargs:
             # got device, no need to query
-            self.config = kwargs["config"]
-            self.src_device = kwargs["device"]
             self.device = kwargs["device"]
-            self.effective_device = kwargs.get("effective_device", kwargs["device"])
+            self.result.set_fields(
+                config=kwargs["config"],
+                effective_device=kwargs.get(
+                    "effective_device",
+                    kwargs["device"]
+                ),
+            )
         else:
             try:
-                if kwargs.get("prev_check", None):
-                    # copy device from previous check
-                    self.src_device = kwargs["prev_check"].src_device
-                    # may be altered
-                    self.device = kwargs["prev_check"].src_device
+                # resolve host
+                if self.host_name:
+                    # search with full host name
+                    self.device = device.all_enabled.prefetch_related(
+                        "netdevice_set__net_ip_set__network__network_type"
+                    ).select_related(
+                        "domain_tree_node"
+                    ).get(
+                        Q(name=self.short_host_name) & Q(domain_tree_node__full_name=self.host_name.split(".", 1)[1])
+                    )
                 else:
-                    if self.host_name:
-                        # search with full host name
-                        self.device = device.all_enabled.prefetch_related(
-                            "netdevice_set__net_ip_set__network__network_type"
-                        ).select_related(
-                            "domain_tree_node"
-                        ).get(
-                            Q(name=self.short_host_name) & Q(domain_tree_node__full_name=self.host_name.split(".", 1)[1])
-                        )
-                    else:
-                        # search with short host name
-                        self.device = device.all_enabled.prefetch_related(
-                            "netdevice_set__net_ip_set__network__network_type"
-                        ).select_related(
-                            "domain_tree_node"
-                        ).get(
-                            Q(name=self.short_host_name)
-                        )
-                    self.src_device = self.device
+                    # search with short host name
+                    self.device = device.all_enabled.prefetch_related(
+                        "netdevice_set__net_ip_set__network__network_type"
+                    ).select_related(
+                        "domain_tree_node"
+                    ).get(
+                        Q(name=self.short_host_name)
+                    )
             except device.DoesNotExist:
                 self.device = None
             else:
@@ -610,7 +645,7 @@ class icswServerCheck(object):
                                 Q(device_config__device__device_group=self.device.device_group_id)
                             ),
                         ]
-                    self.config = None
+                    self.device.config = None
                     if len(_queries):
                         for _direct_device, _query in _queries:
                             try:
@@ -621,30 +656,40 @@ class icswServerCheck(object):
                                 # take first config
                                 _config = _co.filter(_query)[0]
                             if _config is not None:
-                                self.config = _config
-                                self.config_name = self.config.name
+                                self.result.set_fields(
+                                    config=_config,
+                                    config_name=config.name,
+                                )
                                 # found
                                 if _direct_device:
                                     # direct device
-                                    self.effective_device = self.device
+                                    self.result.set_fields(
+                                        effective_device=self.device
+                                    )
                                 else:
                                     # via meta device
-                                    self.effective_device = device.objects.select_related(
-                                        "domain_tree_node"
-                                    ).get(
-                                        Q(device_group=self.device.device_group_id) &
-                                        Q(is_meta_device=True)
+                                    self.result.set_fields(
+                                        effective_device=device.objects.select_related(
+                                            "domain_tree_node"
+                                        ).get(
+                                            Q(device_group=self.device.device_group_id) &
+                                            Q(is_meta_device=True)
+                                        )
                                     )
                                 break
                     else:
-                        self.effective_device = self.device
+                        self.result.set_fields(
+                            effective_device=self.device
+                        )
                 else:
-                    self.config = None
+                    self.result.set_fields(
+                        config=None
+                    )
         # self.num_servers = len(all_servers)
-        if self.config:
+        if self.result.config:
             # name matches ->
-            self._set_srv_info(
-                "real" if self.device.pk == self.effective_device.pk else "meta",
+            self.result.set_srv_info(
+                "real" if self.device.pk == self.result.effective_device.pk else "meta",
                 "hostname '{}'".format(self.short_host_name)
             )
             if self.__fetch_network_info:
@@ -658,8 +703,10 @@ class icswServerCheck(object):
                 # hmm ... ? for node selection not necessary
                 self._db_check_ip()
             self._fetch_network_info()
-            self.server_info_str = "device {}".format(
-                str(self.device),
+            self.result.set_result(
+                "device {}".format(
+                    str(self.device),
+                )
             )
 
     def fetch_config_vars(self):
@@ -688,14 +735,6 @@ class icswServerCheck(object):
 
     def __getitem__(self, var_name):
         return self.__config_vars[var_name].value
-
-    def _set_srv_info(self, sdsc, s_info_str):
-        self.server_origin = sdsc
-        self.server_info_str = "{} '{}'-server via service_type_enum {}".format(
-            self.server_origin,
-            self.__service_type_enum.name,
-            s_info_str
-        )
 
     # utility funcitions
 
@@ -763,7 +802,9 @@ class icswServerCheck(object):
             match_ips = my_ips & dev_ips
             if match_ips:
                 self.device = cur_dev
-                self.config = None
+                self.result.set_fields(
+                    config=None
+                )
                 try:
                     _config = config.objects.get(
                         Q(config_service_enum__enum_name=self.__service_type_enum.name)
@@ -774,9 +815,11 @@ class icswServerCheck(object):
                     raise
                 else:
                     self.config = _config
-                self.effective_device = cur_dev
+                self.result.set_fields(
+                    effective_device=cur_dev
+                )
                 self.short_host_name = cur_dev.name
-                self._set_srv_info("virtual", "IP address '{}'".format(list(match_ips)[0]))
+                self.result.set_srv_info("virtual", "IP address '{}'".format(list(match_ips)[0]))
                 break
 
     def get_route_to_other_devices(self, router_obj, dev_list, **kwargs):
@@ -956,24 +999,25 @@ class icswServerCheck(object):
             entry for entry in r_list if entry[1] not in ["p"]
         ]
 
-    def report(self):
-        # print self.effective_device
-        if self.effective_device:
-            return "short_host_name is %s (idx %d), server_origin is %s, effective_device_idx is %d, config_idx is %d, info_str is \"%s\"" % (
-                self.short_host_name,
-                self.device.pk,
-                self.server_origin,
-                self.effective_device.pk,
-                self.config.pk,
-                self.server_info_str
-            )
-        else:
-            return "short_host_name is %s (idx %d), server_origin is %s, info_str is \"%s\"" % (
-                self.short_host_name,
-                self.device.pk,
-                self.server_origin,
-                self.server_info_str
-            )
+    # commented out, move to Result ?
+    # def report(self):
+    #     # print self.effective_device
+    #     if self.effective_device:
+    #         return "short_host_name is %s (idx %d), server_origin is %s, effective_device_idx is %d, config_idx is %d, info_str is \"%s\"" % (
+    #             self.short_host_name,
+    #             self.device.pk,
+    #             self.server_origin,
+    #             self.effective_device.pk,
+    #             self.config.pk,
+    #             self.server_info_str
+    #         )
+    #     else:
+    #         return "short_host_name is %s (idx %d), server_origin is %s, info_str is \"%s\"" % (
+    #             self.short_host_name,
+    #             self.device.pk,
+    #             self.server_origin,
+    #             self.server_info_str
+    #         )
 
 
 class icswDeviceWithConfig(dict):

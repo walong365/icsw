@@ -164,7 +164,7 @@ class QuotaScanCode(BackgroundBase):
         self.Meta.min_time_between_runs = global_config["QUOTA_CHECK_TIME_SECS"]
         self.Meta.creates_machvector = global_config["MONITOR_QUOTA_USAGE"]
         self.__track_all_quotas = global_config["TRACK_ALL_QUOTAS"]
-        self.__effective_device = self.sql_info.effective_device
+        self.__effective_device = self.sc_result.effective_device
         self.log("effective device for quota tracking is {}".format(str(self.__effective_device)))
         # user/group cache
         self.__user_dict = {}

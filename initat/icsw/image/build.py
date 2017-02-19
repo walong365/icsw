@@ -229,7 +229,9 @@ class ServerProcess(threading_tools.icswProcessPool):
         )
         # log config
         self._log_config()
-        self.device = config_tools.icswServerCheck(service_type_enum=icswServiceEnum.image_server).effective_device
+        self.device = config_tools.icswServerCheck(
+            service_type_enum=icswServiceEnum.image_server
+        ).get_result().effective_device
         if not self.device:
             self.log("not an image server", logging_tools.LOG_LEVEL_ERROR)
             self._int_error("not an image server")

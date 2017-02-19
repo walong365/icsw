@@ -55,7 +55,7 @@ from .constants import *
 from .tools import query_local_meta_server
 from .service import Service
 
-from initat.debug import ICSW_DEBUG_SHOW_DB_CALLS, ICSW_DEBUG_MODE
+from initat.debug import ICSW_DEBUG_MODE, show_db_call_counter
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -276,9 +276,7 @@ class ServiceContainer(object):
         mt.step("lic")
         self.update_version_tuple()
         mt.step("vers")
-        if ICSW_DEBUG_SHOW_DB_CALLS:
-            from django.db import connection
-            print("DB-calls: {:d}".format(len(connection.queries)))
+        show_db_call_counter()
         if opt_ns.meta:
             from initat.host_monitoring.client_enums import icswServiceEnum
             # print(icswServiceEnum.meta_server.value.msi_block_name)
@@ -310,9 +308,8 @@ class ServiceContainer(object):
                 meta_result=meta_result,
             )
         mt.step("services")
-        if ICSW_DEBUG_SHOW_DB_CALLS:
-            from django.db import connection
-            print("DB-calls: {:d}".format(len(connection.queries)))
+
+        show_db_call_counter()
         mt.step()
         # print("--")
         instance_xml.tree.attrib["end_time"] = "{:.3f}".format(time.time())

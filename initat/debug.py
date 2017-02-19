@@ -56,7 +56,7 @@ ICSW_DEBUG_LEVEL = None
 ICSW_DEBUG_SHOW_DB_CALLS = None
 ICSW_DEBUG_MIN_DB_CALLS = None
 ICSW_DEBUG_MIN_RUN_TIME = None
-ICSW_DEBUG_LOG_DB_CALLS = None
+ICSW_DEBUG_DB_CALL_LOG = None
 
 
 class icswDebugVar(object):
@@ -133,7 +133,7 @@ ICSW_DEBUG_VARS = [
         "display of database calls",
     ),
     icswDebugVar(
-        "ICSW_DEBUG_LOG_DB_CALLS",
+        "ICSW_DEBUG_DB_CALL_LOG",
         "",
         "file to log database-call statistic",
     )
@@ -155,14 +155,22 @@ def get_terminal_size():
     return width, height
 
 
+def show_db_call_counter():
+    if ICSW_DEBUG_SHOW_DB_CALLS:
+        try:
+            from django.db import connection
+            print("DB-calls: {:d}".format(len(connection.queries)))
+        except:
+            print("error showing DB-calls")
+
+
 def show_database_calls(*args, **kwargs):
     def output(s):
         print(s)
 
-    DB_CALL_LIMIT = 10
     if ICSW_DEBUG_MODE and ICSW_DEBUG_SHOW_DB_CALLS:
         from django.db import connection
-        _path = kwargs.get("path", "/unknown")
+        _path = kwargs.get("path", "unknown")
         _runtime = kwargs.get("runtime", 0.0)
         tot_time = sum(
             [
@@ -176,7 +184,7 @@ def show_database_calls(*args, **kwargs):
             # no regular TTY, ignore
             cur_width = None
         else:
-            if len(connection.queries) > DB_CALL_LIMIT:
+            if len(connection.queries) > ICSW_DEBUG_MIN_DB_CALLS:
                 # only output if stdout is a regular TTY
                 output(
                     "queries: {:d} in {:.2f} seconds".format(
@@ -184,7 +192,7 @@ def show_database_calls(*args, **kwargs):
                         tot_time,
                     )
                 )
-        if len(connection.queries) > DB_CALL_LIMIT and cur_width:
+        if len(connection.queries) > ICSW_DEBUG_MIN_DB_CALLS and cur_width:
             for act_sql in connection.queries:
                 if act_sql["sql"]:
                     out_str = act_sql["sql"].replace("\n", "<NL>")
@@ -202,11 +210,11 @@ def show_database_calls(*args, **kwargs):
                             out_str
                         )
                     )
-        if ICSW_DEBUG_LOG_DB_CALLS:
+        if ICSW_DEBUG_DB_CALL_LOG:
             _line = "t={} q={:4d} t={:8.4f} p={:<50s}\n".format(
                 time.ctime(),
                 len(connection.queries),
                 _runtime,
                 _path,
             )
-            open(ICSW_DEBUG_LOG_DB_CALLS, "a").write(_line)
+            open(ICSW_DEBUG_DB_CALL_LOG, "a").write(_line)

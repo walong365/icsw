@@ -165,7 +165,7 @@ class ServerProcess(
                     cur_c = Client.get(target_name)
                     dev_sc = config_tools.icswServerCheck(
                         device=cur_c.device,
-                        config="",
+                        # config="",
                         fetch_network_info=True
                     )
                     act_routing_info = _pserver.get_route_to_other_device(

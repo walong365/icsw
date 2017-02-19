@@ -104,14 +104,14 @@ class CapabilityProcess(threading_tools.icswProcessObj):
             self.__cap_list = []
             for _srv_cap in SRV_CAPS:
                 srv_type = _srv_cap.Meta.service_enum
-                _sql_info = config_tools.icswServerCheck(service_type_enum=srv_type)
-                if _sql_info.effective_device:
+                sc_result = config_tools.icswServerCheck(service_type_enum=srv_type).get_result()
+                if sc_result.effective_device:
                     self.__cap_list.append(srv_type.name)
-                    self.__server_cap_dict[srv_type.name] = _srv_cap(self, _sql_info)
+                    self.__server_cap_dict[srv_type.name] = _srv_cap(self, sc_result)
                     self.log(
                         "capability {} is enabled on {}".format(
                             srv_type.name,
-                            str(_sql_info.effective_device),
+                            str(sc_result.effective_device),
                         )
                     )
                 else:

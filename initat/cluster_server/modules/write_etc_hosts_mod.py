@@ -41,9 +41,9 @@ class write_etc_hosts(cs_base_class.icswCSServerCom):
         server_idxs = [self.server_idx]
         # get additional idx if host is virtual server
 
-        sql_info = config_tools.icswServerCheck(service_type_enum=icswServiceEnum.cluster_server)
-        if sql_info.effective_device is not None and sql_info.effective_device.idx != self.server_idx:
-            server_idxs.append(sql_info.effective_device.idx)
+        sc_result = config_tools.icswServerCheck(service_type_enum=icswServiceEnum.cluster_server).get_result()
+        if sc_result.effective_device is not None and sc_result.effective_device.idx != self.server_idx:
+            server_idxs.append(sc_result.effective_device.idx)
         # recognize for which devices i am responsible
         dev_r = cluster_location.DeviceRecognition()
         server_idxs = list(set(server_idxs) | set(dev_r.device_dict.keys()))

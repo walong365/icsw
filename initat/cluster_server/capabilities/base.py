@@ -26,14 +26,14 @@ class BackgroundBase(object):
         min_time_between_runs = 30
         creates_machvector = False
 
-    def __init__(self, srv_process, sql_info):
+    def __init__(self, srv_process, sc_result):
         # copy Meta keys
         for key in dir(BackgroundBase.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(BackgroundBase.Meta, key))
         # self.__name = name
         self.server_process = srv_process
-        self.sql_info = sql_info
+        self.sc_result = sc_result
         self.init_bg_stuff()
         self.__last_call = None
 
