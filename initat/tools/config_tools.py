@@ -595,8 +595,13 @@ class icswServerCheck(object):
                 _enum: icswServerCheckResult(self, _enum) for _enum in self.__service_type_enum
             }
         else:
+            if self.__service_type_enum:
+                _key = self.__service_type_enum[0]
+            else:
+                # special mode, no service_type_enum was specified, node mode
+                _key = None
             self._result = {
-                self.__service_type_enum[0]: icswServerCheckResult(self, self.__service_type_enum[0])
+                _key: icswServerCheckResult(self, _key)
             }
         if self._vers_check():
             self._db_check(**kwargs)
@@ -654,10 +659,7 @@ class icswServerCheck(object):
             else:
                 if self.device:
                     # get config
-                    if self.__service_type_enum is None:
-                        # no service type enum specifed, take device (for node selection)
-                        _queries = []
-                    else:
+                    if self.__service_type_enum:
                         _enum_lut = {
                             _enum.name: _enum for _enum in self.__service_type_enum
                         }
@@ -675,6 +677,9 @@ class icswServerCheck(object):
                                 Q(device_config__device__device_group=self.device.device_group_id)
                             ),
                         ]
+                    else:
+                        # no service type enum specifed, take device (for node selection)
+                        _queries = []
                     # clear config
                     self.clear_results()
                     if len(_queries):
@@ -1085,6 +1090,11 @@ class icswServerCheck(object):
 
 class icswDeviceWithConfig(dict):
     def __init__(self, service_type_enum=None):
+        """
+        this is somehow orthogonal to icswServerCheck
+        the dictionary values are lists of icswServerChecks
+        :param service_type_enum:
+        """
         dict.__init__(self)
         # service_type_enum may be None to get all defined servers (like the old %server% call)
         self.__service_type_enum = service_type_enum
