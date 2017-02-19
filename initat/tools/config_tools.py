@@ -751,7 +751,7 @@ class icswServerCheck(object):
 
         if self.__fetch_network_info:
             # fetch ip_info only if needed
-            self._fetch_network_info()
+            self._fetch_network_info(kwargs.get("dn_cache", None))
         for _result in self._result.values():
             if _result.config is not None:
                 _result.set_srv_info(
@@ -762,10 +762,10 @@ class icswServerCheck(object):
             # no direct config found, check for matching IP
             # we need at least a device to check
             # fetch ip_info
+            self._fetch_network_info(kwargs.get("dn_cache", None))
             if self.__service_type_enum:
                 # hmm ... ? for node selection not necessary
-                self._db_check_ip()
-            self._fetch_network_info()
+                self._db_check_ip(kwargs.get("dn_cache", None))
             # for _result in self._result.values():
             #    _result.set_result(
             #        "device {}".format(
@@ -792,31 +792,65 @@ class icswServerCheck(object):
     def simple_ip_list(self):
         return [cur_ip.ip for cur_ip in self.ip_list]
 
-    def _fetch_network_info(self, **kwargs):
+    def _fetch_network_info(self, dn_cache):
+
         # commented force_flag, FIXME
         if self.device is not None:
-            if not self.__network_info_fetched or kwargs.get("force", False):
-                nw_type_lut = {
-                    nwt.idx: nwt for nwt in network_type.objects.all()
-                }
-                for net_dev in self.device.netdevice_set.filter(
-                    Q(enabled=True)
-                ).prefetch_related(
-                    "net_ip_set__network__network__network_type"
-                ):
-                    self.netdevice_idx_list.append(net_dev.pk)
-                    self.netdevice_ip_lut[net_dev.pk] = []
-                    self.nd_lut[net_dev.pk] = net_dev
-                    for net_ip in net_dev.net_ip_set.all():
-                        self.ip_list.append(net_ip)
-                        self.netdevice_ip_lut[net_dev.pk].append(net_ip)
-                        self.ip_netdevice_lut[net_ip.ip] = net_dev
-                        nwt_id = nw_type_lut[net_ip.network.network_type_id].identifier
-                        self.ip_identifier_lut[net_ip.ip] = nwt_id
-                        self.identifier_ip_lut.setdefault(nwt_id, []).append(net_ip)
+            if not self.__network_info_fetched:
+                if dn_cache is not None and self.device.idx in dn_cache:
+                    # copy from dn_cache
+                    # print("+", dn_cache[self.device.idx])
+                    self._set_network_dict(dn_cache[self.device.idx])
+                else:
+                    nw_type_lut = {
+                        nwt.idx: nwt for nwt in network_type.objects.all()
+                    }
+                    for net_dev in self.device.netdevice_set.filter(
+                        Q(enabled=True)
+                    ).prefetch_related(
+                        "net_ip_set__network__network__network_type"
+                    ):
+                        self.netdevice_idx_list.append(net_dev.pk)
+                        self.netdevice_ip_lut[net_dev.pk] = []
+                        self.nd_lut[net_dev.pk] = net_dev
+                        for net_ip in net_dev.net_ip_set.all():
+                            self.ip_list.append(net_ip)
+                            self.netdevice_ip_lut[net_dev.pk].append(net_ip)
+                            self.ip_netdevice_lut[net_ip.ip] = net_dev
+                            nwt_id = nw_type_lut[net_ip.network.network_type_id].identifier
+                            self.ip_identifier_lut[net_ip.ip] = nwt_id
+                            self.identifier_ip_lut.setdefault(nwt_id, []).append(net_ip)
+                    if dn_cache is not None:
+                        # set fetched network_info in dn_cache
+                        dn_cache[self.device.idx] = self._get_network_dict()
+                        # print("*", dn_cache)
                 self.__network_info_fetched = True
 
-    def _db_check_ip(self):
+    def _set_network_dict(self, in_dict):
+        # print("*", in_dict)
+        for attr_name in [
+            "netdevice_idx_list",
+            "netdevice_ip_lut",
+            "nd_lut",
+            "ip_list",
+            "ip_netdevice_lut",
+            "ip_identifier_lut",
+        ]:
+            setattr(self, attr_name, in_dict[attr_name])
+
+    def _get_network_dict(self):
+        return {
+            key: getattr(self, key) for key in [
+                "netdevice_idx_list",
+                "netdevice_ip_lut",
+                "nd_lut",
+                "ip_list",
+                "ip_netdevice_lut",
+                "ip_identifier_lut",
+            ]
+        }
+
+    def _db_check_ip(self, dn_cache):
         # get local ip-addresses
         # my_ips = set(net_ip.objects.exclude(
         #    Q(network__network_type__identifier='l')
@@ -858,6 +892,10 @@ class icswServerCheck(object):
         for dev_idx, enum_name in dev_list:
             dev_ip_enum_lut.setdefault(dev_idx, []).append(enum_name)
         for dev_idx, enum_list in dev_ip_enum_lut.items():
+            if dn_cache is not None and dev_idx in dn_cache:
+                # take ips from dn_cache, to be implemented ...
+                # print("*", dn_cache[dev_idx])
+                pass
             dev_ips = set(
                 net_ip.objects.exclude(
                     Q(network__network_type__identifier='l')
@@ -894,7 +932,7 @@ class icswServerCheck(object):
     def get_route_to_other_devices(self, router_obj, dev_list, **kwargs):
         # check routing from this node to other devices
         # dev_list
-        self._fetch_network_info()
+        self._fetch_network_info(None)
         ip_list = net_ip.objects.filter(
             Q(netdevice__enabled=True) &
             Q(netdevice__device__in=dev_list)
@@ -988,8 +1026,8 @@ class icswServerCheck(object):
             return kwargs["cache"][(self.device.pk, other.device.pk)]
         filter_ip = kwargs.get("filter_ip", None)
         # at first fetch the network info if necessary
-        self._fetch_network_info()
-        other._fetch_network_info()
+        self._fetch_network_info(None)
+        other._fetch_network_info(None)
         # format of return list: value, network_id, (self.netdevice_idx, [list of self.ips]), (other.netdevice_idx, [list of other.ips])
         # routing list, common network identifiers
         c_ret_list = []
@@ -1090,7 +1128,7 @@ class icswServerCheck(object):
 
 
 class icswDeviceWithConfig(dict):
-    def __init__(self, service_type_enum=None):
+    def __init__(self, service_type_enum=None, dn_cache=None):
         """
         this is somehow orthogonal to icswServerCheck
         the dictionary values are lists of icswServerChecks
@@ -1099,6 +1137,11 @@ class icswDeviceWithConfig(dict):
         dict.__init__(self)
         # service_type_enum may be None to get all defined servers (like the old %server% call)
         self.__service_type_enum = service_type_enum
+        if dn_cache is not None:
+            # device -> network info cache for caching netdevice / netip lookups
+            self._dn_cache = dn_cache
+        else:
+            self._dn_cache = {}
         self._check()
 
     def _check(self):
@@ -1170,26 +1213,46 @@ class icswDeviceWithConfig(dict):
             if cur_entry[5]:
                 all_list.extend(
                     [
-                        (cur_entry[0], cur_entry[1], g_list[0], g_list[1], g_list[2], g_list[3], "MD") for g_list in group_dict[cur_entry[4]]
+                        (
+                            cur_entry[0],
+                            cur_entry[1],
+                            g_list[0],
+                            g_list[1],
+                            g_list[2],
+                            g_list[3],
+                            "MD"
+                        ) for g_list in group_dict[cur_entry[4]]
                     ]
                 )
             else:
                 all_list.append(cur_entry)
         dev_conf_dict = {}
         for cur_entry in all_list:
-            dev_conf_dict.setdefault(tuple(cur_entry[2:6]), []).append((cur_entry[0], cur_entry[1], cur_entry[5], cur_entry[5]))
+            dev_conf_dict.setdefault(
+                tuple(cur_entry[2:6]),
+                []
+            ).append(
+                (
+                    cur_entry[0],
+                    cur_entry[1],
+                    cur_entry[5],
+                    cur_entry[5]
+                )
+            )
+        # we dont use complex prefetching here because we rely on our clever dn_cache
         dev_dict = {
             cur_dev.pk: cur_dev for cur_dev in device.objects.select_related(
                 "domain_tree_node"
             ).filter(
                 Q(pk__in=[key[1] for key in dev_conf_dict.keys()] + list(md_set))
-            ).prefetch_related(
-                "netdevice_set__net_ip_set__network__network_type"
             )
         }
         conf_dict = {
-            cur_conf.pk: cur_conf for cur_conf in config.objects.filter(Q(pk__in=conf_pks))
+            cur_conf.pk: cur_conf for cur_conf in config.objects.filter(
+                Q(pk__in=conf_pks)
+            )
         }
+        # device -> network info cache
         for dev_key, conf_list in dev_conf_dict.items():
             dev_name, dev_pk, devg_pk, _dev_type = dev_key
             for srvc_name, conf_pk, m_type, src_type in conf_list:
@@ -1201,8 +1264,10 @@ class icswDeviceWithConfig(dict):
                     config=conf_dict[conf_pk],
                     device=dev_dict[dev_pk],
                     effective_device=dev_dict[dev_pk] if m_type == src_type else dev_dict[group_md_lut[devg_pk]],
+                    dn_cache=self._dn_cache,
                 )
                 self.setdefault(cur_srv_type, []).append(cur_struct)
+        # print(self._dn_cache)
 
 
 def close_db_connection():
