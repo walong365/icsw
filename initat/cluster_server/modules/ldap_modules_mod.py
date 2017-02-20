@@ -16,26 +16,24 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ tools for modifying LDAP servers """
-"""
-ToDo: Fixme, test for new ldap3
-"""
 
-import subprocess
 import os
 import re
+import subprocess
 import sys
 import time
 
 import ldap3
+import pprint
 import unidecode
 from django.db.models import Q
 
-from . import cs_base_class
 from initat.cluster.backbone.models import user, group, device_config, \
     config_str, home_export_list, config
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.cluster_server.config import global_config
 from initat.tools import logging_tools, process_tools, server_command
+from . import cs_base_class
+from ..config import global_config
 
 """ possible smb.conf:
 
@@ -126,23 +124,36 @@ Testing LDAP TLS connections:
 """
 
 
-class ldap_mixin(object):
+class LDAPMixin(object):
     def _get_ldap_err_str(self, dn):
-        err_dict = sys.exc_info()[1].args[0]
-        return "{} ({})".format(
-            dn,
-            " / ".join(["{}: {}".format(_val, err_dict[_val]) for _val in ["info", "desc"] if _val in err_dict]),
+        exc_info = sys.exc_info()[1]
+        _list = list(exc_info.args) + [
+            getattr(exc_info, attr_name) for attr_name in {
+                "message", "description", "dn"
+            } if hasattr(exc_info, attr_name)
+        ]
+        return ", ".join(
+            [
+                _entry for _entry in _list if _entry.strip()
+            ]
         )
+
+    def _escape_value(self, in_value):
+        if isinstance(in_value, list):
+            return [ldap3.utils.conv.escape_filter_chars(_entry) for _entry in in_value]
+        else:
+            return ldap3.utils.conv.escape_filter_chars(in_value)
 
     def _add_entry(self, ld, dn, in_dict):
         if self.dryrun:
             return True, ""
-        for key, value in in_dict.items():
-            if isinstance(value, list):
-                in_dict[key] = [sub_val.encode("utf-8") for sub_val in value]
+        ld.raise_exceptions = True
         try:
-            ld.add_s(dn, ldap.modlist.addModlist(in_dict))
-        except ldap.LDAPError:
+            write_dict = {
+                key: self._escape_value(value) for key, value in in_dict.items() if key not in {"objectClass"} and value
+            }
+            _success = ld.add(dn, object_class=in_dict["objectClass"], attributes=write_dict)
+        except ldap3.core.exceptions.LDAPException:
             self.log(
                 "add error: {}, {}".format(
                     dn,
@@ -157,8 +168,8 @@ class ldap_mixin(object):
 
     def _delete_entry(self, ld, dn):
         try:
-            ld.delete_s(dn)
-        except ldap.LDAPError:
+            ld.delete(dn)
+        except ldap3.core.exceptions.LDAPException:
             self.log(
                 "delete error: {}".format(
                     dn,
@@ -173,18 +184,14 @@ class ldap_mixin(object):
     def _modify_entry(self, ld, dn, change_list):
         if self.dryrun:
             return True, ""
-        new_list = []
-        for val_0, val_1, val_list in change_list:
-            if isinstance(val_list, list):
-                val_list = [sub_val.encode("utf-8") for sub_val in val_list]
-            new_list.append((val_0, val_1, val_list))
+        ld.raise_exceptions = True
         try:
-            ld.modify_s(dn, new_list)
-        except ldap.LDAPError:
+            ld.modify(dn, change_list)
+        except ldap3.core.exceptions.LDAPException:
             self.log(
                 "modify error: {}, {}".format(
                     dn,
-                    str(new_list)
+                    str(change_list),
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
@@ -220,6 +227,12 @@ class ldap_mixin(object):
         _dns_re = re.compile("^{}$".format(_dns))
         return True if _dns_re.match(dn) else False
 
+    def _explode_dn(self, dn):
+        parts = dn.split(",")
+        return [
+            entry.split("=", 1)[1] for entry in parts
+        ]
+
     def _expand_dn(self, obj_type, c_user, c_group, **kwargs):
         _expand_type = kwargs.get("expand_type", "dn")
         info_str = "obj_type {} (user {}, group {})".format(
@@ -229,10 +242,12 @@ class ldap_mixin(object):
         )
         # build lookup dict
         _lut = self._get_base_lut()
-        _lut.update({
-            "GROUPNAME": c_group.groupname if c_group else "",
-            "USERNAME": c_user.login.strip() if c_user else "",
-        })
+        _lut.update(
+            {
+                "GROUPNAME": c_group.groupname if c_group else "",
+                "USERNAME": c_user.login.strip() if c_user else "",
+            }
+        )
         # obj_type is one of user, group
         try:
             _dn = self.par_dict["{}_{}_template".format(obj_type, _expand_type)]
@@ -299,14 +314,16 @@ class ldap_mixin(object):
             self.log("No ldap_config found (or more than one or none in system catalog)", logging_tools.LOG_LEVEL_ERROR)
             return {}
         par_dict = {cur_var.name.lower(): cur_var.value for cur_var in config_str.objects.filter(Q(config=ldap_config))}
-        needed_keys = set(["base_dn", "admin_cn", "root_passwd"])
+        needed_keys = {"base_dn", "admin_cn", "root_passwd"}
         missed_keys = needed_keys - set(par_dict.keys())
         if len(missed_keys):
             cur_inst.srv_com.set_result(
                 "{} missing: {}".format(
                     logging_tools.get_plural("config_key", len(missed_keys)),
-                    ", ".join(missed_keys)),
-                server_command.SRV_REPLY_STATE_ERROR)
+                    ", ".join(missed_keys)
+                ),
+                server_command.SRV_REPLY_STATE_ERROR
+            )
             par_dict = {}
         else:
             # add default keys to par_dict
@@ -337,13 +354,88 @@ class ldap_mixin(object):
                 )
             # rewrite keys
             for rw_key in ["group_object_classes", "user_object_classes"]:
-                par_dict[rw_key] = [_v for _v in sum([entry.split(",") for entry in par_dict[rw_key].split()], []) if _v and _v.strip()]
+                par_dict[rw_key] = [
+                    _v for _v in sum([entry.split(",") for entry in par_dict[rw_key].split()], []) if _v and _v.strip()
+                ]
         # store to local structure
         self.par_dict = par_dict
         return par_dict
 
+    def init_connections(self, par_dict, errors):
+        try:
+            _srv = ldap3.Server("localhost", get_info=ldap3.ALL)
+            ld_read = ldap3.Connection(_srv, user="", password="", auto_bind=True)
+        except ldap3.core.exceptions.LDAPException:
+            ldap_err_str = self._get_ldap_err_str("read_access")
+            self.log(
+                "cannot initialize read_cursor: {}".format(ldap_err_str),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            errors.append(ldap_err_str)
+            ld_read = None
+        else:
+            try:
+                _srv = ldap3.Server("localhost", get_info=ldap3.ALL)
+                ld_write = ldap3.Connection(
+                    _srv,
+                    "cn={},{}".format(
+                        par_dict["admin_cn"],
+                        par_dict["base_dn"]
+                    ),
+                    password=par_dict["root_passwd"],
+                    auto_bind=True,
+                )
+            except ldap3.core.exceptions.LDAPException:
+                ldap_err_str = self._get_ldap_err_str("write_access")
+                self.log(
+                    "cannot initialize write_cursor: {}".format(ldap_err_str),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                errors.append(ldap_err_str)
+                ld_write = None
+                ld_read.unbind()
+            return (ld_read, ld_write)
 
-class setup_ldap_server(cs_base_class.icswCSServerCom, ldap_mixin):
+    def build_modify_dict(self, old_attrs, new_attrs, exclude_keys=[]):
+        _to_add = set(new_attrs.keys()) - set(old_attrs.keys())
+        _to_del = set(old_attrs.keys()) - set(new_attrs.keys())
+        _to_mod = set(new_attrs.keys()) & set(old_attrs.keys())
+        c_dict = {}
+        for _add in _to_add:
+            if _add in exclude_keys:
+                continue
+            if new_attrs[_add]:
+                c_dict[_add] = [
+                    (ldap3.MODIFY_ADD, new_attrs[_add]),
+                ]
+        for _del in _to_del:
+            if _del in exclude_keys:
+                continue
+            c_dict[_del] = [
+                (ldap3.MODIFY_DELETE, []),
+            ]
+        for _mod in _to_mod:
+            if _mod in exclude_keys:
+                continue
+            if isinstance(new_attrs[_mod], list):
+                if isinstance(old_attrs[_mod], list):
+                    _same = sorted(new_attrs[_mod]) == sorted(old_attrs[_mod])
+                else:
+                    _same = sorted(new_attrs[_mod]) == [old_attrs[_mod]]
+            elif isinstance(old_attrs[_mod], list):
+                _same = sorted(old_attrs[_mod]) == [new_attrs[_mod]]
+            else:
+                _same = new_attrs[_mod] == old_attrs[_mod]
+
+            if not _same:
+                # print("*", _mod, old_attrs[_mod], new_attrs[_mod])
+                c_dict[_mod] = [
+                    (ldap3.MODIFY_REPLACE, new_attrs[_mod]),
+                ]
+        return c_dict
+
+
+class setup_ldap_server(cs_base_class.icswCSServerCom, LDAPMixin):
     class Meta:
         needed_configs = [icswServiceEnum.ldap_server]
 
@@ -383,14 +475,16 @@ class setup_ldap_server(cs_base_class.icswCSServerCom, ldap_mixin):
                     print(root_hash, cmd_stat)
 
 
-class command_mixin(object):
+class LDAPCommandMixin(object):
     def call_command(self, command, *args):
         success, result = (False, [])
         bin_com = process_tools.find_file(command)
         if bin_com:
             c_stat, c_out = subprocess.getstatusoutput("{} {}".format(bin_com, " " .join(args)))
             if c_stat:
-                result = ["{:d}".format(c_stat)] + c_out.split("\n")
+                result = [
+                    "{:d}".format(c_stat)
+                ] + c_out.split("\n")
             else:
                 success = True
                 result = c_out.split("\n")
@@ -403,7 +497,7 @@ class command_mixin(object):
 #        pass
 
 
-class init_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin):
+class init_ldap_config(cs_base_class.icswCSServerCom, LDAPMixin, LDAPCommandMixin):
     class Meta:
         needed_configs = [icswServiceEnum.ldap_server]
 
@@ -413,7 +507,9 @@ class init_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin)
         if bin_com:
             c_stat, c_out = subprocess.getstatusoutput("{} {}".format(bin_com, " " .join(args)))
             if c_stat:
-                result = ["{:d}".format(c_stat)] + c_out.split("\n")
+                result = [
+                    "{:d}".format(c_stat)
+                ] + c_out.split("\n")
             else:
                 success = True
                 result = c_out.split("\n")
@@ -427,43 +523,11 @@ class init_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin)
             errors = []
             base_dn = par_dict["base_dn"]
             self.log("will modify ldap_tree below {}".format(base_dn))
-            try:
-                _srv = ldap3.Server("localhost", get_info=ldap3.ALL)
-                ld_read = ldap3.Connection(_srv, user="", password="")
-            except ldap3.core.exceptions.LLDAPException:
-                ldap_err_str = self._get_ldap_err_str("read_access")
-                self.log(
-                    "cannot initialize read_cursor: {}".format(ldap_err_str),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-                errors.append(ldap_err_str)
-                ld_read = None
-            else:
-                try:
-                    _srv = ldap3.Server("localhost", get_info=ldap3.ALL)
-                    ld_write = ldap3.Connection(
-                        _srv,
-                        "cn={},{}".format(
-                            par_dict["admin_cn"],
-                            par_dict["base_dn"]
-                        ),
-                        password=par_dict["root_passwd"],
-                    )
-                except ldap3.core.exceptions.LLDAPException:
-                    ldap_err_str = self._get_ldap_err_str("write_access")
-                    self.log(
-                        "cannot initialize write_cursor: {}".format(ldap_err_str),
-                        logging_tools.LOG_LEVEL_ERROR
-                    )
-                    errors.append(ldap_err_str)
-                    ld_write = None
-                    ld_read.unbind_s()
+            ld_read, ld_write = self.init_connections(par_dict, errors)
             if ld_read and ld_write:
                 root_ok = True
                 # init root
-                try:
-                    ld_read.search_s(par_dict["base_dn"], ldap3.SUBTREE, "objectclass=*")
-                except ldap3.core.exceptions.LDAPNoSuchObjectResult:
+                if not ld_read.search(par_dict["base_dn"], "(objectclass=*)"):
                     ok, err_str = self._add_entry(
                         ld_write,
                         par_dict["base_dn"],
@@ -485,7 +549,8 @@ class init_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin)
                         self.log(
                             "cannot add root entry {}: {}".format(
                                 par_dict["base_dn"],
-                                err_str),
+                                err_str
+                            ),
                             logging_tools.LOG_LEVEL_ERROR
                         )
                 if root_ok:
@@ -495,7 +560,7 @@ class init_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin)
                     # explode all needed dns and create parent dns if needed
                     _add_dns = []
                     for needed_dn in needed_dns:
-                        _parts = list(reversed(ldap.dn.explode_dn(needed_dn)))
+                        _parts = list(reversed(needed_dn.split(",")))
                         _create = []
                         while _parts:
                             _create.insert(0, _parts.pop(0))
@@ -503,13 +568,17 @@ class init_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin)
                             if _dn.endswith(base_dn) and _dn != base_dn and _dn not in _add_dns:
                                 _add_dns.append(_dn)
                     needed_dns = [_entry for _entry in _add_dns if _entry not in needed_dns] + needed_dns
-                    for dn, _attrs in ld_read.search_s(base_dn, ldap3.SUBTREE, "objectclass=organizationalUnit"):
-                        if dn in needed_dns:
-                            needed_dns.remove(dn)
+                    ld_read.search(base_dn, "(objectclass=organizationalUnit)")
+                    for result in ld_read.response:
+                        if result["dn"] in needed_dns:
+                            needed_dns.remove(result["dn"])
                     if needed_dns:
-                        self.log("{} missing: {}".format(
-                            logging_tools.get_plural("dn", len(needed_dns)),
-                            ", ".join(needed_dns)))
+                        self.log(
+                            "{} missing: {}".format(
+                                logging_tools.get_plural("dn", len(needed_dns)),
+                                ", ".join(needed_dns)
+                            )
+                        )
                         for needed_dn in needed_dns:
                             short_dn = needed_dn.split(",")[0].split("=")[1]
                             ok, err_str = self._add_entry(
@@ -533,10 +602,12 @@ class init_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin)
                                 )
                     if "sambadomain" in par_dict:
                         samba_dn = "sambaDomainName={},{}".format(par_dict["sambadomain"], base_dn)
-                        for dn, _attrs in ld_read.search_s(base_dn, ldap3.SUBTREE, "objectclass=sambaDomain"):
-                            ok, err_str = self._delete_entry(ld_write,
-                                                             dn)
-                            self.log("removed previous sambaDomain '{}'".format(dn))
+                        for result in ld_read.search(base_dn, ldap3.SUBTREE, "objectclass=sambaDomain"):
+                            ok, err_str = self._delete_entry(
+                                ld_write,
+                                result["dn"],
+                            )
+                            self.log("removed previous sambaDomain '{}'".format(result["dn"]))
                         self.log(
                             "init SAMBA-structure (domainname is '{}', dn is '{}')".format(
                                 par_dict["sambadomain"],
@@ -577,11 +648,13 @@ class init_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin)
                                 ),
                                 logging_tools.LOG_LEVEL_ERROR
                             )
-                ld_read.unbind_s()
-                ld_write.unbind_s()
+                ld_read.unbind()
+                ld_write.unbind()
         if errors:
             cur_inst.srv_com.set_result(
-                "error init LDAP tree: {}".format(", ".join(errors)),
+                "error init LDAP tree: {}".format(
+                    ", ".join(errors)
+                ),
                 server_command.SRV_REPLY_STATE_ERROR,
             )
         else:
@@ -590,7 +663,7 @@ class init_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin)
             )
 
 
-class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
+class sync_ldap_config(cs_base_class.icswCSServerCom, LDAPMixin):
     class Meta:
         needed_configs = [icswServiceEnum.ldap_server]
 
@@ -605,44 +678,16 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
         par_dict = self._read_config_from_db(cur_inst)
         errors = []
         if par_dict:
-            try:
-                ld_read = ldap.initialize("ldap://localhost")
-                ld_read.simple_bind_s("", "")
-            except ldap.LDAPError:
-                ldap_err_str = self._get_ldap_err_str("read_access")
-                self.log(
-                    "cannot initialize read_cursor: {}".format(
-                        ldap_err_str
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-                errors.append(ldap_err_str)
-                ld_read = None
-            else:
-                try:
-                    ld_write = ldap.initialize("ldap://localhost")
-                    ld_write.simple_bind_s(
-                        "cn={},{}".format(
-                            par_dict["admin_cn"],
-                            par_dict["base_dn"]
-                        ),
-                        par_dict["root_passwd"]
-                    )
-                except ldap.LDAPError:
-                    ldap_err_str = self._get_ldap_err_str("write_access")
-                    self.log(
-                        "cannot initialize write_cursor: {}".format(ldap_err_str),
-                        logging_tools.LOG_LEVEL_ERROR)
-                    errors.append(ldap_err_str)
-                    ld_write = None
-                    ld_read.unbind_s()
+            ld_read, ld_write = self.init_connections(par_dict, errors)
             if ld_read and ld_write:
                 # fetch user / group info
                 all_groups = {cur_g.pk: cur_g for cur_g in group.objects.all()}
                 all_users = {
                     cur_u.pk: cur_u for cur_u in user.objects.filter(
                         Q(only_webfrontend=False)
-                    ).prefetch_related("secondary_groups")
+                    ).prefetch_related(
+                        "secondary_groups"
+                    )
                 }
                 # not used right now
                 devlog_dict = {}
@@ -650,13 +695,13 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                 group_lut = {cur_g.groupname: cur_g.pk for cur_g in all_groups.values()}
                 user_lut = {cur_u.login.strip(): cur_u.pk for cur_u in all_users.values()}
                 if "sambadomain" in par_dict:
-                    dom_node = ld_read.search_s(
+                    ld_read.search(
                         "{}".format(
                             par_dict["base_dn"]
                         ),
-                        ldap.SCOPE_SUBTREE,
-                        "objectclass=sambaDomain"
-                    )[0]
+                        "(objectclass=sambaDomain)"
+                    )
+                    dom_node = ld_read.response[0]
                     samba_sid = dom_node[1]["sambaSID"][0]
                     self.log(
                         "sambaSID is '{}' (domain {})".format(
@@ -667,9 +712,21 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                 # build ldap structures
                 for g_idx, g_stuff in all_groups.items():
                     g_stuff.dn = self._expand_dn("group", None, g_stuff)
-                    primary_users = [cur_u.login.strip() for cur_u in all_users.values() if cur_u.active and cur_u.group_id == g_idx]
+                    primary_users = [
+                        cur_u.login.strip() for cur_u in all_users.values() if cur_u.active and cur_u.group_id == g_idx
+                    ]
+                    primary_user_uuids = [
+                        cur_u.uid for cur_u in all_users.values() if cur_u.active and cur_u.group_id == g_idx
+                    ]
                     secondary_users = [
                         cur_u.login.strip() for cur_u in all_users.values() if cur_u.active and cur_u.group_id != g_idx and any(
+                            [
+                                sec_g.pk == g_idx for sec_g in cur_u.secondary_groups.all()
+                            ]
+                        )
+                    ]
+                    secondary_user_uuids = [
+                        cur_u.uid for cur_u in all_users.values() if cur_u.active and cur_u.group_id != g_idx and any(
                             [
                                 sec_g.pk == g_idx for sec_g in cur_u.secondary_groups.all()
                             ]
@@ -678,8 +735,8 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                     g_stuff.attributes = {
                         "objectClass": [_entry for _entry in par_dict["group_object_classes"]],
                         "cn": [g_stuff.groupname],
-                        "gidNumber": [str(g_stuff.gid)],
-                        "memberUid": primary_users + secondary_users,
+                        "gidNumber": [g_stuff.gid],
+                        "memberUid": ["{:d}".format(_val) for _val in primary_user_uuids + secondary_user_uuids],
                         "description": [
                             "Responsible person: {} {} {} ({})".format(
                                 g_stuff.title,
@@ -730,8 +787,8 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                                 )
                             )
                         ],
-                        "gidNumber": [str(g_stuff.gid)],
-                        "uidNumber": [str(u_stuff.uid)],
+                        "gidNumber": [g_stuff.gid],
+                        "uidNumber": [u_stuff.uid],
                         # "memberOf"         : [self._expand_dn("group", None, g_stuff)],
                         "userPassword": [u_password],
                         "homeDirectory": [os.path.normpath(_u_home)],
@@ -765,18 +822,26 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                 groups_ok, groups_to_change, groups_to_remove = ([], [], [])
                 # get pure posixGroups (for WU Cluster)
                 self.log("checking for groups with posixGroup")
-                for dn, attrs in ld_read.search_s(par_dict["base_dn"], ldap.SCOPE_SUBTREE, "(objectClass=posixGroup)"):
-                    dn_parts = ldap.explode_dn(dn, True)
+                ld_read.search(par_dict["base_dn"], "(objectClass=posixGroup)", attributes=ldap3.ALL_ATTRIBUTES)
+                for result in ld_read.response:
+                    dn_parts = self._explode_dn(result["dn"])
                     group_name = dn_parts[0]
-                    if self._is_valid_dn(dn, "group") and group_name in group_lut:
+                    if self._is_valid_dn(result["dn"], "group") and group_name in group_lut:
                         group_struct = all_groups[group_lut[group_name]]
-                        change_list = ldap.modlist.modifyModlist(attrs, group_struct.attributes)
+                        attributes = result["attributes"]
+                        change_list = self.build_modify_dict(attributes, group_struct.attributes)
                         if change_list:
-                            self.log("found group {} with missing attributes: {}".format(group_name, str(change_list)))
+                            self.log(
+                                "found group {} with different attributes: {}".format(
+                                    group_name,
+                                    str(change_list)
+                                )
+                            )
                             ok, err_str = self._modify_entry(
                                 ld_write,
-                                dn,
-                                change_list)
+                                result["dn"],
+                                change_list
+                            )
                             if ok:
                                 self.log("modified group {}".format(group_name))
                             else:
@@ -790,32 +855,40 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                                 )
                 s_str = "(&{})".format("".join(["(objectClass={})".format(_class) for _class in par_dict["group_object_classes"]]))
                 self.log("checking for groups with {}".format(s_str))
-                for dn, attrs in ld_read.search_s(par_dict["base_dn"], ldap.SCOPE_SUBTREE, s_str):
-                    dn_parts = ldap.explode_dn(dn, True)
+                ld_read.search(par_dict["base_dn"], s_str, attributes=ldap3.ALL_ATTRIBUTES)
+                for result in ld_read.response:
+                    dn_parts = self._explode_dn(result["dn"])
                     group_name = dn_parts[0]
-                    if self._is_valid_dn(dn, "group"):
+                    if self._is_valid_dn(result["dn"], "group"):
                         if group_name in list(group_lut.keys()):
                             group_struct = all_groups[group_lut[group_name]]
                             if group_struct.active:
-                                group_struct.orig_attributes = attrs
-                                group_struct.change_list = ldap.modlist.modifyModlist(group_struct.orig_attributes, group_struct.attributes)
+                                group_struct.orig_attributes = result["attributes"]
+                                group_struct.change_list = self.build_modify_dict(group_struct.orig_attributes, group_struct.attributes)
                                 if group_struct.change_list:
                                     # changing group
-                                    self.log("changing group {} (attributes differ)".format(group_name))
+                                    self.log(
+                                        "changing group {} (attributes differ: {})".format(
+                                            group_name,
+                                            str(group_struct.change_list),
+                                        )
+                                    )
                                     groups_to_change.append(group_name)
                                 else:
                                     groups_ok.append(group_name)
                             else:
                                 # remove group (no longer active)
-                                self.log("removing group %s (not active)" % (group_name))
+                                self.log("removing group {} (not active)".format(group_name))
                                 groups_to_remove.append(group_name)
                         else:
                             # remove group (not found in db)
-                            self.log("removing group %s (not found in db)" % (group_name))
+                            self.log("removing group {} (not found in db)".format(group_name))
                             groups_to_remove.append(group_name)
                     else:
-                        self.log("ignoring posixGroup with dn {}".format(dn),
-                                 logging_tools.LOG_LEVEL_WARN)
+                        self.log(
+                            "ignoring posixGroup with dn {}".format(result["dn"]),
+                            logging_tools.LOG_LEVEL_WARN
+                        )
                 # add groups
                 groups_to_add = [
                     group_name for group_name in list(group_lut.keys()) if (
@@ -828,7 +901,8 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                         ok, err_str = self._add_entry(
                             ld_write,
                             group_struct.dn,
-                            group_struct.attributes)
+                            group_struct.attributes
+                        )
                         if ok:
                             self.log("added group {}".format(group_to_add))
                         else:
@@ -850,11 +924,16 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                         group_struct.dn,
                         group_struct.change_list)
                     if ok:
-                        self.log("modified group %s" % (group_to_change))
+                        self.log("modified group {}".format(group_to_change))
                     else:
                         errors.append(err_str)
-                        self.log("cannot modify group %s: %s" % (group_to_change, err_str),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "cannot modify group {}: {}".format(
+                                group_to_change,
+                                err_str
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                 # remove groups
                 for group_to_remove in groups_to_remove:
                     ok, err_str = self._delete_entry(
@@ -874,19 +953,24 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                         )
                 # fetch all users from ldap
                 users_ok, users_to_change, users_to_remove = ([], [], [])
-                for dn, attrs in ld_write.search_s(par_dict["base_dn"], ldap.SCOPE_SUBTREE, "(&(objectclass=posixAccount)(objectClass=clusterAccount))"):
-                    dn_parts = ldap.explode_dn(dn, True)
-                    if self._is_valid_dn(dn, "user"):
+                ld_write.search(
+                    par_dict["base_dn"],
+                    "(&(objectclass=posixAccount)(objectClass=clusterAccount))",
+                    attributes=ldap3.ALL_ATTRIBUTES
+                )
+                for result in ld_write.response:
+                    dn_parts = self._explode_dn(result["dn"])
+                    if self._is_valid_dn(result["dn"], "user"):
                         user_name = dn_parts[0]
                         if user_name in list(user_lut.keys()):
                             user_struct = all_users[user_lut[user_name]]
                             if user_struct.active and all_groups[user_struct.group_id].active and all_groups[user_struct.group_id].homestart:
                                 # debian fixes
-                                if "uid" in attrs and "userid" not in attrs:
-                                    attrs["userid"] = attrs["uid"]
-                                    del attrs["uid"]
-                                user_struct.orig_attributes = attrs
-                                user_struct.change_list = ldap.modlist.modifyModlist(
+                                if "uid" in result["attributes"] and "userid" not in result["attributes"]:
+                                    result["attributes"]["userid"] = result["attributes"]["uid"]
+                                    del result["attributes"]["uid"]
+                                user_struct.orig_attributes = result["attributes"]
+                                user_struct.change_list = self.build_modify_dict(
                                     user_struct.orig_attributes,
                                     user_struct.attributes,
                                     [
@@ -899,7 +983,12 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                                 )
                                 if user_struct.change_list:
                                     # changing user
-                                    self.log("changing user {} (attributes differ)".format(user_name))
+                                    self.log(
+                                        "changing user {} (attributes differ: {})".format(
+                                            user_name,
+                                            str(user_struct.change_list),
+                                        )
+                                    )
                                     users_to_change.append(user_name)
                                 else:
                                     users_ok.append(user_name)
@@ -913,12 +1002,14 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                             users_to_remove.append(user_name)
                     else:
                         self.log(
-                            "ignoring posixUser with dn %s" % (dn),
+                            "ignoring posixUser with dn {}".format(result["dn"]),
                             logging_tools.LOG_LEVEL_WARN
                         )
                 # add users
                 users_to_add = [
-                    user_pk for user_pk in list(user_lut.keys()) if user_pk not in users_ok and user_pk not in users_to_change and user_pk not in users_to_remove
+                    user_pk for user_pk in list(
+                        user_lut.keys()
+                    ) if user_pk not in users_ok and user_pk not in users_to_change and user_pk not in users_to_remove
                 ]
                 for user_to_add in users_to_add:
                     user_struct = all_users[user_lut[user_to_add]]
@@ -930,7 +1021,7 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                             user_struct.attributes
                         )
                         if ok:
-                            self.log("added user %s" % (user_to_add))
+                            self.log("added user {}".format(user_to_add))
                         else:
                             errors.append(err_str)
                             self.log(
@@ -951,15 +1042,19 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                 # modify users
                 for user_to_change in users_to_change:
                     user_struct = all_users[user_lut[user_to_change]]
-                    ok, err_str = self._modify_entry(ld_write,
-                                                     user_struct.dn,
-                                                     user_struct.change_list)
+                    ok, err_str = self._modify_entry(
+                        ld_write,
+                        user_struct.dn,
+                        user_struct.change_list
+                    )
                     if ok:
-                        self.log("modified user %s" % (user_to_change))
+                        self.log("modified user {}".format(user_to_change))
                     else:
                         errors.append(err_str)
-                        self.log("cannot modify user %s: %s" % (user_to_change, err_str),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "cannot modify user {}: {}".format(user_to_change, err_str),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                 # remove users
                 for user_to_remove in users_to_remove:
                     ok, err_str = self._delete_entry(
@@ -967,23 +1062,32 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                         self._expand_dn("user", user(login=user_to_remove), None)
                     )
                     if ok:
-                        self.log("deleted user %s" % (user_to_remove))
+                        self.log("deleted user {}".format(user_to_remove))
                     else:
                         errors.append(err_str)
-                        self.log("cannot delete user %s: %s" % (user_to_remove, err_str),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "cannot delete user {}: {}".format(user_to_remove, err_str),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                 # normal exports
                 exp_entries = device_config.objects.filter(
                     Q(config__name__icontains="export") &
                     Q(device__is_meta_device=False)
-                ).prefetch_related("config__config_str_set").select_related("device")
+                ).prefetch_related(
+                    "config__config_str_set"
+                ).select_related(
+                    "device"
+                )
                 export_dict = {}
                 ei_dict = {}
                 for entry in exp_entries:
-                    dev_name, act_pk = (entry.device.name,
-                                        entry.config.pk)
+                    dev_name, act_pk = (
+                        entry.device.name,
+                        entry.config.pk
+                    )
                     ei_dict.setdefault(
-                        dev_name, {}
+                        dev_name,
+                        {}
                     ).setdefault(
                         act_pk, {
                             "export": None,
@@ -1047,17 +1151,28 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                 automount_base = self._expand_dn("automount", None, None, expand_type="base")
                 # pprint.pprint(export_dict)
                 # remove mount_points which would overwrite '/'
-                error_keys = sorted([key for key in list(export_dict.keys()) if os.path.dirname(key) == "/"])
+                error_keys = sorted(
+                    [
+                        key for key in list(export_dict.keys()) if os.path.dirname(key) == "/"
+                    ]
+                )
                 if error_keys:
                     self.log(
                         "found {}: {}; ignoring them".format(
                             logging_tools.get_plural("wrong key", len(error_keys)),
-                            ", ".join(error_keys)),
+                            ", ".join(error_keys)
+                        ),
                         logging_tools.LOG_LEVEL_ERROR
                     )
-                mount_points = list({os.path.dirname(x): 0 for x in list(export_dict.keys()) if x not in error_keys}.keys())
+                mount_points = list(
+                    {
+                        os.path.dirname(x): 0 for x in list(export_dict.keys()) if x not in error_keys
+                    }.keys()
+                )
                 if mount_points:
-                    map_lut = {k: k.replace("/", "").replace(".", "_") for k in mount_points}
+                    map_lut = {
+                        k: k.replace("/", "").replace(".", "_") for k in mount_points
+                    }
                     # automounter_map
                     auto_maps.append(
                         {
@@ -1133,23 +1248,31 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                 auto_dict = {value["dn"]: value for value in auto_maps}
                 # fetch all maps from ldap
                 maps_ok, maps_to_change, maps_to_remove = ([], [], [])
-                for dn, attrs in ld_read.search_s(par_dict["base_dn"], ldap.SCOPE_SUBTREE, "(objectClass=clusterAutomount)"):
-                    if dn in map_keys:
-                        map_struct = auto_dict[dn]
-                        map_struct["orig_attrs"] = attrs
-                        map_struct["change_list"] = ldap.modlist.modifyModlist(map_struct["orig_attrs"], map_struct["attrs"])
+                ld_read.search(par_dict["base_dn"], "(objectClass=clusterAutomount)", attributes=ldap3.ALL_ATTRIBUTES)
+                for result in ld_read.response:
+                    if result["dn"] in map_keys:
+                        map_struct = auto_dict[result["dn"]]
+                        map_struct["orig_attrs"] = result["attributes"]
+                        map_struct["change_list"] = self.build_modify_dict(map_struct["orig_attrs"], map_struct["attrs"])
                         if map_struct["change_list"]:
                             # changing map
-                            self.log("changing map %s (content differs)" % (dn))
-                            maps_to_change.append(dn)
+                            self.log(
+                                "changing map {} (content differs: {})".format(
+                                    result["dn"],
+                                    str(map_struct["change_list"]),
+                                )
+                            )
+                            maps_to_change.append(result["dn"])
                         else:
-                            maps_ok.append(dn)
+                            maps_ok.append(result["dn"])
                     else:
                         # remove map (not found in db)
-                        self.log("removing map {} (not found in db)".format(dn))
-                        maps_to_remove.append(dn)
+                        self.log("removing map {} (not found in db)".format(result["dn"]))
+                        maps_to_remove.append(result["dn"])
                 # add maps
-                maps_to_add = [x for x in map_keys if x not in maps_ok and x not in maps_to_change and x not in maps_to_remove]
+                maps_to_add = [
+                    x for x in map_keys if x not in maps_ok and x not in maps_to_change and x not in maps_to_remove
+                ]
                 for map_to_add in maps_to_add:
                     map_struct = auto_dict[map_to_add]
                     ok, err_str = self._add_entry(
@@ -1163,7 +1286,8 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                         self.log(
                             "cannot add map {}: {}".format(
                                 map_to_add,
-                                err_str),
+                                err_str
+                            ),
                             logging_tools.LOG_LEVEL_ERROR
                         )
                 # modify maps
@@ -1172,7 +1296,8 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                     ok, err_str = self._modify_entry(
                         ld_write,
                         map_struct["dn"],
-                        map_struct["change_list"])
+                        map_struct["change_list"]
+                    )
                     if ok:
                         self.log("modified map {}".format(map_to_change))
                     else:
@@ -1192,16 +1317,16 @@ class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
                         map_to_remove
                     )
                     if ok:
-                        self.log("deleted map %s" % (map_to_remove))
+                        self.log("deleted map {}".format(map_to_remove))
                     else:
                         errors.append(err_str)
                         self.log(
-                            "cannot delete map %s: %s" % (map_to_remove, err_str),
+                            "cannot delete map {}: {}".format(map_to_remove, err_str),
                             logging_tools.LOG_LEVEL_ERROR
                         )
                 # pprint.pprint(export_dict)
-                ld_read.unbind_s()
-                ld_write.unbind_s()
+                ld_read.unbind()
+                ld_write.unbind()
         if errors:
             cur_inst.srv_com.set_result(
                 "error synced LDAP tree: {}".format(", ".join(errors)),
