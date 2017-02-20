@@ -978,7 +978,6 @@ angular.module(
             else
                 tree_config = scope.tree_config
             tooltip = icswTooltipTools.create_struct(
-                element
                 {
                     offset_y: -10
                 }

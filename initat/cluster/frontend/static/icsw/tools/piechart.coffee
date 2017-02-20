@@ -235,7 +235,7 @@ angular.module(
             trigger: "=icswTrigger"
             max_width: "@icswMaxWidth"
         link : (scope, element, attrs) ->
-            struct = icswTooltipTools.create_struct(element)
+            struct = icswTooltipTools.create_struct()
             if not scope.max_width?
                 # set default value for react
                 scope.max_width = "0"

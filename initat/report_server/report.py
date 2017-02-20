@@ -42,9 +42,9 @@ from reportlab.graphics.charts.piecharts import Pie
 from reportlab.graphics.charts.legends import Legend
 from reportlab.graphics.charts.textlabels import Label
 from reportlab.lib import colors
-from reportlab.lib.colors import HexColor, black, CMYKColor
+from reportlab.lib.colors import HexColor, black
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
-from reportlab.lib.pagesizes import landscape, letter, A4, A3
+from reportlab.lib.pagesizes import landscape, A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm, inch
 from reportlab.pdfbase.pdfmetrics import stringWidth
@@ -53,6 +53,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 from unidecode import unidecode
+from dateutil import tz
 
 from initat.cluster.frontend.monitoring_views import _device_status_history_util
 from initat.cluster.backbone.models.report import ReportHistory
@@ -62,7 +63,8 @@ from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
 from initat.cluster.backbone.models import network, AssetBatch, user, mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_service_data
 
-
+from reportlab import rl_config
+rl_config.shapeChecking = False
 
 PollyReports.Element.text_conversion = str
 
@@ -78,7 +80,7 @@ PollyReports.Element.gettext = pollyreports_gettext
 
 logger = logging.getLogger(__name__)
 
-_ = {landscape, letter, A4, A3}
+_ = {landscape, A4}
 
 if settings.DEBUG:
     _file_root = os.path.join(settings.FILE_ROOT, "frontend", "static")
@@ -724,22 +726,22 @@ class PDFReportGenerator(ReportGenerator):
 
         width, height = self.page_format
         if width > height:
-            format = "landscape"
+            _format = "landscape"
         else:
-            format = "portrait"
+            _format = "portrait"
 
         timeframe_string = "N/A"
         if timespan:
             timeframe_string = "{} - {}".format(timespan.start_date.ctime(), timespan.end_date.ctime())
 
         return StatusPieDrawing(timeframe_string=timeframe_string,
-            description=description,
-            format=format,
-            width=available_width * 0.83 * 0.50,
-            height=(height / 3.0) - 50,
-            data=pie_data,
-            labels=pie_labels,
-            colors=pie_colors)
+                                description=description,
+                                page_format=_format,
+                                width=available_width * 0.83 * 0.50,
+                                height=(height / 3.0) - 50,
+                                data=pie_data,
+                                labels=pie_labels,
+                                status_colors=pie_colors)
 
     def __scale_logo(self, drawheight_max=None, drawwidth_max=None):
         im = PILImage.open(self.logo_buffer)
@@ -1016,11 +1018,17 @@ class PDFReportGenerator(ReportGenerator):
         self.__generate_device_overview_report(_device, report_settings, device_report)
         self.__generate_device_assetrun_reports(_device, report_settings, device_report)
 
-        if device_report.report_settings["availability_overview_selected"]:
-            self.__generate_device_availability_overview_report(_device, report_settings, device_report)
+        if device_report.report_settings["availability_overview_selected"] or \
+                device_report.report_settings["availability_details_selected"]:
 
-        if device_report.report_settings["availability_details_selected"]:
-            self.__generate_device_availability_detailed_report(_device, report_settings, device_report)
+            availability_reports = DeviceReport(_device, report_settings, "Availability Reports")
+            root_report.add_child(availability_reports)
+
+            if device_report.report_settings["availability_overview_selected"]:
+                self.__generate_device_availability_overview_report(_device, report_settings, availability_reports)
+
+            if device_report.report_settings["availability_details_selected"]:
+                self.__generate_device_availability_detailed_report(_device, report_settings, availability_reports)
 
     def __generate_device_availability_detailed_report(self, _device, report_settings, root_report):
         class DummyRequest(object):
@@ -1055,7 +1063,6 @@ class PDFReportGenerator(ReportGenerator):
                        style=[('LEFTPADDING', (0, 0), (-1, -1), 0),
                               ('RIGHTPADDING', (0, 0), (-1, -1), 0), ])
 
-
         # add piecharts
         body_data = []
 
@@ -1066,6 +1073,8 @@ class PDFReportGenerator(ReportGenerator):
             ("Weekly", "week"),
             ("Monthly", "month"),
         ]
+
+        timespan_to_line_graph_data_dict = {}
 
         for line_header, duration_type in chart_info_map:
             dummy_request = DummyRequest()
@@ -1081,40 +1090,36 @@ class PDFReportGenerator(ReportGenerator):
                 timespan = timespans[0]
 
             row = []
-            # host_state_data = _device_status_history_util.get_hist_device_data_from_request(dummy_request)
-            # if host_state_data and host_state_data[_device.idx]:
-            #     row.append(self.__create_pie_chart_from_state_data(state_data=host_state_data[_device.idx],
-            #                                                        description="Host Status",
-            #                                                        timespan=timespan,
-            #                                                        available_width=available_width,
-            #                                                        for_host=True))
-            # else:
-            #     row.append("No host state data found!")
 
             line_graph_data = _device_status_history_util.get_line_graph_data(dummy_request, for_host=True)
             if line_graph_data and timespan:
                 line_graph_data = line_graph_data[_device.idx]
+                timespan_to_line_graph_data_dict[duration_type] = line_graph_data
 
                 width, height = self.page_format
+                if width > height:
+                    _format = "landscape"
+                else:
+                    _format = "portrait"
 
                 row.append(LineHistoryRect(line_graph_data=line_graph_data,
                                            timespan=timespan,
-                                           width=available_width * 0.83,
-                                           height=(height / 3.0) - 50))
+                                           width=available_width * (0.90 - 0.03),
+                                           height=(height / 3.0) - 50,
+                                           page_format=_format))
+
             else:
                 row.append("No valid line graph data found!")
 
             data = [row]
 
-            text_block = Paragraph('<b>{}:</b>'.format(line_header), style_sheet["BodyText"])
-            t = Table(data, colWidths=(available_width * 0.83 * 0.50),
+            text_block = Paragraph('<b>{}</b>'.format(line_header), style_sheet["BodyText"])
+            t = Table(data, colWidths=(available_width * 0.90),
                       style=[]
                       )
             body_data.append((text_block, t))
 
-
-
-        t_body = Table(body_data, colWidths=(available_width * 0.15, available_width * 0.85),
+        t_body = Table(body_data, colWidths=(available_width * 0.10, available_width * 0.90),
                        style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
                               ('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                               ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
@@ -1126,6 +1131,51 @@ class PDFReportGenerator(ReportGenerator):
 
         doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
         report.add_buffer_to_report(_buffer)
+
+        root_report = report
+        for line_header, duration_type in chart_info_map:
+            _buffer = BytesIO()
+            canvas = Canvas(_buffer, self.page_format)
+
+            heading = "Event Log (Host) - {}".format(line_header)
+
+            report = DeviceReport(_device, report_settings, heading)
+            root_report.add_child(report)
+
+            section_number = report.get_section_number()
+
+            data = timespan_to_line_graph_data_dict[duration_type]
+            data = sorted(data, key=lambda k: k['date'])
+
+            for state_dict in data:
+                state_dict["date"] = state_dict["date"].replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal()).\
+                    strftime(ASSET_DATETIMEFORMAT)
+                state_dict["state"] = HOST_STATE_TYPE_TRANSFORMATION[state_dict["state"]]
+
+            rpt = PollyReportsReport(data)
+
+            if self.page_format == landscape(A4):
+                header_names_left = [("Date", "date", 12.0),
+                                     ("State", "state", 8.0),
+                                     ("Message", "msg", 80.0)]
+            else:
+                header_names_left = [("Date", "date", 15.0),
+                                     ("State", "state", 10.0),
+                                     ("Message", "msg", 75.0)]
+            header_names_right = []
+
+            self.__config_report_helper(
+                "{} {} for [{}]".format(
+                    section_number, heading, _device.full_name,
+                ),
+                header_names_left, header_names_right, rpt, data
+            )
+
+            rpt.generate(canvas)
+            report.number_of_pages += rpt.pagenumber
+
+            canvas.save()
+            report.add_buffer_to_report(_buffer)
 
     def __generate_device_availability_overview_report(self, _device, report_settings, root_report):
         class DummyRequest(object):
@@ -1207,13 +1257,13 @@ class PDFReportGenerator(ReportGenerator):
 
             data = [row]
 
-            text_block = Paragraph('<b>{}:</b>'.format(line_header), style_sheet["BodyText"])
-            t = Table(data, colWidths=(available_width * 0.83 * 0.50),
+            text_block = Paragraph('<b>{}</b>'.format(line_header), style_sheet["BodyText"])
+            t = Table(data, colWidths=(available_width * 0.90 * 0.50),
                       style=[]
                       )
             body_data.append((text_block, t))
 
-        t_body = Table(body_data, colWidths=(available_width * 0.15, available_width * 0.85),
+        t_body = Table(body_data, colWidths=(available_width * 0.10, available_width * 0.90),
                        style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
                               ('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                               ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
@@ -3357,13 +3407,13 @@ def postprocess_workbook(workbook):
 
 
 HOST_STATUS_COLOR_MAP = {
-    "UP": CMYKColor(cyan=0.1412, magenta=0.0000, yellow=1.000, black=0.3333, knockout=False),#HexColor("#92aa00"),  # up
-    "D": CMYKColor(cyan=0.0, magenta=0.6738, yellow=0.8396, black=0.2667, knockout=False), #HexColor("#bb3d1e"),  # down
+    "UP": HexColor("#92aa00"),  # up
+    "D": HexColor("#bb3d1e"),  # down
     "UR": HexColor("#ff0000"),  # unreach
     "U": HexColor("#e2972d"),  # unknown
     "FL": HexColor("#666666"),  # flapping
     "PD": HexColor("#ccccff"),  # pending
-    "UD": CMYKColor(cyan=0.0, magenta=0.0, yellow=0.0, black=0.5, knockout=True), #HexColor("#dddddd"),  # unselected
+    "UD": HexColor("#dddddd"),  # unselected
 }
 
 HOST_STATUS_SIZE_RATIOS = {
@@ -3400,16 +3450,16 @@ SERVICE_TRANS_TYPE_TRANSFORMATION = {
 
 class StatusPieDrawing(_DrawingEditorMixin, Drawing):
     @staticmethod
-    def setItems(n, obj, attr, values):
+    def set_items(n, obj, attr, values):
         m = len(values)
         i = m // n
         for j in range(n):
             setattr(obj[j], attr, values[j * i % m])
 
-    def __init__(self, timeframe_string="N/A", description="N/A", format="landscape", width=400, height=100,
-                 data=(), labels=(), colors=(), *args, **kw):
-        if not colors:
-            colors = [
+    def __init__(self, timeframe_string="N/A", description="N/A", page_format="landscape", width=400, height=100,
+                 data=(), labels=(), status_colors=(), *args, **kw):
+        if not status_colors:
+            status_colors = [
                 HexColor("#0000e5"),
                 HexColor("#1f1feb"),
                 HexColor("#5757f0"),
@@ -3423,11 +3473,15 @@ class StatusPieDrawing(_DrawingEditorMixin, Drawing):
                 HexColor("#ff0000"),
             ]
 
-        Drawing.__init__(*(self,width,height)+args, **kw)
+        Drawing.__init__(*(self, width, height)+args, **kw)
+        self.pie = None
+        self.legend = None
+        self.label = None
+        self.tflabel = None
 
         # add piechart
         self._add(self, Pie(), name='pie', validate=None, desc=None)
-        if format == "landscape":
+        if page_format == "landscape":
             self.pie.width = height - 10
             self.pie.height = height - 10
             self.pie.x = 0
@@ -3449,7 +3503,7 @@ class StatusPieDrawing(_DrawingEditorMixin, Drawing):
 
         # add legend
         self._add(self, Legend(), name='legend', validate=None, desc=None)
-        if format == "landscape":
+        if page_format == "landscape":
             self.legend.x = 160
             self.legend.y = height / 2.0
         else:
@@ -3470,7 +3524,7 @@ class StatusPieDrawing(_DrawingEditorMixin, Drawing):
         self.legend.yGap = 0
         self.legend.dxTextSpace = 5
         self.legend.alignment = 'right'
-        self.legend.dividerLines = 1|2|4
+        self.legend.dividerLines = 1 | 2 | 4
         self.legend.dividerOffsY = 4.5
         self.legend.subCols.rpad = 30
 
@@ -3484,7 +3538,7 @@ class StatusPieDrawing(_DrawingEditorMixin, Drawing):
 
         # add timeframe label
         self._add(self, Label(), name="tflabel", validate=None, desc=None)
-        if format == "landscape":
+        if page_format == "landscape":
             self.tflabel.x = (width / 2.0) + 25
             self.tflabel.y = height
         else:
@@ -3495,17 +3549,28 @@ class StatusPieDrawing(_DrawingEditorMixin, Drawing):
         self.tflabel.fontSize = 7
 
         n = len(self.pie.data)
-        self.setItems(n, self.pie.slices, 'fillColor', colors)
-        self.legend.colorNamePairs = [(self.pie.slices[i].fillColor, (self.pie.labels[i][0:20], '%0.2f' % self.pie.data[i])) for i in range(n)]
+        self.set_items(n, self.pie.slices, 'fillColor', status_colors)
+        self.legend.colorNamePairs = [(self.pie.slices[i].fillColor,
+                                      (self.pie.labels[i][0:20],
+                                       '%0.2f' % self.pie.data[i])) for i in range(n)]
 
 
 class LineHistoryRect(_DrawingEditorMixin, Drawing):
-    def __init__(self, line_graph_data=(), timespan=None, for_host=True, format="landscape", width=400, height=100, *args, **kw):
-        from dateutil import tz
+    def __init__(self, line_graph_data=(), timespan=None, for_host=True,
+                 page_format="landscape", width=400, height=100, *args, **kw):
         Drawing.__init__(*(self, width, height) + args, **kw)
+        self.label = None
+        self.tflabel = None
+        self.tfline = None
+        self.legend = None
 
-        gfx_width_percentage = 0.83
-        legend_width_percentage = 0.17
+
+        if page_format == "landscape":
+            gfx_width_percentage = 0.83
+            legend_width_percentage = 0.17
+        else:
+            gfx_width_percentage = 0.76
+            legend_width_percentage = 0.24
 
         if for_host:
             color_map = HOST_STATUS_COLOR_MAP
@@ -3523,8 +3588,9 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
         for state_dict in line_graph_data:
             cleaned_up_date = state_dict["date"].replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal())
 
-            if cleaned_up_date <= end_date and cleaned_up_date >= start_date:
-                date_to_state_dict[cleaned_up_date] = state_dict
+            if cleaned_up_date <= end_date:
+                if cleaned_up_date >= start_date:
+                    date_to_state_dict[cleaned_up_date] = state_dict
 
             if cleaned_up_date < start_date:
                 date_to_state_dict[start_date] = state_dict
@@ -3544,20 +3610,39 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
             last_date = date
             last_state_info = date_to_state_dict[date]
 
-        # rect_percentage = (last_date - end_date).total_seconds() / timespan.duration
-        # rects.append([last_state_info["state"], last_state_info["msg"], rect_percentage])
-
+        # first pass, calculate pixel grid offset and total pixels used
         state_to_percentages_dict = {}
-
-        rect_idx = 0
-        last_rect_x = width * legend_width_percentage
+        pixel_grid_offset = 0
+        total_pixels = 0
         for rect_list in rects:
             rect_width_percentage = rect_list[2]
             rect_width = rect_width_percentage * width * gfx_width_percentage
 
-            print(rect_width)
+            rect_width_old = rect_width
+            rect_width = round(rect_width, 1)
+            if rect_width < 0.1:
+                rect_width = 0.1
+
+            total_pixels += rect_width
+            pixel_grid_offset += rect_width - rect_width_old
+
+            if rect_list[0] not in state_to_percentages_dict:
+                state_to_percentages_dict[rect_list[0]] = rect_width_percentage
+            else:
+                state_to_percentages_dict[rect_list[0]] += rect_width_percentage
+
+        # second pass, actucally add rectangles acording to pixel grid offset
+        last_rect_x = width * legend_width_percentage
+        rect_idx = 0
+        for rect_list in rects:
+            rect_width_percentage = rect_list[2]
+            rect_width = rect_width_percentage * width * gfx_width_percentage
+            rect_width *= (total_pixels - pixel_grid_offset) / total_pixels
 
             rect_height = (size_ratios[rect_list[0]] * height) * 0.75
+            rect_width = round(rect_width, 1)
+            if rect_width < 0.1:
+                rect_width = 0.1
 
             rect_name = "rect".format(rect_idx)
             rect_idx += 1
@@ -3568,11 +3653,6 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
             getattr(self, rect_name).strokeWidth = 0
             getattr(self, rect_name).strokeOpacity = 0
             last_rect_x += rect_width
-
-            if rect_list[0] not in state_to_percentages_dict:
-                state_to_percentages_dict[rect_list[0]] = rect_width_percentage
-            else:
-                state_to_percentages_dict[rect_list[0]] += rect_width_percentage
 
         # add description
         if for_host:
@@ -3588,12 +3668,9 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
 
         # add timeframe label
         self._add(self, Label(), name="tflabel", validate=None, desc=None)
-        if format == "landscape":
-            self.tflabel.x = (width / 2.0)
-            self.tflabel.y = height
-        else:
-            self.tflabel.x = (width / 2.0)
-            self.tflabel.y = 0
+        self.tflabel.x = (width / 2.0)
+        self.tflabel.y = height
+
         self.tflabel.setText("{} - {}".format(timespan.start_date.ctime(), timespan.end_date.ctime()))
         self.tflabel.fontName = 'Helvetica'
         self.tflabel.fontSize = 7
@@ -3616,7 +3693,6 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
 
                 current_date = current_date + datetime.timedelta(days=1)
 
-
         for i in range(len(time_axis_elements) + 1):
             element_name = "tfline{}".format(i)
             self._add(self, Line(x_value, 0, x_value, 10), name=element_name, validate=None, desc=None)
@@ -3638,12 +3714,8 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
 
         # add legend
         self._add(self, Legend(), name='legend', validate=None, desc=None)
-        if format == "landscape":
-            self.legend.x = 0
-            self.legend.y = height / 2.0
-        else:
-            self.legend.x = 0
-            self.legend.y = 40
+        self.legend.x = 0
+        self.legend.y = height / 2.0
 
         self.legend.dx = 8
         self.legend.dy = 8
@@ -3659,7 +3731,7 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
         self.legend.yGap = 0
         self.legend.dxTextSpace = 5
         self.legend.alignment = 'right'
-        self.legend.dividerLines = 1|2|4
+        self.legend.dividerLines = 1 | 2 | 4
         self.legend.dividerOffsY = 4.5
         self.legend.subCols.rpad = 30
 

@@ -32,10 +32,10 @@ angular.module(
 (
     $q, $window, $rootScope, $templateCache, $compile,
 ) ->
-    create_struct = (anchor_element, kwargs) ->
+    create_struct = (kwargs) ->
         _struct = {
             # anchor element
-            element: angular.element('icsw-tooltips')  # anchor_element
+            element: angular.element('icsw-tooltips')  # OUTPUT CONTAINER main.html
             # dummy scope
             scope: $rootScope.$new(true)
             # current divlayer element
@@ -113,43 +113,20 @@ angular.module(
         show: show
         hide: hide
     }
-]).directive('icswLivestatusTooltip',
+]).service("icswSetupTooltip"
 [
-    "$templateCache", "$window", "icswTooltipTools",
+    "icswTooltipTools",
 (
-    $templateCache, $window, icswTooltipTools,
+    icswTooltipTools,
 ) ->
-    return {
-        restrict: "EA"
-        scope: {
-            con_element: "=icswConnectElement"
-            set_tooltip_target: "&icswSetTooltipTarget"
-        }
-        link: (scope, element, attrs) ->
-            struct = icswTooltipTools.create_struct(element)
+    tooltip = icswTooltipTools
+    struct = tooltip.create_struct()
+    struct.show = (bnode) ->
+        tooltip.show(struct, bnode)
+    struct.pos = (event) ->
+        tooltip.position(struct, event)
+    struct.hide = () ->
+        tooltip.hide(struct)
 
-            struct.show = (bnode) ->
-                icswTooltipTools.show(struct, bnode)
-
-            struct.pos = (event) ->
-                icswTooltipTools.position(struct, event)
-
-            struct.hide = () ->
-                icswTooltipTools.hide(struct)
-
-            struct.hide()
-
-            # link
-            if scope.con_element?
-                scope.con_element.tooltip = struct
-            else
-                scope.set_tooltip_target({struct: struct})
-
-            # handle destroy
-            scope.$on(
-                "$destroy"
-                () ->
-                    icswTooltipTools.delete_struct(struct)
-            )
-    }
+    return struct
 ])

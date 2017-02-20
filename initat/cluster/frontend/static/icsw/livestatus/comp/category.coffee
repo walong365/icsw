@@ -519,9 +519,9 @@ angular.module(
 
 ]).directive("icswLivestatusCategoryFilterBurst",
 [
-    "icswBurstDrawParameters",
+    "icswBurstDrawParameters", "icswSetupTooltip",
 (
-    icswBurstDrawParameters,
+    icswBurstDrawParameters, icswSetupTooltip,
 ) ->
     return {
         restrict: "EA"
@@ -539,7 +539,7 @@ angular.module(
                     start_ring: 0
                     is_interactive: true
                     omit_small_segments: true
-                    tooltip: scope.con_element.tooltip
+                    tooltip: icswSetupTooltip
                 }
             )
             scope.con_element.set_async_emit_data(
@@ -574,8 +574,10 @@ angular.module(
         constructor: () ->
             super("icswLivestatusMonCategoryFilterBurst", true, true)
             @set_template(
-                '<icsw-livestatus-tooltip icsw-connect-element="con_element"></icsw-livestatus-tooltip>
-                <icsw-livestatus-category-filter-burst icsw-connect-element="con_element" icsw-sub-tree="\'mon\'"></icsw-livestatus-category-filter-burst>'
+                '<icsw-livestatus-category-filter-burst
+                    icsw-connect-element="con_element"
+                    icsw-sub-tree="\'mon\'">
+                </icsw-livestatus-category-filter-burst>'
                 "Monitoring Category Filter (Burst)"
                 5
                 5
@@ -609,8 +611,10 @@ angular.module(
         constructor: () ->
             super("icswLivestatusDeviceCategoryFilterBurst", true, true)
             @set_template(
-                '<icsw-livestatus-tooltip icsw-connect-element="con_element"></icsw-livestatus-tooltip>
-                <icsw-livestatus-category-filter-burst icsw-connect-element="con_element" icsw-sub-tree="\'device\'"></icsw-livestatus-category-filter-burst>'
+                '<icsw-livestatus-category-filter-burst
+                    icsw-connect-element="con_element"
+                    icsw-sub-tree="\'device\'">
+                </icsw-livestatus-category-filter-burst>'
                 "Device Category Filter (Burst)"
                 5
                 5
