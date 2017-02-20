@@ -494,9 +494,9 @@ def rpmlist_int(rpm_root_dir, re_strs, is_debian):
         log_list.append("  rpm-command is {}".format(" ".join(rpm_com)))
 
     try:
-        output = subprocess.check_output(rpm_com, stderr=subprocess.STDOUT).decode()
+        output = subprocess.check_output(rpm_com, stderr=subprocess.STDOUT).decode("utf-8", "backslashreplace")
     except subprocess.CalledProcessError as e:
-        ret_dict = e.output.decode()
+        ret_dict = e.output.decode("utf-8", "backslashreplace")
         returncode = e.returncode
     except Exception as e:
         if not is_debian:
@@ -605,8 +605,8 @@ def get_update_list():
                     pass
 
         update_command = "zypper"
-        update_commands.append(([update_command, "refresh"], None))
-        update_commands.append(([update_command, "list-updates"], update_command_handler))
+        update_commands.append(([update_command, "-n", "refresh"], None))
+        update_commands.append(([update_command, "-n", "list-updates"], update_command_handler))
     elif os.path.isdir("/etc/yum"):
         def update_command_handler():
             lines = output.split("\n")
@@ -642,13 +642,18 @@ def get_update_list():
         update_commands.append(([update_command, "--just-print", "upgrade"], update_command_handler))
 
     for update_command_args, update_command_handler in update_commands:
+        proc = subprocess.Popen(update_command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         try:
-            output = subprocess.check_output(update_command_args, stderr=subprocess.STDOUT).decode()
-        except subprocess.CalledProcessError as e:
-            log_list.append('"{}" failed with return code {}'.format(" ".join(update_command_args), e.returncode))
-            break
-        else:
-            if update_command_handler:
-                update_command_handler()
+            output, error_output = proc.communicate(timeout=60)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            output, error_output = proc.communicate()
+            log_list.append('"{}" command timed out after 60 seconds'.format(" ".join(update_command_args)))
+
+        if proc.returncode:
+            log_list.append('"{}" failed with return code {}'.format(" ".join(update_command_args), proc.returncode))
+        elif update_command_handler:
+            output = output.decode("utf-8", "backslashreplace")
+            update_command_handler()
 
     return update_list, log_list
