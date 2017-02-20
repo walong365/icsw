@@ -257,21 +257,22 @@ class ServiceContainer(object):
             from initat.cluster.backbone.server_enums import icswServiceEnum
         except ImportError:
             from initat.host_monitoring.client_enums import icswServiceEnum
-        # build enum lut
-        enum_lut = {}
-        service_lut = {}
-        for service in service_list:
-            service_lut[service.name] = []
-            xml_enums = service.entry.findall(".//config-enums/config-enum")
-            for xml_enum in xml_enums:
-                _enum = getattr(icswServiceEnum, xml_enum.text)
-                if _enum in enum_lut:
-                    raise KeyError("enum {} already used".format(_enum))
-                enum_lut[_enum] = service
         # import pprint
-        result = check_config_enum(list(enum_lut.keys()), config_tools, self.log)
-        for enum, result_node in result.items():
-            service_lut[enum_lut[enum].name].append(result_node)
+        if config_tools is not None:
+            # build enum lut
+            enum_lut = {}
+            service_lut = {}
+            for service in service_list:
+                service_lut[service.name] = []
+                xml_enums = service.entry.findall(".//config-enums/config-enum")
+                for xml_enum in xml_enums:
+                    _enum = getattr(icswServiceEnum, xml_enum.text)
+                    if _enum in enum_lut:
+                        raise KeyError("enum {} already used".format(_enum))
+                    enum_lut[_enum] = service
+            result = check_config_enum(list(enum_lut.keys()), config_tools, self.log)
+            for enum, result_node in result.items():
+                service_lut[enum_lut[enum].name].append(result_node)
         # build service lut
         # pprint.pprint(service_lut)
         for service in service_list:
