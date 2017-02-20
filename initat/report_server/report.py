@@ -42,7 +42,7 @@ from reportlab.graphics.charts.piecharts import Pie
 from reportlab.graphics.charts.legends import Legend
 from reportlab.graphics.charts.textlabels import Label
 from reportlab.lib import colors
-from reportlab.lib.colors import HexColor, black, CMYKColor
+from reportlab.lib.colors import HexColor, black
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
 from reportlab.lib.pagesizes import landscape, letter, A4, A3
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -62,7 +62,8 @@ from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
 from initat.cluster.backbone.models import network, AssetBatch, user, mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_service_data
 
-
+from reportlab import rl_config
+rl_config.shapeChecking = False
 
 PollyReports.Element.text_conversion = str
 
@@ -724,22 +725,22 @@ class PDFReportGenerator(ReportGenerator):
 
         width, height = self.page_format
         if width > height:
-            format = "landscape"
+            _format = "landscape"
         else:
-            format = "portrait"
+            _format = "portrait"
 
         timeframe_string = "N/A"
         if timespan:
             timeframe_string = "{} - {}".format(timespan.start_date.ctime(), timespan.end_date.ctime())
 
         return StatusPieDrawing(timeframe_string=timeframe_string,
-            description=description,
-            format=format,
-            width=available_width * 0.83 * 0.50,
-            height=(height / 3.0) - 50,
-            data=pie_data,
-            labels=pie_labels,
-            colors=pie_colors)
+                                description=description,
+                                page_format=_format,
+                                width=available_width * 0.83 * 0.50,
+                                height=(height / 3.0) - 50,
+                                data=pie_data,
+                                labels=pie_labels,
+                                status_colors=pie_colors)
 
     def __scale_logo(self, drawheight_max=None, drawwidth_max=None):
         im = PILImage.open(self.logo_buffer)
@@ -1055,7 +1056,6 @@ class PDFReportGenerator(ReportGenerator):
                        style=[('LEFTPADDING', (0, 0), (-1, -1), 0),
                               ('RIGHTPADDING', (0, 0), (-1, -1), 0), ])
 
-
         # add piecharts
         body_data = []
 
@@ -1111,8 +1111,6 @@ class PDFReportGenerator(ReportGenerator):
                       style=[]
                       )
             body_data.append((text_block, t))
-
-
 
         t_body = Table(body_data, colWidths=(available_width * 0.15, available_width * 0.85),
                        style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
@@ -3400,16 +3398,16 @@ SERVICE_TRANS_TYPE_TRANSFORMATION = {
 
 class StatusPieDrawing(_DrawingEditorMixin, Drawing):
     @staticmethod
-    def setItems(n, obj, attr, values):
+    def set_items(n, obj, attr, values):
         m = len(values)
         i = m // n
         for j in range(n):
             setattr(obj[j], attr, values[j * i % m])
 
-    def __init__(self, timeframe_string="N/A", description="N/A", format="landscape", width=400, height=100,
-                 data=(), labels=(), colors=(), *args, **kw):
-        if not colors:
-            colors = [
+    def __init__(self, timeframe_string="N/A", description="N/A", page_format="landscape", width=400, height=100,
+                 data=(), labels=(), status_colors=(), *args, **kw):
+        if not status_colors:
+            status_colors = [
                 HexColor("#0000e5"),
                 HexColor("#1f1feb"),
                 HexColor("#5757f0"),
@@ -3423,11 +3421,15 @@ class StatusPieDrawing(_DrawingEditorMixin, Drawing):
                 HexColor("#ff0000"),
             ]
 
-        Drawing.__init__(*(self,width,height)+args, **kw)
+        Drawing.__init__(*(self, width, height)+args, **kw)
+        self.pie = None
+        self.legend = None
+        self.label = None
+        self.tflabel = None
 
         # add piechart
         self._add(self, Pie(), name='pie', validate=None, desc=None)
-        if format == "landscape":
+        if page_format == "landscape":
             self.pie.width = height - 10
             self.pie.height = height - 10
             self.pie.x = 0
@@ -3449,7 +3451,7 @@ class StatusPieDrawing(_DrawingEditorMixin, Drawing):
 
         # add legend
         self._add(self, Legend(), name='legend', validate=None, desc=None)
-        if format == "landscape":
+        if page_format == "landscape":
             self.legend.x = 160
             self.legend.y = height / 2.0
         else:
@@ -3470,7 +3472,7 @@ class StatusPieDrawing(_DrawingEditorMixin, Drawing):
         self.legend.yGap = 0
         self.legend.dxTextSpace = 5
         self.legend.alignment = 'right'
-        self.legend.dividerLines = 1|2|4
+        self.legend.dividerLines = 1 | 2 | 4
         self.legend.dividerOffsY = 4.5
         self.legend.subCols.rpad = 30
 
@@ -3484,7 +3486,7 @@ class StatusPieDrawing(_DrawingEditorMixin, Drawing):
 
         # add timeframe label
         self._add(self, Label(), name="tflabel", validate=None, desc=None)
-        if format == "landscape":
+        if page_format == "landscape":
             self.tflabel.x = (width / 2.0) + 25
             self.tflabel.y = height
         else:
@@ -3495,14 +3497,21 @@ class StatusPieDrawing(_DrawingEditorMixin, Drawing):
         self.tflabel.fontSize = 7
 
         n = len(self.pie.data)
-        self.setItems(n, self.pie.slices, 'fillColor', colors)
-        self.legend.colorNamePairs = [(self.pie.slices[i].fillColor, (self.pie.labels[i][0:20], '%0.2f' % self.pie.data[i])) for i in range(n)]
+        self.set_items(n, self.pie.slices, 'fillColor', status_colors)
+        self.legend.colorNamePairs = [(self.pie.slices[i].fillColor,
+                                      (self.pie.labels[i][0:20],
+                                       '%0.2f' % self.pie.data[i])) for i in range(n)]
 
 
 class LineHistoryRect(_DrawingEditorMixin, Drawing):
-    def __init__(self, line_graph_data=(), timespan=None, for_host=True, format="landscape", width=400, height=100, *args, **kw):
+    def __init__(self, line_graph_data=(), timespan=None, for_host=True,
+                 page_format="landscape", width=400, height=100, *args, **kw):
         from dateutil import tz
         Drawing.__init__(*(self, width, height) + args, **kw)
+        self.label = None
+        self.tflabel = None
+        self.tfline = None
+        self.legend = None
 
         gfx_width_percentage = 0.83
         legend_width_percentage = 0.17
@@ -3523,8 +3532,9 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
         for state_dict in line_graph_data:
             cleaned_up_date = state_dict["date"].replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal())
 
-            if cleaned_up_date <= end_date and cleaned_up_date >= start_date:
-                date_to_state_dict[cleaned_up_date] = state_dict
+            if cleaned_up_date <= end_date:
+                if cleaned_up_date >= start_date:
+                    date_to_state_dict[cleaned_up_date] = state_dict
 
             if cleaned_up_date < start_date:
                 date_to_state_dict[start_date] = state_dict
@@ -3552,7 +3562,6 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
             rect_width_percentage = rect_list[2]
             rect_width = rect_width_percentage * width * gfx_width_percentage
 
-            rect_height = (size_ratios[rect_list[0]] * height) * 0.75
             rect_width_old = rect_width
             rect_width = round(rect_width, 1)
             if rect_width < 0.1:
@@ -3603,7 +3612,7 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
 
         # add timeframe label
         self._add(self, Label(), name="tflabel", validate=None, desc=None)
-        if format == "landscape":
+        if page_format == "landscape":
             self.tflabel.x = (width / 2.0)
             self.tflabel.y = height
         else:
@@ -3631,7 +3640,6 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
 
                 current_date = current_date + datetime.timedelta(days=1)
 
-
         for i in range(len(time_axis_elements) + 1):
             element_name = "tfline{}".format(i)
             self._add(self, Line(x_value, 0, x_value, 10), name=element_name, validate=None, desc=None)
@@ -3653,7 +3661,7 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
 
         # add legend
         self._add(self, Legend(), name='legend', validate=None, desc=None)
-        if format == "landscape":
+        if page_format == "landscape":
             self.legend.x = 0
             self.legend.y = height / 2.0
         else:
@@ -3674,7 +3682,7 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
         self.legend.yGap = 0
         self.legend.dxTextSpace = 5
         self.legend.alignment = 'right'
-        self.legend.dividerLines = 1|2|4
+        self.legend.dividerLines = 1 | 2 | 4
         self.legend.dividerOffsY = 4.5
         self.legend.subCols.rpad = 30
 
