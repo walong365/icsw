@@ -53,7 +53,7 @@ class SyncConfig(object):
             master_cfg = config_tools.icswDeviceWithConfig(service_type_enum=icswServiceEnum.monitor_server)
             self.master_uuid = routing.get_server_uuid(
                 icswServiceEnum.monitor_slave,
-                master_cfg[icswServiceEnum.monitor_server][0].effective_device.uuid,
+                master_cfg[icswServiceEnum.monitor_server][0].get_result().effective_device.uuid,
             )
             slave_cfg = config_tools.icswServerCheck(
                 host_name=monitor_server.full_name,
