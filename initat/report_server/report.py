@@ -1097,11 +1097,17 @@ class PDFReportGenerator(ReportGenerator):
                 timespan_to_line_graph_data_dict[duration_type] = line_graph_data
 
                 width, height = self.page_format
+                if width > height:
+                    _format = "landscape"
+                else:
+                    _format = "portrait"
 
                 row.append(LineHistoryRect(line_graph_data=line_graph_data,
                                            timespan=timespan,
                                            width=available_width * (0.90 - 0.03),
-                                           height=(height / 3.0) - 50))
+                                           height=(height / 3.0) - 50,
+                                           page_format=_format))
+
             else:
                 row.append("No valid line graph data found!")
 
@@ -1148,9 +1154,14 @@ class PDFReportGenerator(ReportGenerator):
 
             rpt = PollyReportsReport(data)
 
-            header_names_left = [("Date", "date", 12.0),
-                                 ("State", "state", 8.0),
-                                 ("Message", "msg", 80.0)]
+            if self.page_format == landscape(A4):
+                header_names_left = [("Date", "date", 12.0),
+                                     ("State", "state", 8.0),
+                                     ("Message", "msg", 80.0)]
+            else:
+                header_names_left = [("Date", "date", 15.0),
+                                     ("State", "state", 10.0),
+                                     ("Message", "msg", 75.0)]
             header_names_right = []
 
             self.__config_report_helper(
@@ -3553,8 +3564,13 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
         self.tfline = None
         self.legend = None
 
-        gfx_width_percentage = 0.83
-        legend_width_percentage = 0.17
+
+        if page_format == "landscape":
+            gfx_width_percentage = 0.83
+            legend_width_percentage = 0.17
+        else:
+            gfx_width_percentage = 0.76
+            legend_width_percentage = 0.24
 
         if for_host:
             color_map = HOST_STATUS_COLOR_MAP
@@ -3652,12 +3668,9 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
 
         # add timeframe label
         self._add(self, Label(), name="tflabel", validate=None, desc=None)
-        if page_format == "landscape":
-            self.tflabel.x = (width / 2.0)
-            self.tflabel.y = height
-        else:
-            self.tflabel.x = (width / 2.0)
-            self.tflabel.y = 0
+        self.tflabel.x = (width / 2.0)
+        self.tflabel.y = height
+
         self.tflabel.setText("{} - {}".format(timespan.start_date.ctime(), timespan.end_date.ctime()))
         self.tflabel.fontName = 'Helvetica'
         self.tflabel.fontSize = 7
@@ -3701,12 +3714,8 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
 
         # add legend
         self._add(self, Legend(), name='legend', validate=None, desc=None)
-        if page_format == "landscape":
-            self.legend.x = 0
-            self.legend.y = height / 2.0
-        else:
-            self.legend.x = 0
-            self.legend.y = 40
+        self.legend.x = 0
+        self.legend.y = height / 2.0
 
         self.legend.dx = 8
         self.legend.dy = 8
