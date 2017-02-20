@@ -283,6 +283,12 @@ device_report_module = angular.module(
             select_salt_obj(obj, "$availability_overview_selected", "$availability_overview_button_disabled")
         else if selection_type == 10
             select_salt_obj(obj, "$availability_details_selected", "$availability_details_button_disabled")
+            if obj.$availability_events_selected == true
+                select_salt_obj(obj, "$availability_events_selected", "$availability_events_button_disabled")
+        else if selection_type == 11
+            select_salt_obj(obj, "$availability_events_selected", "$availability_events_button_disabled")
+            if obj.$availability_details_selected != true
+                select_salt_obj(obj, "$availability_details_selected", "$availability_details_button_disabled")
 
     icswSimpleAjaxCall({
                 url: ICSW_URLS.REPORT_GET_REPORT_GFX
@@ -463,6 +469,7 @@ device_report_module = angular.module(
                     lstopo_report_selected: device.$lstopo_report_selected
                     availability_overview_selected: device.$availability_overview_selected
                     availability_details_selected: device.$availability_details_selected
+                    availability_events_selected: device.$availability_events_selected
                     availability_timeframe_start: moment(device.$$reportstruct.startdate_dp).unix()
                     assetbatch_id: device.$$selected_assetbatch
                 }
@@ -645,6 +652,9 @@ device_report_module = angular.module(
             else if column_id == 10
                 if device.$availability_details_selected == true
                     return true
+            else if column_id == 11
+                if device.$availability_events_selected == true
+                    return true
 
         return false
 
@@ -707,6 +717,14 @@ device_report_module = angular.module(
                     device.$availability_details_selected = !this_column_selected
                     if !this_column_selected
                         device.$selected_for_report = true
+                    else
+                        device.$availability_events_selected = false
+            else if column_id == 11
+                if !device.$availability_events_button_disabled
+                    device.$availability_events_selected = !this_column_selected
+                    if !this_column_selected
+                        device.$selected_for_report = true
+                        device.$availability_details_selected = true
 
     $scope.select_software_information = () ->
         selected = false
@@ -948,10 +966,14 @@ device_report_module = angular.module(
         device.$availability_details_selected = false
         device.$availability_details_button_disabled = true
 
+        device.$availability_events_selected = false
+        device.$availability_events_button_disabled = true
+
     _enable_device_buttons = (device, device_info_obj) ->
         # general device buttons are always enabled
         device.$availability_overview_button_disabled = false
         device.$availability_details_button_disabled = false
+        device.$availability_events_button_disabled = false
 
         for obj in device_info_obj
             button_title_str = ""

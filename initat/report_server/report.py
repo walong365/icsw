@@ -345,6 +345,7 @@ class DeviceReport(GenericReport):
             "pci_report_selected": True,
             "availability_overview_selected": True,
             "availability_details_selected": True,
+            "availability_events_selected": True,
             "availability_timeframe_start": None,
         }
 
@@ -1160,6 +1161,10 @@ class PDFReportGenerator(ReportGenerator):
             report.add_buffer_to_report(_buffer)
 
             current_availability_report = report
+
+            if not report.report_settings["availability_events_selected"]:
+                continue
+
             # add event logs
             for service_type in service_type_to_line_graph_data_dict.keys():
                 _buffer = BytesIO()
@@ -1276,6 +1281,9 @@ class PDFReportGenerator(ReportGenerator):
 
         doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
         report.add_buffer_to_report(_buffer)
+
+        if not report.report_settings["availability_events_selected"]:
+            return
 
         root_report = report
         for line_header, duration_type in chart_info_map:

@@ -298,6 +298,7 @@
                                         <tr>
                                             <th class="text-center">Availability Overview</th>
                                             <th class="text-center">Availability Details</th>
+                                            <th class="text-center">Availability Events</th>
                                         </tr>
                                         <tr>
                                             <th>
@@ -305,6 +306,9 @@
                                             </th>
                                             <th>
                                                 <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(10)" value="Select" style="display: block; margin: 0 auto;"/>
+                                            </th>
+                                            <th>
+                                                <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(11)" value="Select" style="display: block; margin: 0 auto;"/>
                                             </th>
                                         </tr>
                                     </thead>
@@ -318,6 +322,11 @@
                                             <td style="height:40px; vertical-align: middle;">
                                                 <div class="text-center">
                                                     <input type="button" ng-disabled="obj.$availability_details_button_disabled" ng-class="obj.$availability_details_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 10)"/>
+                                                </div>
+                                            </td>
+                                            <td style="height:40px; vertical-align: middle;">
+                                                <div class="text-center">
+                                                    <input type="button" ng-disabled="obj.$availability_events_button_disabled" ng-class="obj.$availability_events_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 11)"/>
                                                 </div>
                                             </td>
                                         </tr>
