@@ -35,7 +35,7 @@ angular.module(
     create_struct = (anchor_element, kwargs) ->
         _struct = {
             # anchor element
-            element: anchor_element
+            element: angular.element('icsw-tooltips')  # anchor_element
             # dummy scope
             scope: $rootScope.$new(true)
             # current divlayer element
