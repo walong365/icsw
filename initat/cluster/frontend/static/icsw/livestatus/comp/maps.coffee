@@ -40,8 +40,7 @@ angular.module(
         constructor: () ->
             super("icswLivestatusLocationMap", true, false)
             @set_template(
-                '<icsw-livestatus-tooltip icsw-connect-element="con_element"></icsw-livestatus-tooltip>
-                <icsw-show-livestatus-location-map icsw-connect-element="con_element"></icsw-show-livestatus-location-map>'
+                '<icsw-show-livestatus-location-map icsw-connect-element="con_element"></icsw-show-livestatus-location-map>'
                 "Location Images"
                 10
                 8
@@ -228,8 +227,9 @@ angular.module(
         constructor: () ->
             super("icswLivestatusGeoLocationDisplay", true, false)
             @set_template(
-                '<icsw-livestatus-tooltip icsw-connect-element="con_element"></icsw-livestatus-tooltip>
-                <icsw-device-livestatus-geo-location-display icsw-connect-element="con_element"></icsw-device-livestatus-geo-location-display>'
+                '<icsw-device-livestatus-geo-location-display
+                    icsw-connect-element="con_element">
+                </icsw-device-livestatus-geo-location-display>'
                 "Geo Location"
                 10
                 8
@@ -399,10 +399,10 @@ angular.module(
 ]).directive("icswDeviceLivestatusLocationMap",
 [
     "$templateCache", "$compile", "Restangular", "icswDeviceLivestatusLocationMapReact",
-    "icswBurstDrawParameters", "icswDeviceTreeService", "$q",
+    "icswBurstDrawParameters", "icswDeviceTreeService", "$q", "icswSetupTooltip",
 (
     $templateCache, $compile, Restangular, icswDeviceLivestatusLocationMapReact,
-    icswBurstDrawParameters, icswDeviceTreeService, $q,
+    icswBurstDrawParameters, icswDeviceTreeService, $q, icswSetupTooltip,
 ) ->
     return {
         restrict: "EA"
@@ -418,7 +418,7 @@ angular.module(
                 {
                     inner_radius: 0
                     outer_radius: 90
-                    tooltip: scope.con_element.tooltip
+                    tooltip: icswSetupTooltip
                 }
             )
             $q.all(
