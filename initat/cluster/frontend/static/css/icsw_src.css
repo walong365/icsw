@@ -621,7 +621,9 @@ th[st-sort]:not(.st-sort-ascent):not(.st-sort-descent):not(.bg-info):not(.st-nev
     width: 38px; min-width: 38px; max-width: 38px;
 }
 icsw-livestatus-tooltip .table,
-icsw-livestatus-tooltip .panel {
+icsw-livestatus-tooltip .panel,
+icsw-tooltips .table,
+icsw-tooltips .panel{
     margin:0;
 }
 .fscr-hide {

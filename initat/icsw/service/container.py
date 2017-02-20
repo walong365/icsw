@@ -258,12 +258,13 @@ class ServiceContainer(object):
         except ImportError:
             from initat.host_monitoring.client_enums import icswServiceEnum
         # import pprint
+        service_lut = {}
+        for service in service_list:
+            service_lut[service.name] = []
         if config_tools is not None:
             # build enum lut
             enum_lut = {}
-            service_lut = {}
             for service in service_list:
-                service_lut[service.name] = []
                 xml_enums = service.entry.findall(".//config-enums/config-enum")
                 for xml_enum in xml_enums:
                     _enum = getattr(icswServiceEnum, xml_enum.text)
