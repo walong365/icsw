@@ -192,9 +192,9 @@ class MainProcess(ICSWBasePoolClient):
 
     def _init_network_sockets(self):
         self.network_bind(
-            bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
             pollin=self._recv_command,
+            service_type_enum=icswServiceEnum.meta_server,
             client_type=icswServiceEnum.meta_server,
         )
         conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)

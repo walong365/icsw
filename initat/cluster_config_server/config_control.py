@@ -81,9 +81,8 @@ class ConfigControl(object):
                     self.device.full_name.replace(".", r"\.")
                 ),
                 global_config["LOG_DESTINATION"],
-                zmq=True,
                 context=ConfigControl.srv_process.zmq_context,
-                init_logger=True)
+            )
             self.log("added client %s (%s)" % (str(self.device), self.device.uuid))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -229,21 +228,22 @@ class ConfigControl(object):
             else:
                 vs_struct = s_req._get_valid_server_struct([icswServiceEnum.image_server])
                 if vs_struct:
+                    vs_result = vs_struct.get_result()
                     self._ensure_dbh()
-                    if vs_struct.config_name.startswith("mother"):
+                    if vs_result.config.name.startswith("mother"):
                         # is mother_server
                         dir_key = "TFTP_DIR"
                     else:
                         # is tftpboot_export
                         dir_key = "EXPORT"
-                    vs_struct.fetch_config_vars()
-                    if dir_key in vs_struct:
+                    vs_result.fetch_config_vars()
+                    if dir_key in vs_result:
                         self._ensure_dbh()
                         # save image version info
                         cur_img.create_history_entry(self.dbh)
                         return "ok {} {} {} {} {}".format(
                             s_req.server_ip,
-                            os.path.join(vs_struct[dir_key], "images", cur_img.name),
+                            os.path.join(vs_result[dir_key], "images", cur_img.name),
                             cur_img.version,
                             cur_img.release,
                             cur_img.builds,
@@ -260,16 +260,19 @@ class ConfigControl(object):
             self.log("no prod_link set", logging_tools.LOG_LEVEL_ERROR)
         vs_struct = s_req._get_valid_server_struct([icswServiceEnum.mother_server])
         if vs_struct:
+            vs_result = vs_struct.get_result()
             # routing ok, get export directory
-            if icswServiceEnum[vs_struct.config.config_service_enum.enum_name] == icswServiceEnum.mother_server:
+            if icswServiceEnum[
+                vs_result.config.config_service_enum.enum_name
+            ] == icswServiceEnum.mother_server:
                 # is mother_server
                 dir_key = "TFTP_DIR"
             else:
                 # is tftpboot_export
                 dir_key = "EXPORT"
-            vs_struct.fetch_config_vars()
-            if dir_key in vs_struct:
-                _kernel_source_path = os.path.join(vs_struct[dir_key], "kernels")
+            vs_result.fetch_config_vars()
+            if dir_key in vs_result:
+                _kernel_source_path = os.path.join(vs_result[dir_key], "kernels")
                 return "ok {} {} {:d} {:d} {} {} {}".format(
                     self.device.new_state.status,
                     prod_net.identifier.replace(" ", "_"),
@@ -277,7 +280,7 @@ class ConfigControl(object):
                     self.device.rsync_compressed,
                     self.device.name,
                     s_req.server_ip,
-                    os.path.join(vs_struct[dir_key], "config")
+                    os.path.join(vs_result[dir_key], "config")
                 )
             else:
                 return "error key {} not found".format(dir_key)
@@ -427,16 +430,17 @@ class ConfigControl(object):
             if not vs_struct:
                 return "error no server found"
             else:
-                vs_struct.fetch_config_vars()
-                if vs_struct.config_name.startswith("mother"):
+                vs_result = vs_struct.get_result()
+                vs_result.fetch_config_vars()
+                if vs_result.config.name.startswith("mother"):
                     # is mother_server
                     dir_key = "TFTP_DIR"
                 else:
                     # is tftpboot_export
                     dir_key = "EXPORT"
-                if dir_key in vs_struct:
+                if dir_key in vs_result:
                     self._ensure_dbh()
-                    kernel_source_path = os.path.join(vs_struct[dir_key], "kernels")
+                    kernel_source_path = os.path.join(vs_result[dir_key], "kernels")
                     inst = 0
                     if self.device.kerneldevicehistory_set.all().count() == 0:
                         prev_kernel = None

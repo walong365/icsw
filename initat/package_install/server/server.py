@@ -45,7 +45,6 @@ class ServerProcess(
         threading_tools.icswProcessPool.__init__(
             self,
             "main",
-            zmq=True,
         )
         self.CC.init(icswServiceEnum.package_server, global_config)
         self.CC.check_config()
@@ -99,8 +98,7 @@ class ServerProcess(
     def _init_network_sockets(self):
         self.socket_dict = {}
         self.network_bind(
-            server_type="package",
-            bind_port=global_config["COMMAND_PORT"],
+            service_type_enum=icswServiceEnum.package_server,
             need_all_binds=False,
             pollin=self.remote_call,
             ext_call=True,
@@ -149,7 +147,7 @@ class ServerProcess(
     def reconnect_to_clients(self):
         router_obj = config_tools.RouterObject(self.log)
         self.log("reconnecting to {}".format(logging_tools.get_plural("client", len(Client.name_set))))
-        all_servers = config_tools.device_with_config(service_type_enum=icswServiceEnum.package_server)
+        all_servers = config_tools.icswDeviceWithConfig(service_type_enum=icswServiceEnum.package_server)
         if icswServiceEnum.package_server not in all_servers:
             self.log("no package_server defined, strange...", logging_tools.LOG_LEVEL_ERROR)
         else:
@@ -167,8 +165,7 @@ class ServerProcess(
                     cur_c = Client.get(target_name)
                     dev_sc = config_tools.icswServerCheck(
                         device=cur_c.device,
-                        config="",
-                        server_type="node",
+                        # config="",
                         fetch_network_info=True
                     )
                     act_routing_info = _pserver.get_route_to_other_device(

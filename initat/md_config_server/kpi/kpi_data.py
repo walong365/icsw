@@ -45,11 +45,12 @@ class KpiData(object):
     Data can be retrieved via get_kpi_set_for_kpi and get_kpi_set_for_dev_mon_cat_tuples
     """
 
-    def __init__(self, log, dev_mon_cat_tuples=None):
+    def __init__(self, log, global_config, dev_mon_cat_tuples=None):
         """
         :param dev_mon_cat_tuples: if specified, only load data for these dev_mon_cat tuples
         """
         self.log = log
+        self.global_config = global_config
         self._mccs = {
             mcc.pk: mcc for mcc in mon_check_command.objects.all()
         }
@@ -176,7 +177,7 @@ class KpiData(object):
     def _load_data(self):
 
         try:
-            self.icinga_socket = LiveSocket.get_mon_live_socket(self.log)
+            self.icinga_socket = LiveSocket.get_mon_live_socket(self.log, self.global_config)
         except IOError as e:
             self.log(
                 "error when opening monitoring socket: {}".format(e),

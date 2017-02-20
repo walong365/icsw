@@ -292,8 +292,8 @@ class Migration(migrations.Migration):
             field=models.BigIntegerField(blank=True, null=True),
         ),
         migrations.RunPython(
-            code=functools.partial(convert_size, *(), **{b'factor': 1048576}),
-            reverse_code=functools.partial(convert_size, *(), **{b'factor': 9.5367431640625e-07}),
+            code=functools.partial(convert_size, *(), **{'factor': 1048576}),
+            reverse_code=functools.partial(convert_size, *(), **{'factor': 9.5367431640625e-07}),
         ),
         migrations.AddField(
             model_name='assetbatch',

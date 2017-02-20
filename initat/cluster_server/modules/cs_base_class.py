@@ -38,7 +38,6 @@ class BackgroundProcess(threading_tools.icswProcessObj):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context
         )
         self.register_func("set_option_dict", self._set_option_dict)
@@ -241,14 +240,12 @@ class icswCSServerCom(object):
         doit, srv_origin, err_str = (False, "---", "OK")
         if self.Meta.needed_configs:
             for act_c in self.Meta.needed_configs:
-                # todo, move to icswServiceEnum
-                _a = icswServiceEnum
-                sql_info = config_tools.icswServerCheck(service_type_enum=act_c)  # server_type="{}".format(act_c))
-                if sql_info.effective_device:
-                    doit, srv_origin = (True, sql_info.server_origin)
+                sc_result = config_tools.icswServerCheck(service_type_enum=act_c).get_result()
+                if sc_result.effective_device:
+                    doit, srv_origin = (True, sc_result.server_origin)
                     if not self.server_idx:
-                        self.server_device_name = sql_info.effective_device.name
-                        self.server_idx, self.act_config_name = (sql_info.effective_device.pk, sql_info.effective_device.name)
+                        self.server_device_name = sc_result.effective_device.name
+                        self.server_idx, self.act_config_name = (sc_result.effective_device.pk, sc_result.effective_device.name)
             if doit:
                 self.Meta.actual_configs = self.Meta.needed_configs
             else:

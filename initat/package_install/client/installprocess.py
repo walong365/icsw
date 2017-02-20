@@ -116,9 +116,7 @@ class InstallProcess(threading_tools.icswProcessObj, threading_tools.ICSWAutoNoI
         self.__log_template = logging_tools.get_logger(
             self.global_config["LOG_NAME"],
             self.global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context,
-            init_logger=True
         )
         self.CS = config_store.ConfigStore("client", self.log)
         self.commands = []

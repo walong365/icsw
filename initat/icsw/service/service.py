@@ -35,6 +35,33 @@ from initat.tools import logging_tools, process_tools, config_store, threading_t
 from .constants import *
 
 
+def check_config_enum(c_enum, config_tools, log_com):
+    def _check(c_enum):
+        if isinstance(c_enum, list):
+            _cr = config_tools.icswServerCheck(service_type_enum_list=c_enum)
+        else:
+            _cr = config_tools.icswServerCheck(service_type_enum=c_enum)
+        return _cr.get_result()
+
+    try:
+        _cr = _check(c_enum)
+    except (threading_tools.int_error, threading_tools.term_error):
+        log_com(
+            "got int or term error, reraising",
+            logging_tools.LOG_LEVEL_ERROR
+        )
+        raise
+    except:
+        config_tools.close_db_connection()
+        try:
+            _cr = _check(c_enum)
+        except:
+            raise
+            # cannot get server_check instance, set config_check_ok to False
+            _cr = None
+    return _cr
+
+
 class Service(object):
     _COMPAT_DICT = {
         "rms-server": "rms_server",
@@ -145,7 +172,16 @@ class Service(object):
             else:
                 return "error"
 
-    def check(self, act_proc_dict, refresh=True, config_tools=None, valid_licenses=None, version_changed=False, meta_result=None):
+    def check(
+        self,
+        act_proc_dict,
+        refresh=True,
+        config_tools=None,
+        valid_licenses=None,
+        version_changed=False,
+        meta_result=None,
+        check_results=None,
+    ):
         if self.entry.find("result") is not None:
             if refresh:
                 # remove current result record
@@ -155,34 +191,43 @@ class Service(object):
                 return
         dev_config, dev_config_error = ([], [])
         if config_tools is not None:
-            try:
-                from initat.cluster.backbone.server_enums import icswServiceEnum
-            except ImportError:
-                from initat.host_monitoring.client_enums import icswServiceEnum
-            if self.entry.find(".//config-enums/config-enum") is not None:
-                _enum_names = [_entry.text for _entry in self.entry.findall(".//config-enums/config-enum")]
-                # print("_enum", _enum_names)
-                for _enum_name in _enum_names:
-                    _enum = getattr(icswServiceEnum, _enum_name)
-                    try:
-                        _cr = config_tools.icswServerCheck(service_type_enum=_enum)
-                    except (threading_tools.int_error, threading_tools.term_error):
-                        self.log("got int or term error, reraising", logging_tools.LOG_LEVEL_ERROR)
-                        raise
-                    except:
-                        config_tools.close_db_connection()
-                        try:
-                            _cr = config_tools.icswServerCheck(service_type_enum=_enum)
-                        except:
+            if check_results is None:
+                # check config status via config_tools call
+                try:
+                    from initat.cluster.backbone.server_enums import icswServiceEnum
+                except ImportError:
+                    from initat.host_monitoring.client_enums import icswServiceEnum
+                if self.entry.find(".//config-enums/config-enum") is not None:
+                    _enum_names = [
+                        _entry.text for _entry in self.entry.findall(".//config-enums/config-enum")
+                    ]
+                    # print("_enum", _enum_names)
+                    for _enum_name in _enum_names:
+                        _enum = getattr(icswServiceEnum, _enum_name)
+                        if config_tools is not None:
+                            _cr = check_config_enum(_enum, config_tools, self.log)
+                        else:
+                            _cr = None
+                        if _cr is None:
                             # cannot get server_check instance, set config_check_ok to False
                             self.config_check_ok = False
-                            _cr = None
-                    if _cr is not None:
-                        if _cr.effective_device:
-                            dev_config.append(_cr)
                         else:
-                            dev_config_error.append(_cr.server_info_str)
-        required_ips = set(list(self.entry.xpath(".//required-ips/required-ip/text()", smart_strings=True)))
+                            if _cr.effective_device:
+                                dev_config.append(_cr)
+                            else:
+                                dev_config_error.append(_cr.server_info_str)
+            else:
+                # check results already evaluated
+                for _cr in check_results:
+                    if _cr.effective_device:
+                        dev_config.append(_cr)
+                    else:
+                        dev_config_error.append(_cr.server_info_str)
+        required_ips = set(
+            list(
+                self.entry.xpath(".//required-ips/required-ip/text()", smart_strings=True)
+            )
+        )
         if required_ips:
             _found_ips = set(
                 [
@@ -235,7 +280,15 @@ class Service(object):
                         run_info.append("relayer mode")
                     else:
                         c_state = CONF_STATE_STOP
-                        run_info.append(", ".join(sorted(list(set(dev_config_error)))) or "not configured")
+                        run_info.append(
+                            ", ".join(
+                                sorted(
+                                    list(
+                                        set(dev_config_error)
+                                    )
+                                )
+                            ) or "not configured"
+                        )
             if valid_licenses is not None:
                 from initat.cluster.backbone.models import License
                 _req_lic = self.entry.find(".//required-license")
@@ -612,9 +665,20 @@ class SimpleService(Service):
 
     def _handle_service_rc(self, command):
         if os.path.exists(self.init_script_name):
-            process_tools.call_command("{} {}".format(self.init_script_name, command), self.log)
+            process_tools.call_command(
+                "{} {}".format(
+                    self.init_script_name,
+                    command
+                ),
+                self.log
+            )
         else:
-            self.log("rc-script {} does not exist".format(self.init_script_name), logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                "rc-script {} does not exist".format(
+                    self.init_script_name
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
 
 
 class PIDService(Service):
@@ -666,8 +730,11 @@ class MetaService(Service):
             # TODO : cache msi files
             ms_block = process_tools.MSIBlock(ms_name)
             start_time = ms_block.start_time
-            _check = ms_block.check_block(act_proc_dict)
-            diff_dict = {key: value for key, value in ms_block.bound_dict.items() if value}
+            # trigger check
+            _check = ms_block.do_check(act_proc_dict)
+            diff_dict = {
+                key: value for key, value in ms_block.bound_dict.items() if value
+            }
             diff_procs = sum([abs(_v) for _v in list(diff_dict.values())]) if diff_dict else 0
             act_pids = ms_block.pids_found
             # print "*", act_pids

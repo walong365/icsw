@@ -26,7 +26,7 @@ import os
 import sys
 import time
 
-from initat.debug import ICSW_DEBUG_MODE
+from initat.debug import show_database_calls
 from initat.tools import logging_tools
 from . import container
 from . import instance
@@ -100,7 +100,7 @@ def _state_overview(opt_ns, result):
             )
         if _out_list:
             if opt_ns.merge:
-                _out_list.sort(cmp=lambda x, y: x["ts"] - y["ts"], reverse=True)
+                _out_list.sort(key=lambda x: x["ts"], reverse=True)
             for _list_el in _out_list:
                 _el = _list_el["struct"]
                 if _list_el["type"] == "state":
@@ -123,6 +123,8 @@ def _state_overview(opt_ns, result):
                             _el.attrib["success"],
                         )
                     )
+    if not len(_instances):
+        print("Nothing to display / no instances found")
 
 
 def version_command(opt_ns):
@@ -168,15 +170,7 @@ def main(opt_ns):
             console.main(opt_ns, cur_c, inst_xml)
         else:
             cur_c.check_system(opt_ns, inst_xml)
-            if ICSW_DEBUG_MODE:
-                from django.db import connection
-                _time = 0.0
-                for line in connection.queries:
-                    print("{} : {}".format(line["time"], line["sql"]))
-                    _time += float(line["time"])
-                print()
-                print("performed {:d} queries in {:.3f}".format(len(connection.queries), _time))
-                print()
+            show_database_calls()
             form_list = cur_c.instance_to_form_list(opt_ns, inst_xml.tree)
             start_time, end_time = (
                 float(inst_xml.tree.attrib["start_time"]),

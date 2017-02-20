@@ -38,7 +38,6 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         threading_tools.icswProcessPool.__init__(
             self,
             "main",
-            zmq=True,
             global_config=global_config,
         )
         self.CC.init(icswServiceEnum.package_client, self.global_config)
@@ -182,9 +181,9 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.__send_buffer = []
         # socket
         self.network_bind(
-            bind_port=self.global_config["COMMAND_PORT"],
             bind_to_localhost=True,
             pollin=self.remote_call,
+            service_type_enum=icswServiceEnum.package_client,
             client_type=icswServiceEnum.package_client,
         )
         self.main_socket.connect(self.srv_conn_str)

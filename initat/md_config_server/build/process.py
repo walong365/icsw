@@ -74,9 +74,7 @@ class BuildProcess(
                 mach_name.replace(".", r"\."),
             ),
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context,
-            init_logger=True,
         )
 
     def _cleanup_db(self):

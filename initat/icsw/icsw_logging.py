@@ -61,8 +61,6 @@ def get_logger(name, options, **kwargs):
         return logging_tools.get_logger(
             "icsw_{}".format(name),
             get_log_path(icswLogHandleTypes.log_py),
-            zmq=True,
-            init_logger=True,
         ).log
 
 

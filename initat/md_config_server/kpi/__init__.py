@@ -46,9 +46,7 @@ class KpiProcess(threading_tools.icswProcessObj):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context,
-            init_logger=True
         )
         db_tools.close_connection()
 
@@ -81,6 +79,7 @@ class KpiProcess(threading_tools.icswProcessObj):
         )
         kpi_set = KpiData(
             self.log,
+            global_config,
             dev_mon_cat_tuples=dev_mon_cat_tuples
         ).get_kpi_set_for_dev_mon_cat_tuples(
             start,
@@ -95,7 +94,7 @@ class KpiProcess(threading_tools.icswProcessObj):
 
     def _calculate_kpi_db(self, srv_com_src, **kwargs):
         srv_com = server_command.srv_command(source=srv_com_src)
-        kpi_data = KpiData(self.log)
+        kpi_data = KpiData(self.log, global_config)
         kpi_pk = int(srv_com['kpi_pk'].text)
         kpi_db = Kpi.objects.get(pk=kpi_pk)
         self._update_single_kpi_result(kpi_data, kpi_db)
@@ -114,7 +113,7 @@ class KpiProcess(threading_tools.icswProcessObj):
         if License.objects.has_valid_license(LicenseEnum.kpi) and enabled_kpis.exists():
             KpiGlobals.set_context()
             try:
-                kpi_data = KpiData(self.log)
+                kpi_data = KpiData(self.log, global_config)
             except Exception as e:
                 _exc = process_tools.icswExceptionInfo()
                 self.log(
@@ -200,6 +199,7 @@ class KpiProcess(threading_tools.icswProcessObj):
         dev_mon_cat_tuples = json.loads(srv_com['dev_mon_cat_tuples'].text)
         initial_kpi_set = KpiData(
             self.log,
+            global_config,
             dev_mon_cat_tuples=dev_mon_cat_tuples
         ).get_kpi_set_for_dev_mon_cat_tuples(
             start=start,

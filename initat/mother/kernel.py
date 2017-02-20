@@ -38,14 +38,12 @@ class KernelSyncProcess(threading_tools.icswProcessObj):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context,
-            init_logger=True
         )
         # close database connection
         db_tools.close_connection()
         self.register_func("rescan_kernels", self._rescan_kernels)
-        self.kernel_dev = config_tools.icswServerCheck(service_type_enum=icswServiceEnum.kernel_server)
+        self.kernel_dev = config_tools.icswServerCheck(service_type_enum=icswServiceEnum.kernel_server).get_result()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -97,7 +95,7 @@ class KernelSyncProcess(threading_tools.icswProcessObj):
             )
             srv_com.set_result("no kernel server", server_command.SRV_REPLY_STATE_ERROR)
         else:
-            all_k_servers = config_tools.device_with_config(service_type_enum=icswServiceEnum.kernel_server)
+            all_k_servers = config_tools.icswDeviceWithConfig(service_type_enum=icswServiceEnum.kernel_server)
             def_k_servers = all_k_servers.get(icswServiceEnum.kernel_server, [])
             self.log(
                 "found {}: {}".format(

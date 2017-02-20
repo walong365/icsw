@@ -526,7 +526,7 @@ class PollerBase(object):
     # def get_num_po_waiting(self):
     #    return self.__waiting
     def _handle_select_list(self, in_list):
-        if hasattr("self", "_db_debug"):
+        if hasattr(self, "_db_debug"):
             _db_debug = self._db_debug
         else:
             _db_debug = None
@@ -591,7 +591,12 @@ class PollerBase(object):
                             if _wait:
                                 time.sleep(0.5)
             else:
-                self.log("socket {} not found in handler_dict".format(str(sock)), logging_tools.LOG_LEVEL_CRITICAL)
+                self.log(
+                    "socket {} not found in handler_dict".format(
+                        str(sock)
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL
+                )
                 time.sleep(0.5)
 
 

@@ -281,7 +281,7 @@ class ConfigCheckObject(object):
     def create_hfp(self):
         from initat.tools import hfp_tools
         _cur_hfp = hfp_tools.create_db_entry(
-            self.__sql_info.effective_device,
+            self.__sc_result.effective_device,
             hfp_tools.get_local_hfp()
         )
 
@@ -323,10 +323,14 @@ class ConfigCheckObject(object):
                 ),
             )
         if self.srv_type_enum.value.server_service:
-            self.__sql_info = config_tools.icswServerCheck(service_type_enum=self.srv_type_enum)
-            if self.__sql_info is None or not self.__sql_info.effective_device:
+            self.__server_check = config_tools.icswServerCheck(service_type_enum=self.srv_type_enum)
+            self.__sc_result = self.__server_check.get_result()
+            if self.__server_check is None or not self.__sc_result.effective_device:
                 # this can normally not happen due to start / stop via meta-server
-                self.log("Not a valid {}".format(self.srv_type_enum.name), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "Not a valid {}".format(self.srv_type_enum.name),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 sys.exit(5)
             else:
                 # check eggConsumers
@@ -343,20 +347,20 @@ class ConfigCheckObject(object):
                         ),
                         (
                             "SERVER_IDX",
-                            configfile.IntegerConfigVar(self.__sql_info.device.pk, database=False, source="instance")
+                            configfile.IntegerConfigVar(self.__server_check.device.pk, database=False, source="instance")
                         ),
                         (
                             "CONFIG_IDX",
-                            configfile.IntegerConfigVar(self.__sql_info.config.pk, database=False, source="instance")
+                            configfile.IntegerConfigVar(self.__sc_result.config.pk, database=False, source="instance")
                         ),
                         (
                             "EFFECTIVE_DEVICE_IDX",
-                            configfile.IntegerConfigVar(self.__sql_info.effective_device.pk, database=False, source="instance")
+                            configfile.IntegerConfigVar(self.__sc_result.effective_device.pk, database=False, source="instance")
                         ),
                         (
                             "LOG_SOURCE_IDX",
                             configfile.IntegerConfigVar(
-                                LogSource.new(self.srv_type_enum.name, device=self.__sql_info.effective_device).pk,
+                                LogSource.new(self.srv_type_enum.name, device=self.__sc_result.effective_device).pk,
                                 source="instance",
                             )
                         ),
@@ -391,11 +395,11 @@ class ConfigCheckObject(object):
     # property functions to access device and config
     @property
     def server(self):
-        return self.__sql_info.device
+        return self.__server_check.device
 
     @property
     def config(self):
-        return self.__sql_info.config
+        return self.__sc_result.config
 
     @property
     def msi_block(self):
@@ -438,21 +442,21 @@ class ConfigCheckObject(object):
 
     def read_config_from_db(self, default_list=[]):
         self.global_config.from_database(
-            self.__sql_info,
+            self.__sc_result,
             default_list,
         )
 
     def re_insert_config(self):
-        if self.__sql_info:
+        if self.__sc_result:
             from initat.tools import cluster_location
             self.log(
                 "re-inserting config for srv_type {} (config_name is {})".format(
                     self.srv_type_enum.name,
-                    self.__sql_info.config_name,
+                    self.__sc_result.config.name,
                 )
             )
             self.global_config.to_database(
-                self.__sql_info,
+                self.__sc_result,
             )
         else:
             self.log(
@@ -497,7 +501,7 @@ class ServerStatusMixin(object):
     # populates the srv_command with the current server stats
     def server_status(self, srv_com, msi_block, global_config=None, spc=None):
         # spc is an optional snmp_process_container
-        _status = msi_block.check_block()
+        _status = msi_block.do_check()
         _proc_info_dict = self.get_info_dict()
         # add configfile manager
         if spc is not None:
@@ -547,18 +551,14 @@ class NetworkBindMixin(object):
         pollin = kwargs.get("pollin", None)
         ext_call = kwargs.get("ext_call", False)
         immediate = kwargs.get("immediate", True)
-        if "server_type" in kwargs:
-            _inst = InstanceXML(log_com=self.log)
-            _srv_type = kwargs["server_type"]
-            bind_port = _inst.get_port_dict(_srv_type, ptype="command")
-        elif "service_type_enum" in kwargs:
+        if "service_type_enum" in kwargs:
             _inst = InstanceXML(log_com=self.log)
             _srv_type = kwargs["service_type_enum"]
             bind_port = _inst.get_port_dict(_srv_type, ptype="command")
         elif "bind_port" in kwargs:
             bind_port = kwargs["bind_port"]
         else:
-            raise KeyError("neither bind_port, service_type_enum nor server_type defined in kwargs")
+            raise KeyError("neither bind_port nor service_type_enum defined in kwargs")
         main_socket_name = kwargs.get("main_socket_name", "main_socket")
         virtual_sockets_name = kwargs.get("virtual_sockets_name", "virtual_sockets")
         bind_to_localhost = kwargs.get("bind_to_localhost", False)
@@ -571,6 +571,7 @@ class NetworkBindMixin(object):
                 uuid,
                 InstanceXML(quiet=True).get_uuid_postfix(kwargs["client_type"]),
             )
+
             dev_r = None
         else:
             from initat.tools import cluster_location

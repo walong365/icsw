@@ -713,7 +713,7 @@ class MSIBlock(object):
         else:
             return None
 
-    def check_block(self, act_dict={}):
+    def do_check(self, act_dict={}):
         if not act_dict:
             act_dict = get_proc_list()
         self.__pids_found = {}

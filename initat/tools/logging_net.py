@@ -52,12 +52,14 @@ def debug(msg):
 
 
 def get_logger(name, destination, **kwargs):
-    """ specify init_logger=True to prepend init.at to the logname """
+    """
+    return an init_logger (prepended with init.at on linux systems
+    """
     is_linux, cur_pid = (
         sys.platform in ["linux2", "linux3", "linux"],
         os.getpid()
     )
-    if kwargs.get("init_logger", False) and is_linux:
+    if is_linux:
         # force init.at logger
         if not name.startswith("init.at."):
             name = "init.at.{}".format(name)

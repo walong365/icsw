@@ -42,7 +42,6 @@ def main():
     log_template = logging_tools.get_logger(
         "syslog_scan",
         get_log_path(icswLogHandleTypes.log_py),
-        zmq=True,
         context=zmq_context
     )
     send_sock = None

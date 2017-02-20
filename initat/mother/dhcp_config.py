@@ -127,7 +127,7 @@ class DHCPConfigMixin(object):
                     ) for cur_net in network.objects.exclude(
                         pk__in=[boot_ip.network.pk for boot_ip in boot_ips]
                     ).filter(
-                        Q(net_ip__netdevice__device=my_c.effective_device) &
+                        Q(net_ip__netdevice__device=my_c.get_result().effective_device) &
                         Q(network_type__identifier__in=["s", "p", "o"])
                     ).distinct()
                 ]
@@ -166,7 +166,7 @@ class DHCPConfigMixin(object):
                 )
             # get gateway and domain-servers for the various nets
             gw_pri, gateway = (-10000, "0.0.0.0")
-            cur_dc = config_tools.device_with_config(service_type_enum=icswServiceEnum.mother_server)
+            cur_dc = config_tools.icswDeviceWithConfig(service_type_enum=icswServiceEnum.mother_server)
             found_dict = {}
             for act_net in [boot_ip.network for boot_ip in boot_ips] + add_nets:
                 if act_net.gw_pri > gw_pri:

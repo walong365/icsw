@@ -52,7 +52,7 @@ class server_process(
 ):
     def __init__(self):
         process_tools.ALLOW_MULTIPLE_INSTANCES = False
-        threading_tools.icswProcessPool.__init__(self, "main", zmq=True)
+        threading_tools.icswProcessPool.__init__(self, "main")
         self.CC.init(icswServiceEnum.monitor_slave, global_config)
         self.CC.check_config()
         self.__verbose = global_config["VERBOSE"]
@@ -124,7 +124,7 @@ class server_process(
         res_dict = {}
         if "MD_TYPE" in global_config and global_config["MON_CURRENT_STATE"]:
             _cur_time = time.time()
-            cur_s = LiveSocket.get_mon_live_socket(self.log)
+            cur_s = LiveSocket.get_mon_live_socket(self.log, global_config)
             if not self.__latest_status_query or abs(self.__latest_status_query - _cur_time) > 10 * 60:
                 self.__latest_status_query = _cur_time
                 try:
@@ -303,8 +303,8 @@ class server_process(
     def _init_network_sockets(self):
         self.network_bind(
             need_all_binds=False,
-            bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
+            service_type_enum=icswServiceEnum.monitor_slave,
             client_type=icswServiceEnum.monitor_slave,
             simple_server_bind=True,
             pollin=self.remote_call,

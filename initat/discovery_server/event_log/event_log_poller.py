@@ -46,7 +46,6 @@ class EventLogPollerProcess(threading_tools.icswProcessObj):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context
         )
         db_tools.close_connection()
@@ -271,9 +270,11 @@ class EventLogPollerProcess(threading_tools.icswProcessObj):
         from_server_check = config_tools.icswServerCheck(
             device=SrvTypeRouting().local_device,
             config=None,
-            server_type="node"
         )
-        to_server_check = config_tools.icswServerCheck(device=to_dev, config=None, server_type="node")
+        to_server_check = config_tools.icswServerCheck(
+            device=to_dev,
+            config=None,
+        )
 
         route = from_server_check.get_route_to_other_device(
             self._get_router_obj(),

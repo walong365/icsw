@@ -27,7 +27,8 @@ from django.db.models import Q
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import network, config, LogSource, net_ip, device, \
     log_level_lookup
-from initat.cluster.backbone.routing import get_server_uuid, get_type_from_config
+from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.cluster.backbone.routing import get_server_uuid
 from initat.tools import config_tools, logging_tools, threading_tools
 from .build_client import build_client
 from .build_container import GeneratedTree, BuildContainer
@@ -97,9 +98,7 @@ class BuildProcess(threading_tools.icswProcessObj):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context,
-            init_logger=True
         )
         # close database connection
         db_tools.close_connection()
@@ -148,10 +147,10 @@ class BuildProcess(threading_tools.icswProcessObj):
         else:
             dev_sc = config_tools.icswServerCheck(
                 host_name=cur_c.name,
-                server_type="node",
                 fetch_network_info=True
             )
-            cur_c.log("icswServerCheck report(): {}".format(dev_sc.report()))
+            # FIXME, ToDo
+            # cur_c.log("icswServerCheck report(): {}".format(dev_sc.report()))
             cur_net_tree = NetworkTree()
             # sanity checks
             if not cur_c.create_config_dir():
@@ -270,16 +269,23 @@ class BuildProcess(threading_tools.icswProcessObj):
             )
         )
         # multiple configs
-        multiple_configs = ["server"]
-        all_servers = config_tools.device_with_config("%server%")
-        def_servers = all_servers.get("server", [])
+        multiple_configs = [icswServiceEnum.cluster_server]
+        all_servers = config_tools.icswDeviceWithConfig(service_type_enum=None)
+        def_servers = all_servers.get(icswServiceEnum.cluster_server, [])
         # def_servers = []
         if not def_servers:
-            cur_c.log("no Servers found", logging_tools.LOG_LEVEL_ERROR, state="done")
+            cur_c.log(
+                "no Servers found",
+                logging_tools.LOG_LEVEL_ERROR,
+                state="done"
+            )
         else:
             srv_names = sorted(
                 [
-                    "{}{}".format(cur_srv.short_host_name, act_prod_net.postfix) for cur_srv in def_servers
+                    "{}{}".format(
+                        cur_srv.short_host_name,
+                        act_prod_net.postfix
+                    ) for cur_srv in def_servers
                 ]
             )
             cur_c.log(
@@ -291,10 +297,11 @@ class BuildProcess(threading_tools.icswProcessObj):
             # store in act_prod_net
             conf_dict = {}
             conf_dict["servers"] = srv_names
-            for server_type in sorted(all_servers.keys()):
-                if server_type not in multiple_configs:
+            # custom Enum cannot be compared against each other
+            for srv_type in all_servers.keys():
+                if srv_type not in multiple_configs:
                     routing_info, act_server, routes_found = ([66666666], None, 0)
-                    for actual_server in all_servers[server_type]:
+                    for actual_server in all_servers[srv_type]:
                         act_routing_info = actual_server.get_route_to_other_device(
                             self.router_obj,
                             dev_sc,
@@ -306,9 +313,12 @@ class BuildProcess(threading_tools.icswProcessObj):
                             # store in some dict-like structure
                             # print "***", actual_server.short_host_name, dir(actual_server)
                             # FIXME, postfix not handled
-                            conf_dict["{}:{}".format(actual_server.short_host_name, server_type)] = actual_server.device.full_name
-                            conf_dict["{}:{}_ip".format(actual_server.short_host_name, server_type)] = act_routing_info[0][2][1][0]
-                            if server_type in ["config_server", "mother_server"] and actual_server.device.pk == b_dev.bootserver_id:
+                            conf_dict["{}:{}".format(actual_server.short_host_name, srv_type.name)] = actual_server.device.full_name
+                            conf_dict["{}:{}_ip".format(actual_server.short_host_name, srv_type.name)] = act_routing_info[0][2][1][0]
+                            if srv_type in [
+                                icswServiceEnum.config_server,
+                                icswServiceEnum.mother_server
+                            ] and actual_server.device.pk == b_dev.bootserver_id:
                                 routing_info, act_server = (act_routing_info[0], actual_server)
                             else:
                                 if act_routing_info[0][0] < routing_info[0]:
@@ -316,7 +326,7 @@ class BuildProcess(threading_tools.icswProcessObj):
                         else:
                             cur_c.log(
                                 "empty routing info for {} to {}".format(
-                                    server_type,
+                                    srv_type.name,
                                     actual_server.device.name,
                                 ),
                                 logging_tools.LOG_LEVEL_WARN
@@ -325,24 +335,25 @@ class BuildProcess(threading_tools.icswProcessObj):
                         server_ip = routing_info[2][1][0]
                         # map from server_ip to localized name
                         try:
-                            conf_dict[server_type] = net_ip.objects.get(Q(ip=server_ip)).full_name
+                            conf_dict[srv_type.name] = net_ip.objects.get(Q(ip=server_ip)).full_name
                         except net_ip.MultipleObjectsReturned:
                             cur_c.log(
                                 "more than one net_ip found for server_type {} (IP {})".format(
-                                    server_type,
+                                    srv_type.name,
                                     server_ip,
                                 ),
                                 logging_tools.LOG_LEVEL_ERROR
                             )
                             raise
-                        conf_dict["{}_ip".format(server_type)] = server_ip
-                        r_type = get_type_from_config(server_type)
-                        if r_type:
-                            conf_dict["{}_uuid".format(server_type)] = get_server_uuid(r_type, act_server.device.uuid)
+                        conf_dict["{}_ip".format(srv_type.name)] = server_ip
+                        try:
+                            conf_dict["{}_uuid".format(srv_type.name)] = get_server_uuid(srv_type, act_server.device.uuid)
+                        except KeyError:
+                            self.log("  ... encountered slave config {}".format(srv_type.name), logging_tools.LOG_LEVEL_WARN)
                         cur_c.log(
-                            "  {:<20s: {:<25s} (IP {:15s}){}".format(
-                                server_type,
-                                conf_dict[server_type],
+                            "  {:<20s}: {:<25s} (IP {:15s}){}".format(
+                                srv_type.name,
+                                conf_dict[srv_type.name],
                                 server_ip,
                                 " (best of {} found)".format(
                                     logging_tools.get_plural("route", routes_found)
@@ -350,7 +361,7 @@ class BuildProcess(threading_tools.icswProcessObj):
                             )
                         )
                     else:
-                        cur_c.log("  {:20s}: not found".format(server_type))
+                        cur_c.log("  {:20s}: not found".format(srv_type.name))
             new_img = b_dev.new_image
             if new_img:
                 conf_dict["system"] = {

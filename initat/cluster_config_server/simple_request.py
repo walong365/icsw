@@ -98,7 +98,6 @@ class simple_request(object):
     def _find_best_server(self, conf_list):
         dev_sc = config_tools.icswServerCheck(
             short_host_name=self.cc.device.name,
-            server_type="node",
             fetch_network_info=True
         )
         bs_list = []
@@ -137,7 +136,7 @@ class simple_request(object):
         # list of server_types which has to be mapped to the mother-server
         map_to_mother = set([icswServiceEnum.kernel_server, icswServiceEnum.image_server])
         for type_name in s_list:
-            conf_list = config_tools.device_with_config(service_type_enum=type_name).get(type_name, [])
+            conf_list = config_tools.icswDeviceWithConfig(service_type_enum=type_name).get(type_name, [])
             if conf_list:
                 if type_name in bsl_servers:
                     # config name (from s_list) is in bsl_servers
@@ -183,7 +182,7 @@ class simple_request(object):
                 # check for updated network ?
                 self.log(
                     "found valid_server_struct {} but no route".format(
-                        valid_server_struct.server_info_str
+                        valid_server_struct.get_result().server_info_str
                     ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
@@ -193,7 +192,7 @@ class simple_request(object):
                 self.server_ip = srv_routing[0][2][1][0]
                 self.log(
                     "found valid_server_struct {} (device {}) with ip {}".format(
-                        valid_server_struct.server_info_str,
+                        valid_server_struct.get_result().server_info_str,
                         str(valid_server_struct.device),
                         self.server_ip
                     )

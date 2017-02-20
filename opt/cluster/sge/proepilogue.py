@@ -52,6 +52,7 @@ except:
 from initat.tools import threading_tools, configfile, logging_tools, net_tools, \
     process_tools, server_command
 from initat.icsw.service.instance import InstanceXML
+
 HM_PORT = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
 
 
@@ -59,6 +60,7 @@ SEP_LEN = 70
 LOCAL_IP = "127.0.0.1"
 # PROFILE_PREFIX = ".mon"
 CONFIG_FILE_NAME = "proepilogue.conf"
+# no RMS-Server present in clients .xml-files
 RMS_SERVER_PORT = 8009
 
 
@@ -172,7 +174,6 @@ class RMSJob(object):
                 self.__log_name.replace(".", "\.")
             ),
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.p_pool.zmq_context
         )
         self._init_exit_code()
@@ -410,7 +411,6 @@ class RMSJob(object):
                 name
             ),
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.p_pool.zmq_context
         )
         if isinstance(content, str) and content.startswith("/"):
@@ -1459,7 +1459,6 @@ class ProcessPool(threading_tools.icswProcessPool):
         threading_tools.icswProcessPool.__init__(
             self,
             "main",
-            zmq=True,
             blocking_loop=False,
             # zmq_debug=True,
             zmq_contexts=1,
@@ -1468,7 +1467,6 @@ class ProcessPool(threading_tools.icswProcessPool):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context
         )
         self.install_signal_handlers()

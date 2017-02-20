@@ -26,19 +26,19 @@ class BackgroundBase(object):
         min_time_between_runs = 30
         creates_machvector = False
 
-    def __init__(self, srv_process, sql_info):
+    def __init__(self, srv_process, sc_result):
         # copy Meta keys
         for key in dir(BackgroundBase.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(BackgroundBase.Meta, key))
         # self.__name = name
         self.server_process = srv_process
-        self.sql_info = sql_info
+        self.sc_result = sc_result
         self.init_bg_stuff()
         self.__last_call = None
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.server_process.log("[bg %s] %s" % (self.Meta.name, what), level)
+        self.server_process.log("[bg {}] {}".format(self.Meta.service_enum.name, what), level)
 
     def init_bg_stuff(self):
         pass
@@ -57,8 +57,8 @@ class BackgroundBase(object):
                     # machine vectors
                     mach_vectors.extend(add_obj)
                 else:
-                    drop_com["vector_{}".format(self.Meta.name)] = add_obj
-                    drop_com["vector_{}".format(self.Meta.name)].attrib["type"] = "vector"
+                    drop_com["vector_{}".format(self.Meta.service_enum.name)] = add_obj
+                    drop_com["vector_{}".format(self.Meta.service_enum.name)].attrib["type"] = "vector"
 
     def _call(self, cur_time, drop_com):
         self.log("dummy __call__()")
@@ -68,7 +68,12 @@ class BackgroundBase(object):
         self.server_process.step(*args, **kwargs)
 
     def send_mail(self, to_addr, subject, msg_body):
-        new_mail = mail_tools.icswMail(subject, "{}@{}".format(global_config["FROM_NAME"], global_config["FROM_ADDR"]), to_addr, msg_body)
+        new_mail = mail_tools.icswMail(
+            subject,
+            "{}@{}".format(global_config["FROM_NAME"], global_config["FROM_ADDR"]),
+            to_addr,
+            msg_body
+        )
         new_mail.set_server(global_config["MAILSERVER"], global_config["MAILSERVER"])
         _stat, log_lines = new_mail.send_mail()
         return log_lines

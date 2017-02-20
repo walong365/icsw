@@ -32,6 +32,7 @@ from .constants import SERVERS_DIR, CLUSTER_DIR
 
 from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 
+
 def _dummy_log_com(what, log_level=logging_tools.LOG_LEVEL_OK):
     print("{} {}".format(logging_tools.get_log_level_str(log_level), what))
 

@@ -126,15 +126,13 @@ def main():
         os.environ["LC_LANG"] = "en_us.UTF_8"
         # python path
         if opts.debug:
-            # set debug flag
-            os.environ["ICSW_DEBUG_SOFTWARE"] = "1"
+            # os.environ["ICSW_DEBUG_MODE"] = "1"
             abs_path = os.path.dirname(__file__)
             abs_path = os.path.split(os.path.split(abs_path)[0])[0]
             sys.path.insert(0, abs_path)
-            # we no longer accept commandline arguments
-            # _args.append("-d")
-            if opts.debug_flag:
-                os.environ["DEBUG_WEBFRONTEND"] = "yes"
+            import initat.debug
+            # set debug flag
+            initat.debug.get_debug_var("ICSW_DEBUG_MODE").set_environ_value(True)
         # we no longer accept commandline arguments
         # if opts.extra_args:
         #     _args.extend(opts.extra_args)

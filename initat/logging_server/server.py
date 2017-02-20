@@ -139,7 +139,7 @@ class MainProcess(ICSWBasePool):
         # number of usecounts
         self.__handle_usecount = {}
         self.__usecount_ts = time.time()
-        threading_tools.icswProcessPool.__init__(self, "main", stack_size=2 * 1024 * 1024, zmq=True, global_config=global_config)
+        threading_tools.icswProcessPool.__init__(self, "main", stack_size=2 * 1024 * 1024, global_config=global_config)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("startup_error", self._startup_error)
@@ -263,9 +263,9 @@ class MainProcess(ICSWBasePool):
             client.bind(io_stream_helper.icswIOStream.zmq_socket_name(h_name, check_ipc_prefix=True))
             os.chmod(io_stream_helper.icswIOStream.zmq_socket_name(h_name), stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
         self.network_bind(
-            bind_port=self.global_config["COMMAND_PORT"],
             bind_to_localhost=True,
             pollin=self._recv_data,
+            service_type_enum=icswServiceEnum.logging_server,
             client_type=icswServiceEnum.logging_server,
         )
 
@@ -431,7 +431,11 @@ class MainProcess(ICSWBasePool):
             del self.__handle_usecount[h_name]
 
     def _update(self, **kwargs):
-        c_handles = sorted([key for key, value in list(self.__handles.items()) if isinstance(value, logging_tools.logfile) and value.check_for_temp_close()])
+        c_handles = sorted(
+            [
+                key for key, value in list(self.__handles.items()) if isinstance(value, logging_tools.icswLogfile) and value.check_for_temp_close()
+            ]
+        )
         if c_handles:
             self.log(
                 "temporarily closing {}: {}".format(
@@ -447,8 +451,12 @@ class MainProcess(ICSWBasePool):
     def _check_excess_log(self):
         cur_time = time.time()
         diff_time = max(1, abs(cur_time - self.__usecount_ts))
-        s_dict = {key: float(value) / diff_time for key, value in self.__handle_usecount.items()}
-        self.__handle_usecount = {key: 0 for key in self.__handle_usecount}
+        s_dict = {
+            key: float(value) / diff_time for key, value in self.__handle_usecount.items()
+        }
+        self.__handle_usecount = {
+            key: 0 for key in self.__handle_usecount
+        }
         # ("EXCESS_LIMIT", configfile.int_c_var(1000, help_string="log lines per second to trigger excess_log [%(default)s]")),
         # s_dict = {key: value for key, value in s_dict.iteritems() if value > self.global_config["EXCESS_LIMIT"]}
         # pprint.pprint(s_dict)

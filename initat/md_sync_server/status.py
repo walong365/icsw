@@ -71,9 +71,7 @@ class StatusProcess(threading_tools.icswProcessObj):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
-            zmq=True,
             context=self.zmq_context,
-            init_logger=True,
         )
         self.register_func("get_node_status", self._get_node_status)
         self.__socket = None
@@ -93,7 +91,7 @@ class StatusProcess(threading_tools.icswProcessObj):
     def _open(self):
         if self.__socket is None:
             try:
-                self.__socket = LiveSocket.get_mon_live_socket(self.log)
+                self.__socket = LiveSocket.get_mon_live_socket(self.log, global_config)
             except Exception as e:
                 self.log(str(e), logging_tools.LOG_LEVEL_ERROR)
         return self.__socket

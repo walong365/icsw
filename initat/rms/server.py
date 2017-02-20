@@ -41,7 +41,6 @@ class ServerProcess(
         threading_tools.icswProcessPool.__init__(
             self,
             "main",
-            zmq=True,
         )
         self.CC.init(icswServiceEnum.rms_server, global_config)
         self.CC.check_config()
@@ -124,7 +123,7 @@ class ServerProcess(
 
     def _init_network_sockets(self):
         self.network_bind(
-            server_type="rms",
+            service_type_enum=icswServiceEnum.rms_server,
             need_all_binds=False,
             pollin=self.remote_call,
         )

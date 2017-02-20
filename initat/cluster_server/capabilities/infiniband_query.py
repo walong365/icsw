@@ -17,16 +17,15 @@
 #
 """ cluster-server, Infiniband query """
 
-
-
 import subprocess
 import time
 
 from django.db.models import Q
 from lxml.builder import E
+from initat.cluster.backbone.server_enums import icswServiceEnum
 
 from initat.cluster.backbone.models import device
-from initat.cluster_server.capabilities.base import BackgroundBase
+from .base import BackgroundBase
 from initat.host_monitoring import hm_classes
 from initat.tools import process_tools, logging_tools
 
@@ -292,8 +291,7 @@ class DeviceLookup(object):
 
 class IBQueryClass(BackgroundBase):
     class Meta:
-        name = "infiniband_query"
-        description = "Queries IB Network via ibqueryerrors"
+        service_enum = icswServiceEnum.infiniband_query
 
     def init_bg_stuff(self):
         self.__dl = DeviceLookup(self.log)

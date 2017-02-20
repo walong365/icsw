@@ -17,8 +17,6 @@
 #
 """ virtual desktop capability """
 
-
-
 import datetime
 import glob
 import multiprocessing
@@ -38,12 +36,12 @@ from django.db.models import Q
 from django.utils import timezone
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models import virtual_desktop_protocol, window_manager, \
-    virtual_desktop_user_setting
-from initat.cluster_server.capabilities.base import BackgroundBase
-from initat.cluster_server.config import global_config
+    virtual_desktop_user_setting, device
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import process_tools
+from .base import BackgroundBase
+from ..config import global_config
 
 
 # utility classes for virtual desktop handling. They are located here but don't have any dependency here.
@@ -252,10 +250,9 @@ class vncserver(virtual_desktop_server):
         return pwd.getpwuid(uid).pw_gid
 
 
-class virtual_desktop_stuff(BackgroundBase):
+class VirtualDesktopServerCode(BackgroundBase):
     class Meta:
-        name = "virtual_desktop"
-        description = "device can offer virtual desktops to users"
+        service_enum = icswServiceEnum.virtual_desktop_server
 
     def init_bg_stuff(self):
         self.__effective_device = device.objects.get(Q(pk=global_config["EFFECTIVE_DEVICE_IDX"]))

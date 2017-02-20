@@ -23,12 +23,9 @@ import csv
 import os.path
 import socket
 import time
-
 from enum import Enum
 
 from initat.tools import logging_tools, process_tools
-
-from .config import global_config
 
 
 class LiveQuery(object):
@@ -231,7 +228,7 @@ class LiveSocket(object):
         log_com("init_enum took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
 
     @classmethod
-    def get_mon_live_socket(cls, log_com):
+    def get_mon_live_socket(cls, log_com, global_config):
         sock_name = os.path.join(global_config["MD_BASEDIR"], "var", "live")
         if os.path.exists(sock_name):
             if not cls.livestatus_enum:

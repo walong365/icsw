@@ -51,7 +51,6 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         threading_tools.icswProcessPool.__init__(
             self,
             "main",
-            zmq=True,
             global_config=global_config,
         )
         from initat.host_monitoring.modules import local_mc

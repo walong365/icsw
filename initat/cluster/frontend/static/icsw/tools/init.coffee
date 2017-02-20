@@ -2082,7 +2082,7 @@ angular.module(
                 struct.stream_lut[stream_id] = stream_name
                 struct.active_streams[stream_name][stream_id] = cb_func
                 _defer.resolve(stream_id)
-                console.log "stream setup:", struct.active_streams
+                # console.log "stream setup:", struct.active_streams
         )
         return _defer.promise
 

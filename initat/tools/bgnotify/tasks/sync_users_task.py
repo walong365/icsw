@@ -70,15 +70,16 @@ class SyncUserTask(BGInotifyTask):
             ("yp_server", "write_yp_config", icswServiceEnum.cluster_server),
             ("monitor_server", "sync_http_users", icswServiceEnum.monitor_server),
         ]:
-            _cdict = config_tools.device_with_config(_config)
+            _cdict = config_tools.icswDeviceWithConfig(service_type_enum=_srv_type)
             for _sc_list in _cdict.values():
                 for _sc in _sc_list:
-                    if _sc.effective_device:
+                    _sc_result = _sc.get_result()
+                    if _sc_result.effective_device:
                         self.log(
                             "effective device for {} (command {}) is {}".format(
                                 _config,
                                 _command,
-                                str(_sc.effective_device),
+                                str(_sc_result.effective_device),
                             )
                         )
                         srv_com = server_command.srv_command(command=_command)
@@ -86,7 +87,7 @@ class SyncUserTask(BGInotifyTask):
                             (
                                 background_job_run(
                                     background_job=cur_bg,
-                                    server=_sc.effective_device,
+                                    server=_sc_result.effective_device,
                                     command_xml=str(srv_com),
                                     start=cluster_timezone.localize(datetime.datetime.now()),
                                 ),

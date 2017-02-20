@@ -65,7 +65,6 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         threading_tools.icswProcessPool.__init__(
             self,
             "main",
-            zmq=True,
             zmq_contexts=1,
             loop_granularity=IDLE_LOOP_GRANULARITY,
             global_config=global_config,
