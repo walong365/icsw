@@ -307,11 +307,11 @@ angular.module(
 [
     "$scope", "DeviceOverviewService", "$q", "icswSimpleAjaxCall", "ICSW_URLS",
     "ICSW_SIGNALS", "icswComplexModalService", "$templateCache", "$compile", "blockUI",
-    "icswIcingaCmdTools", "$rootScope", "icswSetupTooltip",
+    "icswIcingaCmdTools", "$rootScope", "icswTooltipTools",
 (
     $scope, DeviceOverviewService, $q, icswSimpleAjaxCall, ICSW_URLS,
     ICSW_SIGNALS, icswComplexModalService, $templateCache, $compile, $blockUI,
-    icswIcingaCmdTools, $rootScope, icswSetupTooltip,
+    icswIcingaCmdTools, $rootScope, icswTooltipTools,
 ) ->
     $scope.show_column = {}
     $scope.struct = {
@@ -341,10 +341,8 @@ angular.module(
         # current page (saved for focus)
         saved_page: 0
         # tooltip structure
-        tooltip: undefined
+        tooltip: icswTooltipTools.get_global_struct()
     }
-
-    $scope.struct.tooltip = icswSetupTooltip
 
     # pagination control
     $scope.pag_control = {

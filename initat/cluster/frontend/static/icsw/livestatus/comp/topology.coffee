@@ -843,10 +843,10 @@ angular.module(
 ]).directive("icswDeviceNetworkTopology",
 [
     "ICSW_URLS", "icswDeviceTreeService", "icswNetworkTopologyReactContainer", "$rootScope", "ICSW_SIGNALS",
-    "icswSetupTooltip",
+    "icswTooltipTools",
 (
     ICSW_URLS, icswDeviceTreeService, icswNetworkTopologyReactContainer, $rootScope, ICSW_SIGNALS,
-    icswSetupTooltip,
+    icswTooltipTools,
 ) ->
     return {
         restrict: "EA"
@@ -871,7 +871,7 @@ angular.module(
                                 {
                                     device_tree: struct.device_tree
                                     monitoring_data: struct.mon_data
-                                    tooltip: icswSetupTooltip
+                                    tooltip: icswTooltipTools.get_global_struct()
                                 }
                             )
                             element[0]
