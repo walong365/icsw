@@ -204,7 +204,10 @@ class Service(object):
                     # print("_enum", _enum_names)
                     for _enum_name in _enum_names:
                         _enum = getattr(icswServiceEnum, _enum_name)
-                        _cr = check_config_enum(_enum, config_tools, self.log)
+                        if config_tools is not None:
+                            _cr = check_config_enum(_enum, config_tools, self.log)
+                        else:
+                            _cr = None
                         if _cr is None:
                             # cannot get server_check instance, set config_check_ok to False
                             self.config_check_ok = False

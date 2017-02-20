@@ -45,16 +45,17 @@ icsw_cleanup
 # check for migration file migration
 MSRC_DIR=/opt/python-init/lib/python2.7/site-packages/initat/cluster/backbone/migrations
 MDST_DIR=/opt/cluster/lib/python3.6/site-packages/initat/cluster/backbone/migrations
-for mig_file in 0001_initial.py 0801_merge.py ; do
-    S_FILE=${MSRC_DIR}/${mig_file}
-    D_FILE=${MDST_DIR}/${mig_file}
-    if [ ! -f "${D_FILE}" ] ; then
-        if [ -f "${S_FILE}" ] ; then
+for mig_glob in 000?_*.py 0801_merge.py ; do
+    for S_FILE in $(ls ${MSRC_DIR}/${mig_glob}) ; do
+
+        D_FILE=${MDST_DIR}/$(basename ${S_FILE})
+        echo ${S_FILE} ${D_FILE}
+        if [ ! -f "${D_FILE}" -a -f "${S_FILE}" ] ; then
             echo "Moving migration file from ${S_FILE} to ${D_FILE} ..."
             cp -a ${S_FILE} ${D_FILE}
             /opt/cluster/bin/2to3 -w -n ${D_FILE}
         fi
-    fi
+    done
 done
 
 # remove old socket and zmq dirs
