@@ -181,7 +181,9 @@ angular.module(
                                 (data) ->
                                     csrf_token = data[0]
                                     _user = data[1].user
-                                    icswThemeService.setcurrent(_user.ui_theme_selection)
+                                    user_theme = data[1].var_lut.$$ICSW_THEME_SELECTION$$.value
+                                    if data[1].var_lut
+                                        icswThemeService.setcurrent(user_theme)
                                     blockUI.stop()
                                     $state.go(_val)
                             )

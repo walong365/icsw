@@ -549,7 +549,7 @@ angular.module(
 
             scope.actual_update = () ->
 
-                struct = icswTooltipTools.create_struct(element)
+                struct = icswTooltipTools.create_struct()
                 time_frame = icswStatusHistorySettings.get_time_frame()
 
                 # calculate data to show

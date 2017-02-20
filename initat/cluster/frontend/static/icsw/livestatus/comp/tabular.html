@@ -146,9 +146,6 @@
 
 <script type="text/ng-template" id="icsw.livestatus.device.table.view">
     <div uib-alert class="alert-warning" ng-show="!struct.monitoring_data.hosts.length">No Device Results</div>
-    <icsw-livestatus-tooltip
-        icsw-set-tooltip-target="set_tooltip($event, struct)"
-    ></icsw-livestatus-tooltip>
     <table
         st-table="entries_displayed"
         st-safe-src="struct.source_list"

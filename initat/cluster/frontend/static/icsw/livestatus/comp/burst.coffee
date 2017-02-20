@@ -514,8 +514,9 @@ angular.module(
         constructor: () ->
             super("icswLivestatusFullBurst", true, true)
             @set_template(
-                '<icsw-livestatus-tooltip icsw-connect-element="con_element"></icsw-livestatus-tooltip>
-                <icsw-device-livestatus-fullburst icsw-element-size="size" icsw-connect-element="con_element"></icsw-device-livestatus-fullburst>'
+                '<icsw-device-livestatus-fullburst
+                    icsw-element-size="size"
+                    icsw-connect-element="con_element"></icsw-device-livestatus-fullburst>'
                 "Burst Graph"
                 5
                 5
@@ -533,9 +534,9 @@ angular.module(
 
 ]).directive('icswDeviceLivestatusFullburst',
 [
-    "icswBurstDrawParameters",
+    "icswBurstDrawParameters", "icswSetupTooltip",
 (
-    icswBurstDrawParameters,
+    icswBurstDrawParameters, icswSetupTooltip,
 ) ->
     return {
         restrict: "EA"
@@ -552,7 +553,7 @@ angular.module(
                     start_ring: 0
                     is_interactive: true
                     omit_small_segments: true
-                    tooltip: scope.con_element.tooltip
+                    tooltip: icswSetupTooltip
                 }
             )
             scope.con_element.set_async_emit_data(scope.set_notifier(scope.con_element.new_data_notifier, element[0], draw_params))

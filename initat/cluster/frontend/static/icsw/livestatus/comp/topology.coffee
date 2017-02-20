@@ -824,8 +824,7 @@ angular.module(
         constructor: () ->
             super("icswLivestatusNetworkTopology", true, false)
             @set_template(
-                '<icsw-livestatus-tooltip icsw-connect-element="con_element"></icsw-livestatus-tooltip>
-                <icsw-device-network-topology icsw-connect-element="con_element" icsw-sub-max-height></icsw-device-network-topology>'
+                '<icsw-device-network-topology icsw-connect-element="con_element" icsw-sub-max-height></icsw-device-network-topology>'
                 "Network Topology"
                 10
                 8
@@ -844,8 +843,10 @@ angular.module(
 ]).directive("icswDeviceNetworkTopology",
 [
     "ICSW_URLS", "icswDeviceTreeService", "icswNetworkTopologyReactContainer", "$rootScope", "ICSW_SIGNALS",
+    "icswSetupTooltip",
 (
-    ICSW_URLS, icswDeviceTreeService, icswNetworkTopologyReactContainer, $rootScope, ICSW_SIGNALS
+    ICSW_URLS, icswDeviceTreeService, icswNetworkTopologyReactContainer, $rootScope, ICSW_SIGNALS,
+    icswSetupTooltip,
 ) ->
     return {
         restrict: "EA"
@@ -870,7 +871,7 @@ angular.module(
                                 {
                                     device_tree: struct.device_tree
                                     monitoring_data: struct.mon_data
-                                    tooltip: scope.con_element.tooltip
+                                    tooltip: icswSetupTooltip
                                 }
                             )
                             element[0]

@@ -1182,7 +1182,7 @@ angular.module(
             helper: "=icswConfigHelper"
         }
         link: (scope, element, attrs) ->
-            scope.helper.tooltip = icswTooltipTools.create_struct(element)
+            scope.helper.tooltip = icswTooltipTools.create_struct()
             _element = ReactDOM.render(
                 React.createElement(
                     icswDeviceConfigTableReact
