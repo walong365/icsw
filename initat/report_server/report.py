@@ -3357,13 +3357,13 @@ def postprocess_workbook(workbook):
 
 
 HOST_STATUS_COLOR_MAP = {
-    "UP": CMYKColor(cyan=0.1412, magenta=0.0000, yellow=1.000, black=0.3333, knockout=False),#HexColor("#92aa00"),  # up
-    "D": CMYKColor(cyan=0.0, magenta=0.6738, yellow=0.8396, black=0.2667, knockout=False), #HexColor("#bb3d1e"),  # down
+    "UP": HexColor("#92aa00"),  # up
+    "D": HexColor("#bb3d1e"),  # down
     "UR": HexColor("#ff0000"),  # unreach
     "U": HexColor("#e2972d"),  # unknown
     "FL": HexColor("#666666"),  # flapping
     "PD": HexColor("#ccccff"),  # pending
-    "UD": CMYKColor(cyan=0.0, magenta=0.0, yellow=0.0, black=0.5, knockout=True), #HexColor("#dddddd"),  # unselected
+    "UD": HexColor("#dddddd"),  # unselected
 }
 
 HOST_STATUS_SIZE_RATIOS = {
@@ -3544,20 +3544,40 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
             last_date = date
             last_state_info = date_to_state_dict[date]
 
-        # rect_percentage = (last_date - end_date).total_seconds() / timespan.duration
-        # rects.append([last_state_info["state"], last_state_info["msg"], rect_percentage])
-
+        # first pass, calculate pixel grid offset and total pixels used
         state_to_percentages_dict = {}
-
-        rect_idx = 0
-        last_rect_x = width * legend_width_percentage
+        pixel_grid_offset = 0
+        total_pixels = 0
         for rect_list in rects:
             rect_width_percentage = rect_list[2]
             rect_width = rect_width_percentage * width * gfx_width_percentage
 
-            print(rect_width)
+            rect_height = (size_ratios[rect_list[0]] * height) * 0.75
+            rect_width_old = rect_width
+            rect_width = round(rect_width, 1)
+            if rect_width < 0.1:
+                rect_width = 0.1
+
+            total_pixels += rect_width
+            pixel_grid_offset += rect_width - rect_width_old
+
+            if rect_list[0] not in state_to_percentages_dict:
+                state_to_percentages_dict[rect_list[0]] = rect_width_percentage
+            else:
+                state_to_percentages_dict[rect_list[0]] += rect_width_percentage
+
+        # second pass, actucally add rectangles acording to pixel grid offset
+        last_rect_x = width * legend_width_percentage
+        rect_idx = 0
+        for rect_list in rects:
+            rect_width_percentage = rect_list[2]
+            rect_width = rect_width_percentage * width * gfx_width_percentage
+            rect_width *= (total_pixels - pixel_grid_offset) / total_pixels
 
             rect_height = (size_ratios[rect_list[0]] * height) * 0.75
+            rect_width = round(rect_width, 1)
+            if rect_width < 0.1:
+                rect_width = 0.1
 
             rect_name = "rect".format(rect_idx)
             rect_idx += 1
@@ -3568,11 +3588,6 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
             getattr(self, rect_name).strokeWidth = 0
             getattr(self, rect_name).strokeOpacity = 0
             last_rect_x += rect_width
-
-            if rect_list[0] not in state_to_percentages_dict:
-                state_to_percentages_dict[rect_list[0]] = rect_width_percentage
-            else:
-                state_to_percentages_dict[rect_list[0]] += rect_width_percentage
 
         # add description
         if for_host:
