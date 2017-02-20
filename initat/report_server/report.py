@@ -44,7 +44,7 @@ from reportlab.graphics.charts.textlabels import Label
 from reportlab.lib import colors
 from reportlab.lib.colors import HexColor, black
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
-from reportlab.lib.pagesizes import landscape, letter, A4, A3
+from reportlab.lib.pagesizes import landscape, A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm, inch
 from reportlab.pdfbase.pdfmetrics import stringWidth
@@ -53,6 +53,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 from unidecode import unidecode
+from dateutil import tz
 
 from initat.cluster.frontend.monitoring_views import _device_status_history_util
 from initat.cluster.backbone.models.report import ReportHistory
@@ -79,7 +80,7 @@ PollyReports.Element.gettext = pollyreports_gettext
 
 logger = logging.getLogger(__name__)
 
-_ = {landscape, letter, A4, A3}
+_ = {landscape, A4}
 
 if settings.DEBUG:
     _file_root = os.path.join(settings.FILE_ROOT, "frontend", "static")
@@ -1017,11 +1018,17 @@ class PDFReportGenerator(ReportGenerator):
         self.__generate_device_overview_report(_device, report_settings, device_report)
         self.__generate_device_assetrun_reports(_device, report_settings, device_report)
 
-        if device_report.report_settings["availability_overview_selected"]:
-            self.__generate_device_availability_overview_report(_device, report_settings, device_report)
+        if device_report.report_settings["availability_overview_selected"] or \
+                device_report.report_settings["availability_details_selected"]:
 
-        if device_report.report_settings["availability_details_selected"]:
-            self.__generate_device_availability_detailed_report(_device, report_settings, device_report)
+            availability_reports = DeviceReport(_device, report_settings, "Availability Reports")
+            root_report.add_child(availability_reports)
+
+            if device_report.report_settings["availability_overview_selected"]:
+                self.__generate_device_availability_overview_report(_device, report_settings, availability_reports)
+
+            if device_report.report_settings["availability_details_selected"]:
+                self.__generate_device_availability_detailed_report(_device, report_settings, availability_reports)
 
     def __generate_device_availability_detailed_report(self, _device, report_settings, root_report):
         class DummyRequest(object):
@@ -1067,6 +1074,8 @@ class PDFReportGenerator(ReportGenerator):
             ("Monthly", "month"),
         ]
 
+        timespan_to_line_graph_data_dict = {}
+
         for line_header, duration_type in chart_info_map:
             dummy_request = DummyRequest()
             dummy_request.GET = {
@@ -1081,38 +1090,30 @@ class PDFReportGenerator(ReportGenerator):
                 timespan = timespans[0]
 
             row = []
-            # host_state_data = _device_status_history_util.get_hist_device_data_from_request(dummy_request)
-            # if host_state_data and host_state_data[_device.idx]:
-            #     row.append(self.__create_pie_chart_from_state_data(state_data=host_state_data[_device.idx],
-            #                                                        description="Host Status",
-            #                                                        timespan=timespan,
-            #                                                        available_width=available_width,
-            #                                                        for_host=True))
-            # else:
-            #     row.append("No host state data found!")
 
             line_graph_data = _device_status_history_util.get_line_graph_data(dummy_request, for_host=True)
             if line_graph_data and timespan:
                 line_graph_data = line_graph_data[_device.idx]
+                timespan_to_line_graph_data_dict[duration_type] = line_graph_data
 
                 width, height = self.page_format
 
                 row.append(LineHistoryRect(line_graph_data=line_graph_data,
                                            timespan=timespan,
-                                           width=available_width * 0.83,
+                                           width=available_width * (0.90 - 0.03),
                                            height=(height / 3.0) - 50))
             else:
                 row.append("No valid line graph data found!")
 
             data = [row]
 
-            text_block = Paragraph('<b>{}:</b>'.format(line_header), style_sheet["BodyText"])
-            t = Table(data, colWidths=(available_width * 0.83 * 0.50),
+            text_block = Paragraph('<b>{}</b>'.format(line_header), style_sheet["BodyText"])
+            t = Table(data, colWidths=(available_width * 0.90),
                       style=[]
                       )
             body_data.append((text_block, t))
 
-        t_body = Table(body_data, colWidths=(available_width * 0.15, available_width * 0.85),
+        t_body = Table(body_data, colWidths=(available_width * 0.10, available_width * 0.90),
                        style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
                               ('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                               ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
@@ -1124,6 +1125,46 @@ class PDFReportGenerator(ReportGenerator):
 
         doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
         report.add_buffer_to_report(_buffer)
+
+        root_report = report
+        for line_header, duration_type in chart_info_map:
+            _buffer = BytesIO()
+            canvas = Canvas(_buffer, self.page_format)
+
+            heading = "Event Log (Host) - {}".format(line_header)
+
+            report = DeviceReport(_device, report_settings, heading)
+            root_report.add_child(report)
+
+            section_number = report.get_section_number()
+
+            data = timespan_to_line_graph_data_dict[duration_type]
+            data = sorted(data, key=lambda k: k['date'])
+
+            for state_dict in data:
+                state_dict["date"] = state_dict["date"].replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal()).\
+                    strftime(ASSET_DATETIMEFORMAT)
+                state_dict["state"] = HOST_STATE_TYPE_TRANSFORMATION[state_dict["state"]]
+
+            rpt = PollyReportsReport(data)
+
+            header_names_left = [("Date", "date", 12.0),
+                                 ("State", "state", 8.0),
+                                 ("Message", "msg", 80.0)]
+            header_names_right = []
+
+            self.__config_report_helper(
+                "{} {} for [{}]".format(
+                    section_number, heading, _device.full_name,
+                ),
+                header_names_left, header_names_right, rpt, data
+            )
+
+            rpt.generate(canvas)
+            report.number_of_pages += rpt.pagenumber
+
+            canvas.save()
+            report.add_buffer_to_report(_buffer)
 
     def __generate_device_availability_overview_report(self, _device, report_settings, root_report):
         class DummyRequest(object):
@@ -1205,13 +1246,13 @@ class PDFReportGenerator(ReportGenerator):
 
             data = [row]
 
-            text_block = Paragraph('<b>{}:</b>'.format(line_header), style_sheet["BodyText"])
-            t = Table(data, colWidths=(available_width * 0.83 * 0.50),
+            text_block = Paragraph('<b>{}</b>'.format(line_header), style_sheet["BodyText"])
+            t = Table(data, colWidths=(available_width * 0.90 * 0.50),
                       style=[]
                       )
             body_data.append((text_block, t))
 
-        t_body = Table(body_data, colWidths=(available_width * 0.15, available_width * 0.85),
+        t_body = Table(body_data, colWidths=(available_width * 0.10, available_width * 0.90),
                        style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
                               ('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                               ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
@@ -3506,7 +3547,6 @@ class StatusPieDrawing(_DrawingEditorMixin, Drawing):
 class LineHistoryRect(_DrawingEditorMixin, Drawing):
     def __init__(self, line_graph_data=(), timespan=None, for_host=True,
                  page_format="landscape", width=400, height=100, *args, **kw):
-        from dateutil import tz
         Drawing.__init__(*(self, width, height) + args, **kw)
         self.label = None
         self.tflabel = None
