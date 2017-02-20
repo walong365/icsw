@@ -636,6 +636,9 @@ class TabbedCanvas(Canvas):
 
 
 class PDFReportGenerator(ReportGenerator):
+    class __DummyRequest(object):
+        pass
+
     def __init__(self, _settings, devices, report_history):
         super(PDFReportGenerator, self).__init__(_settings, devices, report_history)
 
@@ -1028,13 +1031,13 @@ class PDFReportGenerator(ReportGenerator):
                 self.__generate_device_availability_overview_report(_device, report_settings, availability_reports)
 
             if device_report.report_settings["availability_details_selected"]:
-                self.__generate_device_availability_detailed_report(_device, report_settings, availability_reports)
+                self.__generate_device_availability_detailed_host_report(_device, report_settings, availability_reports)
+                self.__generate_device_availability_detailed_service_report(_device,
+                                                                            report_settings,
+                                                                            availability_reports)
 
-    def __generate_device_availability_detailed_report(self, _device, report_settings, root_report):
-        class DummyRequest(object):
-            pass
-
-        report = DeviceReport(_device, report_settings, "Availability Timeline (Host)")
+    def __initialize_basic_pdf_template(self,  _device, report_settings, root_report, heading):
+        report = DeviceReport(_device, report_settings, heading)
         root_report.add_child(report)
 
         section_number = report.get_section_number()
@@ -1052,8 +1055,8 @@ class PDFReportGenerator(ReportGenerator):
 
         available_width = self.page_format[0] - 60
 
-        paragraph_header = Paragraph('<font face="{}" size="16">{} Availability Timeline (Host) for {}</font>'.format(
-            self.bold_font, section_number, _device.name), style_sheet["BodyText"])
+        paragraph_header = Paragraph('<font face="{}" size="16">{} {} for {}</font>'.format(
+            self.bold_font, section_number, heading, _device.name), style_sheet["BodyText"])
 
         data = [[paragraph_header]]
 
@@ -1062,6 +1065,150 @@ class PDFReportGenerator(ReportGenerator):
                        rowHeights=[35],
                        style=[('LEFTPADDING', (0, 0), (-1, -1), 0),
                               ('RIGHTPADDING', (0, 0), (-1, -1), 0), ])
+
+        elements.append(t_head)
+        elements.append(Spacer(1, 30))
+
+        return doc, elements, report, _buffer, available_width, style_sheet, t_head
+
+    def __generate_device_availability_detailed_service_report(self, _device, report_settings, root_report):
+        # get and add charts
+        start_time = int(root_report.report_settings["availability_timeframe_start"])
+        chart_info_map = [
+            ("24 Hours", "day"),
+            ("Weekly", "week"),
+            ("Monthly", "month"),
+        ]
+
+        for line_header, duration_type in chart_info_map:
+            # add state graphs
+            pdf_tuples = self.__initialize_basic_pdf_template(_device, report_settings, root_report,
+                                                              "Availability Timeline (Service) {}".format(line_header))
+            doc, elements, report, _buffer, available_width, style_sheet, t_head = pdf_tuples
+
+            dummy_request = self.__DummyRequest()
+            dummy_request.GET = {
+                "device_ids": "[{}]".format(_device.idx),
+                "date": start_time,
+                "duration_type": duration_type
+            }
+
+            service_type_to_line_graph_data_dict = {}
+
+            timespans = _device_status_history_util.get_timespans_db_from_request(dummy_request)
+            timespan = None
+            if timespans:
+                timespan = timespans[0]
+
+            line_graph_data = _device_status_history_util.get_line_graph_data(dummy_request, for_host=False)
+            list_of_threes = []
+            if line_graph_data and timespan:
+                three_list = []
+                list_of_threes.append(three_list)
+                for key in line_graph_data.keys():
+                    three_list.append(key)
+                    if len(three_list) == 3:
+                        three_list = []
+                        list_of_threes.append(three_list)
+
+                idx = 0
+                for three_list in list_of_threes:
+                    body_data = []
+                    idx += 1
+                    for key in three_list:
+                        device_idx, service_type = key
+                        try:
+                            service_type = service_type.split(",")[1]
+                        except IndexError:
+                            pass
+
+                        line_graph_data_tmp = line_graph_data[key]
+
+                        service_type_to_line_graph_data_dict[service_type] = line_graph_data_tmp
+
+                        width, height = self.page_format
+                        if width > height:
+                            _format = "landscape"
+                        else:
+                            _format = "portrait"
+
+                        row = [LineHistoryRect(line_graph_data=line_graph_data_tmp,
+                                               timespan=timespan,
+                                               width=available_width * (0.90 - 0.03),
+                                               height=(height / 3.0) - 50,
+                                               page_format=_format,
+                                               for_host=False)]
+
+                        data = [row]
+
+                        text_block = Paragraph('<b>{}</b>'.format(service_type), style_sheet["BodyText"])
+                        t = Table(data, colWidths=(available_width * 0.90),
+                                  style=[])
+                        body_data.append((text_block, t))
+
+                    t_body = Table(body_data, colWidths=(available_width * 0.10, available_width * 0.90),
+                                   style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
+                                          ('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                                          ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD))])
+
+                    elements.append(t_body)
+                    if len(list_of_threes) > 1 and idx < len(list_of_threes):
+                        elements.append(t_head)
+                        elements.append(Spacer(1, 30))
+
+            doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
+            report.add_buffer_to_report(_buffer)
+
+            current_availability_report = report
+            # add event logs
+            for service_type in service_type_to_line_graph_data_dict.keys():
+                _buffer = BytesIO()
+                canvas = Canvas(_buffer, self.page_format)
+
+                heading = "Event Log ({} / {})".format(service_type, line_header)
+
+                report = DeviceReport(_device, report_settings, heading)
+                current_availability_report.add_child(report)
+
+                section_number = report.get_section_number()
+
+                data = service_type_to_line_graph_data_dict[service_type]
+                data = sorted(data, key=lambda k: k['date'])
+
+                for state_dict in data:
+                    state_dict["date"] = state_dict["date"].replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal()).\
+                        strftime(ASSET_DATETIMEFORMAT)
+                    state_dict["state"] = SERVICE_TRANS_TYPE_TRANSFORMATION[state_dict["state"]]
+
+                rpt = PollyReportsReport(data)
+
+                if self.page_format == landscape(A4):
+                    header_names_left = [("Date", "date", 12.0),
+                                         ("State", "state", 8.0),
+                                         ("Message", "msg", 80.0)]
+                else:
+                    header_names_left = [("Date", "date", 15.0),
+                                         ("State", "state", 10.0),
+                                         ("Message", "msg", 75.0)]
+                header_names_right = []
+
+                self.__config_report_helper(
+                    "{} {} for [{}]".format(
+                        section_number, heading, _device.full_name,
+                    ),
+                    header_names_left, header_names_right, rpt, data
+                )
+
+                rpt.generate(canvas)
+                report.number_of_pages += rpt.pagenumber
+
+                canvas.save()
+                report.add_buffer_to_report(_buffer)
+
+    def __generate_device_availability_detailed_host_report(self, _device, report_settings, root_report):
+        pdf_tuples = self.__initialize_basic_pdf_template(_device, report_settings, root_report,
+                                                          "Availability Timeline (Host)")
+        doc, elements, report, _buffer, available_width, style_sheet, t_head = pdf_tuples
 
         # add piecharts
         body_data = []
@@ -1077,7 +1224,7 @@ class PDFReportGenerator(ReportGenerator):
         timespan_to_line_graph_data_dict = {}
 
         for line_header, duration_type in chart_info_map:
-            dummy_request = DummyRequest()
+            dummy_request = self.__DummyRequest()
             dummy_request.GET = {
                 "device_ids": "[{}]".format(_device.idx),
                 "date": start_time,
@@ -1125,8 +1272,6 @@ class PDFReportGenerator(ReportGenerator):
                               ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                               ])
 
-        elements.append(t_head)
-        elements.append(Spacer(1, 30))
         elements.append(t_body)
 
         doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
@@ -1134,6 +1279,9 @@ class PDFReportGenerator(ReportGenerator):
 
         root_report = report
         for line_header, duration_type in chart_info_map:
+            if duration_type not in timespan_to_line_graph_data_dict:
+                continue
+
             _buffer = BytesIO()
             canvas = Canvas(_buffer, self.page_format)
 
@@ -1178,37 +1326,9 @@ class PDFReportGenerator(ReportGenerator):
             report.add_buffer_to_report(_buffer)
 
     def __generate_device_availability_overview_report(self, _device, report_settings, root_report):
-        class DummyRequest(object):
-            pass
-
-        report = DeviceReport(_device, report_settings, "Availability Overview")
-        root_report.add_child(report)
-
-        section_number = report.get_section_number()
-
-        _buffer = BytesIO()
-        doc = SimpleDocTemplate(_buffer,
-                                pagesize=self.page_format,
-                                rightMargin=0,
-                                leftMargin=0,
-                                topMargin=10,
-                                bottomMargin=25)
-        elements = []
-
-        style_sheet = getSampleStyleSheet()
-
-        available_width = self.page_format[0] - 60
-
-        paragraph_header = Paragraph('<font face="{}" size="16">{} Availability Overview for {}</font>'.format(
-            self.bold_font, section_number, _device.name), style_sheet["BodyText"])
-
-        data = [[paragraph_header]]
-
-        t_head = Table(data,
-                       colWidths=[available_width],
-                       rowHeights=[35],
-                       style=[('LEFTPADDING', (0, 0), (-1, -1), 0),
-                              ('RIGHTPADDING', (0, 0), (-1, -1), 0), ])
+        pdf_tuples = self.__initialize_basic_pdf_template(_device, report_settings, root_report,
+                                                          "Availability Overview")
+        doc, elements, report, _buffer, available_width, style_sheet, t_head = pdf_tuples
 
         body_data = []
 
@@ -1222,7 +1342,7 @@ class PDFReportGenerator(ReportGenerator):
 
         for line_header, duration_type in chart_info_map:
             row = []
-            dummy_request = DummyRequest()
+            dummy_request = self.__DummyRequest()
             dummy_request.GET = {
                 "device_ids": "[{}]".format(_device.idx),
                 "date": start_time,
@@ -1269,8 +1389,6 @@ class PDFReportGenerator(ReportGenerator):
                               ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                               ])
 
-        elements.append(t_head)
-        elements.append(Spacer(1, 30))
         elements.append(t_body)
 
         doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
@@ -3416,10 +3534,22 @@ HOST_STATUS_COLOR_MAP = {
     "UD": HexColor("#dddddd"),  # unselected
 }
 
+
 HOST_STATUS_SIZE_RATIOS = {
     "UP": 0.5,
     "D": 1,
     "UR": 0.8,
+    "U": 0.6,
+    "FL": 0.65,
+    "PD": 0.7,
+    "UD": 0.75
+}
+
+
+SERVICE_STATUS_SIZE_RATIOS = {
+    "O": 0.5,
+    "W": 1,
+    "C": 0.9,
     "U": 0.6,
     "FL": 0.65,
     "PD": 0.7,
@@ -3564,7 +3694,6 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
         self.tfline = None
         self.legend = None
 
-
         if page_format == "landscape":
             gfx_width_percentage = 0.83
             legend_width_percentage = 0.17
@@ -3578,7 +3707,7 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
             state_transformation = HOST_STATE_TYPE_TRANSFORMATION
         else:
             color_map = SERVICE_STATUS_COLOR_MAP
-            size_ratios = HOST_STATUS_SIZE_RATIOS
+            size_ratios = SERVICE_STATUS_SIZE_RATIOS
             state_transformation = SERVICE_TRANS_TYPE_TRANSFORMATION
 
         start_date = timespan.start_date.replace(tzinfo=tz.tzlocal())
@@ -3598,6 +3727,17 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
         rects = []
         date_list = list(date_to_state_dict.keys())
         date_list.sort()
+
+        # missing data in timeframe, add undetermined bogus rects
+        if start_date not in date_to_state_dict:
+            state_dict = {"date": start_date, "state": "UD", "msg": ""}
+            date_to_state_dict[start_date] = state_dict
+            date_list.insert(0, start_date)
+
+        if end_date not in date_to_state_dict:
+            state_dict = {"date": start_date, "state": "UD", "msg": ""}
+            date_to_state_dict[end_date] = state_dict
+            date_list.append(end_date)
 
         last_date = start_date
         last_state_info = None
