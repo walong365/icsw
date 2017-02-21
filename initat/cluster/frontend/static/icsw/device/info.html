@@ -261,6 +261,14 @@
                         {{ edit_obj.comment }}
                     </div>
                 </div>
+                 <div class="row">
+                    <label class="control-label col-xs-3">
+                        Enabled
+                    </label>
+                    <div class="col-xs-9">
+                        {{ edit_obj.enabled | yesno1 }}
+                    </div>
+                </div>
             </div>
             <div class="col-md-6 col-xs-12">
                 <div class="row">
@@ -295,6 +303,17 @@
                     <div class="col-xs-9">
                         <icsw-tools-button type="modify" size="xs" ng-click="modify_categories(true)"></icsw-tools-button>
                         {{ edit_obj.$$asset_category_info }}
+                    </div>
+                </div>
+                <div class="row" ng-if="has_valid_license('netboot')">
+                    <label class="control-label col-xs-3">
+                        Boot Server
+                    </label>
+                    <div class="col-xs-9" ng-if="struct.mother_server_lut[edit_obj.bootserver]">
+                        {{ struct.mother_server_lut[edit_obj.bootserver].$$full_name_with_type }}
+                    </div>
+                    <div class="col-xs-9" ng-if="!struct.mother_server_lut[edit_obj.bootserver]">
+                        ---
                     </div>
                 </div>
             </div>
@@ -386,7 +405,7 @@
             <div class="form-group row">
                 <div class="col-md-6 col-xs-12">
                     <div class="form-group row">
-                        <label class="control-label col-xs-4 requiredField icsw-formlabel">Name<span class="asteriskField">*</span></label>
+                        <label class="control-label col-xs-4 requiredField icsw-formlabel">Device Name<span class="asteriskField">*</span></label>
                         <div class="controls col-xs-8">
                             <input class="textinput textInput form-control maxwidth500" maxlength="192" ng-model="edit_obj.name" required="True" type="text"/>
                         </div>
@@ -420,6 +439,12 @@
                         <label class="control-label col-xs-4 icsw-formlabel">Comment</label>
                         <div class="controls col-xs-8">
                             <input class="textinput textInput form-control maxwidth500" maxlength="384" ng-model="edit_obj.comment" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label col-xs-4 icsw-formlabel">Enabled</label>
+                        <div class="controls col-xs-8">
+                            <icsw-tools-yes-no flag="edit_obj.enabled"></icsw-tools-yes-no>
                         </div>
                     </div>
                 </div>
@@ -460,6 +485,28 @@
                         <label class="control-label col-xs-4 icsw-formlabel">Asset Categories</label>
                         <div class="col-sm-8 control-label" style="text-align:left;">
                             {{ edit_obj.$$asset_category_info }}
+                        </div>
+                    </div>
+                    <div class="row form-group row" ng-if="has_valid_license('netboot')">
+                        <label class="control-label col-xs-4 icsw-formlabel">
+                            Bootserver
+                        </label>
+                        <div class="col-xs-8 controls">
+                            <div class="input-group maxwidth500">
+                                <ui-select ng-model="edit_obj.bootserver" ng-disabled="false" class="">
+                                    <ui-select-match class="ui-select-match" placeholder="Select the Bootserver">
+                                        {{ $select.selected.full_name }}
+                                    </ui-select-match>
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.mother_server_list | props_filter:{full_name:$select.search}">
+                                        <div ng-bind-html="value.full_name | highlight: $select.search"></div>
+                                    </ui-select-choices>
+                                </ui-select>
+                                <span class="input-group-btn">
+                                    <button type="button" ng-click="edit_obj.bootserver = undefined" class="btn btn-default">
+                                        <span class="glyphicon glyphicon-trash"></span>
+                                    </button>
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <!--

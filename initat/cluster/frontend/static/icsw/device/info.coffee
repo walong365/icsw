@@ -461,13 +461,13 @@ angular.module(
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
     "icswAccessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
     "icswDeviceTreeHelperService", "icswComplexModalService", "toaster", "$compile", "$templateCache",
-    "icswCategoryTreeService", "icswToolsSimpleModalService", "icswDialogDeleteService",
+    "icswCategoryTreeService", "icswToolsSimpleModalService", "icswDialogDeleteService", "icswConfigTreeService",
 (
     $scope, Restangular, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
     icswAccessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
     icswDeviceTreeHelperService, icswComplexModalService, toaster, $compile, $templateCache,
-    icswCategoryTreeService, icswToolsSimpleModalService, icswDialogDeleteService,
+    icswCategoryTreeService, icswToolsSimpleModalService, icswDialogDeleteService, icswConfigTreeService,
 ) ->
     $scope.struct = {
         # data is valid
@@ -482,6 +482,11 @@ angular.module(
         category_tree: undefined
         # device group
         is_devicegroup: false
+        # config tree
+        config_tree: undefined
+        # mother_server list and lut
+        mother_server_list: []
+        mother_server_lut: {}
     }
 
     create_info_fields = (obj) ->
@@ -526,7 +531,16 @@ angular.module(
                 _asset_cats_info = (entry.name for entry in _asset_cats).join(", ")
             else
                 _asset_cats_info = "---"
-            obj.$$asset_category_info = _asset_cats_info 
+            obj.$$asset_category_info = _asset_cats_info
+
+            _mother_list = []
+            for config in $scope.struct.config_tree.list
+                if config.name in ["mother_server"]
+                    for _dc in config.device_config_set
+                        if _dc.device not in _mother_list
+                            _mother_list.push(_dc.device)
+            $scope.struct.mother_server_list = ($scope.struct.device_tree.all_lut[_dev] for _dev in _mother_list)
+            $scope.struct.mother_server_lut = _.keyBy($scope.struct.mother_server_list, "idx")
 
         # monitoring image
         img_url = ""
@@ -567,21 +581,21 @@ angular.module(
                 icswMonitoringBasicTreeService.load($scope.$id)
                 icswDomainTreeService.load($scope.$id)
                 icswCategoryTreeService.load($scope.$id)
+                icswConfigTreeService.load($scope.$id)
             ]
         ).then(
             (data) ->
                 $scope.struct.device_tree = data[0]
                 $scope.struct.monitoring_tree = data[1]
-                # console.log data[1]
                 $scope.struct.domain_tree = data[2]
                 $scope.struct.category_tree = data[3]
+                $scope.struct.config_tree = data[4]
                 if $scope.icsw_struct.is_devicegroup
                     $scope.edit_obj = $scope.struct.device_tree.get_group($scope.icsw_struct.edit_obj)
                 else
                     $scope.edit_obj = $scope.icsw_struct.edit_obj
                 $scope.edit_obj.$$show_atfv = false
                 create_info_fields($scope.edit_obj)
-                # console.log $scope.edit_obj
                 $scope.struct.data_valid = true
                 $scope.install_template()
                 # defer.resolve("done")
@@ -620,9 +634,10 @@ angular.module(
             title = "Modify Device Settings"
         dbu.create_backup($scope.edit_obj)
         sub_scope = $scope.$new(true)
+        icswAccessLevelService.install(sub_scope)
         sub_scope.edit_obj = $scope.edit_obj
         sub_scope.struct = $scope.struct
-
+        
         # for fields, tree can be the basic or the cluster tree
 
         icswComplexModalService(
