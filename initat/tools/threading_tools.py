@@ -391,10 +391,6 @@ class DBDebugEnabled(DBDebugBase):
     def __init__(self, log_com, force_disable=False):
         self.__counter = 0
         self.__log_com = log_com
-        from django.conf import settings
-        self.__min_db_calls = settings.ICSW_DEBUG_MIN_DB_CALLS
-        self.__min_run_time = settings.ICSW_DEBUG_MIN_RUN_TIME
-        self.__show_calls = settings.ICSW_DEBUG_SHOW_DB_CALLS
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(
@@ -425,7 +421,9 @@ class DBDebugEnabled(DBDebugBase):
         else:
             _num_q = 0
         _run_time = abs(self.__end_time - self.__start_time)
-        if _run_time * 1000 > self.__min_run_time or _num_q > self.__min_db_calls:
+        from initat.debug import ICSW_DEBUG_MIN_DB_CALLS, ICSW_DEBUG_MIN_RUN_TIME, \
+            ICSW_DEBUG_SHOW_DB_CALLS, show_database_calls
+        if _run_time * 1000 > ICSW_DEBUG_MIN_RUN_TIME or _num_q > ICSW_DEBUG_MIN_DB_CALLS:
             if _num_q or self.__num_pre_q:
                 self.log(
                     "queries (pre / act): {:d} / {:d} in {}".format(
@@ -434,16 +432,8 @@ class DBDebugEnabled(DBDebugBase):
                         logging_tools.get_diff_time_str(_run_time),
                     )
                 )
-                if self.__show_calls:
-                    for _idx, _q in enumerate(connection.queries):
-                        if _q["sql"]:
-                            self.log(
-                                "{:4d} {} {}".format(
-                                    _idx,
-                                    _q["time"],
-                                    _q["sql"],
-                                )
-                            )
+                if ICSW_DEBUG_SHOW_DB_CALLS:
+                    show_database_calls(log_com=self.log, max_width=200)
             else:
                 self.log(
                     "in {}".format(

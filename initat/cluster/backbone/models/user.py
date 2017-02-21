@@ -776,23 +776,23 @@ class user_manager(models.Manager):
 
     def create_superuser(self, login, email, password):
         if not password:
-            if "DJANGO_SUPERUSER_PASSWORD" in os.environ:
+            if "ICSW_DJANGO_SUPERUSER_PASSWORD" in os.environ:
                 # hack for setup_cluster.py
-                password = os.environ["DJANGO_SUPERUSER_PASSWORD"]
-        # create group
-        _grpname = "{}grp".format(login)
-        try:
-            user_group = group.objects.get(Q(groupname=_grpname))
-        except group.DoesNotExist:
-            user_group = group.objects.create(
-                groupname=_grpname,
-                gid=max(list(group.objects.all().values_list("gid", flat=True)) + [665]) + 1,
-                group_comment="auto created group for admin {}".format(login),
-                homestart="/",
-            )
+                password = os.environ["ICSW_DJANGO_SUPERUSER_PASSWORD"]
         try:
             new_admin = user.objects.get(Q(login=login))
         except user.DoesNotExist:
+            # create group
+            _grpname = "{}grp".format(login)
+            try:
+                user_group = group.objects.get(Q(groupname=_grpname))
+            except group.DoesNotExist:
+                user_group = group.objects.create(
+                    groupname=_grpname,
+                    gid=max(list(group.objects.all().values_list("gid", flat=True)) + [665]) + 1,
+                    group_comment="auto created group for admin {}".format(login),
+                    homestart="/",
+                )
             new_admin = self.create(
                 login=login,
                 email=email,
@@ -802,6 +802,13 @@ class user_manager(models.Manager):
                 password=password,
                 is_superuser=True
             )
+        else:
+            # overwrite password
+            if "ICSW_DJANGO_SUPERUSER_PASSWORD" in os.environ:
+                # hack for setup_cluster.py
+                password = os.environ["ICSW_DJANGO_SUPERUSER_PASSWORD"]
+                new_admin.password = password
+                new_admin.save()
         return new_admin
 
 

@@ -33,8 +33,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
 from django.utils.translation import ugettext_lazy as _
 from lxml import etree
-from initat.debug import ICSW_DEBUG_MODE, ICSW_DEBUG_MIN_RUN_TIME, ICSW_DEBUG_MIN_DB_CALLS, \
-    ICSW_DEBUG_SHOW_DB_CALLS
+from initat.debug import ICSW_DEBUG_MODE
 
 from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME, VERSION_CS_NAME, CLUSTER_DIR, \
     SITE_PACKAGES_BASE

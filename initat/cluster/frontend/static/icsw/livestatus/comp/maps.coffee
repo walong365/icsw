@@ -399,10 +399,10 @@ angular.module(
 ]).directive("icswDeviceLivestatusLocationMap",
 [
     "$templateCache", "$compile", "Restangular", "icswDeviceLivestatusLocationMapReact",
-    "icswBurstDrawParameters", "icswDeviceTreeService", "$q", "icswSetupTooltip",
+    "icswBurstDrawParameters", "icswDeviceTreeService", "$q", "icswTooltipTools",
 (
     $templateCache, $compile, Restangular, icswDeviceLivestatusLocationMapReact,
-    icswBurstDrawParameters, icswDeviceTreeService, $q, icswSetupTooltip,
+    icswBurstDrawParameters, icswDeviceTreeService, $q, icswTooltipTools,
 ) ->
     return {
         restrict: "EA"
@@ -418,7 +418,7 @@ angular.module(
                 {
                     inner_radius: 0
                     outer_radius: 90
-                    tooltip: icswSetupTooltip
+                    tooltip: icswTooltipTools.get_global_struct()
                 }
             )
             $q.all(

@@ -165,9 +165,10 @@ def show_db_call_counter():
 
 
 def show_database_calls(*args, **kwargs):
-    def output(s):
-        print(s)
+    def to_stdout(_what):
+        print(_what)
 
+    output = kwargs.get("log_com", to_stdout)
     if ICSW_DEBUG_MODE and ICSW_DEBUG_SHOW_DB_CALLS:
         from django.db import connection
         _path = kwargs.get("path", "unknown")
@@ -178,12 +179,16 @@ def show_database_calls(*args, **kwargs):
             ],
             0.
         )
-        try:
-            cur_width = get_terminal_size()[0]
-        except:
-            # no regular TTY, ignore
-            cur_width = None
+        if "log_com" in kwargs:
+            # hm ...
+            max_width = kwargs.get("max_width", 99999)
         else:
+            try:
+                max_width = get_terminal_size()[0]
+            except:
+                # no regular TTY, ignore
+                max_width = None
+        if max_width:
             if len(connection.queries) > ICSW_DEBUG_MIN_DB_CALLS:
                 # only output if stdout is a regular TTY
                 output(
@@ -192,12 +197,11 @@ def show_database_calls(*args, **kwargs):
                         tot_time,
                     )
                 )
-        if len(connection.queries) > ICSW_DEBUG_MIN_DB_CALLS and cur_width:
             for act_sql in connection.queries:
                 if act_sql["sql"]:
                     out_str = act_sql["sql"].replace("\n", "<NL>")
                     _len_pre = len(out_str)
-                    out_str = out_str[0:cur_width - 21]
+                    out_str = out_str[0:max_width - 21]
                     _len_post = len(out_str)
                     if _len_pre == _len_post:
                         _size_str = "     {:5d}".format(_len_pre)

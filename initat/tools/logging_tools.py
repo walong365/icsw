@@ -52,24 +52,28 @@ UNIFIED_NAME = "unified"
 
 
 class MeasureTime(object):
-    def __init__(self, quiet: bool=False):
+    def __init__(self, quiet: bool=False, log_com: object=None):
         self._quiet = quiet
+        # absolute start time
         self._start_time = time.time()
-        self._time = time.time()
+        # relative start time
+        self._rel_time = self._start_time
+        self._log_com = log_com or print
 
     def step(self, what: string=None):
         cur_time = time.time()
         if not self._quiet:
             if not what:
-                self._time = self._start_time
+                self._rel_time = self._start_time
                 what = "total"
-            print(
-                "{:<20s} : {:>8.3f} ms".format(
+            diff_time = cur_time - self._rel_time
+            self._log_com(
+                "{} took {}".format(
                     what,
-                    (cur_time - self._time) * 1000.
+                    "{:>8.3f} ms".format(diff_time * 1000.) if diff_time < 2 else get_diff_time_str(diff_time),
                 )
             )
-        self._time = cur_time
+        self._rel_time = cur_time
 
 
 def rewrite_log_destination(log_dest):

@@ -32,10 +32,15 @@ angular.module(
 (
     $q, $window, $rootScope, $templateCache, $compile,
 ) ->
+    # for container element
+    _element = null
+    # global structure
+    _global_structure = null
+
     create_struct = (kwargs) ->
         _struct = {
             # anchor element
-            element: angular.element('icsw-tooltips')  # OUTPUT CONTAINER main.html
+            element: _element
             # dummy scope
             scope: $rootScope.$new(true)
             # current divlayer element
@@ -55,6 +60,9 @@ angular.module(
                 else
                     _struct[key] = value
         return _struct
+
+    set_element = (element) ->
+        _element = element
 
     delete_struct = (struct) ->
         struct.scope.$destroy()
@@ -103,6 +111,21 @@ angular.module(
         )
         return
 
+    get_global_struct = () ->
+        if not _global_structure?
+            _global_structure = create_struct()
+
+            _global_structure.show = (bnode) ->
+                show(_global_structure, bnode)
+
+            _global_structure.pos = (event) ->
+                position(_global_structure, event)
+
+            _global_structure.hide = () ->
+                hide(_global_structure)
+
+        return _global_structure
+
     return {
         # create / delete
         create_struct: create_struct
@@ -112,21 +135,19 @@ angular.module(
         # show / hide
         show: show
         hide: hide
+        # element linkage
+        set_element: set_element
+        get_global_struct: get_global_struct
     }
-]).service("icswSetupTooltip"
+]).directive("icswTooltipContainer",
 [
-    "icswTooltipTools",
+    "$q", "icswTooltipTools",
 (
-    icswTooltipTools,
+    $q, icswToolTipTools,
 ) ->
-    tooltip = icswTooltipTools
-    struct = tooltip.create_struct()
-    struct.show = (bnode) ->
-        tooltip.show(struct, bnode)
-    struct.pos = (event) ->
-        tooltip.position(struct, event)
-    struct.hide = () ->
-        tooltip.hide(struct)
-
-    return struct
+    return {
+       restrict: "EA"
+       link: (scope, element, attrs) ->
+           icswToolTipTools.set_element(element)
+    }
 ])

@@ -519,9 +519,9 @@ angular.module(
 
 ]).directive("icswLivestatusCategoryFilterBurst",
 [
-    "icswBurstDrawParameters", "icswSetupTooltip",
+    "icswBurstDrawParameters", "icswTooltipTools",
 (
-    icswBurstDrawParameters, icswSetupTooltip,
+    icswBurstDrawParameters, icswTooltipTools,
 ) ->
     return {
         restrict: "EA"
@@ -539,7 +539,7 @@ angular.module(
                     start_ring: 0
                     is_interactive: true
                     omit_small_segments: true
-                    tooltip: icswSetupTooltip
+                    tooltip: icswTooltipTools.get_global_struct()
                 }
             )
             scope.con_element.set_async_emit_data(

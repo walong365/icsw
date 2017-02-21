@@ -19,13 +19,11 @@
 #
 """ creates fixtures for device classes """
 
-
-
-from django.conf import settings
 from django.db.models import Q
 
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import DeviceClass, device
+from initat.debug import ICSW_DEBUG_MODE
 from initat.tools import logging_tools
 
 
@@ -41,7 +39,7 @@ def add_fixtures(**kwargs):
             system_class=True,
             default_system_class=_default,
         )
-    if settings.ICSW_DEBUG:
+    if ICSW_DEBUG_MODE:
         # debug output
         for _c in DeviceClass.objects.all():
             print(str(_c))
