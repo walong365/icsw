@@ -48,7 +48,7 @@ from reportlab.lib.pagesizes import landscape, A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm, inch
 from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.platypus import SimpleDocTemplate, Spacer, Table, Paragraph, Image
+from reportlab.platypus import SimpleDocTemplate, Spacer, Table, Paragraph, Image, KeepTogether
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
@@ -1026,7 +1026,7 @@ class PDFReportGenerator(ReportGenerator):
                 device_report.report_settings["availability_details_selected"]:
 
             availability_reports = DeviceReport(_device, report_settings, "Availability Reports")
-            root_report.add_child(availability_reports)
+            device_report.add_child(availability_reports)
 
             if device_report.report_settings["availability_overview_selected"]:
                 self.__generate_device_availability_overview_report(_device, report_settings, availability_reports)
@@ -1067,8 +1067,8 @@ class PDFReportGenerator(ReportGenerator):
                        style=[('LEFTPADDING', (0, 0), (-1, -1), 0),
                               ('RIGHTPADDING', (0, 0), (-1, -1), 0), ])
 
-        elements.append(t_head)
-        elements.append(Spacer(1, 30))
+        elements.append(KeepTogether(t_head))
+        elements.append(KeepTogether(Spacer(1, 30)))
 
         return doc, elements, report, _buffer, available_width, style_sheet, t_head
 
@@ -1147,15 +1147,19 @@ class PDFReportGenerator(ReportGenerator):
                                   style=[])
                         body_data.append((text_block, t))
 
-                    t_body = Table(body_data, colWidths=(available_width * 0.10, available_width * 0.90),
-                                   style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
-                                          ('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
-                                          ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD))])
-
-                    elements.append(t_body)
-                    if len(list_of_threes) > 1 and idx < len(list_of_threes):
-                        elements.append(t_head)
-                        elements.append(Spacer(1, 30))
+                    if body_data:
+                        t_body = Table(body_data, colWidths=(available_width * 0.10, available_width * 0.90),
+                                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
+                                              ('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                                              ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD))])
+                        elements.append(t_body)
+                        if len(list_of_threes) > 1 and idx < len(list_of_threes):
+                            elements.append(KeepTogether(t_head))
+                            elements.append(KeepTogether(Spacer(1, 30)))
+            else:
+                text_block = Paragraph('<para leftIndent="20"><b>No data found for this timespan!</b></para>',
+                                       style_sheet["BodyText"])
+                elements.append(text_block)
 
             doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
             report.add_buffer_to_report(_buffer)
@@ -1403,34 +1407,8 @@ class PDFReportGenerator(ReportGenerator):
         report.add_buffer_to_report(_buffer)
 
     def __generate_device_overview_report(self, _device, report_settings, root_report):
-        report = DeviceReport(_device, report_settings, "Overview")
-        root_report.add_child(report)
-
-        section_number = report.get_section_number()
-
-        _buffer = BytesIO()
-        doc = SimpleDocTemplate(_buffer,
-                                pagesize=self.page_format,
-                                rightMargin=0,
-                                leftMargin=0,
-                                topMargin=10,
-                                bottomMargin=25)
-        elements = []
-
-        style_sheet = getSampleStyleSheet()
-
-        available_width = self.page_format[0] - 60
-
-        paragraph_header = Paragraph('<font face="{}" size="16">{} Overview for {}</font>'.format(
-            self.bold_font, section_number, _device.name), style_sheet["BodyText"])
-
-        data = [[paragraph_header]]
-
-        t_head = Table(data,
-                       colWidths=[available_width],
-                       rowHeights=[35],
-                       style=[('LEFTPADDING', (0, 0), (-1, -1), 0),
-                              ('RIGHTPADDING', (0, 0), (-1, -1), 0), ])
+        pdf_tuples = self.__initialize_basic_pdf_template(_device, report_settings, root_report, "Overview")
+        doc, elements, report, _buffer, available_width, style_sheet, t_head = pdf_tuples
 
         body_data = []
 
@@ -1562,8 +1540,6 @@ class PDFReportGenerator(ReportGenerator):
                               ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                               ])
 
-        elements.append(t_head)
-        elements.append(Spacer(1, 30))
         elements.append(t_body)
 
         doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
@@ -2244,9 +2220,9 @@ class PDFReportGenerator(ReportGenerator):
                        rowHeights=[35],
                        style=[])
 
-        elements.append(t_head)
-        elements.append(Spacer(1, 30))
-        elements.append(t_body)
+        elements.append(KeepTogether(t_head))
+        elements.append(KeepTogether(Spacer(1, 30)))
+        elements.append(KeepTogether(t_body))
 
         doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
 

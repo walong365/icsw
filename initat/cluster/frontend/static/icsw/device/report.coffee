@@ -326,6 +326,26 @@ device_report_module = angular.module(
                         return b.idx - a.idx
                 )
 
+                $scope.struct.$$reportstruct = {}
+                $scope.struct.$$reportstruct.startdate = undefined
+                $scope.struct.$$reportstruct.startdate_dp = undefined
+                $scope.struct.$$reportstruct.duration_type = undefined
+                $scope.struct.$$reportstruct.date_options = {
+                    format: "dd.MM.yyyy"
+                    formatYear: "yyyy"
+                    maxDate: new Date()
+                    minDate: new Date(2000, 1, 1)
+                    startingDay: 1
+                    minMode: "day"
+                    datepickerMode: "day"
+                    $$opened: false
+                }
+
+                $scope.struct.$$reportstruct.startdate = moment().startOf("day").subtract(1, "days")
+                $scope.set_duration_type("day", $scope.struct)
+                $scope.struct.$$reportstruct.startdate_dp = $scope.struct.$$reportstruct.startdate.toDate()
+
+
                 for scan in data[1]
                     if scan.is_finished_processing
                         if device_to_scan_lut[scan.device] == undefined
@@ -830,6 +850,15 @@ device_report_module = angular.module(
 ########################################################################################################################
 # Timeframe setting functions
 ########################################################################################################################
+    $scope.datepicker_time_changed = (device) ->
+        if device == $scope.struct
+            for obj in $scope.struct.devices
+                obj.$$reportstruct.startdate_dp = device.$$reportstruct.startdate_dp
+
+        else if device.is_meta_device
+            for obj in $scope.struct.devices
+                if device.device_group == obj.device_group
+                    obj.$$reportstruct.startdate_dp = device.$$reportstruct.startdate_dp
 
     $scope.get_allowed_durations = () ->
         return icswStatusHistorySettings.get_allowed_durations()
@@ -866,13 +895,7 @@ device_report_module = angular.module(
             scope.device = device
             scope.group = group
             sel = icswActiveSelectionService.current()
-            if device.is_meta_device
-                if scope.struct.device_tree.get_group(device).cluster_device_group
-                    new_el = $compile($templateCache.get("icsw.device.tree.cdg.report.row"))
-                else
-                    new_el = $compile($templateCache.get("icsw.device.tree.meta.report.row"))
-            else
-                new_el = $compile($templateCache.get("icsw.device.tree.report.row"))
+            new_el = $compile($templateCache.get("icsw.device.tree.report.row"))
             scope.get_dev_sel_class = () ->
                 if device.$selected_for_report
                     return "btn btn-xs btn-success"
