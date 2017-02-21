@@ -1064,7 +1064,17 @@ config_module = angular.module(
         )
 
     $scope.get_check_details = ($event, check) =>
-        console.log "c=", check
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.MON_GET_MON_INFO
+            data: {
+                mode: "mon"
+                object_idx: check.idx
+            }
+            dataType: "json"
+        ).then(
+            (json) ->
+                console.log "*", json
+        )
 
     $scope.$on("$destroy", () ->
         $scope.struct.filter.close()

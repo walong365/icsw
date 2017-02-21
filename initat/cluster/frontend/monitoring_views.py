@@ -796,3 +796,20 @@ class DuplicateDisplayPipe(View):
                 )
             else:
                 request.xml_response["new_spec"] = new_spec.idx
+
+
+class GetMonitoringInfo(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        _data = request.POST
+        mon_check = mon_check_command.objects.get(Q(pk=_data["object_idx"]))
+        import pprint
+        pprint.pprint(_data)
+        return HttpResponse(
+            json.dumps(
+                {
+                    "found": mon_check.name
+                }
+            ),
+            content_type="application/json"
+        )

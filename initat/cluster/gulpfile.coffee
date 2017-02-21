@@ -50,7 +50,7 @@ strip_debug = require("gulp-strip-debug")
 fs = require("fs")
 plumber = require("gulp-plumber")
 preprocess = require("gulp-preprocess")
-
+graph = require('gulp-angular-architecture-graph')
 
 use_theme = "default"
 
@@ -725,6 +725,19 @@ gulp.task(
         gulp.parallel("serve-graphics", "serve-icinga", "serve-django", "serve-main", "watch")
     ), (cb) ->
         cb()
+)
+
+gulp.task("create-graph", () ->
+    gulp.src("frontend/static/icsw/**/*.coffee").pipe(
+        coffee()
+    ).pipe(
+        graph(
+            {
+                dest: "icsw-graph"
+                filterModulesPrefixes: ['ng', 'ui', 'formly', 'angular']
+            }
+        )
+    )
 )
 
 gulp.task("default", gulp.series("serve-all"))

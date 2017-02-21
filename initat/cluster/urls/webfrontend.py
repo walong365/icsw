@@ -317,6 +317,7 @@ monitoring_patterns = [
     url("^send_command$", monitoring_views.SendMonCommand.as_view(), name="send_mon_command"),
     url("^duplicate_dsspec$", monitoring_views.DuplicateDisplayPipe.as_view(), name="duplicate_dp_spec"),
     url("^all_icinga_cmds$", monitoring_views.AllIcingaCmds.as_view(), name="all_icinga_cmds"),
+    url("^get_mon_info$", monitoring_views.GetMonitoringInfo.as_view(), name="get_mon_info"),
 ]
 
 user_patterns = [

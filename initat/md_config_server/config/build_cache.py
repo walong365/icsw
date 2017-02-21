@@ -298,7 +298,7 @@ class HostBuildCache(object):
 class GlobalBuildCache(object):
     # cache for build (all hosts)
     def __init__(self, log_com, full_build, routing_fingerprint=None, router_obj=None):
-        s_time = time.time()
+        tm = logging_tools.MeasureTime(log_com=self.log)
         self.log_com = log_com
         self.router = routing.SrvTypeRouting(log_com=self.log_com)
         self.instance_xml = InstanceXML(log_com=self.log, quiet=True)
@@ -388,7 +388,9 @@ class GlobalBuildCache(object):
             self.__host_traces.setdefault(_trace.device_id, []).append(_trace)
         # import pprint
         # pprint.pprint(self.__host_traces)
+
         # host / service clusters
+
         clusters = {}
         for _obj, _name in [
             (
@@ -414,7 +416,9 @@ class GlobalBuildCache(object):
                 _tco.devices_list.append(_entry.device_id)
                 # clusters[_name][_entry.]
         self.__clusters = clusters
+
         # host / service dependencies
+
         deps = {}
         for _obj, _name in [
             (
@@ -464,14 +468,11 @@ class GlobalBuildCache(object):
                     _tdo = [_do for _do in deps[_name][_devpk] if _do.pk == _pk][0]
                     _tdo.master_list.append(_entry.device_id)
         self.__dependencies = deps
+
         # init snmp sink
+
         self.snmp_sink = SNMPSink(log_com)
-        e_time = time.time()
-        self.log(
-            "init build_cache in {}".format(
-                logging_tools.get_diff_time_str(e_time - s_time)
-            )
-        )
+        tm.step("init build_cache")
 
     def close(self):
         if self.consumer:
