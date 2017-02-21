@@ -587,7 +587,6 @@ rms_module = angular.module(
             @headers = []
             # list of structures for header toggle
             @$$toggle_headers = []
-            @hidden_headers = []
             @attributes = {}
             for entry in h_struct
                 @headers.push(entry[0])
@@ -621,7 +620,7 @@ rms_module = angular.module(
                     name: entry
                     enabled: @toggle[entry]
                     header: header
-                    hidden: entry in @hidden_headers
+                    hidden: if @attributes[entry].webhide? then true else false
                 }
                 if _struct.enabled
                     _struct.btn_class = "btn btn-sm btn-success"
@@ -629,7 +628,7 @@ rms_module = angular.module(
                     _struct.btn_class = "btn btn-sm btn-default"
 
                 @$$toggle_headers.push(_struct)
-                if _struct.enabled and entry not in @hidden_headers
+                if _struct.enabled and not _struct.hidden
                     attr = @attributes[entry]
                     if attr.span?
                         _span = attr.span
@@ -1115,7 +1114,6 @@ rms_module = angular.module(
             @queue_by_name_list = []
             @queue_by_name_lut = {}
             # disable display of this headers
-            @hidden_headers = ["state", "slots_reserved", "slots_total"]
 
         close: () =>
             @change_notifier.reject("close")
@@ -1406,6 +1404,7 @@ rms_module = angular.module(
                 $scope.struct.user = data[1].user
                 $scope.struct.rms_operator = $scope.acl_modify(null, "backbone.user.rms_operator")
                 $scope.struct.loading = false
+                console.log "s0"
                 $scope.struct.rms = {
                     running: new icswRMSRunningStruct(data[2].running_headers, $scope.struct)
                     waiting: new icswRMSWaitingStruct(data[2].waiting_headers, $scope.struct)
@@ -1413,6 +1412,7 @@ rms_module = angular.module(
                     queue: new icswRMSQueueStruct(data[2].node_headers, $scope.struct)
                     sched: new icswRMSSchedulerStruct($scope.struct)
                 }
+                console.log "s1"
                 # apply user settings
                 _u = $scope.struct.icsw_user
                 for key of $scope.struct.rms

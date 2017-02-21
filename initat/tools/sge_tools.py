@@ -1786,7 +1786,7 @@ def get_node_headers(options):
     if options.show_seq:
         cur_node.append(E.seqno())
     if not options.suppress_status:
-        cur_node.append(E.state())
+        cur_node.append(E.state(webhide="1"))
     if options.show_type or options.show_long_type:
         cur_node.append(E.type())
     if options.show_complexes:
@@ -1805,8 +1805,8 @@ def get_node_headers(options):
                 # span was 2, is no longer needed
                 E.load(span="1"),
                 E.slots_used(),
-                E.slots_reserved(),
-                E.slots_total(),
+                E.slots_reserved(webhide="1"),
+                E.slots_total(webhide="1"),
             ]
         )
     else:
