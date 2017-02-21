@@ -110,3 +110,8 @@ table.rotateheaders {
     background-color: #e4e4e4;
     border: 1px solid #ffffff;
 }
+/* toggle control override */
+.toggle-on.btn-sm,
+.toggle-off.btn-sm {
+    padding-top: 1px;
+}
