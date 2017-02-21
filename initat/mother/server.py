@@ -401,7 +401,9 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
             self.__syslog_type = syslog_srvcs[0]
             self.log("syslog type found: {}".format(self.__syslog_type))
             # hack for old sles11sp3 (liebherr) and Centos6 (Ac2T)
-            if self.__syslog_type.count("rsys") or (self.__syslog_type in ["syslog"] and process_tools.get_machine_name() in ["lwnsu62020", "admin"]):
+            if self.__syslog_type.count("rsys") or (
+                self.__syslog_type in ["syslog"] and process_tools.get_machine_name() in ["lwnsu62020", "admin"]
+            ):
                 self._enable_rsyslog()
             else:
                 self.log("syslog-type {} not supported".format(self.__syslog_type), logging_tools.LOG_LEVEL_ERROR)

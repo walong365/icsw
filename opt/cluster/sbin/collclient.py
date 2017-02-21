@@ -36,7 +36,7 @@ from initat.host_monitoring import main
 from initat.icsw.service.instance import InstanceXML
 
 
-def main():
+def local_main():
     my_parser = argparse.ArgumentParser()
     my_parser.add_argument(
         "-i",
@@ -75,5 +75,4 @@ def main():
     sys.exit(main.main(options=my_parser.parse_args()))
 
 if __name__ == "__main__":
-    main()
-
+    local_main()

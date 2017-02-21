@@ -30,14 +30,14 @@ import time
 import zmq
 from lxml import etree
 
-from initat.host_monitoring import limits
-from initat.host_monitoring.client_enums import icswServiceEnum
-from initat.host_monitoring.hm_mixins import HMHRMixin
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, server_command, threading_tools, uuid_tools
 from initat.tools.server_mixins import ICSWBasePool
+from . import limits
+from .client_enums import icswServiceEnum
 from .discovery import ZMQDiscovery
 from .hm_direct import SocketProcess
+from .hm_mixins import HMHRMixin
 from .hm_resolve import ResolveProcess
 from .host_monitoring_struct import HostConnection, HostMessage
 from .ipc_comtools import IPCCommandHandler

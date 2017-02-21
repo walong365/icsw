@@ -23,15 +23,15 @@
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
 import argparse
-import time
 import subprocess
+import time
+from enum import Enum
+import pprint
 
 import zmq
-from enum import Enum
 
-from initat.host_monitoring import limits
 from initat.tools import logging_tools, process_tools, server_command
-
+from . import limits
 from .constants import MAX_0MQ_CONNECTION_ERRORS
 
 
@@ -257,6 +257,8 @@ class HostConnection(object):
 
     @staticmethod
     def get_hc_0mq(conn_str, target_id="ms", **kwargs):
+        # print("+", conn_str, target_id)
+        # pprint.pprint(HostConnection.hc_dict)
         if (True, conn_str) not in HostConnection.hc_dict:
             if HostConnection.verbose > 1:
                 HostConnection.relayer_process.log("new 0MQ HostConnection for '{}'".format(conn_str))
@@ -347,7 +349,7 @@ class HostConnection(object):
         else:
             if not self.tcp_con:
                 try:
-                    was_opened = self._open()
+                    _was_opened = self._open()
                 except:
                     self.return_error(
                         host_mes,
@@ -436,8 +438,10 @@ class HostConnection(object):
 
     @staticmethod
     def get_result(zmq_sock):
-        _src_id = zmq_sock.recv()
+        _src_id = zmq_sock.recv().decode("utf-8")
         cur_reply = server_command.srv_command(source=zmq_sock.recv())
+        # print("*", _src_id)
+        # print(cur_reply.pretty_print())
         HostConnection._handle_result(cur_reply)
 
     @staticmethod
@@ -451,7 +455,12 @@ class HostConnection(object):
                 HostConnection.relayer_process._new_client(result["host_unresolved"].text, int(result["port"].text))
             HostConnection.hc_dict[HostConnection.message_lut[mes_id]].handle_result(mes_id, result)
         else:
-            HostConnection.g_log("got result for delayed id '{}'".format(mes_id), logging_tools.LOG_LEVEL_WARN)
+            HostConnection.g_log(
+                "got result for delayed id '{}'".format(
+                    mes_id
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
         del result
 
     def handle_result(self, mes_id, result):

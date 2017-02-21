@@ -24,12 +24,10 @@
 
 import argparse
 import difflib
-import io
 import netifaces
 import os
-import sys
 import time
-
+import uuid
 from multiprocessing import Queue
 from queue import Empty
 
@@ -37,14 +35,14 @@ import zmq
 from lxml import etree
 
 from initat.client_version import VERSION_STRING
-from initat.host_monitoring.client_enums import icswServiceEnum
-from initat.host_monitoring.hm_mixins import HMHRMixin
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 from initat.tools import logging_tools, process_tools, \
     server_command, threading_tools, uuid_tools, config_store
 from initat.tools.server_mixins import ICSWBasePool
-from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+from .client_enums import icswServiceEnum
 from .constants import TIME_FORMAT, ZMQ_ID_MAP_STORE, HMAccessClassEnum
 from .hm_direct import SocketProcess
+from .hm_mixins import HMHRMixin
 from .hm_resolve import ResolveProcess
 from .long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
 
@@ -87,7 +85,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         self.register_func("callback_result", self._callback_result)
         if HMInotifyProcess and not self.CC.CS["hm.disable.inotify.process"]:
             self.add_process(HMInotifyProcess("inotify", busy_loop=True, kill_myself=True), start=True)
-        self._show_config()
+        self.CC.log_config()
         self.__debug = self.global_config["DEBUG"]
         if "hm.access_class" not in self.CC.CS:
             self.CC.CS["hm.access_class"] = HMAccessClassEnum.level0.value
@@ -291,7 +289,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 cur_value = int(open(f_path, "r").read().strip())
                 if cur_value < sys_value:
                     try:
-                        open(f_path, "w").write("%d" % (sys_value))
+                        open(f_path, "w").write("{:d}".format(sys_value))
                     except:
                         self.log(
                             "cannot change value of {} from {:d} to {:d}: {}".format(
@@ -325,6 +323,8 @@ class ServerCode(ICSWBasePool, HMHRMixin):
     def _init_network_sockets(self):
         zmq_id_name = "/etc/sysconfig/host-monitoring.d/0mq_id"
         my_0mq_id = uuid_tools.get_uuid().urn
+        self.machine_uuid = my_0mq_id
+        self.dynamic_uuid = uuid.uuid4().urn
         if not config_store.ConfigStore.exists(ZMQ_ID_MAP_STORE):
             create_0mq_cs = True
             if os.path.exists(zmq_id_name):
@@ -547,6 +547,8 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             src_id = data.split(";")[0]
         cur_com = srv_com["command"].text
         srv_com["client_version"] = VERSION_STRING
+        srv_com["machine_uuid"] = self.machine_uuid
+        srv_com["dynamic_uuid"] = self.dynamic_uuid
         srv_com.update_source()
         if cur_com in list(self.__callbacks.keys()):
             call_proc, func_name = self.__callbacks[cur_com]
@@ -586,6 +588,8 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             data = data[0]
             srv_com = server_command.srv_command(source=data)
             srv_com["client_version"] = VERSION_STRING
+            srv_com["machine_uuid"] = self.machine_uuid
+            srv_com["dynamic_uuid"] = self.dynamic_uuid
             if "namespace" in srv_com:
                 # namespace given, parse and use it
                 cur_ns = argparse.Namespace()
@@ -758,20 +762,6 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 "got ping_reply with unknown id '{}'".format(ping_id),
                 logging_tools.LOG_LEVEL_WARN
             )
-
-    def _show_config(self):
-        try:
-            for log_line, log_level in self.global_config.get_log():
-                self.log("Config info : [%d] %s" % (log_level, log_line))
-        except:
-            self.log(
-                "error showing configfile log, old configfile ? ({})".format(process_tools.get_except_info()),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-        conf_info = self.global_config.get_config_info()
-        self.log("Found {}:".format(logging_tools.get_plural("valid configline", len(conf_info))))
-        for conf in conf_info:
-            self.log("Config : {}".format(conf))
 
     def loop_end(self):
         self.COM_close()
