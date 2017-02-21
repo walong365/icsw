@@ -601,10 +601,10 @@ class Migration(migrations.Migration):
     else:
         if not opts.no_superuser:
             su_pw = generate_password(size=8)
-            os.environ["DJANGO_SUPERUSER_PASSWORD"] = su_pw
+            os.environ["ICSW_DJANGO_SUPERUSER_PASSWORD"] = su_pw
             print("creating superuser {} (email {}, password is {})".format(opts.superuser, opts.email, su_pw))
             call_manage(["createsuperuser", "--login={}".format(opts.superuser), "--email={}".format(opts.email), "--noinput"])
-            del os.environ["DJANGO_SUPERUSER_PASSWORD"]
+            del os.environ["ICSW_DJANGO_SUPERUSER_PASSWORD"]
         call_manage(["createinitialrevisions"])
         call_update_funcs(opts)
 
