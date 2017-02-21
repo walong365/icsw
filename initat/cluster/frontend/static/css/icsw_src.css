@@ -605,7 +605,15 @@ th[st-sort]:not(.st-sort-ascent):not(.st-sort-descent):not(.bg-info):not(.st-nev
     vertical-align: middle;
     opacity: 0.5;
 }
-
+/* toogle control overrides */
+.toggle.btn-sm {
+    min-height: 20px;
+    min-width: 60px;
+}
+.toggle-handle.btn-sm {
+    padding: 2px 4px;
+    border-width: 2px;
+}
 /* fix for overflowing modal dialog content */
 .modal .modal-body {
     overflow-y: auto;
