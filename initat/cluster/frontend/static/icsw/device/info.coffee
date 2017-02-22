@@ -136,7 +136,6 @@ angular.module(
         new icswDeviceOverviewTabTemplate("general", true, "", "General")
         new icswDeviceOverviewTabTemplate("network", false, "backbone.device.change_network", "Network")
         new icswDeviceOverviewTabTemplate("config", true, "backbone.device.change_config", "Configuration")
-        new icswDeviceOverviewTabTemplate("category", false, "backbone.device.change_category", "Categories")
         new icswDeviceOverviewTabTemplate("location", false, "backbone.device.change_location", "Locations")
         new icswDeviceOverviewTabTemplate("variable", true, "backbone.device.change_variables", "Device Variables")
         new icswDeviceOverviewTabTemplate("devicelogs", false, "", "Device Logs")
