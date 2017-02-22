@@ -55,6 +55,7 @@ angular.module(
 icsw_app = angular.module(
     "icsw.app",
     [
+        "ngJsTree",
         "icsw.menu",
         "ngResource",
         "ngCookies",

@@ -89,6 +89,7 @@ sources = {
         "css_base"
         "icsw.css"
         [
+            "frontend/static/css/jstreestyle.css",
             "frontend/static/css/ui.fancytree.css",
             "frontend/static/css/cropper.css",
             "frontend/static/css/angular-datetimepicker.css",
@@ -172,6 +173,8 @@ sources = {
             "frontend/static/js/hotkeys.js",
             # ace editor
             "frontend/static/js/ui-ace.js",
+            "frontend/static/js/jstree.min.js",
+            "frontend/static/js/ngJsTree.min.js",
         ]
         "js"
         true
@@ -181,6 +184,7 @@ sources = {
         "partc.js"
         [
             # "frontend/static/js/jquery-ui-timepicker-addon.js",
+            "frontend/static/js/jstreegrid.js",
             "frontend/static/js/angular-route.min.js",
             "frontend/static/js/angular-resource.min.js",
             "frontend/static/js/angular-cookies.min.js",
@@ -440,7 +444,9 @@ gulp.task("deploy-d3", () ->
 
 gulp.task("deploy-images", () ->
     return gulp.src(
-        [   
+        [
+            "frontend/static/images/*.gif"
+            "frontend/static/images/*.png"
             "frontend/static/images/*.jpg"
             "frontend/static/images/symbols/*.svg"
             "frontend/static/images/widgets/*"

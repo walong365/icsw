@@ -23,7 +23,8 @@
 device_report_module = angular.module(
     "icsw.device.report",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ngCsv"
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
+        "ngJsTree"
     ]
 ).config(["$stateProvider", "icswRouteExtensionProvider", "$compileProvider", ($stateProvider, icswRouteExtensionProvider, $compileProvider) ->
 
@@ -877,6 +878,95 @@ device_report_module = angular.module(
 
     $scope.open_popup = (device) ->
         device.$$reportstruct.date_options.$$opened = true
+
+########################################################################################################################
+# Explorer widget functions
+########################################################################################################################
+
+    $scope.treeData  = []
+
+    $scope.start_node_id = 0
+
+    $scope.treeConfig = {
+            core : {
+                multiple : false,
+                animation: 0,
+                check_callback : true,
+                worker : true
+                stripes: true
+            },
+            types : {
+                folder : {
+                    icon : "jstree-folder"
+                },
+                file : {
+                    icon : "jstree-file"
+                }
+            },
+            grid: {
+                columns: [
+                  {width: 300, header: "Name"},
+                  {width: 300, value: "size", header: "Size", cellClass: "jstree-grid-line-height"},
+                  {width: 300, value: "type", header: "Type", cellClass: "jstree-grid-line-height"}
+                ],
+                resizable: true,
+                draggable: false,
+                contextmenu: false,
+            },
+            version: 1,
+            plugins : ["core", "ui", "types", "sort", "grid"]
+    }
+
+    icswSimpleAjaxCall(
+        {
+            url: ICSW_URLS.DISCOVERY_GET_FILE_NODE_TREE
+            data:
+                directories: ["/home/kaufmann/"]
+                start_node_id: $scope.start_node_id
+            dataType: 'json'
+        }
+    ).then(
+        (result) ->
+            Array.prototype.push.apply($scope.treeData, result.tree_nodes)
+            $scope.start_node_id = result.new_start_node_id
+    )
+
+    $scope.before_node_open = (event, root_node) ->
+        root_node = root_node.node
+        directories = []
+        node_names = []
+
+        for node in $scope.treeData
+            if node.parent == root_node.id && !node.children_loaded
+                node.children_loaded = true
+
+                directories.push(node.full_path)
+                node_names.push(node.id)
+
+        if directories.length > 0
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.DISCOVERY_GET_FILE_NODE_TREE
+                    data:
+                        directories: directories
+                        node_names: node_names
+                        start_node_id: $scope.start_node_id
+                    dataType: 'json'
+                }
+            ).then(
+                (result) ->
+                    Array.prototype.push.apply($scope.treeData, result.tree_nodes)
+                    $scope.start_node_id = result.new_start_node_id
+            )
+
+    $scope.redraw_done = () ->
+        console.log("redraw done")
+
+    $scope.refresh_done = () ->
+        console.log("refresh done")
+
+    $scope.applyModelChanges = () ->
+        console.log("huh")
 
 ]).directive("icswDeviceTreeReportRow",
 [

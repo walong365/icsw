@@ -750,3 +750,77 @@ class UpdateFileHandler(View):
             discovery_server_state = -1
 
         return HttpResponse(json.dumps({"discovery_server_state": discovery_server_state}))
+
+
+class DirectoryListHandler(View):
+    @staticmethod
+    def sizeof_fmt(num, suffix='B'):
+        for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+            if abs(num) < 1024.0:
+                return "%3.1f %s%s" % (num, unit, suffix)
+            num /= 1024.0
+        return "%.1f %s%s" % (num, 'Yi', suffix)
+
+    @method_decorator(login_required)
+    def post(self, request):
+        import os, stat, magic
+        directories = request.POST.getlist("directories[]")
+        start_node_id = int(request.POST.get("start_node_id"))
+        node_names = request.POST.getlist("node_names[]", None)
+
+        tree_nodes = []
+
+        if not node_names:
+            root_node_name = "icsw{}".format(start_node_id)
+            node_names = [root_node_name]
+            start_node_id += 1
+
+            tree_nodes.append(
+                {"id": root_node_name,
+                 "parent": '#',
+                 "text": "/",
+                 "state": {"opened": False},
+                 "type": "folder",
+                 "full_path": directories[0],
+                 "children_loaded": True,
+                 "data": {
+                            "size": "{} items".format(len(os.listdir(directories[0]))),
+                            "type": "Folder"
+                         },
+                 },
+            )
+
+        for i in range(len(directories)):
+            directory = directories[i]
+            root_node_name = node_names[i]
+            for filename in os.listdir(directory):
+                full_path = os.path.join(directory, filename)
+                file_type = "file"
+                children_loaded = True
+
+                if os.path.isdir(full_path):
+                    file_type = "folder"
+                    items = len(os.listdir(full_path))
+                    if items:
+                        children_loaded = False
+                    size_string = "{} items".format(items)
+                    type_string = "Folder"
+                else:
+                    size_string = self.sizeof_fmt(os.stat(full_path)[stat.ST_SIZE])
+                    type_string = magic.from_file(full_path, mime=True)
+
+                node_id = "icsw{}".format(start_node_id)
+                start_node_id += 1
+                tree_nodes.append(
+                    {"id": node_id,
+                     "parent": root_node_name,
+                     "text": filename,
+                     "state": {"opened": False},
+                     "type": file_type,
+                     "full_path": full_path,
+                     "children_loaded": children_loaded,
+                     "data": {"size": size_string, "type": type_string},
+                     },
+                )
+
+        return HttpResponse(json.dumps({"tree_nodes": tree_nodes, "new_start_node_id": start_node_id}))
