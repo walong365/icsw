@@ -254,6 +254,14 @@ ul.fancytree-container {
 .fancytree-checkbox{
     margin-top:2px;
 }
+.smalltree,
+.smalltree .fancytree-container {
+    display: inline-block;
+    min-width: 200px;
+}
+.smalltree span.fancytree-node {
+    width:auto;
+}
 .label-group>.label:first-child {
 	border-top-right-radius: 0;
     border-bottom-right-radius: 0;

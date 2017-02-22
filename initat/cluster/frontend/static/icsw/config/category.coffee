@@ -895,6 +895,11 @@ angular.module(
             mode: "@icswMode"
             # optional assetfilter
             icsw_asset_filter: "=icswAssetFilter"
+            # used used in a modal view
+            # buttons hidden, provide save function for parent scope
+
+            modal_mode: "=modalMode"
+
         controller: "icswConfigCategoryTreeSelectCtrl"
         link : (scope, el, attrs) ->
             if attrs.icswAssetFilter?
@@ -902,6 +907,13 @@ angular.module(
             else
                 _as_filter = false
             scope.set_mode_and_tree_and_filter(scope.mode, scope.sub_tree, _as_filter)
+
+            # modal_mode provides function modify_it as function save to the parent scope
+            # it will we called if present with other funtions
+            if scope.modal_mode? and scope.modal_mode
+                parentscope = scope.$parent
+                parentscope.modal_callback =
+                    save: scope.modify_it
     }
 ]).controller("icswConfigCategoryTreeSelectCtrl",
 [
@@ -1260,6 +1272,7 @@ angular.module(
         $scope.struct.sel_changed = false
         build_tree()
 
+    # CAUTION external call possible - modal_mode
     $scope.modify_it = ($event) ->
         # save selection to server
         # build change list
@@ -1325,4 +1338,5 @@ angular.module(
             # )
         else
             send_selection_to_filter(new_sel)
+
 ])
