@@ -41,7 +41,7 @@ from initat.tools import process_tools
 
 __all__ = [
     "domain_name_tree",
-    "valid_domain_re",
+    "VALID_DOMAIN_REGEXP",
     "domain_tree_node",
     "category_tree",
     "category",
@@ -66,8 +66,8 @@ TREE_SUBTYPES = {
 }
 
 # validation regexps
-valid_domain_re = re.compile("^[a-zA-Z0-9-_]+$")
-valid_category_re = re.compile("^[a-zA-Z0-9-_\.]+$")
+VALID_DOMAIN_REGEXP = re.compile("^[a-zA-Z0-9-_]+$")
+VALID_CATEGORY_REGEXP = re.compile("^[a-zA-Z0-9-_\. ]+$")
 
 
 class domain_name_tree(object):
@@ -92,7 +92,11 @@ class domain_name_tree(object):
     def check_intermediate(self):
         device = apps.get_model("backbone", "device")
         net_ip = apps.get_model("backbone", "net_ip")
-        used_pks = set(device.objects.all().values_list("domain_tree_node", flat=True)) | set(net_ip.objects.all().values_list("domain_tree_node", flat=True))
+        used_pks = set(
+            device.objects.all().values_list("domain_tree_node", flat=True)
+        ) | set(
+            net_ip.objects.all().values_list("domain_tree_node", flat=True)
+        )
         for cur_tn in self.__node_dict.values():
             is_im = cur_tn.pk not in used_pks
             if cur_tn.intermediate != is_im:
@@ -101,7 +105,13 @@ class domain_name_tree(object):
 
     def add_device_references(self):
         device = apps.get_model("backbone", "device")
-        used_dtn_pks = list(device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True)).values_list("domain_tree_node_id", flat=True))
+        used_dtn_pks = list(
+            device.objects.filter(
+                Q(enabled=True) & Q(device_group__enabled=True)
+            ).values_list(
+                "domain_tree_node_id", flat=True
+            )
+        )
         used_dict = {key: used_dtn_pks.count(key) for key in set(used_dtn_pks)}
         for value in self.__node_dict.values():
             value.local_refcount = used_dict.get(value.pk, 0)
@@ -109,7 +119,13 @@ class domain_name_tree(object):
             value.total_refcount = self._get_sub_refcounts(value)
 
     def _get_sub_refcounts(self, s_node):
-        return self.__node_dict[s_node.pk].local_refcount + sum([self._get_sub_refcounts(sub_node) for sub_node in sum(iter(s_node._sub_tree.values()), [])])
+        return self.__node_dict[s_node.pk].local_refcount + sum(
+            [
+                self._get_sub_refcounts(sub_node) for sub_node in sum(
+                    iter(s_node._sub_tree.values()), []
+                )
+            ]
+        )
 
     def add_domain(self, new_domain_name):
         dom_parts = list(reversed(new_domain_name.split(".")))
@@ -238,29 +254,41 @@ def domain_tree_node_pre_save(sender, **kwargs):
                         )
                         _parent.save()
                     except:
-                        raise ValidationError("cannot create parent: {}".format(process_tools.get_except_info()))
+                        raise ValidationError(
+                            "cannot create parent: {}".format(
+                                process_tools.get_except_info()
+                            )
+                        )
                 cur_parent = _parent
             cur_inst.parent = cur_parent
             cur_inst.name = parts[-1]
         if cur_inst.parent_id:
             if cur_inst.pk:
                 # check for valid parent
-                all_parents = {_v[0]: _v[1] for _v in domain_tree_node.objects.all().values_list("idx", "parent")}
+                all_parents = {
+                    _v[0]: _v[1] for _v in domain_tree_node.objects.all().values_list("idx", "parent")
+                }
                 cur_p_id = cur_inst.parent_id
                 while cur_p_id:
                     if cur_p_id == cur_inst.pk:
                         raise ValidationError("parent node is child of node")
                     cur_p_id = all_parents[cur_p_id]
             cur_inst.depth = cur_inst.parent.depth + 1
-        if cur_inst.depth and not valid_domain_re.match(cur_inst.name):
+        if cur_inst.depth and not VALID_DOMAIN_REGEXP.match(cur_inst.name):
             raise ValidationError("illegal characters in name '{}'".format(cur_inst.name))
         if cur_inst.intermediate:
-            if net_ip.objects.filter(Q(domain_tree_node=cur_inst)).count() + device.objects.filter(Q(domain_tree_node=cur_inst)).count():
+            if net_ip.objects.filter(
+                Q(domain_tree_node=cur_inst)
+            ).count() + device.objects.filter(
+                Q(domain_tree_node=cur_inst)
+            ).count():
                 cur_inst.intermediate = False
                 # raise ValidationError("cannot set used domain_tree_node as intermediate")
         cur_inst.node_postfix = cur_inst.node_postfix.strip()
-        if not cur_inst.node_postfix and valid_domain_re.match(cur_inst.node_postfix):
-            raise ValidationError("illegal characters in node postfix '{}'".format(cur_inst.node_postfix))
+        if not cur_inst.node_postfix and VALID_DOMAIN_REGEXP.match(cur_inst.node_postfix):
+            raise ValidationError(
+                "illegal characters in node postfix '{}'".format(cur_inst.node_postfix)
+            )
         if cur_inst.depth:
             check_empty_string(cur_inst, "name")
             parent_node = cur_inst.parent
@@ -554,27 +582,6 @@ class category(models.Model):
             _p = _p.parent
         self.full_name = "/".join(_list)
 
-    # no longer needed
-    # def get_reference_dict(self):
-    #    all_m2ms = [
-    #        _f for _f in self._meta.get_fields(include_hidden=True) if _f.many_to_many and _f.auto_created
-    #    ]
-    #    _names = [_f.name for _f in all_m2ms]
-    #    _required = {"config", "mon_check_command", "deviceselection", "device"}
-    #    if set(_names) != _required:
-    #        raise ValidationError("Related fields for category_tree changed")
-    #    ref_dict = {}
-    #    for rel in all_m2ms:
-    #        if rel.name == "device":
-    #            # print getattr(self, rel.get_accessor_name()).count()
-    #            # print getattr(self, rel.get_accessor_name()).all()
-    #            ref_dict[rel.name] = getattr(self, rel.get_accessor_name()).values_list("pk", flat=True)
-    #        else:
-    #            ref_dict[rel.name] = getattr(self, rel.get_accessor_name()).count()
-    #    # print self.device.get_accessor_name().values_list("device")
-    #    # print ref_dict
-    #    return ref_dict
-
     class Meta:
         verbose_name = "Category"
         unique_together = [("name", "parent"), ]
@@ -630,7 +637,7 @@ def category_pre_save(sender, **kwargs):
                         raise ValidationError("parent node is child of node")
                     cur_p_id = all_parents[cur_p_id]
             cur_inst.depth = cur_inst.parent.depth + 1
-        if cur_inst.depth and not valid_category_re.match(cur_inst.name):
+        if cur_inst.depth and not VALID_CATEGORY_REGEXP.match(cur_inst.name):
             raise ValidationError("illegal characters in name '{}'".format(cur_inst.name))
         if cur_inst.depth:
             if cur_inst.depth == 1:
@@ -649,7 +656,9 @@ def category_pre_save(sender, **kwargs):
             # get top level cat
             top_level_cat = cur_inst.full_name.split("/")[1]
             if cur_inst.asset and top_level_cat != TOP_DEVICE_CATEGORY:
-                raise ValidationError("Asset flag only allowed for devicecategory '{}'".format(cur_inst.full_name))
+                raise ValidationError(
+                    "Asset flag only allowed for devicecategory '{}'".format(cur_inst.full_name)
+                )
             # check for used named
             used_names = category.objects.exclude(
                 Q(pk=cur_inst.pk)
@@ -894,7 +903,11 @@ def device_mon_location_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         if not cur_inst.pk:
             try:
-                _present = device_mon_location.objects.get(Q(device=cur_inst.device) & Q(location=cur_inst.location) & Q(location_gfx=cur_inst.location_gfx))
+                _present = device_mon_location.objects.get(
+                    Q(device=cur_inst.device) &
+                    Q(location=cur_inst.location) &
+                    Q(location_gfx=cur_inst.location_gfx)
+                )
             except device_mon_location.DoesNotExist:
                 pass
             else:

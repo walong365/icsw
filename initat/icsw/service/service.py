@@ -818,12 +818,14 @@ class MetaService(Service):
         # ignore sigint to catch keyboard interrupt
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         arg_list = self._generate_py_arg_list(debug=True)
+        import initat.debug
+        # set debug flag
+        initat.debug.get_debug_var("ICSW_DEBUG_MODE").set_environ_value(True)
         arg_list.append("--debug")
-        if "--debug-flag" in debug_args:
-            # move debug flag to arg_list
-            arg_list.append("--debug-flag")
-            debug_args.remove("--debug-flag")
         if debug_args:
+            print("*" * 20)
+            print("debug_args=", debug_args)
+            print("*" * 20)
             arg_list.append("--")
             arg_list.extend(debug_args)
         self.log("debug, arg_list is '{}'".format(" ".join(arg_list)))

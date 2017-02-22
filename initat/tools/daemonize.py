@@ -78,7 +78,6 @@ def main():
     _parser.add_argument("--groups", type=str, default="", help="comma-separated list of groups for the process [%(default)s]")
     _parser.add_argument("--nice", type=int, default=0, help="set nice level of new process [%(default)d]")
     _parser.add_argument("--debug", default=False, action="store_true", help="enable debug mode (modify sys.path), [%(default)s]")
-    _parser.add_argument("--debug-flag", default=False, action="store_true", help="enable debug flag via environment (modify sys.path), [%(default)s]")
     opts = _parser.parse_args()
     if opts.exename:
         _mode = "exe"
@@ -126,16 +125,10 @@ def main():
         os.environ["LC_LANG"] = "en_us.UTF_8"
         # python path
         if opts.debug:
-            # os.environ["ICSW_DEBUG_MODE"] = "1"
+            # check via commandline args, do NOT import anything below init.at here
             abs_path = os.path.dirname(__file__)
             abs_path = os.path.split(os.path.split(abs_path)[0])[0]
             sys.path.insert(0, abs_path)
-            import initat.debug
-            # set debug flag
-            initat.debug.get_debug_var("ICSW_DEBUG_MODE").set_environ_value(True)
-        # we no longer accept commandline arguments
-        # if opts.extra_args:
-        #     _args.extend(opts.extra_args)
         sys.argv = _args
         setproctitle.setproctitle(opts.proctitle)
         main_module = importlib.import_module(opts.modname)

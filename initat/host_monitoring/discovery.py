@@ -29,13 +29,87 @@ import time
 import zmq
 from lxml import etree
 
-from initat.host_monitoring import limits
-from initat.host_monitoring.constants import MAPPING_FILE_IDS
-from initat.host_monitoring.host_monitoring_struct import HostMessage
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, server_command, config_store
+from . import limits
+from .constants import MAPPING_FILE_IDS
+from .host_monitoring_struct import HostMessage
+from .zmq_mapping import MappingDB
 
 CS_NAME = "hr.0mq-mapping"
+
+CS_RE = re.compile("tcp://(?P<address>[^:]+):(?P<port>\d+).*$")
+
+
+class ZMQMapping(object):
+    def __init__(self, conn_str, conn_id, mach_id, dyn_id):
+        self._conn_str = conn_str
+        self._conn_id = conn_id
+        self._mach_id = mach_id
+        self._dyn_id = dyn_id
+        # parse connection string
+        _csm = CS_RE.match(self._conn_str)
+        if _csm is None:
+            raise SyntaxError(
+                "connection_string '{}' does not match RE {}".format(
+                    self._conn_str,
+                    str(CS_RE),
+                )
+            )
+        self.address = _csm.group("address")
+        self.port = int(_csm.group("port"))
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        ZMQMapping.discovery_class.relayer_process.log(
+            "[ZM {}] {}".format(
+                self._conn_str,
+                what,
+            ),
+            log_level,
+        )
+
+    @classmethod
+    def init(cls, discovery_class):
+        cls.discovery_class = discovery_class
+
+    @property
+    def connection_uuid(self):
+        return self._conn_id
+
+    @property
+    def machine_uuid(self):
+        return self._mach_id
+
+    @property
+    def dynamic_uuid(self):
+        return self._dyn_id
+
+    def update(self, conn_id, mach_id, dyn_id):
+        _update_db = False
+        change_list = set()
+        for (new_val, attr_name, full_name) in [
+            (conn_id, "_conn_id", "connection id"),
+            (mach_id, "_mach_id", "machine id"),
+            (dyn_id, "_dyn_id", "dynamic id"),
+        ]:
+            old_val = getattr(self, attr_name)
+            if new_val != old_val:
+                change_list.add(full_name[0])
+                self.log(
+                    "{} has changed from '{}' to '{}'".format(
+                        full_name,
+                        old_val,
+                        new_val,
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
+                setattr(self, "_prev_{}".format(attr_name), old_val)
+                setattr(self, attr_name, new_val)
+                _update_db = True
+        self._changes = change_list
+        print("*", self._changes)
+        return _update_db
+        # print("*", conn_id, "->", self._conn_id)
 
 
 class ZMQDiscovery(object):
@@ -71,7 +145,7 @@ class ZMQDiscovery(object):
             self.socket = None
             self.send_return("last 0MQ discovery less than 60 seconds ago")
         else:
-            ZMQDiscovery.pending[self.conn_str] = self
+            ZMQDiscovery._pending[self.conn_str] = self
             new_sock = ZMQDiscovery.relayer_process.zmq_context.socket(zmq.DEALER)
             id_str = "relayer_dlr_{}_{}".format(
                 process_tools.get_machine_name(),
@@ -112,7 +186,12 @@ class ZMQDiscovery(object):
         self.close()
 
     def error(self, zmq_sock):
-        self.log("got error for socket", logging_tools.LOG_LEVEL_ERROR)
+        self.log(
+            "got error for socket {}".format(
+                str(zmq_sock)
+            ),
+            logging_tools.LOG_LEVEL_ERROR
+        )
         time.sleep(1)
 
     def get_result(self, zmq_sock):
@@ -124,6 +203,7 @@ class ZMQDiscovery(object):
             if self.raw_connect:
                 # only valid for hoststatus, FIXME
                 zmq_id = etree.fromstring(_res).findtext("nodestatus")
+                cur_reply = None
             else:
                 cur_reply = server_command.srv_command(source=_res)
                 zmq_id = cur_reply["zmq_id"].text
@@ -134,42 +214,58 @@ class ZMQDiscovery(object):
                 )
             )
         else:
-            if zmq_id in ZMQDiscovery.reverse_mapping and (self.host not in ZMQDiscovery.reverse_mapping[zmq_id]) and ZMQDiscovery.force_resolve:
+            # old code, never really used in production
+            # if zmq_id in ZMQDiscovery.reverse_mapping and (
+            #     self.host not in ZMQDiscovery.reverse_mapping[zmq_id]
+            # ) and ZMQDiscovery.force_resolve:
+            #     self.log(
+            #         "0MQ is {} but already used by {}: {}".format(
+            #             zmq_id,
+            #             logging_tools.get_plural(
+            #                 "host", len(ZMQDiscovery.reverse_mapping[zmq_id])
+            #             ),
+            #             ", ".join(
+            #                 sorted(
+            #                     ZMQDiscovery.reverse_mapping[zmq_id]
+            #                 )
+            #             )
+            #         ),
+            #         logging_tools.LOG_LEVEL_ERROR
+            #     )
+            #     self.send_return("0MQ id not unique, virtual host setup found ?")
+            if zmq_id.lower().count("unknown command"):
                 self.log(
-                    "0MQ is {} but already used by {}: {}".format(
-                        zmq_id,
-                        logging_tools.get_plural(
-                            "host", len(ZMQDiscovery.reverse_mapping[zmq_id])
-                        ),
-                        ", ".join(
-                            sorted(
-                                ZMQDiscovery.reverse_mapping[zmq_id]
-                            )
-                        )
+                    "received illegal zmq_id '{}'".format(
+                        zmq_id
                     ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
-                self.send_return("0MQ id not unique, virtual host setup found ?")
             else:
-                if zmq_id.lower().count("unknown command"):
-                    self.log(
-                        "received illegal zmq_id '{}'".format(
-                            zmq_id
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR
+                self.log("0MQ id is {}".format(zmq_id))
+                if cur_reply is not None and "machine_uuid" in cur_reply:
+                    mach_uuid, dyn_uuid = (
+                        cur_reply["*machine_uuid"],
+                        cur_reply["*dynamic_uuid"],
                     )
                 else:
-                    self.log("0MQ id is {}".format(zmq_id))
-                    ZMQDiscovery.set_mapping(self.conn_str, zmq_id)  # mapping[self.conn_str] = zmq_id
-                    if self.src_id:
-                        # reinject
-                        if self.port == self.hm_port:
-                            ZMQDiscovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
-                        else:
-                            ZMQDiscovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
+                    mach_uuid, dyn_uuid = (
+                        None, None
+                    )
+                ZMQDiscovery.update_mapping(self.conn_str, zmq_id, mach_uuid, dyn_uuid)
+                ZMQDiscovery.db_map.add_mapping(
+                    self.host,
+                    self.port,
+                    zmq_id,
+                )
+                if self.src_id:
+                    # reinject
+                    if self.port == self.hm_port:
+                        ZMQDiscovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
                     else:
-                        self.log("no src_id set, was internal ID check", logging_tools.LOG_LEVEL_WARN)
-                self.close()
+                        ZMQDiscovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
+                else:
+                    self.log("no src_id set, was internal ID check", logging_tools.LOG_LEVEL_WARN)
+            self.close()
 
     def close(self):
         del self.srv_com
@@ -177,18 +273,19 @@ class ZMQDiscovery(object):
             self.socket.close()
             ZMQDiscovery.relayer_process.unregister_poller(self.socket, zmq.POLLIN)
             del self.socket
-        if self.conn_str in ZMQDiscovery.pending:
+        if self.conn_str in ZMQDiscovery._pending:
             # remove from pending dict
-            del ZMQDiscovery.pending[self.conn_str]
+            del ZMQDiscovery._pending[self.conn_str]
         self.log("closing")
         del self
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         ZMQDiscovery.relayer_process.log("[idd, {}] {}".format(self.conn_str, what), log_level)
 
-    @staticmethod
-    def reload_mapping():
-        _log = ZMQDiscovery.relayer_process.log
+    @classmethod
+    def reload_mapping(cls):
+        tm = logging_tools.MeasureTime(log_com=cls.relayer_process.log)
+        _log = cls.relayer_process.log
         # illegal server names
         ISN_SET = {
             "clusterserver",
@@ -197,19 +294,18 @@ class ZMQDiscovery(object):
             "rrd_grapher",
             "pclient",
         }
-        ZMQDiscovery.mapping = {}
-        ZMQDiscovery.reverse_mapping = {}
-        # mapping connection string -> 0MQ id
-        ZMQDiscovery.save_file = True
-        ZMQDiscovery.CS = config_store.ConfigStore(
+        # mapping connection string -> current mapping
+        cls._mapping = {}
+        cls.CS = config_store.ConfigStore(
             CS_NAME,
             log_com=_log
         )
+        cls.db_map.clear()
         #
         if config_store.ConfigStore.exists(CS_NAME):
             _log("read mapping from CStore")
             key_re = re.compile("^(?P<proto>\S+)@(?P<addr>[^:]+):(?P<port>\d+)$")
-            for key in list(ZMQDiscovery.CS.keys()):
+            for key in list(cls.CS.keys()):
                 _km = key_re.match(key)
                 if _km:
                     _gd = _km.groupdict()
@@ -218,94 +314,117 @@ class ZMQDiscovery(object):
                         _gd["addr"],
                         int(_gd["port"]),
                     )
-                    ZMQDiscovery.mapping[conn_str] = ZMQDiscovery.CS[key]
+                    cls._mapping[conn_str] = ZMQMapping(conn_str, cls.CS[key], None, None)
+                    cls.db_map.add_mapping(
+                        _gd["addr"],
+                        int(_gd["port"]),
+                        cls.CS[key],
+                    )
                 else:
                     _log("error interpreting key {}".format(key))
-        else:
-            if os.path.isfile(MAPPING_FILE_IDS):
-                map_content = open(MAPPING_FILE_IDS, "r").read()
-                if map_content.startswith("<"):
-                    # new format
-                    mapping_xml = etree.fromstring(map_content)
-                    for host_el in mapping_xml.findall(".//host"):
-                        for uuid_el in host_el.findall(".//uuid"):
-                            if any([uuid_el.text.count(_isn) for _isn in ISN_SET]):
-                                pass
-                            else:
-                                conn_str = "{}://{}:{}".format(
-                                    uuid_el.get("proto"),
-                                    host_el.get("address"),
-                                    uuid_el.get("port"),
-                                )
-                                ZMQDiscovery.set_mapping(conn_str, uuid_el.text)
-                else:
-                    # old format
-                    map_lines = [
-                        line.strip().split("=", 1) for line in map_content.split("\n") if line.strip() and line.count("=")
-                    ]
-                    ZMQDiscovery.save_file = False
-                    for key, value in map_lines:
-                        ZMQDiscovery.set_mapping(key, value)
-                    ZMQDiscovery.save_file = True
-                    ZMQDiscovery.CS.save()  # save_mapping()
-                _log(
-                    "read {} from {} (in file: {:d})".format(
-                        logging_tools.get_plural(
-                            "mapping",
-                            len(list(ZMQDiscovery.CS.keys())),
-                        ),
-                        MAPPING_FILE_IDS,
-                        len(map_content.split("\n")),
-                    )
-                )
-            # pprint.pprint(ZMQDiscovery.reverse_mapping)
+        elif os.path.isfile(MAPPING_FILE_IDS):
+            map_content = open(MAPPING_FILE_IDS, "r").read()
+            if map_content.startswith("<"):
+                # new format
+                mapping_xml = etree.fromstring(map_content)
+                for host_el in mapping_xml.findall(".//host"):
+                    for uuid_el in host_el.findall(".//uuid"):
+                        if any([uuid_el.text.count(_isn) for _isn in ISN_SET]):
+                            pass
+                        else:
+                            conn_str = "{}://{}:{}".format(
+                                uuid_el.get("proto"),
+                                host_el.get("address"),
+                                uuid_el.get("port"),
+                            )
+                            cls._mapping[conn_str] = ZMQMapping(conn_str, uuid_el.text, None, None)
+                            cls.db_map.add_mapping(
+                                host_el.get("address"),
+                                int(uuid_el.get("port")),
+                                uuid_el.text,
+                            )
             else:
-                ZMQDiscovery.mapping = {}
-        _prev_maps = ZMQDiscovery.__cur_maps
-        ZMQDiscovery.__cur_maps = set(ZMQDiscovery.mapping.keys())
-        ZMQDiscovery.vanished = _prev_maps - ZMQDiscovery.__cur_maps
-        if ZMQDiscovery.vanished:
+                # old format
+                map_lines = [
+                    line.strip().split("=", 1) for line in map_content.split("\n") if line.strip() and line.count("=")
+                ]
+                for key, value in map_lines:
+                    cls._mapping[key] = ZMQMapping(key, value, None, None)
+                cls.CS.save()  # save_mapping
             _log(
-                "{} vanished: {}".format(
-                    logging_tools.get_plural("address", len(ZMQDiscovery.vanished)),
-                    ", ".join(sorted(list(ZMQDiscovery.vanished))),
+                "read {} from {} (in file: {:d})".format(
+                    logging_tools.get_plural(
+                        "mapping",
+                        len(list(cls.CS.keys())),
+                    ),
+                    MAPPING_FILE_IDS,
+                    len(map_content.split("\n")),
                 )
             )
-        for key, value in ZMQDiscovery.mapping.items():
-            # only use ip-address / hostname from key
-            ZMQDiscovery.reverse_mapping.setdefault(value, []).append(key[6:].split(":")[0])
+        cls.db_map.dump()
+        _prev_maps = cls.__cur_maps
+        cls.__cur_maps = set(cls._mapping.keys())
+        cls.vanished = _prev_maps - cls.__cur_maps
+        if cls.vanished:
+            _log(
+                "{} vanished: {}".format(
+                    logging_tools.get_plural("address", len(cls.vanished)),
+                    ", ".join(sorted(list(cls.vanished))),
+                )
+            )
+        tm.step("reload mapping")
 
-    @staticmethod
-    def init(r_process, backlog_size, timeout, verbose, force_resolve):
-        ZMQDiscovery.relayer_process = r_process
-        ZMQDiscovery.backlog_size = backlog_size
-        ZMQDiscovery.timeout = timeout
-        ZMQDiscovery.verbose = verbose
-        ZMQDiscovery.force_resolve = force_resolve
-        ZMQDiscovery.pending = {}
+    @classmethod
+    def init(cls, r_process, backlog_size, timeout, verbose):
+        ZMQMapping.init(cls)
+        cls.db_map = MappingDB(
+            os.path.join(r_process.state_directory, "mapping.sqlite"),
+            r_process.log,
+        )
+        cls.relayer_process = r_process
+        cls.backlog_size = backlog_size
+        cls.timeout = timeout
+        cls.verbose = verbose
+        # requests pending
+        cls._pending = {}
         # last discovery try
-        ZMQDiscovery.last_try = {}
-        ZMQDiscovery.__cur_maps = set()
-        ZMQDiscovery.vanished = set()
-        ZMQDiscovery.hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
-        ZMQDiscovery.reload_mapping()
+        cls.last_try = {}
+        cls.__cur_maps = set()
+        cls.vanished = set()
+        cls.hm_port = InstanceXML(quiet=True).get_port_dict(
+            "host-monitoring",
+            command=True
+        )
+        cls.reload_mapping()
 
-    @staticmethod
-    def destroy():
-        for value in list(ZMQDiscovery.pending.values()):
+    @classmethod
+    def destroy(cls):
+        for value in list(cls._pending.values()):
             value.close()
 
-    @staticmethod
-    def get_hm_0mq_addrs():
-        return [
-            _key.split("/")[-1].split(":")[0] for _key in ZMQDiscovery.mapping.keys() if _key.endswith(":{:d}".format(ZMQDiscovery.hm_port))
-        ]
+    @classmethod
+    def get_hm_0mq_addrs(cls):
+        return cls.db_map.get_0mq_addrs(cls.hm_port)
 
-    @staticmethod
-    def set_mapping(conn_str, uuid):
-        if uuid.lower().count("unknown command"):
+    @classmethod
+    def update_mapping(cls, conn_str, conn_id, machine_id, dynamic_id):
+        if conn_str in cls._mapping:
+            print("upd")
+            if cls._mapping[conn_str].update(conn_id, machine_id, dynamic_id):
+                # something has changed, force update to database
+                cls.db_map.update_mapping(cls._mapping[conn_str])
+        else:
+            cls._mapping[conn_str] = ZMQMapping(conn_str, conn_id, machine_id, dynamic_id)
+        print("+", conn_str, conn_id, machine_id, dynamic_id)
+
+    @classmethod
+    def set_initial_mapping(cls, conn_str, con_uuid, mach_uuid, dyn_uuid):
+        # only called during setup
+        if con_uuid.lower().count("unknown command"):
             return
-        ZMQDiscovery.mapping[conn_str] = uuid
+        cls._mapping[conn_str] = ZMQMapping(conn_str, con_uuid, mach_uuid, dyn_uuid)
+        return
+
         proto, addr, port = conn_str.split(":")
         addr = addr[2:]
         _key = "{}@{}:{}".format(
@@ -313,30 +432,34 @@ class ZMQDiscovery(object):
             addr,
             port,
         )
-        if _key not in ZMQDiscovery.CS or ZMQDiscovery.CS[_key] != uuid:
-            ZMQDiscovery.CS[_key] = uuid
-            ZMQDiscovery.CS.write()
+        if _key not in cls.CS or cls.CS[_key] != uuid:
+            cls.CS[_key] = uuid
+            # cls.CS.write()
 
-    @staticmethod
-    def is_pending(conn_str):
-        return conn_str in ZMQDiscovery.pending
+    @classmethod
+    def is_pending(cls, conn_str):
+        return conn_str in cls._pending
 
-    @staticmethod
-    def has_mapping(conn_str):
-        return conn_str in ZMQDiscovery.mapping
+    @classmethod
+    def has_mapping(cls, conn_str):
+        return conn_str in cls._mapping
 
-    @staticmethod
-    def get_mapping(conn_str):
-        return ZMQDiscovery.mapping[conn_str]
+    @classmethod
+    def get_connection_uuid(cls, conn_str):
+        return cls._mapping[conn_str].connection_uuid
 
-    @staticmethod
-    def check_timeout(cur_time):
+    @classmethod
+    def get_machine_uuid(cls, conn_str):
+        return cls._mapping[conn_str].machine_uuid
+
+    @classmethod
+    def check_timeout(cls, cur_time):
         del_list = []
-        for _conn_str, cur_ids in ZMQDiscovery.pending.items():
+        for _conn_str, cur_ids in cls._pending.items():
             diff_time = abs(cur_ids.init_time - cur_time)
-            if diff_time > ZMQDiscovery.timeout:
+            if diff_time > cls.timeout:
                 del_list.append(cur_ids)
         for cur_ids in del_list:
             # set last try flag
-            ZMQDiscovery.last_try[cur_ids.conn_str] = cur_time
+            cls.last_try[cur_ids.conn_str] = cur_time
             cur_ids.send_return("timeout triggered, closing")

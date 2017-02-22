@@ -22,6 +22,7 @@ ICSW_TFTP=/opt/cluster/system/tftpboot
 LOCALBIN=/usr/local/bin
 LOCALSBIN=/usr/local/sbin
 META_DIR=/var/lib/meta-server
+RELAY_DIR=/var/lib/host-relay
 MOTHER_DIR=${ICSW_SHARE}/mother
 NGINX_CONF=/etc/nginx/sites-enabled/localhost
 PYTHON3_SITE=/opt/cluster/lib/python3.6/site-packages
@@ -230,6 +231,7 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/lib/logging-server
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/log/icsw
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${META_DIR}
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${RELAY_DIR}
 	# uwsgi
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${ICSW_ETC}/uwsgi
 	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend-common.include ${DESTDIR}${ICSW_ETC}/uwsgi/

@@ -40,6 +40,13 @@ RELAY_SETTINGS_CS_NAME = "icsw.relay.settings"
 MAX_0MQ_CONNECTION_ERRORS = 20
 
 
+# states for retriggering of 0MQ fetch calls
+class HostConnectionReTriggerEnum(Enum):
+    no = "no"
+    init = "init"
+    sent = "sent"
+
+
 class HMAccessClassEnum(Enum):
     # free for all (monitoring)
     level0 = "level0"

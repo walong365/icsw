@@ -22,8 +22,6 @@
 
 """ check values in client content stores """
 
-
-
 import os
 
 from initat.constants import LOG_ROOT

@@ -255,7 +255,7 @@ class ServiceContainer(object):
             self.update_valid_licenses()
         try:
             from initat.cluster.backbone.server_enums import icswServiceEnum
-        except ImportError:
+        except:
             from initat.host_monitoring.client_enums import icswServiceEnum
         # import pprint
         service_lut = {}

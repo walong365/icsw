@@ -26,6 +26,7 @@ import os
 import resource
 import socket
 import time
+from enum import Enum
 
 import zmq
 from lxml import etree
@@ -33,14 +34,20 @@ from lxml import etree
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, server_command, threading_tools, uuid_tools
 from initat.tools.server_mixins import ICSWBasePool
+from initat.debug import ICSW_DEBUG_MODE
 from . import limits
 from .client_enums import icswServiceEnum
 from .discovery import ZMQDiscovery
 from .hm_direct import SocketProcess
 from .hm_mixins import HMHRMixin
 from .hm_resolve import ResolveProcess
-from .host_monitoring_struct import HostConnection, HostMessage
+from .host_monitoring_struct import HostConnection, HostMessage, DUMMY_0MQ_ID
 from .ipc_comtools import IPCCommandHandler
+
+
+class ConnectionType(Enum):
+    zmq = "zmq"
+    tcp = "tcp"
 
 
 class RelayCode(ICSWBasePool, HMHRMixin):
@@ -58,14 +65,19 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         self.CC.init(icswServiceEnum.host_relay, self.global_config)
         self.CC.check_config()
         self.__verbose = self.global_config["VERBOSE"]
-        self.__force_resolve = self.CC.CS["hr.force.name.resolve"]
+        _cs_changed = False
+        if "hr.state.directory" not in self.CC.CS:
+            self.CC.CS["hr.state.directory"] = "/var/lib/host-relay"
+            _cs_changed = True
+        self.state_directory = self.CC.CS["hr.state.directory"]
+        if "hr.force.name.resolve" in self.CC.CS:
+            del self.CC.CS["hr.force.name.resolve"]
+            _cs_changed = True
+        if _cs_changed:
+            self.CC.CS.write()
         # ip resolving
-        if self.__force_resolve:
-            self.log("automatic resolving is enabled", logging_tools.LOG_LEVEL_WARN)
-            self._resolve_address = self._resolve_address_resolve
-        else:
-            self.log("automatic resolving is disabled")
-            self._resolve_address = self._resolve_address_noresolve
+        self._resolve_address = self._resolve_address_noresolve
+        self.log("state directory is {}".format(self.state_directory))
         # pending_connection.init(self)
         # global timeout value for host connections
         self.__global_timeout = self.CC.CS["hr.connection.timeout"]
@@ -82,13 +94,11 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             self.CC.CS["hm.socket.backlog.size"],
             self.__global_timeout,
             self.__verbose,
-            self.__force_resolve,
         )
         HostConnection.init(
             self,
             self.CC.CS["hm.socket.backlog.size"],
             self.__global_timeout,
-            self.__verbose,
             ZMQDiscovery,
         )
         self._init_filecache()
@@ -121,7 +131,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         self.log(" - reloading 0MQ mappings", logging_tools.LOG_LEVEL_WARN)
         num_c = 0
         for t_host, c_state in self.__client_dict.items():
-            if c_state == "T":
+            if c_state == ConnectionType.tcp:
                 self.__client_dict[t_host] = None
                 num_c += 1
         self.log("cleared {}".format(logging_tools.get_plural("state", num_c)))
@@ -152,24 +162,26 @@ class RelayCode(ICSWBasePool, HMHRMixin):
     def _init_filecache(self):
         self.__last_tried = {}
         self.__client_dict = {
-            _key: "0" for _key in ZMQDiscovery.get_hm_0mq_addrs()
+            _key: ConnectionType.zmq for _key in ZMQDiscovery.get_hm_0mq_addrs()
         }
+        print("*", self.__client_dict.keys())
         # default 0MQ enabled
         self.__default_0mq = False
 
     def _new_client(self, c_ip, c_port):
-        self._set_client_state(c_ip, c_port, "0")
+        self._set_client_state(c_ip, c_port, ConnectionType.zmq)
 
     def _old_client(self, c_ip, c_port):
-        self._set_client_state(c_ip, c_port, "T")
+        self._set_client_state(c_ip, c_port, ConnectionType.tcp)
 
     def _set_client_state(self, c_ip, c_port, c_type):
         check_names = [c_ip]
-        if self.__force_resolve:
-            if c_ip in self.__ip_lut:
-                real_name = self.__ip_lut[c_ip]
-                if real_name != c_ip:
-                    check_names.append(real_name)
+        # if self.__force_resolve:
+        #    # try to map IPs and names to devices
+        #    if c_ip in self.__ip_lut:
+        #        real_name = self.__ip_lut[c_ip]
+        #        if real_name != c_ip:
+        #            check_names.append(real_name)
         for c_name in check_names:
             if self.__client_dict.get(c_name, None) != c_type and c_port == self.__hm_port:
                 self.log("setting client '{}:{:d}' to '{}'".format(c_name, c_port, c_type))
@@ -225,7 +237,11 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         cur_time = time.time()
         new_list = []
         if self.__delayed:
-            self.log("{} in delayed queue".format(logging_tools.get_plural("object", len(self.__delayed))))
+            self.log(
+                "{} in delayed queue".format(
+                    logging_tools.get_plural("object", len(self.__delayed))
+                )
+            )
             for cur_del in self.__delayed:
                 if cur_del.Meta.use_popen:
                     if cur_del.finished():
@@ -256,7 +272,12 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             self.main_socket.send_unicode(self.__local_syncer_uuid, zmq.SNDMORE)
             self.main_socket.send_unicode(str(srv_com))
         except:
-            self.log("cannot send to local syncer: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "cannot send to local syncer: {}".format(
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def send_result(self, src_id, ret_str):
         self.sender_socket.send_unicode(src_id, zmq.SNDMORE)
@@ -264,9 +285,9 @@ class RelayCode(ICSWBasePool, HMHRMixin):
 
     def _init_ipc_sockets(self):
         # init IP lookup table
-        if self.__force_resolve:
-            self.__ip_lut = {}
-            self.__forward_lut = {}
+        # if self.__force_resolve:
+        #    self.__ip_lut = {}
+        #    self.__forward_lut = {}
         self.__num_messages = 0
         # nhm (not host monitoring) dictionary for timeout
         self.__nhm_dict = {}
@@ -306,7 +327,10 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 try:
                     os.unlink(file_name)
                 except:
-                    self.log("... {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "... {}".format(process_tools.get_except_info()),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
             wait_iter = 0
             while os.path.exists(file_name) and wait_iter < 100:
                 self.log("socket {} still exists, waiting".format(sock_name))
@@ -489,7 +513,9 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                         logging_tools.LOG_LEVEL_ERROR
                     )
                     self.sender_socket.send_unicode(src_id, zmq.SNDMORE)
-                    self.sender_socket.send_unicode("{:d}\0resolve error".format(limits.mon_STATE_CRITICAL))
+                    self.sender_socket.send_unicode(
+                        "{:d}\0resolve error".format(limits.mon_STATE_CRITICAL)
+                    )
                 else:
                     _e = srv_com.builder()
                     srv_com[""].append(_e.host_unresolved(t_host))
@@ -505,24 +531,23 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                     if int(srv_com["*port"]) == self.__hm_port:
                         c_state = self.__client_dict.get(t_host, self.__client_dict.get(ip_addr, None))
                         # just for debug runs
-                        # c_state = "T"
                         if c_state is None:
                             # not needed
                             # HostConnection.delete_hc(srv_com)
                             if t_host not in self.__last_tried:
-                                self.__last_tried[t_host] = "0" if self.__default_0mq else "T"
+                                self.__last_tried[t_host] = ConnectionType.zmq if self.__default_0mq else ConnectionType.tcp
                             else:
                                 self.__last_tried[t_host] = {
-                                    "T": "0",
-                                    "0": "T",
+                                    ConnectionType.tcp: ConnectionType.zmq,
+                                    ConnectionType.zmq: ConnectionType.tcp,
                                 }[self.__last_tried[t_host]]
                             c_state = self.__last_tried[t_host]
                         con_mode = c_state
                     else:
-                        con_mode = "0"
+                        con_mode = ConnectionType.zmq
                     full_con_mode = {
-                        "0": "zeromMQ",
-                        "T": "TCP",
+                        ConnectionType.zmq: "zeroMQ",
+                        ConnectionType.tcp: "TCP",
                     }
                     # con_mode = "0"
                     # decide which code to use
@@ -541,13 +566,13 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                         self._handle_local_ping(src_id, srv_com)
                     elif int(srv_com["port"].text) != self.__hm_port:
                         # connect to non-host-monitoring service
-                        if con_mode == "0":
+                        if con_mode == ConnectionType.zmq:
                             self._send_to_nhm_service(src_id, srv_com, xml_input)
                         else:
                             self._send_to_old_nhm_service(src_id, srv_com, xml_input)
-                    elif con_mode == "0":
+                    elif con_mode == ConnectionType.zmq:
                         self._send_to_client(src_id, srv_com, xml_input)
-                    elif con_mode == "T":
+                    elif con_mode == ConnectionType.tcp:
                         self._send_to_old_client(src_id, srv_com, xml_input)
                     else:
                         self.log(
@@ -571,9 +596,18 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         self.__num_messages += 1
         if self.__num_messages % 1000 == 0:
             pid_list = sorted(list(set(self.CC.msi_block.pids)))
-            self.log("memory usage is {} after {}".format(
-                ", ".join(["{:d}={:s}".format(cur_pid, logging_tools.get_size_str(process_tools.get_mem_info(cur_pid))) for cur_pid in pid_list]),
-                logging_tools.get_plural("message", self.__num_messages))
+            self.log(
+                "memory usage is {} after {}".format(
+                    ", ".join(
+                        [
+                            "{:d}={:s}".format(
+                                cur_pid,
+                                logging_tools.get_size_str(process_tools.get_mem_info(cur_pid))
+                            ) for cur_pid in pid_list
+                        ]
+                    ),
+                    logging_tools.get_plural("message", self.__num_messages)
+                )
             )
 
     def _ext_com_result(self, sub_s):
@@ -582,6 +616,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             self.log(" {:2d} {}".format(line_num + 1, line))
 
     def _send_to_client(self, src_id, srv_com, xml_input):
+        # send to host-monitor
         _host = srv_com["*host"]
         com_name = srv_com["*command"]
         # generate new xml from srv_com
@@ -597,10 +632,12 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             )
             ZMQDiscovery.vanished.remove(conn_str)
             # get current connection
-            cur_hc = HostConnection.get_hc_0mq(conn_str, "ignore")
+            cur_hc = HostConnection.get_hc_0mq(conn_str, DUMMY_0MQ_ID)
             cur_hc._close()
         if ZMQDiscovery.has_mapping(conn_str):
-            id_str = ZMQDiscovery.get_mapping(conn_str)
+            id_str = ZMQDiscovery.get_connection_uuid(conn_str)
+            if ICSW_DEBUG_MODE:
+                self.log("conn_str {} has the cUUID {}".format(conn_str, id_str))
             cur_hc = HostConnection.get_hc_0mq(conn_str, id_str)
             cur_mes = cur_hc.add_message(HostMessage(com_name, src_id, srv_com, xml_input))
             if com_name in self.local_mc:
@@ -658,11 +695,22 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             try:
                 self.client.disconnect(conn_str)
             except:
-                self.log("error disconnecting {}: {}".format(conn_str, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error disconnecting {}: {}".format(
+                        conn_str,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 self.log("disconnected {}".format(conn_str))
         else:
-            self.log("connection {} not present in __nhm_connections, ignoring disconnect".format(conn_str), logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                "connection {} not present in __nhm_connections, ignoring disconnect".format(
+                    conn_str
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
 
     def _send_to_nhm_service(self, src_id, srv_com, xml_input, **kwargs):
         conn_str = "tcp://{}:{:d}".format(
@@ -676,12 +724,16 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 try:
                     self.client_socket.connect(conn_str)
                 except:
-                    self._send_result(src_id, "error connecting: {}".format(process_tools.get_except_info()), server_command.SRV_REPLY_STATE_CRITICAL)
+                    self._send_result(
+                        src_id,
+                        "error connecting: {}".format(process_tools.get_except_info()),
+                        server_command.SRV_REPLY_STATE_CRITICAL
+                    )
                 else:
                     self.log(
                         "connected ROUTER client to {} (id={})".format(
                             conn_str,
-                            ZMQDiscovery.get_mapping(conn_str),
+                            ZMQDiscovery.get_connection_uuid(conn_str),
                         )
                     )
                     connected = True
@@ -689,11 +741,23 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             if connected:
                 try:
                     if int(srv_com.get("raw_connect", "0")):
-                        self.client_socket.send_unicode(ZMQDiscovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)
-                        self.client_socket.send_unicode(srv_com["command"].text, zmq.DONTWAIT)
+                        self.client_socket.send_unicode(
+                            ZMQDiscovery.get_connection_uuid(conn_str),
+                            zmq.SNDMORE | zmq.DONTWAIT
+                        )
+                        self.client_socket.send_unicode(
+                            srv_com["command"].text,
+                            zmq.DONTWAIT
+                        )
                     else:
-                        self.client_socket.send_unicode(ZMQDiscovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)
-                        self.client_socket.send_unicode(str(srv_com), zmq.DONTWAIT)
+                        self.client_socket.send_unicode(
+                            ZMQDiscovery.get_connection_uuid(conn_str),
+                            zmq.SNDMORE | zmq.DONTWAIT
+                        )
+                        self.client_socket.send_unicode(
+                            str(srv_com),
+                            zmq.DONTWAIT
+                        )
                 except:
                     self._send_result(
                         src_id,
@@ -705,11 +769,17 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                     )
                 else:
                     if int(srv_com.get("raw_connect", "0")):
-                        self.__raw_nhm_dict[ZMQDiscovery.get_mapping(conn_str)] = (time.time(), srv_com)
+                        self.__raw_nhm_dict[
+                            ZMQDiscovery.get_connection_uuid(conn_str)
+                        ] = (time.time(), srv_com)
                     elif kwargs.get("register", True):
                         self.__nhm_dict[srv_com["identity"].text] = (time.time(), srv_com)
         elif ZMQDiscovery.is_pending(conn_str):
-            self._send_result(src_id, "0MQ discovery in progress", server_command.SRV_REPLY_STATE_CRITICAL)
+            self._send_result(
+                src_id,
+                "0MQ discovery in progress",
+                server_command.SRV_REPLY_STATE_CRITICAL
+            )
         else:
             ZMQDiscovery(srv_com, src_id, xml_input)
 
@@ -732,6 +802,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             )
 
     def _recv_nhm_result(self, zmq_sock):
+        # receive result from non-host-monitor target
         data = []
         while True:
             data.append(zmq_sock.recv())
@@ -747,7 +818,10 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             else:
                 srv_result = server_command.srv_command(source=data[1])
                 if "command" in srv_result and srv_result["*command"] in ["relayer_info"]:
-                    self.log("relayer_info command no longer supported", logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "relayer_info command no longer supported",
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                 elif "identity" in srv_result:
                     cur_id = srv_result["identity"].text
                     if cur_id in self.__nhm_dict:
@@ -756,7 +830,9 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                             self._send_result(
                                 cur_id,
                                 srv_result["result"].attrib["reply"],
-                                server_command.srv_reply_to_nag_state(int(srv_result["result"].attrib["state"]))
+                                server_command.srv_reply_to_nag_state(
+                                    int(srv_result["result"].attrib["state"])
+                                )
                             )
                         else:
                             self._send_result(
@@ -813,7 +889,11 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 )
 
     def send_passive_results_to_master(self, result_list):
-        self.log("sending {} to master".format(logging_tools.get_plural("passive result", len(result_list))))
+        self.log(
+            "sending {} to master".format(
+                logging_tools.get_plural("passive result", len(result_list))
+            )
+        )
         srv_com = server_command.srv_command(
             command="passive_check_results"
         )

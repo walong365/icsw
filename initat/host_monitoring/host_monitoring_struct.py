@@ -31,8 +31,15 @@ import pprint
 import zmq
 
 from initat.tools import logging_tools, process_tools, server_command
+from initat.debug import ICSW_DEBUG_MODE
 from . import limits
-from .constants import MAX_0MQ_CONNECTION_ERRORS
+from .constants import MAX_0MQ_CONNECTION_ERRORS, HostConnectionReTriggerEnum
+
+if ICSW_DEBUG_MODE:
+    MAX_0MQ_CONNECTION_ERRORS = 3
+
+
+DUMMY_0MQ_ID = "ms"
 
 
 class ExtReturn(object):
@@ -182,23 +189,26 @@ class SRProbe(object):
         self.__val["recv"] += val
 
 
-class HostConnectionReTriggerEnum(Enum):
-    no = "no"
-    init = "init"
-    sent = "sent"
-
-
 class HostConnection(object):
-    __slots__ = ["zmq_id", "tcp_con", "sr_probe", "__open", "__conn_str", "messages", "zmq_conn_errors", "retrigger_state"]
+    __slots__ = [
+        "zmq_id", "tcp_con", "sr_probe", "__open", "__conn_str", "messages",
+        "zmq_conn_errors", "retrigger_state", "zmq_conn_count",
+    ]
 
-    def __init__(self, conn_str, **kwargs):
-        self.zmq_id = kwargs.get("zmq_id", "ms")
+    def __init__(self, conn_str: str, **kwargs):
+        """
+        connection to a host
+        :param conn_str:
+        :param kwargs:
+        """
+        self.zmq_id = kwargs.get("zmq_id", DUMMY_0MQ_ID)
         self.__conn_str = conn_str
         self.tcp_con = kwargs.get("dummy_connection", False)
         HostConnection.hc_dict[self.hc_dict_key] = self
         self.sr_probe = SRProbe(self)
         # number of consecutive 0MQ errors
         self.zmq_conn_errors = 0
+        self.zmq_conn_count = 0
         self.retrigger_state = HostConnectionReTriggerEnum.no
         self.messages = {}
         self.__open = False
@@ -217,90 +227,90 @@ class HostConnection(object):
     def __del__(self):
         pass
 
-    @staticmethod
-    def init(r_process, backlog_size, timeout, verbose, zmq_discovery):
-        HostConnection.relayer_process = r_process
+    @classmethod
+    def init(cls, r_process, backlog_size, timeout, zmq_discovery):
+        cls.relayer_process = r_process
         # 2 queues for 0MQ and tcp, 0MQ is (True, conn_str), TCP is (False, conn_str)
-        HostConnection.hc_dict = {}
+        cls.hc_dict = {}
         # lut to map message_ids to host_connections
-        HostConnection.message_lut = {}
-        HostConnection.backlog_size = backlog_size
-        HostConnection.timeout = timeout
-        HostConnection.verbose = verbose
-        HostConnection.g_log(
-            "backlog size is {:d}, timeout is {:d}, verbose is {}".format(
-                HostConnection.backlog_size,
-                HostConnection.timeout,
-                str(HostConnection.verbose),
+        cls.message_lut = {}
+        cls.backlog_size = backlog_size
+        cls.timeout = timeout
+        cls.g_log(
+            "backlog size is {:d}, timeout is {:d}".format(
+                cls.backlog_size,
+                cls.timeout,
             )
         )
         # router socket
         id_str = "relayer_rtr_{}".format(process_tools.get_machine_name())
         new_sock = process_tools.get_socket(
-            HostConnection.relayer_process.zmq_context,
+            cls.relayer_process.zmq_context,
             "ROUTER",
             identity=id_str,
             linger=0,
-            sndhwm=HostConnection.backlog_size,
-            rcvhwm=HostConnection.backlog_size,
-            backlog=HostConnection.backlog_size,
+            sndhwm=cls.backlog_size,
+            rcvhwm=cls.backlog_size,
+            backlog=cls.backlog_size,
             immediate=True,
         )
-        HostConnection.zmq_socket = new_sock
-        HostConnection.relayer_process.register_poller(new_sock, zmq.POLLIN, HostConnection.get_result)
+        cls.zmq_socket = new_sock
+        cls.relayer_process.register_poller(new_sock, zmq.POLLIN, cls.get_result)
         # ZMQDiscovery instance
-        HostConnection.zmq_discovery = zmq_discovery
+        cls.zmq_discovery = zmq_discovery
 
-    @staticmethod
-    def has_hc_0mq(conn_str, target_id="ms", **kwargs):
-        return (True, conn_str) in HostConnection.hc_dict
+    @classmethod
+    def has_hc_0mq(cls, conn_str, target_id=DUMMY_0MQ_ID, **kwargs):
+        return (True, conn_str) in cls.hc_dict
 
-    @staticmethod
-    def get_hc_0mq(conn_str, target_id="ms", **kwargs):
-        # print("+", conn_str, target_id)
-        # pprint.pprint(HostConnection.hc_dict)
-        if (True, conn_str) not in HostConnection.hc_dict:
-            if HostConnection.verbose > 1:
-                HostConnection.relayer_process.log("new 0MQ HostConnection for '{}'".format(conn_str))
-            cur_hc = HostConnection(conn_str, zmq_id=target_id, **kwargs)
+    @classmethod
+    def get_hc_0mq(cls, conn_str, target_id=DUMMY_0MQ_ID, **kwargs):
+        if (True, conn_str) not in cls.hc_dict:
+            if ICSW_DEBUG_MODE:
+                cls.relayer_process.log("new 0MQ HostConnection for '{}'".format(conn_str))
+            cur_hc = cls(conn_str, zmq_id=target_id, **kwargs)
         else:
-            cur_hc = HostConnection.hc_dict[(True, conn_str)]
+            cur_hc = cls.hc_dict[(True, conn_str)]
             if cur_hc.zmq_id != target_id:
                 cur_hc.zmq_id = target_id
         return cur_hc
 
-    @staticmethod
-    def get_hc_tcp(conn_str, **kwargs):
-        if (False, conn_str) not in HostConnection.hc_dict:
-            if HostConnection.verbose > 1:
-                HostConnection.relayer_process.log("new TCP HostConnection for '{}'".format(conn_str))
-            cur_hc = HostConnection(conn_str, **kwargs)
+    @classmethod
+    def get_hc_tcp(cls, conn_str, **kwargs):
+        if (False, conn_str) not in cls.hc_dict:
+            if ICSW_DEBUG_MODE:
+                cls.relayer_process.log("new TCP HostConnection for '{}'".format(conn_str))
+            cur_hc = cls(conn_str, **kwargs)
         else:
-            cur_hc = HostConnection.hc_dict[(False, conn_str)]
+            cur_hc = cls.hc_dict[(False, conn_str)]
         return cur_hc
 
-    @staticmethod
-    def check_timeout_global(id_discovery):
+    @classmethod
+    def check_timeout_global(cls, id_discovery):
         # global check_timeout function
         cur_time = time.time()
         id_discovery.check_timeout(cur_time)
         # check timeouts for all host connections
-        [cur_hc.check_timeout(cur_time) for cur_hc in HostConnection.hc_dict.values()]
+        [cur_hc.check_timeout(cur_time) for cur_hc in cls.hc_dict.values()]
 
-    @staticmethod
-    def global_close():
-        HostConnection.zmq_socket.close()
+    @classmethod
+    def global_close(cls):
+        cls.zmq_socket.close()
 
-    @staticmethod
-    def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        HostConnection.relayer_process.log("[hc] {}".format(what), log_level)
+    @classmethod
+    def g_log(cls, what, log_level=logging_tools.LOG_LEVEL_OK):
+        cls.relayer_process.log("[hc] {}".format(what), log_level)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         HostConnection.relayer_process.log("[hc {}] {}".format(self.__conn_str, what), log_level)
 
     def check_timeout(self, cur_time):
-        # check all messages for current HostConnection
-        to_messages = [cur_mes for cur_mes in self.messages.values() if cur_mes.check_timeout(cur_time, HostConnection.timeout)]
+        # check all messages for current cls
+        to_messages = [
+            cur_mes for cur_mes in self.messages.values() if cur_mes.check_timeout(
+                cur_time, HostConnection.timeout
+            )
+        ]
         if to_messages:
             for to_mes in to_messages:
                 self.return_error(
@@ -359,8 +369,14 @@ class HostConnection(object):
                         )
                     )
                 else:
+                    if self.zmq_conn_count == 0 and not HostConnection.zmq_discovery.get_machine_uuid(self.__conn_str):
+                        print("Miss")
+                        if self.retrigger_state == HostConnectionReTriggerEnum.no:
+                            self.retrigger_state = HostConnectionReTriggerEnum.init
+                    self.zmq_conn_count += 1
                     # print("*", was_opened)
                     # Todo, fixme: delay sending when connection was just openened
+                    # time.sleep(0.2)
                     send_str = str(host_mes.srv_com)
                     try:
                         HostConnection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT | zmq.SNDMORE)
@@ -371,7 +387,10 @@ class HostConnection(object):
                             self.retrigger_state = HostConnectionReTriggerEnum.init
                             _info = ", trigger 0MQ-ID fetch "
                         else:
-                            _info = ""
+                            _info = ", {:d} of {:d} ".format(
+                                self.zmq_conn_errors,
+                                MAX_0MQ_CONNECTION_ERRORS,
+                            )
                         self.return_error(
                             host_mes,
                             "connection error via ZMQ-ID '{}'{}({})".format(
@@ -380,31 +399,36 @@ class HostConnection(object):
                                 process_tools.get_except_info(),
                             ),
                         )
-                        if self.retrigger_state == HostConnectionReTriggerEnum.init:
-                            # check current state
-                            if HostConnection.zmq_discovery.has_mapping(self.conn_str) and not HostConnection.zmq_discovery.is_pending(self.conn_str):
-                                HostConnection.zmq_discovery(
-                                    server_command.srv_command(
-                                        conn_str=self.conn_str,
-                                    ),
-                                    src_id=None,
-                                    xml_input=True,
-                                )
-                            else:
-                                # not present, maybe another mapping request is running
-                                self.retrigger_state = HostConnectionReTriggerEnum.no
                     else:
                         self.zmq_conn_errors = 0
                         self.sr_probe.send = len(send_str)
                         host_mes.sr_probe = self.sr_probe
                         host_mes.sent = True
+                if self.retrigger_state == HostConnectionReTriggerEnum.init:
+                    # check current state
+                    self.retrigger_state = HostConnectionReTriggerEnum.sent
+                    if HostConnection.zmq_discovery.has_mapping(self.conn_str) and not HostConnection.zmq_discovery.is_pending(self.conn_str):
+                        self.log("triggering discovery run")
+                        HostConnection.zmq_discovery(
+                            server_command.srv_command(
+                                conn_str=self.conn_str,
+                            ),
+                            src_id=None,
+                            xml_input=True,
+                        )
+                    else:
+                        # not present, maybe another mapping request is running
+                        self.retrigger_state = HostConnectionReTriggerEnum.no
+                elif self.retrigger_state == HostConnectionReTriggerEnum.sent:
+                    self.retrigger_state = HostConnectionReTriggerEnum.no
+                    self.zmq_conn_errors = 0
             else:
                 # send to socket-thread for old clients
                 HostConnection.relayer_process.send_to_process(
                     "socket",
                     "connection",
                     host_mes.src_id,
-                    str(host_mes.srv_com)
+                    str(host_mes.srv_com),
                 )
 
     def send_result(self, host_mes, result=None):
@@ -436,26 +460,26 @@ class HostConnection(object):
         # self._close()
         # raise zmq.ZMQError()
 
-    @staticmethod
-    def get_result(zmq_sock):
+    @classmethod
+    def get_result(cls, zmq_sock):
         _src_id = zmq_sock.recv().decode("utf-8")
         cur_reply = server_command.srv_command(source=zmq_sock.recv())
         # print("*", _src_id)
         # print(cur_reply.pretty_print())
         HostConnection._handle_result(cur_reply)
 
-    @staticmethod
-    def _handle_result(result):
+    @classmethod
+    def _handle_result(cls, result):
         # print unicode(result)
         mes_id = result["relayer_id"].text
         # if mes_id in HostConnection.messages:
-        if mes_id in HostConnection.message_lut:
-            HostConnection.relayer_process._new_client(result["host"].text, int(result["port"].text))
+        if mes_id in cls.message_lut:
+            cls.relayer_process._new_client(result["host"].text, int(result["port"].text))
             if "host_unresolved" in result:
-                HostConnection.relayer_process._new_client(result["host_unresolved"].text, int(result["port"].text))
-            HostConnection.hc_dict[HostConnection.message_lut[mes_id]].handle_result(mes_id, result)
+                cls.relayer_process._new_client(result["host_unresolved"].text, int(result["port"].text))
+            cls.hc_dict[cls.message_lut[mes_id]].handle_result(mes_id, result)
         else:
-            HostConnection.g_log(
+            cls.g_log(
                 "got result for delayed id '{}'".format(
                     mes_id
                 ),
@@ -465,6 +489,18 @@ class HostConnection(object):
 
     def handle_result(self, mes_id, result):
         cur_mes = self.messages[mes_id]
+        if self.zmq_id != DUMMY_0MQ_ID:
+            if "machine_uuid" in result:
+                mach_uuid, dyn_uuid = (
+                    result["*machine_uuid"],
+                    result["*dynamic_uuid"],
+                )
+                HostConnection.zmq_discovery.update_mapping(
+                    self.__conn_str,
+                    self.zmq_id,
+                    mach_uuid,
+                    dyn_uuid
+                )
         if cur_mes.sent:
             cur_mes.sent = False
         if len(result.xpath(".//ns:raw", smart_strings=False)):
@@ -486,7 +522,6 @@ class HostConnection(object):
                 for line in exc_info.log_lines:
                     HostConnection.relayer_process.log(line, logging_tools.LOG_LEVEL_CRITICAL)
             self.send_result(cur_mes, ret)
-            # self.send_result(cur_mes, res_tuple)
 
     def _handle_old_result(self, mes_id, result, is_error):
         if mes_id in self.messages:
@@ -494,7 +529,10 @@ class HostConnection(object):
             if result.startswith("no valid") or is_error:
                 res_tuple = (limits.mon_STATE_CRITICAL, result)
             else:
-                HostConnection.relayer_process._old_client(cur_mes.srv_com["host"].text, int(cur_mes.srv_com["port"].text))
+                HostConnection.relayer_process._old_client(
+                    cur_mes.srv_com["host"].text,
+                    int(cur_mes.srv_com["port"].text)
+                )
                 try:
                     res_tuple = cur_mes.interpret_old(result)
                 except:

@@ -503,9 +503,9 @@ def device_pre_save(sender, **kwargs):
                         else:
                             # no meta device (i am the new meta device, ignore)
                             pass
-        if not valid_domain_re.match(cur_inst.name):
+        if not VALID_DOMAIN_REGEXP.match(cur_inst.name):
             # check if we can simple fix it
-            if not valid_domain_re.match(cur_inst.name.replace(" ", "_")):
+            if not VALID_DOMAIN_REGEXP.match(cur_inst.name.replace(" ", "_")):
                 raise ValidationError("illegal characters in name '{}'".format(cur_inst.name))
             else:
                 cur_inst.name = cur_inst.name.replace(" ", "_")
@@ -834,7 +834,7 @@ def device_group_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         if not cur_inst.name:
             raise ValidationError("name can not be zero")
-        if not valid_domain_re.match(cur_inst.name):
+        if not VALID_DOMAIN_REGEXP.match(cur_inst.name):
             raise ValidationError("invalid characters in '{}'".format(cur_inst.name))
 
 
