@@ -105,18 +105,6 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.device.info.tab.category">
-    <uib-tab-heading>
-        Categories{{ addon_text_nmd }}
-    </uib-tab-heading>
-    <icsw-device-category-overview
-        ng-if="active_tab == 'category'"
-        icsw-sel-man="{{ popupmode }}"
-        icsw-device-list="devicelist"
-    >
-    </icsw-device-category-overview>
-</script>
-
 <script type="text/ng-template" id="icsw.device.info.tab.location">
     <uib-tab-heading>
         Locations{{ addon_text_nmd }}
@@ -290,7 +278,7 @@
                 <div class="row">
                     <label class="control-label col-xs-3">
                         Categories
-                        <icsw-tools-button type="modify" size="xs" ng-click="modify_categories(false)" value=""></icsw-tools-button>
+                        <icsw-tools-button type="modify" size="xs" ng-click="modify_categories(false, $event)" value=""></icsw-tools-button>
                     </label>
                     <div class="col-xs-9">
                         {{ edit_obj.$$category_info }}
@@ -299,7 +287,7 @@
                 <div class="row" ng-if="has_valid_license('asset')">
                     <label class="control-label col-xs-3">
                         Asset Categories
-                        <icsw-tools-button type="modify" size="xs" ng-click="modify_categories(true)" value=""></icsw-tools-button>
+                        <icsw-tools-button type="modify" size="xs" ng-click="modify_categories(true, $event)" value=""></icsw-tools-button>
                     </label>
                     <div class="col-xs-9">
                         {{ edit_obj.$$asset_category_info }}
