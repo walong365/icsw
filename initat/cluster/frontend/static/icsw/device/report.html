@@ -4,40 +4,14 @@
 
 
 <script type="text/ng-template" id="icsw.device.report.overview">
-    <style>
-        .vertical-align {
-            vertical-align: middle !important;
-        }
-        .jstree-grid-col-1 {
-            height: 24px
-        }
-        .jstree-grid-col-2 {
-            height: 24px
-        }
-        .jstree-grid-line-height {
-            line-height: 2
-        }
-    </style>
     <div class="container-fluid">
         <div>
             <uib-tabset>
                 <uib-tab>
                     <uib-tab-heading>
-                        <span>File Explorer</span>
-                    </uib-tab-heading>
-                    <br/>
-                    <div class="panel panel-default">
-                        <div id="icsw_jstree" ng-controller='icswDeviceReportCtrl' class="panel-body" style="padding: 6px 15px">
-                            <div js-tree="treeConfig" ng-model="treeData" tree="treeInstance" tree-events="before_open:before_node_open;load_node:refresh_done"></div>
-                        </div>
-                    </div>
-                </uib-tab>
-                <uib-tab>
-                    <uib-tab-heading>
                         <span>Report Settings</span>
                     </uib-tab-heading>
                     <br/>
-
                     <label class="control-label">General Report Settings:</label>
                     <br/>
                     <div class="panel panel-default">

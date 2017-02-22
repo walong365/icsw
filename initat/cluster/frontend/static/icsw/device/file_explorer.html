@@ -1,0 +1,56 @@
+<script type="text/ng-template" id="icsw/file/explorer">
+    <icsw-file-explorer icsw-sel-man="0"></icsw-file-explorer>
+</script>
+
+
+<script type="text/ng-template" id="icsw.file.explorer">
+    <style>
+        .vertical-align {
+            vertical-align: middle !important;
+        }
+        .jstree-grid-col-1 {
+            height: 24px
+        }
+        .jstree-grid-col-2 {
+            height: 24px
+        }
+        .jstree-grid-line-height {
+            line-height: 2
+        }
+    </style>
+    <div class="container-fluid">
+        <uib-tabset>
+            <uib-tab>
+                <uib-tab-heading>
+                    <span>File Explorer</span>
+                </uib-tab-heading>
+                <br/>
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="panel panel-default">
+                            <div class="panel-body" style="padding: 6px 15px">
+                                <div js-tree="treeConfig" ng-model="treeData" tree-events="before_open:before_node_open;create_node:node_created"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div ng-if="file_lines.length > 0" class="panel panel-default" style="width:31%; height: 80%; overflow-x:scroll; overflow-y:scroll; position: fixed">
+                            <div class="panel-body">
+                                <table
+                                    class="table table-hover table-condensed table-striped"
+                                >
+                                    <tbody>
+                                        <tr ng-repeat="line in file_lines track by $index">
+                                            <td class="vertical-align">{{ $index }}</td>
+                                            <td class="vertical-align"><pre>{{ line }}</pre></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </uib-tab>
+        </uib-tabset>
+    </div>
+</script>

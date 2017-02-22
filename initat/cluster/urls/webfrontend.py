@@ -380,7 +380,9 @@ discovery_patterns = [
     url(r"^host_monitoring_status_loader$", discovery_views.HostMonitoringStatusLoader.as_view(), name="host_monitoring_status_loader"),
     url(r"^upload_update_file$", discovery_views.UploadUpdateFile.as_view(), name="upload_update_file"),
     url(r"^update_file_handler$", discovery_views.UpdateFileHandler.as_view(), name="update_file_handler"),
+    #todo: move somewhere better
     url(r"^get_file_node_tree$", discovery_views.DirectoryListHandler.as_view(), name="get_file_node_tree"),
+    url(r"^load_file_lines$", discovery_views.LoadFileLines.as_view(), name="load_file_lines"),
 ]
 
 rpl = []

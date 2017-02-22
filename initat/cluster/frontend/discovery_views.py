@@ -824,3 +824,17 @@ class DirectoryListHandler(View):
                 )
 
         return HttpResponse(json.dumps({"tree_nodes": tree_nodes, "new_start_node_id": start_node_id}))
+
+class LoadFileLines(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        path = request.POST.get("file_path")
+
+        lines = []
+        with open(path, "r") as f:
+            try:
+                lines = f.readlines()
+            except Exception as e:
+                _ = e
+
+        return HttpResponse(json.dumps({"lines": lines}))

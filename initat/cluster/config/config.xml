@@ -40,6 +40,14 @@
                 </description>
             </icswData>
         </route>
+        <route name="main.fileexplorer">
+            <stateData url="/file/explorer/" templateUrl="icsw/file/explorer"/>
+            <icswData pageTitle="File Explorer">
+                <description>
+                    <infoText language="en">Explore and view files of a directory</infoText>
+                </description>
+            </icswData>
+        </route>
         <route name="main.deviceinfo">
             <stateData url="/deviceinfo" templateUrl="icsw/simple/device/info"/>
             <icswData pageTitle="Device Information">
@@ -768,6 +776,7 @@
                 <menuEntry icon="fa-code" name="Variables" routeName="main.devvars"/>
                 <menuEntry icon="fa-code-fork" routeName="main.kpisettings" name="KPI" limitedTo="NOCTUA"/>
                 <menuEntry icon="fa-wrench" routeName="main.monitorbasics" name="Monitoring" limitedTo="NOCTUA"/>
+                <menuEntry icon="fa-road" routeName="main.fileexplorer" name="File Explorer" limitedTo="NOCTUA"/>
                 <!-- <menuEntry icon="fa-eye" name="Monitoring" routeName="main.monitorbuildinfo"/> -->
             </routeSubGroup>
             <routeSubGroup name="Server" newcol_bool="yes">
