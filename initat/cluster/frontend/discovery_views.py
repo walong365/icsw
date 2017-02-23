@@ -763,36 +763,61 @@ class DirectoryListHandler(View):
 
     @method_decorator(login_required)
     def post(self, request):
-        import os, stat, magic
-        directories = request.POST.getlist("directories[]")
+        import os
+        import stat
+        import magic
+
+        directory = request.POST.get("directory")
+        root_node_name = request.POST.get("root_node_name")
         start_node_id = int(request.POST.get("start_node_id"))
-        node_names = request.POST.getlist("node_names[]", None)
+        load_child_nodes = bool(int(request.POST.get("load_child_nodes")))
 
-        tree_nodes = []
+        child_nodes = []
+        new_root_node = None
+        dummy_node = None
 
-        if not node_names:
-            root_node_name = "icsw{}".format(start_node_id)
-            node_names = [root_node_name]
+        if not load_child_nodes:
+            node_text = request.POST.get("node_text")
+
+            node_id = "icsw{}".format(start_node_id)
             start_node_id += 1
 
-            tree_nodes.append(
-                {"id": root_node_name,
-                 "parent": '#',
-                 "text": "/",
-                 "state": {"opened": False},
-                 "type": "folder",
-                 "full_path": directories[0],
-                 "children_loaded": True,
-                 "data": {
-                            "size": "{} items".format(len(os.listdir(directories[0]))),
-                            "type": "Folder"
-                         },
-                 },
-            )
+            children_loaded = True
+            if len(os.listdir(directory)):
+                children_loaded = False
 
-        for i in range(len(directories)):
-            directory = directories[i]
-            root_node_name = node_names[i]
+            new_root_node = {"id": node_id,
+                             "parent": root_node_name,
+                             "text": node_text,
+                             "state": {"opened": False},
+                             "type": "folder",
+                             "full_path": directory,
+                             "children_loaded": children_loaded,
+                             "dummy_node_id": None,
+                             "data": {
+                                         "size": "{} items".format(len(os.listdir(directory))),
+                                         "type": "Folder"
+                                     }
+                             }
+
+            if not children_loaded:
+                node_id = "icsw{}".format(start_node_id)
+                start_node_id += 1
+                dummy_node = {"id": node_id,
+                              "parent": new_root_node["id"],
+                              "text": "dummy",
+                              "state": {"opened": False},
+                              "type": "folder",
+                              "full_path": "/",
+                              "children_loaded": True,
+                              "dummy_node_id": None,
+                              "data": {
+                                          "size": "0 items",
+                                          "type": "Folder"
+                                      },
+                              }
+                new_root_node["dummy_node_id"] = dummy_node["id"]
+        else:
             for filename in os.listdir(directory):
                 full_path = os.path.join(directory, filename)
                 file_type = "file"
@@ -811,30 +836,48 @@ class DirectoryListHandler(View):
 
                 node_id = "icsw{}".format(start_node_id)
                 start_node_id += 1
-                tree_nodes.append(
-                    {"id": node_id,
-                     "parent": root_node_name,
-                     "text": filename,
-                     "state": {"opened": False},
-                     "type": file_type,
-                     "full_path": full_path,
-                     "children_loaded": children_loaded,
-                     "data": {"size": size_string, "type": type_string},
-                     },
-                )
+                new_root_node = {"id": node_id,
+                                 "parent": root_node_name,
+                                 "text": filename,
+                                 "state": {"opened": False},
+                                 "type": file_type,
+                                 "full_path": full_path,
+                                 "children_loaded": children_loaded,
+                                 "dummy_node_id": None,
+                                 "data": {"size": size_string, "type": type_string}}
+                child_nodes.append(new_root_node)
 
-        return HttpResponse(json.dumps({"tree_nodes": tree_nodes, "new_start_node_id": start_node_id}))
+                if not children_loaded:
+                    node_id = "icsw{}".format(start_node_id)
+                    start_node_id += 1
+                    dummy_node = {"id": node_id,
+                                  "parent": new_root_node["id"],
+                                  "text": "dummy",
+                                  "state": {"opened": False},
+                                  "type": "folder",
+                                  "full_path": "/",
+                                  "children_loaded": True,
+                                  "dummy_node_id": None,
+                                  "data": {"size": "0 items", "type": "Folder"}}
+                    new_root_node["dummy_node_id"] = dummy_node["id"]
+                    child_nodes.append(dummy_node)
+
+        return HttpResponse(json.dumps({"new_root_node": new_root_node,
+                                        "child_nodes": child_nodes,
+                                        "dummy_node": dummy_node,
+                                        "new_start_node_id": start_node_id}))
+
 
 class LoadFileLines(View):
     @method_decorator(login_required)
     def post(self, request):
         path = request.POST.get("file_path")
 
-        lines = []
+        string = None
         with open(path, "r") as f:
             try:
-                lines = f.readlines()
+                string = f.read().strip()
             except Exception as e:
                 _ = e
 
-        return HttpResponse(json.dumps({"lines": lines}))
+        return HttpResponse(json.dumps({"file_string": string}))

@@ -1,5 +1,5 @@
 <script type="text/ng-template" id="icsw/file/explorer">
-    <icsw-file-explorer icsw-sel-man="0"></icsw-file-explorer>
+    <icsw-file-explorer></icsw-file-explorer>
 </script>
 
 
@@ -18,39 +18,22 @@
             line-height: 2
         }
     </style>
-    <div class="container-fluid">
-        <uib-tabset>
-            <uib-tab>
-                <uib-tab-heading>
-                    <span>File Explorer</span>
-                </uib-tab-heading>
-                <br/>
-                <div class="row">
-                    <div class="col-md-8">
-                        <div class="panel panel-default">
-                            <div class="panel-body" style="padding: 6px 15px">
-                                <div js-tree="treeConfig" ng-model="treeData" tree-events="before_open:before_node_open;create_node:node_created"></div>
-                            </div>
-                        </div>
+    <br/>
+    <div ng-controller="icswFileExplorerCtrl" class="container-fluid">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="panel panel-default" style="width: 65%; height: 85%; position: fixed">
+                    <div class="panel-heading">
+                        Path: <input type="text" style="width:95%" name="root_path" ng-model="root_path" ng-change="root_path_changed()" placeholder="Enter the (full) path you wish to list here." ng-model-options='{ debounce: 2000 }'>
                     </div>
-                    <div class="col-md-4">
-                        <div ng-if="file_lines.length > 0" class="panel panel-default" style="width:31%; height: 80%; overflow-x:scroll; overflow-y:scroll; position: fixed">
-                            <div class="panel-body">
-                                <table
-                                    class="table table-hover table-condensed table-striped"
-                                >
-                                    <tbody>
-                                        <tr ng-repeat="line in file_lines track by $index">
-                                            <td class="vertical-align">{{ $index }}</td>
-                                            <td class="vertical-align"><pre>{{ line }}</pre></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    <div class="panel-body" style="padding: 6px 15px; width: 65%; height: 80%; overflow-y:scroll; position: fixed">
+                        <div js-tree="treeConfig" tree="treeInstance" ng-model="treeData" tree-events="after_open:after_node_open;create_node:node_created"></div>
                     </div>
                 </div>
-            </uib-tab>
-        </uib-tabset>
+            </div>
+            <div class="col-md-4">
+                <pre ng-if="file_string != undefined" style="width:31%; height: 85%; overflow-x:scroll; overflow-y:scroll; position: fixed">{{ file_string }}</pre>
+            </div>
+        </div>
     </div>
 </script>
