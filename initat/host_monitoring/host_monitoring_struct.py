@@ -369,23 +369,29 @@ class HostConnection(object):
                         )
                     )
                 else:
-                    if self.zmq_conn_count == 0 and not HostConnection.zmq_discovery.get_machine_uuid(self.__conn_str):
+                    print("start, count=", self.zmq_conn_count, HostConnection.zmq_discovery.get_machine_uuid(self.__conn_str))
+                    if self.zmq_conn_count % 4 == 0 and not HostConnection.zmq_discovery.get_machine_uuid(self.__conn_str):
                         print("Miss")
                         if self.retrigger_state == HostConnectionReTriggerEnum.no:
+                            self.log("no machine uuid set, triggering 0MQ fetch")
                             self.retrigger_state = HostConnectionReTriggerEnum.init
                     self.zmq_conn_count += 1
                     # print("*", was_opened)
                     # Todo, fixme: delay sending when connection was just openened
                     # time.sleep(0.2)
                     send_str = str(host_mes.srv_com)
+
                     try:
                         HostConnection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT | zmq.SNDMORE)
                         HostConnection.zmq_socket.send_unicode(send_str, zmq.DONTWAIT)
                     except:
                         self.zmq_conn_errors += 1
-                        if self.zmq_conn_errors == MAX_0MQ_CONNECTION_ERRORS and self.retrigger_state == HostConnectionReTriggerEnum.no:
-                            self.retrigger_state = HostConnectionReTriggerEnum.init
-                            _info = ", trigger 0MQ-ID fetch "
+                        if self.zmq_conn_errors >= MAX_0MQ_CONNECTION_ERRORS:
+                            if self.retrigger_state == HostConnectionReTriggerEnum.no:
+                                self.retrigger_state = HostConnectionReTriggerEnum.init
+                                _info = ", trigger 0MQ-ID fetch "
+                            else:
+                                _info = ", waiting for 0MQ fetch"
                         else:
                             _info = ", {:d} of {:d} ".format(
                                 self.zmq_conn_errors,
@@ -416,9 +422,6 @@ class HostConnection(object):
                             src_id=None,
                             xml_input=True,
                         )
-                    else:
-                        # not present, maybe another mapping request is running
-                        self.retrigger_state = HostConnectionReTriggerEnum.no
                 elif self.retrigger_state == HostConnectionReTriggerEnum.sent:
                     self.retrigger_state = HostConnectionReTriggerEnum.no
                     self.zmq_conn_errors = 0
@@ -489,19 +492,23 @@ class HostConnection(object):
 
     def handle_result(self, mes_id, result):
         cur_mes = self.messages[mes_id]
+        # default: nor reuse (detection not possible or not important)
+        _reuse = False
         if self.zmq_id != DUMMY_0MQ_ID:
             if "machine_uuid" in result:
                 mach_uuid, dyn_uuid = (
                     result["*machine_uuid"],
                     result["*dynamic_uuid"],
                 )
-                HostConnection.zmq_discovery.update_mapping(
+                # reuse detected ?
+                _reuse = HostConnection.zmq_discovery.update_mapping(
                     self.__conn_str,
                     self.zmq_id,
                     mach_uuid,
                     dyn_uuid
                 )
         if cur_mes.sent:
+            # ???
             cur_mes.sent = False
         if len(result.xpath(".//ns:raw", smart_strings=False)):
             # raw response, no interpret
@@ -510,7 +517,18 @@ class HostConnection(object):
             # self.send_result(cur_mes, None)
         else:
             try:
-                ret = ExtReturn.get_ext_return(cur_mes.interpret(result))
+                if _reuse:
+                    _map = HostConnection.zmq_discovery.get_mapping(self.__conn_str)
+                    print(id(_map))
+                    ret = ExtReturn(
+                        limits.mon_STATE_CRITICAL,
+                        "0MQ-ID reuse detected ({})".format(
+                            _map.reuse_info,
+                        )
+                    )
+                    _map.clear_reuse()
+                else:
+                    ret = ExtReturn.get_ext_return(cur_mes.interpret(result))
             except:
                 ret = ExtReturn(
                     limits.mon_STATE_CRITICAL,

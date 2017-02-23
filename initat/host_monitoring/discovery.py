@@ -25,6 +25,7 @@
 import os
 import re
 import time
+import pprint
 
 import zmq
 from lxml import etree
@@ -42,11 +43,12 @@ CS_RE = re.compile("tcp://(?P<address>[^:]+):(?P<port>\d+).*$")
 
 
 class ZMQMapping(object):
-    def __init__(self, conn_str, conn_id, mach_id, dyn_id):
+    def __init__(self, conn_str):
+        # stores the ID per connection string
+        # conn_str -> (conn_id, mach_id, dyn_id)
         self._conn_str = conn_str
-        self._conn_id = conn_id
-        self._mach_id = mach_id
-        self._dyn_id = dyn_id
+        for attr_name in {"conn", "mach", "dyn"}:
+            setattr(self, "_{}_id".format(attr_name), "")
         # parse connection string
         _csm = CS_RE.match(self._conn_str)
         if _csm is None:
@@ -58,6 +60,7 @@ class ZMQMapping(object):
             )
         self.address = _csm.group("address")
         self.port = int(_csm.group("port"))
+        self.clear_reuse()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         ZMQMapping.discovery_class.relayer_process.log(
@@ -68,9 +71,37 @@ class ZMQMapping(object):
             log_level,
         )
 
+    def clear_reuse(self):
+        self.reuse_detected = False
+        self.reuse_info = "no reuse"
+
     @classmethod
     def init(cls, discovery_class):
+        # recorded values of dyn_ids
+        cls.conn_id_stream = {}
         cls.discovery_class = discovery_class
+
+    @classmethod
+    def feed_dynamic_id(cls, map_obj):
+        conn_id, dyn_id = (map_obj.connection_uuid, map_obj.dynamic_uuid)
+        pprint.pprint(cls.conn_id_stream)
+        if conn_id not in cls.conn_id_stream:
+            cls.conn_id_stream[conn_id] = [dyn_id]
+            _reuse = False
+        else:
+            if dyn_id == cls.conn_id_stream[conn_id][-1]:
+                # same id, no change
+                _reuse = False
+            elif dyn_id in cls.conn_id_stream[conn_id]:
+                # id was recorded bevore, signal
+                _reuse = True
+            else:
+                # add to stream
+                if len(cls.conn_id_stream[conn_id]) > 10:
+                    cls.conn_id_stream[conn_id].pop(0)
+                cls.conn_id_stream[conn_id].append(dyn_id)
+                _reuse = True
+        map_obj.reuse_detected = _reuse
 
     @property
     def connection_uuid(self):
@@ -85,7 +116,6 @@ class ZMQMapping(object):
         return self._dyn_id
 
     def update(self, conn_id, mach_id, dyn_id):
-        _update_db = False
         change_list = set()
         for (new_val, attr_name, full_name) in [
             (conn_id, "_conn_id", "connection id"),
@@ -103,13 +133,14 @@ class ZMQMapping(object):
                     ),
                     logging_tools.LOG_LEVEL_WARN
                 )
-                setattr(self, "_prev_{}".format(attr_name), old_val)
                 setattr(self, attr_name, new_val)
-                _update_db = True
+        if self.dynamic_uuid:
+            # check for dyn_id changes
+            ZMQMapping.feed_dynamic_id(self)
+        else:
+            self.reuse_detected = False
         self._changes = change_list
-        print("*", self._changes)
-        return _update_db
-        # print("*", conn_id, "->", self._conn_id)
+        return True if (change_list or self.reuse_detected) else False
 
 
 class ZMQDiscovery(object):
@@ -249,14 +280,14 @@ class ZMQDiscovery(object):
                     )
                 else:
                     mach_uuid, dyn_uuid = (
-                        None, None
+                        "", "",
                     )
                 ZMQDiscovery.update_mapping(self.conn_str, zmq_id, mach_uuid, dyn_uuid)
-                ZMQDiscovery.db_map.add_mapping(
-                    self.host,
-                    self.port,
-                    zmq_id,
-                )
+                # ZMQDiscovery.db_map.add_mapping(
+                #    self.host,
+                #    self.port,
+                #    zmq_id,
+                # )
                 if self.src_id:
                     # reinject
                     if self.port == self.hm_port:
@@ -314,12 +345,12 @@ class ZMQDiscovery(object):
                         _gd["addr"],
                         int(_gd["port"]),
                     )
-                    cls._mapping[conn_str] = ZMQMapping(conn_str, cls.CS[key], None, None)
-                    cls.db_map.add_mapping(
-                        _gd["addr"],
-                        int(_gd["port"]),
-                        cls.CS[key],
-                    )
+                    # cls._mapping[conn_str] = ZMQMapping(conn_str, cls.CS[key], None, None)
+                    # cls.db_map.add_mapping(
+                    #    _gd["addr"],
+                    #    int(_gd["port"]),
+                    #    cls.CS[key],
+                    # )
                 else:
                     _log("error interpreting key {}".format(key))
         elif os.path.isfile(MAPPING_FILE_IDS):
@@ -337,12 +368,12 @@ class ZMQDiscovery(object):
                                 host_el.get("address"),
                                 uuid_el.get("port"),
                             )
-                            cls._mapping[conn_str] = ZMQMapping(conn_str, uuid_el.text, None, None)
-                            cls.db_map.add_mapping(
-                                host_el.get("address"),
-                                int(uuid_el.get("port")),
-                                uuid_el.text,
-                            )
+                            # cls._mapping[conn_str] = ZMQMapping(conn_str, uuid_el.text, None, None)
+                            # cls.db_map.add_mapping(
+                            #    host_el.get("address"),
+                            #    int(uuid_el.get("port")),
+                            #    uuid_el.text,
+                            # )
             else:
                 # old format
                 map_lines = [
@@ -407,15 +438,19 @@ class ZMQDiscovery(object):
         return cls.db_map.get_0mq_addrs(cls.hm_port)
 
     @classmethod
+    def get_mapping(cls, conn_str):
+        return cls._mapping[conn_str]
+
+    @classmethod
     def update_mapping(cls, conn_str, conn_id, machine_id, dynamic_id):
-        if conn_str in cls._mapping:
-            print("upd")
-            if cls._mapping[conn_str].update(conn_id, machine_id, dynamic_id):
-                # something has changed, force update to database
-                cls.db_map.update_mapping(cls._mapping[conn_str])
-        else:
-            cls._mapping[conn_str] = ZMQMapping(conn_str, conn_id, machine_id, dynamic_id)
-        print("+", conn_str, conn_id, machine_id, dynamic_id)
+        if conn_str not in cls._mapping:
+            cls._mapping[conn_str] = ZMQMapping(conn_str)
+        map_obj = cls._mapping[conn_str]
+        if map_obj.update(conn_id, machine_id, dynamic_id):
+            # something has changed, force update to database
+            cls.db_map.update_mapping(map_obj)
+        return map_obj.reuse_detected
+        # print("+", conn_str, conn_id, machine_id, dynamic_id)
 
     @classmethod
     def set_initial_mapping(cls, conn_str, con_uuid, mach_uuid, dyn_uuid):

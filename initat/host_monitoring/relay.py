@@ -160,13 +160,10 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                     )
 
     def _init_filecache(self):
-        self.__last_tried = {}
         self.__client_dict = {
             _key: ConnectionType.zmq for _key in ZMQDiscovery.get_hm_0mq_addrs()
         }
         print("*", self.__client_dict.keys())
-        # default 0MQ enabled
-        self.__default_0mq = False
 
     def _new_client(self, c_ip, c_port):
         self._set_client_state(c_ip, c_port, ConnectionType.zmq)
@@ -534,17 +531,11 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                         if c_state is None:
                             # not needed
                             # HostConnection.delete_hc(srv_com)
-                            if t_host not in self.__last_tried:
-                                self.__last_tried[t_host] = ConnectionType.zmq if self.__default_0mq else ConnectionType.tcp
-                            else:
-                                self.__last_tried[t_host] = {
-                                    ConnectionType.tcp: ConnectionType.zmq,
-                                    ConnectionType.zmq: ConnectionType.tcp,
-                                }[self.__last_tried[t_host]]
-                            c_state = self.__last_tried[t_host]
-                        con_mode = c_state
+                            con_modes = [ConnectionType.zmq, ConnectionType.tcp]
+                        else:
+                            con_modes = [c_state]
                     else:
-                        con_mode = ConnectionType.zmq
+                        con_modes = [ConnectionType.zmq]
                     full_con_mode = {
                         ConnectionType.zmq: "zeroMQ",
                         ConnectionType.tcp: "TCP",
@@ -556,7 +547,11 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                             "connection to '{}:{:d}' via {}".format(
                                 t_host,
                                 int(srv_com["port"].text),
-                                full_con_mode[con_mode],
+                                ", ".join(
+                                    [
+                                        full_con_mode[_mode] for _mode in con_modes
+                                    ]
+                                ),
                             )
                         )
                     _host = srv_com["*host"]
@@ -566,17 +561,18 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                         self._handle_local_ping(src_id, srv_com)
                     elif int(srv_com["port"].text) != self.__hm_port:
                         # connect to non-host-monitoring service
-                        if con_mode == ConnectionType.zmq:
-                            self._send_to_nhm_service(src_id, srv_com, xml_input)
-                        else:
-                            self._send_to_old_nhm_service(src_id, srv_com, xml_input)
-                    elif con_mode == ConnectionType.zmq:
+                        for con_mode in con_modes:
+                            if con_mode == ConnectionType.zmq:
+                                self._send_to_nhm_service(src_id, srv_com, xml_input)
+                            else:
+                                self._send_to_old_nhm_service(src_id, srv_com, xml_input)
+                    elif con_modes[0] == ConnectionType.zmq:
                         self._send_to_client(src_id, srv_com, xml_input)
-                    elif con_mode == ConnectionType.tcp:
+                    elif con_modes[0] == ConnectionType.tcp:
                         self._send_to_old_client(src_id, srv_com, xml_input)
                     else:
                         self.log(
-                            "unknown con_mode '{}', error".format(con_mode),
+                            "unknown con_modes '{}', error".format(str(con_modes)),
                             logging_tools.LOG_LEVEL_CRITICAL
                         )
                     if self.__verbose:

@@ -70,33 +70,41 @@ class MappingDB(object):
 
     def check_schema(self, conn):
         _descr = conn.execute("PRAGMA table_info(state)").fetchall()
+        # schema:
+        # device: one entry per device (== unique machine uuid)
+        # connection: one or more per device
         # print(_descr)
         _table_dict = {
             "schema_version": [
                 "version INTEGER NOT NULL",
             ],
-            "uuid": [
-                "idx INTEGER PRIMARY KEY NOT NULL",
-                # connection uuid with server part
-                "connection_uuid TEXT NOT NULL UNIQUE",
-                "machine_uuid TEXT default ''",
-                "dynamic_uuid TEXT default ''",
-                "server TEXT NOT NULL default ''",
-                "changed INTEGER default 0",
-                "created INTEGER NOT NULL",
-            ],
             "device": [
                 "idx INTEGER PRIMARY KEY NOT NULL",
-                "uuid INTEGER",
-                "ip TEXT NOT NULL",
-                "port INTEGER NOT NULL default 0",
+                # machine uuid
+                "machine_uuid TEXT NOT NULL UNIQUE",
                 "created INTEGER NOT NULL",
                 "last_update INTEGER default 0",
-                "FOREIGN KEY(uuid) REFERENCES uuid(idx)",
+            ],
+            "connection": [
+                "idx INTEGER PRIMARY KEY NOT NULL",
+                # connection uuid with server part
+                "connection_uuid TEXT NOT NULL",
+                # updated when the target HM restarts
+                "dynamic_uuid TEXT default ''",
+                # ip or name
+                "address TEXT NOT NULL",
+                "port INTEGER NOT NULL default 0",
+                # server specifier (empty in most cases)
+                "server TEXT NOT NULL default ''",
+                # link to device
+                "device INTEGER",
+                "changed INTEGER default 0",
+                "created INTEGER NOT NULL",
+                "FOREIGN KEY(device) REFERENCES device(idx)",
             ],
         }
         _index_list = [
-            "uuid(connection_uuid)",
+            "connection(connection_uuid)",
         ]
         all_tables = {
             _entry[0]: _entry[1] for _entry in conn.execute(
@@ -155,8 +163,9 @@ class MappingDB(object):
 
     def clear(self):
         self.log("clearing database")
+        return
         with self.get_cursor(cached=False) as cursor:
-            cursor.execute("DELETE FROM uuid")
+            cursor.execute("DELETE FROM device")
 
     def add_mapping(self, address: str, port: int, uuid: str):
         if not uuid.startswith("urn:uuid:"):
@@ -185,13 +194,13 @@ class MappingDB(object):
                 _uuid_idx = _current[0][0]
             _found = list(
                 cursor.execute(
-                    "SELECT idx FROM device WHERE uuid=? AND ip=? AND port=?",
+                    "SELECT idx FROM device WHERE uuid=? AND address=? AND port=?",
                     (_uuid_idx, address, port),
                 )
             )
             if not _found:
                 cursor.execute(
-                    "INSERT INTO device(uuid, ip, port, created) VALUES(?, ?, ?, ?)",
+                    "INSERT INTO device(uuid, address, port, created) VALUES(?, ?, ?, ?)",
                     (_uuid_idx, address, port, int(time.time())),
                 )
             # print("add")
@@ -199,45 +208,148 @@ class MappingDB(object):
     def dump(self):
         with self.get_cursor(cached=False) as cursor:
             for entry in cursor.execute(
-                "SELECT *, u.idx AS u_idx, d.idx AS d_idx FROM device d, uuid u WHERE d.uuid=u.idx"
+                "SELECT *, c.idx AS c_idx, d.idx AS d_idx FROM device d, connection c WHERE d.idx=c.device"
             ):
                 _dict = dict(zip(entry.keys(), tuple(entry)))
-                print("*", _dict)
+                # print("*", _dict)
 
     def update_mapping(self, mapping_obj):
-        if mapping_obj._changes:
+        if mapping_obj.machine_uuid:
             # get old connection id(s), base is the connection string
             print(mapping_obj._conn_str)
             # get device
             with self.get_cursor(cached=False) as cursor:
-                _result = []
-                for entry in cursor.execute(
-                        "SELECT *, u.idx AS u_idx, d.idx AS d_idx FROM device d, uuid u WHERE d.uuid=u.idx AND d.ip=? AND d.port=?",
-                        (mapping_obj.address, mapping_obj.port),
-                ):
-                    _dict = dict(zip(entry.keys(), tuple(entry)))
-                    _result.append(_dict)
-                if len(_result) == 1:
+                _result = cursor.execute(
+                    "SELECT idx FROM device WHERE machine_uuid=?",
+                    (mapping_obj.machine_uuid,),
+                ).fetchone()
+                print("-" * 30)
+                if _result:
+                    dev_idx = _result[0]
                     # found 1 matching entry
-                    _dict = _result[0]
-                    pprint.pprint(_dict)
+                    print("FOUND", dev_idx)
                     print(mapping_obj.connection_uuid)
                 else:
-                    self.log(
-                        "found more than one matching entry, refusing update",
-                        logging_tools.LOG_LEVEL_ERROR
+                    # nothing found with this machine id, create new one
+                    cursor.execute(
+                        "INSERT INTO device(machine_uuid, created) VALUES(?, ?)",
+                        (mapping_obj.machine_uuid, int(time.time())),
                     )
-                    for _entry in _result:
-                        self.log(
-                            "    {}".format(str(_entry))
+                    dev_idx = cursor.lastrowid
+                    self.log(
+                        "creating new device entry with machine_uuid='{}' ({:d})".format(
+                            mapping_obj.machine_uuid,
+                            dev_idx,
                         )
+                    )
+                # we now have a valid device idx
+                # check for new connection
+                conn_results = [
+                    dict(_entry) for _entry in cursor.execute(
+                        "SELECT * FROM connection WHERE device=?",
+                        (dev_idx,),
+                    )
+                ]
+                if not len(conn_results):
+                    # create new connection entry
+                    cursor.execute(
+                        "INSERT INTO connection(device, connection_uuid, dynamic_uuid, address, port, created) VALUES(?, ?, ?, ?, ?, ?)",
+                        (
+                            dev_idx,
+                            mapping_obj.connection_uuid,
+                            mapping_obj.dynamic_uuid,
+                            mapping_obj.address,
+                            mapping_obj.port,
+                            int(time.time()),
+                        ),
+                    )
+                    conn_idx = cursor.lastrowid
+                    self.log(
+                        "created new connection object (uuid='{}', tcp://{}:{:d}, [{:d}])".format(
+                            mapping_obj.connection_uuid,
+                            mapping_obj.address,
+                            mapping_obj.port,
+                            conn_idx,
+                        )
+                    )
+                else:
+                    # step 1: find match connections
+                    mc_list = [
+                        entry for entry in conn_results if entry["connection_uuid"] == mapping_obj.connection_uuid
+                    ]
+                    if mc_list and mapping_obj.dynamic_uuid:
+                        if len(mc_list) > 1:
+                            self.log(
+                                "found more than one matching connection for {}".format(
+                                    mc_list[0]["connection_uuid"],
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
+                        else:
+                            match_con = mc_list[0]
+                            if mapping_obj.dynamic_uuid != match_con["dynamic_uuid"]:
+                                if not match_con["dynamic_uuid"]:
+                                    # update
+                                    cursor.execute(
+                                        "UPDATE connection SET dynamic_uuid=? WHERE idx=?",
+                                        (mapping_obj.dynamic_uuid, match_con["idx"]),
+                                    )
+                                    self.log(
+                                        "set dynamic_uuid to {}".format(
+                                            mapping_obj.dynamic_uuid,
+                                        )
+                                    )
+                                else:
+                                    # at this point we have connection object with a
+                                    # dynamic_uuid different from the one reported by
+                                    # the system
+                                    # two possibilities:
+                                    # - the HM on the target system was restarted
+                                    # - we have two HMs running with at least the same
+                                    #   connection_uuid
+                                    # the only way to distinguish is when the recorded
+                                    # stream of dynamic_uuids contains duplicates (reoccuring values)
+                                    # update dynamic uuid
+                                    self.log(
+                                        "updated dynamic_uuid to {}".format(
+                                            mapping_obj.dynamic_uuid,
+                                        )
+                                    )
+                                    cursor.execute(
+                                        "UPDATE connection SET dynamic_uuid=? WHERE idx=?",
+                                        (mapping_obj.dynamic_uuid, match_con["idx"]),
+                                    )
+                            if mapping_obj.reuse_detected:
+                                self.log("reuse detected", logging_tools.LOG_LEVEL_ERROR)
+                                # gather reuse statistics
+                                info_list = [
+                                    "tcp://{}:{:d}".format(
+                                        mapping_obj.address,
+                                        mapping_obj.port,
+                                    )
+                                ]
+                                print(mapping_obj.address, mapping_obj.port)
+                                for entry in cursor.execute(
+                                    "SELECT * FROM connection WHERE connection_uuid=?",
+                                    (mapping_obj.connection_uuid,)
+                                ):
+                                    info_list.append("tcp://{}:{:d}".format(entry["address"], entry["port"]))
+                                info_list = list(set(info_list))
+                                mapping_obj.reuse_info = "{}: {}".format(
+                                    logging_tools.get_plural("address", len(info_list)),
+                                    ", ".join(sorted(info_list)),
+                                )
+                                print("g", mapping_obj.reuse_info, id(mapping_obj))
+                                # print("RED_CHECK")
+                                # print("**", mapping_obj.dynamic_uuid)
+                                # pprint.pprint(match_con)
 
     def get_0mq_addrs(self, port):
         # return all address stored in database
         with self.get_cursor(cached=False) as cursor:
             _result = [
                 _result[0] for _result in cursor.execute(
-                    "SELECT DISTINCT ip FROM device WHERE port=?",
+                    "SELECT DISTINCT address FROM connection WHERE port=?",
                     (port,),
                 )
             ]
