@@ -115,6 +115,7 @@ file_explorer = angular.module(
                 }
             },
             grid: {
+                height: "100%",
                 columns: [
                   {width: "100%", header: "Name"},
                   {width: "100%", value: "size", header: "Size", cellClass: "jstree-grid-line-height"},
@@ -124,8 +125,11 @@ file_explorer = angular.module(
                 draggable: false,
                 contextmenu: false,
             },
+            search: {
+                show_only_matches: true
+            }
             version: 1,
-            plugins : ["core", "ui", "types", "sort", "grid", "contextmenu"]
+            plugins : ["core", "ui", "types", "sort", "grid", "contextmenu", "search"]
     }
 
     $scope.after_node_open = (event, root_node) ->
@@ -166,6 +170,7 @@ file_explorer = angular.module(
         if $scope.nodes_to_wait_for == 0
             $scope.treeInstance.jstree(true).open_node($scope.waiting_node.node, false)
             blockUI.stop()
+            #$scope.treeInstance.jstree(true).search("ICSW")
         else
             load_percent = Math.round((1 - ($scope.nodes_to_wait_for / $scope.nodes_to_wait_for_start)) * 100)
             blockUI.message("Loading data ... " + load_percent + "%")
@@ -197,11 +202,12 @@ file_explorer = angular.module(
         ).then(
             (result) ->
                 $scope.start_node_id = result.new_start_node_id
-                $scope.treeData.push(result.new_root_node)
-                $scope.node_id_to_node_data_cache[result.new_root_node.id] = result.new_root_node
-                if result.dummy_node
-                    $scope.treeData.push(result.dummy_node)
-                    $scope.node_id_to_node_data_cache[result.dummy_node.id] = result.dummy_node
+                if result.new_root_node
+                  $scope.treeData.push(result.new_root_node)
+                  $scope.node_id_to_node_data_cache[result.new_root_node.id] = result.new_root_node
+                  if result.dummy_node
+                      $scope.treeData.push(result.dummy_node)
+                      $scope.node_id_to_node_data_cache[result.dummy_node.id] = result.dummy_node
 
                 blockUI.stop()
             )

@@ -783,40 +783,43 @@ class DirectoryListHandler(View):
             start_node_id += 1
 
             children_loaded = True
-            if len(os.listdir(directory)):
-                children_loaded = False
+            try:
+                if len(os.listdir(directory)):
+                    children_loaded = False
+            except Exception as e:
+                _ = e
+            else:
+                new_root_node = {"id": node_id,
+                                 "parent": root_node_name,
+                                 "text": node_text,
+                                 "state": {"opened": False},
+                                 "type": "folder",
+                                 "full_path": directory,
+                                 "children_loaded": children_loaded,
+                                 "dummy_node_id": None,
+                                 "data": {
+                                             "size": "{} items".format(len(os.listdir(directory))),
+                                             "type": "Folder"
+                                         }
+                                 }
 
-            new_root_node = {"id": node_id,
-                             "parent": root_node_name,
-                             "text": node_text,
-                             "state": {"opened": False},
-                             "type": "folder",
-                             "full_path": directory,
-                             "children_loaded": children_loaded,
-                             "dummy_node_id": None,
-                             "data": {
-                                         "size": "{} items".format(len(os.listdir(directory))),
-                                         "type": "Folder"
-                                     }
-                             }
-
-            if not children_loaded:
-                node_id = "icsw{}".format(start_node_id)
-                start_node_id += 1
-                dummy_node = {"id": node_id,
-                              "parent": new_root_node["id"],
-                              "text": "dummy",
-                              "state": {"opened": False},
-                              "type": "folder",
-                              "full_path": "/",
-                              "children_loaded": True,
-                              "dummy_node_id": None,
-                              "data": {
-                                          "size": "0 items",
-                                          "type": "Folder"
-                                      },
-                              }
-                new_root_node["dummy_node_id"] = dummy_node["id"]
+                if not children_loaded:
+                    node_id = "icsw{}".format(start_node_id)
+                    start_node_id += 1
+                    dummy_node = {"id": node_id,
+                                  "parent": new_root_node["id"],
+                                  "text": "dummy",
+                                  "state": {"opened": False},
+                                  "type": "folder",
+                                  "full_path": "/",
+                                  "children_loaded": True,
+                                  "dummy_node_id": None,
+                                  "data": {
+                                              "size": "0 items",
+                                              "type": "Folder"
+                                          },
+                                  }
+                    new_root_node["dummy_node_id"] = dummy_node["id"]
         else:
             for filename in os.listdir(directory):
                 full_path = os.path.join(directory, filename)
@@ -825,14 +828,23 @@ class DirectoryListHandler(View):
 
                 if os.path.isdir(full_path):
                     file_type = "folder"
-                    items = len(os.listdir(full_path))
-                    if items:
-                        children_loaded = False
+                    try:
+                        items = len(os.listdir(full_path))
+                    except Exception as e:
+                        _ = e
+                    else:
+                        if items:
+                            children_loaded = False
                     size_string = "{} items".format(items)
                     type_string = "Folder"
                 else:
-                    size_string = self.sizeof_fmt(os.stat(full_path)[stat.ST_SIZE])
-                    type_string = magic.from_file(full_path, mime=True)
+                    size_string = "Unknown"
+                    type_string = "Unknown"
+                    try:
+                        size_string = self.sizeof_fmt(os.stat(full_path)[stat.ST_SIZE])
+                        type_string = magic.from_file(full_path, mime=True)
+                    except Exception as e:
+                        _ = e
 
                 node_id = "icsw{}".format(start_node_id)
                 start_node_id += 1

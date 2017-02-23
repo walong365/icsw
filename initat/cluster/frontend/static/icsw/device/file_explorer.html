@@ -26,7 +26,7 @@
                     <div class="panel-heading">
                         Path: <input type="text" style="width:95%" name="root_path" ng-model="root_path" ng-change="root_path_changed()" placeholder="Enter the (full) path you wish to list here." ng-model-options='{ debounce: 2000 }'>
                     </div>
-                    <div class="panel-body" style="padding: 6px 15px; width: 65%; height: 80%; overflow-y:scroll; position: fixed">
+                    <div ng-show="treeData.length > 0" class="panel-body" style="padding: 6px 15px; width: 65%; height: 80%; position: fixed">
                         <div js-tree="treeConfig" tree="treeInstance" ng-model="treeData" tree-events="after_open:after_node_open;create_node:node_created"></div>
                     </div>
                 </div>
