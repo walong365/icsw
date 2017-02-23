@@ -136,7 +136,6 @@ angular.module(
         new icswDeviceOverviewTabTemplate("general", true, "", "General")
         new icswDeviceOverviewTabTemplate("network", false, "backbone.device.change_network", "Network")
         new icswDeviceOverviewTabTemplate("config", true, "backbone.device.change_config", "Configuration")
-        new icswDeviceOverviewTabTemplate("category", false, "backbone.device.change_category", "Categories")
         new icswDeviceOverviewTabTemplate("location", false, "backbone.device.change_location", "Locations")
         new icswDeviceOverviewTabTemplate("variable", true, "backbone.device.change_variables", "Device Variables")
         new icswDeviceOverviewTabTemplate("devicelogs", false, "", "Device Logs")
@@ -675,17 +674,19 @@ angular.module(
                 create_info_fields($scope.edit_obj)
         )
 
-    $scope.modify_categories = (for_asset) ->
+    $scope.modify_categories = (for_asset, $event) ->
         dbu = new icswDeviceBackup()
         template_name = "icsw.device.category.edit"
-        title = "Modify DeviceCategories"
+        title = "Modify Device Categories"
         dbu.create_backup($scope.edit_obj)
         sub_scope = $scope.$new(false)
         sub_scope.edit_obj = $scope.edit_obj
         sub_scope.asset_filter = for_asset
-
+        sub_scope.modal_mode = true
         # for fields, tree can be the basic or the cluster tree
 
+        # modal_callback will be filled with an additional function from child scope
+        sub_scope.modal_callback = {}
         icswComplexModalService(
             {
                 message: $compile($templateCache.get(template_name))(sub_scope)
@@ -693,6 +694,9 @@ angular.module(
                 ok_label: "Modify"
                 closable: true
                 ok_callback: (modal) ->
+                    # function provided by child scope
+                    if sub_scope.modal_callback.save?
+                        sub_scope.modal_callback.save($event)
                     d = $q.defer()
                     d.resolve("updated")
                     return d.promise

@@ -882,8 +882,15 @@ class icswEggConsumer(models.Model):
                     _to_consume = _target_weight
                     _baskets = icswEggBasket.objects.filter(
                         Q(license_id_name=self.license_id_name)
-                    ).order_by("-available")
+                    ).order_by(
+                        "-available"
+                    )
                     if not len(_baskets):
+                        # no baskets found
+                        # if self.ghost:
+                        #    # ghost request, is ok
+                        #    _request_ok = True
+                        # else:
                         _request_ok = False
                     else:
                         request.egg_basket = _baskets[0]
@@ -928,7 +935,11 @@ class icswEggConsumer(models.Model):
                 _update_fields.append("valid")
             # todo, improve save via dynamic update_fields, handle valid_until via
             # kwarg flag ?
-        request.save(update_fields=["weight", "valid", "valid_until", "egg_basket"])
+        request.save(
+            update_fields=[
+                "weight", "valid", "valid_until", "egg_basket",
+            ]
+        )
         return request.valid
 
     def get_info_line(self):

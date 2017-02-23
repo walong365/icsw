@@ -197,23 +197,23 @@ def show_database_calls(*args, **kwargs):
                         tot_time,
                     )
                 )
-            for act_sql in connection.queries:
-                if act_sql["sql"]:
-                    out_str = act_sql["sql"].replace("\n", "<NL>")
-                    _len_pre = len(out_str)
-                    out_str = out_str[0:max_width - 21]
-                    _len_post = len(out_str)
-                    if _len_pre == _len_post:
-                        _size_str = "     {:5d}".format(_len_pre)
-                    else:
-                        _size_str = "{:4d}/{:5d}".format(_len_post, _len_pre)
-                    output(
-                        "{:6.2f} [{}] {}".format(
-                            float(act_sql["time"]),
-                            _size_str,
-                            out_str
+                for act_sql in connection.queries:
+                    if act_sql["sql"]:
+                        out_str = act_sql["sql"].replace("\n", "<NL>")
+                        _len_pre = len(out_str)
+                        out_str = out_str[0:max_width - 21]
+                        _len_post = len(out_str)
+                        if _len_pre == _len_post:
+                            _size_str = "     {:5d}".format(_len_pre)
+                        else:
+                            _size_str = "{:4d}/{:5d}".format(_len_post, _len_pre)
+                        output(
+                            "{:6.2f} [{}] {}".format(
+                                float(act_sql["time"]),
+                                _size_str,
+                                out_str
+                            )
                         )
-                    )
         if ICSW_DEBUG_DB_CALL_LOG:
             _line = "t={} q={:4d} t={:8.4f} p={:<50s}\n".format(
                 time.ctime(),

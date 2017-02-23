@@ -329,7 +329,13 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
                 self.log("changed from {} to {}".format(cur_uc, new_uc))
                 mod_status.save()
             else:
-                self.log("unknown status '{}' ({})".format(mod_status.status, cur_uc), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "unknown status '{}' ({})".format(
+                        mod_status.status,
+                        cur_uc
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
 
     def _check_nfs_exports(self):
         if global_config["MODIFY_NFS_CONFIG"]:
@@ -366,9 +372,24 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
                 for exp_dir, rws in exp_dict.items():
                     act_exp_dir = os.path.join(global_config["TFTP_DIR"], exp_dir)
                     if act_exp_dir not in act_exports:
-                        new_exports[act_exp_dir] = " ".join(["{}({},no_root_squash,async,no_subtree_check)".format(exp_net, rws) for exp_net in exp_nets])
+                        new_exports[act_exp_dir] = " ".join(
+                            [
+                                "{}({},no_root_squash,async,no_subtree_check)".format(
+                                    exp_net,
+                                    rws
+                                ) for exp_net in exp_nets
+                            ]
+                        )
             if new_exports:
-                open(exp_file, "a").write("\n".join(["{:<30s} {}".format(x, y) for x, y in new_exports.items()] + [""]))
+                open(exp_file, "a").write(
+                    "\n".join(
+                        [
+                            "{:<30s} {}".format(x, y) for x, y in new_exports.items()
+                        ] + [
+                            ""
+                        ]
+                    )
+                )
                 # hm, dangerous, FIXME
                 for _srv_name in self.srv_helper.find_services(".*nfs.*serv.*"):
                     self.srv_helper.service_command(_srv_name, "restart")
@@ -379,8 +400,10 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
         if syslog_srvcs:
             self.__syslog_type = syslog_srvcs[0]
             self.log("syslog type found: {}".format(self.__syslog_type))
-            # hack for old sles11sp3 (liebherr)
-            if self.__syslog_type.count("rsys") or (self.__syslog_type in ["syslog"] and process_tools.get_machine_name() in ["lwnsu62020"]):
+            # hack for old sles11sp3 (liebherr) and Centos6 (Ac2T)
+            if self.__syslog_type.count("rsys") or (
+                self.__syslog_type in ["syslog"] and process_tools.get_machine_name() in ["lwnsu62020", "admin"]
+            ):
                 self._enable_rsyslog()
             else:
                 self.log("syslog-type {} not supported".format(self.__syslog_type), logging_tools.LOG_LEVEL_ERROR)
