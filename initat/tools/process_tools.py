@@ -191,6 +191,7 @@ def get_socket(context, r_type, **kwargs):
     if r_type in ["ROUTER", "DEALER"]:
         _sock.setsockopt_string(zmq.IDENTITY, kwargs["identity"])
     if r_type in ["ROUTER"]:
+        # always enable mandatory option for router socket
         _sock.setsockopt(zmq.ROUTER_MANDATORY, 1)
     for _opt, _value in [
         ("LINGER", kwargs.get("linger", 100)),

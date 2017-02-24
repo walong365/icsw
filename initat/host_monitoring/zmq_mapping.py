@@ -69,7 +69,7 @@ class MappingDB(object):
         return DBCursor(self.conn, cached)
 
     def check_schema(self, conn):
-        _descr = conn.execute("PRAGMA table_info(state)").fetchall()
+        # _descr = conn.execute("PRAGMA table_info(state)").fetchall()
         # schema:
         # device: one entry per device (== unique machine uuid)
         # connection: one or more per device
@@ -82,6 +82,8 @@ class MappingDB(object):
                 "idx INTEGER PRIMARY KEY NOT NULL",
                 # machine uuid
                 "machine_uuid TEXT NOT NULL UNIQUE",
+                # dirty flag, used for reused 0MQ IDs
+                "dirty INT default 0",
                 "created INTEGER NOT NULL",
                 "last_update INTEGER default 0",
             ],
@@ -98,6 +100,8 @@ class MappingDB(object):
                 "server TEXT NOT NULL default ''",
                 # link to device
                 "device INTEGER",
+                # dirty flag, used for reused 0MQ IDs
+                "dirty INT default 0",
                 "changed INTEGER default 0",
                 "created INTEGER NOT NULL",
                 "FOREIGN KEY(device) REFERENCES device(idx)",
@@ -161,9 +165,16 @@ class MappingDB(object):
             self.log("creating index with '{}'".format(_idx_str))
             conn.execute(_idx_str)
 
+    def not_empty(self):
+        with self.get_cursor(cached=False) as cursor:
+            cursor.execute(
+                "SELECT COUNT(*) AS count FROM device"
+            )
+            _count = cursor.fetchone()["count"]
+        return True if _count else False
+
     def clear(self):
         self.log("clearing database")
-        return
         with self.get_cursor(cached=False) as cursor:
             cursor.execute("DELETE FROM device")
 
@@ -208,10 +219,11 @@ class MappingDB(object):
     def dump(self):
         with self.get_cursor(cached=False) as cursor:
             for entry in cursor.execute(
-                "SELECT *, c.idx AS c_idx, d.idx AS d_idx FROM device d, connection c WHERE d.idx=c.device"
+                "SELECT *, c.idx AS c_idx, d.idx AS d_idx, c.dirty AS c_dirty, d.dirty AS d_dirty "
+                "FROM device d, connection c WHERE d.idx=c.device"
             ):
                 _dict = dict(zip(entry.keys(), tuple(entry)))
-                # print("*", _dict)
+                yield _dict
 
     def update_mapping(self, mapping_obj):
         if mapping_obj.machine_uuid:
@@ -300,7 +312,7 @@ class MappingDB(object):
                                         )
                                     )
                                 else:
-                                    # at this point we have connection object with a
+                                    # at this point we have a connection object with a
                                     # dynamic_uuid different from the one reported by
                                     # the system
                                     # two possibilities:
@@ -309,6 +321,7 @@ class MappingDB(object):
                                     #   connection_uuid
                                     # the only way to distinguish is when the recorded
                                     # stream of dynamic_uuids contains duplicates (reoccuring values)
+                                    #
                                     # update dynamic uuid
                                     self.log(
                                         "updated dynamic_uuid to {}".format(
@@ -334,6 +347,12 @@ class MappingDB(object):
                                     (mapping_obj.connection_uuid,)
                                 ):
                                     info_list.append("tcp://{}:{:d}".format(entry["address"], entry["port"]))
+                                # set dirty flags
+                                cursor.execute(
+                                    "UPDATE connection SET dirty=1 WHERE connection_uuid=?",
+                                    (mapping_obj.connection_uuid,),
+                                )
+                                print("I=", info_list)
                                 info_list = list(set(info_list))
                                 mapping_obj.reuse_info = "{}: {}".format(
                                     logging_tools.get_plural("address", len(info_list)),

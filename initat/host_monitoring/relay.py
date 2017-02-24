@@ -260,7 +260,9 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             self.__old_send_lut.pop(src_id)._handle_old_result(src_id, data_str, is_error)
         else:
             self.log(
-                "result for non-existing id '{}' received, discarding".format(src_id),
+                "result for non-existing id '{}' received, discarding".format(
+                    src_id
+                ),
                 logging_tools.LOG_LEVEL_ERROR
             )
 
@@ -635,7 +637,9 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             if ICSW_DEBUG_MODE:
                 self.log("conn_str {} has the cUUID {}".format(conn_str, id_str))
             cur_hc = HostConnection.get_hc_0mq(conn_str, id_str)
-            cur_mes = cur_hc.add_message(HostMessage(com_name, src_id, srv_com, xml_input))
+            cur_mes = cur_hc.add_message(
+                HostMessage(com_name, src_id, srv_com, xml_input)
+            )
             if com_name in self.local_mc:
                 com_struct = self.local_mc[srv_com["command"].text]
                 # handle commandline

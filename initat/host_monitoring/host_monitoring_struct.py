@@ -192,7 +192,7 @@ class SRProbe(object):
 class HostConnection(object):
     __slots__ = [
         "zmq_id", "tcp_con", "sr_probe", "__open", "__conn_str", "messages",
-        "zmq_conn_errors", "retrigger_state", "zmq_conn_count",
+        "zmq_conn_errors", "retrigger_state", "zmq_conn_count", "resend_queue",
     ]
 
     def __init__(self, conn_str: str, **kwargs):
@@ -211,6 +211,9 @@ class HostConnection(object):
         self.zmq_conn_count = 0
         self.retrigger_state = HostConnectionReTriggerEnum.no
         self.messages = {}
+        # for messags to be resent if first send after open was not
+        # sucessful
+        self.resend_queue = []
         self.__open = False
 
     @property
@@ -267,7 +270,11 @@ class HostConnection(object):
     def get_hc_0mq(cls, conn_str, target_id=DUMMY_0MQ_ID, **kwargs):
         if (True, conn_str) not in cls.hc_dict:
             if ICSW_DEBUG_MODE:
-                cls.relayer_process.log("new 0MQ HostConnection for '{}'".format(conn_str))
+                cls.relayer_process.log(
+                    "new 0MQ HostConnection for '{}'".format(
+                        conn_str
+                    )
+                )
             cur_hc = cls(conn_str, zmq_id=target_id, **kwargs)
         else:
             cur_hc = cls.hc_dict[(True, conn_str)]
@@ -321,6 +328,10 @@ class HostConnection(object):
                         to_mes.timeout,
                     )
                 )
+        if self.resend_queue:
+            for host_mes in self.resend_queue:
+                self.send(host_mes, None)
+            self.resend_queue = []
 
     def _open(self):
         _opened = False
@@ -348,9 +359,11 @@ class HostConnection(object):
         self.messages[new_mes.src_id] = new_mes
         return new_mes
 
-    def send(self, host_mes, com_struct):
+    def send(self, host_mes: object, com_struct: object):
         try:
-            host_mes.set_com_struct(com_struct)
+            if com_struct is not None:
+                # for resending
+                host_mes.set_com_struct(com_struct)
         except:
             self.return_error(
                 host_mes,
@@ -369,16 +382,20 @@ class HostConnection(object):
                         )
                     )
                 else:
-                    print("start, count=", self.zmq_conn_count, HostConnection.zmq_discovery.get_machine_uuid(self.__conn_str))
-                    if self.zmq_conn_count % 4 == 0 and not HostConnection.zmq_discovery.get_machine_uuid(self.__conn_str):
-                        print("Miss")
+                    map = HostConnection.zmq_discovery.get_mapping(self.__conn_str)
+                    # how often to refetch the 0MQ settings
+                    fetch_every = 4 if map.reuse_detected else 20
+                    if (
+                        _was_opened or self.zmq_conn_count % fetch_every == 0
+                    ) and (not map.is_new_client or map.reuse_detected):
+                        # if client has no machine_uuid set and
+                        # - first call after open
+                        # - every 20th call
+                        # we trigger a refetch
                         if self.retrigger_state == HostConnectionReTriggerEnum.no:
                             self.log("no machine uuid set, triggering 0MQ fetch")
                             self.retrigger_state = HostConnectionReTriggerEnum.init
                     self.zmq_conn_count += 1
-                    # print("*", was_opened)
-                    # Todo, fixme: delay sending when connection was just openened
-                    # time.sleep(0.2)
                     send_str = str(host_mes.srv_com)
 
                     try:
@@ -397,34 +414,43 @@ class HostConnection(object):
                                 self.zmq_conn_errors,
                                 MAX_0MQ_CONNECTION_ERRORS,
                             )
-                        self.return_error(
-                            host_mes,
-                            "connection error via ZMQ-ID '{}'{}({})".format(
-                                self.zmq_id,
-                                _info,
-                                process_tools.get_except_info(),
-                            ),
-                        )
+                        if _was_opened and len(self.resend_queue) < 5:
+                            # error after first open, move to resend queue
+                            self.log(
+                                "error after open, moving message to resend queue",
+                                logging_tools.LOG_LEVEL_WARN
+                            )
+                            self.resend_queue.append((host_mes))
+                        else:
+                            self.return_error(
+                                host_mes,
+                                "connection error via ZMQ-ID '{}'{}({})".format(
+                                    self.zmq_id,
+                                    _info,
+                                    process_tools.get_except_info(),
+                                ),
+                            )
                     else:
                         self.zmq_conn_errors = 0
                         self.sr_probe.send = len(send_str)
                         host_mes.sr_probe = self.sr_probe
                         host_mes.sent = True
-                if self.retrigger_state == HostConnectionReTriggerEnum.init:
-                    # check current state
-                    self.retrigger_state = HostConnectionReTriggerEnum.sent
-                    if HostConnection.zmq_discovery.has_mapping(self.conn_str) and not HostConnection.zmq_discovery.is_pending(self.conn_str):
-                        self.log("triggering discovery run")
-                        HostConnection.zmq_discovery(
-                            server_command.srv_command(
-                                conn_str=self.conn_str,
-                            ),
-                            src_id=None,
-                            xml_input=True,
-                        )
-                elif self.retrigger_state == HostConnectionReTriggerEnum.sent:
-                    self.retrigger_state = HostConnectionReTriggerEnum.no
-                    self.zmq_conn_errors = 0
+                    if self.retrigger_state == HostConnectionReTriggerEnum.init:
+                        # check current state
+                        self.retrigger_state = HostConnectionReTriggerEnum.sent
+                        if HostConnection.zmq_discovery.has_mapping(self.conn_str) and not HostConnection.zmq_discovery.is_pending(self.conn_str):
+                            self.log("triggering discovery run, clear resue flag")
+                            HostConnection.zmq_discovery(
+                                server_command.srv_command(
+                                    conn_str=self.conn_str,
+                                ),
+                                src_id=None,
+                                xml_input=True,
+                            )
+                            # self._close()
+                    elif self.retrigger_state == HostConnectionReTriggerEnum.sent:
+                        self.retrigger_state = HostConnectionReTriggerEnum.no
+                        self.zmq_conn_errors = 0
             else:
                 # send to socket-thread for old clients
                 HostConnection.relayer_process.send_to_process(
@@ -477,9 +503,15 @@ class HostConnection(object):
         mes_id = result["relayer_id"].text
         # if mes_id in HostConnection.messages:
         if mes_id in cls.message_lut:
-            cls.relayer_process._new_client(result["host"].text, int(result["port"].text))
+            cls.relayer_process._new_client(
+                result["*host"],
+                int(result["*port"]),
+            )
             if "host_unresolved" in result:
-                cls.relayer_process._new_client(result["host_unresolved"].text, int(result["port"].text))
+                cls.relayer_process._new_client(
+                    result["*host_unresolved"],
+                    int(result["*port"]),
+                )
             cls.hc_dict[cls.message_lut[mes_id]].handle_result(mes_id, result)
         else:
             cls.g_log(
@@ -500,13 +532,18 @@ class HostConnection(object):
                     result["*machine_uuid"],
                     result["*dynamic_uuid"],
                 )
-                # reuse detected ?
-                _reuse = HostConnection.zmq_discovery.update_mapping(
-                    self.__conn_str,
+            else:
+                mach_uuid, dyn_uuid = (
                     self.zmq_id,
-                    mach_uuid,
-                    dyn_uuid
+                    ""
                 )
+            # reuse detected ?
+            _reuse = HostConnection.zmq_discovery.update_mapping(
+                self.__conn_str,
+                self.zmq_id,
+                mach_uuid,
+                dyn_uuid
+            )
         if cur_mes.sent:
             # ???
             cur_mes.sent = False
@@ -526,7 +563,7 @@ class HostConnection(object):
                             _map.reuse_info,
                         )
                     )
-                    _map.clear_reuse()
+                    # _map.clear_reuse()
                 else:
                     ret = ExtReturn.get_ext_return(cur_mes.interpret(result))
             except:
@@ -563,7 +600,10 @@ class HostConnection(object):
 class HostMessage(object):
     hm_idx = 0
     hm_open = set()
-    __slots__ = ["src_id", "xml_input", "timeout", "s_time", "sent", "sr_probe", "ns", "com_name", "srv_com", "com_struct"]
+    __slots__ = [
+        "src_id", "xml_input", "timeout", "s_time", "sent",
+        "sr_probe", "ns", "com_name", "srv_com", "com_struct"
+    ]
 
     def __init__(self, com_name, src_id, srv_com, xml_input):
         self.com_name = com_name
