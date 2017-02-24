@@ -163,7 +163,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         self.__client_dict = {
             _key: ConnectionType.zmq for _key in ZMQDiscovery.get_hm_0mq_addrs()
         }
-        print("*", self.__client_dict.keys())
+        # print("*", self.__client_dict.keys())
 
     def _new_client(self, c_ip, c_port):
         self._set_client_state(c_ip, c_port, ConnectionType.zmq)
@@ -181,7 +181,13 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         #            check_names.append(real_name)
         for c_name in check_names:
             if self.__client_dict.get(c_name, None) != c_type and c_port == self.__hm_port:
-                self.log("setting client '{}:{:d}' to '{}'".format(c_name, c_port, c_type))
+                self.log(
+                    "setting client '{}:{:d}' to '{}'".format(
+                        c_name,
+                        c_port,
+                        c_type
+                    )
+                )
                 self.__client_dict[c_name] = c_type
 
     def process_start(self, src_process, src_pid):
@@ -257,7 +263,11 @@ class RelayCode(ICSWBasePool, HMHRMixin):
 
     def _socket_result(self, src_proc, proc_id, src_id, srv_com, data_str, is_error):
         if src_id in self.__old_send_lut:
-            self.__old_send_lut.pop(src_id)._handle_old_result(src_id, data_str, is_error)
+            self.__old_send_lut.pop(src_id)._handle_old_result(
+                src_id,
+                data_str,
+                is_error
+            )
         else:
             self.log(
                 "result for non-existing id '{}' received, discarding".format(

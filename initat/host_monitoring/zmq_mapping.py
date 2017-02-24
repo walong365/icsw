@@ -228,19 +228,19 @@ class MappingDB(object):
     def update_mapping(self, mapping_obj):
         if mapping_obj.machine_uuid:
             # get old connection id(s), base is the connection string
-            print(mapping_obj._conn_str)
+            # print(mapping_obj._conn_str)
             # get device
             with self.get_cursor(cached=False) as cursor:
                 _result = cursor.execute(
                     "SELECT idx FROM device WHERE machine_uuid=?",
                     (mapping_obj.machine_uuid,),
                 ).fetchone()
-                print("-" * 30)
+                # print("-" * 30)
                 if _result:
                     dev_idx = _result[0]
                     # found 1 matching entry
-                    print("FOUND", dev_idx)
-                    print(mapping_obj.connection_uuid)
+                    # print("FOUND", dev_idx)
+                    # print(mapping_obj.connection_uuid)
                 else:
                     # nothing found with this machine id, create new one
                     cursor.execute(
@@ -341,7 +341,7 @@ class MappingDB(object):
                                         mapping_obj.port,
                                     )
                                 ]
-                                print(mapping_obj.address, mapping_obj.port)
+                                # print(mapping_obj.address, mapping_obj.port)
                                 for entry in cursor.execute(
                                     "SELECT * FROM connection WHERE connection_uuid=?",
                                     (mapping_obj.connection_uuid,)
@@ -352,13 +352,13 @@ class MappingDB(object):
                                     "UPDATE connection SET dirty=1 WHERE connection_uuid=?",
                                     (mapping_obj.connection_uuid,),
                                 )
-                                print("I=", info_list)
+                                # print("I=", info_list)
                                 info_list = list(set(info_list))
                                 mapping_obj.reuse_info = "{}: {}".format(
                                     logging_tools.get_plural("address", len(info_list)),
                                     ", ".join(sorted(info_list)),
                                 )
-                                print("g", mapping_obj.reuse_info, id(mapping_obj))
+                                # print("g", mapping_obj.reuse_info, id(mapping_obj))
                                 # print("RED_CHECK")
                                 # print("**", mapping_obj.dynamic_uuid)
                                 # pprint.pprint(match_con)

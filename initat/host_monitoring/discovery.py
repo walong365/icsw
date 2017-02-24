@@ -99,8 +99,8 @@ class ZMQMapping(object):
     @classmethod
     def feed_dynamic_id(cls, map_obj):
         conn_id, dyn_id = (map_obj.connection_uuid, map_obj.dynamic_uuid)
-        print("CID=", map_obj._conn_str, conn_id, dyn_id)
-        pprint.pprint(cls.conn_id_stream)
+        # print("CID=", map_obj._conn_str, conn_id, dyn_id)
+        # pprint.pprint(cls.conn_id_stream)
         if conn_id not in cls.conn_id_stream:
             cls.conn_id_stream[conn_id] = {
                 "s": [],
@@ -113,7 +113,7 @@ class ZMQMapping(object):
             pass
         elif dyn_id in _stream:
             # id was recorded before, signal
-            pprint.pprint(cls.conn_id_stream[conn_id])
+            # pprint.pprint(cls.conn_id_stream[conn_id])
             for conn_id in cls.conn_id_stream[conn_id]["c"]:
                 # set reuse flag on all connection strings
                 cls.mapping[conn_id].reuse_detected = True
@@ -122,6 +122,25 @@ class ZMQMapping(object):
             if len(_stream) > 10:
                 _stream.pop(0)
             _stream.append(dyn_id)
+
+    @classmethod
+    def remove_from_streams(cls, map_obj: object, old_uuid: str):
+        # called when the connection uuid has changed
+        # the old uuid is in old_uuid
+        # remove the dynamic uid from all streams
+        map_obj.log("removing old cUUIDs {}".format(old_uuid))
+        rem_dyn_uuid = map_obj.dynamic_uuid
+        # all connections to reset
+        c_keys = set()
+        for key, stream_obj in cls.conn_id_stream.items():
+            c_keys |= stream_obj["c"]
+            if rem_dyn_uuid in stream_obj["s"]:
+                stream_obj["s"] = [
+                    _entry for _entry in stream_obj["s"] if _entry != rem_dyn_uuid
+                ]
+        map_obj.log("streams to clear: {}".format(", ".join(c_keys)))
+        for c_key in c_keys:
+            ZMQMapping.mapping[c_key]._clear_reuse()
 
     @property
     def connection_uuid(self):
@@ -155,6 +174,8 @@ class ZMQMapping(object):
                 )
                 setattr(self, attr_name, new_val)
                 if attr_name == "_conn_id":
+                    # remove from streams
+                    ZMQMapping.remove_from_streams(self, old_val)
                     # clear reuse flag
                     self._clear_reuse()
         if self.dynamic_uuid:
@@ -368,7 +389,7 @@ class ZMQDiscovery(object):
                         result["machine_uuid"],
                         result["dynamic_uuid"],
                     )
-                pprint.pprint(result)
+                # pprint.pprint(result)
             _log("read {:d} entries ({:d} dirty)".format(num_read, num_dirty))
         elif config_store.ConfigStore.exists(CS_NAME):
             _log("read mapping from CStore")
