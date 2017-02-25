@@ -58,7 +58,14 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
         db_tools.close_connection()
         self.debug = global_config["DEBUG"]
         self.srv_helper = service_tools.ServiceHelper(self.log)
-        self.__hs_port = InstanceXML(quiet=True).get_port_dict("hoststatus", command=True)
+        self.__hs_port = InstanceXML(quiet=True).get_port_dict(
+            "hoststatus",
+            command=True
+        )
+        self.__hm_port = InstanceXML(quiet=True).get_port_dict(
+            "host-monitoring",
+            command=True
+        )
         # log config
         self.CC.read_config_from_db(
             [
@@ -100,6 +107,7 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
         # check status entries
         self._check_status_entries()
         self.register_func("contact_hoststatus", self._contact_hoststatus)
+        self.register_func("contact_hostmonitor", self._contact_hostmonitor)
         my_uuid = uuid_tools.get_uuid()
         self.log("cluster_device_uuid is '{}'".format(my_uuid.urn))
         if self._init_network_sockets():
@@ -168,7 +176,10 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
     # received and required commands
     def node_status(self, srv_com, **kwargs):
         # remove node with namespace, hack
-        _id_el = srv_com.tree.find(".//ns:async_helper_id", namespaces={"ns": server_command.XML_NS})
+        _id_el = srv_com.tree.find(
+            ".//ns:async_helper_id",
+            namespaces={"ns": server_command.XML_NS}
+        )
         _id_el.getparent().remove(_id_el)
         srv_com = server_command.add_namespace(str(srv_com))
         srv_com["async_helper_id"] = _id_el.text
@@ -200,9 +211,20 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
         srv_com.set_result("0MQ_ID is {}".format(self.bind_id), server_command.SRV_REPLY_STATE_OK)
         return srv_com
 
-    @RemoteCall()
+    @RemoteCall(accept_only_sync=True)
     def status(self, srv_com, **kwargs):
-        return self.server_status(srv_com, self.CC.msi_block, global_config)
+        _sync = "transport:sync" in srv_com
+        if _sync:
+            # sync set, was request for server status
+            return self.server_status(srv_com, self.CC.msi_block, global_config)
+        else:
+            self.send_to_process(
+                "control",
+                "node_status",
+                str(srv_com),
+                src_id=kwargs["src_id"],
+            )
+            return None
 
     def _contact_hoststatus(self, src_id, src_pid, zmq_id, com_str, target_ip):
         dst_addr = "tcp://{}:{:d}".format(target_ip, self.__hs_port)
@@ -217,6 +239,28 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
             self.main_socket.send_unicode(str(com_str))
         except:
             self._log_con_error(zmq_id, dst_addr, process_tools.get_except_info())
+        else:
+            self._log_con_ok(zmq_id, dst_addr)
+            if self.debug:
+                self.log("sent '{}' to {} ({})".format(com_str, zmq_id, dst_addr))
+
+    def _contact_hostmonitor(self, src_id, src_pid, zmq_id, com_str, target_ip):
+        dst_addr = "tcp://{}:{:d}".format(target_ip, self.__hm_port)
+        if dst_addr not in self.connection_set:
+            self.log("adding connection {}".format(dst_addr))
+            self.connection_set.add(dst_addr)
+            self.main_socket.connect(dst_addr)
+        try:
+            self.main_socket.send_unicode(zmq_id, zmq.SNDMORE)
+            self.main_socket.send_unicode(
+                str(
+                    server_command.srv_command(command=com_str)
+                )
+            )
+        except:
+            self._log_con_error(
+                zmq_id, dst_addr, process_tools.get_except_info()
+            )
         else:
             self._log_con_ok(zmq_id, dst_addr)
             if self.debug:

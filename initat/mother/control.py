@@ -204,7 +204,7 @@ class Host(object):
 
     @staticmethod
     def set_device(new_dev):
-        if Host.process.EC.consume("handle", new_dev):
+        if Host.process.EC.consume("handle", new_dev) or True:
             new_mach = Host(new_dev)
             Host.__unique_keys.add(new_dev.pk)
             Host.device_state.add_device(new_dev)
@@ -212,6 +212,7 @@ class Host(object):
             new_mach.check_network_settings()
             return new_mach
         else:
+            print("NONO")
             return None
 
     @staticmethod
@@ -237,6 +238,8 @@ class Host(object):
                 else:
                     dev_spec = pk
             if dev_spec and Host.sync(pks=[dev_spec]):
+                print("***", Host.sync(pks=[dev_spec]))
+                print("***", dev_spec, Host.__lut.keys())
                 return Host.__lut[dev_spec]
             else:
                 Host.g_log(
@@ -1340,6 +1343,7 @@ class NodeControlProcess(threading_tools.icswProcessObj, server_mixins.EggConsum
         self.register_timer(self._check_commands, 10)
         # self.kernel_dev = config_tools.server_check(service_type_enum=icswServiceEnum.kernel_server)
         self.register_func("syslog_line", self._syslog_line)
+        # status from node via simple hoststatus or host-monitoring
         self.register_func("node_status", self._node_status)
         # build dhcp res
         self.__dhcp_res = {
@@ -1447,22 +1451,35 @@ class NodeControlProcess(threading_tools.icswProcessObj, server_mixins.EggConsum
         Host.ping(in_com)
         self.send_pool_message("remote_call_async_result", str(in_com))
 
-    def _node_status(self, srv_com, **kwargs):  # id_str, node_text, **kwargs):
+    def _node_status(self, srv_com, **kwargs):
         srv_com = server_command.srv_command(source=srv_com)
-        # exytract node_status text
-        for node_ct in ["nodeinfo", "nodestatus"]:
-            if node_ct in srv_com:
-                node_text = srv_com["*{}".format(node_ct)]
-                break
+        # extract node_status text
+        if "machine_uuid" in srv_com:
+            # result from host-monitor
+            if "runlevel" in srv_com:
+                _rl = srv_com["*runlevel"].strip().split()[-1]
+            else:
+                _rl = "unknown"
+            node_ct = "nodestatus"
+            node_text = "up to rudnlevel {}".format(_rl)
+        else:
+            # find node_ct
+            for node_ct in ["nodeinfo", "nodestatus"]:
+                if node_ct in srv_com:
+                    node_text = srv_com["*{}".format(node_ct)]
+                    break
         if node_ct == "nodestatus":
             self.device_state.feed_nodestatus(kwargs.get("src_id"), node_text)
-            self.send_pool_message("remote_call_async_done", str(srv_com))
+            if "async_helper_id" in srv_com:
+                self.send_pool_message("remote_call_async_done", str(srv_com))
         else:
             self.device_state.feed_nodeinfo(kwargs.get("src_id"), node_text)
             node_id, instance = kwargs.get("src_id").split(":", 1)
             cur_dev = Host.get_device(node_id)
             if cur_dev:
-                srv_com.set_result(cur_dev.nodeinfo(node_text, instance))
+                srv_com.set_result(
+                    cur_dev.nodeinfo(node_text, instance)
+                )
             else:
                 srv_com.set_result(
                     "error no node with id '{}' found".format(node_id),

@@ -578,7 +578,8 @@ class proclist_command(hm_classes.MonitoringCommand):
         srv_com["process_tree"] = server_command.compress(
             process_tools.get_proc_list(
                 attrs=[
-                    "pid", "ppid", "uids", "gids", "name", "exe", "cmdline", "status", "ppid", "cpu_affinity",
+                    "pid", "ppid", "uids", "gids", "name", "exe", "cmdline",
+                    "status", "ppid", "cpu_affinity",
                 ]
             ),
             json=True

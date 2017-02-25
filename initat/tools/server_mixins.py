@@ -916,7 +916,7 @@ class RemoteCallMixin(object):
             zmq_sock.send_unicode(_send_str)
         except:
             self.log(
-                "error sending reply to {} ({}): {}{}".format(
+                "[RCM] error sending reply to {} ({}): {}{}".format(
                     src_id,
                     logging_tools.get_size_str(len(_send_str)),
                     process_tools.get_except_info(),
@@ -926,7 +926,7 @@ class RemoteCallMixin(object):
             )
         else:
             self.log(
-                "sent {} to {}{}".format(
+                "[RCM] sent {} to {}{}".format(
                     logging_tools.get_size_str(len(_send_str)),
                     src_id,
                     add_log,
@@ -963,6 +963,12 @@ class RemoteCallSignature(object):
         self.msg_type = kwargs.get("msg_type", RemoteCallMessageType.xml)
         self.id_filter = kwargs.get("id_filter", None)
         self.debug = kwargs.get("debug", None)
+        # accept only sync packages (transport:sync = True)
+        # ignore right now
+        self.accept_only_sync = kwargs.get("accept_only_sync", False)
+        # accept only stream packages (transport:sync = False)
+        # ignore right now
+        self.accept_only_stream = kwargs.get("accept_only_stream", False)
 
         # sync should default to False when using a target process, else be True
         sync_default = not self.target_process

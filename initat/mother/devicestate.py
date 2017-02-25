@@ -92,6 +92,7 @@ class DSDevice(object):
         self.ping_only = ping_only
         self.pk = dev.pk
         self.uuid = dev.uuid
+        self.hm_uuid = "urn:uuid:{}".format(dev.uuid)
         self.boot_uuid = dev.get_boot_uuid()
         self.full_name = str(dev)
         self.uuids = [self.pk, self.uuid, self.boot_uuid]
@@ -125,12 +126,18 @@ class DSDevice(object):
         else:
             _prev_id_str = ", ".join(
                 [
-                    "{}[{}]".format(_key, prev_dict[_key][0]) for _key in sorted(prev_dict)
+                    "{}[{}]".format(
+                        _key,
+                        prev_dict[_key][0]
+                    ) for _key in sorted(prev_dict)
                 ]
             )
         _new_id_str = ", ".join(
             [
-                "{}[{}]".format(_key, self.ip_dict[_key][0]) for _key in sorted(self.ip_dict)
+                "{}[{}]".format(
+                    _key,
+                    self.ip_dict[_key][0]
+                ) for _key in sorted(self.ip_dict)
             ]
         )
         if _prev_id_str != _new_id_str:
@@ -153,6 +160,9 @@ class DSDevice(object):
                 return self.uuid
         else:
             return self.uuid
+
+    def get_hostmonitor_uuid(self, ip):
+        return self.hm_uuid
 
     def feed_hoststatus(self, instance, text, source):
         self.hoststatus_info.feed(HostStatusInfo(instance, text, source))
@@ -196,9 +206,9 @@ class DSDevice(object):
         self.wait_list.append(_cur_id)
         return _cur_id
 
-    def feed_result(self, _key, _result):
+    def feed_result(self, _key: str, _result: dict) -> tuple:
         # return value, is the IP-address of the hostatus to connect to or None
-        _rvalue = None
+        _rvalue = (None, None)
         # self.wait_list.remove(_key)g
         self.pending -= 1
         self.wait_list.remove(_key)
@@ -208,7 +218,10 @@ class DSDevice(object):
             _result["network"] = self.ip_dict[_result["host"]][1]
             self.ping_info.feed(PingInfo(_result))
         if _result["recv_ok"]:
-            _rvalue = _result["host"]
+            _rvalue = (
+                _result["host"],
+                self.ip_dict[_result["host"]][0],
+            )
         if not self.pending:
             # pprint.pprint(self.wait_dict)
             # print "***", time.ctime(time.time())
@@ -369,11 +382,17 @@ class DeviceState(object):
         try:
             _dev_pk = int(_key.split("@")[1])
         except (ValueError, IndexError):
-            self.log("error parsing key '{}': {}".format(_key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error parsing key '{}': {}".format(
+                    _key,
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
             if _dev_pk in self.__devices:
                 _dev = self.__devices[_dev_pk]
-                _hoststatus_ip = _dev.feed_result(_key, _result)
+                _hoststatus_ip, _nw_type = _dev.feed_result(_key, _result)
                 if _hoststatus_ip:
                     self.process.send_pool_message(
                         "contact_hoststatus",
@@ -381,8 +400,22 @@ class DeviceState(object):
                         "status",
                         _hoststatus_ip,
                     )
+                    if _nw_type != "b":
+                        # contact non-boot devices via host-monitoring
+                        self.process.send_pool_message(
+                            "contact_hostmonitor",
+                            _dev.get_hostmonitor_uuid(_hoststatus_ip),
+                            "status",
+                            _hoststatus_ip,
+                        )
+
             else:
-                self.log("pk {:d} not present in devices, discarding".format(_dev_pk), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "pk {:d} not present in devices, discarding".format(
+                        _dev_pk
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
 
     def soft_control(self, dev_node, command):
         # send soft_control command to device in XML-element dev_node idx==pk
@@ -407,7 +440,12 @@ class DeviceState(object):
     # feeds from hoststatus
     def feed_nodestatus(self, src_id, text):
         # required from mother
-        node_id, instance = src_id.split(":", 1)
+        if src_id.startswith("urn:uuid:"):
+            src_id = src_id[9:]
+        if src_id.count(":"):
+            node_id, instance = src_id.split(":", 1)
+        else:
+            node_id, instance = (src_id, "")
         self._feed_hoststatus(node_id, instance, text, "req")
 
     def feed_nodeinfo(self, src_id, text):
@@ -419,7 +457,7 @@ class DeviceState(object):
         if node_id in self.__devices:
             self.__devices[node_id].feed_hoststatus(instance, text, source)
         else:
-            self.log("unknown device {}".format(node_id))
+            self.log("unknown device ID '{}'".format(node_id))
 
     def get_device_state(self, pk):
         # return a devicestate record

@@ -23,17 +23,18 @@ import base64
 import bz2
 import collections
 import datetime
+import io
 import json
 import marshal
 import os
 import pickle
-import re
 import platform
-import io
+import re
+import uuid
 
 from lxml import etree
-from lxml.etree import XMLParser, parse, XMLSyntaxError
 from lxml.builder import ElementMaker
+from lxml.etree import XMLParser, parse, XMLSyntaxError
 
 from initat.host_monitoring.limits import mon_STATE_CRITICAL, mon_STATE_WARNING, \
     mon_STATE_OK
@@ -137,7 +138,10 @@ class srv_command(object):
                 except XMLSyntaxError as e:
                     if "Huge input lookup" in e.msg:
                         # allows sending/receiving of server commands with large (>=10MiB) payload
-                        self.__tree = parse(io.StringIO(kwargs["source"]), parser=XMLParser(huge_tree=True))
+                        self.__tree = parse(
+                            io.StringIO(kwargs["source"]),
+                            parser=XMLParser(huge_tree=True)
+                        )
                     else:
                         raise e
             elif isinstance(kwargs["source"], bytes):
@@ -146,22 +150,36 @@ class srv_command(object):
                 except XMLSyntaxError as e:
                     if "Huge input lookup" in e.msg:
                         # allows sending/receiving of server commands with large (>=10MiB) payload
-                        self.__tree = parse(io.StringIO(kwargs["source"].decode("utf-8")),
-                            parser=XMLParser(huge_tree=True))
+                        self.__tree = parse(
+                            io.StringIO(kwargs["source"].decode("utf-8")),
+                            parser=XMLParser(huge_tree=True)
+                        )
                     else:
                         raise e
             else:
                 self.__tree = kwargs["source"]
+            # remove sync from tree
+            if "transport:sync" in self:
+                # remove sync flag from transport
+                del self["transport:sync"]
         else:
+            # new srv_command, init with sync=True
             self.__tree = self.__builder.ics_batch(
                 self.__builder.source(
                     host=platform.uname()[1],
                     pid="{:d}".format(os.getpid())
                 ),
+                self.__builder.transport(
+                    self.__builder.sync(),
+                    self.__builder.stream(
+                        id=uuid.uuid4().urn,
+                    ),
+                ),
                 self.__builder.command(kwargs.pop("command", "not set")),
                 self.__builder.identity(kwargs.pop("identity", "not set")),
                 # set srv_command version
-                srvc_version="{:d}".format(kwargs.pop("srvc_version", 1)))
+                srvc_version="{:d}".format(kwargs.pop("srvc_version", 1))
+            )
             for key, value in kwargs.items():
                 self[key] = value
 
