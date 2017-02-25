@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2001-2006,2012-2016 Andreas Lang, init.at
+    Copyright (C) 2001-2006,2012-2017 Andreas Lang, init.at
 
     Send feedback to: <lang@init.at>
 
@@ -228,7 +228,7 @@ int main(int argc, char **argv)
                    strlen(msg_text), client_uuid);
             // handle command
             if (!strncmp(msg_text, "status", 6) && strlen(msg_text) == 6) {
-                //printf ("%d ,  %s %d\n", num, inbuff, sizeof(inbuff));
+                // printf ("%d ,  %s %d\n", num, inbuff, sizeof(inbuff));
                 // recreate FNAME according to current runlevel, not beautifull but working
                 if (!stat(FNAME_BOOT, &my_stat)) {
                     answ_file_name = FNAME_BOOT;

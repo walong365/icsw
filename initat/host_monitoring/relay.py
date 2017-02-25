@@ -819,12 +819,13 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             if not zmq_sock.getsockopt(zmq.RCVMORE):
                 break
         if len(data) == 2:
-            if data[0] in self.__raw_nhm_dict:
+            src_id = data[0].decode("utf-8")
+            if src_id in self.__raw_nhm_dict:
                 srv_result = etree.fromstring(data[1])
-                srv_com = self.__raw_nhm_dict[data[0]][1]
+                srv_com = self.__raw_nhm_dict[src_id][1]
                 cur_id = srv_com["identity"].text
                 self._send_result(cur_id, srv_result.findtext("nodestatus"), limits.mon_STATE_OK)
-                del self.__raw_nhm_dict[data[0]]
+                del self.__raw_nhm_dict[src_id]
             else:
                 srv_result = server_command.srv_command(source=data[1])
                 if "command" in srv_result and srv_result["*command"] in ["relayer_info"]:

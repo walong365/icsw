@@ -32,13 +32,12 @@ import time
 import psutil
 from lxml import etree
 
-from initat.client_version import VERSION_STRING
 from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
 from initat.tools import cpu_database, partition_tools, pci_database, \
-    uuid_tools, config_store, dmi_tools, logging_tools, process_tools, \
+    dmi_tools, logging_tools, process_tools, \
     server_command
 from .. import hm_classes, limits
-from ..constants import HMAccessClassEnum, ZMQ_ID_MAP_STORE
+from ..constants import HMAccessClassEnum
 
 nw_classes = ["ethernet", "network", "infiniband"]
 
@@ -1652,91 +1651,6 @@ class lvsdatapercent_command(hm_classes.MonitoringCommand):
             return ret_state, "{} - data_percentage is {}".format(lv_name, data_percent)
         except ValueError:
             return limits.mon_STATE_CRITICAL, "No data_percent value set for {}".format(lv_name)
-
-
-class version_command(hm_classes.MonitoringCommand):
-    class Meta:
-        required_platform = PlatformSystemTypeEnum.ANY
-        required_access = HMAccessClassEnum.level0
-        uuid = "5eb4ffef-e3cb-44f6-8bf5-8f15baee6fa5"
-        description = "Version information"
-
-    def __call__(self, srv_com, cur_ns):
-        srv_com["version"] = VERSION_STRING
-
-    def interpret(self, srv_com, cur_ns):
-        try:
-            return limits.mon_STATE_OK, "version is {}".format(srv_com["version"].text)
-        except:
-            return limits.mon_STATE_CRITICAL, "version not found"
-
-    def interpret_old(self, result, parsed_coms):
-        act_state = limits.mon_STATE_OK
-        return act_state, "version is {}".format(result)
-
-
-class get_0mq_id_command(hm_classes.MonitoringCommand):
-    class Meta:
-        required_platform = PlatformSystemTypeEnum.ANY
-        required_access = HMAccessClassEnum.level0
-        uuid = "0ff13b8d-ac77-4bf7-9087-f0b5bf41502c"
-        description = "get 0MQ ID"
-
-    def __call__(self, srv_com, cur_ns):
-        _cs = config_store.ConfigStore(ZMQ_ID_MAP_STORE, log_com=self.log, prefix="bind")
-        if "target_ip" in srv_com:
-            target_ip = srv_com["target_ip"].text
-        else:
-            target_ip = "0"
-        srv_com["zmq_id"] = _cs["0"]["uuid"]
-
-    def interpret(self, srv_com, cur_ns):
-        try:
-            return limits.mon_STATE_OK, "0MQ id is {}".format(srv_com["zmq_id"].text)
-        except:
-            return limits.mon_STATE_CRITICAL, "version not found"
-
-
-class status_command(hm_classes.MonitoringCommand):
-    class Meta:
-        required_platform = PlatformSystemTypeEnum.ANY
-        required_access = HMAccessClassEnum.level0
-        uuid = "cc4a3d1c-5908-48d3-8617-41738e4622ee"
-        description = "get current status of system"
-
-    def __call__(self, srv_com, cur_ns):
-        srv_com["status_str"] = "ok running"
-
-    def interpret(self, srv_com, cur_ns):
-        try:
-            return limits.mon_STATE_OK, "status is {}".format(srv_com["status_str"].text)
-        except:
-            return limits.mon_STATE_CRITICAL, "status unknown"
-
-    def interpret_old(self, result, parsed_coms):
-        act_state = limits.mon_STATE_OK
-        return act_state, "status is {}".format(result)
-
-
-class get_uuid_command(hm_classes.MonitoringCommand):
-    class Meta:
-        required_platform = PlatformSystemTypeEnum.ANY
-        required_access = HMAccessClassEnum.level0
-        uuid = "6a628622-0dd2-4307-ae3d-87448bd71251"
-        description = "get UUID of system"
-
-    def __call__(self, srv_com, cur_ns):
-        srv_com["uuid"] = uuid_tools.get_uuid().urn
-
-    def interpret(self, srv_com, cur_ns):
-        try:
-            return limits.mon_STATE_OK, "uuid is {}".format(srv_com["uuid"].text)
-        except:
-            return limits.mon_STATE_CRITICAL, "uuid not found"
-
-    def interpret_old(self, result, parsed_coms):
-        act_state = limits.mon_STATE_OK
-        return act_state, "uuid is {}".format(result.split()[1])
 
 
 class swap_command(hm_classes.MonitoringCommand):

@@ -189,6 +189,7 @@
         <module-name>initat.rms.main</module-name>
         <access-rights>
             <file value="/etc/sysconfig/licenses/.license_policy" user="sge" group="sge"/>
+            <dir value="/var/run/rms-server" user="sge" group="sge" create="1"/>
         </access-rights>
     </instance>
     <instance check_type="meta" name="cluster-server" alias="server" uuid-postfix="cluster-server">
