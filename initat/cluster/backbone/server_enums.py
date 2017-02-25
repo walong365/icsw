@@ -47,7 +47,11 @@ icswServiceEnum = None
 class BaseEnum(Enum):
     @classmethod
     def get_server_enums(cls):
-        return {name: entry.value for name, entry in list(cls.__members__.items()) if entry.value.server_service}
+        return {
+            name: entry.value for name, entry in list(
+                cls.__members__.items()
+            ) if (entry.value.server_service and entry.value.sync_config)
+        }
 
 
 def init_app_enum():
