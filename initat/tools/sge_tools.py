@@ -279,7 +279,7 @@ class SGEInfo(object):
 
     def _init_cache(self):
         import memcache
-        from initat.host_monitoring.client_enums import icswServiceEnum
+        from initat.cluster.backbone.server_enums import icswServiceEnum
         self._cache_socket = memcache.Client(
             [
                 "127.0.0.1:{:d}".format(
