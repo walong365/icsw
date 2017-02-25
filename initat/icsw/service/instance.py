@@ -349,6 +349,8 @@ class InstanceXML(object):
                 # default wait time before killing processes
                 ("wait_time", "10"),
                 ("ignore-for-service", "0"),
+                # inherit start-type from check_type
+                ("start-type", "inherit"),
             ]:
                 if key not in cur_el.attrib:
                     cur_el.attrib[key] = def_value

@@ -79,6 +79,10 @@ class client_enums(Enum):
         msi_block_name="md-sync-server",
         relayer_service=True,
     )
+    salt_minion = icswServiceEnumBaseClient(
+        "salt-minion",
+        "Salt minion process",
+    )
 
 
 def init_app_enum():

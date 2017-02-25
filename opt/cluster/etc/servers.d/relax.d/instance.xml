@@ -26,6 +26,14 @@
                 </attribute>
             </optional>
             <optional>
+                <attribute name="start-type">
+                    <choice>
+                        <value>inherit</value>
+                        <value>daemonize</value>
+                    </choice>
+                </attribute>
+            </optional>
+            <optional>
                 <attribute name="sum-subprocesses"/>
             </optional>
             <optional>
@@ -241,6 +249,9 @@
                 </optional>
                 <optional>
                     <element name="module-name">
+                        <optional>
+                            <attribute name="main-name"></attribute>
+                        </optional>
                         <text/>
                     </element>
                 </optional>

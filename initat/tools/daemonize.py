@@ -71,6 +71,7 @@ def main():
     _parser.add_argument("-d", dest="daemonize", default=False, action="store_true", help="daemonize process [%(default)s]")
     _parser.add_argument("--progname", default="", type=str, help="programm name for sys.argv [%(default)s]")
     _parser.add_argument("--modname", default="", type=str, help="python module to load [%(default)s]")
+    _parser.add_argument("--main-name", default="main", type=str, help="name of main function [%(default)s]")
     _parser.add_argument("--exename", default="", type=str, help="exe to start [%(default)s]")
     _parser.add_argument("--proctitle", default="", type=str, help="process title to set [%(default)s]")
     _parser.add_argument("--user", type=str, default="root", help="user to use for the process [%(default)s]")
@@ -138,7 +139,8 @@ def main():
             from initat.tools.io_stream_helper import icswIOStream
             sys.stdout = icswIOStream(icswLogHandleTypes.log_py)
             sys.stderr = icswIOStream(icswLogHandleTypes.err_py)
-        main_module.main()
+        getattr(main_module, opts.main_name)()
+        # was: main_module.main()
     else:
         # path for standard exe (munge, redis)
         if opts.extra_args:

@@ -122,4 +122,24 @@
             </ports>
         </network>
     </instance>
+    <instance
+        check_type="pid_file"
+        name="salt-minion"
+        runs_on="client"
+        pid_file_name="salt-minion.pid"
+        uuid-postfix="salt-minion"
+        start-type="daemonize"
+    >
+        <module-name
+            main-name="salt_minion"
+        >salt.scripts</module-name>
+        <config-enums>
+            <config-enum>salt_minion</config-enum>
+        </config-enums>
+<!--        <network>
+            <ports>
+                <port type="command">2003</port>
+            </ports>
+        </network> -->
+    </instance>
 </instances>

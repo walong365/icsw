@@ -411,6 +411,27 @@ class Service(object):
                     state="{:d}".format(act_state),
                 )
             )
+        elif self.module_name:
+            from initat.constants import ICSW_ROOT
+            mod_name = "/".join(self.module_name.split("."))
+            full_path = os.path.join(ICSW_ROOT, mod_name)
+            if os.path.isdir(full_path) or os.path.exists("{}.py".format(full_path)):
+                act_state = SERVICE_DEAD
+                result.append(
+                    E.process_state_info(
+                        "no processes",
+                        state="{:d}".format(act_state),
+                    )
+                )
+            else:
+                act_state = SERVICE_NOT_INSTALLED
+                result.append(
+                    E.process_state_info(
+                        "not installed",
+                        state="{:d}".format(act_state),
+                    )
+                )
+
         else:
             act_state = SERVICE_NOT_INSTALLED
             result.append(
@@ -500,7 +521,43 @@ class Service(object):
     def start(self, act_proc_dict):
         if not int(self.entry.get("startstop", "1")):
             return
-        self._start()
+        s_type = self.attrib["start-type"]
+        if s_type == "inherit":
+            self._start()
+        elif s_type == "daemonize":
+            self._start_daemonize()
+
+    def _start_daemonize(self):
+        arg_list = self._generate_py_arg_list()
+        self.log("starting: {}".format(" ".join(arg_list)))
+        if not os.fork():
+            subprocess.call(arg_list + ["-d"])
+            os._exit(1)
+        else:
+            _child_pid, _child_state = os.wait()
+
+    def _start_service_rc(self):
+        self._handle_service_rc("start")
+
+    def _stop_service_rc(self):
+        self._handle_service_rc("stop")
+
+    def _handle_service_rc(self, command):
+        if os.path.exists(self.init_script_name):
+            process_tools.call_command(
+                "{} {}".format(
+                    self.init_script_name,
+                    command
+                ),
+                self.log
+            )
+        else:
+            self.log(
+                "rc-script {} does not exist".format(
+                    self.init_script_name
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
 
     def _start(self):
         # for subclasses
@@ -509,10 +566,32 @@ class Service(object):
     def stop(self, act_proc_dict):
         if not int(self.entry.get("startstop", "1")):
             return
-        self._stop()
+        s_type = self.attrib["start-type"]
+        if s_type == "inherit":
+            self._stop()
+        elif s_type == "daemonize":
+            self._stop_daemonize()
 
     def _stop(self):
         pass
+
+    def _stop_daemonize(self):
+        _main_pids = [int(_val.text) for _val in self.entry.findall(".//pids/pid[@main='1']")]
+        _meta_pids = [int(_val.text) for _val in self.entry.findall(".//pids/pid")]
+        # print etree.tostring(entry, pretty_print=True)
+        # print _main_pids, _meta_pids
+        if len(_meta_pids):
+            try:
+                if _main_pids:
+                    os.kill(_main_pids[0], signal.SIGTERM)
+                    self.log("sent signal {:d} to {:d}".format(signal.SIGTERM, _main_pids[0]))
+                else:
+                    os.kill(_meta_pids[0], signal.SIGTERM)
+                    self.log("sent signal {:d} to {:d}".format(signal.SIGTERM, _meta_pids[0]))
+            except OSError:
+                self.log("process vanished: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("no pids to kill")
 
     def debug(self, act_proc_dict, debug_args):
         if not int(self.entry.get("startstop", "1")):
@@ -521,7 +600,7 @@ class Service(object):
 
     def _debug(self, debug_args):
         # for subclasses
-        pass
+        print("-+* debug not implemented *+-")
 
     def signal_restart(self, act_proc_dict):
         if not int(self.entry.get("startstop", "1")):
@@ -600,6 +679,89 @@ class Service(object):
         # print "found", _pid_list
         return _pid_list
 
+    def _generate_py_arg_list(self, debug=False):
+        _prog_name = self.prog_name
+        _prog_title = self.prog_title
+        arg_dict = {
+            _val.get("key"): _val.text.strip() for _val in self.entry.findall(".//arg[@key]")
+        }
+        _module_name = self.entry.get("module", self.module_name)
+        mn_attrib = self.entry.find("module-name").attrib
+        main_name = mn_attrib.get("main-name", "main")
+        if debug:
+            _daemon_path = os.path.split(os.path.split(os.path.dirname(__file__))[0])[0]
+        else:
+            _daemon_path = INITAT_BASE
+        _arg_list = [
+            os.path.join(_daemon_path, "tools", "daemonize.py"),
+            "--progname",
+            _prog_name,
+            "--modname",
+            _module_name,
+            "--main-name",
+            main_name,
+            "--proctitle",
+            _prog_title,
+        ]
+        for _add_key in ["user", "group", "groups"]:
+            if _add_key in arg_dict:
+                _arg_list.extend(
+                    [
+                        "--{}".format(_add_key),
+                        arg_dict[_add_key],
+                    ]
+                )
+        if self.entry.find("nice-level") is not None:
+            _arg_list.extend(
+                [
+                    "--nice",
+                    "{:d}".format(int(self.entry.findtext("nice-level").strip())),
+                ]
+            )
+        # check access rights
+        for _dir_el in self.entry.findall(".//access-rights/dir[@value]"):
+            _dir = _dir_el.get("value")
+            if not os.path.isdir(_dir) and int(_dir_el.get("create", "0")):
+                os.makedirs(_dir)
+            _recursive = True if int(_dir_el.get("recursive", "0")) else False
+            if "mask" in _dir_el.attrib:
+                _mask = _dir_el.get("mask")
+                try:
+                    _mask = int(_mask, 8)
+                except:
+                    self.log(
+                        "cannot interpret mask '{}' with base 8".format(
+                            _mask,
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR,
+                    )
+                    _mask = None
+            else:
+                _mask = None
+            if os.path.isdir(_dir):
+                if _mask:
+                    os.chmod(_dir, _mask)
+                _uid, _gid = (
+                    process_tools.get_uid_from_name(_dir_el.get("user", "root"))[0],
+                    process_tools.get_gid_from_name(_dir_el.get("group", "root"))[0],
+
+                )
+                os.chown(_dir, _uid, _gid)
+                if _recursive:
+                    for _dir, _dirs, _files in os.walk(_dir):
+                        for _file in _files:
+                            _file = os.path.join(_dir, _file)
+                            if os.path.isfile(_file):
+                                os.chown(_file, _uid, _gid)
+        for _file_el in self.entry.findall(".//access-rights/file[@value]"):
+            if os.path.isfile(_file_el.get("value")):
+                os.chown(
+                    _file_el.get("value"),
+                    process_tools.get_uid_from_name(_file_el.get("user", "root"))[0],
+                    process_tools.get_gid_from_name(_file_el.get("group", "root"))[0],
+                )
+        return _arg_list
+
 
 class SimpleService(Service):
     # Service backup up by an init-RC script
@@ -655,27 +817,10 @@ class SimpleService(Service):
                     self._add_pids(result, [act_pid], act_proc_dict)
 
     def _start(self):
-        self._handle_service_rc("start")
+        return self._start_service_rc()
 
     def _stop(self):
-        self._handle_service_rc("stop")
-
-    def _handle_service_rc(self, command):
-        if os.path.exists(self.init_script_name):
-            process_tools.call_command(
-                "{} {}".format(
-                    self.init_script_name,
-                    command
-                ),
-                self.log
-            )
-        else:
-            self.log(
-                "rc-script {} does not exist".format(
-                    self.init_script_name
-                ),
-                logging_tools.LOG_LEVEL_WARN
-            )
+        return self._stop_service_rc()
 
 
 class PIDService(Service):
@@ -771,27 +916,13 @@ class MetaService(Service):
         else:
             self._add_non_running(result, check_init_script=False)
 
-    def _stop(self):
-        _main_pids = [int(_val.text) for _val in self.entry.findall(".//pids/pid[@main='1']")]
-        _meta_pids = [int(_val.text) for _val in self.entry.findall(".//pids/pid")]
-        # print etree.tostring(entry, pretty_print=True)
-        # print _main_pids, _meta_pids
-        if len(_meta_pids):
-            try:
-                if _main_pids:
-                    os.kill(_main_pids[0], signal.SIGTERM)
-                    self.log("sent signal {:d} to {:d}".format(signal.SIGTERM, _main_pids[0]))
-                else:
-                    os.kill(_meta_pids[0], signal.SIGTERM)
-                    self.log("sent signal {:d} to {:d}".format(signal.SIGTERM, _meta_pids[0]))
-            except OSError:
-                self.log("process vanished: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("no pids to kill")
-
     def _reload(self):
-        _main_pids = [int(_val.text) for _val in self.entry.findall(".//pids/pid[@main='1']")]
-        _meta_pids = [int(_val.text) for _val in self.entry.findall(".//pids/pid")]
+        _main_pids = [
+            int(_val.text) for _val in self.entry.findall(".//pids/pid[@main='1']")
+        ]
+        _meta_pids = [
+            int(_val.text) for _val in self.entry.findall(".//pids/pid")
+        ]
         if len(_meta_pids):
             try:
                 if _main_pids:
@@ -806,13 +937,7 @@ class MetaService(Service):
             self.log("no pids to signal")
 
     def _start(self):
-        arg_list = self._generate_py_arg_list()
-        self.log("starting: {}".format(" ".join(arg_list)))
-        if not os.fork():
-            subprocess.call(arg_list + ["-d"])
-            os._exit(1)
-        else:
-            _child_pid, _child_state = os.wait()
+        self._start_daemonize()
 
     def _debug(self, debug_args):
         # ignore sigint to catch keyboard interrupt
@@ -845,80 +970,3 @@ class MetaService(Service):
             )
             if _result is not None:
                 self.log(*_result.get_log_tuple())
-
-    def _generate_py_arg_list(self, debug=False):
-        _prog_name = self.prog_name
-        _prog_title = self.prog_title
-        arg_dict = {_val.get("key"): _val.text.strip() for _val in self.entry.findall(".//arg[@key]")}
-        _module_name = self.entry.get("module", self.module_name)
-        if debug:
-            _daemon_path = os.path.split(os.path.split(os.path.dirname(__file__))[0])[0]
-        else:
-            _daemon_path = INITAT_BASE
-        _arg_list = [
-            os.path.join(_daemon_path, "tools", "daemonize.py"),
-            "--progname",
-            _prog_name,
-            "--modname",
-            _module_name,
-            "--proctitle",
-            _prog_title,
-        ]
-        for _add_key in ["user", "group", "groups"]:
-            if _add_key in arg_dict:
-                _arg_list.extend(
-                    [
-                        "--{}".format(_add_key),
-                        arg_dict[_add_key],
-                    ]
-                )
-        if self.entry.find("nice-level") is not None:
-            _arg_list.extend(
-                [
-                    "--nice",
-                    "{:d}".format(int(self.entry.findtext("nice-level").strip())),
-                ]
-            )
-        # check access rights
-        for _dir_el in self.entry.findall(".//access-rights/dir[@value]"):
-            _dir = _dir_el.get("value")
-            if not os.path.isdir(_dir) and int(_dir_el.get("create", "0")):
-                os.makedirs(_dir)
-            _recursive = True if int(_dir_el.get("recursive", "0")) else False
-            if "mask" in _dir_el.attrib:
-                _mask = _dir_el.get("mask")
-                try:
-                    _mask = int(_mask, 8)
-                except:
-                    self.log(
-                        "cannot interpret mask '{}' with base 8".format(
-                            _mask,
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR,
-                    )
-                    _mask = None
-            else:
-                _mask = None
-            if os.path.isdir(_dir):
-                if _mask:
-                    os.chmod(_dir, _mask)
-                _uid, _gid = (
-                    process_tools.get_uid_from_name(_dir_el.get("user", "root"))[0],
-                    process_tools.get_gid_from_name(_dir_el.get("group", "root"))[0],
-
-                )
-                os.chown(_dir, _uid, _gid)
-                if _recursive:
-                    for _dir, _dirs, _files in os.walk(_dir):
-                        for _file in _files:
-                            _file = os.path.join(_dir, _file)
-                            if os.path.isfile(_file):
-                                os.chown(_file, _uid, _gid)
-        for _file_el in self.entry.findall(".//access-rights/file[@value]"):
-            if os.path.isfile(_file_el.get("value")):
-                os.chown(
-                    _file_el.get("value"),
-                    process_tools.get_uid_from_name(_file_el.get("user", "root"))[0],
-                    process_tools.get_gid_from_name(_file_el.get("group", "root"))[0],
-                )
-        return _arg_list
