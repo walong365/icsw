@@ -686,8 +686,11 @@ class Service(object):
             _val.get("key"): _val.text.strip() for _val in self.entry.findall(".//arg[@key]")
         }
         _module_name = self.entry.get("module", self.module_name)
-        mn_attrib = self.entry.find("module-name").attrib
-        main_name = mn_attrib.get("main-name", "main")
+        mod_name = self.entry.find("module-name")
+        if mod_name is not None:
+            main_name = mod_name.attrib.get("main-name", "main")
+        else:
+            main_name = "main"
         if debug:
             _daemon_path = os.path.split(os.path.split(os.path.dirname(__file__))[0])[0]
         else:
