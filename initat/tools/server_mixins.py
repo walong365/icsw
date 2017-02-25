@@ -300,8 +300,15 @@ class ConfigCheckObject(object):
             from django.db.models import Q
             from initat.cluster.backbone.models import LogSource
         if self.srv_type_enum.value.instance_name is None:
-            raise KeyError("No instance_name set for srv_type_enum '{}'".format(self.srv_type_enum.name))
-        from initat.host_monitoring.client_enums import icswServiceEnum
+            raise KeyError(
+                "No instance_name set for srv_type_enum '{}'".format(
+                    self.srv_type_enum.name
+                )
+            )
+        try:
+            from initat.cluster.backbone.server_enums import icswServiceEnum
+        except:
+            from initat.host_monitoring.client_enums import icswServiceEnum
         self._instance = self._inst_xml[self.srv_type_enum.value.instance_name]
         # conf_names = self._inst_xml.get_config_names(self._instance)
         self.log(
