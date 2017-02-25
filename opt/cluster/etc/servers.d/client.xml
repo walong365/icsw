@@ -6,6 +6,7 @@
         pid_file_name="hoststatus_zmq"
         process_name="hoststatus_zmq"
         runs_on="client"
+        ignore-for-service="1"
     >
         <network>
             <ports>

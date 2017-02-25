@@ -29,6 +29,15 @@
                 <attribute name="sum-subprocesses"/>
             </optional>
             <optional>
+                <!-- ignore for service operations (meta and icsw service status, only used for Port lookup) -->
+                <attribute name="ignore-for-service">
+                    <choice>
+                        <value>0</value>
+                        <value>1</value>
+                    </choice>
+                </attribute>
+            </optional>
+            <optional>
                 <attribute name="uuid-postfix"/>
             </optional>
             <!-- deprecated -->

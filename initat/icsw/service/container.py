@@ -288,7 +288,8 @@ class ServiceContainer(object):
             )
 
     def apply_filter(self, service_list, instance_xml):
-        check_list = instance_xml.tree.xpath(".//instance[@runs_on]", smart_strings=False)
+        # check_list = instance_xml.tree.xpath(".//instance[@runs_on and (not(@ignore-for-service) or @ignore-for-service='0')]", smart_strings=False)
+        check_list = instance_xml.tree.xpath(".//instance[@runs_on and (not(@ignore-for-service) or @ignore-for-service='0')]", smart_strings=False)
         if service_list:
             check_list = [Service(_entry, self.__log_com) for _entry in check_list if _entry.get("name") in service_list]
             found_names = set([_srv.name for _srv in check_list])

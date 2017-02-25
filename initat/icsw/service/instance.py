@@ -342,6 +342,7 @@ class InstanceXML(object):
                 ("process_name", name),
                 # default wait time before killing processes
                 ("wait_time", "10"),
+                ("ignore-for-service", "0"),
             ]:
                 if key not in cur_el.attrib:
                     cur_el.attrib[key] = def_value
