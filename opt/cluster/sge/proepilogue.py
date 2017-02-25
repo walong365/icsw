@@ -53,6 +53,7 @@ from initat.tools import threading_tools, configfile, logging_tools, net_tools, 
     process_tools, server_command
 from initat.icsw.service.instance import InstanceXML
 
+# todo: move to icswServiceEnum lookup
 HM_PORT = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
 
 

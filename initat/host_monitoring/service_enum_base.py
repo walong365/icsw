@@ -27,7 +27,14 @@ __all__ = [
 
 
 class icswServiceEnumBaseClient(object):
-    def __init__(self, name, info="N/A", root_service=True, msi_block_name=None, relayer_service=False):
+    def __init__(
+        self,
+        name: str,
+        info: str="N/A",
+        root_service: bool=True,
+        msi_block_name: str=None,
+        relayer_service: str=False
+    ):
         self.name = name
         self.info = info
         self.root_service = root_service

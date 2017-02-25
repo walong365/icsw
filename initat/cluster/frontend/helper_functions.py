@@ -254,8 +254,9 @@ class CachedMemcacheClient(object):
     def address(self):
         if not self.__read:
             from initat.icsw.service.instance import InstanceXML
+            from initat.cluster.backbone.server_enums import icswServiceEnum
             _xml = InstanceXML(quiet=True)
-            _port = _xml.get_port_dict("memcached", command=True)
+            _port = _xml.get_port_dict(icswServiceEnum.memcached, command=True)
             self.__address = ["127.0.0.1:{:d}".format(_port)]
             self.__read = True
         return self.__address

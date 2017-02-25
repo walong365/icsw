@@ -37,6 +37,11 @@ class AppEnum(Enum):
             EggAction("configure", "device", ghost=True),
         ]
     )
+    memcached = icswServiceEnumBase(
+        "memcached",
+        "runs the memcached-server",
+        sync_config=False,
+    )
     cluster_server = icswServiceEnumBase(
         "cluster-server",
         "sets device as a cluster-server (DB access)",

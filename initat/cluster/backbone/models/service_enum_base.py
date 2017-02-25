@@ -66,9 +66,19 @@ class EggAction(object):
 
 
 class icswServiceEnumBase(icswServiceEnumBaseClient):
-    def __init__(self, name, info="N/A", root_service=True, msi_block_name=None, egg_actions=[]):
+    def __init__(
+        self,
+        name: str,
+        info: str="N/A",
+        root_service: bool=True,
+        msi_block_name: str=None,
+        egg_actions: list=[],
+        # sync config to database
+        sync_config: bool=True,
+    ):
         icswServiceEnumBaseClient.__init__(self, name, info, root_service, msi_block_name)
         self.client_service = False
         self.server_service = True
         # for egg consumers
         self.egg_actions = egg_actions
+        self.sync_config = sync_config

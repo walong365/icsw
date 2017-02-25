@@ -48,7 +48,15 @@ class server_process(server_mixins.ICSWBasePool):
         self.CC.read_config_from_db(
             [
                 ("TFTP_DIR", configfile.StringConfigVar("/tftpboot")),
-                ("MONITORING_PORT", configfile.IntegerConfigVar(InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True))),
+                (
+                    "MONITORING_PORT",
+                    configfile.IntegerConfigVar(
+                        InstanceXML(quiet=True).get_port_dict(
+                            icswServiceEnum.host_monitoring,
+                            command=True
+                        )
+                    )
+                ),
                 ("LOCALHOST_IS_EXCLUSIVE", configfile.BoolConfigVar(True)),
                 ("HOST_CACHE_TIME", configfile.IntegerConfigVar(10 * 60)),
                 ("WRITE_REDHAT_HWADDR_ENTRY", configfile.BoolConfigVar(True)),

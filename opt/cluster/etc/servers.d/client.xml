@@ -13,6 +13,9 @@
                 <port type="command">2002</port>
             </ports>
         </network>
+        <config-enums>
+            <config-enum>hoststatus</config-enum>
+        </config-enums>
     </instance>
     <instance
         check_type="meta"

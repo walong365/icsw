@@ -37,6 +37,7 @@ from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_s
     background_job
 from initat.cluster.backbone.models.asset.dynamic_asset import ASSETTYPE_HM_COMMAND_MAP
 from initat.cluster.backbone.websockets.constants import WSStreamEnum
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.constants import PlatformSystemTypeEnum
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
@@ -573,7 +574,10 @@ class Dispatcher(object):
     def __init__(self, discovery_process):
         self.discovery_process = discovery_process
         # quasi-static constants
-        self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+        self.__hm_port = InstanceXML(quiet=True).get_port_dict(
+            icswServiceEnum.host_monitoring,
+            command=True
+        )
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.discovery_process.log("[Disp] {}".format(what), log_level)

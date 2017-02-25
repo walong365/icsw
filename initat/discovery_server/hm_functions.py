@@ -31,6 +31,7 @@ from initat.cluster.backbone.exceptions import NoMatchingNetworkDeviceTypeFoundE
     NoMatchingNetworkFoundError
 from initat.cluster.backbone.models import net_ip, netdevice, \
     netdevice_speed, peer_information, DeviceLogEntry, DeviceInventory
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools, net_tools, process_tools, server_command, dmi_tools, pci_database
@@ -134,7 +135,10 @@ class HostMonitoringMixin(object):
         return _xml
 
     def scan_system_info(self, dev_com, scan_dev):
-        hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+        hm_port = InstanceXML(quiet=True).get_port_dict(
+            icswServiceEnum.host_monitoring,
+            command=True
+        )
         res_node = ResultNode()
         s_time = time.time()
         # global config should be a kwarg
@@ -227,7 +231,10 @@ class HostMonitoringMixin(object):
         return res_node
 
     def scan_network_info(self, dev_com, scan_dev):
-        hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+        hm_port = InstanceXML(quiet=True).get_port_dict(
+            icswServiceEnum.host_monitoring,
+            command=True
+        )
         res_node = ResultNode()
         strict_mode = True if int(dev_com.get("strict_mode")) else False
         modify_peering = True if int(dev_com.get("modify_peering")) else False

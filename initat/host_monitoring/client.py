@@ -25,6 +25,7 @@
 import os
 
 from initat.host_monitoring import limits
+from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.host_monitoring.host_monitoring_struct import ExtReturn
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import net_tools, server_command, logging_tools
@@ -78,7 +79,10 @@ def ClientCode(global_config):
                 immediate=True,
             )
             if result:
-                if global_config["COMMAND_PORT"] == InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True):
+                if global_config["COMMAND_PORT"] == InstanceXML(quiet=True).get_port_dict(
+                    icswServiceEnum.host_monitoring,
+                    command=True
+                ):
                     error_result = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
                     if error_result:
                         error_result = error_result[0]

@@ -20,9 +20,9 @@
 """ special calls for logcheck-server related commands """
 
 from initat.cluster.backbone.models import SpecialGroupsEnum, SyslogCheck
-from initat.md_config_server.icinga_log_reader.log_reader import HostServiceIDUtil
-from initat.md_config_server.special_commands.base import SpecialBase
 from initat.tools import logging_tools
+from ..base import SpecialBase
+from ...icinga_log_reader.log_reader import HostServiceIDUtil
 
 
 class SpecialSyslogRate(SpecialBase):

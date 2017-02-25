@@ -43,6 +43,10 @@ icswServiceEnum = None
 
 
 class client_enums(Enum):
+    hoststatus = icswServiceEnumBaseClient(
+        "hoststatus",
+        "HostStatus (deprecated)",
+    )
     host_monitoring = icswServiceEnumBaseClient(
         "host-monitoring",
         "Monitoring base",

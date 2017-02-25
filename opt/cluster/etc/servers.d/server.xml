@@ -373,5 +373,8 @@
                 <port type="command">8001</port>
             </ports>
         </network>
+        <config-enums>
+            <config-enum>memcached</config-enum>
+        </config-enums>
     </instance>
 </instances>

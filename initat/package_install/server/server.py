@@ -48,7 +48,10 @@ class ServerProcess(
         )
         self.CC.init(icswServiceEnum.package_server, global_config)
         self.CC.check_config()
-        self.__pc_port = InstanceXML(quiet=True).get_port_dict("package-client", command=True)
+        self.__pc_port = InstanceXML(quiet=True).get_port_dict(
+            icswServiceEnum.package_client,
+            command=True
+        )
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)

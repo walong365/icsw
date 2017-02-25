@@ -218,7 +218,11 @@ class InstanceXML(object):
                             # ignore
                             print("duplicate entry '{}' found, ignoring".format(_name))
                         else:
-                            raise KeyError("name {} already present in instance lut".format(_name))
+                            raise KeyError(
+                                "name {} already present in instance lut".format(
+                                    _name
+                                )
+                            )
                     else:
                         self.__lut[_name] = sub_inst
                 for _enum_name in _tree_dict[_inst_key].xpath(".//config-enum/text()"):
@@ -281,6 +285,8 @@ class InstanceXML(object):
         return self.__alias_lut
 
     def resolve_enum(self, enum):
+        if enum.name not in self.__enum_lut:
+            print("**", self.__enum_lut.keys())
         return self.__enum_lut[enum.name]
 
     # utility functions

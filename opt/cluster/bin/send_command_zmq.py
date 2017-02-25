@@ -20,12 +20,11 @@
 
 """ sends a command to one of the python-servers, 0MQ version"""
 
-
-
 import argparse
 import sys
 
 from initat.icsw.service.instance import InstanceXML
+from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.tools import net_tools
 
 
@@ -42,7 +41,7 @@ class LocalParser(argparse.ArgumentParser):
         self.add_argument(
             "-p",
             help="port or instance/service [%(default)s]",
-            default="{:d}".format(self.inst_xml.get_port_dict("host-monitoring", command=True)),
+            default="{:d}".format(self.inst_xml.get_port_dict(icswServiceEnum.host_monitoring, command=True)),
             dest="port",
             type=str
         )

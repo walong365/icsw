@@ -59,11 +59,11 @@ class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin
         self.debug = global_config["DEBUG"]
         self.srv_helper = service_tools.ServiceHelper(self.log)
         self.__hs_port = InstanceXML(quiet=True).get_port_dict(
-            "hoststatus",
+            icswServiceEnum.hoststatus,
             command=True
         )
         self.__hm_port = InstanceXML(quiet=True).get_port_dict(
-            "host-monitoring",
+            icswServiceEnum.host_monitoring,
             command=True
         )
         # log config

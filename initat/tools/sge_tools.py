@@ -279,10 +279,14 @@ class SGEInfo(object):
 
     def _init_cache(self):
         import memcache
+        from initat.host_monitoring.client_enums import icswServiceEnum
         self._cache_socket = memcache.Client(
             [
                 "127.0.0.1:{:d}".format(
-                    InstanceXML(quiet=True).get_port_dict("memcached", command=True)
+                    InstanceXML(quiet=True).get_port_dict(
+                        icswServiceEnum.memcached,
+                        command=True
+                    )
                 )
             ],
             debug=0

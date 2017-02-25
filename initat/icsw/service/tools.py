@@ -24,6 +24,7 @@
 import os
 
 from initat.tools import net_tools, server_command
+from initat.host_monitoring.client_enums import icswServiceEnum
 
 
 def query_local_meta_server(inst_xml, command, services=None, days_to_consider=1, db_limit=100):
@@ -37,6 +38,11 @@ def query_local_meta_server(inst_xml, command, services=None, days_to_consider=1
     return net_tools.ZMQConnection(
         "icsw_state_{:d}".format(os.getpid())
     ).add_connection(
-        "tcp://localhost:{:d}".format(inst_xml.get_port_dict("meta-server", command=True)),
+        "tcp://localhost:{:d}".format(
+            inst_xml.get_port_dict(
+                icswServiceEnum.meta_server,
+                command=True
+            )
+        ),
         srv_com,
     )

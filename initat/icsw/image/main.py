@@ -27,10 +27,14 @@ from initat.cluster.backbone.models import image
 from initat.cluster.frontend.helper_functions import XMLWrapper
 from initat.icsw.service import instance
 from initat.tools import logging_tools, server_command, net_tools
+from initat.cluster.backbone.server_enums import icswServiceEnum
 
 
 def query_local_server(inst, cmd):
-    _port = inst.get_port_dict("server", ptype="command")
+    _port = inst.get_port_dict(
+        icswServiceEnum.cluster_server,
+        ptype="command"
+    )
     _result = net_tools.ZMQConnection(
         "icsw_image_{:d}".format(os.getpid())
     ).add_connection(

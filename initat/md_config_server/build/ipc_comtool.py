@@ -26,6 +26,7 @@ import zmq
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import process_tools, server_command, logging_tools, threading_tools
 from initat.cluster.backbone.models import DeviceLogEntry
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from ..config import global_config
 
 
@@ -43,7 +44,10 @@ class IPCClientHandler(threading_tools.PollerBase):
         self.__pending_messages = {}
         self.__msg_id = 0
         self.__msg_prefix = "ipc_com_{:d}".format(os.getpid())
-        self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+        self.__hm_port = InstanceXML(quiet=True).get_port_dict(
+            icswServiceEnum.host_monitoring,
+            command=True
+        )
         self.__hbc_dict = {}
         self.log("init")
 

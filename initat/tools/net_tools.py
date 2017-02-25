@@ -215,10 +215,14 @@ class ZMQConnection(object):
 
 def SendCommandDefaults(**kwargs):
     from initat.icsw.service.instance import InstanceXML
+    from initat.host_monitoring.client_enums import icswServiceEnum
     _def = argparse.Namespace(
         arguments=[],
         timeout=10,
-        port=InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True),
+        port=InstanceXML(quiet=True).get_port_dict(
+            icswServiceEnum.host_monitoring,
+            command=True
+        ),
         protocoll="tcp",
         host="localhost",
         verbose=False,

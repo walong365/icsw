@@ -301,6 +301,7 @@ class ConfigCheckObject(object):
             from initat.cluster.backbone.models import LogSource
         if self.srv_type_enum.value.instance_name is None:
             raise KeyError("No instance_name set for srv_type_enum '{}'".format(self.srv_type_enum.name))
+        from initat.host_monitoring.client_enums import icswServiceEnum
         self._instance = self._inst_xml[self.srv_type_enum.value.instance_name]
         # conf_names = self._inst_xml.get_config_names(self._instance)
         self.log(
@@ -366,7 +367,13 @@ class ConfigCheckObject(object):
                         ),
                         (
                             "MEMCACHE_PORT",
-                            configfile.IntegerConfigVar(self._inst_xml.get_port_dict("memcached", command=True), source="instance")
+                            configfile.IntegerConfigVar(
+                                self._inst_xml.get_port_dict(
+                                    icswServiceEnum.memcached,
+                                    command=True
+                                ),
+                                source="instance"
+                            )
                         ),
                     ]
                 )

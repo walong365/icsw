@@ -29,6 +29,7 @@ class Parser(object):
             return self._add_collectd_parser(sub_parser, inst_xml=inst_xml)
 
     def _add_collectd_parser(self, sub_parser, inst_xml):
+        from initat.cluster.backbone.server_enums import icswServiceEnum
         parser = sub_parser.add_parser("collectd", help="collectd helper commands")
         parser.set_defaults(subcom="collectd", execute=self._execute)
         com_list = ["host_list", "key_list"]
@@ -44,7 +45,16 @@ class Parser(object):
             help="additional arguments",
         )
         parser.add_argument("-t", help="set timeout [%(default)d]", default=10, type=int, dest="timeout")
-        parser.add_argument("-p", help="port [%(default)d]", default=inst_xml.get_port_dict("collectd", command=True), dest="port", type=int)
+        parser.add_argument(
+            "-p",
+            help="port [%(default)d]",
+            default=inst_xml.get_port_dict(
+                icswServiceEnum.collectd_server,
+                command=True
+            ),
+            dest="port",
+            type=int
+        )
         parser.add_argument("-H", help="host [%(default)s] or server", default="localhost", dest="host")
         parser.add_argument("-v", help="verbose mode [%(default)s]", default=False, dest="verbose", action="store_true")
         parser.add_argument("-i", help="set identity substring [%(default)s]", type=str, default="cdf", dest="identity_string")
@@ -52,7 +62,16 @@ class Parser(object):
         parser.add_argument("--key-filter", help="set filter for key name [%(default)s]", type=str, default=".*", dest="key_filter")
         parser.add_argument("--mode", type=str, default="tcp", choices=["tcp", "memcached"], help="set access type [%(default)s]")
         parser.add_argument("--mc-addr", type=str, default="127.0.0.1", help="address of memcached [%(default)s]")
-        parser.add_argument("--mc-port", type=int, default=inst_xml.get_port_dict("memcached", command=True), help="port of memcached [%(default)d]")
+        print("*", [x.name for x in icswServiceEnum])
+        parser.add_argument(
+            "--mc-port",
+            type=int,
+            default=inst_xml.get_port_dict(
+                icswServiceEnum.memcached,
+                command=True
+            ),
+            help="port of memcached [%(default)d]"
+        )
         return parser
 
     def _execute(self, opt_ns):

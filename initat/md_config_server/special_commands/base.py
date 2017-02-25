@@ -27,6 +27,7 @@ from django.db.models import Q
 from ..config import global_config
 from initat.cluster.backbone.models import monitoring_hint, DeviceLogEntry
 from initat.icsw.service.instance import InstanceXML
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import logging_tools
 
 __all__ = [
@@ -58,7 +59,10 @@ class SpecialBase(object):
 
     def __init__(self, log_com, build_proc=None, s_check=None, host=None, build_cache=None, parent_check=None, **kwargs):
         self.__log_com = log_com
-        self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+        self.__hm_port = InstanceXML(quiet=True).get_port_dict(
+            icswServiceEnum.host_monitoring,
+            command=True
+        )
         for key in dir(SpecialBase.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(SpecialBase.Meta, key))

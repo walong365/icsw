@@ -61,7 +61,10 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             global_config=global_config,
         )
         from initat.host_monitoring.modules import local_mc
-        self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+        self.__hm_port = InstanceXML(quiet=True).get_port_dict(
+            icswServiceEnum.host_monitoring,
+            command=True
+        )
         self.CC.init(icswServiceEnum.host_relay, self.global_config)
         self.CC.check_config()
         self.__verbose = self.global_config["VERBOSE"]

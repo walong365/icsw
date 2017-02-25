@@ -68,7 +68,15 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         self.STRS_SOCKET_NAME = "com_socket"
         global_config.add_config_entries(
             [
-                ("MEMCACHE_PORT", configfile.IntegerConfigVar(self.CC.Instance.get_port_dict("memcached", command=True))),
+                (
+                    "MEMCACHE_PORT",
+                    configfile.IntegerConfigVar(
+                        self.CC.Instance.get_port_dict(
+                            icswServiceEnum.memcached,
+                            command=True
+                        )
+                    )
+                ),
             ]
         )
         self.__verbose = global_config["VERBOSE"]
@@ -146,7 +154,10 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         self.add_process(AggregateProcess("aggregate"), start=True)
         self.add_process(SyncProcess("dbsync"), start=True)
         # self.init_notify_framework(global_config)
-        self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+        self.__hm_port = InstanceXML(quiet=True).get_port_dict(
+            icswServiceEnum.host_monitoring,
+            command=True
+        )
 
     def _init_perfdata(self):
         from initat.collectd.collectd_types import IMPORT_ERRORS, ALL_PERFDATA

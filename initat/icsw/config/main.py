@@ -47,7 +47,9 @@ def _service_enum_show_command(options):
     _list = logging_tools.NewFormList()
     for entry in icswServiceEnum:
         if entry.name not in _c_dict:
-            if options.sync and (entry.value.server_service or entry.value.relayer_service):
+            if options.sync and (
+                entry.value.server_service or entry.value.relayer_service
+            ) and entry.value.sync_config:
                 new_entry = ConfigServiceEnum.create_db_entry(entry)
                 _c_dict[new_entry.enum_name] = new_entry
             else:

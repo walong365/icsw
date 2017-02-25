@@ -33,10 +33,10 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
 from django.utils.translation import ugettext_lazy as _
 from lxml import etree
-from initat.debug import ICSW_DEBUG_MODE
 
 from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME, VERSION_CS_NAME, CLUSTER_DIR, \
     SITE_PACKAGES_BASE
+from initat.debug import ICSW_DEBUG_MODE
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, config_store, process_tools
 
@@ -233,7 +233,11 @@ ICSW_CACHE_KEY = ICSW_CACHE_KEY_LONG[:4]
 FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 
 try:
-    _mc_port = InstanceXML(quiet=True).get_port_dict("memcached", command=True)
+    _mc_port = InstanceXML(quiet=True).get_port_dict(
+        # need to use name here beacuse icswServiceEnums need settings.py
+        "memcached",
+        command=True
+    )
 except KeyError:
     _mc_port = 0
 

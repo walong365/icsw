@@ -42,6 +42,8 @@ from django.views.generic import View
 from lxml.builder import E
 from rest_framework import viewsets
 
+from initat.cluster.backbone.server_enums import icswServiceEnum
+
 from initat.cluster.backbone.models import rms_job_run, device
 from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.cluster.backbone.serializers import rms_job_run_serializer
@@ -59,7 +61,7 @@ RMS_ADDONS = [
 ]
 
 # memcached port and address
-MC_PORT = InstanceXML(quiet=True).get_port_dict("memcached", command=True)
+MC_PORT = InstanceXML(quiet=True).get_port_dict(icswServiceEnum.memcached, command=True)
 MC_ADDRESS = "127.0.0.1"
 
 logger = logging.getLogger("cluster.rms")
