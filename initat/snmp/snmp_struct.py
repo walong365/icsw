@@ -237,6 +237,9 @@ class simple_snmp_oid(object):
     def has_max_oid(self):
         return False
 
+    def __len__(self):
+        return self._oid_len
+
     def __str__(self):
         return self._str_oid
 
