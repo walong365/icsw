@@ -529,12 +529,12 @@ class Service(object):
 
     def _start_daemonize(self):
         arg_list, extra_arg_list = self._generate_py_arg_list()
+        arg_list.append("-d")
+        if extra_arg_list:
+            arg_list.append("--")
+            arg_list.extend(extra_arg_list)
         self.log("starting: {}".format(" ".join(arg_list)))
         if not os.fork():
-            arg_list.append("-d")
-            if extra_arg_list:
-                arg_list.append("--")
-                arg_list.extend(extra_arg_list)
             subprocess.call(arg_list)
             os._exit(1)
         else:
