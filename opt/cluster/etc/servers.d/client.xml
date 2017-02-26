@@ -150,31 +150,4 @@
             </ports>
         </network>
     </instance>
-    <instance
-        check_type="pid_file"
-        name="salt-master"
-        runs_on="server"
-        pid_file_name="salt-master.pid"
-        uuid-postfix="salt-master"
-        start-type="daemonize"
-    >
-        <module-name
-            main-name="salt_master"
-        >salt.scripts</module-name>
-        <config-enums>
-            <config-enum>salt_master</config-enum>
-        </config-enums>
-        <extra-arguments>
-            <extra-argument>-c</extra-argument>
-            <extra-argument>/opt/cluster/etc/salt</extra-argument>
-            <extra-argument>--log-file</extra-argument>
-            <extra-argument>/var/log/icsw/salt/master</extra-argument>
-        </extra-arguments>
-        <!-- <network>
-            <ports>
-                <port type="publish">8016</port>
-                <port type="master">8017</port>
-            </ports>
-        </network> -->
-    </instance>
 </instances>

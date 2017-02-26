@@ -271,6 +271,7 @@ class ServiceContainer(object):
                     if _enum in enum_lut:
                         raise KeyError("enum {} already used".format(_enum))
                     enum_lut[_enum] = service
+            # may return a single instance or a list
             result = check_config_enum(list(enum_lut.keys()), config_tools, self.log)
             for enum, result_node in result.items():
                 service_lut[enum_lut[enum].name].append(result_node)

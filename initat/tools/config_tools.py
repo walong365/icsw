@@ -555,7 +555,8 @@ class icswServerCheck(object):
     ):
         # device from database or None
         self.device = None
-        if service_type_enum_list:
+        # important: may be the empty list
+        if service_type_enum_list is not None:
             self.multiple = True
             self.__service_type_enum = service_type_enum_list
         else:
