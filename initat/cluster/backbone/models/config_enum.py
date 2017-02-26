@@ -185,5 +185,9 @@ class AppEnum(Enum):
         "device has an USV from APC directly attached",
         root_service=False,
     )
+    salt_master = icswServiceEnumBase(
+        "salt-master",
+        "Device acts as Salt-Master",
+    )
 
 register_service_enum(AppEnum, "backbone")
