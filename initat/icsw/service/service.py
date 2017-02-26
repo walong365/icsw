@@ -528,10 +528,14 @@ class Service(object):
             self._start_daemonize()
 
     def _start_daemonize(self):
-        arg_list = self._generate_py_arg_list()
+        arg_list, extra_arg_list = self._generate_py_arg_list()
         self.log("starting: {}".format(" ".join(arg_list)))
         if not os.fork():
-            subprocess.call(arg_list + ["-d"])
+            arg_list.append("-d")
+            if extra_arg_list:
+                arg_list.append("--")
+                arg_list.extend(extra_arg_list)
+            subprocess.call(arg_list)
             os._exit(1)
         else:
             _child_pid, _child_state = os.wait()
@@ -695,7 +699,7 @@ class Service(object):
             _daemon_path = os.path.split(os.path.split(os.path.dirname(__file__))[0])[0]
         else:
             _daemon_path = INITAT_BASE
-        _arg_list = [
+        arg_list = [
             os.path.join(_daemon_path, "tools", "daemonize.py"),
             "--progname",
             _prog_name,
@@ -706,16 +710,16 @@ class Service(object):
             "--proctitle",
             _prog_title,
         ]
-        for _add_key in ["user", "group", "groups"]:
+        for _add_key in {"user", "group", "groups"}:
             if _add_key in arg_dict:
-                _arg_list.extend(
+                arg_list.extend(
                     [
                         "--{}".format(_add_key),
                         arg_dict[_add_key],
                     ]
                 )
         if self.entry.find("nice-level") is not None:
-            _arg_list.extend(
+            arg_list.extend(
                 [
                     "--nice",
                     "{:d}".format(int(self.entry.findtext("nice-level").strip())),
@@ -763,7 +767,13 @@ class Service(object):
                     process_tools.get_uid_from_name(_file_el.get("user", "root"))[0],
                     process_tools.get_gid_from_name(_file_el.get("group", "root"))[0],
                 )
-        return _arg_list
+        # extra arguments
+        extra_arg_list = list(
+            self.entry.findall(
+                ".//extra-arguments/extra-argument/text"
+            )
+        )
+        return arg_list, extra_arg_list
 
 
 class SimpleService(Service):
@@ -829,7 +839,7 @@ class SimpleService(Service):
 class PIDService(Service):
     # Service backed up by a PID-file
     def _check(self, result, act_proc_dict):
-        name = self.name
+        # name = self.name
         pid_file_name = self.attrib["pid_file_name"]
         if not pid_file_name.startswith("/"):
             pid_file_name = os.path.join("/", "var", "run", pid_file_name)
@@ -945,7 +955,7 @@ class MetaService(Service):
     def _debug(self, debug_args):
         # ignore sigint to catch keyboard interrupt
         signal.signal(signal.SIGINT, signal.SIG_IGN)
-        arg_list = self._generate_py_arg_list(debug=True)
+        arg_list, extra_arg_list = self._generate_py_arg_list(debug=True)
         import initat.debug
         # set debug flag
         initat.debug.get_debug_var("ICSW_DEBUG_MODE").set_environ_value(True)
@@ -956,6 +966,10 @@ class MetaService(Service):
             print("*" * 20)
             arg_list.append("--")
             arg_list.extend(debug_args)
+        if extra_arg_list:
+            if "--" not in arg_list:
+                arg_list.append("--")
+            arg_list.extend(extra_arg_list)
         self.log("debug, arg_list is '{}'".format(" ".join(arg_list)))
         subprocess.call(" ".join(arg_list), shell=True)
 

@@ -48,7 +48,13 @@ def get_gid_from_name(group):
     except KeyError:
         from initat.tools import logging_tools
         new_gid, new_gid_name = (0, "root")
-        logging_tools.my_syslog("Cannot find group '{}', using {} ({:d})".format(group, new_gid_name, new_gid))
+        logging_tools.my_syslog(
+            "Cannot find group '{}', using {} ({:d})".format(
+                group,
+                new_gid_name,
+                new_gid
+            )
+        )
     return new_gid, new_gid_name
 
 
@@ -62,7 +68,13 @@ def get_uid_from_name(user):
     except KeyError:
         from initat.tools import logging_tools
         new_uid, new_uid_name = (0, "root")
-        logging_tools.my_syslog("Cannot find user '{}', using {} ({:d})".format(user, new_uid_name, new_uid))
+        logging_tools.my_syslog(
+            "Cannot find user '{}', using {} ({:d})".format(
+                user,
+                new_uid_name,
+                new_uid
+            )
+        )
     return new_uid, new_uid_name
 
 
@@ -79,6 +91,7 @@ def main():
     _parser.add_argument("--groups", type=str, default="", help="comma-separated list of groups for the process [%(default)s]")
     _parser.add_argument("--nice", type=int, default=0, help="set nice level of new process [%(default)d]")
     _parser.add_argument("--debug", default=False, action="store_true", help="enable debug mode (modify sys.path), [%(default)s]")
+    _parser.add_argument("extra_args", nargs="*", help="extra arguments for module [%(default)s]")
     opts = _parser.parse_args()
     if opts.exename:
         _mode = "exe"
@@ -122,6 +135,8 @@ def main():
         if uid or gid:
             os.setgid(gid)
             os.setuid(uid)
+    if opts.extra_args:
+        _args.extend(opts.extra_args)
     if _mode == "python":
         os.environ["LC_LANG"] = "en_us.UTF_8"
         # python path
@@ -143,8 +158,6 @@ def main():
         # was: main_module.main()
     else:
         # path for standard exe (munge, redis)
-        if opts.extra_args:
-            _args.extend(opts.extra_args)
         setproctitle.setproctitle(opts.proctitle)
         os.execv(_args[0], _args)
 

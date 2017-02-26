@@ -238,6 +238,15 @@
                     </element>
                 </optional>
                 <optional>
+                    <element name="extra-arguments">
+                        <oneOrMore>
+                            <element name="extra-argument">
+                                <text/>
+                            </element>
+                        </oneOrMore>
+                    </element>
+                </optional>
+                <optional>
                     <element name="programm-name">
                         <text/>
                     </element>
