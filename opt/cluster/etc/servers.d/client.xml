@@ -122,6 +122,7 @@
             </ports>
         </network>
     </instance>
+    <!-- move to own file in salt-init ? -->
     <instance
         check_type="pid_file"
         name="salt-minion"
@@ -142,10 +143,11 @@
             <extra-argument>--log-file</extra-argument>
             <extra-argument>/var/log/icsw/salt/minion</extra-argument>
         </extra-arguments>
-<!--        <network>
+        <network>
             <ports>
-                <port type="command">2003</port>
+                <port type="publish">8016</port>
+                <port type="master">8017</port>
             </ports>
-        </network> -->
+        </network>
     </instance>
 </instances>
