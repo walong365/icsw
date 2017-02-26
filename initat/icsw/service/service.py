@@ -380,7 +380,9 @@ class Service(object):
         unique_pids = {
             key: pids.count(key) for key in set(pids)
         }
-        pids_found = {key: True for key in set(pids) if key in act_proc_dict}
+        pids_found = {
+            key: True for key in set(pids) if key in act_proc_dict
+        }
         # for key in set(pids):
         #    if key in act_proc_dict:
         #        try:
@@ -398,7 +400,7 @@ class Service(object):
         elif num_started == num_found:
             ret_state = SERVICE_OK
         else:
-            ret_state = SERVICE_NOT_CONFIGURED
+            ret_state = SERVICE_DEAD
         return ret_state, num_started, num_found
 
     def _add_non_running(self, result, check_init_script=True):
@@ -769,8 +771,8 @@ class Service(object):
                 )
         # extra arguments
         extra_arg_list = list(
-            self.entry.findall(
-                ".//extra-arguments/extra-argument/text"
+            self.entry.xpath(
+                ".//extra-arguments/extra-argument/text()"
             )
         )
         return arg_list, extra_arg_list
@@ -846,8 +848,13 @@ class PIDService(Service):
         if os.path.isfile(pid_file_name):
             start_time = os.stat(pid_file_name)[stat.ST_CTIME]
             # print("*", start_time, pid_file_name)
-            act_pids = [int(line.strip()) for line in open(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
-            act_state, num_started, num_found = self._check_processes(act_pids, act_proc_dict)
+            act_pids = [
+                int(line.strip()) for line in open(pid_file_name, "r").read().split("\n") if line.strip().isdigit()
+            ]
+            act_state, num_started, num_found = self._check_processes(
+                act_pids,
+                act_proc_dict
+            )
             unique_pids = set(act_pids)
             diff_dict = {}
             result.append(
@@ -868,7 +875,9 @@ class PIDService(Service):
                         unique_pids,
                         num_found,
                         diff_dict,
-                        True if int(self.entry.attrib["any-processes-ok"]) else False,
+                        True if int(
+                            self.entry.attrib["any-processes-ok"]
+                        ) else False,
                     )
                 ),
             )
