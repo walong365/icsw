@@ -279,12 +279,16 @@ class SGEInfo(object):
 
     def _init_cache(self):
         import memcache
-        from initat.cluster.backbone.server_enums import icswServiceEnum
+        try:
+            from initat.cluster.backbone.server_enums import icswServiceEnum
+            mc_str_enum = icswServiceEnum.memcached
+        except:
+            mc_str_enum = "memcached"
         self._cache_socket = memcache.Client(
             [
                 "127.0.0.1:{:d}".format(
                     InstanceXML(quiet=True).get_port_dict(
-                        icswServiceEnum.memcached,
+                        mc_str_enum,
                         command=True
                     )
                 )

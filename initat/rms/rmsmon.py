@@ -429,41 +429,47 @@ class RMSMonProcess(threading_tools.icswProcessObj):
 
     def _job_control(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
-        job_action = srv_com["action"].text
-        job_id = srv_com.xpath(".//ns:job_list/ns:job/@job_id", smart_strings=False)[0]
-        self.log("job action '{}' for job '{}'".format(job_action, job_id))
-        if job_action in ["force_delete", "delete"]:
-            cur_stat, cur_out = call_command(
-                "{} {} {}".format(
-                    self._get_sge_bin("qdel"),
-                    "-f" if job_action == "force_delete" else "",
-                    job_id,
-                ),
-                log_com=self.log
-            )
+        if "action" not in srv_com:
             srv_com.set_result(
-                "{} gave: {}".format(job_action, cur_out),
-                server_command.SRV_REPLY_STATE_ERROR if cur_stat else server_command.SRV_REPLY_STATE_OK
-            )
-        elif job_action in ["modify_priority"]:
-            targ_pri = int(srv_com.xpath(".//ns:job_list/ns:job/@priority", smart_strings=False)[0])
-            cur_stat, cur_out = call_command(
-                "{} -p {:d} {}".format(
-                    self._get_sge_bin("qalter"),
-                    targ_pri,
-                    job_id,
-                ),
-                log_com=self.log
-            )
-            srv_com.set_result(
-                "{} gave: {}".format(job_action, cur_out),
-                server_command.SRV_REPLY_STATE_ERROR if cur_stat else server_command.SRV_REPLY_STATE_OK
-            )
-        else:
-            srv_com.set_result(
-                "unknown job_action {}".format(job_action),
+                "action not defined",
                 server_command.SRV_REPLY_STATE_ERROR,
             )
+        else:
+            job_action = srv_com["action"].text
+            job_id = srv_com.xpath(".//ns:job_list/ns:job/@job_id", smart_strings=False)[0]
+            self.log("job action '{}' for job '{}'".format(job_action, job_id))
+            if job_action in ["force_delete", "delete"]:
+                cur_stat, cur_out = call_command(
+                    "{} {} {}".format(
+                        self._get_sge_bin("qdel"),
+                        "-f" if job_action == "force_delete" else "",
+                        job_id,
+                    ),
+                    log_com=self.log
+                )
+                srv_com.set_result(
+                    "{} gave: {}".format(job_action, cur_out),
+                    server_command.SRV_REPLY_STATE_ERROR if cur_stat else server_command.SRV_REPLY_STATE_OK
+                )
+            elif job_action in ["modify_priority"]:
+                targ_pri = int(srv_com.xpath(".//ns:job_list/ns:job/@priority", smart_strings=False)[0])
+                cur_stat, cur_out = call_command(
+                    "{} -p {:d} {}".format(
+                        self._get_sge_bin("qalter"),
+                        targ_pri,
+                        job_id,
+                    ),
+                    log_com=self.log
+                )
+                srv_com.set_result(
+                    "{} gave: {}".format(job_action, cur_out),
+                    server_command.SRV_REPLY_STATE_ERROR if cur_stat else server_command.SRV_REPLY_STATE_OK
+                )
+            else:
+                srv_com.set_result(
+                    "unknown job_action {}".format(job_action),
+                    server_command.SRV_REPLY_STATE_ERROR,
+                )
         self.send_pool_message("remote_call_async_result", str(srv_com))
 
     def _queue_control(self, *args, **kwargs):
