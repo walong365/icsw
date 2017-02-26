@@ -961,6 +961,9 @@ class MetaService(Service):
     def _start(self):
         self._start_daemonize()
 
+    def _stop(self):
+        self._stop_daemonize()
+
     def _debug(self, debug_args):
         # ignore sigint to catch keyboard interrupt
         signal.signal(signal.SIGINT, signal.SIG_IGN)
