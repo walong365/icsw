@@ -139,6 +139,8 @@
         <extra-arguments>
             <extra-argument>-c</extra-argument>
             <extra-argument>/opt/cluster/etc/salt</extra-argument>
+            <extra-argument>--log-file</extra-argument>
+            <extra-argument>/var/log/icsw/salt/minion</extra-argument>
         </extra-arguments>
 <!--        <network>
             <ports>
