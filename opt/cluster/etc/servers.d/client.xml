@@ -139,7 +139,6 @@
         <extra-arguments>
             <extra-argument>-c</extra-argument>
             <extra-argument>/opt/cluster/etc/salt</extra-argument>
-            <extra-argument>-d</extra-argument>
         </extra-arguments>
 <!--        <network>
             <ports>
