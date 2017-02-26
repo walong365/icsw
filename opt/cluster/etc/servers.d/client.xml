@@ -153,7 +153,7 @@
     <instance
         check_type="pid_file"
         name="salt-master"
-        runs_on="client"
+        runs_on="server"
         pid_file_name="salt-master.pid"
         uuid-postfix="salt-master"
         start-type="daemonize"
