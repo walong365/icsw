@@ -30,7 +30,7 @@ import time
 import zmq
 
 from initat.tools import inotify_tools, logging_tools, process_tools, server_command, \
-    threading_tools, uuid_tools
+    threading_tools, uuid_tools, logging_functions, config_store
 
 
 class HMFileWatcher(object):
@@ -409,10 +409,13 @@ class HMFileWatcher(object):
 
 class HMInotifyProcess(threading_tools.icswProcessObj):
     def process_init(self):
-        self.__log_template = logging_tools.get_logger(
-            self.global_config["LOG_NAME"],
-            self.global_config["LOG_DESTINATION"],
-            context=self.zmq_context
+        self.__log_template = logging_functions.get_logger(
+            config_store.ConfigStore("client", quiet=True),
+            "{}/{}".format(
+                process_tools.get_machine_name(),
+                self.global_config["LOG_NAME"],
+            ),
+            process_name=self.name,
         )
         self.__watcher = inotify_tools.InotifyWatcher()
         # was INOTIFY_IDLE_TIMEOUT in self.global_config, now static
@@ -600,4 +603,3 @@ class HMInotifyProcess(threading_tools.icswProcessObj):
         for targ_str, targ_sock in self.__target_dict.items():
             self.log("closing socket to {}".format(targ_str))
             targ_sock.close()
-        self.__log_template.close()

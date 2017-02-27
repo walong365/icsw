@@ -19,14 +19,15 @@
 #
 """ install process structures """
 
-from lxml import etree  # @UnresolvedImport
-import urllib.parse
 import os
+import urllib.parse
 
+from lxml import etree
 from lxml.builder import E
 
-from initat.package_install.client.command import simple_command
-from initat.tools import logging_tools, process_tools, threading_tools, config_store, server_command
+from initat.tools import logging_tools, process_tools, threading_tools, config_store, server_command, \
+    logging_functions
+from .command import simple_command
 
 RPM_QUERY_FORMAT = "%{NAME}\n%{INSTALLTIME}\n%{VERSION}\n%{RELEASE}\n"
 DEB_QUERY_FORMAT = "\${Package} \${Version}"
@@ -113,10 +114,13 @@ class InstallProcess(threading_tools.icswProcessObj, threading_tools.ICSWAutoNoI
             del self._packages
 
     def process_init(self):
-        self.__log_template = logging_tools.get_logger(
-            self.global_config["LOG_NAME"],
-            self.global_config["LOG_DESTINATION"],
-            context=self.zmq_context,
+        self.__log_template = logging_functions.get_logger(
+            config_store.ConfigStore("client", quiet=True),
+            "{}/{}".format(
+                process_tools.get_machine_name(),
+                self.global_config["LOG_NAME"],
+            ),
+            process_name=self.name,
         )
         self.CS = config_store.ConfigStore("client", self.log)
         self.commands = []
@@ -129,9 +133,6 @@ class InstallProcess(threading_tools.icswProcessObj, threading_tools.ICSWAutoNoI
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
-
-    def loop_post(self):
-        self.__log_template.close()
 
     def _command_batch(self, com_list, *args, **kwargs):
         com_list = [server_command.srv_command(source=cur_com) for cur_com in com_list]

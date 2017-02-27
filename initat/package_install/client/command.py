@@ -19,9 +19,10 @@
 #
 """ package install, simple command structure """
 
-from initat.tools import logging_tools
 import subprocess
 import time
+
+from initat.tools import logging_tools
 
 
 # copy from command_tools.py (package mother)

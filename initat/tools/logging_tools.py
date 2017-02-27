@@ -834,7 +834,13 @@ class icswLogfile(logging.handlers.BaseRotatingHandler):
         # always append if max_size > 0
         if max_bytes > 0:
             mode = "a"
-        logging.handlers.BaseRotatingHandler.__init__(self, filename, mode, encoding, delay=False)
+        logging.handlers.BaseRotatingHandler.__init__(
+            self,
+            filename,
+            mode,
+            encoding,
+            delay=False
+        )
         self.__last_record = None
         self.set_max_bytes(max_bytes)
         self.max_age = max_age_days

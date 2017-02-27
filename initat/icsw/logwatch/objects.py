@@ -67,6 +67,7 @@ class LogWatcher(object):
         self.device = opt_ns.machine
         self.name = sysname
         self.node = node
+        LogWatcher.register(self)
         if self.node:
             self.path = os.path.join(self.opt_ns.rootdir, "{}.d".format(sysname), self.node)
         else:
@@ -76,6 +77,17 @@ class LogWatcher(object):
         self.open()
         if self.valid:
             self.rewind()
+
+    @classmethod
+    def setup(cls):
+        cls.lw_id = 0
+        cls.lw_lut = {}
+
+    @classmethod
+    def register(cls, lw_obj):
+        cls.lw_id += 1
+        lw_obj.id = "LW#{:04d}".format(cls.lw_id)
+        cls.lw_lut[lw_obj.id] = lw_obj
 
     def open(self):
         try:
@@ -141,7 +153,7 @@ class LogWatcher(object):
                     self.__logcache.feed(_ll)
                     _prev_line = _ll
 
-    def __unicode__(self):
+    def __str__(self):
         return "LogWatcher for {}".format(self.name)
 
     def __repr__(self):
@@ -157,7 +169,14 @@ class LogCache(object):
         self.lines.append(ll)
 
     def sort(self):
-        self.lines = [_b for _a, _b in sorted([(_l.dt, _l) for _l in self.lines], key=lambda x: x[0])]
+        self.lines = [
+            _b for _a, _b in sorted(
+                [
+                    (_l.dt, _l) for _l in self.lines
+                ],
+                key=lambda x: x[0]
+            )
+        ]
 
     def prune(self):
         self.lines = self.lines[-self.opt_ns.n:]

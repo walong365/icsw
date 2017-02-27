@@ -83,7 +83,9 @@ class Parser(object):
             )
         opt_ns.rootdir = rd
         opt_ns.systems = [
-            _entry for _entry in os.listdir(opt_ns.rootdir) if not _entry.count(".") and not _entry.count("-server-direct")
+            _entry for _entry in os.listdir(
+                opt_ns.rootdir
+            ) if not _entry.count(".") and not _entry.count("-server-direct")
         ]
         max_system_len = max([len(_entry) for _entry in opt_ns.systems])
         try:
@@ -108,7 +110,9 @@ class Parser(object):
             max_system_len,
             max_system_len,
         )
-        opt_ns.used_systems = [_entry for _entry in opt_ns.systems if opt_ns.system_re.match(_entry)]
+        opt_ns.used_systems = [
+            _entry for _entry in opt_ns.systems if opt_ns.system_re.match(_entry)
+        ]
         _nodes = set()
         if opt_ns.with_nodes:
             for _system in opt_ns.used_systems:
