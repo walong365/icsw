@@ -25,6 +25,16 @@
 import sys
 
 from initat.tools import configfile, process_tools
+from initat.constants import IS_PYINSTALLER_BINARY
+
+if IS_PYINSTALLER_BINARY:
+    import html
+    import html.parser
+    import requests_futures
+    import requests_futures.sessions
+
+    _ = html
+    _ = requests_futures
 
 
 def main():
@@ -56,5 +66,6 @@ def cleanup_old_files():
                 pass
 
 if __name__ == "__main__":
-    cleanup_old_files()
+    if not IS_PYINSTALLER_BINARY:
+        cleanup_old_files()
     sys.exit(main())

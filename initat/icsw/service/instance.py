@@ -30,7 +30,7 @@ from lxml.builder import E
 from initat.tools import logging_tools, process_tools
 from .constants import SERVERS_DIR, CLUSTER_DIR
 
-from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum, IS_PYINSTALLER_BINARY
 
 
 def _dummy_log_com(what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -47,7 +47,7 @@ class RelaxNG(object):
     cache = {}
 
     def __init__(self, start_dir, name):
-        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS or IS_PYINSTALLER_BINARY:
             path_comps = []
             while True:
                 start_dir, ext = os.path.split(start_dir)
@@ -133,7 +133,7 @@ class InstanceXML(object):
             # not beautiful but working
             _dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", SERVERS_DIR[1:])
 
-        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
+        if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS or IS_PYINSTALLER_BINARY:
             _dir = os.path.join(CLUSTER_DIR, "etc", "servers.d")
 
         _inst_ng = RelaxNG(_dir, "instance")
