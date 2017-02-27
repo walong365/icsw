@@ -85,11 +85,8 @@ def get_logger(name, destination, **kwargs):
             else:
                 cur_context = kwargs["context"]
             ZMQHandler(act_logger, zmq_context=cur_context, destination=rewrite_log_destination(act_dest))
-    if icswLogAdapter:
-        # by using the log_adapter we also add thread-safety to the logger
-        act_adapter = icswLogAdapter(act_logger, {})
-    else:
-        act_adapter = act_logger
+    # by using the log_adapter we also add thread-safety to the logger
+    act_adapter = icswLogAdapter(act_logger, {})
     return act_adapter
 
 

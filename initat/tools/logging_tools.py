@@ -35,6 +35,7 @@ import syslog
 import time
 
 from pygments.token import Token
+from initat.debug import ICSW_DEBUG_MODE
 
 LOG_LEVEL_OK = 20
 LOG_LEVEL_WARN = 30
@@ -49,6 +50,9 @@ logging.addLevelName(LOG_LEVEL_CRITICAL, "crit")
 
 # default unified name
 UNIFIED_NAME = "unified"
+
+# do not raise exception in production mode
+logging.raiseExceptions = ICSW_DEBUG_MODE
 
 
 class MeasureTime(object):
@@ -847,8 +851,12 @@ class icswLogfile(logging.handlers.BaseRotatingHandler):
             except:
                 msg = self.format(record) + "\n"
             try:
-                if self.stream.tell() + len(msg) > self.__max_size:
-                    do_rollover = True
+                try:
+                    if self.stream.tell() + len(msg) > self.__max_size:
+                        do_rollover = True
+                except OSError:
+                    # disk full
+                    pass
             except ValueError:
                 pass
         return do_rollover
