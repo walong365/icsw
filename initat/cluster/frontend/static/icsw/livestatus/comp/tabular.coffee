@@ -138,11 +138,11 @@ angular.module(
 [
     "$q", "icswMonitoringBasicTreeService", "$rootScope", "$templateCache", "$compile",
     "icswSimpleAjaxCall", "blockUI", "icswComplexModalService", "icswUserService",
-    "ICSW_URLS", "toaster",
+    "ICSW_URLS", "toaster", "icswFormTools",
 (
     $q, icswMonitoringBasicTreeService, $rootScope, $templateCache, $compile,
     icswSimpleAjaxCall, blockUI, icswComplexModalService, icswUserService,
-    ICSW_URLS, toaster,
+    ICSW_URLS, toaster, icswFormTools,
 ) ->
     _struct = {
         basic_tree: null
@@ -196,7 +196,7 @@ angular.module(
                     date_options: {
                         format: "dd.MM.yyyy"
                         formatYear: "yyyy"
-                        maxDate: new Date()
+                        # maxDate: new Date()
                         minDate: new Date(2000, 1, 1)
                         startingDay: 1
                         minMode: "day"
@@ -245,10 +245,7 @@ angular.module(
                         closable: true
                         ok_callback: (modal) ->
                             d = $q.defer()
-                            if sub_scope.form_data.$invalid
-                                toaster.pop("warning", "form validation problem", "")
-                                d.reject("formerror")
-                            else
+                            if icswFormTools.check_form(sub_scope.form_data, d)
                                 blockUI.start()
                                 if obj_type == "host"
                                     # build key list for hosts

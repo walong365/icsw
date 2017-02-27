@@ -320,7 +320,8 @@
                         </div>
                         <div ng-if="arg.is_timestamp">
                             <span class="input-group">
-                                <input type="text"
+                                <input
+                                    type="datetime-local"
                                     class="form-control"
                                     ng-model="edit_obj.args[arg.name]"
                                     is-open="open_calendars[arg.name]"
