@@ -20,6 +20,7 @@
 #
 """ logging tools, network related """
 
+import datetime
 import inspect
 import logging
 import logging.handlers
@@ -29,14 +30,13 @@ import sys
 import threading
 import time
 import traceback
-import datetime
 
 import zmq
 
-from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum, IS_PYINSTALLER_BINARY
-from .logging_tools import LOG_LEVEL_OK, rewrite_log_destination, my_syslog, get_plural, UNIFIED_NAME
-from initat.logging_server.constants import icswLogHandleTypes, ICSW_LOG_BASE
-
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum, \
+    IS_PYINSTALLER_BINARY
+from initat.logging_server.constants import icswLogHandleTypes, get_log_path
+from .logging_tools import LOG_LEVEL_OK, my_syslog, get_plural, UNIFIED_NAME
 
 CONTEXT_KEY = "__ctx__"
 
@@ -51,6 +51,16 @@ def debug(msg):
     )
 
 
+# dummy function
+def rewrite_log_destination(log_dest):
+    if log_dest.startswith("uds:"):
+        log_dest = log_dest.replace("uds:", "ipc://")
+    if log_dest.startswith("ipc://"):
+        if not log_dest.endswith("_zmq"):
+            log_dest = "{}_zmq".format(log_dest)
+    return log_dest
+
+
 def get_logger(name, destination, **kwargs):
     """
     return an init_logger (prepended with init.at on linux systems
@@ -59,10 +69,6 @@ def get_logger(name, destination, **kwargs):
         sys.platform in ["linux2", "linux3", "linux"],
         os.getpid()
     )
-    if is_linux:
-        # force init.at logger
-        if not name.startswith("init.at."):
-            name = "init.at.{}".format(name)
     # get unique logger for 0MQ send
     act_logger = logging.getLogger("{}.{:d}".format(name, cur_pid))
     act_logger.name = name
@@ -84,7 +90,11 @@ def get_logger(name, destination, **kwargs):
                 cur_context = zmq.Context()
             else:
                 cur_context = kwargs["context"]
-            ZMQHandler(act_logger, zmq_context=cur_context, destination=rewrite_log_destination(act_dest))
+            ZMQHandler(
+                act_logger,
+                zmq_context=cur_context,
+                destination=rewrite_log_destination(act_dest)
+            )
     # by using the log_adapter we also add thread-safety to the logger
     act_adapter = icswLogAdapter(act_logger, {})
     return act_adapter
@@ -132,7 +142,15 @@ class icswLogAdapter(logging.LoggerAdapter):
                 _, file_name = os.path.split(file_name)
                 level_name = logging.getLevelName(level)
                 cur_time = datetime.datetime.now().ctime()
-                print("{} : {} [{}.{}] {}".format(cur_time, level_name, file_name, line_num, what))
+                print(
+                    "{} : {} [{}.{}] {}".format(
+                        cur_time,
+                        level_name,
+                        file_name,
+                        line_num,
+                        what
+                    )
+                )
         except:
             my_syslog(what)
             print(what, self)
@@ -330,12 +348,7 @@ class icswInitEmailHandler(ZMQHandler):
         ZMQHandler.__init__(
             self,
             None,
-            destination=rewrite_log_destination(
-                "uds:{}/{}_zmq".format(
-                    ICSW_LOG_BASE,
-                    icswLogHandleTypes.log_py.value
-                )
-            )
+            destination=get_log_path(icswLogHandleTypes.log_py),
         )
         self.__lens = {
             "name": 1,
@@ -358,19 +371,10 @@ class icswInitHandler(ZMQHandler):
         ZMQHandler.__init__(
             self,
             None,
-            destination=rewrite_log_destination(
-                "uds:{}/{}_zmq".format(
-                    ICSW_LOG_BASE,
-                    icswLogHandleTypes.log_py.value
-                )
-            )
+            destination=get_log_path(icswLogHandleTypes.log_py),
         )
 
     def emit(self, record):
-        # ensure init.at prefix
-        if record.name.startswith("init.at."):
-            record.name = record.name[8:]
-        record.name = "init.at.{}".format(record.name)
         self.format(record)
         ZMQHandler.emit(self, record)
 
@@ -380,18 +384,10 @@ class icswInitHandlerUnified(ZMQHandler):
         ZMQHandler.__init__(
             self,
             None,
-            destination=rewrite_log_destination(
-                "uds:{}/{}_zmq".format(
-                    ICSW_LOG_BASE,
-                    icswLogHandleTypes.log_py.value
-                )
-            )
+            destination=get_log_path(icswLogHandleTypes.log_py),
         )
 
     def emit(self, record):
-        # ensure init.at prefix
-        if record.name.startswith("init.at."):
-            record.name = record.name[8:]
         _line_pf = "[{:d}]".format(record.lineno)
         form_str = "{:<s}/{}{}"
         if not record.threadName.endswith(_line_pf):
@@ -399,7 +395,7 @@ class icswInitHandlerUnified(ZMQHandler):
             record.threadName = form_str.format(record.name, record.threadName, _line_pf)
         # save record.name
         _rec_name = record.name
-        record.name = "init.at.{}".format(UNIFIED_NAME)
+        record.name = UNIFIED_NAME
         self.format(record)
         ZMQHandler.emit(self, record)
         # restore record.name

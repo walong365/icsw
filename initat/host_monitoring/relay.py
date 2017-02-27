@@ -65,7 +65,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             icswServiceEnum.host_monitoring,
             command=True
         )
-        self.CC.init(icswServiceEnum.host_relay, self.global_config)
+        self.CC.init(icswServiceEnum.host_relay, self.global_config, native_logging=True)
         self.CC.check_config()
         self.__verbose = self.global_config["VERBOSE"]
         _cs_changed = False

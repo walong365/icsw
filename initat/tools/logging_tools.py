@@ -80,15 +80,6 @@ class MeasureTime(object):
         self._rel_time = cur_time
 
 
-def rewrite_log_destination(log_dest):
-    if log_dest.startswith("uds:"):
-        log_dest = log_dest.replace("uds:", "ipc://")
-    if log_dest.startswith("ipc://"):
-        if not log_dest.endswith("_zmq"):
-            log_dest = "{}_zmq".format(log_dest)
-    return log_dest
-
-
 def map_old_to_new_level(in_level):
     return {
         0: LOG_LEVEL_OK,

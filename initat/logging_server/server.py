@@ -142,7 +142,6 @@ class MainProcess(ICSWBasePool):
         threading_tools.icswProcessPool.__init__(self, "main", stack_size=2 * 1024 * 1024, global_config=global_config)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
-        self.register_func("startup_error", self._startup_error)
         self.CC.init(
             icswServiceEnum.logging_server,
             self.global_config,
@@ -219,15 +218,6 @@ class MainProcess(ICSWBasePool):
         else:
             logging_tools.my_syslog(what, level)
 
-    def _startup_error(self, src_name, src_pid, num_errors):
-        self.log(
-            "{} during startup, exiting".format(
-                logging_tools.get_plural("bind error", num_errors)
-            ),
-            logging_tools.LOG_LEVEL_ERROR
-        )
-        self._int_error("bind problem")
-
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
@@ -251,7 +241,9 @@ class MainProcess(ICSWBasePool):
             time.sleep(0.5)
 
     def _init_network_sockets(self):
-        _handle_names = [os.path.join(ICSW_LOG_BASE, _type.value) for _type in icswLogHandleTypes]
+        _handle_names = [
+            os.path.join(ICSW_LOG_BASE, _type.value) for _type in icswLogHandleTypes
+        ]
         self.__open_handles = [
             io_stream_helper.icswIOStream.zmq_socket_name(h_name) for h_name in _handle_names
         ] + [
@@ -277,7 +269,12 @@ class MainProcess(ICSWBasePool):
             try:
                 _forward.connect(_fwd_string)
             except:
-                self.log(" ... problem: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    " ... problem: {}".format(
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 _forward = None
         else:
             _forward = None
@@ -290,7 +287,13 @@ class MainProcess(ICSWBasePool):
         self.__num_write += 3
         self.log("closing {:d} handles".format(len(list(self.__handles.keys()))))
         self.log("logging process exiting (pid {:d})".format(self.pid))
-        self.log("statistics (open/close/written): {:d} / {:d} / {:d}".format(self.__num_open, self.__num_close, self.__num_write))
+        self.log(
+            "statistics (open/close/written): {:d} / {:d} / {:d}".format(
+                self.__num_open,
+                self.__num_close,
+                self.__num_write
+            )
+        )
         key_list = list(self.__handles.keys())
         for close_key in key_list:
             self.remove_handle(close_key)
@@ -315,7 +318,6 @@ class MainProcess(ICSWBasePool):
                 self.__eg_dict[in_dict["pid"]] = ErrorStructure(self, in_dict)
             cur_error = self.__eg_dict[in_dict["pid"]]
             cur_error.feed(in_dict)
-            # log to err_py
         except:
             self.log(
                 "error in handling error_dict: {}".format(
@@ -467,7 +469,7 @@ class MainProcess(ICSWBasePool):
             sub_dirs = []
             record_host = "localhost"
             record_name, record_process, record_parent_process = (
-                "init.at.{}".format(record.value),
+                record.value,
                 os.getpid(),
                 os.getppid()
             )
@@ -482,24 +484,23 @@ class MainProcess(ICSWBasePool):
                 record.process,
                 getattr(record, "ppid", 0)
             )
-        init_logger = record_name.startswith("init.at.")
-        if init_logger:
-            # init.at logger, create subdirectories
-            # generate list of dirs and file_name
-            scr1_name = record_name[8:].replace("\.", "#").replace(".", "/").replace("#", ".")
-            for path_part in os.path.dirname(scr1_name).split(os.path.sep):
-                if path_part:
-                    path_part = "{}.d".format(path_part)
-                    if sub_dirs:
-                        sub_dirs.append(os.path.join(sub_dirs[-1], path_part))
-                    else:
-                        sub_dirs.append(path_part)
-            if sub_dirs:
-                h_name = os.path.join(sub_dirs[-1], os.path.basename(scr1_name))
-            else:
-                h_name = os.path.basename(scr1_name)
+        # init.at logger, create subdirectories
+        # generate list of dirs and file_name
+        # strip init.at. prefix (no longer in use)
+        if record_name.startswith("init.at."):
+            record_name = record_name[8:]
+        scr1_name = record_name.replace("\.", "#").replace(".", "/").replace("#", ".")
+        for path_part in os.path.dirname(scr1_name).split(os.path.sep):
+            if path_part:
+                path_part = "{}.d".format(path_part)
+                if sub_dirs:
+                    sub_dirs.append(os.path.join(sub_dirs[-1], path_part))
+                else:
+                    sub_dirs.append(path_part)
+        if sub_dirs:
+            h_name = os.path.join(sub_dirs[-1], os.path.basename(scr1_name))
         else:
-            h_name = os.path.join(record.host, record_name)
+            h_name = os.path.basename(scr1_name)
         # create logger_name
         logger_name = "{}.{}".format(record_host, record_name)
         if h_name in self.__handles:
@@ -517,9 +518,8 @@ class MainProcess(ICSWBasePool):
         if h_name not in self.__handles:
             # TODO, FIXME, unify with native_logging code in server_mixins.py
             self.log(
-                "logger '{}' (logger_type {}) requested".format(
+                "logger '{}' requested".format(
                     logger_name,
-                    "init.at" if init_logger else "native"
                 )
             )
             full_name = os.path.join(self.CC.CS["log.logdir"], h_name)
@@ -527,7 +527,12 @@ class MainProcess(ICSWBasePool):
                 os.path.dirname(full_name),
                 os.path.basename(full_name)
             )
-            self.log("attempting to create log_file '{}' in dir '{}'".format(base_name, base_dir))
+            self.log(
+                "attempting to create log_file '{}' in dir '{}'".format(
+                    base_name,
+                    base_dir
+                )
+            )
             # add new sub_dirs
             sub_dirs = []
             for new_sub_dir in os.path.dirname(h_name).split("/"):
@@ -597,7 +602,12 @@ class MainProcess(ICSWBasePool):
         if in_dict:
             # pprint.pprint(in_dict)
             if "IOS_type" in in_dict:
-                self.log("got error_dict (pid {:d}, {})".format(in_dict["pid"], logging_tools.get_plural("key", len(in_dict))))
+                self.log(
+                    "got error_dict (pid {:d}, {})".format(
+                        in_dict["pid"],
+                        logging_tools.get_plural("key", len(in_dict))
+                    )
+                )
                 # print("*", in_dict)
                 self._feed_error(in_dict)
             else:
@@ -625,7 +635,7 @@ class MainProcess(ICSWBasePool):
         # needed ?
         if isinstance(log_msg, str) and log_msg.lower().startswith("<lch>") and log_msg.lower().endswith("</lch>"):
             log_it, is_command = (
-                self._handle_command(handle, src_key, log_com, log_msg),
+                self._handle_command(handle, src_key, log_msg),
                 True,
             )
         else:
@@ -655,7 +665,7 @@ class MainProcess(ICSWBasePool):
                 )
         del log_com
 
-    def _handle_command(self, handle, src_key, log_com, log_msg):
+    def _handle_command(self, handle, src_key, log_msg):
         h_name = handle.handle_name
         log_msg = log_msg[5:-6]
         log_it = True
