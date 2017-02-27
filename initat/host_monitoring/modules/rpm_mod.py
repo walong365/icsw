@@ -421,20 +421,29 @@ class updatelist_command(hm_classes.MonitoringCommand):
 
     def __call__(self, srv_com, cur_ns):
         if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
-            import win32com
-            import win32com.client
+            from threading import Thread
 
-            update = win32com.client.Dispatch('Microsoft.Update.Session')
-            update_searcher = update.CreateUpdateSearcher()
+            def search_func():
+                import win32com
+                import win32com.client
+                import pythoncom
 
-            search_result = update_searcher.Search("( IsInstalled = 0 and IsHidden = 0 )")
+                pythoncom.CoInitialize()
+
+                update = win32com.client.Dispatch('Microsoft.Update.Session')
+                update_searcher = update.CreateUpdateSearcher()
+
+                search_result = update_searcher.Search("( IsInstalled = 0 and IsHidden = 0 )")
+
+                for i in range(search_result.Updates.Count):
+                    title = search_result.Updates.Item(i).Title
+                    optional = not search_result.Updates.Item(i).IsMandatory
+                    update_list.append((title, optional))
 
             update_list = []
-            # Update items interface: IUpdate
-            for i in range(search_result.Updates.Count):
-                title = search_result.Updates.Item(i).Title
-                optional = not search_result.Updates.Item(i).IsMandatory
-                update_list.append((title, optional))
+            update_searcher_thread = Thread(target=search_func)
+            update_searcher_thread.start()
+            update_searcher_thread.join(timeout=30 * 5)
 
             srv_com["format"] = "windows"
             srv_com["update_list"] = server_command.compress(update_list, pickle=True)

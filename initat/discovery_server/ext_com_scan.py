@@ -50,17 +50,7 @@ from .wmi_struct import WmiUtils
 
 DEFAULT_NRPE_PORT = 5666
 
-# the mapping between the result of the server command and the result of the
-# asset run
-SERVER_RESULT_RUN_RESULT = {
-    server_command.SRV_REPLY_STATE_OK: RunResult.SUCCESS,
-    server_command.SRV_REPLY_STATE_WARN: RunResult.WARNING,
-    server_command.SRV_REPLY_STATE_ERROR: RunResult.FAILED,
-    server_command.SRV_REPLY_STATE_CRITICAL: RunResult.FAILED,
-    server_command.SRV_REPLY_STATE_UNSET: RunResult.UNKNOWN,
-}
-
-HM_CMD_TUPLES = [(asset_type, hm_command, 60 * 5) for asset_type, hm_command in list(ASSETTYPE_HM_COMMAND_MAP.items())]
+HM_CMD_TUPLES = [(asset_type, hm_command, 60 * 6) for asset_type, hm_command in list(ASSETTYPE_HM_COMMAND_MAP.items())]
 
 
 class ScanBatch(object):
