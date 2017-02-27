@@ -126,7 +126,7 @@ sources = {
         "css"
         true
     )
-    "js_query": new SourceMap(
+    js_query: new SourceMap(
         "js_query"
         "parta.js"
         [
@@ -140,7 +140,7 @@ sources = {
         "js"
         true
     )
-    "js_base": new SourceMap(
+    js_base: new SourceMap(
         "js_base"
         "partb.js"
         [
@@ -176,7 +176,7 @@ sources = {
         "js"
         true
     )
-    "js_extra1": new SourceMap(
+    js_extra1: new SourceMap(
         "js_extra1"
         "partc.js"
         [
@@ -209,8 +209,8 @@ sources = {
         "js"
         true
     )
-    "icsw-cs": new SourceMap(
-        "icsw-cs"
+    icsw_cs: new SourceMap(
+        "icsw_cs"
         "partd.js"
         [
             "frontend/static/icsw/**/*.coffee"
@@ -218,8 +218,8 @@ sources = {
         "coffee"
         false
     )
-    "icsw-html": new SourceMap(
-        "icsw-html"
+    icsw_html: new SourceMap(
+        "icsw_html"
         "icsw.html"
         [
             "frontend/static/icsw/**/*.html"
@@ -625,7 +625,7 @@ gulp.task("watch", (cb) ->
             "addons/licadmin/initat/cluster/work/icsw/*.js",
             "addons/licadmin/initat/cluster/work/icsw/*.html",
         ]
-        gulp.series(gulp.parallel("icsw-cs", "icsw-html"), "rebuild-after-watch")
+        gulp.series(gulp.parallel("icsw_cs", "icsw_html"), "rebuild-after-watch")
     )
     cb()
 )

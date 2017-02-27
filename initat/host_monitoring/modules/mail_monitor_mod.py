@@ -580,46 +580,62 @@ class mailq_command(hm_classes.MonitoringCommand):
         else:
             mail_dict = {"total": int(srv_com["num_mails"].text)}
             mail_dict["queued"] = mail_dict["total"]
-        ret_state = limits.check_ceiling(
-            mail_dict.get("total", 0),
-            cur_ns.warntotal,
-            cur_ns.crittotal
-        )
+        ret_states = [
+            (
+                "total",
+                limits.check_ceiling(
+                    mail_dict.get("total", 0),
+                    cur_ns.warntotal,
+                    cur_ns.crittotal
+                )
+            )
+        ]
         ret_f = []
         if mail_dict.get("queued", 0):
             ret_f = ["{} queued".format(logging_tools.get_plural("mail", mail_dict["queued"]))]
-            ret_state = max(
-                ret_state,
-                limits.check_ceiling(
-                    mail_dict.get("queued", 0),
-                    cur_ns.warnqueued,
-                    cur_ns.critqueued
+            ret_states.append(
+                (
+                    "queued",
+                    limits.check_ceiling(
+                        mail_dict.get("queued", 0),
+                        cur_ns.warnqueued,
+                        cur_ns.critqueued
+                    )
                 )
             )
         if mail_dict.get("active", 0):
             ret_f.append("{:d} active".format(mail_dict["active"]))
-            ret_state = max(
-                ret_state,
-                limits.check_ceiling(
-                    mail_dict.get("active", 0),
-                    cur_ns.warnactive,
-                    cur_ns.critactive
+            ret_states.append(
+                (
+                    "active",
+                    limits.check_ceiling(
+                        mail_dict.get("active", 0),
+                        cur_ns.warnactive,
+                        cur_ns.critactive
+                    )
                 )
             )
         if mail_dict.get("hold", 0):
             ret_f.append("{:d} on hold".format(mail_dict["hold"]))
-            ret_state = max(
-                ret_state,
-                limits.check_ceiling(
-                    mail_dict.get("hold", 0),
-                    cur_ns.warnhold,
-                    cur_ns.crithold
+            ret_states.append(
+                (
+                    "hold",
+                    limits.check_ceiling(
+                        mail_dict.get("hold", 0),
+                        cur_ns.warnhold,
+                        cur_ns.crithold
+                    )
                 )
             )
         if mail_dict.get("total", 0):
             ret_f.append("{:d} total".format(mail_dict["total"]))
         if not ret_f:
             ret_f = ["mailqueue is empty"]
+        ret_states.sort(key=lambda x: x[1], reverse=True)
+        _result = ret_states[0]
+        if _result[1] > limits.mon_STATE_OK:
+            ret_f.insert(0, "[from {}]".format(_result[0]))
+        ret_state = _result[1]
         return ret_state, ", ".join(ret_f)
 
 

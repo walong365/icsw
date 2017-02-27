@@ -28,7 +28,7 @@ import argparse
 def parse():
     parser = argparse.ArgumentParser()
     parser.add_argument("--specfile", type=str)
-    parser.add_argument("--increase-release-on-build", type=int)
+    parser.add_argument("--increase-release-on-build", type=int, default=0)
     parser.add_argument("--binary-dir", type=str)
     args = parser.parse_args()
     args.increase_release_on_build = True if int(args.increase_release_on_build) else False

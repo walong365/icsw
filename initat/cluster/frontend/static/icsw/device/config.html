@@ -52,7 +52,7 @@
                 is-show="struct.only_selected"
                 show-value="'only selected'"
                 hide-value="'all'"
-                ng-click="toggle_only_selected()"
+                ng-click="toggle_only_selected($event)"
             ></icsw-tools-button>
             <div
                 ng-if="struct.mode == 'gen'"

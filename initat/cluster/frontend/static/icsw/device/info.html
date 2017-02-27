@@ -221,7 +221,7 @@
                         FQDN
                     </label>
                     <div class="col-xs-9">
-                        {{ edit_obj.name }}.{{ struct.domain_tree.lut[edit_obj.domain_tree_node].full_name }}
+                        {{ edit_obj.name }}{{ struct.domain_tree.lut[edit_obj.domain_tree_node].node_postfix }}.{{ struct.domain_tree.lut[edit_obj.domain_tree_node].full_name }}
                     </div>
                 </div>
                 <div class="row" ng-show="edit_obj.alias">

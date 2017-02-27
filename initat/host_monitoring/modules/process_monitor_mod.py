@@ -467,7 +467,8 @@ class procstat_command(hm_classes.MonitoringCommand):
             if _cmdre and not _cmdre.search(" ".join(value["cmdline"])):
                 continue
             if _form < 2:
-                _is_zombie = value["state"] == "Z"
+                # hm ...
+                _is_zombie = value.get("state", value.get("status", "?")) == "Z"
             else:
                 _is_zombie = value["status"] == psutil.STATUS_ZOMBIE
             if _is_zombie:

@@ -330,6 +330,7 @@ angular.module(
 
         sub_scope = $scope.$new(true)
         sub_scope.copy_coms = false
+        sub_scope.struct = $scope.struct
         sub_scope.settings = {
             "copy_coms": false
             "src_device": $scope.struct.devices[0]
