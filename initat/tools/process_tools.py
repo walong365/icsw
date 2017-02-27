@@ -37,7 +37,7 @@ import six
 from lxml import etree
 from lxml.builder import E
 
-from initat.constants import META_SERVER_DIR, PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+from initat.constants import META_SERVER_DIR, PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum, IS_PYINSTALLER_BINARY
 from initat.tools import logging_tools
 
 if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
@@ -60,7 +60,11 @@ if (
 else:
     psutil = None
 
-RUN_DIR = "/var/run"
+if IS_PYINSTALLER_BINARY:
+    RUN_DIR = os.path.join(sys._MEIPASS, "var", "run")
+    os.makedirs(RUN_DIR)
+else:
+    RUN_DIR = "/var/run"
 
 
 def safe_unicode(obj):
@@ -244,11 +248,12 @@ if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
     os.getuid = getuid
 
 
-LOCAL_ZMQ_DIR = "/var/run/icsw/zmq/.zmq_{:d}:{:d}".format(
-    os.getuid(),
-    os.getpid(),
-)
-LOCAL_ROOT_ZMQ_DIR = "/var/run/icsw/sockets"
+LOCAL_ZMQ_DIR = os.path.join(RUN_DIR, "icsw/zmq/.zmq_{:d}:{:d}".format(os.getuid(), os.getpid()))
+LOCAL_ROOT_ZMQ_DIR = os.path.join(RUN_DIR, "icsw/sockets")
+
+if IS_PYINSTALLER_BINARY:
+    os.makedirs(LOCAL_ZMQ_DIR)
+    os.makedirs(LOCAL_ROOT_ZMQ_DIR)
 
 
 INIT_ZMQ_DIR_PID = "{:d}".format(os.getpid())

@@ -54,6 +54,10 @@ __all__ = [
     "META_SERVER_DIR",
 ]
 
+if hasattr(sys, "_MEIPASS"):
+    IS_PYINSTALLER_BINARY = True
+else:
+    IS_PYINSTALLER_BINARY = False
 
 class PlatformSystemTypeEnum(Enum):
     # none, never matches, for HM
@@ -106,11 +110,14 @@ else:
 if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.WINDOWS:
     import site
 
+    CLUSTER_DIR = None
     for _path in site.getsitepackages():
         opt_path = os.path.join(_path, "opt")
         if os.path.exists(opt_path):
             CLUSTER_DIR = os.path.join(opt_path, "cluster")
             break
+elif IS_PYINSTALLER_BINARY:
+    CLUSTER_DIR = os.path.join(sys._MEIPASS, "opt", "cluster")
 else:
     CLUSTER_DIR = os.environ.get("ICSW_CLUSTER_DIR", _cluster_dir)
 

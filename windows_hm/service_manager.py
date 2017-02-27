@@ -36,7 +36,7 @@ def install_service(service_name, version_string):
     cleanup_service(service_name)
 
     python_path = os.path.join(os.getcwd(), "python.exe")
-    module_path = "\"{}\"".format(os.path.join(os.getcwd(), "Lib\site-packages\initat\host_monitoring\main_windows.py"))
+    module_path = "\"{}\"".format(os.path.join(os.getcwd(), "Lib\site-packages\initat\host_monitoring\main_binary.py"))
 
     # install service
     subprocess.check_output([NSSM_BIN, "install", service_name, python_path, "-B", module_path],

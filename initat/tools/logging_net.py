@@ -33,7 +33,7 @@ import datetime
 
 import zmq
 
-from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum
+from initat.constants import PLATFORM_SYSTEM_TYPE, PlatformSystemTypeEnum, IS_PYINSTALLER_BINARY
 from .logging_tools import LOG_LEVEL_OK, rewrite_log_destination, my_syslog, get_plural, UNIFIED_NAME
 from initat.logging_server.constants import icswLogHandleTypes, ICSW_LOG_BASE
 
@@ -128,7 +128,7 @@ class icswLogAdapter(logging.LoggerAdapter):
         if self.__prefix:
             what = "{}{}".format(self.__prefix, what)
         try:
-            if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
+            if PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX and not IS_PYINSTALLER_BINARY:
                 logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
             else:
                 _, file_name, line_num, _, _, _ = inspect.stack()[1]
