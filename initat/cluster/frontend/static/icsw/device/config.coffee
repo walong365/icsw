@@ -198,7 +198,7 @@ angular.module(
             if @mode == "mon"
                 # moncheck config mode
                 _pcs = @pc_stream[0]
-                console.log "***", _pcs
+                #  console.log "***", _pcs
                 # zero-conf stream (monitoring only)
                 for _token in _pcs
                     if _token.type == "m"
@@ -442,8 +442,9 @@ angular.module(
                         # filter out non-service entries
                         if not entry.$$cse or not entry.server_config
                             continue
-                    entry.$selected = entry.$$_dc_name.match(name_re)
+                    entry.$selected = if entry.$$_dc_name.match(name_re) then true else false
                     if only_selected and entry.$selected
+                        # filter again
                         entry.$selected = false
                         for cur_dev in @devices
                             if entry.idx in cur_dev.$local_conf_selected
@@ -475,10 +476,27 @@ angular.module(
                         @num_rows += entry.$$res_mcc_rel.length
             if @mode == "mon"
                 for entry in @config_tree.mon_basic_tree.mon_check_command_list
-                    entry.$selected = entry.$$info_str.match(name_re)
-                    if not entry.system_command and entry.$selected
-                        @active_rows.push(entry)
-                        @num_rows++
+                    # console.log "+", entry.$$info_str, entry.$selected, name_re
+                    if not entry.system_command
+                        entry.$selected = if entry.$$info_str.match(name_re) then true else false
+                        if entry.$selected and only_selected
+                            # filter again
+                            entry.$selected = false
+                            for cur_dev in @devices
+                                if entry.idx in cur_dev.$local_mon_selected
+                                    # local mon selected
+                                    entry.$selected = true
+                                if _.intersection(entry.config_rel, cur_dev.$local_conf_selected).length
+                                    # local config selected
+                                    entry.$selected = true
+                                if entry.idx in @md_lut[cur_dev.idx].$local_mon_selected
+                                    # meta selected
+                                    entry.$selected = true
+                                if _.intersection(entry.config_rel, @md_lut[cur_dev.idx].$local_conf_selected).length
+                                    entry.$selected = true
+                        if entry.$selected
+                            @active_rows.push(entry)
+                            @num_rows++
 
             # setup focus helper structurs
             @focus_dict = {}
@@ -725,7 +743,7 @@ angular.module(
 
         $scope.struct.helper.update_active_rows(cur_re, $scope.struct.only_selected, $scope.struct.with_server, $scope.struct.with_service)
 
-    $scope.toggle_only_selected = () ->
+    $scope.toggle_only_selected = ($event) ->
         $scope.struct.only_selected = !$scope.struct.only_selected
         $scope.new_filter_set($scope.struct.name_filter, true)
 
