@@ -22,8 +22,6 @@
 
 """ create content for webfrontend on full rebuild """
 
-
-
 import os
 import shutil
 import subprocess
@@ -55,6 +53,7 @@ def main():
         binary_dir = os.path.join(args.binary_dir, APP)
         for _prod in [False, True]:
             os.chdir(_icsw_dir)
+            print("current directory is '{}'".format(_icsw_dir))
             _temp_dir = tempfile.mkdtemp(suffix="_{}_wc".format(APP))
             _deploy_dir = os.path.join(_temp_dir, APP)
             _compile_dir = os.path.join(_temp_dir, "compile")
@@ -68,6 +67,7 @@ def main():
             ]
             if _prod:
                 _args.append("--production")
+            print("calling gulp with '{}'".format(" ".join(_args)))
             # print("***", " ".join(_args))
             subprocess.check_call(_args)
             _pf = "" if _prod else "-debug"
