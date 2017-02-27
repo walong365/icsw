@@ -133,6 +133,8 @@ lic_module = angular.module("icsw.license.overview",
         lic_overview: []
         # current timeout
         cur_timeout: undefined
+        # signal shutdown
+        shutdown: false
     }
     $scope.server_open = false
     $scope.overview_open = true
@@ -183,7 +185,8 @@ lic_module = angular.module("icsw.license.overview",
                 _.remove($scope.struct.lic_overview, (entry) -> return entry.name in _to_remove)
                 for _ov in $scope.struct.lic_overview
                     $scope.build_stack(_ov)
-                $scope.struct.cur_timeout = $timeout($scope.update, 3000)
+                if not $scope.struct.shutdown
+                    $scope.struct.cur_timeout = $timeout($scope.update, 3000)
             (error) ->
                 $scope.struct.cur_timeout = $timeout($scope.update, 30000)
         )
@@ -214,6 +217,7 @@ lic_module = angular.module("icsw.license.overview",
             _lut[_key].title = "#{_value} #{_info}"
     $scope.update()
     $scope.$on("$destroy", () ->
+        $scope.struct.shutdown = true
         if $scope.struct.cur_timeout?
             $timeout.cancel($scope.struct.cur_timeout)
             $scope.struct.cur_timeout = undefined
