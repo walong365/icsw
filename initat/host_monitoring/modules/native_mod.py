@@ -347,6 +347,7 @@ class check_smtp_command(hm_classes.MonitoringCommand):
                 hm_classes.MCParameter("-t", "timeout", 10, "Seconds before connection times out (default: 10)", devvar_name="CHECK_SMTP_TIMEOUT"),
         )
 
+
 class check_ssh_command(hm_classes.MonitoringCommand):
     class Meta:
         required_platform = PlatformSystemTypeEnum.ANY
@@ -355,10 +356,11 @@ class check_ssh_command(hm_classes.MonitoringCommand):
         uuid = ""
         description = "Try to connect to an SSH server at specified server and port."
         parameters = hm_classes.MCParameters(
-                hm_classes.MCParameter("-H", "hostname", "", "Host name, IP Address, or unix socket (must be an absolute path)", macro_name="$HOSTADDRESS$"),
-                hm_classes.MCParameter("-p", "port", 22, "Port number (default: 22)", devvar_name="CHECK_SSH_PORT"),
-                hm_classes.MCParameter("-t", "timeout", 10, "Seconds before connection times out (default: 10)", devvar_name="CHECK_SSH_TIMEOUT"),
+            hm_classes.MCParameter("-H", "hostname", "", "Host name, IP Address, or unix socket (must be an absolute path)", macro_name="$HOSTADDRESS$"),
+            hm_classes.MCParameter("-p", "port", 22, "Port number (default: 22)", devvar_name="CHECK_SSH_PORT"),
+            hm_classes.MCParameter("-t", "timeout", 10, "Seconds before connection times out (default: 10)", devvar_name="CHECK_SSH_TIMEOUT"),
         )
+
 
 class check_swap_command(hm_classes.MonitoringCommand):
     class Meta:
@@ -371,6 +373,7 @@ class check_swap_command(hm_classes.MonitoringCommand):
                 hm_classes.MCParameter("-w", "warning", "20%", "Exit with WARNING status if less than PERCENT of swap space is free", devvar_name="CHECK_SWAP_WARN"),
                 hm_classes.MCParameter("-c", "critical", "10%", "Exit with CRITICAL status if less than PERCENT of swap space is free", devvar_name="CHECK_SWAP_CRIT"),
         )
+
 
 class check_users_command(hm_classes.MonitoringCommand):
     class Meta:
