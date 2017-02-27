@@ -67,7 +67,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             loop_granularity=IDLE_LOOP_GRANULARITY,
             global_config=global_config,
         )
-        self.CC.init(icswServiceEnum.host_monitoring, self.global_config)
+        self.CC.init(icswServiceEnum.host_monitoring, self.global_config, native_logging=True)
         self.CC.check_config()
         self.add_process(SocketProcess("socket"), start=True)
         self.add_process(ResolveProcess("resolve"), start=True)

@@ -30,7 +30,7 @@ import time
 import zmq
 
 from initat.tools import icmp_class, logging_tools, process_tools, server_command, \
-    threading_tools
+    threading_tools, logging_functions, config_store
 
 
 class HMIcmpProtocol(icmp_class.icmp_protocol):
@@ -383,12 +383,14 @@ class TCPCon(object):
 
 class SocketProcess(threading_tools.icswProcessObj):
     def process_init(self):
-        self.__log_template = logging_tools.get_logger(
-            self.global_config["LOG_NAME"],
-            self.global_config["LOG_DESTINATION"],
-            context=self.zmq_context
+        self.__log_template = logging_functions.get_logger(
+            config_store.ConfigStore("client", quiet=True),
+            "{}/{}".format(
+                process_tools.get_machine_name(),
+                self.global_config["LOG_NAME"],
+            ),
+            process_name=self.name,
         )
-        # log.startLoggingWithObserver(my_observer, setStdout=False)
         self.register_func("connection", self._connection)
         # clear flag for extra twisted thread
         self.__extra_twisted_threads = 0
@@ -452,4 +454,3 @@ class SocketProcess(threading_tools.icswProcessObj):
         # self.twisted_observer.close()
         if self.icmp_protocol:
             self.icmp_protocol.close()
-        self.__log_template.close()

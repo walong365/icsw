@@ -125,7 +125,9 @@ class InotifyWatcher(pyinotify.Notifier):
             ext_ids = [key for key in self.__watch_dict[event.path]]
             for ext_id in ext_ids:
                 if ext_id in self.__watch_dict[event.path]:
-                    self.__watch_dict[event.path][ext_id]["process_events"](event)
+                    _pe = self.__watch_dict[event.path][ext_id]["process_events"]
+                    if _pe is not None:
+                        self.__watch_dict[event.path][ext_id]["process_events"](event, id=ext_id)
         else:
             self.log("unknown event path '{}'".format(event.path), logging_tools.LOG_LEVEL_ERROR)
 

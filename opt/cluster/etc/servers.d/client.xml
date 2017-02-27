@@ -91,9 +91,6 @@
         <config-enums>
             <config-enum>host_monitoring</config-enum>
         </config-enums>
-        <dependencies>
-            <needed-for-start symmetrical="1">logging-server</needed-for-start>
-        </dependencies>
         <network>
             <ports>
                 <port type="command">2001</port>
@@ -113,9 +110,6 @@
         <config-enums>
             <config-enum>package_client</config-enum>
         </config-enums>
-        <dependencies>
-            <needed-for-start symmetrical="1">logging-server</needed-for-start>
-        </dependencies>
         <network>
             <ports>
                 <port type="command">2003</port>

@@ -40,7 +40,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             "main",
             global_config=global_config,
         )
-        self.CC.init(icswServiceEnum.package_client, self.global_config)
+        self.CC.init(icswServiceEnum.package_client, self.global_config, native_logging=True)
         self.CC.check_config()
         self.install_signal_handlers()
         # init environment

@@ -30,8 +30,13 @@ from initat.tools import logging_tools
 SEP_STR = "-" * 50
 
 
-def get_logger(cs, handle_name, logger_name):
+def get_logger(cs, handle_name: str, logger_name: str=None, process_name: str=None):
+    if logger_name is None:
+        logger_name = handle_name.replace("/", ".")
+    # print("*", handle_name, logger_name)
     full_name = os.path.join(cs["log.logdir"], handle_name)
+    if process_name is not None:
+        full_name = "{}#{}".format(full_name, process_name)
     base_dir, base_name = (
         os.path.dirname(full_name),
         os.path.basename(full_name)

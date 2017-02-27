@@ -25,7 +25,7 @@
 import socket
 import time
 
-from initat.tools import logging_tools, process_tools, threading_tools
+from initat.tools import logging_tools, process_tools, threading_tools, logging_functions, config_store
 
 CACHE_TIMEOUT = 20
 
@@ -45,10 +45,13 @@ class CacheEntry(object):
 
 class ResolveProcess(threading_tools.icswProcessObj):
     def process_init(self):
-        self.__log_template = logging_tools.get_logger(
-            self.global_config["LOG_NAME"],
-            self.global_config["LOG_DESTINATION"],
-            context=self.zmq_context
+        self.__log_template = logging_functions.get_logger(
+            config_store.ConfigStore("client", quiet=True),
+            "{}/{}".format(
+                process_tools.get_machine_name(),
+                self.global_config["LOG_NAME"],
+            ),
+            process_name=self.name,
         )
         # log.startLoggingWithObserver(my_observer, setStdout=False)
         self.__debug = self.global_config["DEBUG"]
@@ -58,9 +61,6 @@ class ResolveProcess(threading_tools.icswProcessObj):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
-
-    def loop_post(self):
-        self.__log_template.close()
 
     def _resolve_addr(self, addr, overload=False):
         cur_time = time.time()

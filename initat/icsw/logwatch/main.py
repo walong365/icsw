@@ -23,8 +23,17 @@
 
 import time
 
-from initat.tools import logging_tools
+from initat.tools import logging_tools, inotify_tools
 from .objects import LogCache, LogWatcher
+
+
+def dummy_log(what, log_level=logging_tools.LOG_LEVEL_OK):
+    print(
+        "[{}] {}".format(
+            logging_tools.get_log_level_str(log_level),
+            what
+        )
+    )
 
 
 def main(opt_ns):
@@ -41,6 +50,7 @@ def main(opt_ns):
             ", ".join(sorted(opt_ns.used_systems))
         )
     )
+    LogWatcher.setup()
     if opt_ns.with_nodes:
         if opt_ns.verbose:
             print(
@@ -56,7 +66,15 @@ def main(opt_ns):
             )
         )
     _lc = LogCache(opt_ns)
-    _lws = [_lw for _lw in [LogWatcher(opt_ns, _entry, _lc) for _entry in opt_ns.used_systems] if _lw.valid]
+    _lws = [
+        _lw for _lw in [
+            LogWatcher(opt_ns, _entry, _lc) for _entry in opt_ns.used_systems
+        ] if _lw.valid
+    ]
+    if opt_ns.follow:
+        my_watcher = inotify_tools.InotifyWatcher(log_com=dummy_log)
+    else:
+        my_watcher = None
     if opt_ns.with_nodes:
         for _node in opt_ns.used_nodes:
             _lws.extend(
@@ -69,13 +87,23 @@ def main(opt_ns):
     _lc.sort()
     _lc.prune()
     _lc.show()
+
+    def inotfy_event(event, id):
+        LogWatcher.lw_lut[id].read()
+        _lc.sort()
+        _lc.show()
+
     try:
         if opt_ns.follow:
+            for entry in _lws:
+                my_watcher.add_watcher(
+                    entry.id,
+                    entry.path,
+                    process_events=inotfy_event
+                )
             while True:
-                time.sleep(0.25)
-                [_lw.read() for _lw in _lws]
-                _lc.sort()
-                _lc.show()
+                my_watcher.check(timeout=500)
+
     except KeyboardInterrupt:
         print("exit...")
         pass
