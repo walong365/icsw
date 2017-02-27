@@ -157,14 +157,20 @@
     <form class="form-horizontal" name="form_data">
         Copy Network From
         <ui-select ng-model="settings.src_device" style="max-width:400px; min-width:240px;">
-            <ui-select-match class="ui-select-match" placeholder="select a target netdevice speed">{{$select.selected.full_name}}</ui-select-match>
+            <ui-select-match
+                class="ui-select-match"
+                placeholder="select a source device"
+            >
+                {{$select.selected.full_name}}
+            </ui-select-match>
             <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.devices">
                 <div ng-bind-html="value.full_name | highlight: $select.search"></div>
             </ui-select-choices>
         </ui-select>
-        <ul class="dropdown-menu">
+        <!-- <ul class="dropdown-menu">
             <li ng-click="copy_network(obj, $event)" ng-repeat="obj in struct.devices"><a>{{ obj.full_name }}</a></li>
-        </ul>
+        </ul> -->
+        <div style="height: 100px;"></div>
         <input type="button" ng-class="copy_com_class()" ng-value="copy_com_value()" ng-click="toggle_copy_com()"></input>
     </form>
 </script>
