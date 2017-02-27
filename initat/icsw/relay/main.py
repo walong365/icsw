@@ -154,6 +154,8 @@ def reload_relay():
 
 
 def main(opts):
+    print("Has to be rewritten to use new SQLite-based backend")
+    sys.exit(5)
     store = ConfigStore(CS_NAME)
     sink = HRSink(opts)
     for _key, _value in store.get_dict().items():
