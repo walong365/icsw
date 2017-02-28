@@ -105,6 +105,9 @@ angular.module(
         $scope.struct.bulk_create_current_device = 0
         $scope.struct.bulk_create_total_devices = $scope.device_info.length
 
+        $scope.skip_device = () ->
+            init_with_device_info()
+
     init_with_device_info = () ->
         if $scope.device_info != undefined
             if $scope.device_info.length > 0
