@@ -33,6 +33,7 @@ from initat.tools import configfile, logging_tools, process_tools, \
 from initat.tools.server_mixins import RemoteCall
 from .config import global_config, IPC_SOCK_SNMP
 from .discovery import DiscoveryProcess
+from .snmp_trap_handler import SNMPTrapHandlerProcess
 
 
 @server_mixins.RemoteCallProcess
@@ -55,6 +56,8 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.CC.log_config()
         self.add_process(DiscoveryProcess("discovery"), start=True)
         self.add_process(EventLogPollerProcess(EventLogPollerProcess.PROCESS_NAME), start=True)
+        self.add_process(SNMPTrapHandlerProcess(SNMPTrapHandlerProcess.PROCESS_NAME), start=True)
+
         self._init_network_sockets()
         self.register_func("snmp_run", self._snmp_run)
         self.register_func("send_host_monitor_command", self.send_host_monitor_command)
