@@ -402,112 +402,154 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.var.table">
-    <icsw-tools-rest-table-new target-list="vars" config-service="icswConfigVarListService">
-        <table
-            st-table="vars_displayed"
-            st-safe-src="vars"
-            class="table table-hover table-condensed table-striped"
-            style="width:100%;"
-        >
-            <thead>
-                <tr>
-                    <td colspan="99">
-                        <div class="row">
-                            <div class="col-sm-5">
-                                <div class="input-group">
-                                    <input st-search="" class="form-control" placeholder="filter">
-                                    </input>
-                                </div>
+    <table
+        st-table="vars_displayed"
+        st-safe-src="config.var_list"
+        class="table table-hover table-condensed table-striped"
+        style="width:100%;"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div class="row">
+                        <div class="col-sm-5">
+                            <div class="input-group">
+                                <input st-search="" class="form-control" placeholder="filter">
+                                </input>
                             </div>
-                            <div
-                                icsw-tools-pagination
-                                st-items-by-page="15"
-                                st-displayed-pages="11"
-                                possible-items-by-page="15,30,100,200"
-                                class="col-sm-7"
-                            ></div>
                         </div>
-                    </td>
-                </tr>
-                <tr>
-                    <th st-sort="name">Name</th>
-                    <th st-sort="value">value</th>
-                    <th st-sort="description">description</th>
-                    <th class="text-center">type</th>
-                    <th colspan="2">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr ng-repeat="obj in vars_displayed">
-                    <td>
-                        <span ng-show="config_service.var_has_info(config, obj)" class="pull-right">
-                            <span class="glyphicon glyphicon-info-sign" title="{{ config_service.get_var_help_text(config, obj) }}">
-                            </span>
+                        <div
+                            icsw-tools-pagination
+                            st-items-by-page="15"
+                            st-displayed-pages="11"
+                            possible-items-by-page="15,30,100,200"
+                            class="col-sm-7"
+                        ></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="name">Name</th>
+                <th st-sort="value">value</th>
+                <th st-sort="description">description</th>
+                <th class="text-center">type</th>
+                <th colspan="2">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="obj in vars_displayed">
+                <td>
+                    <span ng-show="var_has_info(config, obj)" class="pull-right">
+                        <span class="glyphicon glyphicon-info-sign" title="{{ get_var_help_text(config, obj) }}">
                         </span>
-                        {{ obj.name }}
-                    </td>
-                    <td>{{ config_service.get_value(obj) }}</td>
-                    <td>{{ obj.description }}</td>
-                    <td class="text-center">{{ obj.$var_type }}</td>
-                    <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="sel" ng-click="config_service.select(obj)"/>
-                    <td><icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, obj)" size="xs"/></td>
-                    <td><icsw-tools-button-static type="delete" value="delete" ng-click="delete($event, obj)" size="xs"/></td>
-                </tr>
-            </tbody>
-        </table>
-    </icsw-tools-rest-table-new>
+                    </span>
+                    {{ obj.name }}
+                </td>
+                <td>{{ get_value(obj) }}</td>
+                <td>{{ obj.description }}</td>
+                <td class="text-center">{{ obj.$$var_type }}</td>
+                <td>
+                    <input
+                        type="button"
+                        ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'"
+                        value="sel"
+                        ng-click="select($event, obj)"
+                    />
+                </td>
+                <td>
+                    <icsw-tools-button-static
+                        type="modify"
+                        value="modify"
+                        ng-click="create_or_edit($event, false, obj)"
+                        size="xs"
+                    ></icsw-tools-button-static>
+                </td>
+                <td>
+                    <icsw-tools-button-static
+                        type="delete"
+                        value="delete"
+                        ng-click="delete($event, obj)"
+                        size="xs"
+                    ></icsw-tools-button-static>
+                </td>
+            </tr>
+        </tbody>
+    </table>
 </script>
 
 <script type="text/ng-template" id="icsw.config.script.table">
-    <icsw-tools-rest-table-new target-list="scripts" config-service="icswConfigScriptListService">
-        <table st-table="scripts_displayed" st-safe-src="scripts"
-               class="table table-condensed table-hover" style="width:100%;">
-            <thead>
-                <tr>
-                    <td colspan="99">
-                        <div class="row">
-                            <div class="col-sm-5">
-                                <div class="input-group">
-                                    <input st-search="" class="form-control" placeholder="filter">
-                                    </input>
-                                </div>
+    <table
+        st-table="scripts_displayed"
+        st-safe-src="config.config_script_set"
+        class="table table-condensed table-hover"
+        style="width:100%;"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div class="row">
+                        <div class="col-sm-5">
+                            <div class="input-group">
+                                <input st-search="" class="form-control" placeholder="filter">
+                                </input>
                             </div>
-                            <div
-                                icsw-tools-pagination
-                                st-items-by-page="15"
-                                st-displayed-pages="11"
-                                possible-items-by-page="15,30,100,200"
-                                class="col-sm-7"
-                            ></div>
                         </div>
-                    </td>
-                </tr>
-                <tr>
-                    <th st-sort="name">Name</th>
-                    <th>Value</th>
-                    <th st-sort="description">Description</th>
-                    <th>Priority</th>
-                    <th>Enabled</th>
-                    <th colspan="2">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr ng-repeat="obj in scripts_displayed">
-                    <td>{{ obj.name }}</td>
-                    <td style="font-family:monospace; width:480px;">
-                        <textarea ng-model="obj.value" class="form-control input-sm" rows="5" readonly>
-                        </textarea>
-                    </td>
-                    <td>{{ obj.description }}</td>
-                    <td>{{ obj.priority }}</td>
-                    <td>{{ obj.enabled | yesno1 }}</td>
-                    <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="sel" ng-click="config_service.select(obj)"/></td>
-                    <td><icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button-static></td>
-                    <td><icsw-tools-button-static type="delete" value="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button-static></td>
-                </tr>
-            </tbody>
-        </table>
-    </icsw-tools-rest-table-new>
+                        <div
+                            icsw-tools-pagination
+                            st-items-by-page="15"
+                            st-displayed-pages="11"
+                            possible-items-by-page="15,30,100,200"
+                            class="col-sm-7"
+                        ></div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="name">Name</th>
+                <th>Value</th>
+                <th st-sort="description">Description</th>
+                <th>Priority</th>
+                <th>Enabled</th>
+                <th colspan="2">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="obj in scripts_displayed">
+                <td>{{ obj.name }}</td>
+                <td style="font-family:monospace; width:480px;">
+                    <textarea ng-model="obj.value" class="form-control input-sm" rows="5" readonly>
+                    </textarea>
+                </td>
+                <td>{{ obj.description }}</td>
+                <td>{{ obj.priority }}</td>
+                <td>{{ obj.enabled | yesno1 }}</td>
+                <td>
+                    <input
+                        type="button"
+                        ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'"
+                        value="sel"
+                        ng-click="select($event, obj)"
+                    />
+                </td>
+                <td>
+                    <icsw-tools-button-static
+                        type="modify"
+                        value="modify"
+                        ng-click="create_or_edit($event, false, obj)"
+                        size="xs"
+                    ></icsw-tools-button-static>
+                </td>
+                <td>
+                    <icsw-tools-button-static
+                        type="delete"
+                        value="delete"
+                        ng-click="delete($event, obj)"
+                        size="xs"
+                    ></icsw-tools-button-static>
+                </td>
+            </tr>
+        </tbody>
+    </table>
 </script>
 
 <script type="text/ng-template" id="icsw.config.mon.table">

@@ -62,7 +62,7 @@
                     {{ struct.helper.device.full_name }}
                 </td>
                 <td ng-repeat="ivar in struct.scope.list" class="text-center">
-                    <span ng-show="ivar.set">{{ ivar.var.$var_value }}</span>
+                    <span ng-show="ivar.set">{{ ivar.var.$$var_value }}</span>
                     <span ng-show="!ivar.set">N/A</span>
                 </td>
             </tr>
@@ -178,8 +178,8 @@
                     <td>{{ obj.$$device.$$print_name }}</td>
                     <td ng-show="show_column.uuid" class="text-center"><code>{{ obj.uuid }}</code></td>
                     <td class="text-center">{{ obj.$$scope_name }}</td>
-                    <td class="text-center"><span class="badge">{{ obj.$var_type }}</span></td>
-                    <td>{{ obj.$var_value }}</td>
+                    <td class="text-center"><span class="badge">{{ obj.$$var_type }}</span></td>
+                    <td>{{ obj.$$var_value }}</td>
                     <td ng-show="show_column.source" class="text-center">{{ obj.is_public | yesno2 }}</td>
                     <td ng-show="show_column.source" class="text-center">{{ obj.inherit | yesno2 }}</td>
                     <td ng-show="show_column.source" class="text-center"><span ng-bind-html="obj.$$inherited | yesno3"></span></td>
@@ -405,7 +405,7 @@
                             <td>{{ ivar.$$name }}</td>
                             <td>{{ ivar.$$description }}</td>
                             <td ng-class="ivar.$$td_class" class="text-right">
-                                <span ng-show="ivar.set">{{ ivar.var.$var_value }}</span>
+                                <span ng-show="ivar.set">{{ ivar.var.$$var_value }}</span>
                                 <span ng-show="!ivar.set">N/A</span>
                             </td>
                         </tr>

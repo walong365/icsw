@@ -238,8 +238,8 @@ angular.module(
             # if not @var_name_filter?
             #     @var_name_filter = ""
             # for dev in @devices
-            #    if not dev.$vars_expanded?
-            #        dev.$vars_expanded = false
+            #    if not dev.$$vars_expanded?
+            #        dev.$$vars_expanded = false
             @salt_device_variables()
 
             
@@ -289,28 +289,28 @@ angular.module(
                     d_var.$$shadow = false
                     # set var_type
                     if d_var.var_type == "s"
-                        d_var.$var_type = "string"
-                        d_var.$var_value = d_var.val_str
+                        d_var.$$var_type = "string"
+                        d_var.$$var_value = d_var.val_str
                     else if d_var.var_type == "i"
-                        d_var.$var_type = "integer"
-                        d_var.$var_value = d_var.val_int
+                        d_var.$$var_type = "integer"
+                        d_var.$$var_value = d_var.val_int
                     else if d_var.var_type == "b"
-                        d_var.$var_type = "blob"
-                        d_var.$var_value = d_var.val_blob.length + "bytes"
+                        d_var.$$var_type = "blob"
+                        d_var.$$var_value = d_var.val_blob.length + "bytes"
                     else if d_var.var_type == "t"
-                        d_var.$var_type = "time"
-                        d_var.$var_value = d_var.val_time
+                        d_var.$$var_type = "time"
+                        d_var.$$var_value = d_var.val_time
                     else if d_var.var_type == "d"
-                        d_var.$var_type = "datetime"
-                        d_var.$var_value = moment(d_var.val_date).format("dd, D. MMM YYYY HH:mm:ss")
+                        d_var.$$var_type = "datetime"
+                        d_var.$$var_value = moment(d_var.val_date).format("dd, D. MMM YYYY HH:mm:ss")
                     else if d_var.var_type == "D"
-                        d_var.$var_type = "date"
-                        d_var.$var_value = moment(d_var.val_date).format("dd, D. MMM YYYY")
+                        d_var.$$var_type = "date"
+                        d_var.$$var_value = moment(d_var.val_date).format("dd, D. MMM YYYY")
                     else
-                        d_var.$var_type = "VarType #{d_var.var_type}"
-                        d_var.$var_value = "unknown type #{d_var.var_type}"
+                        d_var.$$var_type = "VarType #{d_var.var_type}"
+                        d_var.$$var_value = "unknown type #{d_var.var_type}"
 
-                    d_var.$$filter_field = "#{d_var.name} #{d_var.$var_value}"
+                    d_var.$$filter_field = "#{d_var.name} #{d_var.$$var_value}"
 
                     # source is device
                     d_var.$source = v_source

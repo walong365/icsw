@@ -406,7 +406,7 @@ device_variable_module = angular.module(
             if not choice.id
                 return true
             else
-                return entry.$var_type == choice.value
+                return entry.$$var_type == choice.value
     ).add_choice(
         0, "All Types", null, true
     )
@@ -484,7 +484,7 @@ device_variable_module = angular.module(
             for d_var in entry.device_variables
                 $scope.struct.var_list.push(d_var)
                 _dvsf.add_choice(d_var.device_variable_scope, d_var.$$scope_name, d_var.$$scope_name, false)
-                _dvtf.add_choice(d_var.$var_type, d_var.$var_type, d_var.$var_type, false)
+                _dvtf.add_choice(d_var.$$var_type, d_var.$$var_type, d_var.$$var_type, false)
         _update_filter()
 
 
@@ -499,7 +499,7 @@ device_variable_module = angular.module(
     )
 
     $scope.toggle_expand = ($event, obj) ->
-        obj.$vars_expanded = not obj.$vars_expanded
+        obj.$$vars_expanded = not obj.$$vars_expanded
 
     $scope.create_or_edit = ($event, create, obj_or_parent) ->
         _dvst = $scope.struct.device_variable_scope_tree
@@ -636,7 +636,7 @@ device_variable_module = angular.module(
         _slist = []
         for _struct in _struct.list
             if _struct.set
-                _value = _struct.var.$var_value
+                _value = _struct.var.$$var_value
             else
                 _value = ""
             if _struct.def.forced_type == "i"

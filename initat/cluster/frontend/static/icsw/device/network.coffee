@@ -1339,7 +1339,7 @@ angular.module(
                         (ok) ->
                     )
             )
-        network_types       : nw_types_dict  # for create/edit dialog
+        network_types: nw_types_dict  # for create/edit dialog
         resolve_type: (id) ->
             return (val for val in nw_types_dict when val.value == id)[0].name
     }

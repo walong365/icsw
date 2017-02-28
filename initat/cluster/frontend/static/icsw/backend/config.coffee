@@ -245,9 +245,10 @@ config_module = angular.module(
             for vt in ["str", "int", "bool", "blob"]
                 for el in config["config_#{vt}_set"]
                     el.$$config_tree = @
+                    el.$$config = config
                     if not el.$selected?
                         el.$selected = false
-                    el.$var_type = vt
+                    el.$$var_type = vt
                     config.var_list.push(el)
             icswTools.order_in_place(
                 config.var_list
@@ -514,11 +515,11 @@ config_module = angular.module(
         # config create / delete config_vars
         create_config_var: (config, new_var) =>
             defer = $q.defer()
-            VT = _.toUpper(new_var.$var_type)
+            VT = _.toUpper(new_var.$$var_type)
             _URL = ICSW_URLS["REST_CONFIG_#{VT}_LIST"]
             Restangular.all(_URL.slice(1)).post(new_var).then(
                 (new_obj) =>
-                    @_fetch_config_var(config, _URL, new_var.$var_type, new_obj.idx, defer, "created var")
+                    @_fetch_config_var(config, _URL, new_var.$$var_type, new_obj.idx, defer, "created var")
                 (not_ok) ->
                     defer.reject("var not created")
             )
@@ -526,13 +527,13 @@ config_module = angular.module(
 
         delete_config_var: (config, del_var) =>
             # ensure REST hooks
-            VT = _.toUpper(del_var.$var_type)
+            VT = _.toUpper(del_var.$$var_type)
             _URL = ICSW_URLS["REST_CONFIG_#{VT}_DETAIL"]
             Restangular.restangularizeElement(null, del_var, _URL.slice(1).slice(0, -2))
             defer = $q.defer()
             del_var.remove().then(
                 (ok) =>
-                    _.remove(config["config_#{del_var.$var_type}_set"], (entry) -> return entry.idx == del_var.idx)
+                    _.remove(config["config_#{del_var.$$var_type}_set"], (entry) -> return entry.idx == del_var.idx)
                     @build_luts()
                     defer.resolve("deleted")
                 (error) ->
