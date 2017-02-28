@@ -35,13 +35,10 @@ angular.module(
 ) ->
     {span} = React.DOM
     class icswConfigCategoryDisplayTree extends icswReactTreeConfig
-        constructor: (@scope, args) ->
+        constructor: (@callback, args) ->
             super(args)
             @mode_entries = []
             @location_re = new RegExp("^/location/.*$")
-            # link to config-service of a list controller
-            # @config_service = undefined
-            # @config_object = undefined
 
         create_mode_entries: (mode, cat_tree) =>
             @mode_entries.length = []
@@ -107,7 +104,7 @@ angular.module(
         handle_context_menu: (event, entry) =>
             cat = entry.obj
             if cat.depth
-                @config_service.create_or_edit(@config_object.scope, event, false, cat)
+                @callback("edit_entry", cat)
             event.preventDefault()
 
         toggle_active_obj: (obj) =>
@@ -115,208 +112,16 @@ angular.module(
             if node.obj
                 node.set_active(!node.active)
                 if node.active
-                    @scope.selected_category = node.obj
+                    @callback("select_category", node.obj)
                 else
-                    @scope.selected_category = null
+                    @callback("select_category", null)
                 @show_active()
-                @scope.update_active()
+                @callback("update_active")
 
         handle_click: (event, entry) =>
             @toggle_active_obj(entry.obj)
-            @scope.$digest()
+            @callback("call_digest")
 
-]).service("icswConfigCategoryListService",
-[
-    "icswTools", "icswDomainTreeService", "$q", "$compile", "$templateCache",
-    "icswComplexModalService", "toaster", "icswCategoryBackup", "Restangular";
-    "icswToolsSimpleModalService", "ICSW_SIGNALS", "$rootScope", "ICSW_URLS",
-(
-    icswTools, icswDomainTreeService, $q, $compile, $templateCache,
-    icswComplexModalService, toaster, icswCategoryBackup, Restangular,
-    icswToolsSimpleModalService, ICSW_SIGNALS, $rootScope, ICSW_URLS,
-) ->
-    return {
-        fetch: (scope) ->
-            defer = $q.defer()
-            # set scope for dn_tree
-            scope.icsw_config_object.scope = scope
-            scope.tree = scope.icsw_config_object.tree
-            scope.dn_tree = scope.icsw_config_object.dn_tree
-            scope.mode = scope.icsw_config_object.mode
-            scope.mode_is_location = scope.mode == "location"
-            scope.mode_is_device = scope.mode == "device"
-            # links, a little hacky...
-            scope.dn_tree.config_object = scope.icsw_config_object
-            scope.dn_tree.config_service = @
-            defer.resolve(scope.dn_tree.mode_entries)
-            return defer.promise
-
-        create_or_edit: (scope, event, create, obj_or_parent) ->
-            if obj_or_parent?
-                top_level = obj_or_parent.full_name.split("/")[1]
-            else
-                # for top-level creation
-                top_level = scope.mode
-            # console.log "***", top_level, obj_or_parent
-            if create
-                # if obj_or_parent?
-                #     console.log "***", obj_or_parent
-                #     _parent = obj_or_parent
-                # else
-                _parent = (value for value in scope.dn_tree.mode_entries when value.depth == 1 and value.full_name.split("/")[1] == top_level)[0]
-                _name = "new_#{top_level}_cat"
-                useable: true
-                was_unuseable: false
-                r_struct = {
-                    name: _name
-                    parent: _parent.idx
-                    depth: 2
-                    full_name: "/#{top_level}/#{_name}"
-                    physical: false
-                }
-                if top_level == "location"
-                    r_struct["latitude"] = 48.1
-                    r_struct["longitude"] = 16.3
-                obj_or_parent = r_struct
-            else
-                obj_or_parent.was_unuseable = not obj_or_parent.useable
-                dbu = new icswCategoryBackup()
-                dbu.create_backup(obj_or_parent)
-            sub_scope = scope.$new(false)
-            sub_scope.edit_obj = obj_or_parent
-
-            if sub_scope.edit_obj.idx
-                # object already saved, do not move between top categories
-                if sub_scope.edit_obj.depth == 1
-                    console.log "*"
-                    p_list = (value for value in scope.dn_tree.mode_entries when value.depth == 0)
-                    console.log p_list
-                else
-                    top_cat = new RegExp("^/" + sub_scope.edit_obj.full_name.split("/")[1])
-                    p_list = (value for value in scope.dn_tree.mode_entries when value.depth and top_cat.test(value.full_name))
-                    # remove all nodes below myself
-                    r_list = []
-                    add_list = [sub_scope.edit_obj.idx]
-                    while add_list.length
-                        r_list = r_list.concat(add_list)
-                        add_list = (value.idx for value in p_list when (value.parent in r_list and value.idx not in r_list))
-                    p_list = (value for value in p_list when value.idx not in r_list)
-            else
-                # new object, allow all values
-                p_list = (value for value in scope.dn_tree.mode_entries when value.depth)
-
-            # console.log p_list
-            sub_scope.valid_parents = p_list
-
-            sub_scope.is_location = (obj) ->
-                # called from formular code
-                # full_name.match leads to infinite digest cycles
-                return (obj.depth > 1) and top_level == "location"
-
-            sub_scope.is_device = (obj) ->
-                # called from formular code
-                # full_name.match leads to infinite digest cycles
-                return (obj.depth > 1) and top_level == "device"
-
-            ok_label = if create then "Create" else "Modify"
-
-            complex_modal_service_dict =
-            {
-                message: $compile($templateCache.get("icsw.category.form"))(sub_scope)
-                title: "#{ok_label} Category entry '#{obj_or_parent.name}"
-                # css_class: "modal-wide"
-                ok_label: ok_label
-                closable: true
-                ok_callback: (modal) ->
-                    d = $q.defer()
-                    if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "")
-                        d.reject("form not valid")
-                    else
-                        if create
-                            scope.tree.create_category_entry(sub_scope.edit_obj).then(
-                                (ok) ->
-                                    d.resolve("created")
-                                (notok) ->
-                                    d.reject("not created")
-                            )
-                        else
-                            Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_CATEGORY_DETAIL.slice(1).slice(0, -2))
-                            sub_scope.edit_obj.put().then(
-                                (ok) ->
-                                    scope.tree.reorder()
-                                    d.resolve("updated")
-                                (not_ok) ->
-                                    d.reject("not updated")
-                            )
-                    return d.promise
-                delete_ask: true
-
-                cancel_callback: (modal) ->
-                    if not create
-                        dbu.restore_backup(obj_or_parent)
-                    d = $q.defer()
-                    d.resolve("cancel")
-                    return d.promise
-            }
-
-            if !create
-                complex_modal_service_dict['delete_callback'] =
-                    (modal) ->
-                        d = $q.defer()
-                        scope.tree.delete_category_entry(sub_scope.edit_obj).then(
-                            (ok) ->
-                                # sync with tree
-                                $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), scope.tree)
-                                d.resolve("deleted")
-                            (notok) ->
-                                d.reject("not deleted")
-                        )
-                        return d.promise
-
-
-
-            icswComplexModalService(complex_modal_service_dict).then(
-                (fin) ->
-                    console.log "finish"
-                    $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), scope.tree)
-                    sub_scope.$destroy()
-            )
-
-        delete: (scope, event, obj) ->
-            icswToolsSimpleModalService("Really delete Category #{obj.name} ?").then(
-                (ok) ->
-                    scope.tree.delete_category_entry(obj).then(
-                        (ok) ->
-                            $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), scope.tree)
-                    )
-            )
-
-        special_fn: (scope, event, fn_name, obj) ->
-            if fn_name == "delete_many"
-                active = scope.dn_tree.get_active()
-
-                # safeguard against deleting the /location category
-                for obj in active
-                    if obj.obj.full_name == "/location"
-                        toaster.pop("error", "", "Deletion of '/location' category not allowed")
-                        return
-
-                icswToolsSimpleModalService("Really delete #{active.length} Categories ?").then(
-                    (doit) ->
-                        $q.allSettled(
-                            (scope.tree.delete_category_entry(entry.obj) for entry in active)
-                        ).then(
-                            (result) ->
-                                console.log result
-                                $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), scope.tree)
-                                console.log "many cats deleted"
-                        )
-                )
-            else if fn_name == "clear_selection"
-                scope.icsw_config_object.ctrl_scope.clear_active()
-
-    }
 ]).directive("icswConfigCategoryTreeRow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
@@ -340,7 +145,7 @@ angular.module(
         return $scope.mode == "device"
 
     $scope.get_tr_class = (obj) ->
-        if $scope.dn_tree.lut[obj.idx].active
+        if $scope.struct.disp_tree.lut[obj.idx].active
             return "danger"
         else
             return if obj.depth > 1 then "" else "success"
@@ -349,7 +154,7 @@ angular.module(
         return ("&nbsp;&nbsp;" for idx in [0..depth]).join("")
 
     $scope.click_row = (obj) ->
-        $scope.dn_tree.toggle_active_obj(obj)
+        $scope.struct.disp_tree.toggle_active_obj(obj)
 
 ]).directive("icswConfigCategoryTreeEdit", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
@@ -360,7 +165,6 @@ angular.module(
         controller: "icswConfigCategoryTreeCtrl"
         link : (scope, element, attrs) ->
             scope.mode = attrs.mode
-            scope.mode_display = if scope.mode == 'mon' then 'monitoring' else scope.mode
             console.assert(
                 scope.mode in [
                     'mon', 'config', 'device', 'location'
@@ -384,56 +188,80 @@ angular.module(
 ) ->
     $scope.location_or_tln_selected = () ->
         tln_or_location_selected = false
-        for selected in $scope.dn_tree.get_active()
+        for selected in $scope.struct.disp_tree.get_active()
             if selected.obj.full_name == "" || selected.obj.full_name == "/location"
                 tln_or_location_selected = true
 
         return tln_or_location_selected
 
-    $scope.struct = {}
+    $scope.struct = {
+        # data valid
+        data_valid: false
+        # tree
+        tree: undefined
+        # display tree
+        disp_tree: undefined
+        # mode
+        mode: undefined
+        # selected category
+        selected_category: undefined
+    }
+
     $scope.reload = () ->
-        $scope.dn_tree = new icswConfigCategoryDisplayTree(
-            $scope
-            {
-                show_selection_buttons: false
-                show_select: false
-                show_descendants: true
-            }
-        )
+        $scope.struct.data_valid = false
         icswCategoryTreeService.load($scope.$id).then(
             (tree) ->
-                $scope.tree = tree
+                $scope.struct.disp_tree = new icswConfigCategoryDisplayTree(
+                    (cmd, arg) =>
+                        if cmd == "select_category"
+                            $scope.struct.selected_category = arg
+                        else if cmd == "call_digest"
+                            $scope.$digest()
+                        else if cmd == "update_active"
+                            $scope.update_active()
+                        else if cmd == "edit_entry"
+                            $scope.create_or_edit(null, false, arg)
+                        else
+                            console.error "unknwon callback command '#{cmd}'"
+                    {
+                        show_selection_buttons: false
+                        show_select: false
+                        show_descendants: true
+                    }
+                )
+                $scope.struct.tree = tree
                 # init struct for list-service
                 $scope.struct.num_active = 0
-                $scope.struct.dn_tree = $scope.dn_tree
-                $scope.struct.tree = $scope.tree
                 $scope.struct.mode = $scope.mode
-                # create ctrl_scope entry
-                $scope.struct.ctrl_scope = $scope
+                $scope.struct.mode_display = if $scope.struct.mode == 'mon' then 'monitoring' else $scope.struct.mode
+                # mode flags
+                $scope.struct.mode_is_location = $scope.struct.mode == "location"
+                $scope.struct.mode_is_device = $scope.struct.mode == "device"
                 $scope.rebuild_dnt()
+                $scope.struct.data_valid = true
     )
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
         $scope.rebuild_dnt()
     )
 
-    $scope.clear_active = () ->
-        $scope.dn_tree.clear_active()
+    $scope.clear_active = ($event) ->
+        $scope.struct.disp_tree.clear_active()
         $scope.update_active()
 
     $scope.update_active = ()->
-        $scope.struct.num_active = $scope.dn_tree.get_active().length
-        $scope.dn_tree.show_active()
+        $scope.struct.num_active = $scope.struct.disp_tree.get_active().length
+        $scope.struct.disp_tree.show_active()
 
     $scope.rebuild_dnt = () ->
-        $scope.dn_tree.create_mode_entries($scope.mode, $scope.tree)
+        $scope.struct.disp_tree.create_mode_entries($scope.struct.mode, $scope.struct.tree)
         # save previous active nodes
-        active = (entry.obj.idx for entry in $scope.dn_tree.get_active())
-        $scope.dn_tree.clear_root_nodes()
-        $scope.dn_tree.clear_tree()
+        active = (entry.obj.idx for entry in $scope.struct.disp_tree.get_active())
+        $scope.struct.disp_tree.clear_root_nodes()
+        $scope.struct.disp_tree.clear_tree()
         # only use mode_entries (for historic reasons, different category types are still mixed elsewhere here)
-        for entry in $scope.dn_tree.mode_entries
-            t_entry = $scope.dn_tree.create_node(
+        for entry in $scope.struct.disp_tree.mode_entries
+            t_entry = $scope.struct.disp_tree.create_node(
                 {
                     folder: false
                     obj: entry
@@ -441,26 +269,26 @@ angular.module(
                     selected: false # entry.immutable
                 }
             )
-            $scope.dn_tree.lut[entry.idx] = t_entry
+            $scope.struct.disp_tree.lut[entry.idx] = t_entry
             if entry.parent
-                $scope.dn_tree.lut[entry.parent].add_child(t_entry)
+                $scope.struct.disp_tree.lut[entry.parent].add_child(t_entry)
             else
-                $scope.dn_tree.add_root_node(t_entry)
+                $scope.struct.disp_tree.add_root_node(t_entry)
         # activate nodes
-        $scope.dn_tree.iter(
+        $scope.struct.disp_tree.iter(
             (entry) ->
                 if entry.obj.idx in active
                     entry.active = true
         )
         $scope.update_active()
-        $scope.dn_tree.show_active()
+        $scope.struct.disp_tree.show_active()
 
-    $scope.prune_tree = () ->
+    $scope.prune_tree = ($event) ->
         blockUI.start()
         icswSimpleAjaxCall(
             url: ICSW_URLS.BASE_PRUNE_CATEGORY_TREE
             data:
-                mode: $scope.mode
+                mode: $scope.struct.mode
                 doit: 0
         ).then(
             (xml) ->
@@ -474,7 +302,7 @@ angular.module(
                             icswSimpleAjaxCall(
                                 url: ICSW_URLS.BASE_PRUNE_CATEGORY_TREE
                                 data:
-                                    mode: $scope.mode
+                                    mode: $scope.struct.mode
                                     doit: 1
                             ).then(
                                 (xml) =>
@@ -493,6 +321,181 @@ angular.module(
             (xml) ->
                 blockUI.stop()
         )
+
+    $scope.delete = ($event, obj) ->
+        if $event
+            $event.preventDefault()
+            $event.stopPropagation()
+        icswToolsSimpleModalService("Really delete Category #{obj.name} ?").then(
+            (ok) ->
+                $scope.struct.tree.delete_category_entry(obj).then(
+                    (ok) ->
+                        $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), $scope.struct.tree)
+                )
+        )
+
+    $scope.delete_many = ($event) ->
+        active = $scope.struct.disp_tree.get_active()
+
+        # safeguard against deleting the /location category
+        for obj in active
+            if obj.obj.full_name == "/location"
+                toaster.pop("error", "", "Deletion of '/location' category not allowed")
+                return
+
+        icswToolsSimpleModalService("Really delete #{active.length} Categories ?").then(
+            (doit) ->
+                $q.allSettled(
+                    ($scope.struct.tree.delete_category_entry(entry.obj) for entry in active)
+                ).then(
+                    (result) ->
+                        $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), $scope.struct.tree)
+                )
+        )
+
+    $scope.create_or_edit = ($event, create, obj_or_parent) ->
+        if $event
+            $event.preventDefault()
+            $event.stopPropagation()
+        if obj_or_parent?
+            top_level = obj_or_parent.full_name.split("/")[1]
+        else
+            # for top-level creation
+            top_level = $scope.struct.mode
+        # console.log "***", top_level, obj_or_parent
+        if create
+            # if obj_or_parent?
+            #     console.log "***", obj_or_parent
+            #     _parent = obj_or_parent
+            # else
+            _parent = (
+                value for value in $scope.struct.disp_tree.mode_entries when value.depth == 1 and value.full_name.split("/")[1] == top_level
+            )[0]
+            _name = "new_#{top_level}_cat"
+            useable: true
+            was_unuseable: false
+            r_struct = {
+                name: _name
+                parent: _parent.idx
+                depth: 2
+                full_name: "/#{top_level}/#{_name}"
+                physical: false
+            }
+            if top_level == "location"
+                r_struct["latitude"] = 48.1
+                r_struct["longitude"] = 16.3
+            obj_or_parent = r_struct
+        else
+            obj_or_parent.was_unuseable = not obj_or_parent.useable
+            dbu = new icswCategoryBackup()
+            dbu.create_backup(obj_or_parent)
+        sub_scope = $scope.$new(true)
+        sub_scope.edit_obj = obj_or_parent
+
+        if sub_scope.edit_obj.idx
+            # object already saved, do not move between top categories
+            if sub_scope.edit_obj.depth == 1
+                console.log "*"
+                p_list = (
+                    value for value in $scope.struct.disp_tree.mode_entries when value.depth == 0
+                )
+                console.log p_list
+            else
+                top_cat = new RegExp("^/" + sub_scope.edit_obj.full_name.split("/")[1])
+                p_list = (
+                    value for value in $scope.struct.disp_tree.mode_entries when value.depth and top_cat.test(value.full_name)
+                )
+                # remove all nodes below myself
+                r_list = []
+                add_list = [sub_scope.edit_obj.idx]
+                while add_list.length
+                    r_list = r_list.concat(add_list)
+                    add_list = (
+                        value.idx for value in p_list when (value.parent in r_list and value.idx not in r_list)
+                    )
+                p_list = (value for value in p_list when value.idx not in r_list)
+        else
+            # new object, allow all values
+            p_list = (
+                value for value in $scope.struct.disp_tree.mode_entries when value.depth
+            )
+
+        # console.log p_list
+        sub_scope.valid_parents = p_list
+
+        sub_scope.is_location = (obj) ->
+            # called from formular code
+            # full_name.match leads to infinite digest cycles
+            return (obj.depth > 1) and top_level == "location"
+
+        sub_scope.is_device = (obj) ->
+            # called from formular code
+            # full_name.match leads to infinite digest cycles
+            return (obj.depth > 1) and top_level == "device"
+
+        ok_label = if create then "Create" else "Modify"
+
+        complex_modal_service_dict =
+        {
+            message: $compile($templateCache.get("icsw.category.form"))(sub_scope)
+            title: "#{ok_label} Category entry '#{obj_or_parent.name}"
+            # css_class: "modal-wide"
+            ok_label: ok_label
+            closable: true
+            ok_callback: (modal) ->
+                d = $q.defer()
+                if sub_scope.form_data.$invalid
+                    toaster.pop("warning", "form validation problem", "")
+                    d.reject("form not valid")
+                else
+                    if create
+                        $scope.struct.tree.create_category_entry(sub_scope.edit_obj).then(
+                            (ok) ->
+                                d.resolve("created")
+                            (notok) ->
+                                d.reject("not created")
+                        )
+                    else
+                        Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_CATEGORY_DETAIL.slice(1).slice(0, -2))
+                        sub_scope.edit_obj.put().then(
+                            (ok) ->
+                                $scope.struct.tree.reorder()
+                                d.resolve("updated")
+                            (not_ok) ->
+                                d.reject("not updated")
+                        )
+                return d.promise
+            delete_ask: true
+
+            cancel_callback: (modal) ->
+                if not create
+                    dbu.restore_backup(obj_or_parent)
+                d = $q.defer()
+                d.resolve("cancel")
+                return d.promise
+        }
+
+        if !create
+            complex_modal_service_dict['delete_callback'] =
+                (modal) ->
+                    d = $q.defer()
+                    $scope.struct.tree.delete_category_entry(sub_scope.edit_obj).then(
+                        (ok) ->
+                            # sync with tree
+                            $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), $scope.struct.tree)
+                            d.resolve("deleted")
+                        (notok) ->
+                            d.reject("not deleted")
+                    )
+                    return d.promise
+
+        icswComplexModalService(complex_modal_service_dict).then(
+            (fin) ->
+                console.log "finish"
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), $scope.struct.tree)
+                sub_scope.$destroy()
+        )
+
     $scope.reload()
 
 ]).directive("icswConfigCategoryContentsViewer",

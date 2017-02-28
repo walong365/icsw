@@ -27,7 +27,6 @@ import logging.handlers
 import os
 import pickle
 import sys
-import threading
 import time
 import traceback
 
@@ -103,7 +102,6 @@ def get_logger(name, destination, **kwargs):
 class icswLogAdapter(logging.LoggerAdapter):
     """ small adapater which adds host information to logRecords """
     def __init__(self, logger, extra):
-        self.__lock = threading.RLock()
         self.set_prefix()
         logging.LoggerAdapter.__init__(self, logger, extra)
 
@@ -126,7 +124,6 @@ class icswLogAdapter(logging.LoggerAdapter):
         self.log(LOG_LEVEL_OK, "<LCH>{}</LCH>".format(what))
 
     def log(self, level=LOG_LEVEL_OK, what=LOG_LEVEL_OK, *args, **kwargs):
-        self.__lock.acquire()
         if isinstance(level, str):
             # exchange level and what
             _lev = what
@@ -155,7 +152,6 @@ class icswLogAdapter(logging.LoggerAdapter):
             my_syslog(what)
             print(what, self)
             raise
-        self.__lock.release()
 
     def close(self):
         self.log_command("close")

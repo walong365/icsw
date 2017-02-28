@@ -1,69 +1,96 @@
 <script type="text/ng-template" id="icsw.config.category.tree">
     <h3>
-        {{ mode_display | capitalize }} Categories ({{ struct.dn_tree.mode_entries.length }}
-        <ng-pluralize count="struct.dn_tree.mode_entries.length" when="{'1': 'Entry', 'other': 'Entries'}")></ng-pluralize>)
+        {{ mode_display | capitalize }} Categories ({{ struct.disp_tree.mode_entries.length }}
+        <ng-pluralize count="struct.disp_tree.mode_entries.length" when="{'1': 'Entry', 'other': 'Entries'}")></ng-pluralize>)
     </h3>
     <div class="panel panel-default">
-        <div class="panel-body" ng-if="struct.tree">
-            <icsw-tools-rest-table-new target-list="tree_nodes" config-service="icswConfigCategoryListService" icsw-config-object="struct">
-                <p>
-                    Actions:
-                    <icsw-tools-button type="create" value="create" size="sm" ng-click="create($event, null)"></icsw-tools-button>
-                    <icsw-tools-button type="modify" value="prune tree" size="sm" ng-click="prune_tree()"/>
-                    <icsw-tools-button type="delete" icsw-disabled="location_or_tln_selected() || !icsw_config_object.num_active" size="sm" value="delete selected" ng-click="special_fn($event, 'delete_many', null)"/>
-                    <icsw-tools-button type="close" icsw-disabled="!icsw_config_object.num_active" size="sm" value="clear selection" ng-click="special_fn($event, 'clear_selection', null)"/>
-                </p>
-                <div class="row">
-                    <div class="col-sm-4">
-                        <h3>Tree View</h3>
-                        <icsw-react-tree
-                            icsw-tree-config="dn_tree"
-                        ></icsw-react-tree>
-<!--                            config-service="icswConfigCategoryListService"
-                            icsw-config-object="icsw_config_object"-->
-                    </div>
-                    <div class="col-sm-8">
-                        <h3>Table View</h3>
-                        <table st-table="tree_nodes_displayed" st-safe-src="tree_nodes" class="table table-condensed table-hover table-striped" style="width:auto;">
-                            <thead>
-                                <tr>
-                                    <td colspan="99">
-                                        <div
-                                            icsw-tools-pagination
-                                            st-items-by-page="15"
-                                            st-displayed-pages="11"
-                                            possible-items-by-page="15,30,100,200"
-                                        ></div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Full name</th>
-                                    <th>Comment</th>
-                                    <th>#Refs</th>
-                                    <th>Useable</th>
-                                    <th ng-if="mode_is_location">Latitude</th>
-                                    <th ng-if="mode_is_location">Longitude</th>
-                                    <th ng-if="mode_is_location">Lock Status</th>
-                                    <th ng-if="mode_is_location">Type</th>
-                                    <th ng-if="mode_is_location">#Images</th>
-                                    <th ng-if="mode_is_device">Asset</th>
-                                    <th colspan="2">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr icsw-config-category-tree-row ng-repeat="obj in tree_nodes_displayed" ng-click="click_row(obj)" ng-class="get_tr_class(obj)">
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="col-sm-6">
-                        <div ng-if="modal_active && !settings.use_modal && active_aem == 'cat' && !create_mode">
-                            <icsw-config-category-contents-viewer category-name="_edit_obj.full_name" category-pk="_edit_obj.idx"></icsw-config-category-contents-viewer>
-                        </div>
+        <div class="panel-body" ng-if="struct.data_valid">
+            <p>
+                Actions:
+                <icsw-tools-button
+                    type="create"
+                    value="create"
+                    size="sm"
+                    ng-click="create_or_edit($event, true, null)"
+                ></icsw-tools-button>
+                <icsw-tools-button
+                    type="modify"
+                    value="prune tree"
+                    size="sm"
+                    ng-click="prune_tree($event)"
+                ></icsw-tools-button>
+                <icsw-tools-button
+                    type="delete"
+                    icsw-disabled="location_or_tln_selected() || !struct.num_active"
+                    size="sm"
+                    value="delete selected"
+                    ng-click="delete_many($event)"
+                ></icsw-tools-button>
+                <icsw-tools-button
+                    type="close"
+                    icsw-disabled="!struct.num_active"
+                    size="sm"
+                    value="clear selection"
+                    ng-click="clear_active($event)"
+                ></icsw-tools-button>
+            </p>
+            <div class="row">
+                <div class="col-sm-4">
+                    <h3>Tree View</h3>
+                    <icsw-react-tree
+                        icsw-tree-config="struct.disp_tree"
+                    ></icsw-react-tree>
+                </div>
+                <div class="col-sm-8">
+                    <h3>Table View</h3>
+                    <table
+                        st-table="tree_nodes_displayed"
+                        st-safe-src="struct.disp_tree.mode_entries"
+                        class="table table-condensed table-hover table-striped"
+                        style="width:auto;"
+                    >
+                        <thead>
+                            <tr>
+                                <td colspan="99">
+                                    <div
+                                        icsw-tools-pagination
+                                        st-items-by-page="15"
+                                        st-displayed-pages="11"
+                                        possible-items-by-page="15,30,100,200"
+                                    ></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Name</th>
+                                <th>Full name</th>
+                                <th>Comment</th>
+                                <th>#Refs</th>
+                                <th>Useable</th>
+                                <th ng-if="mode_is_location">Latitude</th>
+                                <th ng-if="mode_is_location">Longitude</th>
+                                <th ng-if="mode_is_location">Lock Status</th>
+                                <th ng-if="mode_is_location">Type</th>
+                                <th ng-if="mode_is_location">#Images</th>
+                                <th ng-if="mode_is_device">Asset</th>
+                                <th colspan="2">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr
+                                icsw-config-category-tree-row
+                                ng-repeat="obj in tree_nodes_displayed"
+                                ng-click="click_row(obj)"
+                                ng-class="get_tr_class(obj)"
+                            ></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-sm-6">
+                    <div ng-if="modal_active && !settings.use_modal && active_aem == 'cat' && !create_mode">
+                        <icsw-config-category-contents-viewer category-name="_edit_obj.full_name" category-pk="_edit_obj.idx"></icsw-config-category-contents-viewer>
                     </div>
                 </div>
-            </icsw-tools-rest-table-new>
+            </div>
             <icsw-config-category-contents-viewer icsw-category="selected_category"></icsw-config-category-contents-viewer>
         </div>
     </div>
@@ -84,19 +111,41 @@
     <td class="text-center">
         <span ng-bind-html="obj.useable | yesno3"></span>
     </td>
-    <td ng-if="is_location(obj) && obj.useable" class="text-right">{{ obj.latitude | number:3 }}</td>
+    <td ng-if="is_location(obj) && obj.useable" class="text-right">
+        {{ obj.latitude | number:3 }}
+    </td>
     <td ng-if="is_location(obj) && !obj.useable"></td>
-    <td ng-if="is_location(obj) && obj.useable" class="text-right">{{ obj.longitude | number:3 }}</td>
+    <td ng-if="is_location(obj) && obj.useable" class="text-right">
+        {{ obj.longitude | number:3 }}
+    </td>
     <td ng-if="is_location(obj) && !obj.useable"></td>
-    <td ng-if="is_location(obj)" class="text-center">{{ obj.locked && 'locked' || 'unlocked' }}</td>
-    <td ng-if="is_location(obj)" class="text-center">{{ obj.physical && 'physical' || 'structural' }}</td>
-    <td ng-if="is_location(obj)" class="text-center">{{ obj.$gfx_list.length }}</td>
-    <td ng-if="is_device(obj)" class="text-center"><span ng-bind-html="obj.asset | yesno3 "></span></td>
-    <td>
-        <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)" ng-show="obj.depth > 1"></icsw-tools-button>
+    <td ng-if="is_location(obj)" class="text-center">
+        {{ obj.locked && 'locked' || 'unlocked' }}
+    </td>
+    <td ng-if="is_location(obj)" class="text-center">
+        {{ obj.physical && 'physical' || 'structural' }}
+    </td>
+    <td ng-if="is_location(obj)" class="text-center">
+        {{ obj.$gfx_list.length }}
+    </td>
+    <td ng-if="is_device(obj)" class="text-center">
+        <span ng-bind-html="obj.asset | yesno3 "></span>
     </td>
     <td>
-        <icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)" ng-show="obj.depth > 1"></icsw-tools-button>
+        <icsw-tools-button
+            type="modify"
+            size="xs"
+            ng-click="create_or_edit($event, false, obj)"
+            ng-show="obj.depth > 1"
+        ></icsw-tools-button>
+    </td>
+    <td>
+        <icsw-tools-button
+            type="delete"
+            size="xs"
+            ng-click="delete($event, obj)"
+            ng-show="obj.depth > 1"
+        ></icsw-tools-button>
     </td>
 </script>
 
