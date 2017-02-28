@@ -453,10 +453,12 @@ menu_module = angular.module(
 
             for sg_state in @props.menu.entries
                 menu_entry = sg_state.data
-                if (@props.menu.data.limitedTo? and initProduct.name? and
-                    initProduct.name.toLowerCase() != "CORVUS".toLowerCase())
-                        if initProduct.name.toLowerCase() != @props.menu.data.limitedTo.toLowerCase()
-                            continue
+                if (
+                    @props.menu.data.limitedTo? and initProduct.name? and
+                    initProduct.name.toLowerCase() != "CORVUS".toLowerCase()
+                )
+                    if initProduct.name.toLowerCase() != @props.menu.data.limitedTo.toLowerCase()
+                        continue
                 # if sg_state.data.hidden?
                 #    console.log "***", sg_state.data
                 #    _hidden = sg_state.data.hidden
@@ -496,10 +498,12 @@ menu_module = angular.module(
                             _items.push(_head)
 
                         hide_wrongproduct = false
-                        if (menu_entry.data.limitedTo? and initProduct.name? and
-                            initProduct.name.toLowerCase() != "CORVUS".toLowerCase())
-                                if initProduct.name.toLowerCase() != menu_entry.data.limitedTo.toLowerCase()
-                                    hide_wrongproduct = true
+                        if (
+                            menu_entry.data.limitedTo? and initProduct.name? and
+                            initProduct.name.toLowerCase() != "CORVUS".toLowerCase()
+                        )
+                            if initProduct.name.toLowerCase() != menu_entry.data.limitedTo.toLowerCase()
+                                hide_wrongproduct = true
                         if not hide_wrongproduct
                             items_added += 1
                             _items.push(
