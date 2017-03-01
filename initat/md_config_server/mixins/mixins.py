@@ -228,13 +228,13 @@ class DistanceMapMixin(object):
 
 class NagVisMixin(object):
     def NV_add_nagvis_info(self, act_host, host, nagvis_maps):
-        act_host["_nagvis_map"] = "{}".format(host.full_name.encode("ascii", errors="ignore"))
+        act_host["_nagvis_map"] = host.full_name
         map_file = os.path.join(
             self.gc["NAGVIS_DIR"],
             "etc",
             "maps",
             "{}.cfg".format(
-                host.full_name.encode("ascii", errors="ignore")
+                host.full_name
             )
         )
         map_dict = {

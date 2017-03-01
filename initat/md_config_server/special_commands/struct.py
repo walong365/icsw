@@ -178,28 +178,29 @@ class DynamicCheckDict(object):
         rv = DynamicCheckResult()
         # mccs .... mon_check_command_special
         # mccs = gbc.mccs_dict[s_check.mccs_id]
-        mccs = s_check.mon_check_command_special
+        # mccs = s_check.mon_check_command_special
         # mccs to be called
-        call_mccs = mccs
+        call_check = s_check
         # store name of mccs (for parenting)
-        mccs_name = mccs.name
-        if mccs.parent_id:
+        check_name = s_check.name
+        if s_check.special_parent_id:
+            print("handle special meta")
             # to get the correct command_line
             # link to parent
-            mccs = mccs.parent
+            # mccs = mccs.parent
             check_has_parent = True
         else:
             check_has_parent = False
         # create lut entry to rewrite command name to mccs
-        rv.rewrite_lut["check_command"] = mccs.dummy_mcc.unique_name
+        rv.rewrite_lut["check_command"] = s_check.unique_name
         # print("***", _rewrite_lut)
         try:
             # create special check instance
-            cur_special = self[mccs.name](
+            cur_special = self[s_check.name](
                 hbc.log,
                 self,
                 # get mon_check_command (we need arg_ll)
-                s_check=cur_gc["command"][call_mccs.dummy_mcc.unique_name],
+                s_check=cur_gc["command"][s_check.unique_name],
                 # monitoring check command
                 parent_check=s_check,
                 host=hbc.device,
@@ -208,7 +209,7 @@ class DynamicCheckDict(object):
         except:
             rv.feed_error(
                 "unable to initialize special '{}': {}".format(
-                    mccs.name,
+                    s_check.name,
                     process_tools.get_except_info()
                 )
             )
@@ -219,7 +220,7 @@ class DynamicCheckDict(object):
                 if mode == DynamicCheckMode.create:
                     if check_has_parent:
                         # for meta specials
-                        sc_array = cur_special(mode, instance=mccs_name)
+                        sc_array = cur_special(mode, instance=check_name)
                     else:
                         # sc array is the list of instances to be called
                         sc_array = cur_special(mode)
@@ -234,7 +235,7 @@ class DynamicCheckDict(object):
                             else:
                                 self.log(
                                     "specialcheck {} has no dynamic_update_calls() or feed_result() function".format(
-                                        mccs_name,
+                                        check_name,
                                     ),
                                     logging_tools.LOG_LEVEL_ERROR
                                 )
