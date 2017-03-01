@@ -567,13 +567,13 @@ class Hardware(object):
                 info_match = self.info_re.match(remaining)
                 res_match = self.res_re.match(remaining)
                 timing_match = self.timing_re.match(remaining)
-                if (indent[0] == '\t' and info_match):
+                if info_match and indent[0] == '\t':
                     # start of information line
                     (key, value) = info_match.groups()
                     self._state = 'info'
                     self._cur_key = key
                     self._infos[self._cur_key] = [value]
-                elif (indent[0] == '\t' and len(indent) > 1):
+                elif len(indent) > 1 and indent[0] == '\t':
                     # continuation of information line
                     assert self._state == 'info'
                     self._infos[self._cur_key].append(remaining)
@@ -627,9 +627,8 @@ class Hardware(object):
             if m:
                 connection = _Connection(**m.groupdict())
                 virt_screen.connections.append(connection)
+                connection.parse_line(line)
                 continue
-
-            connection.parse_line(line)
 
         # now create the display objects
         for virt_screen in virt_screens:

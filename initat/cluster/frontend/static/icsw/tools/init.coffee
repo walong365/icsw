@@ -2140,7 +2140,7 @@ angular.module(
             $rootScope.$emit(ICSW_SIGNALS("ICSW_WEBSOCKET_VALID"))
             _defer.resolve(ws)
         ws.onerror = (_close_msg) =>
-            _defer.reject("ws connection error for #{model_name}", _close_msg)
+            _defer.reject("ws connection not possible:", _close_msg)
         return _defer.promise
 
     close_ws = () ->

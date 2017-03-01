@@ -755,35 +755,37 @@ class AssetRun(models.Model):
         self.asset_batch.save()
 
     def _generate_assets_update_hm(self, tree):
-        blob = tree.xpath('ns0:installed_updates', namespaces=tree.nsmap)[0].text
-        l = server_command.decompress(blob, pickle=True)
-        self.asset_batch.installed_updates_status = 1
-        for (name, up_date, status) in l:
-            asset_update_entry = AssetUpdateEntry.objects.filter(
-                name=name,
-                version="",
-                release="",
-                kb_idx=0,
-                install_date=dateparse.parse_datetime(up_date),
-                status=status,
-                optional=False,
-                installed=True,
-                new_version=""
-                )
-            if asset_update_entry:
-                asset_update_entry = asset_update_entry[0]
-            else:
-                asset_update_entry = AssetUpdateEntry(
+        blobs = tree.xpath('ns0:installed_updates', namespaces=tree.nsmap)
+        if len(blobs):
+            blob = blobs[0].text
+            l = server_command.decompress(blob, pickle=True)
+            self.asset_batch.installed_updates_status = 1
+            for (name, up_date, status) in l:
+                asset_update_entry = AssetUpdateEntry.objects.filter(
                     name=name,
+                    version="",
+                    release="",
+                    kb_idx=0,
                     install_date=dateparse.parse_datetime(up_date),
                     status=status,
                     optional=False,
-                    installed=True
-                )
-                asset_update_entry.save()
+                    installed=True,
+                    new_version=""
+                    )
+                if asset_update_entry:
+                    asset_update_entry = asset_update_entry[0]
+                else:
+                    asset_update_entry = AssetUpdateEntry(
+                        name=name,
+                        install_date=dateparse.parse_datetime(up_date),
+                        status=status,
+                        optional=False,
+                        installed=True
+                    )
+                    asset_update_entry.save()
 
-            self.asset_batch.installed_updates.add(asset_update_entry)
-            self.asset_batch.installed_updates_status = 2
+                self.asset_batch.installed_updates.add(asset_update_entry)
+                self.asset_batch.installed_updates_status = 2
         self.asset_batch.save()
 
     def _generate_assets_update_nrpe(self, data):
@@ -819,7 +821,9 @@ class AssetRun(models.Model):
 
     def _generate_assets_process_nrpe(self, data):
         l = json.loads(data)
-        process_dict = {int(pid): {"name": name} for name, pid in l}
+        process_dict = {
+            int(pid): {"name": name} for name, pid in l
+        }
         self._generate_assets_process(process_dict)
 
     def _generate_assets_process_hm(self, tree):
