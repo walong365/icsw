@@ -321,8 +321,7 @@ class GenericReport(object):
         self.pdf_buffers.append(_buffer)
 
     def increase_page_count(self, canvas, doc):
-        id(canvas)
-        id(doc)
+        _, _ = (canvas, doc)
         self.number_of_pages += 1
 
 
@@ -2224,7 +2223,21 @@ class PDFReportGenerator(ReportGenerator):
         elements.append(KeepTogether(Spacer(1, 30)))
         elements.append(KeepTogether(t_body))
 
-        doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
+        pages_tmp = report.number_of_pages
+
+        try:
+            doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
+        except:
+            report.number_of_pages = pages_tmp
+            elements = []
+            elements.append(KeepTogether(t_head))
+            elements.append(KeepTogether(Spacer(1, 30)))
+
+            text_block = Paragraph('<para leftIndent="20"><b>Failed to generate hardware report!</b></para>',
+                style_sheet["BodyText"])
+            elements.append(text_block)
+
+            doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
 
         report.add_buffer_to_report(_buffer)
 
