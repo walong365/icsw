@@ -461,12 +461,14 @@ angular.module(
     "icswAccessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
     "icswDeviceTreeHelperService", "icswComplexModalService", "toaster", "$compile", "$templateCache",
     "icswCategoryTreeService", "icswToolsSimpleModalService", "icswDialogDeleteService", "icswConfigTreeService",
+    "icswSimpleAjaxCall"
 (
     $scope, Restangular, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
     icswAccessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
     icswDeviceTreeHelperService, icswComplexModalService, toaster, $compile, $templateCache,
     icswCategoryTreeService, icswToolsSimpleModalService, icswDialogDeleteService, icswConfigTreeService,
+    icswSimpleAjaxCall
 ) ->
     $scope.struct = {
         # data is valid
@@ -486,7 +488,32 @@ angular.module(
         # mother_server list and lut
         mother_server_list: []
         mother_server_lut: {}
+        # config for remote viewer
+        remote_viewer_config: undefined
     }
+
+
+    b64_to_blob = (b64_data, content_type, slice_size) ->
+        content_type = content_type or ''
+        slice_size = slice_size or 512
+        byte_characters = atob(b64_data)
+        byte_arrays = []
+        offset = 0
+        while offset < byte_characters.length
+            slice = byte_characters.slice(offset, offset + slice_size)
+            byte_numbers = new Array(slice.length)
+            i = 0
+
+            while i < slice.length
+                byte_numbers[i] = slice.charCodeAt(i)
+                i++
+
+            byte_array = new Uint8Array(byte_numbers)
+            byte_arrays.push byte_array
+            offset += slice_size
+
+        blob = new Blob(byte_arrays, type: content_type)
+        return blob
 
     create_info_fields = (obj) ->
         if $scope.struct.is_devicegroup
@@ -581,6 +608,14 @@ angular.module(
                 icswDomainTreeService.load($scope.$id)
                 icswCategoryTreeService.load($scope.$id)
                 icswConfigTreeService.load($scope.$id)
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.MAIN_REMOTE_VIEWER_CONFIG_LOADER
+                        data:
+                            device_idx: $scope.icsw_struct.edit_obj.idx
+                        dataType: 'json'
+                    }
+                )
             ]
         ).then(
             (data) ->
@@ -598,6 +633,10 @@ angular.module(
                 $scope.struct.data_valid = true
                 $scope.install_template()
                 # defer.resolve("done")
+
+                if data[5].config_str
+                    blob = b64_to_blob(btoa(data[5].config_str), 'application/icsw-remote-viewer-file')
+                    $scope.struct.remote_viewer_config = (window.URL || window.webkitURL).createObjectURL(blob)
         )
 
         # return defer.promise

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+
+Type=Application
+MimeType=application/icsw-remote-viewer-file
+
+Name=ICSW Remote Viewer
+
+Comment=ICSW Remote Viewer
+
+TryExec=/home/kaufmann/dev/icsw/tools/icsw_remote_viewer/icsw_remote_viewer.py
+Exec=/home/kaufmann/dev/icsw/tools/icsw_remote_viewer/icsw_remote_viewer.py %f
+Terminal=False

@@ -36,7 +36,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 
 from initat.cluster.backbone import routing
-from initat.cluster.backbone.models import background_job, device_variable
+from initat.cluster.backbone.models import background_job, device_variable, device
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import server_command
@@ -181,3 +181,40 @@ class virtual_desktop_viewer(View):
                 "vdus_index": request.GET.get("vdus_index", 0),
             }
         )()
+
+
+class RemoteViewerConfigLoader(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        import base64
+
+        device_idx = int(request.POST["device_idx"])
+
+        _device = device.objects.get(idx=device_idx)
+        device_group = _device.device_group.device
+
+        ssh_password = None
+        ssh_username = None
+        for obj in [device_group, _device]:
+            try:
+                ssh_password = obj.device_variable_set.get(name="SSH_PASSWORD").get_value()
+            except device_variable.DoesNotExist:
+                pass
+
+            try:
+                ssh_username = obj.device_variable_set.get(name="SSH_USERNAME").get_value()
+            except device_variable.DoesNotExist:
+                pass
+
+        host = None
+        ips = _device.all_ips()
+        if ips:
+            host = ips[0]
+
+        config = {
+            "host": host,
+            "ssh_username": ssh_username,
+            "ssh_password": ssh_password
+        }
+
+        return HttpResponse(json.dumps({"config_str": json.dumps(config)}))

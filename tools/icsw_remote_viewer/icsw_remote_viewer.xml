@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+    <mime-type type="application/icsw-remote-viewer-file">
+        <comment>Remote viewer information file for icsw_remote_viewer</comment>
+        <glob pattern="*.icswremote"/>
+    </mime-type>
+</mime-info>
