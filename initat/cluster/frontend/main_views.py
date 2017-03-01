@@ -211,10 +211,13 @@ class RemoteViewerConfigLoader(View):
         if ips:
             host = ips[0]
 
-        config = {
-            "host": host,
-            "ssh_username": ssh_username,
-            "ssh_password": ssh_password
-        }
+        config_str = None
+        if host and ssh_password and ssh_username:
+            config = {
+                "host": host,
+                "ssh_username": ssh_username,
+                "ssh_password": ssh_password
+            }
+            config_str = json.dumps(config)
 
-        return HttpResponse(json.dumps({"config_str": json.dumps(config)}))
+        return HttpResponse(json.dumps({"config_str": config_str}))
