@@ -30,8 +30,8 @@ import django
 from django.db import models
 from django.db.models import Max, Min, Prefetch, Q
 
-from initat.cluster.backbone.models import mon_check_command
-from initat.cluster.backbone.models.functions import db_limit_1
+from .monitoring import mon_check_command
+from .functions import db_limit_1
 from initat.tools import server_mixins, logging_tools
 
 logger = logging.getLogger("cluster.history")

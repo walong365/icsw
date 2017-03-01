@@ -37,12 +37,11 @@ from django.utils.crypto import get_random_string
 from django.utils.lru_cache import lru_cache
 from lxml.builder import E
 
-from initat.cluster.backbone.models.capability import ComCapability
-from initat.cluster.backbone.models.domain import *
-from initat.cluster.backbone.models.functions import check_empty_string, \
-    check_integer, to_system_tz, cluster_timezone
-from initat.cluster.backbone.models.variable import device_variable
-from initat.cluster.backbone.signals import BootsettingsChanged
+from .capability import ComCapability
+from .domain import *
+from .functions import check_empty_string, check_integer, to_system_tz, cluster_timezone
+from .variable import device_variable
+from ..signals import BootsettingsChanged
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store, logging_tools, server_command
 
@@ -425,6 +424,12 @@ class device(models.Model):
         return DeviceBootHistory.objects.create(
             device=self,
         )
+
+    def get_group_devices(self):
+        if not self.is_meta_device:
+            raise AttributeError("device {} is not a meta-device".format(str(self)))
+        return self.device_group.device_group.all()
+
 
     def __str__(self):
         return "{}{}".format(

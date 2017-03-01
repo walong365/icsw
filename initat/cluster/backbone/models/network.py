@@ -33,12 +33,10 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from enum import Enum
 
-from initat.cluster.backbone.models import device
-from initat.cluster.backbone.exceptions import NoMatchingNetworkFoundError, \
-    NoMatchingNetworkDeviceTypeFoundError
-from initat.cluster.backbone.models.functions import check_empty_string, \
-    check_integer
-from initat.cluster.backbone.signals import BootsettingsChanged
+from .device import device
+from ..exceptions import NoMatchingNetworkFoundError, NoMatchingNetworkDeviceTypeFoundError
+from .functions import check_empty_string, check_integer
+from ..signals import BootsettingsChanged
 from initat.constants import GEN_CS_NAME
 from initat.tools import ipvx_tools, logging_tools, process_tools, config_store
 from initat.tools.bgnotify.create import propagate_channel_object

@@ -23,8 +23,6 @@
 
 """ XML constants for database definitions for license management """
 
-
-
 import logging
 
 from lxml import etree

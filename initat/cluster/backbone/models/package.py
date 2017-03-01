@@ -21,8 +21,6 @@
 #
 """ package definitions for ICSW """
 
-
-
 import time
 
 from django.core.exceptions import ValidationError
@@ -32,7 +30,7 @@ from django.dispatch import receiver
 from lxml import etree
 from lxml.builder import E
 
-from initat.cluster.backbone.models.functions import check_empty_string
+from .functions import check_empty_string
 
 __all__ = [
     "package_repo",

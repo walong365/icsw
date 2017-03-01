@@ -23,9 +23,9 @@
 
 from enum import Enum
 
-from initat.cluster.backbone.models.service_enum_base import icswServiceEnumBase, EggAction
-from initat.cluster.backbone.models.functions import register_service_enum
-from initat.cluster.backbone.available_licenses import LicenseEnum
+from .functions import register_service_enum
+from .service_enum_base import icswServiceEnumBase, EggAction
+from ..available_licenses import LicenseEnum
 
 
 class AppEnum(Enum):

@@ -32,11 +32,13 @@ from initat.tools.server_command import srv_command
 
 SIZE_RE = re.compile("(\d*) ([kMG])B")
 INDEX_RE = re.compile("(\d)*$")
+
 BINARY_FACTOR = {
     "k": 1024,
     "M": 1024 ** 2,
     "G": 1024 ** 3,
 }
+
 MEMORY_FORM_FACTORS = {
     0: "Unknown",
     1: "Other",
@@ -362,8 +364,9 @@ class Hardware(object):
                 # old lsblk, try to guess
                 # sles11sp3 (Liebherr)
                 type_entries["disk"].append(e)
-            elif "GROUP" in e and e["GROUP"] == "disk" and "FSTYPE" in e and len(e["FSTYPE"]) == 0 and \
-                            "SIZE" in e and e["SIZE"] and e["SIZE"] > 0:
+            elif "GROUP" in e and e["GROUP"] == "disk" and "FSTYPE" in e and len(
+                e["FSTYPE"]
+            ) == 0 and "SIZE" in e and e["SIZE"] and e["SIZE"] > 0:
                 if "KNAME" in e:
                     if disc_re_unix.match(e["KNAME"]) or disc_re_unix.match("/dev/{}".format(e["KNAME"])):
                         type_entries["disk"].append(e)
@@ -378,7 +381,7 @@ class Hardware(object):
                 name_object[hdd.device_name] = hdd
         # disk, partitions
         for part_entry in type_entries['part']:
-            #print(part_entry)
+            # print(part_entry)
             partition = Partition(lsblk_entry=part_entry)
             logical = LogicalDisc(lsblk_entry=part_entry)
             partition.logical = logical
@@ -882,6 +885,7 @@ class HardwareHdd(HardwareBase):
             self.serial = entry['SERIAL']
         if 'SIZE' in entry:
             self.size = int(entry['SIZE'])
+
 
 class Partition(HardwareBase):
     """Represents the partition information as available from the partition

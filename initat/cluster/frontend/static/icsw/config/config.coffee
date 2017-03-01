@@ -1110,6 +1110,7 @@ config_module = angular.module(
         )
 
     $scope.get_check_details = ($event, check) =>
+        blockUI.start("fetching dependencies...")
         icswSimpleAjaxCall(
             url: ICSW_URLS.MON_GET_MON_INFO
             data: {
@@ -1119,7 +1120,10 @@ config_module = angular.module(
             dataType: "json"
         ).then(
             (json) ->
+                blockUI.stop()
                 console.log "*", json
+            (error) ->
+                blockUI.stop()
         )
 
     $scope.$on("$destroy", () ->

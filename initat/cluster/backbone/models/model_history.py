@@ -28,8 +28,8 @@ from django.db.models.signals import post_delete
 from django.utils.encoding import force_text
 from reversion import revisions as reversion
 
-from initat.cluster.backbone.middleware import thread_local_middleware
-from initat.cluster.backbone.models import user
+from ..middleware import thread_local_middleware
+from .user import user
 
 
 class icsw_deletion_record(models.Model):

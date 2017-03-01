@@ -102,7 +102,12 @@ angular.module(
                 # meta-devices will be filtered out in srv-view
                 if dev.device_group in _group_ids
                     @devices.push(dev)
+            @init_cache()
             @link()
+
+        init_cache: () =>
+            @cache_valid = false
+            @_cache = {}
 
         link: () =>
 
@@ -306,103 +311,110 @@ angular.module(
             else
                 return true
 
-        get_td_class_and_icon: (row_el, conf, dev) =>
+        get_td_class_and_icon_conf: (row_el, conf, dev) =>
             # check shadow focus state
             _shadow = false
             _foc = false
             if dev.idx of @focus_dict
-                if conf
-                    focus_idx = conf.idx
-                else
-                    focus_idx = -row_el.idx
+                focus_idx = conf.idx
                 if focus_idx of @focus_dict[dev.idx]
                     if @focus_dict[dev.idx][focus_idx]
                         _shadow = true
                         if @focus_element and @focus_element[0].idx == row_el.idx and @focus_element[1].idx == dev.idx
                             _foc = true
-            if conf
-                # generic or service view
-                if dev.is_meta_device and conf.server_config
-                    # check if config is a server config and therefore not selectable for
-                    # a meta device (== group)
-                    _cls = "danger"
-                    _icon = "fa-times-circle"
-                else if conf.idx in dev.$local_conf_selected
-                    # config is locally selected
-                    if _foc
-                        _cls = "primary"
-                        _icon = "fa-minus"
+            # generic or service view
+            if dev.is_meta_device and conf.server_config
+                # check if config is a server config and therefore not selectable for
+                # a meta device (== group)
+                _cls = "danger"
+                _icon = "fa-times-circle"
+            else if conf.idx in dev.$local_conf_selected
+                # config is locally selected
+                if _foc
+                    _cls = "primary"
+                    _icon = "fa-minus"
+                else
+                    _cls = "success"
+                    _icon = "fa-check"
+            else if conf.idx in @md_lut[dev.idx].$local_conf_selected and not dev.is_meta_device
+                # config is selected via meta-device (== group)
+                _cls = "warning"
+                _icon = "fa-check-square-o"
+            else
+                # config is not selected
+                if _foc
+                    _icon = "fa-check"
+                    _cls = "primary"
+                else
+                    _icon = "fa-minus"
+                    if _shadow
+                        _cls = "warning"
                     else
-                        _cls = "success"
-                        _icon = "fa-check"
-                else if conf.idx in @md_lut[dev.idx].$local_conf_selected and not dev.is_meta_device
-                    # config is selected via meta-device (== group)
+                        _cls = ""
+            return [_cls, _icon]
+
+        get_td_class_and_icon_mon: (row_el, dev) =>
+            # check shadow focus state
+            _shadow = false
+            _foc = false
+            if dev.idx of @focus_dict
+                focus_idx = -row_el.idx
+                if focus_idx of @focus_dict[dev.idx]
+                    if @focus_dict[dev.idx][focus_idx]
+                        _shadow = true
+                        if @focus_element and @focus_element[0].idx == row_el.idx and @focus_element[1].idx == dev.idx
+                            _foc = true
+            # flags: local selected, local config selected
+            ls = row_el.idx in dev.$local_mon_selected
+            lc = if _.intersection(row_el.config_rel, dev.$local_conf_selected).length then true else false
+            # meta selected, meta config selected
+            ms = row_el.idx in @md_lut[dev.idx].$local_mon_selected
+            mc = if _.intersection(row_el.config_rel, @md_lut[dev.idx].$local_conf_selected).length then true else false
+            # console.log ls, lc, ms, mc
+            if dev.is_meta_device
+                # meta checks
+                if ls and lc
+                    # both set -> exclude
+                    _cls = "danger"
+                    _icon = "fa-times"
+                else if (ls or lc)
+                    # set for meta
                     _cls = "warning"
+                    if ls
+                        # via direct set
+                        _icon = "fa-check"
+                    else
+                        # via config
+                        _icon = "fa-check-square-o"
+                else
+                    # not set
+                    _cls = ""
+                    _icon = "fa-minus"
+            else
+                if ls and ms
+                    console.error "both ls and ms are set for #{row_el.name} (#{row_el.description}) and #{dev.full_name}"
+                if lc and mc
+                    # this may happen if the meta is set from one and the direct association comes from another one
+                    console.warn "both lc and mc are set for #{row_el.name} (#{row_el.description}) and #{dev.full_name}"
+                if (ls or ms) and (lc or mc)
+                    # bot set -> exclude
+                    _cls = "danger"
+                    _icon = "fa-times"
+                else if (ls or ms)
+                    # set via direct (devices relation) local or meta
+                    _cls = "success"
+                    _icon = "fa-check"
+                else if (lc or mc)
+                    # set via config (local or meta)
+                    _cls = "success"
                     _icon = "fa-check-square-o"
                 else
-                    # config is not selected
-                    if _foc
-                        _icon = "fa-check"
-                        _cls = "primary"
-                    else
-                        _icon = "fa-minus"
-                        if _shadow
-                            _cls = "warning"
-                        else
-                            _cls = ""
-            else
-                # conf is null, mon call
-                # flags: local selected, local config selected
-                ls = row_el.idx in dev.$local_mon_selected
-                lc = if _.intersection(row_el.config_rel, dev.$local_conf_selected).length then true else false
-                # meta selected, meta config selected
-                ms = row_el.idx in @md_lut[dev.idx].$local_mon_selected
-                mc = if _.intersection(row_el.config_rel, @md_lut[dev.idx].$local_conf_selected).length then true else false
-                # console.log ls, lc, ms, mc
-                if dev.is_meta_device
-                    # meta checks
-                    if ls and lc
-                        # both set -> exclude
-                        _cls = "danger"
-                        _icon = "fa-times"
-                    else if (ls or lc)
-                        # set for meta
+                    # nothing set
+                    if _shadow and not _foc
                         _cls = "warning"
-                        if ls
-                            # via direct set
-                            _icon = "fa-check"
-                        else
-                            # via config
-                            _icon = "fa-check-square-o"
                     else
-                        # not set
                         _cls = ""
-                        _icon = "fa-minus"
-                else
-                    if ls and ms
-                        console.error "both ls and ms are set for #{row_el.name} (#{row_el.description}) and #{dev.full_name}"
-                    if lc and mc
-                        # this may happen if the meta is set from one and the direct association comes from another one
-                        console.warn "both lc and mc are set for #{row_el.name} (#{row_el.description}) and #{dev.full_name}"
-                    if (ls or ms) and (lc or mc)
-                        # bot set -> exclude
-                        _cls = "danger"
-                        _icon = "fa-times"
-                    else if (ls or ms)
-                        # set via direct (devices relation) local or meta
-                        _cls = "success"
-                        _icon = "fa-check"
-                    else if (lc or mc)
-                        # set via config (local or meta)
-                        _cls = "success"
-                        _icon = "fa-check-square-o"
-                    else
-                        # nothing set
-                        if _shadow and not _foc
-                            _cls = "warning"
-                        else
-                            _cls = ""
-                        _icon = "fa-minus"
+                    _icon = "fa-minus"
 
             return [_cls, _icon]
 
@@ -973,10 +985,11 @@ angular.module(
                     # generic or service mode, conf and el is the same element
                     _conf = _el
                     _info_str = _el.$$info_str
+                    [_class, _icon] = @props.configHelper.get_td_class_and_icon_conf(_el, _conf, @props.device)
                 else
                     _conf = null
                     _info_str = "#{_el.description} (#{_el.name})"
-                [_class, _icon] = @props.configHelper.get_td_class_and_icon(_el, _conf, @props.device)
+                    [_class, _icon] = @props.configHelper.get_td_class_and_icon_mon(_el, @props.device)
                 if @props.configHelper.mode in ["mon"]
                     # overlay
                     do_overlay = true

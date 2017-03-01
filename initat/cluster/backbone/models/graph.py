@@ -27,8 +27,8 @@ from django.db.models import signals, Q
 from django.dispatch import receiver
 from enum import Enum
 
-from initat.cluster.backbone.signals import SensorThresholdChanged
-from initat.cluster.backbone.models.functions import db_limit_1
+from ..signals import SensorThresholdChanged
+from .functions import db_limit_1
 
 
 __all__ = [

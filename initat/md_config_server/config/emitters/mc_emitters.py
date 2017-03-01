@@ -20,13 +20,14 @@
 """ cache of various settings and luts for md-config-server """
 
 from collections import defaultdict
-
+from enum import Enum
 from django.db.models import Q
-
+import attr
 from initat.cluster.backbone.models import device, mon_check_command
 
 __all__ = [
     "MonCheckEmitter",
+    "MonCheckUsage",
 ]
 
 
@@ -184,3 +185,54 @@ class MonCheckEmitter(object):
 
     def __getitem__(self, key):
         return self._result[key]
+
+
+class MCUEnum(Enum):
+    # config via meta device
+    meta_config = "meta_config"
+    # config directly
+    config = "config"
+    # check via meta device
+    meta_check = "meta_check"
+    # check directly
+    check = "check"
+
+
+@attr.s
+class MonCheckUsage(object):
+    """
+    helper object to determine which devices / groups use a certain
+    moncheck
+    """
+    mc = attr.ib()
+    devices = attr.ib(default=defaultdict(set))
+
+    def find_usage(self):
+        # configs
+        mc = self.mc
+        # all configs
+        configs = mc.config_rel.all().prefetch_related("device_config_set__device")
+        for conf in configs:
+            for dc in conf.device_config_set.all().select_related("device"):
+                if dc.device.is_meta_device:
+                    # resolve devices
+                    for dev in dc.device.get_group_devices():
+                        self.devices[dev.idx].add(MCUEnum.meta_config)
+                else:
+                    self.devices[dc.device.idx].add(MCUEnum.config)
+        # direct devices
+        for dev in mc.devices.all():
+            if dev.is_meta_device:
+                for sub_dev in dev.get_group_devices():
+                    self.devices[sub_dev.idx].add(MCUEnum.meta_check)
+            else:
+                self.devices[dev.idx].add(MCUEnum.check)
+        # import pprint
+        # pprint.pprint(self.devices)
+        # for chaining
+        return self
+
+    def serialize(self):
+        return {
+            idx: [_enum.value for _enum in enum_list] for idx, enum_list in self.devices.items()
+        }

@@ -32,8 +32,8 @@ from django.db.models import Q
 from django.db.models import signals
 from django.dispatch import receiver
 
-from initat.cluster.backbone.models.functions import check_empty_string, \
-    check_integer, cluster_timezone, memoize_with_expiry
+from .functions import check_empty_string, check_integer, cluster_timezone, \
+    memoize_with_expiry
 
 logger = logging.getLogger(__name__)
 

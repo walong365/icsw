@@ -35,7 +35,7 @@ from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 
-from initat.cluster.backbone.models.functions import check_empty_string, check_non_empty_string, \
+from .functions import check_empty_string, check_non_empty_string, \
     check_float, get_related_models
 from initat.tools import process_tools
 

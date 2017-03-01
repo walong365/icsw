@@ -35,8 +35,8 @@ from django.db import models
 from django.db.models import signals, Q
 from django.dispatch import receiver
 
-from initat.cluster.backbone.available_licenses import get_available_licenses, LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models.functions import memoize_with_expiry, cluster_timezone
+from ..available_licenses import get_available_licenses, LicenseEnum, LicenseParameterTypeEnum
+from .functions import memoize_with_expiry, cluster_timezone
 from initat.tools import logging_tools
 from initat.tools.bgnotify.create import propagate_channel_object
 from .license_xml import ICSW_XML_NS, ICSW_XML_NS_NAME, ICSW_XML_NS_MAP, LIC_FILE_RELAX_NG_DEFINITION

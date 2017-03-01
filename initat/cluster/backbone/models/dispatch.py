@@ -31,8 +31,7 @@ from django.db.models import Avg, signals
 from django.dispatch import receiver
 from enum import IntEnum
 
-from initat.cluster.backbone.models.functions import memoize_with_expiry
-from .functions import check_integer
+from .functions import check_integer, memoize_with_expiry
 
 
 __all__ = [

@@ -60,7 +60,6 @@ __all__ = [
     "mon_dist_master",
     "mon_dist_slave",
     "monitoring_hint",
-    # "mon_check_command_special",
 
     # trace
 

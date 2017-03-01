@@ -37,6 +37,7 @@ class icswServiceEnumBaseClient(object):
     ):
         self.name = name
         self.info = info
+        self.sync_config = True
         self.root_service = root_service
         # should match name of instance in {server,client,...}.xml
         self.msi_block_name = msi_block_name or self.name

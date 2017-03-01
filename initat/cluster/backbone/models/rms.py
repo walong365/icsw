@@ -29,7 +29,7 @@ from django.db import models
 from django.db.models import signals, Q
 from django.dispatch import receiver
 
-from initat.cluster.backbone.models.functions import cluster_timezone, duration as duration_types
+from .functions import cluster_timezone, duration as duration_types
 
 from initat.tools import logging_tools
 

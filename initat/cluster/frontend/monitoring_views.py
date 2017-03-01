@@ -46,7 +46,7 @@ from initat.cluster.backbone.models.functions import duration, cluster_timezone
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
     mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, AlertList
-from initat.cluster.backbone.serializers import mon_dist_master_serializer
+from initat.cluster.backbone.serializers import mon_dist_master_serializer, mon_check_command_serializer
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
@@ -761,19 +761,6 @@ class SendMonCommand(View):
             # key_list=data["key_list"]
         )
         contact_server(request, icswServiceEnum.monitor_server, srv_com)
-        return
-        # request.xml_response.info("handled {}".format(data["action"]["long"]))
-
-        import pprint
-        pprint.pprint(data)
-        _enum = getattr(IcingaCommandEnum, data["action"].lower())
-        print(dir(_enum))
-        print("-" * 20)
-        import pprint
-        pprint.pprint(_val_dict)
-        return
-        _action = data["action"]["short"]
-        # if _action != "none":
 
 
 class DuplicateDisplayPipe(View):
@@ -801,14 +788,15 @@ class DuplicateDisplayPipe(View):
 class GetMonitoringInfo(View):
     @method_decorator(login_required)
     def post(self, request):
+        from initat.md_config_server.config.emitters.mc_emitters import MonCheckUsage
         _data = request.POST
         mon_check = mon_check_command.objects.get(Q(pk=_data["object_idx"]))
-        import pprint
-        pprint.pprint(_data)
+        mcu = MonCheckUsage(mon_check).find_usage()
         return HttpResponse(
             json.dumps(
                 {
-                    "found": mon_check.name
+                    "check": mon_check_command_serializer(mon_check).data,
+                    "usage": mcu.serialize(),
                 }
             ),
             content_type="application/json"

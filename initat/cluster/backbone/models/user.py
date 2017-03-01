@@ -42,9 +42,8 @@ from django.utils import timezone
 from django.utils.encoding import force_text
 from enum import Enum
 
-from initat.cluster.backbone.models.functions import check_empty_string, check_integer, \
-    get_vnc_enc
-from initat.cluster.backbone.signals import UserChanged, GroupChanged, RoleChanged
+from .functions import check_empty_string, check_integer, get_vnc_enc
+from ..signals import UserChanged, GroupChanged, RoleChanged
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store
 
