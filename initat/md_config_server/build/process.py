@@ -1,6 +1,6 @@
 # Copyright (C) 2001-2017 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of icsw-server-server
+# this file is part of icsw-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -39,7 +39,8 @@ from ..config import global_config, MainConfig, MonAllCommands, \
     MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, \
     MonDeviceTemplates, MonServiceTemplates, MonAllHostDependencies, build_safe_name, StructuredMonBaseConfig, \
     MON_VAR_IP_NAME, SpecialTypesEnum, MonModuleDefinitions
-from ..config.build_cache import GlobalBuildCache, HostBuildCache, MonCheckEmitter
+from ..config.build_cache import GlobalBuildCache, HostBuildCache
+from ..config.emitters.mc_emitters import MonCheckEmitter
 from ..constants import BuildModesEnum
 from ..mixins import ImageMapMixin, DistanceMapMixin, NagVisMixin
 from ..special_commands.struct import DynamicCheckMode, DynamicCheckResultType

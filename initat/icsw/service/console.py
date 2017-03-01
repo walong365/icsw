@@ -1,7 +1,7 @@
 #
 # Copyright (C) 2001-2009,2011-2017 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of icsw-server-client
+# this file is part of icsw-client
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #

@@ -1,6 +1,6 @@
 # Copyright (C) 2014-2015,2017 Bernhard Mallinger, init.at
 #
-# this file is part of icsw-server-server
+# this file is part of icsw-server
 #
 # Send feedback to: <mallinger@init.at>
 #

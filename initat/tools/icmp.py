@@ -1,7 +1,7 @@
 # Copyright 1997, Corporation for National Research Initiatives
 # written by Jeremy Hylton, jeremy@cnri.reston.va.us
 #
-# This file is part of icsw-server-client
+# This file is part of icsw-client
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 3 as

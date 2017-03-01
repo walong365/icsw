@@ -1,6 +1,6 @@
 # Copyright (C) 2001-2017 Andreas Lang-Nevyjel
 #
-# this file is part of icsw-server-server
+# this file is part of icsw-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #

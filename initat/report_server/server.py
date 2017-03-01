@@ -1,6 +1,6 @@
 # Copyright (C) 2016-2017 init.at
 #
-# this file is part of icsw-server-server
+# this file is part of icsw-server
 #
 # Send feedback to: <cluster@init.at>
 #

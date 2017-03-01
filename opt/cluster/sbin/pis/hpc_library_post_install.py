@@ -1,7 +1,7 @@
 #!/usr/bin/python3-init -Otu
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# this file is part of icsw-server-server
+# this file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 3 as

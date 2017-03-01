@@ -1,5 +1,5 @@
 #
-# this file is part of icsw-server-server
+# this file is part of icsw-server
 #
 # Copyright (C) 2014-2015,2017 Andreas Lang-Nevyjel init.at
 #
