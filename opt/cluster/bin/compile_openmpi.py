@@ -434,7 +434,7 @@ class mpi_builder(object):
                         break
                     else:
                         if self.parser.options.verbose:
-                            print(new_lines, end=' ')
+                            print(new_lines.decode(), end=' ')
                         if type(new_lines) == list:
                             out_lines.extend(new_lines)
                         else:
@@ -443,11 +443,11 @@ class mpi_builder(object):
                     break
             self.time_dict[time_name]["end"] = time.time()
             self.time_dict[time_name]["diff"] = self.time_dict[time_name]["end"] - self.time_dict[time_name]["start"]
-            self.log_dict[time_name] = "".join(out_lines)
+            self.log_dict[time_name] = "".join(map(bytes.decode, out_lines))
             if c_stat:
                 print("Something went wrong ({:d}):".format(c_stat))
                 if not self.parser.options.verbose:
-                    print("".join(out_lines))
+                    print("".join(map(bytes.decode, out_lines)))
                 success = False
                 break
             else:
