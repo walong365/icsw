@@ -645,6 +645,9 @@ class check_ups_command(hm_classes.MonitoringCommand):
             hm_classes.MCParameter("-w", "warning", "", "Response time to result in warning status (seconds)", devvar_name="CHECK_UPS_WARN"),
             hm_classes.MCParameter("-c", "critical", "", "Response time to result in critical status (seconds)", devvar_name="CHECK_UPS_CRIT"),
         )
+        ports = hm_classes.MCPortList(
+            hm_classes.MCPort(HMIPProtocolEnum.tcp, 3493),
+        )
 
 class check_nt_command(hm_classes.MonitoringCommand):
     class Meta:
