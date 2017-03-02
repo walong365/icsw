@@ -629,3 +629,19 @@ class check_mrtgtraf_command(hm_classes.MonitoringCommand):
             hm_classes.MCParameter("-c", "critical", "", "Critical threshold pair <incoming>,<outgoing>", devvar_name="CHECK_MRTGTRAF_CRIT"),
         )
 
+class check_ups_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        check_instance = DynamicCheckServer.native
+        required_access = HMAccessClassEnum.level0
+        uuid = "38ba3903-5f0e-4fc2-bb41-ddb5bb9b9533"
+        description = ""
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-H", "hostname", "", "Host name, IP Address, or unix socket (must be an absolute path)", macro_name="$HOSTADDRESS$"),
+            hm_classes.MCParameter("-p", "port", 3493, "Port number (default: 3493)", devvar_name="CHECK_UPS_PORT"),
+            hm_classes.MCParameter("-u", "ups", "", "Name of UPS", devvar_name="CHECK_UPS_NAME"),
+            hm_classes.MCParameter("-v", "variable", "LINE", "Valid values for STRING are LINE, TEMP, BATTPCT or LOADPCT", devvar_name="CHECK_UPS_VARIABLE"),
+            hm_classes.MCParameter("-t", "timeout", 10, "Seconds before connection times out (default: 10)", devvar_name="CHECK_UPS_TIMEOUT"),
+            hm_classes.MCParameter("-w", "warning", "", "Response time to result in warning status (seconds)", devvar_name="CHECK_UPS_WARN"),
+            hm_classes.MCParameter("-c", "critical", "", "Response time to result in critical status (seconds)", devvar_name="CHECK_UPS_CRIT"),
+        )
