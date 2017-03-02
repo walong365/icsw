@@ -973,13 +973,13 @@ config_module = angular.module(
     "icswTools", "Restangular", "ICSW_URLS",  "$q", "blockUI", "icswFormTools",
     "icswConfigTreeService", "icswMonitoringBasicTreeService", "icswMonCheckCommandBackup",
     "icswComplexModalService", "$compile", "$templateCache", "icswConfigMonTableService",
-    "icswTableFilterService",
+    "icswTableFilterService", "icswMonCheckDevDependency",
 (
     $scope, icswSimpleAjaxCall, icswToolsSimpleModalService, toaster,
     icswTools, Restangular, ICSW_URLS, $q, blockUI, icswFormTools,
     icswConfigTreeService, icswMonitoringBasicTreeService, icswMonCheckCommandBackup,
     icswComplexModalService, $compile, $templateCache, icswConfigMonTableService,
-    icswTableFilterService,
+    icswTableFilterService, icswMonCheckDevDependency,
 ) ->
     $scope.struct = {
         # mode, subtable true or false
@@ -1110,26 +1110,268 @@ config_module = angular.module(
         )
 
     $scope.get_check_details = ($event, check) =>
+        icswMonCheckDevDependency.show_dependency(check.idx)
+    $scope.$on("$destroy", () ->
+        $scope.struct.filter.close()
+    )
+]).service("icswMonCheckDevDependencyDendrogramReact",
+[
+    "$q",
+(
+    $q,
+) ->
+    {div, svg, g, path, title, text, ellipse} = React.DOM
+    return React.createClass(
+        displayName: "icswMonCheckDevDependencyDendrogramReact"
+        propTypes: {
+            data: React.PropTypes.object
+            width: React.PropTypes.number
+            height: React.PropTypes.number
+        }
+        render: () ->
+            _path_idx = 0
+            _node_idx = 0
+
+            get_node = (node) =>
+                data = node.data
+                icsw_data = data.data
+                if data.id == "root"
+                    # root node
+                    _color = "#e0ffe0"
+                    _text = "Check"
+                    _title = "Check #{icsw_data.name}"
+                else if icsw_data.type == "dg"
+                    # device group
+                    _color = "#ffe0e0"
+                    _text = icsw_data.$$device.$$non_md_name
+                    _title = "DeviceGroup #{icsw_data.$$device.$$print_name}"
+                else
+                    # device
+                    _color = "#f0f0ff"
+                    _text = icsw_data.$$device.name
+                    _title = "Device #{icsw_data.$$device.$$print_name}"
+                console.log node.data
+
+                _node_idx++
+                return g(
+                    {
+                        key: "node#{_node_idx}"
+                        transform: "translate(#{node.y}, #{node.x})"
+                    }
+                    title(
+                        {
+                            key: "title"
+                        }
+                        _title
+                    )
+                    ellipse(
+                        {
+                            key: "el"
+                            rx: 80
+                            ry: 35
+                            className: "svg-ls-cd-node"
+                            style: {fill: _color}
+                        }
+                    )
+                    text(
+                        {
+                            key: "text"
+                            textAnchor: "middle"
+                            fontSize: "14px"
+                            alignmentBaseline: "middle"
+                        }
+                        _text
+                    )
+
+                )
+
+            get_path = (node) ->
+                if node.parent
+                    n = node
+                    p = n.parent
+                    _path_idx++
+                    _path = "M#{n.y},#{n.x}C#{p.y + 100},#{n.x} #{p.y + 100},#{p.x} #{p.y},#{p.x}"
+                    return path(
+                        {
+                            key: "p#{_path_idx}"
+                            d: _path
+                            className: "svg-ls-cd-link"
+                        }
+                    )
+                else
+                    return null
+
+            console.log "d=", @props.data
+            data = @props.data
+            _svg = svg(
+                {
+                    key: "svgouter"
+                    width: "100%"
+                    preserveAspectRatio: "xMidYMid meet"
+                    viewBox: "-100 -100 1200 1200"
+                }
+                g(
+                    {
+                        key: "gouter"
+                    }
+                    (
+                        get_path(node) for node in data.descendants()
+                    )
+                    (
+                        get_node(node) for node in data.descendants()
+                    )
+                )
+            )
+            return div(
+                {
+                    key: "top"
+                    className: "container-fluid"
+                }
+                div(
+                    {
+                        key: "svg"
+                        className: "col-md-12"
+                    }
+                    _svg
+                )
+            )
+    )
+]).directive("icswMonCheckDevDependencyDendrogram",
+[
+    "$q", "icswMonCheckDevDependencyDendrogramReact",
+(
+    $q, icswMonCheckDevDependencyDendrogramReact,
+) ->
+    return {
+        restrict: "E"
+        scope: {
+            data: "=icswData"
+        }
+        controller: "icswMonCheckDevDependencyDendrogramCtrl"
+        link: (scope, element, attrs) ->
+            scope.render_el = (data, width, height) ->
+                scope.struct.react_element = ReactDOM.render(
+                    React.createElement(
+                        icswMonCheckDevDependencyDendrogramReact,
+                        {
+                            data: data
+                            width: width
+                            height: height
+                        }
+                    )
+                    element[0]
+                )
+    }
+
+]).controller("icswMonCheckDevDependencyDendrogramCtrl",
+[
+    "$scope", "$q", "d3_service", "icswDeviceTreeService",
+(
+    $scope, $q, d3_service, icswDeviceTreeService,
+) ->
+    $scope.struct = {
+        # d3
+        d3: undefined
+        # data
+        data: undefined
+        # react element
+        react_element: null
+        # unregister functions
+        unreg_fn: []
+    }
+    _render = (dt) ->
+        d3 = $scope.struct.d3
+        tree = d3.cluster().size([1000, 1000])
+        stratify = d3.stratify().parentId(
+            (node) ->
+                return node.parent
+        ).id(
+            (node) ->
+                return node.id
+        )
+        # qualify nodes
+        for entry in $scope.struct.data
+            if entry.id != "root"
+                data = entry.data
+                if data.type == "dg"
+                    # resolve device of device_group
+                    data.$$device = dt.all_lut[data.idx]
+                else
+                    # resolve device
+                    data.$$device = dt.all_lut[data.idx]
+        # stratify data to get a qualified root
+        root = stratify($scope.struct.data)
+        # lets cluster
+        tree(root)
+        # draw (call link function)
+        $scope.render_el(root, 1000, 1000)
+
+    $q.all(
+        [
+            d3_service.d3()
+            icswDeviceTreeService.load($scope.$id)
+        ]
+    ).then(
+        (result) ->
+            d3 = result[0]
+            dt = result[1]
+            $scope.struct.d3 = d3
+            $scope.struct.data = $scope.data
+            # build tree
+            _render(dt)
+    )
+    $scope.$on("$destroy", () ->
+        (_fn() for _fn in $scope.struct.unreg_fn)
+    )
+]).service("icswMonCheckDevDependency",
+[
+    "$q", "d3_service", "blockUI", "icswSimpleAjaxCall", "ICSW_URLS",
+    "icswComplexModalService", "$rootScope", "$compile", "$templateCache",
+(
+    $q, d3_service, blockUI, icswSimpleAjaxCall, ICSW_URLS,
+    icswComplexModalService, $rootScope, $compile, $templateCache,
+) ->
+    show_dependency = (mc_idx) ->
+        defer = $q.defer()
         blockUI.start("fetching dependencies...")
         icswSimpleAjaxCall(
             url: ICSW_URLS.MON_GET_MON_INFO
             data: {
                 mode: "mon"
-                object_idx: check.idx
+                object_idx: mc_idx
             }
             dataType: "json"
         ).then(
             (json) ->
+                sub_scope = $rootScope.$new(true)
+                sub_scope.result = json
+                console.log "r=", json
+                icswComplexModalService(
+                    {
+                        message: $compile($templateCache.get("icsw.mon.check.dev.dep"))(sub_scope)
+                        title: "MonCheck Dependency"
+                        ok_label: "Close"
+                        closeable: true
+                        ok_callback: (modal) ->
+                            d = $q.defer()
+                            d.resolve("close")
+                            return d.promise
+                    }
+                ).then(
+                    (fin) ->
+                        sub_scope.$destroy()
+                        defer.resolve("done")
+                )
                 blockUI.stop()
-                console.log "*", json
             (error) ->
                 blockUI.stop()
+                defer.reject("error")
         )
+        return defer.promise
 
-    $scope.$on("$destroy", () ->
-        $scope.struct.filter.close()
-    )
-
+    return {
+        show_dependency: show_dependency
+    }
 ]).directive("icswConfigDownload",
 [
     "$templateCache", "icswConfigTreeService", "ICSW_URLS",

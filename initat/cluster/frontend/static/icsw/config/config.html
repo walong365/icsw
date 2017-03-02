@@ -1234,3 +1234,12 @@
         </uib-tabset>
     </form>
 </script>
+
+<script type="text/ng-template" id="icsw.mon.check.dev.dep">
+    <div>
+        <h3>DependencyGraph for Moncheck '{{ result[0].data.name }}'</h3>
+        <icsw-mon-check-dev-dependency-dendrogram
+            icsw-data="result"
+        ></icsw-mon-check-dev-dependency-dendrogram>
+    </div>
+</script>

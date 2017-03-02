@@ -428,8 +428,7 @@ class device(models.Model):
     def get_group_devices(self):
         if not self.is_meta_device:
             raise AttributeError("device {} is not a meta-device".format(str(self)))
-        return self.device_group.device_group.all()
-
+        return self.device_group.device_group.all().exclude(is_meta_device=True)
 
     def __str__(self):
         return "{}{}".format(

@@ -901,6 +901,8 @@ angular.module(
             _disabled_groups = []
             for _entry in full_list
                 if _entry.is_meta_device
+                    # used in moncheckdevdep
+                    _entry.$$non_md_name = _entry.name.substring(8)
                     _entry.$$print_name = _entry.full_name.substring(8)
                 else
                     _entry.$$print_name = _entry.full_name

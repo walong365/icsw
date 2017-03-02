@@ -188,14 +188,59 @@ class MonCheckEmitter(object):
 
 
 class MCUEnum(Enum):
-    # config via meta device
-    meta_config = "meta_config"
-    # config directly
+    none = "none"
+    # config (on group or device level)
     config = "config"
-    # check via meta device
-    meta_check = "meta_check"
-    # check directly
+    # config inheritted from parent
+    config_meta = "config_meta"
+    # check (on group or device level)
     check = "check"
+    # check inheritted from parent
+    check_meta = "check_meta"
+
+
+@attr.s
+class MCUNode(object):
+
+    value = attr.ib(default=attr.Factory(set))
+    configs = attr.ib(default=attr.Factory(set))
+    # for devices
+    meta_configs = attr.ib(default=attr.Factory(set))
+    idx = attr.ib(default=0)
+    type = attr.ib(default="")
+
+    def add(self, enum: enumerate, config_idx: int=None):
+        self.value.add(enum)
+        if config_idx:
+            self.configs.add(config_idx)
+
+    def inherit_from(self, parent: object):
+        # inherit settings from parent
+        for _enum in parent.value:
+            self.value.add(
+                {
+                    MCUEnum.config: MCUEnum.config_meta,
+                    MCUEnum.check: MCUEnum.check_meta,
+                }[_enum]
+            )
+        for _config in parent.configs:
+            self.meta_configs.add(_config)
+
+    @property
+    def node_id(self):
+        return "{}{:d}".format(
+            self.type,
+            self.idx,
+        )
+
+    def prepare_json(self):
+        # rewrites all enum in value to strings
+        self.value = set(
+            [
+                _enum.value for _enum in self.value
+            ]
+        )
+        return self
 
 
 @attr.s
@@ -205,7 +250,22 @@ class MonCheckUsage(object):
     moncheck
     """
     mc = attr.ib()
-    devices = attr.ib(default=defaultdict(set))
+    groups = attr.ib(default=attr.Factory(dict))
+
+    def feed_group(self, dev):
+        if dev.device_group_id not in self.groups:
+            self.groups[dev.device_group_id] = {
+                "children": {},
+                "node": MCUNode(idx=dev.device_group.device.idx, type="dg")
+            }
+        return self.groups[dev.device_group_id]["node"]
+
+    def feed_device(self, dev):
+        self.feed_group(dev)
+        _group = self.groups[dev.device_group_id]
+        if dev.idx not in _group["children"]:
+            _group["children"][dev.idx] = MCUNode(idx=dev.idx, type="d")
+        return _group["children"][dev.idx]
 
     def find_usage(self):
         # configs
@@ -215,24 +275,52 @@ class MonCheckUsage(object):
         for conf in configs:
             for dc in conf.device_config_set.all().select_related("device"):
                 if dc.device.is_meta_device:
+                    self.feed_group(dc.device).add(MCUEnum.config, dc.config_id)
                     # resolve devices
                     for dev in dc.device.get_group_devices():
-                        self.devices[dev.idx].add(MCUEnum.meta_config)
+                        self.feed_device(dev)
                 else:
-                    self.devices[dc.device.idx].add(MCUEnum.config)
+                    self.feed_device(dc.device).add(MCUEnum.config, dc.config_id)
         # direct devices
         for dev in mc.devices.all():
             if dev.is_meta_device:
+                self.feed_group(dev).add(MCUEnum.check)
                 for sub_dev in dev.get_group_devices():
-                    self.devices[sub_dev.idx].add(MCUEnum.meta_check)
+                    self.feed_device(sub_dev)
             else:
-                self.devices[dev.idx].add(MCUEnum.check)
+                self.feed_device(dev).add(MCUEnum.check)
+        for g_idx, g_stuff in self.groups.items():
+            [
+                dev_obj.inherit_from(g_stuff["node"]) for dev_obj in g_stuff["children"].values()
+            ]
         # import pprint
-        # pprint.pprint(self.devices)
+        # pprint.pprint(self.groups)
         # for chaining
         return self
 
     def serialize(self):
-        return {
-            idx: [_enum.value for _enum in enum_list] for idx, enum_list in self.devices.items()
+        from initat.cluster.backbone.serializers import mon_check_command_serializer
+        # flatten structure
+        # top level
+        top_level = {
+            "data": mon_check_command_serializer(self.mc).data,
+            "id": "root",
         }
+        _result = [top_level]
+        for g_idx, g_stuff in self.groups.items():
+            if g_stuff["children"]:
+                # only add non-empty groups
+                g_level = {
+                    "id": g_stuff["node"].node_id,
+                    "data": attr.asdict(g_stuff["node"].prepare_json()),
+                    "parent": top_level["id"],
+                }
+                _result.append(g_level)
+                for d_idx, d_stuff in g_stuff["children"].items():
+                    d_level = {
+                        "id": d_stuff.node_id,
+                        "data": attr.asdict(d_stuff.prepare_json()),
+                        "parent": g_level["id"],
+                    }
+                    _result.append(d_level)
+        return _result

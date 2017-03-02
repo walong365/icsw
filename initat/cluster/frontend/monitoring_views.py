@@ -794,10 +794,7 @@ class GetMonitoringInfo(View):
         mcu = MonCheckUsage(mon_check).find_usage()
         return HttpResponse(
             json.dumps(
-                {
-                    "check": mon_check_command_serializer(mon_check).data,
-                    "usage": mcu.serialize(),
-                }
+                mcu.serialize(),
             ),
             content_type="application/json"
         )
