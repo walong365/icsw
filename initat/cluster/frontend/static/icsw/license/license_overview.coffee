@@ -186,7 +186,7 @@ lic_module = angular.module("icsw.license.overview",
                 for _ov in $scope.struct.lic_overview
                     $scope.build_stack(_ov)
                 if not $scope.struct.shutdown
-                    $scope.struct.cur_timeout = $timeout($scope.update, 3000)
+                    $scope.struct.cur_timeout = $timeout($scope.update, 15000)
             (error) ->
                 $scope.struct.cur_timeout = $timeout($scope.update, 30000)
         )
@@ -238,7 +238,7 @@ lic_module = angular.module("icsw.license.overview",
 ]).controller("icswLicenseOverviewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "icswAccessLevelService",
-     "$timeout", "$sce", "d3_service", "dimple_service", "ICSW_URLS", "icswLicenseUsageTools",
+    "$timeout", "$sce", "d3_service", "dimple_service", "ICSW_URLS", "icswLicenseUsageTools",
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, icswAccessLevelService,
     $timeout, $sce, d3_service, dimple_service, ICSW_URLS, icswLicenseUsageTools,
