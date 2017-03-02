@@ -466,3 +466,166 @@ class check_dns_command(hm_classes.MonitoringCommand):
             hm_classes.MCParameter("-s", "server", "8.8.8.8", "Optional DNS server you want to use for the lookup", devvar_name="CHECK_DNS_SERVER"),
         )
 
+class check_disk_smb_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        check_instance = DynamicCheckServer.native
+        required_access = HMAccessClassEnum.level0
+        uuid = "3ff35d20-6173-4747-8ed3-b4d14a6de873"
+        description = "Perl Check SMB Disk plugin for monitoring"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-H", "hostname", "", "NetBIOS name of the server", macro_name="$HOSTADDRESS$"),
+            hm_classes.MCParameter("-s", "share", "", "Share name to be tested", devvar_name="CHECK_DISK_SMB_SHARE"),
+            hm_classes.MCParameter("-W", "workgroup", "WORKGROUP", "Workgroup or Domain used (Defaults to 'WORKGROUP')", devvar_name="CHECK_DISK_SMB_WORKGROUP"),
+            hm_classes.MCParameter("-w", "warning", "85%", "Percent of used space at which a warning will be generated (Default: 85%)", devvar_name="CHECK_DISK_SMB_WARN"),
+            hm_classes.MCParameter("-c", "critical", "95%", "Percent of used space at which a critical will be generated (Defaults: 95%)", devvar_name="CHECK_DISK_SMB_CRIT"),
+            hm_classes.MCParameter("-u", "username", "guest", "Username to log in to server. (Defaults to 'guest')", devvar_name="CHECK_DISK_SMB_USER"),
+            hm_classes.MCParameter("-p", "password", "", "Password to log in to server. (Defaults to an empty password)", devvar_name="CHECK_DISK_SMB_PASS"),
+            hm_classes.MCParameter("-P", "port", 445, "Port to be used to connect to. Some Windows boxes use 139, others 445 (Defaults to smbclient default)", devvar_name="CHECK_DISK_SMB_PORT"),
+        )
+        ports = hm_classes.MCPortList(
+            hm_classes.MCPort(HMIPProtocolEnum.tcp, 139),
+            hm_classes.MCPort(HMIPProtocolEnum.tcp, 445),
+        )
+
+class check_file_age_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        check_instance = DynamicCheckServer.native
+        required_access = HMAccessClassEnum.level0
+        uuid = "ea5c2aef-aaa2-4a6d-a231-e206a6b73dfd"
+        description = "Checks file age"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-W", "warningsize", 0, "File must be at least this many bytes long (default: crit 0 bytes)", devvar_name="CHECK_FILEAGE_WARNSIZE"),
+            hm_classes.MCParameter("-C", "criticalsize", 0, "File must be at least this many bytes long (default: crit 0 bytes)", devvar_name="CHECK_FILEAGE_CRITSIZE"),
+            hm_classes.MCParameter("-w", "warning", 240, "File must be no more than this many seconds old (default: warn 240 secs, crit 600)", devvar_name="CHECK_FILEAGE_WARN"),
+            hm_classes.MCParameter("-c", "critical", 600, "File must be no more than this many seconds old (default: warn 240 secs, crit 600)", devvar_name="CHECK_FILEAGE_CRIT"),
+            hm_classes.MCParameter("-f", "file", "", "File to be monitored", devvar_name="CHECK_FILEAGE_FILE"),
+        )
+
+class check_flexlm_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        check_instance = DynamicCheckServer.native
+        required_access = HMAccessClassEnum.level0
+        uuid = "c6ce3fb3-2d87-4039-b9ef-9361bed6d709"
+        description = "Check available flexlm license managers"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-t", "timeout", 15, "Plugin time out in seconds (default = 15 )", devvar_name="CHECK_FLEXLM_TIMEOUT"),
+            hm_classes.MCParameter("-F", "file", "license.dat", "Name of license file (usually license.dat)", devvar_name="CHECK_FLEXLM_FILE"),
+        )
+
+class check_ide_smart_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        check_instance = DynamicCheckServer.native
+        required_access = HMAccessClassEnum.level0
+        uuid = "2e7d980b-9de3-44fd-8c9d-53c2d2263c3d"
+        description = "This plugin checks a local hard drive with the (Linux specific) SMART interface"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-d", "device", "", "Select device (ex: /dev/hda)", devvar_name="CHECK_IDE_SMART_DEV"),
+        )
+
+class check_ifoperstatus_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        check_instance = DynamicCheckServer.native
+        required_access = HMAccessClassEnum.level0
+        uuid = "d2a92f65-cc7f-40e5-813f-86e93977518b"
+        description = "check_ifoperstatus plugin for monitoring operational status of a particular network interface on the target host"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-H", "hostname", "", "The name or address you want to query", macro_name="$HOSTADDRESS$"),
+            hm_classes.MCParameter("-C", "community" "public", "SNMP read community (defaults to public, used with SNMP v1 and v2c", devvar_name="CHECK_IFOPERSTATUS_COMMUNITY"),
+            hm_classes.MCParameter("-v", "version", 1, "1 for SNMP v1 (default). 2 for SNMP v2c - default=1", devvar_name="CHECK_IFOPERSTATUS_VERSION"),
+            hm_classes.MCParameter("-L", "seclevel", "noAuthNoPriv", "choice of 'noAuthNoPriv', 'authNoPriv', or 'authPriv' - default:noAuthNoPriv", devvar_name="CHECK_IFOPERSTATUS_SECLEVEL"),
+            hm_classes.MCParameter("-U", "secname", "", "username for SNMPv3 context", devvar_name="CHECK_IFOPERSTATUS_SECNAME"),
+            hm_classes.MCParameter("-c", "context", "", "SNMPv3 context name (default is empty string)", devvar_name="CHECK_IFOPERSTATUS_CONTEXT"),
+            hm_classes.MCParameter("-A", "authpass", "", "authentication password (cleartext ascii or localized key in hex with 0x prefix generated by using 'snmpkey' utility auth password and authEngineID", devvar_name="CHECK_IFOPERSTATUS_SECLEVEL"),
+            hm_classes.MCParameter("-a", "authproto", "SHA1", "Authentication protocol (MD5 or SHA1)", devvar_name="CHECK_IFOPERSTATUS_AUTHPROTO"),
+            hm_classes.MCParameter("-X", "privpass", "", "privacy password (cleartext ascii or localized key in hex with 0x prefix generated by using 'snmpkey' utility privacy password and authEngineID", devvar_name="CHECK_IFOPERSTATUS_PRIVPASS"),
+            hm_classes.MCParameter("-P", "privproto", "AES", "privacy protocol (DES or AES; default: AES)", devvar_name="CHECK_IFOPERSTATUS_PRIVPROTO"),
+            hm_classes.MCParameter("-d", "ifdescr", "", "SNMP IfDescr value", devvar_name="CHECK_IFOPERSTATUS_IFDESCR"),
+            hm_classes.MCParameter("-p", "port", 161, "SNMP port (default 161)", devvar_name="CHECK_IFOPERSTATUS_PORT"),
+            hm_classes.MCParameter("-w", "warning", "c", "accepts: 'i' or 'w' or 'c' (ignore|warn|crit) if the interface is dormant (default critical)", devvar_name="CHECK_IFOPERSTATUS_WARN"),
+            hm_classes.MCParameter("-D", "admindown", "w", "accepts: 'i' or 'w' or 'c' (ignore|warn|crit) administratively down interfaces (default warning)", devvar_name="CHECK_IFOPERSTATUS_ADMIN"),
+            hm_classes.MCParameter("-M", "msgmaxsize", "", "Max message size - useful only for v1 or v2c", devvar_name="CHECK_IFOPERSTATUS_MSGSIZE"),
+            hm_classes.MCParameter("-t", "timeout", 15, "seconds before the plugin times out (default=15)", devvar_name="CHECK_IFOPERSTATUS_TIMEOUT"),
+        )
+        ports = hm_classes.MCPortList(
+            hm_classes.MCPort(HMIPProtocolEnum.udp, 161),
+        )
+
+class check_ifstatus_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        check_instance = DynamicCheckServer.native
+        required_access = HMAccessClassEnum.level0
+        uuid = "f4ec1a2e-8bd5-473e-b113-c3c0a5210434"
+        description = "check_ifstatus plugin for monitoring operational status of each network interface on the target host"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-H", "hostname", "", "The name or address you want to query", macro_name="$HOSTADDRESS$"),
+            hm_classes.MCParameter("-C", "community" "public", "SNMP read community (defaults to public, used with SNMP v1 and v2c", devvar_name="CHECK_IFSTATUS_COMMUNITY"),
+            hm_classes.MCParameter("-v", "snmp_version", 1, "1 for SNMP v1 (default). 2 for SNMP v2c. 3 for SNMPv3 (requires -U option) - default=1", devvar_name="CHECK_IFSTATUS_VERSION"),
+            hm_classes.MCParameter("-L", "seclevel", "noAuthNoPriv", "choice of 'noAuthNoPriv', 'authNoPriv', or 'authPriv' - default:noAuthNoPriv", devvar_name="CHECK_IFSTATUS_SECLEVEL"),
+            hm_classes.MCParameter("-U", "secname", "", "username for SNMPv3 context", devvar_name="CHECK_IFSTATUS_SECNAME"),
+            hm_classes.MCParameter("-c", "context", "", "SNMPv3 context name (default is empty string)", devvar_name="CHECK_IFSTATUS_CONTEXT"),
+            hm_classes.MCParameter("-A", "authpass", "", "authentication password (cleartext ascii or localized key in hex with 0x prefix generated by using 'snmpkey' utility auth password and authEngineID", devvar_name="CHECK_IFSTATUS_SECLEVEL"),
+            hm_classes.MCParameter("-a", "authproto", "SHA1", "Authentication protocol (MD5 or SHA1)", devvar_name="CHECK_IFOPERSTATUS_AUTHPROTO"),
+            hm_classes.MCParameter("-X", "privpass", "", "privacy password (cleartext ascii or localized key in hex with 0x prefix generated by using 'snmpkey' utility privacy password and authEngineID", devvar_name="CHECK_IFSTATUS_PRIVPASS"),
+            hm_classes.MCParameter("-P", "privproto", "AES", "privacy protocol (DES or AES; default: AES)", devvar_name="CHECK_IFSTATUS_PRIVPROTO"),
+            hm_classes.MCParameter("-x", "exclude", "", "A comma separated list of ifType values that should be excluded from the report (default for an empty list is PPP(23).", devvar_name="CHECK_IFSTATUS_EXCLUDE"),
+            hm_classes.MCParameter("-p", "port", 161, "SNMP port (default 161)", devvar_name="CHECK_IFSTATUS_PORT"),
+            hm_classes.MCParameter("-n", "unused_ports_by_name", "", "A comma separated list of ifDescr values that should be excluded from the report (default is an empty exclusion list).", devvar_name="CHECK_IFSTATUS_UNUSED_BY_NAME"),
+            hm_classes.MCParameter("-u", "unused_ports", "", "A comma separated list of ifIndex values that should be excluded from the report (default is an empty exclusion list).", devvar_name="CHECK_IFSTATUS_UNUSED_PORTS"),
+            hm_classes.MCParameter("-M", "maximsgsize", "", "Max message size - useful only for v1 or v2c", devvar_name="CHECK_IFSTATUS_MSGSIZE"),
+            hm_classes.MCParameter("-t", "timeout", 15, "seconds before the plugin times out (default=15)", devvar_name="CHECK_IFSTATUS_TIMEOUT"),
+        )
+        ports = hm_classes.MCPortList(
+            hm_classes.MCPort(HMIPProtocolEnum.udp, 161),
+        )
+
+class check_ircd_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        check_instance = DynamicCheckServer.native
+        required_access = HMAccessClassEnum.level0
+        uuid = "f577874c-4ac0-429c-8862-28c521a52d55"
+        description = "Perl Check IRCD plugin for monitoring"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-H", "hostname", "", "Name or IP address of host to check", macro_name="$HOSTADDRESS$"),
+            hm_classes.MCParameter("-w", "warning", 50, "Number of connected users which generates a warning state (Default: 50)", devvar_name="CHECK_IRCD_WARN"),
+            hm_classes.MCParameter("-w", "critical", 100, "Number of connected users which generates a critical state (Default: 100)", devvar_name="CHECK_IRCD_CRIT"),
+            hm_classes.MCParameter("-p", "port", 6667, "Port that the ircd daemon is running on <host> (Default: 6667)", devvar_name="CHECK_IRCD_PORT"),
+        )
+        ports = hm_classes.MCPortList(
+            hm_classes.MCPort(HMIPProtocolEnum.tcp, 6667),
+        )
+
+class check_log_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        check_instance = DynamicCheckServer.native
+        required_access = HMAccessClassEnum.level0
+        uuid = "df17a328-2336-4b44-80b4-1721cda86327"
+        description = "Log file pattern detector plugin for monitoring"
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-F", "logfile", "", "Logfile to be scanned", devvar_name="CHECK_LOG_FILE"),
+            hm_classes.MCParameter("-O", "oldlog", "", "Where to save copy of the log file from the previous", devvar_name="CHECK_LOG_OLDFILE"),
+            hm_classes.MCParameter("-q", "query", "", "Scan log for this pattern", devvar_name="CHECK_LOG_QUERY"),
+        )
+
+class check_mrtgtraf_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        check_instance = DynamicCheckServer.native
+        required_access = HMAccessClassEnum.level0
+        uuid = "c254af78-5bc9-4560-866a-f4fd678c4ba1"
+        description = "Check the incoming/outgoing transfer rates of a router, switch, etc recorded in an MRTG log."
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-F", "filename", "", "File to read log from", devvar_name="CHECK_MRTGTRAF_FILE"),
+            hm_classes.MCParameter("-e", "expires", "", "Minutes after which log expires", devvar_name="CHECK_MRTGTRAF_EXPIRES"),
+            hm_classes.MCParameter("-a", "aggregation", "MAX", "Should we check average(AVG) or maximum(MAX) values?", devvar_name="CHECK_MRTGTRAG_AGGR"),
+            hm_classes.MCParameter("-w", "warning", "", "Warning threshold pair <incoming>,<outgoing>", devvar_name="CHECK_MRTGTRAF_WARN"),
+            hm_classes.MCParameter("-c", "critical", "", "Critical threshold pair <incoming>,<outgoing>", devvar_name="CHECK_MRTGTRAF_CRIT"),
+        )
+
