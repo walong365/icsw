@@ -635,7 +635,7 @@ class check_ups_command(hm_classes.MonitoringCommand):
         check_instance = DynamicCheckServer.native
         required_access = HMAccessClassEnum.level0
         uuid = "38ba3903-5f0e-4fc2-bb41-ddb5bb9b9533"
-        description = ""
+        description = "This plugin tests the UPS service on the specified host. Network UPS Tools from www.networkupstools.org must be running for this plugin to work."
         parameters = hm_classes.MCParameters(
             hm_classes.MCParameter("-H", "hostname", "", "Host name, IP Address, or unix socket (must be an absolute path)", macro_name="$HOSTADDRESS$"),
             hm_classes.MCParameter("-p", "port", 3493, "Port number (default: 3493)", devvar_name="CHECK_UPS_PORT"),
@@ -644,4 +644,25 @@ class check_ups_command(hm_classes.MonitoringCommand):
             hm_classes.MCParameter("-t", "timeout", 10, "Seconds before connection times out (default: 10)", devvar_name="CHECK_UPS_TIMEOUT"),
             hm_classes.MCParameter("-w", "warning", "", "Response time to result in warning status (seconds)", devvar_name="CHECK_UPS_WARN"),
             hm_classes.MCParameter("-c", "critical", "", "Response time to result in critical status (seconds)", devvar_name="CHECK_UPS_CRIT"),
+        )
+
+class check_nt_command(hm_classes.MonitoringCommand):
+    class Meta:
+        required_platform = PlatformSystemTypeEnum.ANY
+        check_instance = DynamicCheckServer.native
+        required_access = HMAccessClassEnum.level0
+        uuid = "727e369f-9a1f-489c-870c-462ff7384594"
+        description = "This plugin collects data from the NSClient service running on a Windows NT/2000/XP/2003 server."
+        parameters = hm_classes.MCParameters(
+            hm_classes.MCParameter("-H", "hostname", "", "Name of the host to check", macro_name="$HOSTADDRESS$"),
+            hm_classes.MCParameter("-p", "port", 1248, "Optional port number (default: 1248)", devvar_name="CHECK_NT_PORT"),
+            hm_classes.MCParameter("-s", "secret", "", "Password needed for the request", devvar_name="CHECK_NT_SECRET"),
+            hm_classes.MCParameter("-w", "warning", "", "Threshold which will result in a warning status", devvar_name="CHECK_NT_WARN"),
+            hm_classes.MCParameter("-c", "critical", "", "Threshold which will result in a critical status", devvar_name="CHECK_NT_CRIT"),
+            hm_classes.MCParameter("-t", "timeout", 10, "Seconds before connection times out (default: 10)", devvar_name="CHECK_NT_TIMEOUT"),
+            hm_classes.MCParameter("-v", "variable", "", "Variable to check", devvar_name="CHECK_NT_VARIABLE"),
+            hm_classes.MCParameter("-l", "params", "", "Parameters passed to specified check", devvar_name="CHECK_NT_PARAMS"),
+        )
+        ports = hm_classes.MCPortList(
+            hm_classes.MCPort(HMIPProtocolEnum.tcp, 1248),
         )
