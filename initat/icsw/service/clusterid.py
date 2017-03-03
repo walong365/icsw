@@ -19,7 +19,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" return ClusterID if DB is present """
+""" return ClusterID or ClusterName if DB is present and properly set up """
 
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store
@@ -50,13 +50,17 @@ def get_safe_cluster_var(var_name, default=None):
             except:
                 pass
             else:
-                from initat.cluster.backbone.models import device_variable
-                if var_name == "name":
-                    var_value = device_variable.objects.get_cluster_name(default)
-                elif var_name == "id":
-                    var_value = device_variable.objects.get_cluster_id(default)
-                else:
-                    var_value = "unknown attribute '{}'".format(var_name)
+                try:
+                    from initat.cluster.backbone.models import device_variable
+                    if var_name == "name":
+                        var_value = device_variable.objects.get_cluster_name(default)
+                    elif var_name == "id":
+                        var_value = device_variable.objects.get_cluster_id(default)
+                    else:
+                        var_value = "unknown attribute '{}'".format(var_name)
+                except:
+                    # may be improperly configured or something similar
+                    var_value = default
     return var_value
 
 
