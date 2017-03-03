@@ -18,14 +18,14 @@
 
 """ interpret PCI layout """
 
+import codecs
 import os
 import re
 import struct
-import codecs
 
 from lxml.builder import E
 
-from initat.tools import server_command
+from . import server_command
 
 
 def get_pci_dicts(fname=None):

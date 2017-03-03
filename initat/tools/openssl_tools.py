@@ -26,7 +26,7 @@ import tarfile
 import tempfile
 from collections import OrderedDict
 
-from initat.tools import logging_tools, process_tools
+from . import logging_tools, process_tools
 
 _KEYS = ["CN", "C", "ST", "O", "emailAddress"]
 

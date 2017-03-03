@@ -21,7 +21,7 @@ import subprocess
 import os
 import re
 
-from initat.tools import logging_tools, process_tools
+from . import logging_tools, process_tools
 
 
 class uuid_label_struct(dict):
@@ -36,7 +36,9 @@ class uuid_label_struct(dict):
                 if _line.count(":"):
                     part, _rest = _line.split(":", 1)
                     _dict = dict([_part.split("=", 1) for _part in _rest.strip().split()])
-                    _dict = {key: value[1:-1] if value.startswith('"') else value for key, value in _dict.items()}
+                    _dict = {
+                        key: value[1:-1] if value.startswith('"') else value for key, value in _dict.items()
+                    }
                     _dict["part"] = part
                     for key in set(_dict) & {"UUID"}:
                         self[_dict[key]] = _dict
@@ -76,7 +78,9 @@ class lvm_object(dict):
     def build_xml(self, builder):
         cur_el = builder(self.lv_type, **self._get_xml_attributes())
         if "mount_options" in self:
-            cur_el.append(builder("mount_options", **self._get_xml_attributes(self["mount_options"])))
+            cur_el.append(
+                builder("mount_options", **self._get_xml_attributes(self["mount_options"]))
+            )
         return cur_el
 
     def _get_xml_attributes(self, src_obj=None):
@@ -138,7 +142,9 @@ class multipath_struct(object):
                 result_list = []
                 prev_re, all_parsed = (None, True)
                 for line in cur_out.split("\n"):
-                    re_line = [(re_name, cur_re.match(line).groupdict()) for re_name, cur_re in re_dict.items() if cur_re.match(line)]
+                    re_line = [
+                        (re_name, cur_re.match(line).groupdict()) for re_name, cur_re in re_dict.items() if cur_re.match(line)
+                    ]
                     if re_line:
                         re_type, re_obj = re_line[0]
                         # check for correct order
@@ -259,7 +265,9 @@ class lvm_struct(object):
                     com = "{} --separator \; --units b -o {}".format(bin_path, ",".join(options))
                     c_stat, c_out = subprocess.getstatusoutput(com)
                     if not c_stat:
-                        lines = [line.strip() for line in c_out.split("\n") if line.strip() and line.count(";") >= num_sep / 2]
+                        lines = [
+                            line.strip() for line in c_out.split("\n") if line.strip() and line.count(";") >= num_sep / 2
+                        ]
                         if lines:
                             header = lines.pop(0)
                             remove_semic = header.endswith(";")
@@ -295,11 +303,17 @@ class lvm_struct(object):
         }
 
     def generate_xml_dict(self, builder):
-        lvm_el = builder("lvm_config",
-                         version="2",
-                         lvm_present="1" if self.lvm_present else "0")
+        lvm_el = builder(
+            "lvm_config",
+            version="2",
+            lvm_present="1" if self.lvm_present else "0"
+        )
         for m_key, val_list in self.lv_dict.items():
-            sub_struct = builder("lvm_{}".format(m_key), lvm_type=m_key, entities="{:d}".format(len(val_list)))
+            sub_struct = builder(
+                "lvm_{}".format(m_key),
+                lvm_type=m_key,
+                entities="{:d}".format(len(val_list))
+            )
             lvm_el.append(sub_struct)
             for _el_key, element in val_list.items():
                 sub_struct.append(element.build_xml(builder))
@@ -334,8 +348,10 @@ class lvm_struct(object):
             vg_stuff = self.lv_dict.get("vg", {})[vg_name]
             _vg_extent_size = vg_stuff["extent_size"]
             _vg_extent_count = vg_stuff["extent_count"]
-            vg_info[vg_name] = (self._get_size_str(vg_stuff["size"]),
-                                self._get_size_str(vg_stuff["free"]))
+            vg_info[vg_name] = (
+                self._get_size_str(vg_stuff["size"]),
+                self._get_size_str(vg_stuff["free"])
+            )
         lv_names = sorted(self.lv_dict.get("lv", {}).keys())
         lv_info = {}
         for lv_name in lv_names:
@@ -345,51 +361,72 @@ class lvm_struct(object):
             lv_info.setdefault(vg_name, []).append("{}{} ({})".format(
                 lv_name,
                 lv_stuff["attr"][5] == "o" and "[open]" or "",
-                self._get_size_str(lv_size)))
+                self._get_size_str(lv_size))
+            )
             # print "*", lv_name, vg_stuff["name"], vg_extent_size, vg_extent_count, vg_size, lv_extents
         if short:
             ret_info = []
             for vg_name in vg_names:
-                ret_info.append("{} ({}, {} free, {}: {})".format(
-                    vg_name,
-                    vg_info[vg_name][0],
-                    vg_info[vg_name][1],
-                    logging_tools.get_plural("LV", len(lv_info.get(vg_name, []))),
-                    ", ".join(lv_info.get(vg_name, [])) or "NONE"))
+                ret_info.append(
+                    "{} ({}, {} free, {}: {})".format(
+                        vg_name,
+                        vg_info[vg_name][0],
+                        vg_info[vg_name][1],
+                        logging_tools.get_plural("LV", len(lv_info.get(vg_name, []))),
+                        ", ".join(lv_info.get(vg_name, [])) or "NONE"
+                    )
+                )
             return "{}: {}".format(
                 logging_tools.get_plural("VG", len(ret_info)),
-                "; ".join(ret_info))
+                "; ".join(ret_info)
+            )
         else:
             ret_info = logging_tools.NewFormList()
             for vg_name in vg_names:
-                ret_info.append([
-                    logging_tools.form_entry("VG", header="type"),
-                    logging_tools.form_entry(vg_name, header="name"),
-                    logging_tools.form_entry_right(vg_info[vg_name][0], header="size"),
-                    logging_tools.form_entry_right(vg_info[vg_name][1], header="free"),
-                    logging_tools.form_entry("", header="options"),
-                ])
+                ret_info.append(
+                    [
+                        logging_tools.form_entry("VG", header="type"),
+                        logging_tools.form_entry(vg_name, header="name"),
+                        logging_tools.form_entry_right(vg_info[vg_name][0], header="size"),
+                        logging_tools.form_entry_right(vg_info[vg_name][1], header="free"),
+                        logging_tools.form_entry("", header="options"),
+                    ]
+                )
                 for lv_name in lv_names:
                     lv_stuff = self.lv_dict.get("lv", {})[lv_name]
                     if lv_stuff["vg_name"] == vg_name:
-                        ret_info.append([
-                            logging_tools.form_entry("  LV", header="type"),
-                            logging_tools.form_entry(lv_name, header="name"),
-                            logging_tools.form_entry_right(self._get_size_str(lv_stuff["size"]), header="size"),
-                            logging_tools.form_entry(""),
-                            logging_tools.form_entry(lv_stuff["attr"]),
-                        ])
+                        ret_info.append(
+                            [
+                                logging_tools.form_entry("  LV", header="type"),
+                                logging_tools.form_entry(lv_name, header="name"),
+                                logging_tools.form_entry_right(self._get_size_str(lv_stuff["size"]), header="size"),
+                                logging_tools.form_entry(""),
+                                logging_tools.form_entry(lv_stuff["attr"]),
+                            ]
+                        )
             return str(ret_info)
 
     def __repr__(self):
         order_list = ["pv", "vg", "lv"]
         ret_a = [
             "{}:".format(
-                ", ".join(["{}".format(logging_tools.get_plural(k, len(list(self.lv_dict.get(k, {}).keys())))) for k in order_list])
+                ", ".join(
+                    [
+                        "{}".format(
+                            logging_tools.get_plural(k, len(list(self.lv_dict.get(k, {}).keys())))
+                        ) for k in order_list
+                    ]
+                )
             )
         ]
         for ol in order_list:
-            ret_a.append("\n".join([str(x) for x in list(self.lv_dict.get(ol, {}).values())]))
+            ret_a.append(
+                "\n".join(
+                    [
+                        str(x) for x in list(self.lv_dict.get(ol, {}).values())
+                    ]
+                )
+            )
         return "\n".join(ret_a)
 
 
