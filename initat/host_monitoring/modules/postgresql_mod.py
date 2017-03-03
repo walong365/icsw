@@ -128,12 +128,15 @@ class ModuleDefinition(hm_classes.MonitoringModule):
     def init_module(self):
         self.activity = None
         self.pg_settings = None
-        self.enabled = True
         if psycopg2:
             self.read_config()
+            self.psycopg2_found = True
         else:
-            self.log("disabled postgres monitoring because no psycopg2 module available", logging_tools.LOG_LEVEL_ERROR)
-            self.enabled = False
+            self.log(
+                "disabled postgres monitoring because no psycopg2 module available",
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            self.psycopg2_found = False
         # pprint.pprint(self.query("SELECT * FROM pg_stat_activity;"))
 
     def read_config(self):
@@ -142,13 +145,24 @@ class ModuleDefinition(hm_classes.MonitoringModule):
             sample_name,
         ):
             self.log("Creating sample config store")
-            sample_cs = config_store.ConfigStore(sample_name, log_com=self.log, read=False, access_mode=config_store.AccessModeEnum.LOCAL, fix_access_mode=True)
+            sample_cs = config_store.ConfigStore(
+                sample_name,
+                log_com=self.log,
+                read=False,
+                access_mode=config_store.AccessModeEnum.LOCAL,
+                fix_access_mode=True
+            )
             for _key, _value in DEFAULTS.items():
                 sample_cs[_key] = _value
             sample_cs.write()
         if config_store.ConfigStore.exists(CS_NAME):
             try:
-                self.config = config_store.ConfigStore(CS_NAME, log_com=self.log, access_mode=config_store.AccessModeEnum.LOCAL, fix_access_mode=True)
+                self.config = config_store.ConfigStore(
+                    CS_NAME,
+                    log_com=self.log,
+                    access_mode=config_store.AccessModeEnum.LOCAL,
+                    fix_access_mode=True
+                )
             except:
                 self.log(
                     "disabled postgres machvector-feed because error parsing config store {}: {}".format(
@@ -199,7 +213,9 @@ class ModuleDefinition(hm_classes.MonitoringModule):
             else:
                 headers = [_entry.name for _entry in cursor.description]
                 _res = [
-                    {key: value for key, value in zip(headers, row)} for row in cursor.fetchall()
+                    {
+                        key: value for key, value in zip(headers, row)
+                    } for row in cursor.fetchall()
                 ]
             cursor.close()
         return _res
@@ -209,7 +225,7 @@ class ModuleDefinition(hm_classes.MonitoringModule):
         self.overview = PGOverview(mv)
 
     def update_machine_vector(self, mv):
-        if not self.enabled or not self.config:
+        if not self.psycopg2_found or not self.config:
             return
         activity = {}
         _activity_res = self.query("SELECT * FROM pg_stat_activity;")
@@ -236,7 +252,9 @@ class ModuleDefinition(hm_classes.MonitoringModule):
                 del self.databases[rem_db]
         _settings = self.query("SELECT * FROM pg_settings;")
         if _settings is not None:
-            self.pg_settings = {_entry["name"]: _entry for _entry in _settings}
+            self.pg_settings = {
+                _entry["name"]: _entry for _entry in _settings
+            }
             self.overview.feed(
                 self.pg_settings,
                 activity,
@@ -254,6 +272,7 @@ class postgresql_connection_info_command(hm_classes.MonitoringCommand):
         description = "show current postgresql connection info"
 
     def __call__(self, srv_com, cur_ns):
+        srv_com["psycopg2_found"] = "1" if self.module.psycopg2_found else "0"
         if self.module.pg_settings:
             srv_com["max_connections"] = int(self.module.pg_settings["max_connections"]["setting"])
             srv_com["used_connections"] = sum([len(_val) for _val in self.module.activity.values()])
@@ -277,4 +296,11 @@ class postgresql_connection_info_command(hm_classes.MonitoringCommand):
                 _perc,
             )
         else:
-            return limits.mon_STATE_CRITICAL, "no connection info found"
+            if "psycopg2_found" in srv_com:
+                _found = True if int(srv_com["*psycopg2_found"]) else False
+                if _found:
+                    return limits.mon_STATE_CRITICAL, "no connection info found"
+                else:
+                    return limits.mon_STATE_CRITICAL, "psycopg2 module not found"
+            else:
+                return limits.mon_STATE_CRITICAL, "no connection info found"
