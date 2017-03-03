@@ -1,12 +1,12 @@
 {
   "devDependencies": {
-    "coffee-script": "^1.12.3",
+    "coffee-script": "^1.12.4",
     "connect-modrewrite": "^0.10.1",
     "del": "^2.2.2",
     "gulp": "github:gulpjs/gulp#4.0",
     "gulp-angular-filesort": "^1.1.1",
     "gulp-bg": "0.0.8",
-    "gulp-cache": "^0.4.5",
+    "gulp-cache": "^0.4.6",
     "gulp-cached": "^1.1.1",
     "gulp-ccr-parallel": "^0.1.0",
     "gulp-changed": "^2.0.0",
@@ -39,7 +39,7 @@
     "gulp-uglify": "^2.0.1",
     "gulp-wait": "0.0.2",
     "gulp-webserver": "^0.9.1",
-    "http-proxy-middleware": "^0.17.3",
+    "http-proxy-middleware": "^0.17.4",
     "run-sequence": "^1.1.5",
     "typescript": "^2.2.1",
     "gulp-angular-architecture-graph": "^0.0.5"

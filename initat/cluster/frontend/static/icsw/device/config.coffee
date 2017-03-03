@@ -367,9 +367,6 @@ angular.module(
             # flags: local selected, local config selected
             ls = row_el.idx in dev.$local_mon_selected
             lc = if _.intersection(row_el.config_rel, dev.$local_conf_selected).length then true else false
-            # meta selected, meta config selected
-            ms = row_el.idx in @md_lut[dev.idx].$local_mon_selected
-            mc = if _.intersection(row_el.config_rel, @md_lut[dev.idx].$local_conf_selected).length then true else false
             # console.log ls, lc, ms, mc
             if dev.is_meta_device
                 # meta checks
@@ -391,6 +388,9 @@ angular.module(
                     _cls = ""
                     _icon = "fa-minus"
             else
+                # meta selected, meta config selected
+                ms = row_el.idx in @md_lut[dev.idx].$local_mon_selected
+                mc = if _.intersection(row_el.config_rel, @md_lut[dev.idx].$local_conf_selected).length then true else false
                 if ls and ms
                     console.error "both ls and ms are set for #{row_el.name} (#{row_el.description}) and #{dev.full_name}"
                 if lc and mc

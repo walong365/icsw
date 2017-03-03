@@ -1120,7 +1120,7 @@ config_module = angular.module(
 (
     $q,
 ) ->
-    {div, svg, g, path, title, text, ellipse} = React.DOM
+    {div, svg, g, path, title, text, ellipse, rect} = React.DOM
     return React.createClass(
         displayName: "icswMonCheckDevDependencyDendrogramReact"
         propTypes: {
@@ -1132,25 +1132,76 @@ config_module = angular.module(
             _path_idx = 0
             _node_idx = 0
 
+            get_state = (data) ->
+                # config set
+                c_s = ("config" in data.value) or ("config_meta" in data.value)
+                # monitoring check set
+                m_s = ("check" in data.value) or ("check_meta" in data.value)
+                # to correct info string at devicegroup level
+                if data.type == "dg"
+                    cur_level = "DeviceGroup"
+                else
+                    cur_level = "Device"
+                if c_s
+                    if "config_meta" in data.value
+                        c_level = "DeviceGroup"
+                    else
+                        c_level = cur_level
+                if m_s
+                    if "check_meta" in data.value
+                        m_level = "DeviceGroup"
+                    else
+                        m_level = cur_level
+                if c_s and m_s
+                    # both set, exclude
+                    state = {
+                        color: "#fff0f0"
+                        cause: "Set via config at #{c_level} but excluded via MonCheckCommand at #{m_level}"
+                        active: false
+                    }
+                else if c_s
+                    # only config set
+                    state = {
+                        color: "#f0fff0"
+                        cause: "Set via Config at #{c_level}"
+                        active: true
+                    }
+                else if m_s
+                    # only mon_check set
+                    state = {
+                        color: "#f0f0ff"
+                        cause: "Set via MonCheckCommand at #{m_level}"
+                        active: true
+                    }
+                else
+                    state = {
+                        color: "#ffffff"
+                        cause: "Nothing set"
+                        active: false
+                    }
+                return state
+
             get_node = (node) =>
                 data = node.data
                 icsw_data = data.data
                 if data.id == "root"
                     # root node
-                    _color = "#e0ffe0"
+                    state = {
+                        color: "#e0e0e0"
+                    }
                     _text = "Check"
                     _title = "Check #{icsw_data.name}"
                 else if icsw_data.type == "dg"
                     # device group
-                    _color = "#ffe0e0"
+                    # determine color
+                    state = get_state(icsw_data)
                     _text = icsw_data.$$device.$$non_md_name
-                    _title = "DeviceGroup #{icsw_data.$$device.$$print_name}"
+                    _title = "DeviceGroup #{icsw_data.$$device.$$print_name}, #{state.cause}"
                 else
                     # device
-                    _color = "#f0f0ff"
+                    state = get_state(icsw_data)
                     _text = icsw_data.$$device.name
-                    _title = "Device #{icsw_data.$$device.$$print_name}"
-                console.log node.data
+                    _title = "Device #{icsw_data.$$device.$$print_name}, #{state.cause}"
 
                 _node_idx++
                 return g(
@@ -1164,13 +1215,15 @@ config_module = angular.module(
                         }
                         _title
                     )
-                    ellipse(
+                    rect(
                         {
-                            key: "el"
-                            rx: 80
-                            ry: 35
+                            key: "rect"
+                            x: -80
+                            width: 2 * 80
+                            y: -20
+                            height: 2 * 20
                             className: "svg-ls-cd-node"
-                            style: {fill: _color}
+                            style: {fill: state.color}
                         }
                     )
                     text(
@@ -1201,7 +1254,6 @@ config_module = angular.module(
                 else
                     return null
 
-            console.log "d=", @props.data
             data = @props.data
             _svg = svg(
                 {
