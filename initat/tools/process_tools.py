@@ -204,6 +204,7 @@ def get_socket(context, r_type, **kwargs):
         ("SNDTIMEO", 500),
         ("BACKLOG", kwargs.get("backlog", 1)),
         ("TCP_KEEPALIVE", 1),
+        ("TCP_KEEPALIVE_CNT", 5),
         ("TCP_KEEPALIVE_IDLE", 300),
         ("RECONNECT_IVL_MAX", kwargs.get("reconnect_ivl_max", 500)),
         ("RECONNECT_IVL", kwargs.get("reconnect_ivl", 200)),

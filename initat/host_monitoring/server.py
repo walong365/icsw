@@ -75,7 +75,6 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         self._check_ksm()
         self._check_huge()
         self._change_socket_settings()
-        self._init_network_sockets()
         self.register_exception("int_error", self._sigint)
         self.register_exception("term_error", self._sigint)
         self.register_exception("hup_error", self._sighup)
@@ -83,13 +82,13 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         self.__callbacks, self.__callback_queue = ({}, {})
         self.register_func("register_callback", self._register_callback)
         self.register_func("callback_result", self._callback_result)
-        if HMInotifyProcess and not self.CC.CS["hm.disable.inotify.process"]:
-            self.add_process(HMInotifyProcess("inotify", busy_loop=True, kill_myself=True), start=True)
         self.CC.log_config()
         self.__debug = self.global_config["DEBUG"]
         if "hm.access_class" not in self.CC.CS:
             self.CC.CS["hm.access_class"] = HMAccessClassEnum.level0.value
             self.CC.CS.write()
+        if HMInotifyProcess and not self.CC.CS["hm.disable.inotify.process"]:
+            self.add_process(HMInotifyProcess("inotify", busy_loop=True, kill_myself=True), start=True)
         from initat.host_monitoring.modules import local_mc
         self.__delayed = []
         # Datastructure for managing long running checks:
@@ -97,7 +96,9 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         self.long_running_checks = []
         if not self.COM_open(local_mc, global_config["VERBOSE"], True):
             self._sigint("error init")
+        self._init_network_sockets()
         self.register_timer(self._check_cpu_usage, 30, instant=True)
+        self.register_timer(self._check_connection, 15, instant=True)
         # self["exit_requested"] = True
 
     def long_running_checks_timer(self):
@@ -485,58 +486,71 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 if dst_func:
                     self.register_poller(cur_socket, zmq.POLLIN, dst_func)
 
-    def _unbind_external(self):
-        # experimental code, not used right now
+    def _close_external(self):
         for bind_ip, sock in zip(sorted(self.zmq_id_dict.keys()), self.socket_list):
-            # print "unbind", bind_ip
-            sock.unbind(
-                "tcp://{}:{:d}".format(
-                    bind_ip,
-                    self.global_config["COMMAND_PORT"]
-                )
+            _conn_str = "tcp://{}:{:d}".format(
+                bind_ip,
+                self.global_config["COMMAND_PORT"]
             )
+            sock.unbind(_conn_str)
+            self.unregister_poller(sock, zmq.POLLIN)
+            sock.setsockopt(zmq.LINGER, 0)
             sock.close()
             del sock
-            # print "done"
-            # time.sleep(1)
+        self.socket_list = []
 
     def _bind_external(self):
         self.socket_list = []
         for bind_ip in sorted(self.zmq_id_dict.keys()):
             bind_0mq_id, is_virtual = self.zmq_id_dict[bind_ip]
-            client = self.zmq_context.socket(zmq.ROUTER)
-            client.setsockopt(zmq.LINGER, 0)
-            client.setsockopt_string(zmq.IDENTITY, bind_0mq_id)
-            client.setsockopt(zmq.SNDHWM, 16)
-            client.setsockopt(zmq.RCVHWM, 16)
-            client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
-            client.setsockopt(zmq.RECONNECT_IVL, 200)
-            client.setsockopt(zmq.TCP_KEEPALIVE, 1)
-            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+            client = process_tools.get_socket(
+                self.zmq_context,
+                "ROUTER",
+                linger=0,
+                identity=bind_0mq_id,
+                sndhwm=16,
+                rcvhwm=16,
+            )
             _conn_str = "tcp://{}:{:d}".format(
                 bind_ip,
                 self.global_config["COMMAND_PORT"]
             )
-            try:
-                client.bind(_conn_str)
-            except zmq.ZMQError:
-                self.log(
-                    "error binding to {}{}: {}".format(
-                        "virtual " if is_virtual else "",
-                        _conn_str,
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_CRITICAL
+            _retry = True
+            _count = 0
+            while _retry:
+                _count += 1
+                try:
+                    client.bind(_conn_str)
+                except zmq.ZMQError:
+                    self.log(
+                        "error binding to {}{}: {}".format(
+                            "virtual " if is_virtual else "",
+                            _conn_str,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
+                    if not is_virtual:
+                        _count += 1
+                        time.sleep(1)
+                    else:
+                        client.close()
+                else:
+                    _retry = False
+                    self.register_poller(client, zmq.POLLIN, self._recv_command)
+                    self.socket_list.append(client)
+            self.log(
+                "bind to {} sucessfull after {}".format(
+                    _conn_str,
+                    logging_tools.get_plural("iteration", _count)
                 )
-                if not is_virtual:
-                    raise
-                client.close()
-            else:
-                self.register_poller(client, zmq.POLLIN, self._recv_command)
-                self.socket_list.append(client)
+            )
+        # dict, id -> latest connection
+        self.connection_info_dict = {}
 
     def register_vector_receiver(self, t_func):
-        self.register_poller(self.vector_socket, zmq.POLLIN, t_func)
+        pass
+        # self.register_poller(self.vector_socket, zmq.POLLIN, t_func)
 
     def _recv_ext_command(self, zmq_sock):
         data = zmq_sock.recv_unicode()
@@ -572,6 +586,25 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         self.result_socket.send_unicode(src_id, zmq.SNDMORE)
         self.result_socket.send_unicode(str(srv_com))
 
+    def _check_connection(self):
+        TIMEOUT_SECS = 60
+        cur_time = time.time()
+        mis_ids = [key for key, value in self.connection_info_dict.items() if abs(value - cur_time) > TIMEOUT_SECS]
+        if mis_ids:
+            self.log(
+                "no messages received from {} after {}: {}".format(
+                    logging_tools.get_plural("peer", len(mis_ids)),
+                    logging_tools.get_diff_time_str(TIMEOUT_SECS),
+                    ", ".join(mis_ids),
+                ),
+                logging_tools.LOG_LEVEL_WARN,
+            )
+            self.log("closing external sockets")
+            self._close_external()
+            time.sleep(0.2)
+            self.log("opening external sockets")
+            self._bind_external()
+
     def _check_cpu_usage(self):
         if self.check_cpu_usage():
             self.log("excess cpu usage detected", logging_tools.LOG_LEVEL_CRITICAL)
@@ -580,11 +613,12 @@ class ServerCode(ICSWBasePool, HMHRMixin):
 
     def _recv_command(self, zmq_sock):
         # print [(key, value.pid) for key, value in self.processes.iteritems()]
-        data = [zmq_sock.recv()]
+        data = [zmq_sock.recv_unicode()]
         while zmq_sock.getsockopt(zmq.RCVMORE):
             data.append(zmq_sock.recv())
         if len(data) == 2:
             src_id = data.pop(0)
+            self.connection_info_dict[src_id] = time.time()
             data = data[0]
             srv_com = server_command.srv_command(source=data)
             srv_com["client_version"] = VERSION_STRING
@@ -707,7 +741,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         if self.__debug:
             self.log(info_str, log_level)
         srv_com.update_source()
-        zmq_sock.send(src_id, zmq.SNDMORE)
+        zmq_sock.send_unicode(src_id, zmq.SNDMORE)
         zmq_sock.send_string(str(srv_com))
         del srv_com
 
@@ -767,8 +801,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         self.COM_close()
 
     def loop_post(self):
-        for cur_sock in self.socket_list:
-            cur_sock.close()
+        self._close_external()
         self.vector_socket.close()
         self.command_socket.close()
         self.result_socket.close()
