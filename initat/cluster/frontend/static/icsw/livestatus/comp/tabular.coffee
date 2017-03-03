@@ -304,11 +304,11 @@ angular.module(
 [
     "$scope", "DeviceOverviewService", "$q", "icswSimpleAjaxCall", "ICSW_URLS",
     "ICSW_SIGNALS", "icswComplexModalService", "$templateCache", "$compile", "blockUI",
-    "icswIcingaCmdTools", "$rootScope", "icswTooltipTools",
+    "icswIcingaCmdTools", "$rootScope", "icswTooltipTools", "icswConfigMonTableService",
 (
     $scope, DeviceOverviewService, $q, icswSimpleAjaxCall, ICSW_URLS,
     ICSW_SIGNALS, icswComplexModalService, $templateCache, $compile, $blockUI,
-    icswIcingaCmdTools, $rootScope, icswTooltipTools,
+    icswIcingaCmdTools, $rootScope, icswTooltipTools, icswConfigMonTableService,
 ) ->
     $scope.show_column = {}
     $scope.struct = {
@@ -434,6 +434,16 @@ angular.module(
         $event.stopPropagation()
         $event.preventDefault()
         DeviceOverviewService($event, [dev_check.$$icswDevice])
+
+    $scope.show_mon_check = ($event, mon_check) ->
+        $event.stopPropagation()
+        $event.preventDefault()
+        icswConfigMonTableService.create_or_edit(
+            $event
+            false
+            mon_check
+            true # do not allow config changes
+        )
 
     $scope.pagination_changed = (pag) ->
         if not $scope.struct.focus_device

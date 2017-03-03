@@ -108,7 +108,12 @@
             icsw-value=""
             ng-click="focus_device($event, service.$$host_mon_result)"
         ></icsw-tools-button>
-        <button type="button" class="btn btn-xs" ng-class="service.$$host_mon_result.$$data.btnStateClass" ng-click="show_device($event, service.$$host_mon_result)">
+        <button
+            type="button"
+            class="btn btn-xs"
+            ng-class="service.$$host_mon_result.$$data.btnStateClass"
+            ng-click="show_device($event, service.$$host_mon_result)"
+        >
             {{ service.$$host_mon_result.display_name }}
         </button>
     </td>
@@ -127,7 +132,20 @@
     <td ng-show="show_column.State" ng-class="service.$$data.tdStateClass">
         <span ng-show="show_column.StateType" class="badge">{{ service.$$icswStateTypeString|capitalize }}</span>
     </td>
-    <td class="text-nowrap" ng-show="show_column.Description">{{ service.display_name }}</td>
+    <td class="text-nowrap" ng-show="show_column.Description">
+        <button
+            type="button"
+            class="btn btn-xs"
+            ng-show="service.$$check"
+            ng-class="service.$$data.btnStateClass"
+            ng-click="show_mon_check($event, service.$$check)"
+        >
+            {{ service.display_name }}
+        </button>
+        <span ng-show="!service.$$check">
+            {{ service.display_name }}
+        </span>
+    </td>
     <td class="text-nowrap text-center" ng-show="show_column.MonFlags">
         <span class="label" ng-class="service.$$icswAttemptLabelClass" title="attempt info">{{ service.$$icswAttemptInfo }}</span>
         <span class="fa fa-pencil" title="acknowledgment status" ng-show="service.acknowledged == '1'"></span>

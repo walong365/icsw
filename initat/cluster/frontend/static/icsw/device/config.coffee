@@ -831,7 +831,6 @@ angular.module(
                                     icswMonitoringBasicTreeService.load("config_edit").then(
                                         (mon_tree) =>
                                             icswConfigMonTableService.create_or_edit(
-                                                $rootScope
                                                 event
                                                 false
                                                 @props.rowElement

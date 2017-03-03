@@ -421,8 +421,8 @@ config_module = angular.module(
                 blockUI.stop()
         )
 
-    $scope.create_mon_check_command = (event, config) ->
-        icswConfigMonTableService.create_or_edit($scope, event, true, config, true)
+    $scope.create_mon_check_command = ($event, config) ->
+        icswConfigMonTableService.create_or_edit($event, true, config, true)
 
     $scope.create_var = ($event, config, var_type) ->
         icswConfigVarListService.create_or_edit($event, true, config, $scope.config_tree, var_type)
@@ -787,17 +787,17 @@ config_module = angular.module(
     "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster",
     "icswTools", "Restangular", "ICSW_URLS",  "$q", "blockUI", "icswFormTools",
     "icswConfigTreeService", "icswMonitoringBasicTreeService", "icswMonCheckCommandBackup",
-    "icswComplexModalService", "$compile", "$templateCache",
+    "icswComplexModalService", "$compile", "$templateCache", "$rootScope",
 (
     icswSimpleAjaxCall, icswToolsSimpleModalService, toaster,
     icswTools, Restangular, ICSW_URLS, $q, blockUI, icswFormTools,
     icswConfigTreeService, icswMonitoringBasicTreeService, icswMonCheckCommandBackup,
-    icswComplexModalService, $compile, $templateCache
+    icswComplexModalService, $compile, $templateCache, $rootScope,
 ) ->
-    create_or_edit = (scope, event, create, obj_or_parent, fixed_config) ->
+    create_or_edit = (event, create, obj_or_parent, fixed_config) ->
         # may also be called from assign config checks, scope is then the $rootScope
         r_defer = $q.defer()
-        sub_scope = scope.$new(true)
+        sub_scope = $rootScope.$new(true)
         sub_scope.fixed_config = fixed_config
         if create
             if obj_or_parent.$$config_tree?
@@ -943,7 +943,7 @@ config_module = angular.module(
         )
         return r_defer.promise
 
-    delete_entry = (scope, event, mon) ->
+    delete_entry = (event, mon) ->
         defer = $q.defer()
         icswToolsSimpleModalService("Really delete MonCheckCommand #{mon.name} ?").then(
             () =>
@@ -1086,20 +1086,19 @@ config_module = angular.module(
             _fixed = true
         else
             _fixed = false
-        icswConfigMonTableService.create_or_edit($scope, $event, false, obj, _fixed).then(
+        icswConfigMonTableService.create_or_edit($event, false, obj, _fixed).then(
             (fin) ->
                 $scope.struct.redraw_table++
         )
 
     $scope.delete = ($event, obj) ->
-        icswConfigMonTableService.delete($scope, $event, obj).then(
+        icswConfigMonTableService.delete($event, obj).then(
             (done) ->
                 _update_filter()
         )
 
     $scope.create_mon_check = ($event) =>
         icswConfigMonTableService.create_or_edit(
-            $scope
             $event
             true
             $scope.struct.config_tree

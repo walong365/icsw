@@ -70,6 +70,7 @@ monitoring_basic_module = angular.module(
             for entry in ELIST
                 if entry not in NON_LUT_LIST
                     @["#{entry}_lut"] = _.keyBy(@["#{entry}_list"], "idx")
+            @mc_by_uuid = _.keyBy(@mon_check_command_list, "uuid")
             # update icinga_command (commands to be sent to icinga)
             for entry in @icinga_command_list
                 entry.$$arguments = (_val.name for _val in entry.args)

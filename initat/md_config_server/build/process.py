@@ -1492,6 +1492,7 @@ class BuildProcess(
                 act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
             # TODO: POSSIBLY remove this in favor of service_description
             act_serv["_device_pk"] = host.pk
+            act_serv["_mc_uuid"] = s_check.uuid
             if s_check.servicegroup_names:
                 act_serv["_cat_pks"] = s_check.servicegroup_pks
                 act_serv["servicegroups"] = s_check.servicegroup_names

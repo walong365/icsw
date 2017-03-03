@@ -30,6 +30,12 @@ angular.module(
     icswLivestatusPipeRegisterProvider.add("icswLivestatusDataSource", false)
 ]).service("icswSaltMonitoringResultService", [() ->
 
+    # basic monitoring tree, to be set from external
+    monitoring_tree = undefined
+
+    set_monitoring_tree = (tree) ->
+        monitoring_tree = tree
+
     _get_diff_time = (ts) ->
         if parseInt(ts)
             return moment.unix(ts).fromNow(true)
@@ -471,6 +477,15 @@ angular.module(
             _sanitize_entry(entry)
             # service state class
             salt_service_state(entry)
+            # resolve check
+            if monitoring_tree? and entry.custom_variables? and entry.custom_variables.mc_uuid?
+                _uuid = entry.custom_variables.mc_uuid
+                if _uuid of monitoring_tree.mc_by_uuid
+                    entry.$$check = monitoring_tree.mc_by_uuid[_uuid]
+                else
+                    entry.$$check = null
+            else
+                entry.$$check = null
             # resolve categories
             if entry.custom_variables.cat_pks?
                 entry.$$icswCategories = (cat_tree.lut[_cat].name for _cat in entry.custom_variables.cat_pks).join(", ")
@@ -573,6 +588,9 @@ angular.module(
         salt_hist_service_data: salt_hist_service_data
 
         get_worst_state: get_worst_state
+
+        # set monitoring tree
+        set_monitoring_tree: set_monitoring_tree
     }
 ]).service("icswMonitoringResult",
 [
@@ -810,11 +828,11 @@ angular.module(
 [
     "ICSW_URLS", "$interval", "$timeout", "icswSimpleAjaxCall", "$q", "icswDeviceTreeService",
     "icswMonitoringResult", "icswSaltMonitoringResultService", "icswCategoryTreeService", "icswTools",
-    "Restangular",
+    "Restangular", "icswMonitoringBasicTreeService",
 (
     ICSW_URLS, $interval, $timeout, icswSimpleAjaxCall, $q, icswDeviceTreeService,
     icswMonitoringResult, icswSaltMonitoringResultService, icswCategoryTreeService, icswTools,
-    Restangular,
+    Restangular, icswMonitoringBasicTreeService,
 ) ->
     # dict: device.idx -> watcher ids
     watch_dict = {}
@@ -830,6 +848,7 @@ angular.module(
     # for lookup
     device_tree = undefined
     category_tree = undefined
+    monitoring_tree = undefined
 
     watchers_present = () ->
         # whether any watchers are present
@@ -895,6 +914,9 @@ angular.module(
                 _waiters.push(
                     icswCategoryTreeService.load("liveStatusDataService")
                 )
+                _waiters.push(
+                    icswMonitoringBasicTreeService.load("liveStatusDataService")
+                )
             else
                 _load_device_tree = false
             $q.allSettled(
@@ -905,6 +927,9 @@ angular.module(
                         # DeviceTreeService was requested
                         device_tree = result[1].value
                         category_tree = result[2].value
+                        monitoring_tree = result[3].value
+                        icswSaltMonitoringResultService.set_monitoring_tree(monitoring_tree)
+
                     service_entries = []
                     host_entries = []
                     mon_cat_counters = {}

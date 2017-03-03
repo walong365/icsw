@@ -142,7 +142,7 @@ class LiveSocket(object):
                     if _kv.isdigit():
                         _kv = int(_kv)
                     _loc_dict[_lkey].append(_kv)
-                    if _lkey in {"check_command_pk", "device_pk", "uuid"}:
+                    if _lkey in {"check_command_pk", "device_pk", "uuid", "mc_uuid"}:
                         _loc_dict[_lkey] = _loc_dict[_lkey][0]
             # print value, _loc_dict
             return _loc_dict
