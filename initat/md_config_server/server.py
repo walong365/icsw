@@ -39,6 +39,7 @@ from .dynconfig import DynConfigProcess
 from .icinga_log_reader.log_reader import IcingaLogReader
 from .kpi import KpiProcess
 from .syncer import SyncerProcess, RemoteServer
+from .special_commands import check_special_commands
 
 
 @server_mixins.RemoteCallProcess
@@ -114,6 +115,8 @@ class ServerProcess(
         self._check_notification()
         # sync master uuid
         self.__sync_master_uuid = None
+        # check special command
+        check_special_commands(self.log)
         # from mixins
         self.VCM_check_md_version(global_config)
         self._init_network_sockets()

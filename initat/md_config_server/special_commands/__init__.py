@@ -24,14 +24,12 @@ from django.db.models import Q
 
 from initat.cluster.backbone.models import SpecialGroupsEnum
 from initat.cluster.backbone.models.functions import get_related_models
-from initat.md_config_server.special_commands.base import SpecialBase, ArgTemplate
-from initat.md_config_server.special_commands.instances import dynamic_checks
 from initat.tools import logging_tools
-from .struct import DynamicCheckServer, DynamicCheckAction
+from .base import SpecialBase, ArgTemplate
+from .instances import dynamic_checks
 
 __all__ = [
     "check_special_commands",
-    # "META_SUB_REVERSE_LUT",
 ]
 
 # 'global' dict to map names from instances of Meta-subcommands (for instance snmp instance names)
@@ -41,13 +39,28 @@ __all__ = [
 
 def check_special_commands(log_com):
 
-    from initat.cluster.backbone.models import mon_check_command_special
+    from initat.cluster.backbone.models import mon_check_command
 
     def _check_db_for_mccs(log_com, meta, parent=None):
         try:
-            cur_mccs = mon_check_command_special.objects.get(Q(name=meta.database_name))
-        except mon_check_command_special.DoesNotExist:
-            cur_mccs = mon_check_command_special(name=meta.database_name)
+            cur_mccs = mon_check_command.objects.get(Q(uuid=meta.uuid))
+        except mon_check_command.DoesNotExist:
+            try:
+                cur_mccs = mon_check_command.objects.get(Q(uuid=meta.database_name))
+            except:
+                # not found
+                cur_mccs = None
+        if cur_mccs is None:
+            log_com("Creating new special mon_check_command")
+            cur_mccs = mon_check_command(
+                name=meta.database_name,
+                is_special_command=True,
+                uuid=meta.uuid,
+            )
+        # print("*", cur_mccs)
+        # except mon_check_command_special.DoesNotExist:
+        #
+        #     cur_mccs = mon_check_command_special(name=meta.database_name)
         # also used in snmp/struct.py and generic_net_handler.py
         for attr_name in {"command_line", "info", "description", "is_active", "meta", "identifier"}:
             setattr(cur_mccs, attr_name, getattr(meta, attr_name, ""))
@@ -75,11 +88,15 @@ def check_special_commands(log_com):
                     sub_mccs = _check_db_for_mccs(log_com, _sub_com.Meta, parent=cur_mccs)
                     mccs_dict[sub_mccs.name] = sub_mccs
                     pks_found.add(sub_mccs.pk)
-    print(mccs_dict)
+    # print(mccs_dict)
     # delete stale
     if True:   # False:
-        del_mccs = mon_check_command_special.objects.exclude(pk__in=pks_found)
-        if del_mccs:
+        del_mccs = mon_check_command.objects.exclude(
+            Q(pk__in=pks_found)
+        ).filter(
+            Q(is_special_command=True)
+        )
+        if del_mccs.count():
             for _del_mcc in del_mccs:
                 log_com(
                     "trying to remove stale {}...".format(
