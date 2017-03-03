@@ -24,6 +24,7 @@ import os
 import pwd
 import stat
 import sys
+import codecs
 
 from initat.tools import logging_tools, process_tools
 
@@ -363,7 +364,7 @@ class build_package(object):
             # spec_contents.extend(["%%dir \"%s\"" % (act_dir) for act_dir in dest_dirs])
         for _src_dir, dest_dir in content.get_types("d"):
             spec_contents.append("%dir {}".format(dest_dir))
-        open(self.spec_file_name, "wb").write("\n".join(spec_contents + [""]))
+        codecs.open(self.spec_file_name, mode="wb", encoding='utf-8').write("\n".join(spec_contents + [""]))
         # spec_file.close()
 
     def _str_rep(self, in_str):
