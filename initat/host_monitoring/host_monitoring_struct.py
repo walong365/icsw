@@ -25,13 +25,11 @@
 import argparse
 import subprocess
 import time
-from enum import Enum
-import pprint
 
 import zmq
 
-from initat.tools import logging_tools, process_tools, server_command
 from initat.debug import ICSW_DEBUG_MODE
+from initat.tools import logging_tools, process_tools, server_command
 from . import limits
 from .constants import MAX_0MQ_CONNECTION_ERRORS, HostConnectionReTriggerEnum
 
@@ -328,6 +326,13 @@ class HostConnection(object):
                         to_mes.timeout,
                     )
                 )
+            self.log(
+                "{} in timeout state, closing connection".format(
+                    logging_tools.get_plural("message", len(to_messages)),
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            self._close()
         if self.resend_queue:
             for host_mes in self.resend_queue:
                 self.send(host_mes, None)
@@ -653,6 +658,7 @@ class HostMessage(object):
 
     def check_timeout(self, cur_time, to_value):
         # check for timeout, to_value is a global timeout from the HostConnection object
+        # print("M", self.get_runtime(cur_time), min(to_value, self.timeout))
         _timeout = self.get_runtime(cur_time) > min(to_value, self.timeout)
         return _timeout
 

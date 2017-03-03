@@ -492,7 +492,8 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 bind_ip,
                 self.global_config["COMMAND_PORT"]
             )
-            sock.unbind(_conn_str)
+            # no need to unbind
+            # sock.unbind(_conn_str)
             self.unregister_poller(sock, zmq.POLLIN)
             sock.setsockopt(zmq.LINGER, 0)
             sock.close()
