@@ -44,7 +44,13 @@ class Parser(object):
             nargs="*",
             help="additional arguments",
         )
-        parser.add_argument("-t", help="set timeout [%(default)d]", default=10, type=int, dest="timeout")
+        parser.add_argument(
+            "-t",
+            help="set timeout [%(default)d]",
+            default=10,
+            type=int,
+            dest="timeout"
+        )
         parser.add_argument(
             "-p",
             help="port [%(default)d]",
@@ -62,7 +68,6 @@ class Parser(object):
         parser.add_argument("--key-filter", help="set filter for key name [%(default)s]", type=str, default=".*", dest="key_filter")
         parser.add_argument("--mode", type=str, default="tcp", choices=["tcp", "memcached"], help="set access type [%(default)s]")
         parser.add_argument("--mc-addr", type=str, default="127.0.0.1", help="address of memcached [%(default)s]")
-        print("*", [x.name for x in icswServiceEnum])
         parser.add_argument(
             "--mc-port",
             type=int,

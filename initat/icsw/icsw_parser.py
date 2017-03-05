@@ -50,10 +50,6 @@ import argparse
 from initat.icsw.service.instance import InstanceXML
 
 
-class ParseError(BaseException):
-    pass
-
-
 SC_MAPPING = {
     "service": ".service.service_parser",
     "user": ".user.user_parser",
@@ -68,7 +64,6 @@ SC_MAPPING = {
     "relay": ".relay.relay_parser",
     "cstore": ".cstore.cstore_parser",
     "logwatch": ".logwatch.logwatch_parser",
-    # "server": ".service.service_parser",
     "config": ".config.config_parser",
     "call": ".call.call_parser",
     "debug": ".debug.debug_parser",
@@ -77,24 +72,19 @@ SC_MAPPING = {
 
 class ICSWParser(object):
     def __init__(self):
-        for _pn in ["_parser", "_dummy_parser"]:
-            _parser = argparse.ArgumentParser(prog="icsw", add_help="dummy" not in _pn)
-            _parser.add_argument("--logger", type=str, default="stdout", choices=["stdout", "logserver"], help="choose logging facility")
-            _parser.add_argument("--logall", default=False, action="store_true", help="log all (no just warning / error), [%(default)s]")
-            _parser.add_argument("--nodb", default=False, action="store_true", help="disable usage of database [%(default)s]")
-            setattr(self, _pn, _parser)
-        # catch args for dummy parser
-        self._dummy_parser.add_argument("args", nargs="*")
-        self.fully_populated = False
+        _parser = argparse.ArgumentParser(prog="icsw", add_help=True)
+        _parser.add_argument("--logger", type=str, default="stdout", choices=["stdout", "logserver"], help="choose logging facility")
+        _parser.add_argument("--logall", default=False, action="store_true", help="log all (no just warning / error), [%(default)s]")
+        _parser.add_argument("--nodb", default=False, action="store_true", help="disable usage of database [%(default)s]")
+        self._parser = _parser
         self.sub_parser = self._parser.add_subparsers(help="sub-command help")
-        self._added_parsers = set()
 
     def _add_parser(self, subcom, server_mode, inst_xml):
-        if subcom in self._added_parsers:
-            return
-        self._added_parsers.add(subcom)
         try:
-            _parser_module = importlib.import_module(SC_MAPPING[subcom], package="initat.icsw")
+            _parser_module = importlib.import_module(
+                SC_MAPPING[subcom],
+                package="initat.icsw"
+            )
         except:
             sub_parser = None
         else:
@@ -110,60 +100,17 @@ class ICSWParser(object):
         return sub_parser
 
     def _populate_all(self, server_mode, inst_xml):
-        if not self.fully_populated:
-            self.fully_populated = True
-            for _sc in sorted(SC_MAPPING.keys()):
-                self._add_parser(_sc, server_mode, inst_xml)
-
-    def _error(self, *args, **kwargs):
-        raise ParseError(args[0])
+        for _sc in sorted(SC_MAPPING.keys()):
+            self._add_parser(_sc, server_mode, inst_xml)
 
     def parse_args(self):
         # set constants
         server_mode = True if django is not None else False
         inst_xml = InstanceXML(quiet=True)
-        # parse args
-        _known, _unknown = self._dummy_parser.parse_known_args()
-        # try to parse subcommand
-        if _known.args and _known.args[0] in SC_MAPPING:
-            _sc = _known.args[0]
-            # add subcommand parser
-            sub_parser = self._add_parser(_sc, server_mode, inst_xml)
-        else:
-            # error parsing, fully populate the parser
-            self._populate_all(server_mode, inst_xml)
-            sub_parser = None
-        # are there any unknown args ?
-        # monkey-patch parser
-        _prev_error = self._parser.error
-        self._parser.error = self._error
-        try:
-            _known, _unknown = self._parser.parse_known_args()
-        except ParseError as pe:
-            # error in parseing known args
-            _known, _unknown = ("error", "error")
-        finally:
-            self._parser.error = _prev_error
-        if _unknown and sub_parser is None:
-            # unknown arguments found but unable to parse known argument, so
-            # fully populate the parser and make a full scan
-            self._populate_all(server_mode, inst_xml)
-            opt_ns = self._parser.parse_args()
-        else:
-            _prev_error = self._parser.error
-            self._parser.error = self._error
-            try:
-                opt_ns = self._parser.parse_args()
-            except ParseError as pe:
-                print(
-                    "ParseError: {}\n".format(
-                        str(pe)
-                    )
-                )
-                sub_parser.print_help()
-                sys.exit(2)
-            finally:
-                self._parser.error = _prev_error
+        self._populate_all(server_mode, inst_xml)
+        # print(dir(self.sub_parser))
+        # print(self.sub_parser._get_subactions)
+        opt_ns = self._parser.parse_args()
         if not hasattr(opt_ns, "execute"):
             self._parser.print_help()
             sys.exit(0)

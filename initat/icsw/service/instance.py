@@ -286,7 +286,7 @@ class InstanceXML(object):
 
     def resolve_enum(self, enum):
         if enum.name not in self.__enum_lut:
-            print("**", self.__enum_lut.keys())
+            print("**", enum.name, self.__enum_lut.keys())
         return self.__enum_lut[enum.name]
 
     # utility functions
