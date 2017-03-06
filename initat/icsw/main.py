@@ -150,7 +150,8 @@ def main():
         r = ipshell.run_cell(
             " ".join(
                 _args + opts.args
-            )
+            ),
+            silent=True
         )
         sys.exit(r.result)
     else:
