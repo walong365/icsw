@@ -147,11 +147,12 @@ def main():
             _args.append("--logall")
         _args.append("--logger")
         _args.append(opts.logger)
-        ipshell.run_cell(
+        r = ipshell.run_cell(
             " ".join(
                 _args + opts.args
             )
         )
+        sys.exit(r.result)
     else:
         if not opts.quiet:
             print("done")

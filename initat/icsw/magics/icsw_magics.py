@@ -45,7 +45,10 @@ class ICSWMagics(Magics):
             self.server_mode,
             parameter_s.split(),
         )
-        opts.execute(opts)
+        try:
+            opts.execute(opts)
+        except SystemExit as e:
+            return e.code
 
 
 def apt_completers(self, event):
