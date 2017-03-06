@@ -94,19 +94,23 @@ class Parser(object):
         _act.add_argument("--uuid", type=str, default="", help="new UUID [%(default)s], empty the generate a new one")
 
     def _execute(self, opt_ns):
-        if opt_ns.childcom in ["changeuuid"]:
-            from .changeuuid import main
-            main(opt_ns)
-        elif opt_ns.childcom in ["info", "graphdump", "removegraph", "syslog"]:
-            from .main import dev_main
-            dev_main(opt_ns)
-        elif opt_ns.childcom in ["csvmodify"]:
-            from .csvmodify import main
-            if not opt_ns.file:
-                raise ValueError("no CSV-file given")
-            elif not os.path.exists(opt_ns.file):
-                raise SystemError("CSV-File '{}' does not exist".format(opt_ns.file))
-            main(opt_ns)
+        if "childcom" not in opt_ns:
+            print("Please select a valid command")
         else:
-            from .main import overview_main
-            overview_main(opt_ns)
+            # print("childcom" in opt_ns)
+            if opt_ns.childcom in ["changeuuid"]:
+                from .changeuuid import main
+                main(opt_ns)
+            elif opt_ns.childcom in ["info", "graphdump", "removegraph", "syslog"]:
+                from .main import dev_main
+                dev_main(opt_ns)
+            elif opt_ns.childcom in ["csvmodify"]:
+                from .csvmodify import main
+                if not opt_ns.file:
+                    raise ValueError("no CSV-file given")
+                elif not os.path.exists(opt_ns.file):
+                    raise SystemError("CSV-File '{}' does not exist".format(opt_ns.file))
+                main(opt_ns)
+            else:
+                from .main import overview_main
+                overview_main(opt_ns)

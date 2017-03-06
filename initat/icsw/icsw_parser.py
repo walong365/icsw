@@ -103,14 +103,17 @@ class ICSWParser(object):
         for _sc in sorted(SC_MAPPING.keys()):
             self._add_parser(_sc, server_mode, inst_xml)
 
-    def parse_args(self):
+    def parse_args(self, arg_list=None):
         # set constants
         server_mode = True if django is not None else False
         inst_xml = InstanceXML(quiet=True)
         self._populate_all(server_mode, inst_xml)
         # print(dir(self.sub_parser))
         # print(self.sub_parser._get_subactions)
-        opt_ns = self._parser.parse_args()
+        if arg_list is None:
+            opt_ns = self._parser.parse_args()
+        else:
+            opt_ns = self._parser.parse_args(args=arg_list)
         if not hasattr(opt_ns, "execute"):
             self._parser.print_help()
             sys.exit(0)

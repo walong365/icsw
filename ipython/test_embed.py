@@ -16,22 +16,24 @@ The code in this file is deliberately extra-verbose, meant for learning."""
 
 # Try running this code both at the command line and from inside IPython (with
 # %run example-embed.py)
+print("Starting icsw")
+import sys
+
+sys.path.insert(0, "/usr/local/share/home/local/development/git/icsw/")
+
+import os
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+print("django.setup()")
+import django
+django.setup()
+
 from traitlets.config import Config
 
 import icsw_magics
 
-# from IPython.config.loader import Config
-try:
-    get_ipython
-except NameError:
-    # normally called
-    nested = 0
-    cfg = Config()
-else:
-    print("Running nested copies of IPython.")
-    print("The prompts for the nested copy have been modified")
-    nested = 1
-    cfg = Config()
+cfg = Config()
 
 # First import the embeddable shell class
 from IPython.terminal.embed import InteractiveShellEmbed
@@ -40,14 +42,8 @@ from IPython.terminal.embed import InteractiveShellEmbed
 # string with options exactly as you would type them if you were starting
 # IPython at the system command line. Any parameters you want to define for
 # configuration can thus be specified here.
-ipshell = InteractiveShellEmbed(
-    config=cfg,
-    banner1="starting icsw",
-    exit_msg="bye.",
-)
+ipshell = InteractiveShellEmbed()
 from IPython.terminal.prompts import Prompts, Token
-# import pprint
-# pprint.pprint(dir(ipshell))
 
 
 class my_prompt(Prompts):
@@ -67,54 +63,36 @@ ipshell.set_hook(
     icsw_magics.apt_completers,
     str_key='icsw'
 )
-# Make a second instance, you can have as many as you want.
-cfg2 = cfg.copy()
-# prompt_config = cfg2.PromptManager
-# prompt_config.in_template = 'In2<\\#>: '
-# if not nested:
-#    prompt_config.in_template = 'In2<\\#>: '
-#    prompt_config.in2_template = '   .\\D.: '
-#    prompt_config.out_template = 'Out<\\#>: '
 
-# ipshell2 = InteractiveShellEmbed(
-#    config=cfg,
-#    banner1='Second IPython instance.'
-# )
+if False:
+    class st2(object):
+        def __dir__(self):
+            return ["bla", "blo"]
 
-# print('\nHello. This is printed from the main controller program.\n')
+        def abc(self, var):
+            print("*", var)
 
-# print("use %autocall 2 to ease usage")
+        def _ipython_key_completions_(self):
+            return ["x", "y"]
 
+        def bla(self):
+            return "bla"
 
-class st2(object):
-    def __dir__(self):
-        return ["bla", "blo"]
-
-    def abc(self, var):
-        print("*", var)
-
-    def _ipython_key_completions_(self):
-        return ["x", "y"]
-
-    def bla(self):
-        return "bla"
-
-    def __call__(self, *args):
-        return "C", args
+        def __call__(self, *args):
+            return "C", args
 
 
-xicsw = st2()
+    xicsw = st2()
 
 
 def stest(sthg):
     print("stest:", sthg)
 
 ipshell.register_magics(icsw_magics.ICSWMagics)
-# You can then call ipshell() anywhere you need it (with an optional
-# message):
+
+ipshell.run_cell(" ".join(sys.argv[1:]))
+from initat.cluster.backbone.models import device, device_group
 ipshell(
-    "Welcome to the CORVUS interactive shell"
-    # 'Hit Ctrl-D to exit interpreter and continue program.\n'
-    "Note that if you use %kill_embedded, you can fully deactivate\n"
-    "This embedded instance so it will never turn on again",
+    header="starting icsw",
 )
+#ipshell.mainloop(display_banner="OK")
