@@ -602,8 +602,24 @@ class Migration(migrations.Migration):
         if not opts.no_superuser:
             su_pw = generate_password(size=8)
             os.environ["ICSW_DJANGO_SUPERUSER_PASSWORD"] = su_pw
-            print("creating superuser {} (email {}, password is {})".format(opts.superuser, opts.email, su_pw))
-            call_manage(["createsuperuser", "--login={}".format(opts.superuser), "--email={}".format(opts.email), "--noinput"])
+            print(
+                "creating superuser {} (email {}, password is {})".format(
+                    opts.superuser,
+                    opts.email,
+                    su_pw
+                )
+            )
+            call_manage(
+                [
+                    "createsuperuser", "--login={}".format(
+                        opts.superuser
+                    ),
+                    "--email={}".format(
+                        opts.email
+                    ),
+                    "--noinput"
+                ]
+            )
             del os.environ["ICSW_DJANGO_SUPERUSER_PASSWORD"]
         call_manage(["createinitialrevisions"])
         call_update_funcs(opts)
@@ -627,7 +643,10 @@ def migrate_db(opts):
                     # call_manage(["migrate", _sync_app, "--noinput"])
             subprocess.check_output("/opt/cluster/sbin/pis/check_content_stores_server.py")
             auth_app_name = "django.contrib.auth"
-            for _app in ["backbone", auth_app_name, "reversion", "django.contrib.admin", "django.contrib.sessions", "django.contrib.sites"]:
+            for _app in [
+                "backbone", auth_app_name, "reversion", "django.contrib.admin",
+                "django.contrib.sessions", "django.contrib.sites"
+            ]:
                 if app_has_unapplied_migrations(_app.split(".")[-1]):
                     print("migrating app {}".format(_app))
                     success = apply_migration(_app)

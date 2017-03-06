@@ -38,6 +38,19 @@ def main():
         help="be quiet [%(default)s]"
     )
     my_parser.add_argument(
+        "--logger",
+        type=str,
+        default="stdout",
+        choices=["stdout", "logserver"],
+        help="choose logging facility [%(default)s]"
+    )
+    my_parser.add_argument(
+        "--logall",
+        default=False,
+        action="store_true",
+        help="log all (no just warning / error), [%(default)s]"
+    )
+    my_parser.add_argument(
         "args",
         nargs=argparse.REMAINDER,
         help="commands to execute"
@@ -127,11 +140,16 @@ def main():
     ipshell.register_magics(icsw_magics.ICSWMagics(ipshell, True if django else False))
 
     if opts.args:
+        if "--" in opts.args:
+            opts.args.remove("--")
+        _args = ["icsw"]
+        if opts.logall:
+            _args.append("--logall")
+        _args.append("--logger")
+        _args.append(opts.logger)
         ipshell.run_cell(
             " ".join(
-                [
-                    "icsw"
-                ] + opts.args
+                _args + opts.args
             )
         )
     else:

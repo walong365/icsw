@@ -58,7 +58,7 @@ class ICSWParser(object):
         _parser = argparse.ArgumentParser(prog="icsw", add_help=True)
         _parser.add_argument("--logger", type=str, default="stdout", choices=["stdout", "logserver"], help="choose logging facility")
         _parser.add_argument("--logall", default=False, action="store_true", help="log all (no just warning / error), [%(default)s]")
-        _parser.add_argument("--nodb", default=False, action="store_true", help="disable usage of database [%(default)s]")
+        # _parser.add_argument("--nodb", default=False, action="store_true", help="disable usage of database [%(default)s]")
         self._parser = _parser
         self.sub_parser = self._parser.add_subparsers(help="sub-command help")
 
