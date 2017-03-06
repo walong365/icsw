@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import optparse
+import argparse
 import os
 import os.path
 import shutil
@@ -27,15 +27,23 @@ import sys
 import tarfile
 import tempfile
 import time
+import codecs
 
 from initat.tools import cpu_database, logging_tools, rpm_build_tools, compile_tools
 
-LIBGOTO_VERSION_FILE = "/opt/cluster/share/libgoto_versions"
+LIBGOTO_VERSION_FILE = "/opt/cluster/share/source-versions/libgoto_versions"
 
 
-class my_opt_parser(optparse.OptionParser):
+class my_opt_parser(argparse.ArgumentParser):
+    class check_nr_of_threads(argparse.Action):
+        def __init__(self, option_strings, dest, nargs=None, const=None, default=None, type=None, choices=None, required=False, help=None, metavar=None):
+            super(my_opt_parser.check_nr_of_threads, self).__init__(option_strings=option_strings, dest=dest, nargs=nargs, const=const, default=default, type=type, choices=choices, required=required, help=help, metavar=metavar)
+
+        def __call__(self, parser, namespace, values, option_string=None):
+            setattr(namespace, self.dest, values)
+
     def __init__(self):
-        optparse.OptionParser.__init__(self)
+        argparse.ArgumentParser.__init__(self, description="compile BLAS implementation")
         # check for 64-bit Machine
         self.mach_arch = os.uname()[4]
         if self.mach_arch in ["x86_64", "ia64"]:
@@ -66,43 +74,38 @@ class my_opt_parser(optparse.OptionParser):
             ]
         )
         self.cpu_id = cpu_database.get_cpuid()
-        self.add_option(
-            "-f", type="choice", dest="fcompiler", help="Set Fortran Compiler, options are %s [%%default]" % (", ".join(fc_choices)),
+        self.add_argument(
+            "-f", type=str, dest="fcompiler", help="Set Fortran Compiler, options are %s [%%(default)s]" % (", ".join(fc_choices)),
             action="store", choices=fc_choices, default="GFORTRAN")
-        self.add_option(
-            "-c", type="choice", dest="ccompiler", help="Set C Compiler, options are %s [%%default]" % (", ".join(cc_choices)), action="store",
+        self.add_argument(
+            "-c", type=str, dest="ccompiler", help="Set C Compiler, options are %s [%%(default)s]" % (", ".join(cc_choices)), action="store",
             choices=cc_choices, default="GNU")
-        self.add_option("-a", type="string", dest="archiver", help="Set archiver [%default]", default="ar")
-        self.add_option("-l", type="string", dest="linker", help="Set linker [%default]", default="ld")
-        self.add_option(
-            "--fpath", type="string", dest="fcompiler_path", help="Compiler Base Path, for instance /opt/intel/compiler-9.1 [%default]",
+        self.add_argument("-a", type=str, dest="archiver", help="Set archiver [%(default)s]", default="ar")
+        self.add_argument("-l", type=str, dest="linker", help="Set linker [%(default)s]", default="ld")
+        self.add_argument(
+            "--fpath", type=str, dest="fcompiler_path", help="Compiler Base Path, for instance /opt/intel/compiler-9.1 [%(default)s]",
             default="NOT_SET")
-        self.add_option("--cflags", type="string", dest="compiler_flags", help="Set flags for COMPILER [%default]", default="")
-        self.add_option("--fflags", type="string", dest="compiler_f77_flags", help="Set flags for COMPILER_F77 [%default]", default="")
-        self.add_option("--nosmp", dest="smp", help="Disable SMP option [%default]", action="store_false", default=True)
-        self.add_option(
-            "--maxthreads", type="int", dest="max_threads", action="callback", callback=self._check_max_threads,
-            help="Set number of threads supported [%default]", default=16)
-        self.add_option("--arch", type="str", dest="arch", help="Set package architecture [%default]", default="")
-        self.add_option(
-            "-g", type="choice", dest="goto_version",
-            help="Choose LibGoto Version, possible values are %s [%%default]" % (", ".join(list(self.version_dict.keys()))), action="store",
+        self.add_argument("--cflags", type=str, dest="compiler_flags", help="Set flags for COMPILER [%(default)s]", default="")
+        self.add_argument("--fflags", type=str, dest="compiler_f77_flags", help="Set flags for COMPILER_F77 [%(default)s]", default="")
+        self.add_argument("--nosmp", dest="smp", help="Disable SMP option [%(default)s]", action="store_false", default=True)
+        self.add_argument("--maxthreads", type=int, dest="max_threads", action=my_opt_parser.check_nr_of_threads, help="Set number of threads supported [%(default)d]", default=16)
+        self.add_argument("--arch", type=str, dest="arch", help="Set package architecture [%(default)s]", default="")
+        self.add_argument(
+            "-g", type=str, dest="goto_version",
+            help="Choose LibGoto Version, possible values are %s [%%(default)s]" % (", ".join(list(self.version_dict.keys()))), action="store",
             choices=list(self.version_dict.keys()),
             default=self.highest_version)
-        self.add_option("-d", type="string", dest="target_dir", help="Sets target directory [%default]", action="store", default=target_dir)
-        self.add_option("--log", dest="include_log", help="Include log of make-command in README [%default]", action="store_true", default=False)
-        self.add_option("-v", dest="verbose", help="Set verbose level [%default]", action="store_true", default=False)
-        self.add_option("--release", dest="release", type="str", help="Set release [%default]", default="1")
+        self.add_argument("-d", type=str, dest="target_dir", help="Sets target directory [%(default)s]", action="store", default=target_dir)
+        self.add_argument("--log", dest="include_log", help="Include log of make-command in README [%(default)s]", action="store_true", default=False)
+        self.add_argument("-v", dest="verbose", help="Set verbose level [%(default)s]", action="store_true", default=False)
+        self.add_argument("--release", dest="release", type=str, help="Set release [%(default)s]", default="1")
         if is_64_bit:
             # add option for 32-bit goto if machine is NOT 32 bit
-            self.add_option("--32", dest="use_64_bit", help="Set 32-Bit Goto [%default]", action="store_false", default=is_64_bit)
-            self.add_option("--if64", dest="use_64_bit_interface", help="Use INTERFACE64 in Makefile [%default]", action="store_true", default=False)
+            self.add_argument("--32", dest="use_64_bit", help="Set 32-Bit Goto [%(default)s]", action="store_false", default=is_64_bit)
+            self.add_argument("--if64", dest="use_64_bit_interface", help="Use INTERFACE64 in Makefile [%(default)s]", action="store_true", default=False)
 
     def parse(self):
-        options, args = self.parse_args()
-        if args:
-            print("Additional arguments found, exiting")
-            sys.exit(0)
+        options = self.parse_args()
         self.options = options
         self._check_compiler_settings()
 
@@ -116,7 +119,7 @@ class my_opt_parser(optparse.OptionParser):
         if os.path.isfile(LIBGOTO_VERSION_FILE):
             version_lines = [line.strip().split() for line in open(LIBGOTO_VERSION_FILE, "r").read().split("\n") if line.strip()]
             self.version_dict = dict([(key, value) for key, value in version_lines])
-            vers_dict = dict([(tuple([part.isdigit() and int(part) or part for part in key.split(".")]), key) for key in list(self.version_dict.keys())])
+            vers_dict = dict([(tuple([part.isdigit() and int(part)+1 or part for part in key.split(".")]), key) for key in list(self.version_dict.keys())])
             vers_keys = sorted(vers_dict.keys())
             self.highest_version = vers_dict[vers_keys[-1]]
         else:
@@ -161,10 +164,12 @@ class my_opt_parser(optparse.OptionParser):
                                   "CXX": "g++",
                                   "F77": "gfortran",
                                   "FC": "gfortran"}
-            stat, out = subprocess.getstatusoutput("gcc --version")
+            #stat, out = subprocess.getstatusoutput("gcc --version")
+            stat, out = subprocess.getstatusoutput("gcc -v")
             if stat:
                 raise ValueError("Cannot get Version from gcc (%d): %s" % (stat, out))
-            self.short_version = out.split("\n")[0].split()[2]
+            #self.short_version = out.split("\n")[0].split()[2]
+            self.short_version = out.split("\n")[-1].split()[2]
             self.compiler_version_dict = {"GCC": out}
         elif self.options.fcompiler == "INTEL":
             if os.path.isdir(self.options.fcompiler_path):
@@ -247,7 +252,7 @@ class build_task(object):
                     break
                 else:
                     if self.verbose:
-                        print(new_lines, end=' ')
+                        print(new_lines.decode(), end=' ')
                     if type(new_lines) is list:
                         self.out_lines.extend(new_lines)
                     else:
@@ -263,6 +268,7 @@ class build_task(object):
 class goto_builder(object):
     def __init__(self, parser):
         self.parser = parser
+        self.dirname = ""
 
     def do_it(self):
         self.compile_ok = False
@@ -295,6 +301,7 @@ class goto_builder(object):
         else:
             print("Extracting tarfile %s ..." % (tar_source), end=' ')
             tar_file = tarfile.open(tar_source, "r")
+            self.dirname = os.path.commonprefix(tar_file.getnames())
             tar_file.extractall(self.tempdir)
             tar_file.close()
             print("done")
@@ -302,7 +309,7 @@ class goto_builder(object):
         return success
 
     def _build_makefile_rule(self):
-        self.orig_rulefile_name = "%s/GotoBLAS/Makefile.rule" % (self.tempdir)
+        self.orig_rulefile_name = "{}/{}/Makefile.rule".format(self.tempdir, self.dirname)
         if not os.path.isfile(self.orig_rulefile_name):
             print("Cannot find %s" % (self.orig_rulefile_name))
             success = False
@@ -331,7 +338,7 @@ class goto_builder(object):
             ] + rule_lines + [
                 "%-12s += %s" % (name, value) for name, value in post_new_rules
             ] + [""]
-            open(self.orig_rulefile_name, "w").write("\n".join(rule_lines))
+            codecs.open(self.orig_rulefile_name, mode="w", encoding='utf-8').write("\n".join(rule_lines))
             success = True
         return success
 
@@ -343,9 +350,9 @@ class goto_builder(object):
         for path_name, path_add_value in self.parser.add_path_dict.items():
             os.environ[path_name] = "%s:%s" % (":".join(path_add_value), os.environ.get(path_name, ""))
         for command, act_dir, time_name in [
-            ("make -j %d" % (num_cores), "%s/GotoBLAS" % (self.tempdir), "make"),
-            ("make so", "%s/GotoBLAS/exports" % (self.tempdir), "make so"),
-            ("make all", "%s/GotoBLAS/test" % (self.tempdir), "make check"),
+            ("make -j {}".format(num_cores), "{}/{}".format(self.tempdir, self.dirname), "make"),
+            ("make so", "{}/{}/exports".format(self.tempdir, self.dirname), "make so"),
+            ("make all", "{}/{}/test".format(self.tempdir, self.dirname), "make check"),
         ]:
             b_task = build_task(
                 info=time_name,
@@ -355,21 +362,25 @@ class goto_builder(object):
             )
             b_task.build()
             self.time_dict[time_name] = b_task.run_time
-            self.log_dict[time_name] = "".join(b_task.out_lines)
+            self.log_dict[time_name] = "".join(map(bytes.decode, b_task.out_lines))
             if b_task.state:
                 print("Something went wrong (%d):" % (b_task.state))
                 if not self.parser.options.verbose:
-                    print("".join(b_task.out_lines))
+                    print("".join(map(bytes.decode, b_task.out_lines)))
                 success = False
             else:
                 print("done, took %s" % (logging_tools.get_diff_time_str(self.time_dict[time_name])))
         os.chdir(act_dir)
         if success:
-            libgoto_static_file_name, libgoto_dynamic_file_name = ("%s/GotoBLAS/libgoto.a" % (self.tempdir),
-                                                                   "/dynamic_not_found")
-            for ent in os.listdir("%s/GotoBLAS" % (self.tempdir)):
-                if ent.endswith(".so"):
-                    libgoto_dynamic_file_name = "%s/GotoBLAS/%s" % (self.tempdir, ent)
+            libgoto_static_file_name = "/static_not_found"
+            libgoto_dynamic_file_name = "/dynamic_not_found"
+            for ent in os.listdir("{}/{}".format(self.tempdir, self.dirname)):
+                fpath = "{}/{}/{}".format(self.tempdir, self.dirname, ent)
+                if ent.endswith(".a") and os.path.isfile(fpath) and not os.path.islink(fpath):
+                    libgoto_static_file_name = fpath
+                if ent.endswith(".so") and os.path.isfile(fpath) and not os.path.islink(fpath):
+                    libgoto_dynamic_file_name = fpath
+                fpath = ""
             if os.path.isfile(libgoto_static_file_name) and os.path.isfile(libgoto_dynamic_file_name):
                 success = True
             else:
@@ -415,28 +426,34 @@ class goto_builder(object):
                 [
                     "Compile logs:"
                 ] + sum([["%s:" % (key)] + self.log_dict[key].split("\n") + [sep_str] for key in list(self.log_dict.keys())], []))
-        libgoto_static_file_name, libgoto_dynamic_file_name = (
-            "%s/GotoBLAS/libgoto.a" % (self.tempdir),
-            "/dynamic_not_found"
-        )
-        open("%s/info" % (self.tempdir), "w").write("\n".join(readme_lines))
-        for ent in os.listdir("%s/GotoBLAS" % (self.tempdir)):
-            if ent.endswith(".so"):
-                libgoto_dynamic_file_name = "%s/GotoBLAS/%s" % (self.tempdir, ent)
+
+        libgoto_static_file_name, libgoto_dynamic_file_name = ("/static_not_found", "/dynamic_not_found")
+        codecs.open("{}/info".format(self.tempdir), "w", encoding='utf-8').write("\n".join(readme_lines))
+        for ent in os.listdir("{}/{}".format(self.tempdir, self.dirname)):
+            fpath = "{}/{}/{}".format(self.tempdir, self.dirname, ent)
+            if ent.endswith(".a") and (os.path.isfile(fpath) and not os.path.islink(fpath)):
+                libgoto_static_file_name = fpath
+            if ent.endswith(".so") and (os.path.isfile(fpath) and not os.path.islink(fpath)):
+                libgoto_dynamic_file_name = fpath
+            fpath = ""
         package_name, package_version, package_release = (
             "libgoto-%s" % (libgoto_info_str),
             self.parser.options.goto_version,
             self.parser.options.release
         )
         # copy libgoto.a
-        open("%s.static" % (libgoto_static_file_name), "w").write(open(libgoto_static_file_name, "r").read())
-        new_p = rpm_build_tools.build_package()
+        codecs.open("{}.static".format(libgoto_static_file_name), "wb").write(open(libgoto_static_file_name, "rb").read())
+        dummy_args = argparse.Namespace(
+            name=package_name,
+            version=package_version,
+            release=package_release,
+            package_group="Libraries/Math",
+            description="BLAS",
+            summary="BLAS Package",
+        )
+        new_p = rpm_build_tools.build_package(dummy_args)
         if self.parser.options.arch:
             new_p["arch"] = self.parser.options.arch
-        new_p["name"] = package_name
-        new_p["version"] = package_version
-        new_p["release"] = package_release
-        new_p["package_group"] = "Libraries/Math"
         new_p["inst_options"] = " -p "
         content = rpm_build_tools.file_content_list(
             [
