@@ -27,23 +27,6 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import sys
 
-if "--nodb" in sys.argv:
-    django = None
-else:
-    try:
-        import django
-        django.setup()
-    except:
-        django = None
-    else:
-        from initat.cluster.backbone import db_tools
-        try:
-            if not db_tools.is_reachable():
-                django = None
-        except:
-            # when installing a newer icsw-client package on a machine with an old icsw-server package
-            django = None
-
 import importlib
 import argparse
 
@@ -103,9 +86,8 @@ class ICSWParser(object):
         for _sc in sorted(SC_MAPPING.keys()):
             self._add_parser(_sc, server_mode, inst_xml)
 
-    def parse_args(self, arg_list=None):
+    def parse_args(self, server_mode, arg_list=None):
         # set constants
-        server_mode = True if django is not None else False
         inst_xml = InstanceXML(quiet=True)
         self._populate_all(server_mode, inst_xml)
         # print(dir(self.sub_parser))
