@@ -19,14 +19,14 @@
 """ classes for building rpm-packages """
 
 import argparse
-import codecs
+import subprocess
 import os
 import pwd
 import stat
-import subprocess
 import sys
+import codecs
 
-from . import logging_tools, process_tools
+from initat.tools import logging_tools, process_tools
 
 SCRIPT_TYPES = ["post", "pre", "postun", "preun"]
 
@@ -377,7 +377,7 @@ class build_package(object):
         first_call = True
         while tgz_files:
             if first_call:
-                tar_com = "tar -cpszf"
+                tar_com = "tar -cpzf"
             else:
                 tar_com = "tar -Apszf"
                 first_call = False
@@ -484,7 +484,7 @@ class file_content_list(object):
                     print("  Absolute Link {} -> {}".format(source_part, link_target))
                     self._add_absolute_link_to_content(source_part, link_target, source_part, dest_part)
                 else:
-                    print("  Relative Link {] -> {}".format(source_part, link_target))
+                    print("  Relative Link {} -> {}".format(source_part, link_target))
                     self._add_relative_link_to_content(source_part, link_target, source_part, dest_part)
             else:
                 source_part = os.path.realpath(source_part)
@@ -577,24 +577,16 @@ class file_content_list(object):
         return path
 
     def _add_file_to_content(self, s_file, s_part, d_part):
-        self.__content_list.append(
-            ("f", self._remove_leading_slash(s_file), os.path.normpath(s_file.replace(s_part, d_part)))
-        )
+        self.__content_list.append(("f", self._remove_leading_slash(s_file), os.path.normpath(s_file.replace(s_part, d_part))))
 
     def _add_dir_to_content(self, d_path, s_part, d_part):
-        self.__content_list.append(
-            ("d", d_path, os.path.normpath(d_path.replace(s_part, d_part)))
-        )
+        self.__content_list.append(("d", d_path, os.path.normpath(d_path.replace(s_part, d_part))))
 
     def _add_absolute_link_to_content(self, link_src, link_dst, s_part, d_part):
-        self.__content_list.append(
-            ("la", os.path.normpath(link_src.replace(s_part, d_part)), link_dst)
-        )
+        self.__content_list.append(("la", os.path.normpath(link_src.replace(s_part, d_part)), link_dst))
 
     def _add_relative_link_to_content(self, link_src, link_dst, s_part, d_part):
-        self.__content_list.append(
-            ("lr", os.path.normpath(link_src), link_dst)
-        )
+        self.__content_list.append(("lr", os.path.normpath(link_src), link_dst))
 
     def _get_file_info(self, f_name):
         return os.stat("/{}".format(f_name))[stat.ST_SIZE]
@@ -602,12 +594,8 @@ class file_content_list(object):
     def show_content(self):
         # print "Passt"
         # return
-        file_dict = {
-            _v[1]: _v[2] for _v in self.__content_list if _v[0] == "f"
-        }
-        dir_dict = {
-            _v[1]: _v[2] for _v in self.__content_list if _v[0] == "d"
-        }
+        file_dict = {_v[1]: _v[2] for _v in self.__content_list if _v[0] == "f"}
+        dir_dict = {_v[1]: _v[2] for _v in self.__content_list if _v[0] == "d"}
         file_keys, dir_keys = (
             sorted(file_dict.keys()),
             sorted(dir_dict.keys())
