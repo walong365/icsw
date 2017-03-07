@@ -41,10 +41,6 @@ menu_module = angular.module(
     $window.$$ICSW_MENU_INSTALLED = true
     $scope.ICSW_URLS = ICSW_URLS
     $scope.cluster_data = undefined
-    icswClusterData.get_data().then(
-        (data) ->
-            $scope.cluster_data = data
-    )
     $scope.struct = {
         # current user
         current_user: undefined
@@ -79,25 +75,23 @@ menu_module = angular.module(
 
     $q.all(
         [
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.MAIN_GET_DOCU_INFO
-                    dataType: "json"
-                }
-            )
+            #icswSimpleAjaxCall(
+            #    {
+            #        url: ICSW_URLS.MAIN_GET_DOCU_INFO
+            #        dataType: "json"
+            #    }
+            #)
             icswUserService.load($scope.$id)
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.MAIN_GET_OVERALL_STYLE
-                    dataType: "json"
-                }
-            )
+            icswClusterData.get_data()
+                (data) ->
+                    $scope.cluster_data = data
         ]
     ).then(
         (data) ->
-            $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
-            $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
-            icswOverallStyle.set(data[2].overall_style)
+            # $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
+            # $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
+            $scope.cluster_data = data[1]
+            icswOverallStyle.set($scope.cluster_data.OVERALL_STYLE)
     )
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
         $scope.struct.current_user = icswUserService.get().user

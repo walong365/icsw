@@ -23,7 +23,6 @@
 """ main views """
 
 import datetime
-import glob
 import json
 import logging
 import os
@@ -74,6 +73,7 @@ class get_cluster_info(View):
             "MODELS_VERSION": settings.ICSW_MODELS_VERSION,
             "GOOGLE_MAPS_KEY": settings.ICSW_GOOGLE_MAPS_KEY,
             "DJANGO_VERSION": ".".join(_vers),
+            "OVERALL_STYLE": settings.ICSW_OVERALL_STYLE,
             "PRODUCT": {
                 "NAME": product.name,
                 "VERSION": VERSION_STRING,
@@ -97,26 +97,14 @@ class get_cluster_info(View):
         return HttpResponse(json.dumps(_info_dict), content_type="application/json")
 
 
-class get_docu_info(View):
-    def post(self, request):
-        HANDBOOK_DIR = "/opt/cluster/share/doc/handbook"
-        _info_dict = {
-            "HANDBOOK_PDF_PRESENT": bool(glob.glob(os.path.join(HANDBOOK_DIR, "*.pdf"))),
-            "HANDBOOK_CHUNKS_PRESENT": bool(glob.glob(os.path.join(HANDBOOK_DIR, "*chunk"))),
-        }
-        return HttpResponse(json.dumps(_info_dict), content_type="application/json")
-
-
-class get_overall_style(View):
-    def post(self, request):
-        return HttpResponse(
-            json.dumps(
-                {
-                    "overall_style": settings.ICSW_OVERALL_STYLE
-                }
-            ),
-            content_type="application/json"
-        )
+# class get_docu_info(View):
+#    def post(self, request):
+#        HANDBOOK_DIR = "/opt/cluster/share/doc/handbook"
+#        _info_dict = {
+#            "HANDBOOK_PDF_PRESENT": bool(glob.glob(os.path.join(HANDBOOK_DIR, "*.pdf"))),
+#            "HANDBOOK_CHUNKS_PRESENT": bool(glob.glob(os.path.join(HANDBOOK_DIR, "*chunk"))),
+#        }
+#        return HttpResponse(json.dumps(_info_dict), content_type="application/json")
 
 
 class get_routing_info(View):

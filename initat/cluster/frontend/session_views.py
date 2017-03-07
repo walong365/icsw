@@ -282,7 +282,9 @@ class session_expel(View):
             [my_sh.delete_session(_dup_key) for _dup_key in _dup_keys]
         return HttpResponse(
             json.dumps(
-                {"deleted": len(_dup_keys)}
+                {
+                    "deleted": len(_dup_keys)
+                }
             ),
             content_type="application/json"
         )
