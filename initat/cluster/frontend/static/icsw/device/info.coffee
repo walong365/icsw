@@ -634,8 +634,14 @@ angular.module(
                 $scope.install_template()
                 # defer.resolve("done")
 
-                if data[5].config_str
-                    blob = b64_to_blob(btoa(data[5].config_str), 'application/icsw-remote-viewer-file')
+                if data[5].config.comm.ssh
+                    config = {
+                        host: data[5].config.ip
+                        ssh_username: data[5].config.comm.ssh.SSH_USERNAME.value
+                        ssh_password: data[5].config.comm.ssh.SSH_PASSWORD.value
+                    }
+
+                    blob = b64_to_blob(btoa(JSON.stringify(config)), 'application/icsw-remote-viewer-file')
                     $scope.struct.remote_viewer_config = (window.URL || window.webkitURL).createObjectURL(blob)
         )
 
