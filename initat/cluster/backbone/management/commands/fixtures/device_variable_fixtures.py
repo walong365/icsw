@@ -82,7 +82,7 @@ def add_fixtures(**kwargs):
                 password_field=_passwd_field,
             )
 
-    if False or process_tools.get_machine_name() in ["eddie"]:
+    if process_tools.get_machine_name() in ["eddie"]:
         # debug output
         for _e in device_variable_scope.objects.all():
             print(str(_e))

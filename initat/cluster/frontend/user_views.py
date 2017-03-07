@@ -290,22 +290,6 @@ class GetObjectPermissions(RetrieveAPIView):
         return Response(GetGlobalPermissions._unfold(request.user.get_all_object_perms(None)))
 
 
-class GetInitProduct(RetrieveAPIView):
-    @rest_logging
-    def get(self, request, *args, **kwargs):
-        from initat.server_version import VERSION_STRING, VERSION_MAJOR, BUILD_MACHINE
-        product = License.objects.get_init_product()
-        family = product.get_version_family(VERSION_MAJOR)
-        return Response(
-            {
-                'name': product.name,
-                'version': VERSION_STRING,
-                'family': family,
-                "build_machine": BUILD_MACHINE,
-            }
-        )
-
-
 class UserVariableViewSet(viewsets.ModelViewSet):
     queryset = user_variable.objects.all()
     serializer_class = user_variable_serializer

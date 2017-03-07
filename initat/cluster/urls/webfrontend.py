@@ -332,7 +332,6 @@ user_patterns = [
     url("^get_device_ip$", user_views.get_device_ip.as_view(), name="get_device_ip"),
     url("^GetGlobalPermissions$", user_views.GetGlobalPermissions.as_view(), name="GetGlobalPermissions"),
     url("^GetObjectPermissions$", user_views.GetObjectPermissions.as_view(), name="GetObjectPermissions"),
-    url("^GetInitProduct$", user_views.GetInitProduct.as_view(), name="GetInitProduct"),
     url("^GetNumQuotaServers$", user_views.get_num_quota_servers.as_view(), name="get_num_quota_servers"),
     # not really needed right now
     url("^", include(user_views.local_router.urls)),

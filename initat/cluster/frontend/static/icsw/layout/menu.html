@@ -129,14 +129,14 @@
         <a
             class="navbar-brand"
             ng-click="go_mainboard($event)"
-            title="{{ initProduct.name }}"
+            title="{{ cluster_data.PRODUCT.NAME }}"
             style="padding-top:0px;"
         >
             <img
                 ng-class="overall_style"
-                ng-attr-src="{{ initProduct.menu_gfx_url }}"
+                ng-attr-src="{{ cluster_data.PRODUCT.MENU_GFX_URL }}"
                 style="cursor: pointer; margin-top: 5px; margin-left: -4px; margin-right: 10px;"
-                alt="{{ initProduct.name }}"
+                alt="{{ cluster_data.PRODUCT.NAME }}"
             />
         </a>
     </div>

@@ -39,17 +39,15 @@ angular.module(
 ]).controller("icswLoginCtrl",
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI",
-    "initProduct", "icswSystemLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService",
-    "icswToolsSimpleModalService", "icswThemeService", "icswOverallStyle",
+    "icswSystemLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService",
+    "icswToolsSimpleModalService", "icswThemeService", "icswClusterData",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI,
-    initProduct, icswSystemLicenseDataService, $q, $state, icswCSRFService, icswUserService,
-    icswToolsSimpleModalService, icswThemeService, icswOverallStyle,
+    icswSystemLicenseDataService, $q, $state, icswCSRFService, icswUserService,
+    icswToolsSimpleModalService, icswThemeService, icswClusterData,
 ) ->
     $scope.all_loaded = false;
-    $scope.initProduct = initProduct
     $scope.license_tree = undefined
-    $scope.django_version = "---"
     $scope.login_hints = []
     first_call = true
     $scope.struct = {
@@ -70,6 +68,7 @@ angular.module(
         # new database idx
         new_database_idx: ""
     }
+    console.log "*", icswClusterData
     $scope.init_login = () ->
         $q.all(
             [
@@ -78,12 +77,7 @@ angular.module(
                         url: ICSW_URLS.SESSION_LOGIN_ADDONS
                     }
                 )
-                icswSimpleAjaxCall(
-                    {
-                        url: ICSW_URLS.MAIN_GET_CLUSTER_INFO
-                        dataType: "json"
-                    }
-                )
+                icswClusterData.get_data()
                 icswSystemLicenseDataService.load($scope.$id)
                 icswUserService.load($scope.$id)
             ]
@@ -92,7 +86,6 @@ angular.module(
                 xml = data[0]
                 icswThemeService.setdefault($(xml).find("value[name='theme_default']").text())
                 $scope.login_hints = angular.fromJson($(xml).find("value[name='login_hints']").text())
-                $scope.django_version = $(xml).find("value[name='django_version']").text()
                 $scope.struct.disabled = false
                 $scope.struct.cluster_data = data[1]
                 $scope.license_tree = data[2]

@@ -1235,21 +1235,44 @@ angular.module(
         func_dict
     )
 
-]).service("initProduct",
+]).service("icswClusterData",
 [
-    "ICSW_URLS", "Restangular",
+    "ICSW_URLS", "Restangular", "icswSimpleAjaxCall", "$q", "icswMenuSettings",
 (
-    ICSW_URLS, Restangular
+    ICSW_URLS, Restangular, icswSimpleAjaxCall, $q, icswMenuSettings,
 ) ->
-    product = {}
-    Restangular.all(ICSW_URLS.USER_GET_INIT_PRODUCT.slice(1)).customGET().then(
-        (new_data) ->
-            # update dict in place
-            angular.extend(product, new_data)
-            product.menu_gfx_url = "#{ICSW_URLS.STATIC_URL}/#{new_data.name.toLowerCase()}-flat-trans.png"
-            product.menu_gfx_big_url = "#{ICSW_URLS.STATIC_URL}/#{new_data.name.toLowerCase()}-trans.png"
+    struct = {
+        product: undefined
+        loaded: false
+        waiting: []
+    }
+    icswSimpleAjaxCall(
+        {
+            url: ICSW_URLS.MAIN_GET_CLUSTER_INFO
+            dataType: "json"
+        }
+    ).then(
+        (data) ->
+            struct.product = data
+            struct.loaded = true
+            for _def in struct.waiting
+                _def.resolve(struct.product)
+            icswMenuSettings.set_cluster_data_valid()
     )
-    return product
+
+    get_data = () ->
+        _defer = $q.defer()
+        if struct.loaded
+            _defer.resolve(struct.product)
+        else
+            struct.waiting.push(_defer)
+        return _defer.promise
+
+    return {
+        get_data: get_data
+        current_data: () ->
+            return struct.product
+    }
 
 ]).run([
     "Restangular", "toaster", "icswInfoModalService", "$window",
