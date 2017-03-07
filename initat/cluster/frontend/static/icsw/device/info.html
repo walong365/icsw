@@ -350,7 +350,7 @@
             </div>
         </div>
     </fieldset>
-    <fieldset ng-if="struct.remote_viewer_config != undefined">
+    <fieldset>
         <legend>
             <h3>Remote Connection</h3>
         </legend>
@@ -360,8 +360,14 @@
                     <label class="control-label col-xs-3">
                         Remote Connection Link
                     </label>
-                    <div class="col-xs-9">
-                        <a download="config.icswremote" ng-href="{{ struct.remote_viewer_config }}">View</a>
+                    <div class="col-xs-9" ng-if="struct.remote_viewer_config_ssh != undefined">
+                        <a download="config.icswremote" ng-href="{{ struct.remote_viewer_config_ssh }}">Connect via SSH</a>
+                    </div>
+                    <div class="col-xs-9" ng-if="struct.remote_viewer_config_rdesktop != undefined">
+                        <a download="config.icswremote" ng-href="{{ struct.remote_viewer_config_rdesktop }}">Connect via rdesktop</a>
+                    </div>
+                    <div class="col-xs-9" ng-if="struct.remote_viewer_config_ssh == undefined && struct.remote_viewer_config_rdesktop == undefined">
+                        No valid remote connection settings found.
                     </div>
                 </div>
             </div>
