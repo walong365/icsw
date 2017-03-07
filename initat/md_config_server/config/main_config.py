@@ -230,7 +230,7 @@ class MainConfig(dict, NagVisMixin):
         resource_file = MonFileContainer("resource")
         resource_cfg = FlatMonBaseConfig("flat", "resource")
         resource_file.add_object(resource_cfg)
-        if os.path.isfile(os.path.join(_md_basedir, "libexec", "check_dns")):
+        if os.path.exists(os.path.join(_md_basedir, "libexec")):
             resource_cfg["$USER1$"] = os.path.join(
                 _md_basedir,
                 "libexec",
