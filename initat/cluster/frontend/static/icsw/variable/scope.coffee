@@ -206,6 +206,7 @@ device_variable_module = angular.module(
                 device_variable_scope: var_scope.idx
                 name: "allowed_name"
                 unique: false
+                password_field: false
                 group: ""
                 forced_type: icswDeviceVariableFunctions.get_form_dict("var_type")[0].idx
                 description: "new allowed name"

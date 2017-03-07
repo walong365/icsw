@@ -749,14 +749,15 @@ angular.module(
             super()
             @simple_attributes = [
                 "forced_type", "name", "description", "group", "unique", "device_variable_scope",
+                "password_field",
             ]
 ]).service("icswDeviceVariableScopeBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
 
-    class icswDeviceVariableCopseBackup extends icswBackupDefinition
+    class icswDeviceVariableScopeBackup extends icswBackupDefinition
         constructor: () ->
             super()
             @simple_attributes = [
-                "name", "description", "prefix", "forced_flags", "priority",
+                "name", "description", "prefix", "forced_flags", "priority", "password_field",
             ]
 ]).service("icswMonDisplayPipeSpecBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
 

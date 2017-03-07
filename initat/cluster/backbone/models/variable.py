@@ -26,6 +26,7 @@ import json
 import logging
 import uuid
 
+from enum import Enum
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
@@ -40,6 +41,8 @@ __all__ = [
     "device_variable",
     "device_variable_scope",
     "dvs_allowed_name",
+    "DeviceVarTypeEnum",
+    "DeviceConnectionEnum",
 ]
 
 
@@ -122,6 +125,84 @@ class device_variable_scope(models.Model):
         )
 
 
+class DeviceVarTypeEnum(Enum):
+    integer = "i"
+    string = "s"
+    datetime = "d"
+    bool = "B"
+    date = "D"
+    time = "t"
+    blob = "b"
+    ignore = ""
+    guess = "?"
+
+
+class DeviceConnectionVar(object):
+    def __init__(self, name, info, is_password, v_type):
+        self.name = name
+        self.info = info
+        self.is_password = is_password
+        self.var_type = v_type
+
+
+class DeviceConnectionInfo(object):
+    def __init__(self, var_list, opt_list):
+        self.var_list = var_list
+        self.opt_list = opt_list
+
+
+class DeviceConnectionEnum(Enum):
+    ipmi = DeviceConnectionInfo(
+        [
+            DeviceConnectionVar("IPMI_USERNAME", "IPMI Username", False, DeviceVarTypeEnum.string),
+            DeviceConnectionVar("IPMI_PASSWORD", "IPMI Password", True, DeviceVarTypeEnum.string),
+        ],
+        [
+            DeviceConnectionVar("IPMI_INTERFACE", "IPMI Interface", False, DeviceVarTypeEnum.string),
+        ]
+    )
+    snmp = DeviceConnectionInfo(
+        [
+            DeviceConnectionVar("SNMP_VERSION", "SNMP Version", False, DeviceVarTypeEnum.integer),
+            DeviceConnectionVar("SNMP_READ_COMMUNITY", "SNMP Read Community", True, DeviceVarTypeEnum.string),
+        ],
+        [],
+    )
+    snmp_write = DeviceConnectionInfo(
+        [
+            DeviceConnectionVar("SNMP_VERSION", "SNMP Version", False, DeviceVarTypeEnum.integer),
+            DeviceConnectionVar("SNMP_READ_COMMUNITY", "SNMP Read Community", True, DeviceVarTypeEnum.string),
+            DeviceConnectionVar("SNMP_WRITE_COMMUNITY", "SNMP Write Community", True, DeviceVarTypeEnum.string),
+        ],
+        [],
+    )
+    wmi = DeviceConnectionInfo(
+        [
+            DeviceConnectionVar("WMI_USERNAME", "WMI Username", False, DeviceVarTypeEnum.string),
+            DeviceConnectionVar("WMI_PASSWORD", "WMI Password", True, DeviceVarTypeEnum.string),
+
+        ],
+        [],
+    )
+    rdesktop = DeviceConnectionInfo(
+        [
+            DeviceConnectionVar("RDESKTOP_USERNAME", "Remote Desktop Username", False, DeviceVarTypeEnum.string),
+            DeviceConnectionVar("RDESKTOP_PASSWORD", "Remote Desktop Password", True, DeviceVarTypeEnum.string),
+
+        ],
+        [],
+    )
+    ssh = DeviceConnectionInfo(
+        [
+            DeviceConnectionVar("SSH_USERNAME", "SSH Username", False, DeviceVarTypeEnum.string),
+        ],
+        [
+            DeviceConnectionVar("SSH_PASSWORD", "SSH Password", True, DeviceVarTypeEnum.string),
+            DeviceConnectionVar("SSH_CERTIFICATE", "SSH Certificate", True, DeviceVarTypeEnum.blob),
+        ],
+    )
+
+
 class dvs_allowed_name(models.Model):
     idx = models.AutoField(primary_key=True)
     device_variable_scope = models.ForeignKey("backbone.device_variable_scope")
@@ -136,28 +217,23 @@ class dvs_allowed_name(models.Model):
     # forced type
     forced_type = models.CharField(
         max_length=3,
-        choices=[
-            ("", "ignore"),
-            ("i", "integer"),
-            ("s", "string"),
-            ("d", "datetime"),
-            ("D", "date"),
-            ("t", "time"),
-            ("b", "blob"),
-        ],
-        default="",
+        choices=[(_enum.value, _enum.name) for _enum in DeviceVarTypeEnum],
+        default=DeviceVarTypeEnum.ignore.value,
     )
+    # password type, hide where possible
+    password_field = models.BooleanField(default=False)
     # group, for grouping :-)
     group = models.CharField(max_length=127, default="", blank=True)
     description = models.TextField(default="", blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return "Allowed for scope {}: '{}', forced_type='{}', group='{}'".format(
+        return "Allowed for scope {}: '{}', forced_type='{}', group='{}'{}".format(
             self.device_variable_scope.name,
             self.name,
             self.forced_type,
             self.group,
+            " (is password)" if self.password_field else "",
         )
 
     class Meta:
@@ -195,16 +271,7 @@ class device_variable(models.Model):
     password_field = models.BooleanField(default=False)
     var_type = models.CharField(
         max_length=3,
-        choices=[
-            ("i", "integer"),
-            ("s", "string"),
-            ("d", "datetime"),
-            ("D", "date"),
-            ("t", "time"),
-            ("b", "blob"),
-            # only for posting a new dv
-            ("?", "guess")
-        ]
+        choices=[(_enum.value, _enum.name) for _enum in DeviceVarTypeEnum],
     )
     val_str = models.TextField(blank=True, null=True, default="")
     val_int = models.IntegerField(null=True, blank=True, default=0)
@@ -231,25 +298,25 @@ class device_variable(models.Model):
 
     def set_value(self, value):
         if isinstance(value, datetime.datetime):
-            self.var_type = "d"
+            self.var_type = DeviceVarTypeEnum.datetime.value
             self.val_date = cluster_timezone.localize(value)
         elif isinstance(value, int) or (isinstance(value, str) and value.isdigit()):
-            self.var_type = "i"
+            self.var_type = DeviceVarTypeEnum.integer.value
             self.val_int = int(value)
         elif isinstance(value, bool):
-            self.var_type = "B"
+            self.var_type = DeviceVarTypeEnum.bool.value
             self.val_bool = value
         else:
-            self.var_type = "s"
+            self.var_type = DeviceVarTypeEnum.string.value
             self.val_str = value
         self._clear()
 
     def get_value(self):
-        if self.var_type == "i":
+        if self.var_type == DeviceVarTypeEnum.integer.value:
             return self.val_int
-        elif self.var_type == "s":
+        elif self.var_type == DeviceVarTypeEnum.string.value:
             return self.val_str
-        elif self.var_type == "B":
+        elif self.var_type == DeviceVarTypeEnum.bool.value:
             return self.val_bool
         else:
             return "get_value for {}".format(self.var_type)
@@ -257,12 +324,12 @@ class device_variable(models.Model):
     def _clear(self):
         # clear all values which are not used
         for _short_list, _long in [
-            (["i"], "int"),
-            (["s"], "str"),
-            (["b"], "blob"),
-            (["d", "D"], "date"),
-            (["t"], "time"),
-            (["B"], "bool"),
+            ([DeviceVarTypeEnum.integer.value], "int"),
+            ([DeviceVarTypeEnum.string.value], "str"),
+            ([DeviceVarTypeEnum.blob.value], "blob"),
+            ([DeviceVarTypeEnum.datetime.value, DeviceVarTypeEnum.date.value], "date"),
+            ([DeviceVarTypeEnum.time.value], "time"),
+            ([DeviceVarTypeEnum.bool.value], "bool"),
         ]:
             if self.var_type not in _short_list:
                 setattr(self, "val_{}".format(_long), None)
@@ -295,19 +362,19 @@ def device_variable_pre_save(sender, **kwargs):
                 for _f_name, _f_value in json.loads(_dvs.forced_flags).items():
                     setattr(cur_inst, _f_name, _f_value)
             # check values
-            if cur_inst.var_type == "?":
+            if cur_inst.var_type == DeviceVarTypeEnum.guess.value:
                 # guess type
                 _val = cur_inst.val_str
                 cur_inst.val_str = ""
                 if len(_val.strip()) and _val.strip().isdigit():
-                    cur_inst.var_type = "i"
+                    cur_inst.var_type = DeviceVarTypeEnum.integer.value
                     cur_inst.val_int = int(_val.strip())
                 else:
-                    cur_inst.var_type = "s"
+                    cur_inst.var_type = DeviceVarTypeEnum.string.value
                     cur_inst.val_str = _val
-            if cur_inst.var_type == "s":
+            if cur_inst.var_type == DeviceVarTypeEnum.string.value:
                 check_empty_string(cur_inst, "val_str")
-            if cur_inst.var_type == "i":
+            if cur_inst.var_type == DeviceVarTypeEnum.integer.value:
                 check_integer(cur_inst, "val_int")
             check_empty_string(cur_inst, "var_type")
             if _dvs.dvs_allowed_name_set.all().count():
@@ -333,7 +400,14 @@ def device_variable_pre_save(sender, **kwargs):
                     if cur_inst.var_type != _allowed_struct.forced_type:
                         raise ValidationError("Type is not allowed (VariableScope issue)")
             check_empty_string(cur_inst, "name")
-            all_var_names = device_variable.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device)).values_list("name", flat=True)
+            all_var_names = device_variable.objects.exclude(
+                Q(pk=cur_inst.pk)
+            ).filter(
+                Q(device=cur_inst.device)
+            ).values_list(
+                "name",
+                flat=True
+            )
             if cur_inst.name in all_var_names:
                 raise ValidationError(
                     "name '{}' already used for device '{}'".format(

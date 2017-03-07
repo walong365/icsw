@@ -257,6 +257,11 @@ device_patterns = [
         device_views.DeviceClassViewSet.as_view({"get": "list"}),
         name="device_class_list",
     ),
+    url(
+        r"^remote_viewer_config_loader$",
+        device_views.RemoteViewerConfigLoader.as_view(),
+        name="remote_viewer_config_loader"
+    ),
 ]
 
 
@@ -360,7 +365,6 @@ main_patterns = [
     url(r"^get_cluster_info$", main_views.get_cluster_info.as_view(), name="get_cluster_info"),
     url(r"^get_docu_info$", main_views.get_docu_info.as_view(), name="get_docu_info"),
     url(r"^get_overall_style$", main_views.get_overall_style.as_view(), name="get_overall_style"),
-    url(r"^remote_viewer_config_loader$", main_views.RemoteViewerConfigLoader.as_view(), name="remote_viewer_config_loader"),
 ]
 
 rrd_patterns = [

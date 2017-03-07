@@ -610,7 +610,7 @@ angular.module(
                 icswConfigTreeService.load($scope.$id)
                 icswSimpleAjaxCall(
                     {
-                        url: ICSW_URLS.MAIN_REMOTE_VIEWER_CONFIG_LOADER
+                        url: ICSW_URLS.DEVICE_REMOTE_VIEWER_CONFIG_LOADER
                         data:
                             device_idx: $scope.icsw_struct.edit_obj.idx
                         dataType: 'json'
