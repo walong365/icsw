@@ -21,7 +21,7 @@ def uninstall():
 def install():
     uninstall()
     subprocess.check_call([XGD_MIME_BINARY, "install", "--novendor", XGD_MIME_CONFIG])
-    subprocess.check_call([XDG_DESKTOP_MENU_BINARY, "uninstall", "--novendor", XDG_DESKTOP_MENU_CONFIG_FILE])
+    subprocess.check_call([XDG_DESKTOP_MENU_BINARY, "install", "--novendor", XDG_DESKTOP_MENU_CONFIG_FILE])
 
 
 def main():
@@ -36,14 +36,23 @@ def main():
     password = config_dict["ssh_password"]
     hostname = config_dict["host"]
 
+    ssh_command = ["sshpass", "-p", "{}".format(password), "ssh", "{}@{}".format(username, hostname)]
+
     konsole_binary = shutil.which("konsole")
     if konsole_binary:
-        subprocess.call([konsole_binary, "--new-tab", "-e", "sshpass", "-p", "{}".format(password), "ssh",
-                         "{}@{}".format(username, hostname)])
+        command = [konsole_binary, "--new-tab", "-e"]
+        command.extend(ssh_command)
+        subprocess.call(command)
+        return
 
+    gnome_terminal_binary = shutil.which("gnome-terminal")
+    if gnome_terminal_binary:
+        command = [gnome_terminal_binary, "-e", '{}'.format(" ".join(ssh_command))]
+        subprocess.call(command)
+        return
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
+    if sys.argv[1] in ["install", "uninstall"]:
         if XGD_MIME_BINARY and XDG_DESKTOP_MENU_BINARY:
             if sys.argv[1] == "install":
                 sys.exit(install())
