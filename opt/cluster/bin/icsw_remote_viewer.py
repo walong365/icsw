@@ -61,12 +61,11 @@ def main():
     if connection_type == "ssh":
         command = ["sshpass", "-p", "{}".format(password), "ssh", "{}@{}".format(username, hostname)]
     elif connection_type == "rdesktop":
-        command = ["rdesktop", "-u", username, "-p", password]
+        command = ["rdesktop", "-u", username, "-p", password, hostname]
 
     konsole_binary = shutil.which("konsole")
     if konsole_binary:
-        command = [konsole_binary, "--new-tab", "-e"]
-        command.extend(command)
+        command = [konsole_binary, "--hold", "--new-tab", "-e", " ".join(command)]
         subprocess.call(command)
         return
 
