@@ -20,11 +20,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
+import json
+import os
 import shutil
 import subprocess
-import os
-import json
+import sys
 
 XDG_DESKTOP_MENU_CONFIG_FILE = "/opt/cluster/share/icsw_remote_viewer/icsw_remote_viewer.desktop"
 XGD_MIME_CONFIG = "/opt/cluster/share/icsw_remote_viewer/icsw_remote_viewer.xml"

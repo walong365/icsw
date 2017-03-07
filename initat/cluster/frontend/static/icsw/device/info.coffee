@@ -494,7 +494,7 @@ angular.module(
 
 
     b64_to_blob = (b64_data, content_type, slice_size) ->
-        content_type = content_type or ''
+        content_type = content_type or ""
         slice_size = slice_size or 512
         byte_characters = atob(b64_data)
         byte_arrays = []
@@ -664,7 +664,7 @@ angular.module(
         # console.log c_type, $scope.struct.remote_viewer_config_rdesktop
         blob = b64_to_blob(
             btoa(
-                angular.toJson($scope.struct.remote_viewer_config.c_type)
+                angular.toJson($scope.struct.remote_viewer_config[c_type])
             ),
             'application/icsw-remote-viewer-file'
         )
