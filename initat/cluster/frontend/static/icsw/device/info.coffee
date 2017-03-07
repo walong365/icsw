@@ -489,7 +489,8 @@ angular.module(
         mother_server_list: []
         mother_server_lut: {}
         # config for remote viewer
-        remote_viewer_config: undefined
+        remote_viewer_config_ssh: undefined
+        remote_viewer_config_rdesktop: undefined
     }
 
 
@@ -634,15 +635,29 @@ angular.module(
                 $scope.install_template()
                 # defer.resolve("done")
 
-                if data[5].config.comm.ssh
-                    config = {
-                        host: data[5].config.ip
-                        ssh_username: data[5].config.comm.ssh.SSH_USERNAME.value
-                        ssh_password: data[5].config.comm.ssh.SSH_PASSWORD.value
-                    }
+                comm_config = data[5].config
+                if comm_config != undefined
+                    if comm_config.comm.ssh != undefined
+                        config = {
+                            connection_type: "ssh"
+                            host: comm_config.ip
+                            username: comm_config.comm.ssh.SSH_USERNAME.value
+                            password: comm_config.comm.ssh.SSH_PASSWORD.value
+                        }
 
-                    blob = b64_to_blob(btoa(JSON.stringify(config)), 'application/icsw-remote-viewer-file')
-                    $scope.struct.remote_viewer_config = (window.URL || window.webkitURL).createObjectURL(blob)
+                        blob = b64_to_blob(btoa(JSON.stringify(config)), 'application/icsw-remote-viewer-file')
+                        $scope.struct.remote_viewer_config_ssh = (window.URL || window.webkitURL).createObjectURL(blob)
+
+                    if comm_config.comm.rdesktop != undefined
+                        config = {
+                            connection_type: "rdesktop"
+                            host: comm_config.ip
+                            username: comm_config.comm.rdesktop.RDESKTOP_USERNAME.value
+                            password: comm_config.comm.rdesktop.RDESKTOP_PASSWORD.value
+                        }
+
+                        blob = b64_to_blob(btoa(JSON.stringify(config)), 'application/icsw-remote-viewer-file')
+                        $scope.struct.remote_viewer_config_rdesktop = (window.URL || window.webkitURL).createObjectURL(blob)
         )
 
         # return defer.promise
