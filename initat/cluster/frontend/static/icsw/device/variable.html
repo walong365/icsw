@@ -397,6 +397,7 @@
                         </tr>
                         <tr>
                             <th st-sort="$$name">Name</th>
+                            <th>Group</th>
                             <th st-sort="$$description">Description</th>
                             <th>Value</th>
                         </tr>
@@ -404,6 +405,9 @@
                     <tbody>
                         <tr ng-repeat="ivar in vars_shown">
                             <td>{{ ivar.$$name }}</td>
+                            <td class="text-center">
+                                <code ng-show="ivar.def.group">{{ ivar.def.group }}</code>
+                            </td>
                             <td>{{ ivar.$$description }}</td>
                             <td ng-class="ivar.$$td_class" class="text-center">
                                 <span ng-show="ivar.set && !ivar.def.password_field">{{ ivar.var.$$var_value }}</span>
@@ -423,6 +427,7 @@
         <thead>
             <tr>
                 <th>Name</th>
+                <th>Group</th>
                 <th>Description</th>
                 <th>Type</th>
                 <th>Value</th>
@@ -431,6 +436,9 @@
         <tbody>
             <tr ng-repeat="ivar in var_struct">
                 <td>{{ ivar.def.name }}</td>
+                <td class="text-center">
+                    <code ng-show="ivar.def.group">{{ ivar.def.group }}</code>
+                </td>
                 <td>{{ ivar.def.description }}</td>
                 <td class="text-center">
                     <span class="label" ng-class="ivar.def.password_field && 'label-danger' || 'label-primary'">

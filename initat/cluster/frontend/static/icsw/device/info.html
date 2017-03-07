@@ -360,14 +360,29 @@
                     <label class="control-label col-xs-3">
                         Remote Connection Link
                     </label>
-                    <div class="col-xs-9" ng-if="struct.remote_viewer_config_ssh != undefined">
-                        <a download="config.icswremote" ng-href="{{ struct.remote_viewer_config_ssh }}">Connect via SSH</a>
-                    </div>
-                    <div class="col-xs-9" ng-if="struct.remote_viewer_config_rdesktop != undefined">
-                        <a download="config.icswremote" ng-href="{{ struct.remote_viewer_config_rdesktop }}">Connect via rdesktop</a>
-                    </div>
-                    <div class="col-xs-9" ng-if="struct.remote_viewer_config_ssh == undefined && struct.remote_viewer_config_rdesktop == undefined">
-                        No valid remote connection settings found.
+                    <div class="col-xs-9">
+                        <icsw-tools-button
+                            size="sm"
+                            value="SSH"
+                            type="info"
+                            title="connect via SSH"
+                            ng-if="struct.remote_viewer_config.ssh"
+                            ng-click="establish_connection($event, 'ssh')"
+                        ></icsw-tools-button>
+                        <icsw-tools-button
+                            size="sm"
+                            value="RDesktop"
+                            type="info"
+                            title="connect via rdesktop"
+                            ng-if="struct.remote_viewer_config.rdesktop"
+                            ng-click="establish_connection($event, 'rdesktop')"
+                        ></icsw-tools-button>
+                        <span
+                            class="text-warning"
+                            ng-show="!struct.remote_viewer_config"
+                        >
+                            No valid remote connection settings found.
+                        </span>
                     </div>
                 </div>
             </div>

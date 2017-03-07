@@ -40,12 +40,16 @@ from initat.tools import logging_tools, process_tools
 def get_enums():
     # return a dict of all enums to add as constant
     from initat.cluster.backbone.websockets.constants import WSStreamEnum
-    _enums = [WSStreamEnum]
-    return dict(
-        {
-            _enum.__name__: [_entry.name for _entry in _enum] for _enum in _enums
-        }
-    )
+    from initat.cluster.backbone.models import DeviceConnectionEnum
+    _enums = [WSStreamEnum, DeviceConnectionEnum]
+    _rv = {
+        _enum.__name__: {
+            _entry.name: _entry.value.to_json(_entry.name) for _entry in _enum
+        } for _enum in _enums
+    }
+    # import pprint
+    # pprint.pprint(_rv)
+    return _rv
 
 
 class ConfigRelax(object):
@@ -344,22 +348,24 @@ class FileModify(object):
                     elif marker_type == "ENUMS":
                         enums = get_enums()
                         _lines = []
-                        for key, e_list in enums.items():
+                        for key, e_dict in enums.items():
                             if _lines:
                                 _lines[-1] = "{},".format(_lines[-1])
                             _lines.extend(
                                 [
                                     "{}: {{".format(key),
                                 ] + [
-                                    "    {}: \"{}\"{}".format(
-                                        value,
-                                        value,
-                                        "," if _idx < len(e_list) else ""
-                                    ) for _idx, value in enumerate(e_list, 1)
+                                    "    {}: {}{}".format(
+                                        key,
+                                        json.dumps(e_dict[key]),
+                                        "," if _idx < len(e_dict.keys()) else ""
+                                    ) for _idx, key in enumerate(list(e_dict.keys()), 1)
                                 ] + [
                                     "}",
                                 ]
                             )
+                            # import pprint
+                            # pprint.pprint(_lines)
                         _lines = [
                             "{}{}".format(" " * 8, _line) for _line in _lines
                         ]

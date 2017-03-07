@@ -183,7 +183,8 @@ menu_module = angular.module(
         if SETTINGS.themes_valid and SETTINGS.cluster_data_valid
             $rootScope.$emit(ICSW_SIGNALS("ICSW_MENU_SETTINGS_CHANGED"))
         else
-            console.log "waiting..."
+            # menu base data not valid, waiting
+            console.log "waiting for valid menu base data ..."
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_CHANGED"), (event) ->
         _redraw()

@@ -150,6 +150,12 @@ class DeviceConnectionInfo(object):
         self.var_list = var_list
         self.opt_list = opt_list
 
+    def to_json(self, name):
+        return {
+            "required": [_var.name for _var in self.var_list],
+            "optional": [_var.name for _var in self.opt_list],
+        }
+
 
 class DeviceConnectionEnum(Enum):
     ipmi = DeviceConnectionInfo(
