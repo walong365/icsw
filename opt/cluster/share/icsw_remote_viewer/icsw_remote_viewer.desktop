@@ -8,6 +8,6 @@ Name=ICSW Remote Viewer
 
 Comment=ICSW Remote Viewer
 
-TryExec=/home/kaufmann/dev/icsw/tools/icsw_remote_viewer/icsw_remote_viewer.py
-Exec=/home/kaufmann/dev/icsw/tools/icsw_remote_viewer/icsw_remote_viewer.py %f
+TryExec=/opt/cluster/bin/icsw_remote_viewer.py
+Exec=/opt/cluster/bin/icsw_remote_viewer.py %f
 Terminal=False
