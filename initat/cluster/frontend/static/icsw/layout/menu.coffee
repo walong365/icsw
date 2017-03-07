@@ -26,12 +26,12 @@ menu_module = angular.module(
 ).controller("icswMenuBaseCtrl",
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAccessLevelService",
-    "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
+    "icswClusterData", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
     "$q", "icswUserService", "blockUI", "$state", "icswSystemLicenseDataService",
     "$rootScope", "ICSW_SIGNALS", "$timeout", "icswOverallStyle",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAccessLevelService,
-    initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
+    icswClusterData, icswLayoutSelectionDialogService, icswActiveSelectionService,
     $q, icswUserService, blockUI, $state, icswSystemLicenseDataService,
     $rootScope, ICSW_SIGNALS, $timeout, icswOverallStyle,
 ) ->
@@ -40,7 +40,7 @@ menu_module = angular.module(
         console.error "icswMenuBaseCtrl already set"
     $window.$$ICSW_MENU_INSTALLED = true
     $scope.ICSW_URLS = ICSW_URLS
-    $scope.initProduct = initProduct
+    $scope.cluster_data = undefined
     $scope.struct = {
         # current user
         current_user: undefined
@@ -75,25 +75,23 @@ menu_module = angular.module(
 
     $q.all(
         [
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.MAIN_GET_DOCU_INFO
-                    dataType: "json"
-                }
-            )
+            #icswSimpleAjaxCall(
+            #    {
+            #        url: ICSW_URLS.MAIN_GET_DOCU_INFO
+            #        dataType: "json"
+            #    }
+            #)
             icswUserService.load($scope.$id)
-            icswSimpleAjaxCall(
-                {
-                    url: ICSW_URLS.MAIN_GET_OVERALL_STYLE
-                    dataType: "json"
-                }
-            )
+            icswClusterData.get_data()
+                (data) ->
+                    $scope.cluster_data = data
         ]
     ).then(
         (data) ->
-            $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
-            $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
-            icswOverallStyle.set(data[2].overall_style)
+            # $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
+            # $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
+            $scope.cluster_data = data[1]
+            icswOverallStyle.set($scope.cluster_data.OVERALL_STYLE)
     )
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
         $scope.struct.current_user = icswUserService.get().user
@@ -119,15 +117,6 @@ menu_module = angular.module(
     $scope.handbook_url = "/"
     $scope.handbook_url_valid = false
 
-    $scope.$watch(
-        "initProduct",
-        (new_val) ->
-            if new_val.name?
-                $scope.handbook_url_valid = true
-                $scope.handbook_url = "/icsw/docu/handbook/#{new_val.name.toLowerCase()}_handbook.pdf"
-        true
-    )
-
     # load license tree
     icswSystemLicenseDataService.load($scope.$id).then(
         (data) ->
@@ -148,6 +137,8 @@ menu_module = angular.module(
         user_loggedin: false
         # menu layout
         menu_layout: "newstyle"
+        # cluster data valid
+        cluster_data_valid: false
     }
 
     MENU_LAYOUTS = [
@@ -167,10 +158,17 @@ menu_module = angular.module(
     _get_themes_valid = () ->
         return SETTINGS.themes_valid
 
+    _get_themes_and_cluster_data_valid = () ->
+        return SETTINGS.themes_valid and SETTINGS.cluster_data_valid
+
     _set_themes_valid = () ->
         SETTINGS.themes_valid = true
         _redraw()
         return _get_themes_valid()
+
+    _set_cluster_data_valid = () ->
+        SETTINGS.cluster_data_valid = true
+        _redraw()
 
     _set_menu_layout = (layout) ->
         # ignore, always newstyle
@@ -182,7 +180,11 @@ menu_module = angular.module(
         return SETTINGS.menu_layout
 
     _redraw = () ->
-        $rootScope.$emit(ICSW_SIGNALS("ICSW_MENU_SETTINGS_CHANGED"))
+        if SETTINGS.themes_valid and SETTINGS.cluster_data_valid
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_MENU_SETTINGS_CHANGED"))
+        else
+            # menu base data not valid, waiting
+            console.log "waiting for valid menu base data ..."
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_CHANGED"), (event) ->
         _redraw()
@@ -230,11 +232,17 @@ menu_module = angular.module(
         get_themes_valid: () ->
             return _get_themes_valid()
 
+        get_themes_and_cluster_data_valid: () ->
+            return _get_themes_and_cluster_data_valid()
+
         get_settings: () ->
             return SETTINGS
 
         get_menu_layouts: () ->
             return MENU_LAYOUTS
+
+        set_cluster_data_valid: () ->
+            return _set_cluster_data_valid()
     }
 
 ]).directive("icswLayoutMenubar",
@@ -268,11 +276,11 @@ menu_module = angular.module(
     }
 ]).directive("icswMenuProgressBars",
 [
-    "$templateCache", "ICSW_URLS", "$timeout", "icswSimpleAjaxCall", "initProduct",
+    "$templateCache", "ICSW_URLS", "$timeout", "icswSimpleAjaxCall", "icswClusterData",
     "icswMenuProgressService", "icswLayoutSelectionDialogService", "ICSW_SIGNALS",
     "$rootScope", "$state", "icswOverallStyle",
 (
-    $templateCache, ICSW_URLS, $timeout, icswSimpleAjaxCall, initProduct,
+    $templateCache, ICSW_URLS, $timeout, icswSimpleAjaxCall, icswClusterData,
     icswMenuProgressService, icswLayoutSelectionDialogService, ICSW_SIGNALS,
     $rootScope, $state, icswOverallStyle,
 ) ->
@@ -281,7 +289,12 @@ menu_module = angular.module(
         template: $templateCache.get("icsw.layout.menubar.progress")
         scope: true
         link: (scope, el, attrs) ->
-            scope.initProduct = initProduct
+
+            scope.cluster_data = undefined
+            icswClusterData.get_data().then(
+                (data) ->
+                    scope.cluster_data = data
+            )
             scope.overall_style = icswOverallStyle.get()
 
             $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
@@ -350,12 +363,12 @@ menu_module = angular.module(
     "icswAccessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
     "icswMenuProgressService", "$state", "icswRouteHelper", "icswTools",
     "icswUserService", "icswOverallStyle", "icswLanguageTool", "icswMenuSettings",
-    "initProduct",
+    "icswClusterData",
 (
     icswAccessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
     icswMenuProgressService, $state, icswRouteHelper, icswTools,
     icswUserService, icswOverallStyle, icswLanguageTool, icswMenuSettings,
-    initProduct
+    icswClusterData,
 ) ->
     {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
 
@@ -443,7 +456,7 @@ menu_module = angular.module(
         displayName: "icswMenuHeader"
 
         render: () ->
-            if not icswMenuSettings.get_themes_valid()
+            if not icswMenuSettings.get_themes_and_cluster_data_valid()
                 return null
             overall_style = icswOverallStyle.get()
             items_added = 0
@@ -453,11 +466,11 @@ menu_module = angular.module(
 
             for sg_state in @props.menu.entries
                 menu_entry = sg_state.data
+                c_data = icswClusterData.current_data()
                 if (
-                    @props.menu.data.limitedTo? and initProduct.name? and
-                    initProduct.name.toLowerCase() != "CORVUS".toLowerCase()
+                    @props.menu.data.limitedTo? and c_data.PRODUCT.NAME.toLowerCase() != "CORVUS".toLowerCase()
                 )
-                    if initProduct.name.toLowerCase() != @props.menu.data.limitedTo.toLowerCase()
+                    if c_data.PRODUCT.NAME.toLowerCase() != @props.menu.data.limitedTo.toLowerCase()
                         continue
                 # if sg_state.data.hidden?
                 #    console.log "***", sg_state.data
@@ -499,10 +512,9 @@ menu_module = angular.module(
 
                         hide_wrongproduct = false
                         if (
-                            menu_entry.data.limitedTo? and initProduct.name? and
-                            initProduct.name.toLowerCase() != "CORVUS".toLowerCase()
+                            menu_entry.data.limitedTo? and c_data.PRODUCT.NAME.toLowerCase() != "CORVUS".toLowerCase()
                         )
-                            if initProduct.name.toLowerCase() != menu_entry.data.limitedTo.toLowerCase()
+                            if c_data.PRODUCT.NAME.toLowerCase() != menu_entry.data.limitedTo.toLowerCase()
                                 hide_wrongproduct = true
                         if not hide_wrongproduct
                             items_added += 1
@@ -915,7 +927,7 @@ menu_module = angular.module(
             @setState({counter: @state.counter + 1})
 
         render: () ->
-            if not icswMenuSettings.get_themes_valid()
+            if not icswMenuSettings.get_themes_and_cluster_data_valid()
                 return null
             _menu_struct = icswRouteHelper.get_struct()
             menus = (entry for entry in _menu_struct.menu_node.entries when entry.data.side == "right")

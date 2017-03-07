@@ -461,14 +461,14 @@ angular.module(
     "icswAccessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
     "icswDeviceTreeHelperService", "icswComplexModalService", "toaster", "$compile", "$templateCache",
     "icswCategoryTreeService", "icswToolsSimpleModalService", "icswDialogDeleteService", "icswConfigTreeService",
-    "icswSimpleAjaxCall"
+    "icswSimpleAjaxCall", "$window",
 (
     $scope, Restangular, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
     icswAccessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
     icswDeviceTreeHelperService, icswComplexModalService, toaster, $compile, $templateCache,
     icswCategoryTreeService, icswToolsSimpleModalService, icswDialogDeleteService, icswConfigTreeService,
-    icswSimpleAjaxCall
+    icswSimpleAjaxCall, $window,
 ) ->
     $scope.struct = {
         # data is valid
@@ -489,12 +489,12 @@ angular.module(
         mother_server_list: []
         mother_server_lut: {}
         # config for remote viewer
-        remote_viewer_config: undefined
+        remote_viewer_config: {}
     }
 
 
     b64_to_blob = (b64_data, content_type, slice_size) ->
-        content_type = content_type or ''
+        content_type = content_type or ""
         slice_size = slice_size or 512
         byte_characters = atob(b64_data)
         byte_arrays = []
@@ -634,12 +634,41 @@ angular.module(
                 $scope.install_template()
                 # defer.resolve("done")
 
-                if data[5].config_str
-                    blob = b64_to_blob(btoa(data[5].config_str), 'application/icsw-remote-viewer-file')
-                    $scope.struct.remote_viewer_config = (window.URL || window.webkitURL).createObjectURL(blob)
+                comm_config = data[5].config
+                $scope.struct.remote_viewer_config = {}
+                if comm_config != undefined
+                    if comm_config.comm.ssh?
+                        config = {
+                            connection_type: "ssh"
+                            host: comm_config.ip
+                            username: comm_config.comm.ssh.SSH_USERNAME.value
+                            password: comm_config.comm.ssh.SSH_PASSWORD.value
+                        }
+
+                        $scope.struct.remote_viewer_config["ssh"] = config
+
+                    if comm_config.comm.rdesktop?
+                        config = {
+                            connection_type: "rdesktop"
+                            host: comm_config.ip
+                            username: comm_config.comm.rdesktop.RDESKTOP_USERNAME.value
+                            password: comm_config.comm.rdesktop.RDESKTOP_PASSWORD.value
+                        }
+
+                        $scope.struct.remote_viewer_config["rdesktop"] = config
         )
 
         # return defer.promise
+
+    $scope.establish_connection = ($event, c_type) ->
+        # console.log c_type, $scope.struct.remote_viewer_config_rdesktop
+        blob = b64_to_blob(
+            btoa(
+                angular.toJson($scope.struct.remote_viewer_config[c_type])
+            ),
+            'application/icsw-remote-viewer-file'
+        )
+        $window.location = (window.URL || window.webkitURL).createObjectURL(blob)
 
     $scope.delete = ($event) ->
         icswToolsSimpleModalService("Really delete device '#{$scope.edit_obj.full_name}' ?").then(

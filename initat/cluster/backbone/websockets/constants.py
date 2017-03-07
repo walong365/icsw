@@ -29,6 +29,9 @@ class WSStreamDefinition(object):
     def __init__(self, general: bool):
         self.general = general
 
+    def to_json(self, name):
+        return name
+
 
 class WSStreamEnum(Enum):
     general = WSStreamDefinition(True)

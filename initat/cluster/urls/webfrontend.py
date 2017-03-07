@@ -25,7 +25,7 @@ import django.contrib.staticfiles.views
 from django.conf import settings
 from django.conf.urls import include, url
 
-from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
+from ..frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
     base_views, setup_views, doc_views, license_views, model_history_views, discovery_views, rms_views, \
     lic_views, asset_views, report_views
@@ -332,7 +332,6 @@ user_patterns = [
     url("^get_device_ip$", user_views.get_device_ip.as_view(), name="get_device_ip"),
     url("^GetGlobalPermissions$", user_views.GetGlobalPermissions.as_view(), name="GetGlobalPermissions"),
     url("^GetObjectPermissions$", user_views.GetObjectPermissions.as_view(), name="GetObjectPermissions"),
-    url("^GetInitProduct$", user_views.GetInitProduct.as_view(), name="GetInitProduct"),
     url("^GetNumQuotaServers$", user_views.get_num_quota_servers.as_view(), name="get_num_quota_servers"),
     # not really needed right now
     url("^", include(user_views.local_router.urls)),
@@ -363,8 +362,7 @@ main_patterns = [
     # url(r"^routing_info$", "main_views.get_routing_info", name="routing_info"),
     url(r"^routing_info$", main_views.get_routing_info.as_view(), name="routing_info"),
     url(r"^get_cluster_info$", main_views.get_cluster_info.as_view(), name="get_cluster_info"),
-    url(r"^get_docu_info$", main_views.get_docu_info.as_view(), name="get_docu_info"),
-    url(r"^get_overall_style$", main_views.get_overall_style.as_view(), name="get_overall_style"),
+    # url(r"^get_docu_info$", main_views.get_docu_info.as_view(), name="get_docu_info"),
 ]
 
 rrd_patterns = [

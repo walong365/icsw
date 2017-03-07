@@ -23,11 +23,11 @@
 """ main views """
 
 import datetime
-import glob
 import json
 import logging
 import os
 
+import django
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -36,7 +36,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 
 from initat.cluster.backbone import routing
-from initat.cluster.backbone.models import background_job, device_variable
+from initat.cluster.backbone.models import background_job, device_variable, License
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import server_command
@@ -56,6 +56,15 @@ class get_number_of_background_jobs(View):
 
 class get_cluster_info(View):
     def post(self, request):
+        from initat.server_version import VERSION_STRING, VERSION_MAJOR, BUILD_MACHINE
+        product = License.objects.get_init_product()
+        family = product.get_version_family(VERSION_MAJOR)
+        _vers = []
+        for _v in django.VERSION:
+            if isinstance(_v, int):
+                _vers.append("{:d}".format(_v))
+            else:
+                break
         _info_dict = {
             "CLUSTER_NAME": "",
             "CLUSTER_ID": "",
@@ -63,6 +72,22 @@ class get_cluster_info(View):
             "SOFTWARE_VERSION": settings.ICSW_SOFTWARE_VERSION,
             "MODELS_VERSION": settings.ICSW_MODELS_VERSION,
             "GOOGLE_MAPS_KEY": settings.ICSW_GOOGLE_MAPS_KEY,
+            "DJANGO_VERSION": ".".join(_vers),
+            "OVERALL_STYLE": settings.ICSW_OVERALL_STYLE,
+            "PRODUCT": {
+                "NAME": product.name,
+                "VERSION": VERSION_STRING,
+                "FAMILY": family,
+                "BUILD_MACHINE": BUILD_MACHINE,
+                "MENU_GFX_URL": os.path.join(
+                    "/icsw/static",
+                    "{}-flat-trans.png".format(product.name.lower())
+                ),
+                "MENU_GFX_BIG_URL": os.path.join(
+                    "/icsw/static",
+                    "{}-trans.png".format(product.name.lower())
+                ),
+            }
         }
         for _key, _value in device_variable.objects.values_list("name", "val_str").filter(
             Q(name__in=["CLUSTER_NAME", "CLUSTER_ID"]) &
@@ -72,26 +97,14 @@ class get_cluster_info(View):
         return HttpResponse(json.dumps(_info_dict), content_type="application/json")
 
 
-class get_docu_info(View):
-    def post(self, request):
-        HANDBOOK_DIR = "/opt/cluster/share/doc/handbook"
-        _info_dict = {
-            "HANDBOOK_PDF_PRESENT": bool(glob.glob(os.path.join(HANDBOOK_DIR, "*.pdf"))),
-            "HANDBOOK_CHUNKS_PRESENT": bool(glob.glob(os.path.join(HANDBOOK_DIR, "*chunk"))),
-        }
-        return HttpResponse(json.dumps(_info_dict), content_type="application/json")
-
-
-class get_overall_style(View):
-    def post(self, request):
-        return HttpResponse(
-            json.dumps(
-                {
-                    "overall_style": settings.ICSW_OVERALL_STYLE
-                }
-            ),
-            content_type="application/json"
-        )
+# class get_docu_info(View):
+#    def post(self, request):
+#        HANDBOOK_DIR = "/opt/cluster/share/doc/handbook"
+#        _info_dict = {
+#            "HANDBOOK_PDF_PRESENT": bool(glob.glob(os.path.join(HANDBOOK_DIR, "*.pdf"))),
+#            "HANDBOOK_CHUNKS_PRESENT": bool(glob.glob(os.path.join(HANDBOOK_DIR, "*chunk"))),
+#        }
+#        return HttpResponse(json.dumps(_info_dict), content_type="application/json")
 
 
 class get_routing_info(View):

@@ -350,7 +350,7 @@
             </div>
         </div>
     </fieldset>
-    <fieldset ng-if="struct.remote_viewer_config != undefined">
+    <fieldset>
         <legend>
             <h3>Remote Connection</h3>
         </legend>
@@ -361,7 +361,28 @@
                         Remote Connection Link
                     </label>
                     <div class="col-xs-9">
-                        <a download="config.icswremote" ng-href="{{ struct.remote_viewer_config }}">View</a>
+                        <icsw-tools-button
+                            size="sm"
+                            value="SSH"
+                            type="info"
+                            title="connect via SSH"
+                            ng-if="struct.remote_viewer_config.ssh"
+                            ng-click="establish_connection($event, 'ssh')"
+                        ></icsw-tools-button>
+                        <icsw-tools-button
+                            size="sm"
+                            value="RDesktop"
+                            type="info"
+                            title="connect via rdesktop"
+                            ng-if="struct.remote_viewer_config.rdesktop"
+                            ng-click="establish_connection($event, 'rdesktop')"
+                        ></icsw-tools-button>
+                        <span
+                            class="text-warning"
+                            ng-show="!struct.remote_viewer_config"
+                        >
+                            No valid remote connection settings found.
+                        </span>
                     </div>
                 </div>
             </div>

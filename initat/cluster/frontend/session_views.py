@@ -219,18 +219,11 @@ class login_addons(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         # django version
-        _vers = []
-        for _v in django.VERSION:
-            if isinstance(_v, int):
-                _vers.append("{:d}".format(_v))
-            else:
-                break
         _ckey = "_NEXT_URL_{}".format(request.META["REMOTE_ADDR"])
         _next_url = cache.get(_ckey)
         cache.delete(_ckey)
         _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
         request.xml_response["login_hints"] = json.dumps(_get_login_hints())
-        request.xml_response["django_version"] = ".".join(_vers)
         request.xml_response["next_url"] = _next_url or ""
         request.xml_response["theme_default"] = settings.THEME_DEFAULT
         # request.xml_response["menu_default"] = "normal"
@@ -289,7 +282,9 @@ class session_expel(View):
             [my_sh.delete_session(_dup_key) for _dup_key in _dup_keys]
         return HttpResponse(
             json.dumps(
-                {"deleted": len(_dup_keys)}
+                {
+                    "deleted": len(_dup_keys)
+                }
             ),
             content_type="application/json"
         )
@@ -318,7 +313,11 @@ class session_login(View):
         else:
             # check eggs for allegro
             _eco = server_mixins.EggConsumeObject(DummyLogger())
-            _eco.init({"SERVICE_ENUM_NAME": icswServiceEnum.cluster_server.name})
+            _eco.init(
+                {
+                    "SERVICE_ENUM_NAME": icswServiceEnum.cluster_server.name
+                }
+            )
             if _eco.consume("allegro", db_user):
                 login_credentials = (real_user_name, login_password, login_name)
                 _num_dup_sessions = _login(request, db_user, login_credentials)
