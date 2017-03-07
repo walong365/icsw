@@ -28,8 +28,7 @@ import uuid
 
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q
-from django.db.models import signals
+from django.db.models import Q, signals
 from django.dispatch import receiver
 
 from .functions import check_empty_string, check_integer, cluster_timezone, \
@@ -192,6 +191,8 @@ class device_variable(models.Model):
     inherit = models.BooleanField(default=True)
     # protected, not deletable by frontend
     protected = models.BooleanField(default=False)
+    # password type, hide where possible
+    password_field = models.BooleanField(default=False)
     var_type = models.CharField(
         max_length=3,
         choices=[
