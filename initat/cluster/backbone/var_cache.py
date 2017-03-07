@@ -19,14 +19,12 @@
 #
 """ config part of md-config-server """
 
-
-
 from django.db.models import Q
 
-from initat.cluster.backbone.models import device_variable, device
+from .models import device_variable, device
 
 __all__ = [
-    b"MonVarCache",
+    "VarCache",
 ]
 
 

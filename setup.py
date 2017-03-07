@@ -48,6 +48,7 @@ setup(
         "initat.icsw.collectd",
         "initat.icsw.user",
         "initat.icsw.debug",
+        "initat.icsw.magics",
         "initat.tools",
         "initat.tools.mock",
         "initat.tools.bgnotify",
@@ -121,6 +122,13 @@ setup(
     ],
     data_files=[
         (
+            "/opt/cluster/share/icsw_remote_viewer",
+            [
+                "opt/cluster/share/icsw_remote_viewer/icsw_remote_viewer.desktop",
+                "opt/cluster/share/icsw_remote_viewer/icsw_remote_viewer.xml",
+            ],
+        ),
+        (
             "/opt/cluster/share/user_extensions.d",
             [
                 "opt/cluster/share/user_extensions.d/README",
@@ -182,6 +190,8 @@ setup(
                 "opt/cluster/bin/license_progs.py",
                 "opt/cluster/bin/loadsensor.py",
                 "opt/cluster/bin/modify_object.py",
+                # icsw remote viewer
+                "opt/cluster/bin/icsw_remote_viewer.py"
             ]
         ),
         (

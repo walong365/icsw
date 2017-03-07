@@ -27,23 +27,6 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import sys
 
-if "--nodb" in sys.argv:
-    django = None
-else:
-    try:
-        import django
-        django.setup()
-    except:
-        django = None
-    else:
-        from initat.cluster.backbone import db_tools
-        try:
-            if not db_tools.is_reachable():
-                django = None
-        except:
-            # when installing a newer icsw-client package on a machine with an old icsw-server package
-            django = None
-
 import importlib
 import argparse
 
@@ -75,7 +58,7 @@ class ICSWParser(object):
         _parser = argparse.ArgumentParser(prog="icsw", add_help=True)
         _parser.add_argument("--logger", type=str, default="stdout", choices=["stdout", "logserver"], help="choose logging facility")
         _parser.add_argument("--logall", default=False, action="store_true", help="log all (no just warning / error), [%(default)s]")
-        _parser.add_argument("--nodb", default=False, action="store_true", help="disable usage of database [%(default)s]")
+        # _parser.add_argument("--nodb", default=False, action="store_true", help="disable usage of database [%(default)s]")
         self._parser = _parser
         self.sub_parser = self._parser.add_subparsers(help="sub-command help")
 
@@ -103,14 +86,16 @@ class ICSWParser(object):
         for _sc in sorted(SC_MAPPING.keys()):
             self._add_parser(_sc, server_mode, inst_xml)
 
-    def parse_args(self):
+    def parse_args(self, server_mode, arg_list=None):
         # set constants
-        server_mode = True if django is not None else False
         inst_xml = InstanceXML(quiet=True)
         self._populate_all(server_mode, inst_xml)
         # print(dir(self.sub_parser))
         # print(self.sub_parser._get_subactions)
-        opt_ns = self._parser.parse_args()
+        if arg_list is None:
+            opt_ns = self._parser.parse_args()
+        else:
+            opt_ns = self._parser.parse_args(args=arg_list)
         if not hasattr(opt_ns, "execute"):
             self._parser.print_help()
             sys.exit(0)

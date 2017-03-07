@@ -13,7 +13,7 @@
     "gulp-chef": "^0.1.2",
     "gulp-cjsx": "^4.1.0",
     "gulp-clean-dest": "^0.2.0",
-    "gulp-coffee": "^2.3.3",
+    "gulp-coffee": "^2.3.4",
     "gulp-concat": "^2.6.1",
     "gulp-connect": "^5.0.0",
     "gulp-cssimport": "^5.0.0",

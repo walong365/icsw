@@ -65,6 +65,7 @@
                 <th>Name</th>
                 <th>Group</th>
                 <th>Unique</th>
+                <th>Password</th>
                 <th>ForcedType</th>
                 <th>Description</th>
                 <th colspan="1">Actions</th>
@@ -75,6 +76,7 @@
                 <td>{{ entry.name }}</td>
                 <td>{{ entry.group }}</td>
                 <td class="text-center">{{ entry.unique | yesno1 }}</td>
+                <td class="text-center"><span ng-bind-html="entry.password_field | yesno3"></span></td>
                 <td class="text-center">{{ entry.$$forced_type_str }}</td>
                 <td>{{ entry.description }}</td>
                 <td>
@@ -116,6 +118,14 @@
                 </div>
             </div>
             <div class="form-group">
+                <label class="control-label col-sm-3 icsw-formlabel">
+                    Password
+                </label>
+                <div class="controls col-sm-8">
+                    <icsw-tools-yes-no flag="edit_obj.password_field"></icsw-tools-yes-no>
+                </div>
+            </div>
+            <div class="form-group">
                 <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Type
                 </label>
@@ -141,7 +151,7 @@
                     Unique
                 </label>
                 <div class="controls col-sm-8">
-                    <icsw-tools-yes-no flag="edit_obj.unique"/>
+                    <icsw-tools-yes-no flag="edit_obj.unique"></icsw-tools-yes-no>
                 </div>
             </div>
         </fieldset>

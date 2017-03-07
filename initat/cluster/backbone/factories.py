@@ -652,6 +652,13 @@ class DVSAllowedNameFactory(factory.django.DjangoModelFactory):
             self.group = extracted
             self.save()
 
+    @factory.post_generation
+    def password_field(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.password_field != extracted:
+            self.password_field = extracted
+            self.save()
+
 
 class DeviceClassFactory(factory.django.DjangoModelFactory):
     class Meta:

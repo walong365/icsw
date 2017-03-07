@@ -30,7 +30,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='config_script',
             name='description',
-            field=models.CharField(max_length=765, db_column=b'descr', blank=True),
+            field=models.CharField(max_length=765, db_column='descr', blank=True),
             preserve_default=True,
         ),
     ]

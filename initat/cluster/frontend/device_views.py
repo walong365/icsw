@@ -42,8 +42,7 @@ from initat.cluster.backbone.models import device_group, device, \
     domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
     SensorThreshold, package_device_connection, DispatcherLink, AssetRun, \
     device_variable_scope, StaticAsset, DeviceClass, \
-    dvs_allowed_name
-from initat.cluster.backbone.models import get_change_reset_list, DeviceLogEntry
+    dvs_allowed_name, get_change_reset_list, DeviceLogEntry, DeviceConnectionEnum
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
@@ -1530,3 +1529,47 @@ class DeviceLogEntryLoader(View):
         serializer = DeviceLogEntrySerializer(queryset, many=True)
 
         return HttpResponse(json.dumps(serializer.data))
+
+
+class RemoteViewerConfigLoader(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        from initat.cluster.backbone.var_cache import VarCache
+        from initat.tools.config_tools import icswServerCheck, RouterObject
+
+        device_idx = int(request.POST["device_idx"])
+
+        # device
+        _device = device.objects.select_related("device_group").get(Q(idx=device_idx))
+
+        # get all device variables
+        my_cache = VarCache(prefill=True)
+        dev_vars = my_cache.get_vars(_device)[0]
+
+        comm = {}
+        for dci in DeviceConnectionEnum:
+            needed_vars = set([_var.name for _var in dci.value.var_list])
+            opt_vars = set([_var.name for _var in dci.value.opt_list])
+            if needed_vars & set(dev_vars.keys()) == needed_vars:
+                # all needed vars set
+                comm[dci.name] = {
+                    name: {
+                        "value": dev_vars[name],
+                        "optional": name in opt_vars,
+                    } for name in (needed_vars | opt_vars) & set(dev_vars.keys())
+                }
+        myself = icswServerCheck(fetch_network_info=True)
+        router = RouterObject(logger)
+        dev_sc = icswServerCheck(host_name=_device.full_name, fetch_network_info=True)
+        res = myself.get_route_to_other_device(router, dev_sc)
+        config = {
+            "comm": comm
+        }
+        if len(res):
+            config["ip"] = res[0][3][1][0]
+        else:
+            config["ip"] = None
+
+        # import pprint
+        # pprint.pprint(config)
+        return HttpResponse(json.dumps({"config": config}))

@@ -30,8 +30,8 @@ from django.core.cache import cache
 from django.db.models import Q
 from lxml import etree
 
-from initat.cluster.backbone.models import device
-from initat.cluster.backbone.server_enums import icswServiceEnum
+from .models import device
+from .server_enums import icswServiceEnum
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import uuid_tools, logging_tools, server_command
 from initat.tools.config_tools import icswServerCheck, icswDeviceWithConfig, RouterObject
@@ -161,7 +161,9 @@ class SrvTypeRouting(object):
             _srv_list = self[srv_type_enum.name]
             if server_id:
                 # filter
-                _found_srv = [entry for entry in _srv_list if entry[2] == server_id]
+                _found_srv = [
+                    entry for entry in _srv_list if entry[2] == server_id
+                ]
                 if not _found_srv:
                     self.log(
                         "no server with pk {:d} found for srv_type {}".format(

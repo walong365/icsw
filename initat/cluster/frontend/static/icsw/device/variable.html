@@ -62,7 +62,8 @@
                     {{ struct.helper.device.full_name }}
                 </td>
                 <td ng-repeat="ivar in struct.scope.list" class="text-center">
-                    <span ng-show="ivar.set">{{ ivar.var.$$var_value }}</span>
+                    <span ng-show="ivar.set && !ivar.def.password_field">{{ ivar.var.$$var_value }}</span>
+                    <span ng-show="ivar.set && ivar.def.password_field" class="text-warning">****</span>
                     <span ng-show="!ivar.set">N/A</span>
                 </td>
             </tr>
@@ -404,8 +405,9 @@
                         <tr ng-repeat="ivar in vars_shown">
                             <td>{{ ivar.$$name }}</td>
                             <td>{{ ivar.$$description }}</td>
-                            <td ng-class="ivar.$$td_class" class="text-right">
-                                <span ng-show="ivar.set">{{ ivar.var.$$var_value }}</span>
+                            <td ng-class="ivar.$$td_class" class="text-center">
+                                <span ng-show="ivar.set && !ivar.def.password_field">{{ ivar.var.$$var_value }}</span>
+                                <span ng-show="ivar.set && ivar.def.password_field" class="text-warning">****</span>
                                 <span ng-show="!ivar.set">N/A</span>
                             </td>
                         </tr>
@@ -422,6 +424,7 @@
             <tr>
                 <th>Name</th>
                 <th>Description</th>
+                <th>Type</th>
                 <th>Value</th>
             </tr>
         </thead>
@@ -429,10 +432,18 @@
             <tr ng-repeat="ivar in var_struct">
                 <td>{{ ivar.def.name }}</td>
                 <td>{{ ivar.def.description }}</td>
-                <td>
+                <td class="text-center">
+                    <span class="label" ng-class="ivar.def.password_field && 'label-danger' || 'label-primary'">
+                        {{ ivar.$$vt }}
+                    </span>
+                </td>
+                <td ng-if="!ivar.def.password_field">
                     <input ng-if="ivar.$$vt == 'number'" type="number" class="form-control" ng-model="ivar.$$value" max_length="64"></input>
                     <input ng-if="ivar.$$vt == 'text'" type="text" class="form-control" ng-model="ivar.$$value" max_length="64"></input>
                     <input ng-if="ivar.$$vt == 'date'" type="date" class="form-control" ng-model="ivar.$$value" max_length="64"></input>
+                </td>
+                <td ng-if="ivar.def.password_field">
+                    <input type="password" class="form-control" ng-model="ivar.$$value" max_length="64"></input>
                 </td>
             </tr>
         </tbody>

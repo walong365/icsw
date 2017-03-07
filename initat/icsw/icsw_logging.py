@@ -90,10 +90,18 @@ class GLog(object):
             "stderr": sys.stderr,
         }
         self._names = {
-            key: os.path.join(self._log_dir, key) for key in {"stdout", "stderr", "unified"}
+            key: os.path.join(self._log_dir, key) for key in {
+                "stdout",
+                "stderr",
+                "unified",
+            }
         }
-        self._ends_with_cr = {key: True for key in self._names.keys()}
-        self._last_was_debug = {key: False for key in self._names.keys()}
+        self._ends_with_cr = {
+            key: True for key in self._names.keys()
+        }
+        self._last_was_debug = {
+            key: False for key in self._names.keys()
+        }
         print("Logs are in {}".format(self._log_dir))
         sys.stdout = Redirect(self, "stdout")
         sys.stderr = Redirect(self, "stderr")

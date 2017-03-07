@@ -579,7 +579,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='config_script',
             name='description',
-            field=models.CharField(blank=True, db_column=b'descr', max_length=765),
+            field=models.CharField(blank=True, db_column='descr', max_length=765),
         ),
         migrations.RunPython(
             code=remove_device_type,
@@ -1359,7 +1359,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='PopulateRamdiskCmdLine',
             fields=[
-                ('idx', models.AutoField(db_column=b'kernel_log_idx', primary_key=True, serialize=False)),
+                ('idx', models.AutoField(db_column='kernel_log_idx', primary_key=True, serialize=False)),
                 ('user', models.CharField(default=b'', max_length=256)),
                 ('machine', models.CharField(default=b'', max_length=256)),
                 ('cmdline', models.CharField(max_length=1024)),
