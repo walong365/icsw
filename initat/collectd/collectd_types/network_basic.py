@@ -30,11 +30,39 @@ from .base import PerfdataObject, perfdata_value
 class PingPerfdata(PerfdataObject):
     PD_RE = re.compile("^rta=(?P<rta>\S+) min=(?P<min>\S+) max=(?P<max>\S+) sent=(?P<sent>\d+) loss=(?P<loss>\d+)$")
     PD_XML_INFO = E.perfdata_info(
-        perfdata_value("sent", "packets sent", v_type="i", rrd_spec="GAUGE:0:100").get_xml(),
-        perfdata_value("loss", "packets lost", v_type="i", rrd_spec="GAUGE:0:100").get_xml(),
-        perfdata_value("rta", "mean package runtime", v_type="f", unit="s", rrd_spec="GAUGE:0:1000000").get_xml(),
-        perfdata_value("min", "minimum package runtime", v_type="f", unit="s", rrd_spec="GAUGE:0:1000000").get_xml(),
-        perfdata_value("max", "maximum package runtime", v_type="f", unit="s", rrd_spec="GAUGE:0:1000000").get_xml(),
+        perfdata_value(
+            "sent",
+            "packets sent",
+            v_type="i",
+            rrd_spec="GAUGE:0:100"
+        ).get_xml(),
+        perfdata_value(
+            "loss",
+            "packets lost",
+            v_type="i",
+            rrd_spec="GAUGE:0:100"
+        ).get_xml(),
+        perfdata_value(
+            "rta",
+            "mean package runtime",
+            v_type="f",
+            unit="s",
+            rrd_spec="GAUGE:0:1000000"
+        ).get_xml(),
+        perfdata_value(
+            "min",
+            "minimum package runtime",
+            v_type="f",
+            unit="s",
+            rrd_spec="GAUGE:0:1000000"
+        ).get_xml(),
+        perfdata_value(
+            "max",
+            "maximum package runtime",
+            v_type="f",
+            unit="s",
+            rrd_spec="GAUGE:0:1000000"
+        ).get_xml(),
     )
 
     @property

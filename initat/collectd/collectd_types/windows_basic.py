@@ -30,8 +30,24 @@ from .base import PerfdataObject, perfdata_value
 class WinMemoryPerfdata(PerfdataObject):
     PD_RE = re.compile("^Memory usage=(?P<used>\d+\.\d+)Mb;\d+\.\d+;\d+\.\d+;\d+\.\d+;(?P<total>\d+\.\d+)$", re.I)
     PD_XML_INFO = E.perfdata_info(
-        perfdata_value("used", "memory in use", v_type="i", unit="B", rrd_spec="GAUGE:0:U", base=1024, key="memory.used").get_xml(),
-        perfdata_value("total", "memory total", v_type="i", unit="B", rrd_spec="GAUGE:0:U", base=1024, key="memory.total").get_xml(),
+        perfdata_value(
+            "used",
+            "memory in use",
+            v_type="i",
+            unit="B",
+            rrd_spec="GAUGE:0:U",
+            base=1024,
+            key="memory.used"
+        ).get_xml(),
+        perfdata_value(
+            "total",
+            "memory total",
+            v_type="i",
+            unit="B",
+            rrd_spec="GAUGE:0:U",
+            base=1024,
+            key="memory.total"
+        ).get_xml(),
     )
 
     @property
@@ -47,7 +63,10 @@ class WinMemoryPerfdata(PerfdataObject):
             _host_info,
             _xml,
             [
-                int(float(in_dict[key]) * 1024 * 1024) for key in ["used", "total"]
+                int(float(in_dict[key]) * 1024 * 1024) for key in [
+                    "used",
+                    "total"
+                ]
             ]
         )
 

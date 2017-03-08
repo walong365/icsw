@@ -62,16 +62,34 @@ class SMCChassisPSUPerfdata(PerfdataObject):
         psu_num = v_list[0]
         return E.perfdata_info(
             perfdata_value(
-                "temp", "temperature of PSU {:d}".format(psu_num), v_type="f", unit="C", key="temp.psu{:d}".format(psu_num), rrd_spec="GAUGE:0:100"
+                "temp",
+                "temperature of PSU {:d}".format(psu_num),
+                v_type="f",
+                unit="C",
+                key="temp.psu{:d}".format(psu_num),
+                rrd_spec="GAUGE:0:100"
             ).get_xml(),
             perfdata_value(
-                "amps", "amperes consumed by PSU {:d}".format(psu_num), v_type="f", unit="A", key="amps.psu{:d}".format(psu_num), rrd_spec="GAUGE:0:100"
+                "amps",
+                "amperes consumed by PSU {:d}".format(psu_num),
+                v_type="f",
+                unit="A",
+                key="amps.psu{:d}".format(psu_num),
+                rrd_spec="GAUGE:0:100"
             ).get_xml(),
             perfdata_value(
-                "fan1", "speed of FAN1 of PSU {:d}".format(psu_num), v_type="i", key="fan.psu{:d}fan1".format(psu_num), rrd_spec="GAUGE:0:10000"
+                "fan1",
+                "speed of FAN1 of PSU {:d}".format(psu_num),
+                v_type="i",
+                key="fan.psu{:d}fan1".format(psu_num),
+                rrd_spec="GAUGE:0:10000"
             ).get_xml(),
             perfdata_value(
-                "fan2", "speed of FAN2 of PSU {:d}".format(psu_num), v_type="i", key="fan.psu{:d}fan2".format(psu_num), rrd_spec="GAUGE:0:10000"
+                "fan2",
+                "speed of FAN2 of PSU {:d}".format(psu_num),
+                v_type="i",
+                key="fan.psu{:d}fan2".format(psu_num),
+                rrd_spec="GAUGE:0:10000"
             ).get_xml(),
         )
 
