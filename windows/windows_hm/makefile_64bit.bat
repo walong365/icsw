@@ -7,12 +7,12 @@ SET WINPYTH_MINORFIX=1
 SET WIX_BIN_PATH=C:\Program Files (x86)\WiX Toolset v3.10\bin\
 
 :: Fetch pciutils and move into script directory
-bin\wget -nc https://eternallybored.org/misc/pciutils/releases/pciutils-%PCIUTILS_VERSION%-win64.zip
-bin\7z -o.\tmp\ x pciutils-%PCIUTILS_VERSION%-win64.zip
+..\windows_common_files\bin\wget -nc https://eternallybored.org/misc/pciutils/releases/pciutils-%PCIUTILS_VERSION%-win64.zip
+..\windows_common_files\bin\7z -o.\tmp\ x pciutils-%PCIUTILS_VERSION%-win64.zip
 
 :: Fetch full and zero version of (portable) python
-bin\wget --no-check-certificate -nc https://sourceforge.net/projects/winpython/files/WinPython_3.%WINPYTH_MAJOR%/3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%/WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%Zero.exe
-bin\7z -o.\tmp\zero x WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%Zero.exe
+..\windows_common_files\bin\wget --no-check-certificate -nc https://sourceforge.net/projects/winpython/files/WinPython_3.%WINPYTH_MAJOR%/3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%/WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%Zero.exe
+..\windows_common_files\bin\7z -o.\tmp\zero x WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%Zero.exe
 
 :: install missing/needed modules
 MOVE .\tmp\zero\python-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.amd64 .\host_monitor_windows
@@ -46,8 +46,8 @@ RMDIR /s /q .\host_monitor_windows\tcl
 RMDIR /s /q .\host_monitor_windows\Tools
 RMDIR /s /q .\host_monitor_windows\Doc
 
-XCOPY .\bin\win64\nssm.exe .\host_monitor_windows\
-XCOPY .\bin\dmidecode212.exe .\host_monitor_windows\
+XCOPY ..\windows_common_files\bin\win64\nssm.exe .\host_monitor_windows\
+XCOPY ..\windows_common_files\bin\dmidecode212.exe .\host_monitor_windows\
 MOVE .\tmp\pciutils-%PCIUTILS_VERSION%-win64 .\host_monitor_windows\pciutils
 type nul > .\host_monitor_windows\hm_icsw_w64
 

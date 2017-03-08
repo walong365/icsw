@@ -6966,6 +6966,7 @@ angular.module('noVNC', ['noVNC.util', 'noVNC.rfb']).directive('vnc', ['WebUtil'
 			host        : '@',
 			port        : '@',
 			password    : '@',
+			path				: '@',
 			viewOnly    : '=',
 			trueColor   : '=',
 			isConnected : '=',
@@ -6996,6 +6997,13 @@ angular.module('noVNC', ['noVNC.util', 'noVNC.rfb']).directive('vnc', ['WebUtil'
 
 			scope.$watch('password', function(password) {
 				Interface.setSetting('password', password);
+				if (Interface.connected) {
+					Interface.reconect();
+				}
+			});
+
+			scope.$watch('path', function(path) {
+				Interface.setSetting('path', path);
 				if (Interface.connected) {
 					Interface.reconect();
 				}
@@ -7187,6 +7195,12 @@ angular.module('noVNC', ['noVNC.util', 'noVNC.rfb']).directive('vnc', ['WebUtil'
 				}
 			});
 
+			scope.$on('$destroy', function() {
+				if (scope.isConnected) {
+					Interface.disconnect();
+				}
+			});
+
 			Interface.load();
 		}
 	};
@@ -7280,7 +7294,7 @@ util.factory('Util', function(){
 
 
 
-	/* 
+	/*
 	 * ------------------------------------------------------
 	 * Namespaced in Util
 	 * ------------------------------------------------------
@@ -7431,18 +7445,10 @@ util.factory('Util', function(){
 	 * Cross-browser routines
 	 */
 
-
-    // BM: angular-noVNC introduced a bug which is not present in noVNC and the new function below fixes this.
-    //     the maintainer has been contacted.
-
 	// Get DOM element position on page
 	//  This solution is based based on http://www.greywyvern.com/?post=331
 	//  Thanks to Brian Huisman AKA GreyWyvern!
-	Util.getPositionORIG = function (obj) {
-		var cliRect = obj.getBoundingClientRect();
-		return {'x': cliRect.left, 'y': cliRect.top };
-	};
-    Util.getPosition = (function () {
+	Util.getPosition = (function () {
     "use strict";
     function getStyle(obj, styleProp) {
         var y;
@@ -7504,36 +7510,34 @@ util.factory('Util', function(){
 
         return {'x': curleft, 'y': curtop};
     };
-})();
-
-
+	})();
 
 
 	// Get mouse event position in DOM element
 	Util.getEventPosition = function (e, obj, scale) {
-		var evt, docX, docY, pos;
-		//if (!e) evt = window.event;
-
-		evt = (e ? e : window.event);
-		evt = (evt.changedTouches ? evt.changedTouches[0] : evt.touches ? evt.touches[0] : evt);
-		if (evt.pageX || evt.pageY) {
-			docX = evt.pageX;
-			docY = evt.pageY;
-		} else if (evt.clientX || evt.clientY) {
-			docX = evt.clientX + document.body.scrollLeft +
-				document.documentElement.scrollLeft;
-			docY = evt.clientY + document.body.scrollTop +
-				document.documentElement.scrollTop;
-		}
-		pos = Util.getPosition(obj);
-		if (typeof scale === 'undefined') {
-			scale = 1;
-		}
-		var realx = docX - pos.x;
-		var realy = docY - pos.y;
-		var x = Math.max(Math.min(realx, obj.width-1), 0);
-		var y = Math.max(Math.min(realy, obj.height-1), 0);
-		return {'x': x / scale, 'y': y / scale, 'realx': realx / scale, 'realy': realy / scale};
+    "use strict";
+    var evt, docX, docY, pos;
+    //if (!e) evt = window.event;
+    evt = (e ? e : window.event);
+    evt = (evt.changedTouches ? evt.changedTouches[0] : evt.touches ? evt.touches[0] : evt);
+    if (evt.pageX || evt.pageY) {
+        docX = evt.pageX;
+        docY = evt.pageY;
+    } else if (evt.clientX || evt.clientY) {
+        docX = evt.clientX + document.body.scrollLeft +
+            document.documentElement.scrollLeft;
+        docY = evt.clientY + document.body.scrollTop +
+            document.documentElement.scrollTop;
+    }
+    pos = Util.getPosition(obj);
+    if (typeof scale === "undefined") {
+        scale = 1;
+    }
+    var realx = docX - pos.x;
+    var realy = docY - pos.y;
+    var x = Math.max(Math.min(realx, obj.width - 1), 0);
+    var y = Math.max(Math.min(realy, obj.height - 1), 0);
+    return {'x': x / scale, 'y': y / scale, 'realx': realx / scale, 'realy': realy / scale};
 	};
 
 
@@ -7543,7 +7547,7 @@ util.factory('Util', function(){
 			var r = obj.attachEvent('on'+evType, fn);
 			return r;
 		} else if (obj.addEventListener){
-			obj.addEventListener(evType, fn, false); 
+			obj.addEventListener(evType, fn, false);
 			return true;
 		} else {
 			throw('Handler could not be attached');
@@ -7584,17 +7588,17 @@ util.factory('Util', function(){
 				return (!window.ActiveXObject) ? false : ((window.XMLHttpRequest) ? ((document.querySelectorAll) ? 6 : 5) : 4); }()),
 		'webkit': (
 			function() {
-				try { 
-					return (navigator.taintEnabled) ? false : ((Util.Features.xpath) ? ((Util.Features.query) ? 525 : 420) : 419); 
+				try {
+					return (navigator.taintEnabled) ? false : ((Util.Features.xpath) ? ((Util.Features.query) ? 525 : 420) : 419);
 				} catch (e) {
 					return false;
-				} 
+				}
 			}()
 		),
 		'gecko': (function() {
 				return (!document.getBoxObjectFor && window.mozInnerScreenX == null) ? false : ((document.getElementsByClassName) ? 19 : 18); }())
 	};
-	
+
 	if (Util.Engine.webkit) {
 		// Extract actual webkit version if available
 		Util.Engine.webkit = (function(v) {
@@ -7622,22 +7626,23 @@ util.factory('Util', function(){
 	return Util;
 });
 
-// 
+//
 // requestAnimationFrame shim with setTimeout fallback
 //
 util.factory('requestAnimFrame', function(){
 	'use strict';
 	return function() {
-		return window.requestAnimationFrame   || 
-			window.webkitRequestAnimationFrame || 
-			window.mozRequestAnimationFrame    || 
-			window.oRequestAnimationFrame      || 
-			window.msRequestAnimationFrame     || 
+		return window.requestAnimationFrame   ||
+			window.webkitRequestAnimationFrame ||
+			window.mozRequestAnimationFrame    ||
+			window.oRequestAnimationFrame      ||
+			window.msRequestAnimationFrame     ||
 			function(callback){
 				window.setTimeout(callback, 1000 / 60);
 			};
 	};
 });
+
 
 var util = angular.module('noVNC.util');
 /*

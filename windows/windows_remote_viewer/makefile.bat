@@ -1,14 +1,23 @@
 SET WIX_BIN_PATH=C:\Program Files (x86)\WiX Toolset v3.10\bin\
+SET PYTHON27_PATH=C:\Python27\
+
+:: Generate/fetch required executables
+..\windows_common_files\bin\wget --no-check-certificate -nc https://the.earth.li/~sgtatham/putty/latest/w32/putty.exe
+
+"%PYTHON27_PATH%python.exe" -m pip install pyinstaller
+"%PYTHON27_PATH%python.exe" -m PyInstaller -F -w icsw_remote_viewer_windows.py
+
+MOVE .\dist\icsw_remote_viewer_windows.exe .\
 
 "%WIX_BIN_PATH%candle.exe" ICSW_Remote_Viewer.wxs
 "%WIX_BIN_PATH%light.exe" -ext WixUIExtension -dWixUILicenseRtf=..\windows_common_files\legal_text.rtf -dWixUIBannerBmp=..\windows_common_files\WixUIBannerBmp.bmp -dWixUIExclamationIco=..\windows_common_files\WixUIExclamationIco.ico -dWixUIDialogBmp=..\windows_common_files\WixUIDialogBmp.bmp ICSW_Remote_Viewer.wixobj -o ICSW_Remote_Viewer.msi
 
 :: Cleanup temporary files
-::RMDIR /s /q .\tmp
-::RMDIR /s /q .\host_monitor_windows
-::DEL .\Components.wixobj
-::DEL .\Components.wxs
-::DEL .\ICSW_Windows_Client.wixobj
-::DEL .\ICSW_Windows_Client-%HM_VERSION%-%HM_PLATFORM%.wixpdb
+DEL .\*.wixobj
+DEL .\*.wixpdb
+DEL .\icsw_remote_viewer_windows.spec
+DEL .\icsw_remote_viewer_windows.exe
+RMDIR /s /q .\dist
+RMDIR /s /q .\build
 
 @pause
