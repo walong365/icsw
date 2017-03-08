@@ -20,12 +20,6 @@
             </Directory>
         </Directory>
 
-        <ProgId Id="ICSWRemote.icswremote" Description="ICSW Remote Viewer File">
-            <Extension Id="icswremote" ContentType="application/icsw-remote-viewer-file">
-                <Verb Id="open" Command="open" TargetFile="icsw_remote_viewer_windows.exe" Argument="&quot;%1&quot;"/>
-            </Extension>
-        </ProgId>
-
         <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
 
         <UI Id="MyWixUI_InstallDir">
@@ -39,6 +33,11 @@
             </Component>
             <Component Id="icsw_remote_viewer_windows.exe" Guid="89C3010A-B726-431F-8CF1-7DB3DF44AFE7">
                 <File Id="icsw_remote_viewer_windows.exe" Source="icsw_remote_viewer_windows.exe" KeyPath="yes" Checksum="yes"/>
+                <ProgId Id="ICSWRemote.icswremote" Description="ICSW Remote Viewer File">
+                    <Extension Id="icswremote" ContentType="application/icsw-remote-viewer-file">
+                        <Verb Id="open" Command="open" TargetFile="icsw_remote_viewer_windows.exe" Argument="&quot;%1&quot;"/>
+                    </Extension>
+                </ProgId>
             </Component>
         </DirectoryRef>
 
