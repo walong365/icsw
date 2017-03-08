@@ -305,7 +305,7 @@ angular.module(
             @simple_attributes = [
                 "device", "is_public", "name", "description", "local_copy_ok", "inherit", "protected",
                 "var_type", "val_str", "val_int", "val_blob", "val_data", "val_time",
-                "device_variable_scope",
+                "device_variable_scope", "password_field",
             ]
 
 ]).service("icswDomainTreeNodeBackup", ["icswBackupDefinition", (icswBackupDefinition) ->

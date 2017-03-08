@@ -68,7 +68,6 @@ angular.module(
         # new database idx
         new_database_idx: ""
     }
-    console.log "*", icswClusterData
     $scope.init_login = () ->
         $q.all(
             [

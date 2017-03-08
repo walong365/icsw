@@ -187,6 +187,7 @@ device_variable_module = angular.module(
                 var_type: "s"
                 _mon_var: null
                 inherit: true
+                password_field: false
                 device_variable_scope: device_variable_scope_tree.lut_by_name["normal"].idx
             }
         else
@@ -197,6 +198,7 @@ device_variable_module = angular.module(
                 var_type: "s"
                 _mon_var: null
                 inherit: true
+                password_field: false
                 device_variable_scope: device_variable_scope_tree.lut_by_name["normal"].idx
             }
     else
@@ -236,6 +238,7 @@ device_variable_module = angular.module(
                 $scope.edit_obj.name = _mon_var.name
                 $scope.edit_obj.device_variable_scope = device_variable_scope_tree.lut_by_name["normal"].idx
                 $scope.edit_obj.inherit = false
+                $scope.edit_obj.password_field = false
                 if _mon_var.type == "i"
                     $scope.edit_obj.val_int = parseInt(_mon_var.value)
                 else
@@ -298,7 +301,10 @@ device_variable_module = angular.module(
                                 wait_list.push(struct.device_tree.create_device_variable(local_var, struct.helper))
                             $q.allSettled(wait_list).then(
                                 (result) ->
-                                    save_defer.resolve("created")
+                                    if result.length == 1 and result[0].state == "rejected"
+                                        save_defer.reject("not created")
+                                    else
+                                        save_defer.resolve("created")
                             )
                     else
                         struct.device_tree.update_device_variable($scope.edit_obj, struct.helper).then(
