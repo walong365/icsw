@@ -697,6 +697,7 @@ angular.module(
             show_tree_expand_buttons: false
             show_descendants: true
             tooltip_template_name: "dts_device"
+            show_only_selected: true
         }
     )
     # treeconfig for groups
@@ -878,7 +879,7 @@ angular.module(
                     dg_lut[entry.device_group].add_child(d_entry)
         for cur_tc in [$scope.tc_devices, $scope.tc_groups, $scope.tc_categories]
             cur_tc.recalc()
-            cur_tc.show_selected()
+            cur_tc.show_selected(true, false)
         $scope.struct.is_loading = false
         _selection_changed()
 
@@ -924,19 +925,14 @@ angular.module(
         _selection_changed()
 
     $scope.clear_search = () ->
-        if $scope.cur_search_to
-            $timeout.cancel($scope.cur_search_to)
         $scope.struct.search_str = ""
         $scope.struct.search_ok = true
+        $scope.set_search_filter()
 
-    $scope.update_search = () ->
-        if $scope.cur_search_to
-            $timeout.cancel($scope.cur_search_to)
-        $scope.cur_search_to = $timeout($scope.set_search_filter, 500)
-
-    $scope.set_search_filter = () ->
-        $scope.cur_search_to = undefined
+    $scope.set_search_filter = ($event) ->
         if $scope.struct.search_str == ""
+            cur_tree = $scope.get_tc($scope.struct.active_tab[1])
+            cur_tree.show_selected(true, false)
             return
 
         looks_like_ip_or_mac_start = (in_str) ->
@@ -970,7 +966,7 @@ angular.module(
                                     num_found++
                     )
                     $scope.struct.search_ok = num_found > 0
-                    cur_tree.show_selected(false)
+                    cur_tree.show_selected(false, true)
                     _selection_changed()
                     check_for_post_devsel_call()
             )
@@ -1009,7 +1005,7 @@ angular.module(
                 cur_re
             )
             $scope.struct.search_ok = if num_found > 0 then true else false
-            cur_tree.show_selected(false)
+            cur_tree.show_selected(false, true)
             _selection_changed()
             check_for_post_devsel_call()
 
@@ -1023,9 +1019,9 @@ angular.module(
                 node.selected = node.obj in $scope.struct.selection.tot_dev_sel
         )
         $scope.tc_devices.recalc()
-        $scope.tc_groups.show_selected(false)
-        $scope.tc_categories.show_selected(false)
-        $scope.tc_devices.show_selected(false)
+        $scope.tc_groups.show_selected(false, false)
+        $scope.tc_categories.show_selected(false, false)
+        $scope.tc_devices.show_selected(false, false)
         _selection_changed()
         $scope.activate_tab("Dd")
 
@@ -1227,7 +1223,7 @@ angular.module(
         # apply new selection
         for cur_tc in [$scope.tc_devices, $scope.tc_groups, $scope.tc_categories]
             cur_tc.recalc()
-            cur_tc.show_selected()
+            cur_tc.show_selected(true, false)
         _selection_changed()
 
     $scope.delete_selection = () ->
@@ -1260,9 +1256,9 @@ angular.module(
                         node.selected = node.obj in $scope.struct.selection.tot_dev_sel
                 )
                 $scope.tc_devices.recalc()
-                $scope.tc_groups.show_selected(false)
-                $scope.tc_categories.show_selected(false)
-                $scope.tc_devices.show_selected(false)
+                $scope.tc_groups.show_selected(false, false)
+                $scope.tc_categories.show_selected(false, false)
+                $scope.tc_devices.show_selected(false, false)
                 _selection_changed()
                 $scope.activate_tab("Dd")
                 blockUI.stop()
@@ -1435,6 +1431,7 @@ angular.module(
                 return @scope.struct.device_tree.all_lut[t_entry.obj]
 
         selection_changed: () =>
+            console.log "sc"
             @notifier.notify("go")
 
         get_tooltip_data: (t_entry) =>

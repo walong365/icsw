@@ -177,7 +177,7 @@ angular.module(
                                 title: "expand selected"
                                 onClick: () =>
                                     # show only selected
-                                    @props.tree_config.show_selected(false)
+                                    @props.tree_config.show_selected(false, tree_config.hide_unselected)
                             }
                         )
                     )
@@ -324,31 +324,64 @@ angular.module(
                     _main_spans
                 )
             ]
-            if _tn.children.length and _tn.expand
-                _sub_el.push(
-                    ul(
-                        {
-                            key: "childs"
-                        }
-                        [
-                            React.createElement(
-                                icswReactTreeDrawNode
-                                {
-                                    parent_cb: @parent_cb
-                                    tree_node: child
-                                    tree_config: _tc
-                                    tooltip: @props.tooltip
-                                }
-                            ) for child in _tn.children
-                        ]
+            node_to_be_drawn = (node) ->
+                # returns true if this node should be drawn
+                if _tc.show_only_selected and _tc.hide_unselected
+                    # show only selected and hide_unselected true
+                    if node._num_sel_descendants or node.selected
+                        _vis = true
+                    else
+                        _vis = false
+                else
+                    _vis = true
+                return _vis
+
+            node_is_visible = (node) ->
+                if _tc.show_only_selected and _tc.hide_unselected
+                    # show only selected and hide_unselected true
+                    if node._num_sel_descendants or node.selected
+                        _vis = true
+                    else
+                        _vis = false
+                else if node.children.length
+                    if _tn.expand
+                        _vis = true
+                    else
+                        _vis = false
+                else
+                    # node without children, visible regardless of expansion state
+                    _vis = true
+                return _vis
+
+            # decide visibility of subnode
+            if node_to_be_drawn(_tn)
+                if _tn.children.length and _tn.expand
+                    _sub_el.push(
+                        ul(
+                            {
+                                key: "childs"
+                            }
+                            [
+                                React.createElement(
+                                    icswReactTreeDrawNode
+                                    {
+                                        parent_cb: @parent_cb
+                                        tree_node: child
+                                        tree_config: _tc
+                                        tooltip: @props.tooltip
+                                    }
+                                ) for child in _tn.children when node_to_be_drawn(child)
+                            ]
+                        )
                     )
+                return li(
+                    {
+                       key: "node"
+                    }
+                    _sub_el
                 )
-            return li(
-                {
-                   key: "node"
-                }
-                _sub_el
-            )
+            else
+                return null
     )
     return icswReactTreeDrawNode
 ]).factory("icswReactTreeDrawContainer",
@@ -403,6 +436,8 @@ angular.module(
                     "No entries for #{_tc.name}"
                 )
             else
+                # check for updates to dirty flag
+                _tc.check_root_flags()
                 return ul(
                     {
                         key: "top#{@state.root_generation}"
@@ -590,6 +625,12 @@ angular.module(
             @show_descendants = false
             # show total descendants and not non-folder-only entries
             @show_total_descendants = true
+            # show only selected elements
+            @show_only_selected = false
+            # hide unselected nodes (temporary permanent flag)
+            # false is the normal mode (show all nodes, maybe collapsed but we dont hide them)
+            # true shows only selected nodes (and their parents)
+            @hide_unselected = false
             # only one element can be selected
             @single_select = false
             # search field
@@ -604,6 +645,7 @@ angular.module(
                     console.error "unknown icswReactTreeConfig #{key}=#{value}"
                 else
                     @[key] = value
+            @_cur_rfv = "?"
             # notify react component
             @_do_notify = true
             # internal flags
@@ -612,8 +654,26 @@ angular.module(
             @_root_node_generation = 0
             # running node idx
             @_node_idx = 0
+            # number of selected nodes
+            @num_selected = 0
             # notifiers
             @update_notifier = $q.defer()
+
+        check_root_flags: () =>
+            # return an increasing integer whenever some major flags change
+            # acts as some kind of tree generation counter
+            _rf = []
+            if @show_only_selected
+                _rf.push("o")
+            if @hide_unselected
+                _rf.push("u")
+            rfv = _rf.join(":")
+            if rfv != @_cur_rfv
+                @_cur_rfv = rfv
+                @iter(
+                    (node) ->
+                        node._dirty = true
+                )
 
         update_flag: (key, value) =>
             if not @[key]?
@@ -799,9 +859,28 @@ angular.module(
                 act_sel = act_sel.concat(@_get_selected(child, sel_func))
             return act_sel
 
+        count_selected: () =>
+            _num = 0
+            for entry in @root_nodes
+                _num += @_count_selected(entry)
+            return _num
+
+        _count_selected: (entry) ->
+            _num = 0
+            if entry.selected
+                _num++
+            for child in entry.children
+                _num += @_count_selected(child)
+            # num_sel_descendants == _num + 1 (if entry is selected) or _num (if entry is not selected)
+            # console.log "*", entry._num_sel_descendants, _num
+            return _num
+
         # show all selected, keep-flag keeps already expanded nodes expanded
-        show_selected: (keep=true) =>
+        show_selected: (keep=true, hide_unselected=false) =>
             # make all selected nodes visible
+            # count selected nodes
+            @hide_unselected = hide_unselected
+            @num_selected = @count_selected()
             (@_show_selected(entry, keep) for entry in @root_nodes)
             @new_generation()
 

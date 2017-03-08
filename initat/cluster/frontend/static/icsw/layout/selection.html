@@ -20,7 +20,8 @@
                                 ng-disabled="struct.is_loading"
                                 ng-model="struct.search_str"
                                 placeholder="search by name, IP or MAC"
-                                ng-change="update_search()"
+                                ng-model-options="{debounce: 200, updateOn: 'default blur'}"
+                                ng-change="set_search_filter($event)"
                                 icsw-auto-focus
                             >
                             </input>
