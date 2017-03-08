@@ -128,7 +128,7 @@ class PerfdataObject(object):
         return new_com
 
 
-class value(object):
+class collectdMVValue(object):
     # somehow resembles MachineVectorEntry from hm_classes
     __slots__ = [
         "name", "sane_name", "info", "unit", "base",

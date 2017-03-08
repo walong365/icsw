@@ -167,7 +167,6 @@ class resize_process(threading_tools.icswProcessObj, server_mixins.OperationalEr
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-            _old_size = 0
         else:
             if _old_size:
                 try:
@@ -180,7 +179,7 @@ class resize_process(threading_tools.icswProcessObj, server_mixins.OperationalEr
                 except:
                     # check if file is not an rrd file
                     _content = open(f_name, "rb").read()
-                    if f_name.endswith(".rrd") and _content[:3] != "RRD":
+                    if f_name.endswith(".rrd") and _content[:3] != b"RRD":
                         self.log(
                             "file {} has no RRD header, trying to remove it".format(
                                 f_name

@@ -32,7 +32,7 @@ from lxml.builder import E
 
 from initat.cluster.backbone.models import device
 from initat.tools import logging_tools, process_tools, rrd_tools, server_mixins
-from .collectd_types.base import value, PerfdataObject
+from .collectd_types.base import collectdMVValue, PerfdataObject
 from .config import global_config
 
 
@@ -652,7 +652,7 @@ class CollectdHostInfo(object):
             cur_name = entry.attrib["name"]
             if cur_name not in self.__dict:
                 # set new value
-                self.__dict[cur_name] = value(cur_name)
+                self.__dict[cur_name] = collectdMVValue(cur_name)
             # update value
             self.__dict[cur_name].update(entry, cur_time)
             _tf = _fc.get_mve_file_path(self.uuid, entry)
@@ -670,7 +670,7 @@ class CollectdHostInfo(object):
                 val_key = _val.attrib["key"]
                 cur_name = "{}.{}".format(entry_name, val_key)
                 if cur_name not in self.__dict:
-                    self.__dict[cur_name] = value(cur_name)
+                    self.__dict[cur_name] = collectdMVValue(cur_name)
                 # update value
                 self.__dict[cur_name].update(_val, cur_time)
                 self.__dict[cur_name].timeout = timeout
@@ -718,6 +718,9 @@ class CollectdHostInfo(object):
             _value.get_json() for _value in self.__dict.values()
         ]
         CollectdHostInfo.host_update(self)
+        # import pprint
+        # print("*", self.mc_key())
+        # pprint.pprint(json_vector)
         # set and ignore errors, default timeout is 2 minutes
         CollectdHostInfo.mc.set(
             self.mc_key(),

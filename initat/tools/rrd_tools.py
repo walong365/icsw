@@ -29,9 +29,11 @@ import time
 from lxml import etree
 from lxml.builder import E
 
-from initat.tools import logging_tools
+from . import logging_tools
 
-WS_RE = re.compile("^(?P<slot_num>\d+)\s*(?P<slot_type>\S+?)s*\s+for\s+(?P<total_num>\d+)\s*(?P<total_type>\S+?)s*$")
+WS_RE = re.compile(
+    "^(?P<slot_num>\d+)\s*(?P<slot_type>\S+?)s*\s+for\s+(?P<total_num>\d+)\s*(?P<total_type>\S+?)s*$"
+)
 
 
 def _format_value(in_value):
@@ -418,7 +420,7 @@ class RRD(dict):
         self.log_com = kwargs.get("log_com", None)
         first_bytes = open(self.file_name, "rb").read(8)
         _verbose = kwargs.get("verbose", False)
-        if first_bytes[0:3] == "RRD":
+        if first_bytes[0:3] == b"RRD":
             if _verbose:
                 self.log("Reading RRA-file from {}".format(self.file_name))
             self._parse_raw()
