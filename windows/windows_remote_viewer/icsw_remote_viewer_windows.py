@@ -40,6 +40,8 @@ def main():
     command = []
     if connection_type == "rdesktop":
         command = ["wfreerdp.exe", "/f", "/u:{}".format(username), "/p:{}".format(password), "/v:{}".format(hostname)]
+    elif connection_type == "ssh":
+        command = ["putty.exe", "-l", username, "-pw", password, hostname]
 
     if command:
         subprocess.call(command)
