@@ -4,8 +4,8 @@ SET PYTHON27_PATH=C:\Python27\
 :: Generate/fetch required executables
 ..\windows_common_files\bin\wget --no-check-certificate -nc https://the.earth.li/~sgtatham/putty/latest/w32/putty.exe
 
-"%PYTHON27_PATHpython.exe" -m pip install pyinstaller
-"%PYTHON27_PATHpython.exe" -m PyInstaller -F -w icsw_remote_viewer_windows.py
+"%PYTHON27_PATH%python.exe" -m pip install pyinstaller
+"%PYTHON27_PATH%python.exe" -m PyInstaller -F -w icsw_remote_viewer_windows.py
 
 MOVE .\dist\icsw_remote_viewer_windows.exe .\
 
@@ -15,6 +15,8 @@ MOVE .\dist\icsw_remote_viewer_windows.exe .\
 :: Cleanup temporary files
 DEL .\*.wixobj
 DEL .\*.wixpdb
+DEL .\icsw_remote_viewer_windows.spec
+DEL .\icsw_remote_viewer_windows.exe
 RMDIR /s /q .\dist
 RMDIR /s /q .\build
 
