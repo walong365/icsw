@@ -512,7 +512,7 @@ angular.module(
             byte_arrays.push byte_array
             offset += slice_size
 
-        blob = new Blob(byte_arrays, type: content_type)
+        blob = new Blob(byte_arrays, {type: content_type})
         return blob
 
     create_info_fields = (obj) ->
@@ -668,7 +668,12 @@ angular.module(
             ),
             'application/icsw-remote-viewer-file'
         )
-        $window.location = (window.URL || window.webkitURL).createObjectURL(blob)
+        console.log "*", blob
+        link = document.createElement("a")
+        link.download = "remote.icswremote"
+        link.href = (window.URL || window.webkitURL).createObjectURL(blob)
+        link.click()
+        # $window.location =
 
     $scope.delete = ($event) ->
         icswToolsSimpleModalService("Really delete device '#{$scope.edit_obj.full_name}' ?").then(

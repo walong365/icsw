@@ -59,6 +59,7 @@ if hasattr(sys, "_MEIPASS"):
 else:
     IS_PYINSTALLER_BINARY = False
 
+
 class PlatformSystemTypeEnum(Enum):
     # none, never matches, for HM
     NONE = -1
