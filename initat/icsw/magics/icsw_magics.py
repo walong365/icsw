@@ -41,14 +41,19 @@ class ICSWMagics(Magics):
     @skip_doctest
     @line_magic
     def icsw(self, parameter_s=''):
-        opts = icsw_parser.ICSWParser().parse_args(
-            self.server_mode,
-            parameter_s.split(),
-        )
         try:
-            opts.execute(opts)
+            opts = icsw_parser.ICSWParser().parse_args(
+                self.server_mode,
+                parameter_s.split(),
+            )
         except SystemExit as e:
+            # system exit during cmdline handling
             return e.code
+        else:
+            try:
+                opts.execute(opts)
+            except SystemExit as e:
+                return e.code
 
 
 def apt_completers(self, event):

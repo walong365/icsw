@@ -23,7 +23,9 @@
 
 import io
 import os
+import base64
 import re
+import bz2
 import uuid
 
 from django.apps import apps
@@ -734,12 +736,12 @@ class location_gfx(models.Model):
                 _content = io.BytesIO()
                 _img.save(_content, format="JPEG")
                 _content = _content.getvalue()
-                cache.set(self.icon_cache_key, _content)
+                cache.set(self.icon_cache_key, base64.b64encode(bz2.compress(_content)))
                 return _content
             else:
                 return location_gfx.default_icon()
         else:
-            return _content
+            return bz2.decompress(base64.b64decode(_content))
 
     def get_image(self):
         _entry = self.image_file_name
@@ -751,43 +753,52 @@ class location_gfx(models.Model):
     @staticmethod
     def default_icon():
         from PIL import Image
-        _content = io.StringIO()
+        _content = io.BytesIO()
         Image.new("RGB", (24, 24), color="red").save(_content, format="JPEG")
         return _content.getvalue()
 
     @staticmethod
     def default_image():
         from PIL import Image
-        _content = io.StringIO()
+        _content = io.BytesIO()
         Image.new("RGB", (640, 400), color="red").save(_content, format="JPEG")
         return _content.getvalue()
 
     def _read_image(self):
         # returns an _img object and stores for undo
-        from PIL import Image
-        _img = Image.open(open(self.image_file_name, "rb"))
-        _img.save(open(self.image_file_name_last, "wb"), format="PNG")
+        if os.path.exists(self.image_file_name):
+            from PIL import Image
+            _img = Image.open(open(self.image_file_name, "rb"))
+            _img.save(open(self.image_file_name_last, "wb"), format="PNG")
+        else:
+            _img = None
         return _img
 
     def resize(self, factor):
-        from PIL import Image
         _img = self._read_image()
-        _img = _img.resize((int(_img.size[0] * factor), int(_img.size[1] * factor)), Image.BICUBIC)
-        self.store_graphic(_img, self.content_type, self.image_name)
+        if _img is not None:
+            from PIL import Image
+            _img = _img.resize((int(_img.size[0] * factor), int(_img.size[1] * factor)), Image.BICUBIC)
+            self.store_graphic(_img, self.content_type, self.image_name)
 
     def rotate(self, degrees):
         _img = self._read_image().rotate(degrees)
-        self.store_graphic(_img, self.content_type, self.image_name)
+        if _img is not None:
+            self.store_graphic(_img, self.content_type, self.image_name)
 
     def brightness(self, factor):
-        from PIL import ImageEnhance
-        _img = ImageEnhance.Brightness(self._read_image()).enhance(factor)
-        self.store_graphic(_img, self.content_type, self.image_name)
+        _img = self._read_image()
+        if _img is not None:
+            from PIL import ImageEnhance
+            _img = ImageEnhance.Brightness(_img).enhance(factor)
+            self.store_graphic(_img, self.content_type, self.image_name)
 
     def sharpen(self, factor):
-        from PIL import ImageEnhance
-        _img = ImageEnhance.Sharpness(self._read_image()).enhance(factor)
-        self.store_graphic(_img, self.content_type, self.image_name)
+        _img = self._read_image()
+        if _img is not None:
+            from PIL import ImageEnhance
+            _img = ImageEnhance.Sharpness(_img).enhance(factor)
+            self.store_graphic(_img, self.content_type, self.image_name)
 
     def apply_filter(self, filter_name):
         from PIL import ImageFilter
@@ -796,8 +807,10 @@ class location_gfx(models.Model):
         except:
             pass
         else:
-            _img = self._read_image().filter(_filter)
-            self.store_graphic(_img, self.content_type, self.image_name)
+            _img = self._read_image()
+            if _img is not None:
+                _img = _img.filter(_filter)
+                self.store_graphic(_img, self.content_type, self.image_name)
 
     def restore_original_image(self):
         from PIL import Image

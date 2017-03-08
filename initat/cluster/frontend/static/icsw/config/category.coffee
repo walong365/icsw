@@ -186,10 +186,10 @@ angular.module(
     icswToolsSimpleModalService,icswCategoryTreeService, icswComplexModalService,
     icswCategoryBackup, icswInfoModalService, ICSW_SIGNALS
 ) ->
-    $scope.location_or_tln_selected = () ->
+    $scope.head_or_tln_selected = () ->
         tln_or_location_selected = false
         for selected in $scope.struct.disp_tree.get_active()
-            if selected.obj.full_name == "" || selected.obj.full_name == "/location"
+            if selected.obj.full_name == "" || selected.obj.full_name == "/#{$scope.struct.mode}"
                 tln_or_location_selected = true
 
         return tln_or_location_selected
