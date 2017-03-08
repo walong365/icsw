@@ -9,5 +9,5 @@ Name=ICSW Remote Viewer
 Comment=ICSW Remote Viewer
 
 TryExec=/opt/cluster/bin/icsw_remote_viewer.py
-Exec=/opt/cluster/bin/icsw_remote_viewer.py --action handle --config-file %f
+Exec=/opt/cluster/bin/icsw_remote_viewer.py --action connect --config-file %f
 Terminal=False
