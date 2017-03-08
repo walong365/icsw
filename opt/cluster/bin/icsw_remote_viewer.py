@@ -51,9 +51,8 @@ XGD_MIME_CONFIG = os.path.join(
 class BinaryEnum(Enum):
     xdg_mime = "xdg-mime"
     xdg_desktop_menu = "xdg-desktop-menu"
-    gnome_terminal = "gnome-terminal"
+    xdg_terminal = "xdg-terminal"
     rdesktop = "rdesktop"
-    konsole = "konsole"
     sshpass = "sshpass"
 
 
@@ -147,6 +146,7 @@ class RemoteHandler(object):
             connection_type = config_dict["connection_type"]
 
             command = []
+            need_terminal = True
             if connection_type == "ssh":
                 command = [
                     BinaryEnum.sshpass,
@@ -156,6 +156,7 @@ class RemoteHandler(object):
                     "{}@{}".format(username, hostname)
                 ]
             elif connection_type == "rdesktop":
+                need_terminal = False
                 command = [
                     BinaryEnum.rdesktop,
                     "-u",
@@ -165,24 +166,15 @@ class RemoteHandler(object):
                     hostname
                 ]
 
-            # check for konsoles
-            if self.binaries[BinaryEnum.konsole]:
-                command = [
-                    BinaryEnum.konsole,
-                    "--hold",
-                    "--new-tab",
-                    "-e",
-                    " ".join(self._interpret_command(command))
-                ]
-            elif self.binaries[BinaryEnum.gnome_terminal]:
-                command = [
-                    BinaryEnum.gnome_terminal,
-                    "-e",
-                    '{}'.format(" ".join(self._interpret_command(command)))
-                ]
-            else:
-                self.logger.error("no console command found")
-                command = None
+            if need_terminal:
+                if self.binaries[BinaryEnum.xdg_terminal]:
+                    command = [
+                        BinaryEnum.xdg_terminal,
+                        " ".join(self._interpret_command(command))
+                    ]
+                else:
+                    self.logger.error("xdg-terminal binary not found")
+                    command = None
             if command:
                 subprocess.call(self._interpret_command(command))
                 return

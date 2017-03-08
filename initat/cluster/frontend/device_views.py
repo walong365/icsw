@@ -1570,6 +1570,12 @@ class RemoteViewerConfigLoader(View):
         else:
             config["ip"] = None
 
+        # fallback
+        if not config["ip"]:
+            all_ips = _device.all_ips()
+            if len(all_ips) > 0:
+                config["ip"] = all_ips[-1]
+
         # import pprint
         # pprint.pprint(config)
         return HttpResponse(json.dumps({"config": config}))
