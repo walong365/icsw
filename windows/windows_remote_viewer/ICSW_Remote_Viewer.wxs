@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<?define ProductVersion = "1.0"?>
+<?define ProductUpgradeCode = "CBED4B6F-8454-45E7-A4C8-40A75C4DF388"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Product Id="*" UpgradeCode="$(var.ProductUpgradeCode)" Name="ICSW Remote Viewer" Version="$(var.ProductVersion)" Manufacturer="init.at" Language="1033">
+        <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package" InstallScope="perMachine" InstallPrivileges="elevated"/>
+        <Media Id="1" Cabinet="product.cab" EmbedCab="yes"/>
+         <Icon Id="ProductIcon" SourceFile="..\windows_common_files\WixUIExclamationIco256.ico"/>
+        <Property Id="ARPPRODUCTICON" Value="ProductIcon"/>
+        <Property Id="ARPHELPLINK" Value="http://www.init.at"/>
+        <Property Id="ARPURLINFOABOUT" Value="http://www.init.at"/>
+        <Property Id="ARPNOREPAIR" Value="1"/>
+	    <MajorUpgrade AllowDowngrades="no" DowngradeErrorMessage="A later version of ICSW Windows Client is already installed. Setup will now exit"
+			          AllowSameVersionUpgrades="no"/>
+ 
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="ProgramFilesFolder">
+                <Directory Id="INSTALLDIR" Name="ICSW_Remote_Viewer">
+                </Directory>
+            </Directory>
+        </Directory>
+
+        <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
+
+        <UI Id="MyWixUI_InstallDir">
+          <UIRef Id="WixUI_InstallDir" />
+        </UI>
+        <UIRef Id="WixUI_ErrorProgressText" />
+
+        <DirectoryRef Id="INSTALLDIR">
+            <Component Id="wfreerdp.exe" Guid="D1897F23-B8C2-405A-96BB-809C0675F318">
+                <File Id="wfreerdp.exe" Source="wfreerdp.exe" KeyPath="yes" Checksum="yes"/>
+            </Component>
+            <Component Id="icsw_remote_viewer_windows.exe" Guid="89C3010A-B726-431F-8CF1-7DB3DF44AFE7">
+                <File Id="icsw_remote_viewer_windows.exe" Source="icsw_remote_viewer_windows.exe" KeyPath="yes" Checksum="yes"/>
+                <ProgId Id="ICSWRemote.icswremote" Description="ICSW Remote Viewer File">
+                    <Extension Id="icswremote" ContentType="application/icsw-remote-viewer-file">
+                        <Verb Id="open" Command="open" TargetFile="icsw_remote_viewer_windows.exe" Argument="&quot;%1&quot;"/>
+                    </Extension>
+                </ProgId>
+            </Component>
+        </DirectoryRef>
+
+ 
+        <Feature Id="DefaultFeature" Level="1">
+            <ComponentRef Id="wfreerdp.exe" />
+            <ComponentRef Id="icsw_remote_viewer_windows.exe" />
+        </Feature>
+   </Product>
+</Wix>
