@@ -24,23 +24,23 @@ import re
 
 from lxml.builder import E
 
-from .base import PerfdataObject, perfdata_value
+from .base import PerfdataObject, CPerfDataValue
 
 
 class LinuxLoadPerfdata(PerfdataObject):
     PD_RE = re.compile("^load1=(?P<load1>\S+)\s+load5=(?P<load5>\S+)\s+load15=(?P<load15>\S+)$")
     PD_XML_INFO = E.perfdata_info(
-        perfdata_value(
+        CPerfDataValue(
             "load1",
             "mean load of the last minute",
             rrd_spec="GAUGE:0:10000"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "load5",
             "mean load of the 5 minutes",
             rrd_spec="GAUGE:0:10000"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "load15",
             "mean load of the 15 minutes",
             rrd_spec="GAUGE:0:10000"

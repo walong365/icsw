@@ -23,13 +23,12 @@
 """ RRD views """
 
 import datetime
-import os
 import json
 import logging
+import os
 
 import dateutil.parser
 import dateutil.tz
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http.response import HttpResponse, HttpResponseGone
@@ -37,8 +36,9 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from lxml.builder import E
 
-from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import logging_tools, server_command
+from .helper_functions import xml_wrapper, contact_server
 
 logger = logging.getLogger("cluster.rrd")
 

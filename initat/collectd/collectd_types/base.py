@@ -23,7 +23,7 @@
 from lxml.builder import E
 
 
-class perfdata_value(object):
+class CPerfDataValue(object):
 
     def __init__(self, name, info, unit="1", v_type="f", key="", rrd_spec="GAUGE:0:100", base=1):
         self.name = name

@@ -42,27 +42,25 @@ from django.views.generic import View
 from lxml.builder import E
 from rest_framework import viewsets
 
-from initat.cluster.backbone.server_enums import icswServiceEnum
-
 from initat.cluster.backbone.models import rms_job_run, device
 from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.cluster.backbone.serializers import rms_job_run_serializer
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, server_command, process_tools
+from .helper_functions import contact_server, xml_wrapper
 
 RMS_ADDON_KEYS = [
-    key for key in list(sys.modules.keys()) if key.startswith("initat.cluster.frontend.rms_addons.") and sys.modules[key]
+    key for key in list(
+        sys.modules.keys()
+    ) if key.startswith(
+        "initat.cluster.frontend.rms_addons."
+    ) and sys.modules[key]
 ]
 
 RMS_ADDONS = [
     sys.modules[key].modify_rms() for key in RMS_ADDON_KEYS if key.split(".")[-1] not in ["base"]
 ]
-
-# memcached port and address
-MC_PORT = InstanceXML(quiet=True).get_port_dict(icswServiceEnum.memcached, command=True)
-MC_ADDRESS = "127.0.0.1"
 
 logger = logging.getLogger("cluster.rms")
 
@@ -119,12 +117,21 @@ def get_sge_info():
 
 def get_job_options(request):
     from initat.tools import sge_tools
-    return sge_tools.get_empty_job_options(compress_nodelist=False, queue_details=True, show_variables=True)
+    return sge_tools.get_empty_job_options(
+        compress_nodelist=False,
+        queue_details=True,
+        show_variables=True
+    )
 
 
 def get_node_options(request):
     from initat.tools import sge_tools
-    return sge_tools.get_empty_node_options(merge_node_queue=True, show_type=True, show_seq=True, show_memory=True)
+    return sge_tools.get_empty_node_options(
+        merge_node_queue=True,
+        show_type=True,
+        show_seq=True,
+        show_memory=True
+    )
 
 
 class get_header_dict(View):
@@ -214,7 +221,9 @@ class RMSJsonMixin(object):
         for entry in in_list:
 
             _parts = entry.strip().split()
-            _simple_part = [_part for _part in _parts if _part[0] == _part[-1] and _part[0] in {"\"", "'"}]
+            _simple_part = [
+                _part for _part in _parts if _part[0] == _part[-1] and _part[0] in {"\"", "'"}
+            ]
             if len(_simple_part) > 0:
                 # take first match, todo: handle multiple occurances
                 _simple_part = _simple_part[0]
@@ -372,10 +381,16 @@ class get_rms_done_json(View):
         json_resp = {
             "done_table": _done_ser,
         }
-        return HttpResponse(json.dumps(json_resp), content_type="application/json")
+        return HttpResponse(
+            json.dumps(json_resp),
+            content_type="application/json"
+        )
 
 
 class get_rms_current_json(View, RMSJsonMixin):
+    # memcached port and address
+    _MC_SETTINGS = None
+
     @method_decorator(login_required)
     def post(self, request):
         import memcache
@@ -396,7 +411,24 @@ class get_rms_current_json(View, RMSJsonMixin):
         # get name of all hosts
         _host_names = node_list.xpath(".//node/host/text()")
         # memcache client
-        _mcc = memcache.Client(["{}:{:d}".format(MC_ADDRESS, MC_PORT)])
+        if self._MC_SETTINGS is None:
+            self._MC_SETTINGS = {
+                "PORT": InstanceXML(
+                    quiet=True
+                ).get_port_dict(
+                    icswServiceEnum.memcached,
+                    command=True
+                ),
+                "ADDRESS": "127.0.0.1",
+            }
+        _mcc = memcache.Client(
+            [
+                "{}:{:d}".format(
+                    self._MC_SETTINGS["ADDRESS"],
+                    self._MC_SETTINGS["PORT"]
+                )
+            ]
+        )
         h_dict_raw = _mcc.get("cc_hc_list")
         if h_dict_raw:
             h_dict = json.loads(h_dict_raw)
@@ -439,7 +471,10 @@ class get_rms_current_json(View, RMSJsonMixin):
         fc_dict = {}
         cur_time = time.time()
         # job_ids = my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]/@full_id", smart_strings=False)
-        for file_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]", smart_strings=False):
+        for file_el in my_sge_info.get_tree().xpath(
+            ".//job_list[master/text() = \"MASTER\"]",
+            smart_strings=False
+        ):
             file_contents = file_el.findall(".//file_content")
             if len(file_contents):
                 cur_fcd = []
@@ -458,8 +493,18 @@ class get_rms_current_json(View, RMSJsonMixin):
                                 "disp_len": min(10, len(lines) + 1),
                             }
                         )
-                fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd, key=lambda x: x["last_update"])))
-        for job_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]", smart_strings=False):
+                fc_dict[file_el.attrib["full_id"]] = list(
+                    reversed(
+                        sorted(
+                            cur_fcd,
+                            key=lambda x: x["last_update"]
+                        )
+                    )
+                )
+        for job_el in my_sge_info.get_tree().xpath(
+            ".//job_list[master/text() = \"MASTER\"]",
+            smart_strings=False
+        ):
             job_id = job_el.attrib["full_id"]
             pinning_el = job_el.find(".//pinning_info")
             if pinning_el is not None and pinning_el.text:
@@ -469,7 +514,10 @@ class get_rms_current_json(View, RMSJsonMixin):
                     if int(_node_idx) in _rev_lut:
                         _dn = _rev_lut[int(_node_idx)]
                         for _proc_id, _core_id in _pin_dict.items():
-                            _dev_dict[_dn]["pinning"].setdefault(_core_id, []).append(job_id)
+                            _dev_dict[_dn]["pinning"].setdefault(
+                                _core_id,
+                                []
+                            ).append(job_id)
         _gsi = my_sge_info.tree.find(".//global_waiting_info")
         if _gsi is not None:
             _g_msgs = [
@@ -496,7 +544,10 @@ class get_rms_current_json(View, RMSJsonMixin):
             "node_values": _dev_dict,
             "global_waiting_info": _g_msgs,
         }
-        return HttpResponse(json.dumps(json_resp), content_type="application/json")
+        return HttpResponse(
+            json.dumps(json_resp),
+            content_type="application/json"
+        )
 
 
 class get_rms_jobinfo(View):
@@ -508,7 +559,9 @@ class get_rms_jobinfo(View):
         _salt_addons(request)
         rms_info = _fetch_rms_info(request)
 
-        latest_possible_end_time = cluster_timezone.localize(datetime.datetime.fromtimestamp(int(_post["jobinfo_jobsfrom"])))
+        latest_possible_end_time = cluster_timezone.localize(
+            datetime.datetime.fromtimestamp(int(_post["jobinfo_jobsfrom"]))
+        )
         done_jobs = rms_job_run.objects.all().filter(
             Q(end_time__gt=latest_possible_end_time)
         ).select_related("rms_job")
@@ -538,7 +591,10 @@ class get_rms_jobinfo(View):
                 ] for job in done_jobs
             ),
         }
-        return HttpResponse(json.dumps(json_resp), content_type="application/json")
+        return HttpResponse(
+            json.dumps(json_resp),
+            content_type="application/json"
+        )
 
 
 # liebherr
@@ -556,7 +612,10 @@ class RmsJobViewSet(viewsets.ViewSet, RMSJsonMixin):
             "jobs_running": self.xml_to_json(rms_info.run_job_list),
             "jobs_waiting": self.xml_to_json(rms_info.wait_job_list),
         }
-        return HttpResponse(json.dumps(json_resp), content_type="application/json")
+        return HttpResponse(
+            json.dumps(json_resp),
+            content_type="application/json"
+        )
 
 
 class control_job(View):
@@ -588,7 +647,10 @@ class control_queue(View):
         _post = request.POST
         queue_spec = "{}@{}".format(_post["queue"], _post["host"])
         logger.info("{} on {}".format(_post["command"], queue_spec))
-        srv_com = server_command.srv_command(command="queue_control", action=_post["command"])
+        srv_com = server_command.srv_command(
+            command="queue_control",
+            action=_post["command"]
+        )
         srv_com["queue_list"] = srv_com.builder(
             "queue_list",
             srv_com.builder("queue", queue_spec=queue_spec)
@@ -650,7 +712,13 @@ class get_file_content(View):
                     srv_com.builder("file", name=_file_name, encoding="utf-8") for _file_name in fetch_lut.keys()
                 ]
             )
-            result = contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=60, connection_id="file_fetch_{}".format(str(job_id)))
+            result = contact_server(
+                request,
+                icswServiceEnum.cluster_server,
+                srv_com,
+                timeout=60,
+                connection_id="file_fetch_{}".format(str(job_id))
+            )
             if result is not None:
                 if result.get_result()[1] > server_command.SRV_REPLY_STATE_WARN:
                     request.xml_response.error(result.get_log_tuple()[0], logger)
@@ -716,7 +784,10 @@ class change_job_priority(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        srv_com = server_command.srv_command(command="job_control", action="modify_priority")
+        srv_com = server_command.srv_command(
+            command="job_control",
+            action="modify_priority"
+        )
         srv_com["job_list"] = srv_com.builder(
             "job_list",
             srv_com.builder("job", job_id=_post["job_id"], priority=_post["new_pri"])

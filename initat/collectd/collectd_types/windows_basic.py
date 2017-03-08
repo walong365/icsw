@@ -24,13 +24,13 @@ import re
 
 from lxml.builder import E
 
-from .base import PerfdataObject, perfdata_value
+from .base import PerfdataObject, CPerfDataValue
 
 
 class WinMemoryPerfdata(PerfdataObject):
     PD_RE = re.compile("^Memory usage=(?P<used>\d+\.\d+)Mb;\d+\.\d+;\d+\.\d+;\d+\.\d+;(?P<total>\d+\.\d+)$", re.I)
     PD_XML_INFO = E.perfdata_info(
-        perfdata_value(
+        CPerfDataValue(
             "used",
             "memory in use",
             v_type="i",
@@ -39,7 +39,7 @@ class WinMemoryPerfdata(PerfdataObject):
             base=1024,
             key="memory.used"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "total",
             "memory total",
             v_type="i",
@@ -91,7 +91,7 @@ class WinDiskPerfdata(PerfdataObject):
     def get_pd_xml_info(self, v_list):
         disk = v_list[0]
         return E.perfdata_info(
-            perfdata_value(
+            CPerfDataValue(
                 "used",
                 "space used on {}".format(disk),
                 v_type="i",
@@ -99,7 +99,7 @@ class WinDiskPerfdata(PerfdataObject):
                 rrd_spec="GAUGE:0:U",
                 key="disk.{}.used".format(disk)
             ).get_xml(),
-            perfdata_value(
+            CPerfDataValue(
                 "total",
                 "total size of {}".format(disk),
                 v_type="i",
@@ -131,21 +131,21 @@ class WinLoadPerfdata(PerfdataObject):
         "^1 min avg Load=(?P<load1>\d+)%\S+ 5 min avg Load=(?P<load5>\d+)%\S+ 15 min avg Load=(?P<load15>\d+)%\S+$"
     )
     PD_XML_INFO = E.perfdata_info(
-        perfdata_value(
+        CPerfDataValue(
             "load1",
             "mean load of the last minute",
             rrd_spec="GAUGE:0:10000",
             unit="%",
             v_type="i"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "load5",
             "mean load of the 5 minutes",
             rrd_spec="GAUGE:0:10000",
             unit="%",
             v_type="i"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "load15",
             "mean load of the 15 minutes",
             rrd_spec="GAUGE:0:10000",

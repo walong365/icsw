@@ -38,7 +38,7 @@ from initat.cluster.backbone.models import package_search, package_search_result
     package_repo
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import package_device_connection_serializer
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from .helper_functions import contact_server, xml_wrapper
 from rest_framework.renderers import JSONRenderer
 from initat.tools import logging_tools, process_tools, server_command
 
@@ -62,7 +62,13 @@ class repo_overview(permission_required_mixin, View):
                         uuid=cur_dev.uuid
                     ) for cur_dev in device.objects.filter(Q(pk__in=_node_pks))
                 ]
-            _result = contact_server(request, icswServiceEnum.package_server, srv_com, timeout=10, log_result=True)
+            _result = contact_server(
+                request,
+                icswServiceEnum.package_server,
+                srv_com,
+                timeout=10,
+                log_result=True
+            )
         else:
             request.xml_response.error("unknown mode '{}'".format(cur_mode))
 
@@ -147,7 +153,9 @@ class unuse_package(View):
             num_ref = get_related_models(cur_p)
             if num_ref:
                 request.xml_response.error(
-                    "cannot remove: {}".format(logging_tools.get_plural("reference", num_ref)),
+                    "cannot remove: {}".format(
+                        logging_tools.get_plural("reference", num_ref)
+                    ),
                     logger
                 )
             else:
@@ -164,7 +172,9 @@ class add_package(View):
         new_pdcs = []
         for dev_pk, pack_pk in json.loads(_post["add_list"]):
             try:
-                _cur_pdc = package_device_connection.objects.get(Q(device=dev_pk) & Q(package=pack_pk))
+                _cur_pdc = package_device_connection.objects.get(
+                    Q(device=dev_pk) & Q(package=pack_pk)
+                )
             except package_device_connection.DoesNotExist:
                 new_pdc = package_device_connection(
                     device=device.objects.get(Q(pk=dev_pk)),
@@ -189,7 +199,9 @@ class add_package(View):
                 ),
                 logger
             )
-        request.xml_response["result"] = JSONRenderer().render(package_device_connection_serializer(new_pdcs, many=True).data)
+        request.xml_response["result"] = JSONRenderer().render(
+            package_device_connection_serializer(new_pdcs, many=True).data
+        )
 
 
 class remove_package(View):
@@ -267,9 +279,20 @@ class change_package(View):
             if change:
                 changed += 1
                 cur_pdc.save()
-        request.xml_response.info("{} updated".format(logging_tools.get_plural("PDC", changed)), logger)
+        request.xml_response.info(
+            "{} updated".format(
+                logging_tools.get_plural("PDC", changed)
+            ),
+            logger
+        )
         srv_com = server_command.srv_command(command="new_config")
-        result = contact_server(request, icswServiceEnum.package_server, srv_com, timeout=10, log_result=False)
+        result = contact_server(
+            request,
+            icswServiceEnum.package_server,
+            srv_com,
+            timeout=10,
+            log_result=False
+        )
         if result:
             # print result.pretty_print()
             request.xml_response.info("sent sync to server", logger)
@@ -291,7 +314,11 @@ class change_package_flag(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        cur_pdc = package_device_connection.objects.select_related("package").get(Q(pk=_post["pdc_key"].split("__")[1]))
+        cur_pdc = package_device_connection.objects.select_related(
+            "package"
+        ).get(
+            Q(pk=_post["pdc_key"].split("__")[1])
+        )
         flag_name = _post["pdc_key"].split("__")[-1]
         # print flag_name
         value = True if int(_post["value"]) else False
@@ -313,7 +340,9 @@ class get_pdc_status(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        cur_pdc = package_device_connection.objects.get(Q(pk=_post["pdc_pk"]))
+        cur_pdc = package_device_connection.objects.get(
+            Q(pk=_post["pdc_pk"])
+        )
         request.xml_response["pdc_status"] = cur_pdc.response_str
 
 
@@ -322,7 +351,13 @@ class synchronize(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         srv_com = server_command.srv_command(command="new_config")
-        result = contact_server(request, icswServiceEnum.package_server, srv_com, timeout=10, log_result=False)
+        result = contact_server(
+            request,
+            icswServiceEnum.package_server,
+            srv_com,
+            timeout=10,
+            log_result=False
+        )
         if result:
             # print result.pretty_print()
             request.xml_response.info("sent sync to server", logger)

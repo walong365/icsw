@@ -24,7 +24,7 @@ import re
 
 from lxml.builder import E
 
-from .base import PerfdataObject, perfdata_value
+from .base import PerfdataObject, CPerfDataValue
 
 
 class HTTPRequestPerfdata(PerfdataObject):
@@ -34,21 +34,21 @@ class HTTPRequestPerfdata(PerfdataObject):
         "time_transfer=(?P<time_transfer>\S+)$"
     )
     PD_XML_INFO = E.perfdata_info(
-        perfdata_value(
+        CPerfDataValue(
             "time",
             "time needed for request",
             key="request.time.total",
             v_type="f",
             rrd_spec="GAUGE:0:10000"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "size",
             "size of response",
             key="request.size",
             v_type="i",
             rrd_spec="GAUGE:0:1000000"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "connect",
             "time needed for connect",
             key="request.time.connect",
@@ -56,7 +56,7 @@ class HTTPRequestPerfdata(PerfdataObject):
             unit="s",
             rrd_spec="GAUGE:0:100"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "headers",
             "time needed for headers",
             key="request.time.headers",
@@ -64,7 +64,7 @@ class HTTPRequestPerfdata(PerfdataObject):
             unit="s",
             rrd_spec="GAUGE:0:100"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "firstbyte",
             "time needed until first byte",
             key="request.time.firstbyte",
@@ -72,7 +72,7 @@ class HTTPRequestPerfdata(PerfdataObject):
             unit="s",
             rrd_spec="GAUGE:0:100"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "transfer",
             "time needed for transfer",
             key="request.time.transfer",
@@ -107,21 +107,21 @@ class HTTPsRequestPerfdata(PerfdataObject):
         "time_ssl=(?P<time_ssl>\S+)\s+time_headers=(?P<time_headers>\S+)\s+time_firstbyte=(?P<time_firstbyte>\S+)\s+time_transfer=(?P<time_transfer>\S+)$"
     )
     PD_XML_INFO = E.perfdata_info(
-        perfdata_value(
+        CPerfDataValue(
             "time",
             "time needed for request",
             key="request.time.total",
             v_type="f",
             rrd_spec="GAUGE:0:10000"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "size",
             "size of response",
             key="request.size",
             v_type="i",
             rrd_spec="GAUGE:0:1000000"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "connect",
             "time needed for connect",
             key="request.time.connect",
@@ -129,14 +129,14 @@ class HTTPsRequestPerfdata(PerfdataObject):
             unit="s",
             rrd_spec="GAUGE:0:100"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "ssl",
             "time needed for SSL",
             key="request.time.ssl",
             v_type="f",
             rrd_spec="GAUGE:0:10000"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "headers",
             "time needed for headers",
             key="request.time.headers",
@@ -144,7 +144,7 @@ class HTTPsRequestPerfdata(PerfdataObject):
             unit="s",
             rrd_spec="GAUGE:0:100"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "firstbyte",
             "time needed until first byte",
             key="request.time.firstbyte",
@@ -152,7 +152,7 @@ class HTTPsRequestPerfdata(PerfdataObject):
             unit="s",
             rrd_spec="GAUGE:0:100"
         ).get_xml(),
-        perfdata_value(
+        CPerfDataValue(
             "transfer",
             "time needed for transfer",
             key="request.time.transfer",

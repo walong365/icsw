@@ -28,7 +28,6 @@ import json
 import logging
 from importlib import import_module
 
-import django
 from django.conf import settings
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.sessions.backends.cache import KEY_PREFIX
@@ -48,9 +47,9 @@ from initat.cluster.backbone.middleware import thread_local_middleware
 from initat.cluster.backbone.models import user, login_history, background_job, RouteTrace
 from initat.cluster.backbone.serializers import user_serializer, background_job_serializer
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store, server_mixins, logging_tools
+from .helper_functions import xml_wrapper
 
 logger = logging.getLogger("cluster.session")
 

@@ -117,13 +117,34 @@ class CopyNetwork(View):
                     if peer_info.s_netdevice_id != peer_info.d_netdevice_id:
                         logger.critical("host peering detection, not handled")
                     else:
-                        peer_dict.setdefault(peer_info.s_netdevice_id, []).append((None, peer_info.penalty))
+                        peer_dict.setdefault(
+                            peer_info.s_netdevice_id,
+                            []
+                        ).append(
+                            (
+                                None, peer_info.penalty
+                            )
+                        )
                 elif s_local:
-                    peer_dict.setdefault(peer_info.s_netdevice_id, []).append((peer_info.d_netdevice,
-                                                                               peer_info.penalty))
+                    peer_dict.setdefault(
+                        peer_info.s_netdevice_id,
+                        []
+                    ).append(
+                        (
+                            peer_info.d_netdevice,
+                            peer_info.penalty
+                        )
+                    )
                 else:
-                    peer_dict.setdefault(peer_info.d_netdevice_id, []).append((peer_info.s_netdevice,
-                                                                               peer_info.penalty))
+                    peer_dict.setdefault(
+                        peer_info.d_netdevice_id,
+                        []
+                    ).append(
+                        (
+                            peer_info.s_netdevice,
+                            peer_info.penalty
+                        )
+                    )
             for target_num, target_dev in enumerate(target_devs):
                 offset = target_num + 1
                 logger.info(
@@ -133,7 +154,11 @@ class CopyNetwork(View):
                     )
                 )
                 if target_dev.bootnetdevice_id:
-                    logger.info("removing bootnetdevice {}".format(str(target_dev.bootnetdevice)))
+                    logger.info(
+                        "removing bootnetdevice {}".format(
+                            str(target_dev.bootnetdevice)
+                        )
+                    )
                     target_dev.bootnetdevice = None
                     target_dev.save()
                 # preserve mac/fakemac addresses
@@ -246,7 +271,12 @@ class GetNetworkClusters(permission_required_mixin, View):
     def post(self, request):
         _ = request
         r_obj = config_tools.RouterObject(self.log)
-        return HttpResponse(json.dumps(r_obj.get_clusters()), content_type="application/json")
+        return HttpResponse(
+            json.dumps(
+                r_obj.get_clusters()
+            ),
+            content_type="application/json"
+        )
 
 
 class GetFreeIp(View):
@@ -343,8 +373,11 @@ class NmapScanDiffer(View):
 
             nmap_scan = NmapScan.objects.get(idx=scan_id)
 
-            old_nmap_scan = NmapScan.objects.filter(network=nmap_scan.network, idx__lt=scan_id, in_progress=False).\
-                order_by("-idx")
+            old_nmap_scan = NmapScan.objects.filter(
+                Q(network=nmap_scan.network) &
+                Q(idx__lt=scan_id) &
+                Q(in_progress=False)
+            ).order_by("-idx")
 
             if old_nmap_scan:
                 old_nmap_scan = old_nmap_scan[0]

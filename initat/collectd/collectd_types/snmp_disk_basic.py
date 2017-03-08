@@ -24,7 +24,7 @@ import re
 
 from lxml.builder import E
 
-from .base import PerfdataObject, perfdata_value
+from .base import PerfdataObject, CPerfDataValue
 
 """ example: 'UCD-SNMP-MIB::dskPercent.3=14' """
 
@@ -35,7 +35,7 @@ class SNMPDiskCheckPerfData(PerfdataObject):
     def get_pd_xml_info(self, v_list):
         disk_num = v_list[0]
         return E.perfdata_info(
-            perfdata_value(
+            CPerfDataValue(
                 "disk",
                 "usage of disk {:d}".format(
                     disk_num
