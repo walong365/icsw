@@ -386,7 +386,7 @@ class procstat_command(hm_classes.MonitoringCommand):
             hm_classes.MCParameter("-c", "crit", 0, "lower bound of number of processes for critical state"),
             hm_classes.MCParameter("-Z", "zombie", False, "ignore zombie processes"),
             hm_classes.MCParameter("--cmd-re", "cmdre", ".*", "Regular Expression to match against the commandline"),
-            hm_classes.MCParameter(None, "arguments", ".*", "Process names to search for"),
+            hm_classes.MCParameter(None, "arguments", "", "Process names to search for"),
         )
 
     def __call__(self, srv_com, cur_ns):
@@ -404,14 +404,13 @@ class procstat_command(hm_classes.MonitoringCommand):
                 "pid", "ppid", "name", "exe", "cmdline", "status",
                 "ppid", "cpu_affinity"
             ]
-        elif PLATFORM_SYSTEM_TYPE == PLATFORM_SYSTEM_TYPE.LINUX:
+        elif PLATFORM_SYSTEM_TYPE == PlatformSystemTypeEnum.LINUX:
             attr_list = [
                 "pid", "ppid", "uids", "gids", "name", "exe",
                 "cmdline", "status", "ppid", "cpu_affinity",
             ]
         else:
             attr_list = ["pid", "name"]
-
         for key, value in process_tools.get_proc_list(proc_name_list=name_list).items():
             try:
                 if value.is_running():
@@ -422,9 +421,13 @@ class procstat_command(hm_classes.MonitoringCommand):
                 pass
         if cur_ns.arguments:
             # try to be smart about cron / crond
-            t_dict = {key: value for key, value in _p_dict.items() if value["name"] in cur_ns.arguments}
+            t_dict = {
+                key: value for key, value in _p_dict.items() if value["name"] in cur_ns.arguments
+            }
             if not t_dict and cur_ns.arguments[0] == "cron":
-                t_dict = {key: value for key, value in _p_dict.items() if value["name"] in ["crond"]}
+                t_dict = {
+                    key: value for key, value in _p_dict.items() if value["name"] in ["crond"]
+                }
             _p_dict = t_dict
         srv_com["process_tree"] = server_command.compress(_p_dict, json=True)
         srv_com["process_tree"].attrib["format"] = "2"
@@ -496,7 +499,9 @@ class procstat_command(hm_classes.MonitoringCommand):
             if found_name != p_names[0]:
                 p_names[0] = "{} instead of {}".format(found_name, p_names[0])
             # print p_names, result
-        zombie_dict = {key: len(value) for key, value in zombie_dict.items()}
+        zombie_dict = {
+            key: len(value) for key, value in zombie_dict.items()
+        }
         ret_state = max(
             ret_state,
             limits.check_floor(res_dict["ok"], cur_ns.warn, cur_ns.crit)
