@@ -131,7 +131,6 @@ def main():
             def __call__(self, *args):
                 return "C", args
 
-
         xicsw = st2()
 
         def stest(sthg):
