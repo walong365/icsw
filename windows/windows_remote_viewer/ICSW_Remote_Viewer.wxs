@@ -5,7 +5,7 @@
     <Product Id="*" UpgradeCode="$(var.ProductUpgradeCode)" Name="ICSW Remote Viewer" Version="$(var.ProductVersion)" Manufacturer="init.at" Language="1033">
         <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package" InstallScope="perMachine" InstallPrivileges="elevated"/>
         <Media Id="1" Cabinet="product.cab" EmbedCab="yes"/>
-         <Icon Id="ProductIcon" SourceFile="WixUIExclamationIco256.ico"/>
+         <Icon Id="ProductIcon" SourceFile="..\windows_common_files\WixUIExclamationIco256.ico"/>
         <Property Id="ARPPRODUCTICON" Value="ProductIcon"/>
         <Property Id="ARPHELPLINK" Value="http://www.init.at"/>
         <Property Id="ARPURLINFOABOUT" Value="http://www.init.at"/>
