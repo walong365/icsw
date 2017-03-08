@@ -90,14 +90,14 @@ menu_module = angular.module(
         #        event.preventDefault()
         #        icswThemeService.toggle()
         ).add(
-            combo: "shift+a"
+            combo: "shift+ctrl+a"
             allowIn: ["SELECT", "TEXTAREA"]
             description: "Add a new device"
             callback: (event) ->
                 event.preventDefault()
                 $state.go("main.devicecreate")
         ).add(
-            combo: "shift+t"
+            combo: "shift+ctrl+t"
             allowIn: ["SELECT", "TEXTAREA"]
             description: "Show Device Tree"
             callback: (event) ->

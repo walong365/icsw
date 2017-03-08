@@ -323,7 +323,7 @@
                     <value>md_config_server</value>
                 </licenses>
                 <description>
-                    <infoText language="en">TODO: Show monitoring data at Google maps and with location images</infoText>
+                    <infoText language="en">Show monitoring data at Google maps and with location images</infoText>
                 </description>
             </icswData>
         </route>
@@ -617,7 +617,7 @@
                     <value>$$CHECK_FOR_SUPERUSER</value>
                 </rights>
                 <description>
-                    <infoText language="en">TO BE REMOVED?</infoText>
+                    <infoText language="en">Show all available routes</infoText>
                 </description>
             </icswData>
         </route>
