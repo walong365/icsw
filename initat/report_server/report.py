@@ -37,6 +37,14 @@ from openpyxl import Workbook
 from openpyxl.writer.excel import save_virtual_workbook
 from openpyxl.styles import Font
 from openpyxl.utils.cell import get_column_letter
+
+# workaround for import errors caused by ==reportlab-3.4.0
+def new_expanduser(path):
+    return path.replace("~", "/tmp")
+
+old_expanduser = os.path.expanduser
+os.path.expanduser = new_expanduser
+
 from reportlab.graphics.shapes import Drawing, Rect, String, _DrawingEditorMixin, Line
 from reportlab.graphics.charts.piecharts import Pie
 from reportlab.graphics.charts.legends import Legend
@@ -52,6 +60,10 @@ from reportlab.platypus import SimpleDocTemplate, Spacer, Table, Paragraph, Imag
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
+from reportlab import rl_config
+
+os.path.expanduser = old_expanduser
+
 from unidecode import unidecode
 from dateutil import tz
 
@@ -63,7 +75,6 @@ from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
 from initat.cluster.backbone.models import network, AssetBatch, user, mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_service_data
 
-from reportlab import rl_config
 rl_config.shapeChecking = False
 
 PollyReports.Element.text_conversion = str
