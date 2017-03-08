@@ -46,6 +46,7 @@
 
  
         <Feature Id="DefaultFeature" Level="1">
+            <ComponentRef Id="putty.exe" />
             <ComponentRef Id="wfreerdp.exe" />
             <ComponentRef Id="icsw_remote_viewer_windows.exe" />
         </Feature>
