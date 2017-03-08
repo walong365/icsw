@@ -20,18 +20,18 @@
 #
 """ load all defined collectd types to handle icinga / nagios performance data """
 
+import importlib
 import inspect
 import os
-import importlib
 
 from initat.tools import process_tools
-
 from .base import PerfdataObject
-
 
 _mods = [
     cur_entry for cur_entry in [
-        entry.split(".")[0] for entry in os.listdir(os.path.dirname(__file__)) if entry.endswith(".py")
+        entry.split(".")[0] for entry in os.listdir(
+            os.path.dirname(__file__)
+        ) if entry.endswith(".py")
     ] if cur_entry and not cur_entry.startswith("_")
 ]
 
@@ -43,7 +43,11 @@ for mod_name in _mods:
     if mod_name in ["base"]:
         continue
     try:
-        new_mod = importlib.import_module("initat.collectd.collectd_types.{}".format(mod_name))
+        new_mod = importlib.import_module(
+            "initat.collectd.collectd_types.{}".format(
+                mod_name
+            )
+        )
     except:
         exc_info = process_tools.icswExceptionInfo()
         IMPORT_ERRORS.extend(exc_info.log_lines)
@@ -53,4 +57,6 @@ for mod_name in _mods:
             if inspect.isclass(_entry):
                 if _entry != PerfdataObject and issubclass(_entry, PerfdataObject):
                     _inst = _entry()
-                    ALL_PERFDATA["{}_{}".format(mod_name, _name)] = (_inst.PD_RE, _inst)
+                    ALL_PERFDATA[
+                        "{}_{}".format(mod_name, _name)
+                    ] = (_inst.PD_RE, _inst)

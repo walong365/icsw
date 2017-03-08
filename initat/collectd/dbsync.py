@@ -20,11 +20,11 @@
 """ db-syncer for the NESTOR / CORVUS / NOCTUA graphing solution """
 
 from django.db.models import Q
-from initat.tools import logging_tools, server_mixins, threading_tools, process_tools
 from lxml import etree
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, MachineVector, MVStructEntry, MVValueEntry
+from initat.tools import logging_tools, server_mixins, threading_tools, process_tools
 from .config import global_config
 
 
@@ -93,9 +93,17 @@ class NameCache(GenCache):
             _short, _domain = in_value, None
         if _domain is not None:
             try:
-                _dev = device.objects.get(Q(name=_short) & Q(domain_tree_node__full_name=_domain))
+                _dev = device.objects.get(
+                    Q(name=_short) & Q(domain_tree_node__full_name=_domain)
+                )
             except device.DoesNotExist:
-                self.log("no device with name / domain {} / {} found".format(_short, _domain), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "no device with name / domain {} / {} found".format(
+                        _short,
+                        _domain
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 _dev = None
         else:
             _dev = None
@@ -103,10 +111,21 @@ class NameCache(GenCache):
             try:
                 _dev = device.objects.get(Q(name=_short))
             except device.DoesNotExist:
-                self.log("no device with name {} found".format(_short), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "no device with name {} found".format(
+                        _short
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 _dev = None
             except device.MultipleObjectsReturned:
-                self.log("found more than one device with short name {}: {}".format(_short, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "found more than one device with short name {}: {}".format(
+                        _short,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 _dev = None
         if _dev is None:
             _err_str = "no device with name '{}' found".format(in_value)
@@ -141,7 +160,9 @@ class MVStructEntryCache(GenCache):
     def resolve(self, key):
         try:
             _mvs = MVStructEntry.objects.get(
-                Q(machine_vector=self.parent) & Q(se_type=key[0]) & Q(key=key[1])
+                Q(machine_vector=self.parent) &
+                Q(se_type=key[0]) &
+                Q(key=key[1])
             )
         except MVStructEntry.DoesNotExist:
             _mvs = MVStructEntry(
@@ -162,7 +183,8 @@ class MVValueEntryCache(GenCache):
     def resolve(self, key):
         try:
             _mvv = MVValueEntry.objects.get(
-                Q(mv_struct_entry=self.parent) & Q(key=key[0])
+                Q(mv_struct_entry=self.parent) &
+                Q(key=key[0])
             )
         except MVValueEntry.DoesNotExist:
             _mvv = MVValueEntry(
@@ -312,7 +334,12 @@ class SyncProcess(threading_tools.icswProcessObj, server_mixins.OperationalError
                     )
                 )
         else:
-            self.log("uuid and name not found in attributes ({})".format(", ".join(sorted(dict(_xml.attrib).keys()))), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "uuid and name not found in attributes ({})".format(
+                    ", ".join(sorted(dict(_xml.attrib).keys()))
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             mv = None
         if mv:
             for entry in _xml:
@@ -326,14 +353,20 @@ class SyncProcess(threading_tools.icswProcessObj, server_mixins.OperationalError
             if self.mvs_changed:
                 self.log(
                     "changed {} for {}".format(
-                        logging_tools.get_plural("MVStructEntry", self.mvs_changed),
+                        logging_tools.get_plural(
+                            "MVStructEntry",
+                            self.mvs_changed
+                        ),
                         str(mv),
                     )
                 )
             if self.mvv_changed:
                 self.log(
                     "changed {} for {}".format(
-                        logging_tools.get_plural("MVValueEntry", self.mvv_changed),
+                        logging_tools.get_plural(
+                            "MVValueEntry",
+                            self.mvv_changed
+                        ),
                         str(mv),
                     )
                 )

@@ -22,20 +22,15 @@
 
 import datetime
 import os
-import psutil
 import re
 import socket
 import time
 
+import psutil
 import pytz
 import zmq
 from django.conf import settings
 from django.db.models import Q
-from initat.tools import config_tools, configfile, logging_tools, process_tools, \
-    server_command, threading_tools, uuid_tools, net_tools
-from initat.tools.server_mixins import GetRouteToDevicesMixin, ICSWBasePool, \
-    SendToRemoteServerMixin
-
 from lxml import etree
 from lxml.builder import E
 
@@ -46,6 +41,10 @@ from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.var_cache import VarCache
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.process import SNMPProcessContainer
+from initat.tools import config_tools, configfile, logging_tools, process_tools, \
+    server_command, threading_tools, uuid_tools, net_tools
+from initat.tools.server_mixins import GetRouteToDevicesMixin, ICSWBasePool, \
+    SendToRemoteServerMixin
 from .aggregate import AggregateProcess
 from .background import SNMPJob, BackgroundJob, IPMIBuilder
 from .collectd_struct import CollectdHostInfo, ext_com, HostMatcher, FileCreator
@@ -92,34 +91,127 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                         database=True
                     )
                 ),
-                ("RRD_DISK_CACHE_SYNC", configfile.IntegerConfigVar(3600, help_string="seconds between syncs from RAM to disk", database=True)),
-                ("RRD_COVERAGE_1", configfile.StringConfigVar("1min for 2days", database=True)),
-                ("RRD_COVERAGE_2", configfile.StringConfigVar("5min for 2 week", database=True)),
-                ("RRD_COVERAGE_3", configfile.StringConfigVar("15mins for 1month", database=True)),
-                ("RRD_COVERAGE_4", configfile.StringConfigVar("4 hours for 1 year", database=True)),
-                ("RRD_COVERAGE_5", configfile.StringConfigVar("1day for 5 years", database=True)),
+                (
+                    "RRD_DISK_CACHE_SYNC",
+                    configfile.IntegerConfigVar(
+                        3600,
+                        help_string="seconds between syncs from RAM to disk",
+                        database=True
+                    )
+                ),
+                (
+                    "RRD_COVERAGE_1",
+                    configfile.StringConfigVar("1min for 2days", database=True)
+                ),
+                (
+                    "RRD_COVERAGE_2",
+                    configfile.StringConfigVar("5min for 2 week", database=True)
+                ),
+                (
+                    "RRD_COVERAGE_3",
+                    configfile.StringConfigVar("15mins for 1month", database=True)
+                ),
+                (
+                    "RRD_COVERAGE_4",
+                    configfile.StringConfigVar("4 hours for 1 year", database=True)
+                ),
+                (
+                    "RRD_COVERAGE_5",
+                    configfile.StringConfigVar("1day for 5 years", database=True)
+                ),
                 (
                     "MODIFY_RRD_COVERAGE",
-                    configfile.BoolConfigVar(False, help_string="alter RRD files on disk when coverage differs from configured one", database=True)
+                    configfile.BoolConfigVar(
+                        False,
+                        help_string="alter RRD files on disk when coverage differs from configured one",
+                        database=True
+                    )
                 ),
-                ("ENABLE_SENSOR_THRESHOLDS", configfile.BoolConfigVar(True, help_string="globaly enable sensor thresholds [%(default)s]")),
-                ("SERVER_FULL_NAME", configfile.StringConfigVar(long_host_name)),
-                ("FROM_NAME", configfile.StringConfigVar("collectd", help_string="from address for event (threshold) mails [%(default)s]")),
-                ("FROM_ADDRESS", configfile.StringConfigVar(long_host_name)),
-                ("MEMCACHE_ADDRESS", configfile.StringConfigVar("127.0.0.1", help_string="memcache address")),
-                ("SNMP_PROCS", configfile.IntegerConfigVar(4, help_string="number of SNMP processes to use [%(default)s]")),
-                ("MAX_SNMP_JOBS", configfile.IntegerConfigVar(40, help_string="maximum number of jobs a SNMP process shall handle [%(default)s]")),
-                # ("RECV_PORT", configfile.int_c_var(8002, help_string="receive port, do not change [%(default)s]")),
-                ("MD_SERVER_HOST", configfile.StringConfigVar("127.0.0.1", help_string="md-config-server host [%(default)s]")),
-                # ("MD_SERVER_PORT", configfile.int_c_var(8010, help_string="md-config-server port, do not change [%(default)s]")),
-                ("MEMCACHE_HOST", configfile.StringConfigVar("127.0.0.1", help_string="host where memcache resides [%(default)s]")),
-                ("MEMCACHE_TIMEOUT", configfile.IntegerConfigVar(2 * 60, help_string="timeout in seconds for values stored in memcache [%(default)s]")),
-                ("RRD_CACHED_WRITETHREADS", configfile.IntegerConfigVar(4, help_string="number of write threads for RRD-cached")),
-                ("AGGREGATE_STRUCT_UPDATE", configfile.IntegerConfigVar(600, help_string="timer for aggregate struct updates")),
+                (
+                    "ENABLE_SENSOR_THRESHOLDS",
+                    configfile.BoolConfigVar(
+                        True,
+                        help_string="globaly enable sensor thresholds [%(default)s]"
+                    )
+                ),
+                (
+                    "SERVER_FULL_NAME",
+                    configfile.StringConfigVar(long_host_name)
+                ),
+                (
+                    "FROM_NAME",
+                    configfile.StringConfigVar(
+                        "collectd",
+                        help_string="from address for event (threshold) mails [%(default)s]"
+                    )
+                ),
+                (
+                    "FROM_ADDRESS",
+                    configfile.StringConfigVar(long_host_name)
+                ),
+                (
+                    "MEMCACHE_ADDRESS",
+                    configfile.StringConfigVar(
+                        "127.0.0.1",
+                        help_string="memcache address"
+                    )
+                ),
+                (
+                    "SNMP_PROCS",
+                    configfile.IntegerConfigVar(
+                        4,
+                        help_string="number of SNMP processes to use [%(default)s]"
+                    )
+                ),
+                (
+                    "MAX_SNMP_JOBS",
+                    configfile.IntegerConfigVar(
+                        40,
+                        help_string="maximum number of jobs a SNMP process shall handle [%(default)s]"
+                    )
+                ),
+                (
+                    "MD_SERVER_HOST",
+                    configfile.StringConfigVar(
+                        "127.0.0.1",
+                        help_string="md-config-server host [%(default)s]"
+                    )
+                ),
+                (
+                    "MEMCACHE_HOST",
+                    configfile.StringConfigVar(
+                        "127.0.0.1",
+                        help_string="host where memcache resides [%(default)s]"
+                    )
+                ),
+                (
+                    "MEMCACHE_TIMEOUT",
+                    configfile.IntegerConfigVar(
+                        2 * 60,
+                        help_string="timeout in seconds for values stored in memcache [%(default)s]"
+                    )
+                ),
+                (
+                    "RRD_CACHED_WRITETHREADS",
+                    configfile.IntegerConfigVar(
+                        4,
+                        help_string="number of write threads for RRD-cached"
+                    )
+                ),
+                (
+                    "AGGREGATE_STRUCT_UPDATE",
+                    configfile.IntegerConfigVar(
+                        600,
+                        help_string="timer for aggregate struct updates"
+                    )
+                ),
             ]
         )
         if global_config["RRD_CACHED_SOCKET"] == "/var/run/rrdcached.sock":
-            global_config["RRD_CACHED_SOCKET"] = os.path.join(global_config["RRD_CACHED_DIR"], "rrdcached.sock")
+            global_config["RRD_CACHED_SOCKET"] = os.path.join(
+                global_config["RRD_CACHED_DIR"],
+                "rrdcached.sock"
+            )
         # re-insert config
         self.CC.re_insert_config()
         self.register_exception("int_error", self._int_error)
@@ -282,7 +374,9 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                     _target_state,
                 )
             )
-        _target_state = True if (self.__rrdcached_run and self.__rrdcached_enabled) else False
+        _target_state = True if (
+            self.__rrdcached_run and self.__rrdcached_enabled
+        ) else False
         if self.__rrdcached_running and not _target_state:
             _log()
             self.__rrdcached_running = False
@@ -363,10 +457,19 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             self.__rrdcached_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self.__rrdcached_socket.connect(global_config["RRD_CACHED_SOCKET"])
         except:
-            self.log("error opening rrdcached socket: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error opening rrdcached socket: {}".format(
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             self.__rrdcached_socket = None
         else:
-            self.log("connected to rrdcached socket {}".format(global_config["RRD_CACHED_SOCKET"]))
+            self.log(
+                "connected to rrdcached socket {}".format(
+                    global_config["RRD_CACHED_SOCKET"]
+                )
+            )
             self.__rrdcached_socket.settimeout(10.0)
 
     def _close_rrdcached_socket(self):
@@ -374,7 +477,12 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             try:
                 self.__rrdcached_socket.close()
             except:
-                self.log("error closing rrdcached socket: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error closing rrdcached socket: {}".format(
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 self.log("closed rrdcached socket")
             self.__rrdcached_socket = None
@@ -394,7 +502,10 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         if self._still_active("check database"):
             self._handle_disabled_hosts()
             _router = config_tools.RouterObject(self.log)
-            for _send_com in [self._get_ipmi_hosts(_router), self._get_snmp_hosts(_router)]:
+            for _send_com in [
+                self._get_ipmi_hosts(_router),
+                self._get_snmp_hosts(_router)
+            ]:
                 self._handle_xml(_send_com)
 
     def _check_reachability(self, devs, var_cache, _router, _type):
@@ -408,7 +519,11 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         )
         s_time = time.time()
         _sc = config_tools.icswServerCheck(service_type_enum=_srv_type)
-        res_dict = _sc.get_route_to_other_devices(_router, devs, allow_route_to_other_networks=True)
+        res_dict = _sc.get_route_to_other_devices(
+            _router,
+            devs,
+            allow_route_to_other_networks=True
+        )
         _reachable, _unreachable = ([], [])
         for dev in devs:
             if res_dict[dev.idx]:
@@ -428,16 +543,32 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         if _unreachable:
             self.log(
                 "{}: {}".format(
-                    logging_tools.get_plural("unreachable {} device".format(_type), len(_unreachable)),
-                    logging_tools.compress_list([str(_dev) for _dev in _unreachable])
+                    logging_tools.get_plural(
+                        "unreachable {} device".format(_type), len(_unreachable)
+                    ),
+                    logging_tools.compress_list(
+                        [
+                            str(_dev) for _dev in _unreachable
+                        ]
+                    )
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
         if _reachable:
-            _reach = sorted(list(set([str(_dev) for _dev, _ip, _vars in _reachable])))
+            _reach = sorted(
+                list(
+                    set(
+                        [
+                            str(_dev) for _dev, _ip, _vars in _reachable
+                        ]
+                    )
+                )
+            )
             self.log(
                 "{}: {}".format(
-                    logging_tools.get_plural("reachable {} device".format(_type), len(_reach)),
+                    logging_tools.get_plural(
+                        "reachable {} device".format(_type), len(_reach)
+                    ),
                     logging_tools.reduce_list(_reach, top_join_str=", ")
                 ),
             )
@@ -499,7 +630,9 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         _vc = VarCache(
             def_dict={"IPMI_USERNAME": "notset", "IPMI_PASSWORD": "notset", "IPMI_INTERFACE": ""}
         )
-        ipmi_hosts = device.all_enabled.filter(Q(enable_perfdata=True) & Q(com_capability_list__matchcode="ipmi"))
+        ipmi_hosts = device.all_enabled.filter(
+            Q(enable_perfdata=True) & Q(com_capability_list__matchcode="ipmi")
+        )
         _reachable = self._check_reachability(ipmi_hosts, _vc, _router, "IPMI")
         ipmi_com = server_command.srv_command(command="ipmi_hosts")
         _bld = ipmi_com.builder()
@@ -537,7 +670,13 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                 try:
                     in_com = server_command.srv_command(source=in_xml)
                 except:
-                    self.log("error decoding command {}: {}".format(in_xml, process_tools.get_except_info), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "error decoding command {}: {}".format(
+                            in_xml,
+                            process_tools.get_except_info
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                 else:
                     _send_result = True
                     com_text = in_com["command"].text
@@ -558,7 +697,10 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                     #    self.bg_notify_handle_result(in_com)
                     #    _send_result = False
                     else:
-                        self.log("unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "unknown command {}".format(com_text),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                         in_com.set_result(
                             "unknown command {}".format(com_text),
                             server_command.SRV_REPLY_STATE_ERROR
@@ -898,7 +1040,9 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             _com_error = True
         else:
             for _line in cache_lines:
-                _num_sent += self.__rrdcached_socket.send(("{}\n".format(_line)).encode("utf-8"))
+                _num_sent += self.__rrdcached_socket.send(
+                    ("{}\n".format(_line)).encode("utf-8")
+                )
             _num_sent += self.__rrdcached_socket.send(b".\n")
             _skip_lines = 0
             _read = True
@@ -907,9 +1051,16 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             _errcount = 0
             while _read:
                 if settings.DEBUG:
-                    self.log("send {:d} bytes, reading from rrdcached socket...".format(_num_sent))
+                    self.log(
+                        "send {:d} bytes, reading from rrdcached socket...".format(
+                            _num_sent
+                        )
+                    )
                 try:
-                    _content = "{}{}".format(_content, self.__rrdcached_socket.recv(4096).decode("utf-8"))
+                    _content = "{}{}".format(
+                        _content,
+                        self.__rrdcached_socket.recv(4096).decode("utf-8")
+                    )
                 except IOError:
                     _com_error = True
                     self.log(
@@ -921,7 +1072,11 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                     _read = False
                 else:
                     if settings.DEBUG:
-                        self.log("...done, content has {:d} bytes".format(len(_content)))
+                        self.log(
+                            "...done, content has {:d} bytes".format(
+                                len(_content)
+                            )
+                        )
                     if _content.endswith("\n"):
                         for _line in _content.split("\n"):
                             if not _line.strip():
@@ -957,11 +1112,20 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                                     else:
                                         _read = False
                                 else:
-                                    self.log("unparsed line: '{}'".format(_line), logging_tools.LOG_LEVEL_WARN)
+                                    self.log(
+                                        "unparsed line: '{}'".format(
+                                            _line
+                                        ),
+                                        logging_tools.LOG_LEVEL_WARN
+                                    )
                         _content = ""
             e_time = time.time()
             if _errcount:
-                self.log("parsing took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
+                self.log(
+                    "parsing took {}".format(
+                        logging_tools.get_diff_time_str(e_time - s_time)
+                    )
+                )
         if _com_error:
             self._open_rrdcached_socket()
 
@@ -971,14 +1135,21 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                 self.__rrdcached_socket.send(b"STATS\n")
                 _lines = self.__rrdcached_socket.recv(16384).decode("utf-8").split("\n")
             except IOError:
-                self.log("error communicating with rrdcached: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error communicating with rrdcached: {}".format(
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 _first_line_parts = _lines[0].strip().split()
                 _dict = None
                 if _first_line_parts and _first_line_parts[0].isdigit():
                     if int(_first_line_parts[0]) + 2 == len(_lines):
                         cur_time = time.time()
-                        _dict = {_line.split(":")[0]: int(_line.split(":")[1].strip()) for _line in _lines[1:-1]}
+                        _dict = {
+                            _line.split(":")[0]: int(_line.split(":")[1].strip()) for _line in _lines[1:-1]
+                        }
                         if self.__cached_stats is not None:
                             _tree = E.machine_vector(
                                 simple="0",
@@ -989,7 +1160,12 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                             diff_time = max(1, abs(cur_time - self.__cached_time))
                             for _key in sorted(_dict.keys()):
                                 if _key not in self.__cached_stats:
-                                    self.log("key {} missing in previous run, ignoring ...".format(_key), logging_tools.LOG_LEVEL_WARN)
+                                    self.log(
+                                        "key {} missing in previous run, ignoring ...".format(
+                                            _key
+                                        ),
+                                        logging_tools.LOG_LEVEL_WARN
+                                    )
                                 else:
                                     _value = abs(self.__cached_stats[_key] - _dict[_key]) / diff_time
                                     _tree.append(
@@ -1006,7 +1182,12 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                             self.process_data_xml(_tree, len(etree.tostring(_tree)))
                         self.__cached_stats, self.__cached_time = (_dict, cur_time)
                 if _dict is None:
-                    self.log("error parsing stats {}".format("; ".join(_lines)), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "error parsing stats {}".format(
+                            "; ".join(_lines)
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
 
     def _handle_disabled_hosts(self):
         disabled_hosts = device.objects.filter(Q(store_rrd_data=False))
@@ -1051,7 +1232,10 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             }[j_type]
             # create ids
             _id_dict = {
-                "{}:{}".format(_dev.attrib["uuid"], j_type): _dev for _dev in in_com.xpath(".//ns:device_list/ns:device")
+                "{}:{}".format(
+                    _dev.attrib["uuid"],
+                    j_type
+                ): _dev for _dev in in_com.xpath(".//ns:device_list/ns:device")
             }
             _new_list, _remove_list, _same_list = t_obj.sync_jobs_with_id_list(list(_id_dict.keys()))
             for new_id in _new_list:
@@ -1067,7 +1251,9 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                         uuid=_dev.get("uuid"),
                     )
                 else:
-                    _schemes = snmp_scheme.objects.filter(Q(pk__in=in_com.xpath(".//ns:schemes/ns:scheme/@pk", start_el=_dev)))
+                    _schemes = snmp_scheme.objects.filter(
+                        Q(pk__in=in_com.xpath(".//ns:schemes/ns:scheme/@pk", start_el=_dev))
+                    )
                     SNMPJob(
                         new_id,
                         _dev_obj,
@@ -1091,7 +1277,9 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                     ]:
                         _job.update_attribute(attr_name, attr_value)
                 else:
-                    _schemes = snmp_scheme.objects.filter(Q(pk__in=in_com.xpath(".//ns:schemes/ns:scheme/@pk", start_el=_dev)))
+                    _schemes = snmp_scheme.objects.filter(
+                        Q(pk__in=in_com.xpath(".//ns:schemes/ns:scheme/@pk", start_el=_dev))
+                    )
                     for attr_name, attr_value in [
                         ("ip", _dev.get("ip")),
                         ("snmp_schemes", _schemes),
@@ -1148,7 +1336,12 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         match_uuids = [
             _value[1] for _value in sorted(
                 [
-                    (self.__hosts[cur_uuid].name, cur_uuid) for cur_uuid in list(self.__hosts.keys()) if host_filter.match(self.__hosts[cur_uuid].name)
+                    (
+                        self.__hosts[cur_uuid].name,
+                        cur_uuid
+                    ) for cur_uuid in list(self.__hosts.keys()) if host_filter.match(
+                        self.__hosts[cur_uuid].name
+                    )
                 ]
             )
         ]
@@ -1199,7 +1392,11 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                 device_flags[0].graph_enslavement_start = datetime.datetime.now(tz=pytz.utc)
                 device_flags[0].save()
 
-            new_srv_com = server_command.srv_command(command="graph_setup", send_name=target_dev.full_name, target_ip=collectd_dev.target_ip)
+            new_srv_com = server_command.srv_command(
+                command="graph_setup",
+                send_name=target_dev.full_name,
+                target_ip=collectd_dev.target_ip
+            )
             new_con.add_connection(conn_str, new_srv_com)
             result = new_con.loop()[0]
 

@@ -49,5 +49,11 @@ class PingPerfdata(PerfdataObject):
         return self._wrap(
             _host_info,
             _xml,
-            [int(in_dict["sent"]), int(in_dict["loss"]), float(in_dict["rta"]), float(in_dict["min"]), float(in_dict["max"])]
+            [
+                int(in_dict["sent"]),
+                int(in_dict["loss"]),
+                float(in_dict["rta"]),
+                float(in_dict["min"]),
+                float(in_dict["max"])
+            ]
         )

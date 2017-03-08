@@ -36,7 +36,14 @@ class SNMPDiskCheckPerfData(PerfdataObject):
         disk_num = v_list[0]
         return E.perfdata_info(
             perfdata_value(
-                "disk", "usage of disk {:d}".format(disk_num), v_type="i", unit="%", key="disk.usage{:d}".format(disk_num), rrd_spec="GAUGE:0:100"
+                "disk",
+                "usage of disk {:d}".format(
+                    disk_num
+                ),
+                v_type="i",
+                unit="%",
+                key="disk.usage{:d}".format(disk_num),
+                rrd_spec="GAUGE:0:100"
             ).get_xml(),
         )
 

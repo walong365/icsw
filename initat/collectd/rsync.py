@@ -24,8 +24,8 @@ import time
 
 import psutil
 
-from initat.collectd.config import global_config
 from initat.tools import logging_tools, process_tools
+from .config import global_config
 
 
 class RSyncMixin(object):
@@ -66,7 +66,12 @@ class RSyncMixin(object):
                 shell=True
             )
             e_time = time.time()
-            self.log("command {} took {}".format(_cmd, logging_tools.get_diff_time_str(e_time - s_time)))
+            self.log(
+                "command {} took {}".format(
+                    _cmd,
+                    logging_tools.get_diff_time_str(e_time - s_time)
+                )
+            )
 
     def sync_from_ram_to_disk(self):
         if not hasattr(self, "do_rsync"):
@@ -84,4 +89,9 @@ class RSyncMixin(object):
                 shell=True
             )
             e_time = time.time()
-            self.log("command {} took {}".format(_cmd, logging_tools.get_diff_time_str(e_time - s_time)))
+            self.log(
+                "command {} took {}".format(
+                    _cmd,
+                    logging_tools.get_diff_time_str(e_time - s_time)
+                )
+            )

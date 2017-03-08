@@ -20,7 +20,6 @@
 #
 """ definitions for collectd """
 
-
 import json
 import os
 import rrdtool
@@ -32,9 +31,9 @@ from django.db.models import Q
 from lxml.builder import E
 
 from initat.cluster.backbone.models import device
-from initat.collectd.collectd_types.base import value, PerfdataObject
-from initat.collectd.config import global_config
 from initat.tools import logging_tools, process_tools, rrd_tools, server_mixins
+from .collectd_types.base import value, PerfdataObject
+from .config import global_config
 
 
 class FileCreator(object):
@@ -42,13 +41,30 @@ class FileCreator(object):
         self.__log_com = log_com
         self.log("init file_creator")
         # dict, from {uuid, fqdn} to (uuid, fqdn, target_dir)
-        cov_keys = [_key for _key in list(global_config.keys()) if _key.startswith("RRD_COVERAGE")]
-        self.rrd_coverage = [global_config[_key] for _key in cov_keys]
-        self.log("RRD coverage: {}".format(", ".join(self.rrd_coverage)))
+        cov_keys = [
+            _key for _key in list(
+                global_config.keys()
+            ) if _key.startswith("RRD_COVERAGE")
+        ]
+        self.rrd_coverage = [
+            global_config[_key] for _key in cov_keys
+        ]
+        self.log(
+            "RRD coverage: {}".format(
+                ", ".join(self.rrd_coverage)
+            )
+        )
         self.__step = global_config["RRD_STEP"]
         self.__heartbeat = self.__step * 2
-        self.log("RRD step is {:d}, hearbeat is {:d} seconds".format(self.__step, self.__heartbeat))
-        self.__cfs = ["MIN", "MAX", "AVERAGE"]
+        self.log(
+            "RRD step is {:d}, hearbeat is {:d} seconds".format(
+                self.__step,
+                self.__heartbeat
+            )
+        )
+        self.__cfs = [
+            "MIN", "MAX", "AVERAGE"
+        ]
         self.__main_dir = global_config["RRD_DIR"]
         self.__created = {}
 
@@ -91,7 +107,9 @@ class FileCreator(object):
             "perfdata",
             "ipd_{}{}.rrd".format(
                 self.sane_name(_t_obj.file_name),
-                "-{}".format(self.sane_name(pd_tuple[1])) if pd_tuple[1] else "",
+                "-{}".format(
+                    self.sane_name(pd_tuple[1])
+                ) if pd_tuple[1] else "",
             )
         )
         return _targ_dir
@@ -112,9 +130,18 @@ class FileCreator(object):
                     _step, _heartbeat = (self.__step, self.__heartbeat)
                 _base_dir = os.path.dirname(_path)
                 if not os.path.isdir(_base_dir):
-                    self.log("creating base_dir {}".format(_base_dir))
+                    self.log(
+                        "creating base_dir {}".format(
+                            _base_dir
+                        )
+                    )
                     os.makedirs(_base_dir)
-                _ds_list = self.get_ds_spec(v_type, _step, _heartbeat, cols=kwargs.get("cols", None))
+                _ds_list = self.get_ds_spec(
+                    v_type,
+                    _step,
+                    _heartbeat,
+                    cols=kwargs.get("cols", None)
+                )
                 if _ds_list:
                     _rra_list = self.get_rra_spec(_step, _heartbeat)
                     try:
@@ -123,7 +150,11 @@ class FileCreator(object):
                             "--step",
                             "{:d}".format(_step),
                         ] + _ds_list + _rra_list
-                        rrdtool.create(*[str(_val) for _val in _args])
+                        rrdtool.create(
+                            *[
+                                str(_val) for _val in _args
+                            ]
+                        )
                     except (rrdtool.ProgrammingError, rrdtool.OperationalError):
                         self.log(
                             "error creating file {}: {}".format(
@@ -134,7 +165,12 @@ class FileCreator(object):
                         )
                         _path = None
                 else:
-                    self.log("no DS list for {}".format(str(v_type)), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "no DS list for {}".format(
+                            str(v_type)
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                     _path = None
             self.__created[_path] = True
         return _path if _path in self.__created else None
@@ -163,7 +199,12 @@ class FileCreator(object):
                 )
             ]
         else:
-            self.log("unknown v_type '{}'".format(v_type), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "unknown v_type '{}'".format(
+                    v_type
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             _rv = []
         return [
             "DS:{}:{:d}:{}".format(
@@ -176,7 +217,11 @@ class FileCreator(object):
     def get_rra_spec(self, _step, _heartbeat):
         _rv = []
         for _key in self.rrd_coverage:
-            _value = rrd_tools.RRA.parse_width_str(_key, _step, correct_zero_pdp=True)
+            _value = rrd_tools.RRA.parse_width_str(
+                _key,
+                _step,
+                correct_zero_pdp=True
+            )
             if _value:
                 for _cf in self.__cfs:
                     _rv.append(
@@ -205,7 +250,9 @@ class HostActiveRRD(object):
             _activate = True
         if _activate:
             self._active = True
-            device.objects.filter(Q(pk=self.pk)).update(has_active_rrds=True)
+            device.objects.filter(
+                Q(pk=self.pk)
+            ).update(has_active_rrds=True)
             self.set_time = cur_time
 
 
@@ -237,7 +284,10 @@ class HostMatcher(object):
                     # compare fqdn
                     dom_name = host_name.split(".", 1)[1]
                     try:
-                        match_dev = device.objects.get(Q(name=short_name) & Q(domain_tree_node__full_name=dom_name))
+                        match_dev = device.objects.get(
+                            Q(name=short_name) &
+                            Q(domain_tree_node__full_name=dom_name)
+                        )
                     except device.DoesNotExist:
                         match_dev = None
                     else:
@@ -245,11 +295,19 @@ class HostMatcher(object):
                 if match_dev is None:
                     # compare short name
                     try:
-                        match_dev = device.objects.get(Q(name=short_name))
+                        match_dev = device.objects.get(
+                            Q(name=short_name)
+                        )
                     except device.DoesNotExist:
                         pass
                     except device.MultipleObjectsReturned:
-                        self.log("spec {} / {} is not unique".format(uuid_spec, host_name), logging_tools.LOG_LEVEL_WARN)
+                        self.log(
+                            "spec {} / {} is not unique".format(
+                                uuid_spec,
+                                host_name
+                            ),
+                            logging_tools.LOG_LEVEL_WARN
+                        )
                         match_dev = None
                     else:
                         match_mode = "name"
@@ -257,7 +315,14 @@ class HostMatcher(object):
                 match_mode = "uuid"
             if match_mode:
                 _uuid, _fqdn = (match_dev.uuid, match_dev.full_name)
-                self.log("found match via {} for device {} (pk {:d}, UUID {})".format(match_mode, _fqdn, match_dev.pk, _uuid))
+                self.log(
+                    "found match via {} for device {} (pk {:d}, UUID {})".format(
+                        match_mode,
+                        _fqdn,
+                        match_dev.pk,
+                        _uuid
+                    )
+                )
                 _target_dir = self.check_dir_structure(match_dev)
                 self.__match[_uuid] = match_dev
                 self.__match[_fqdn] = match_dev
@@ -276,14 +341,21 @@ class HostMatcher(object):
         main_dir = global_config["RRD_DIR"]
         _fqdn_path = os.path.join(main_dir, match_dev.full_name)
         _uuid_path = os.path.join(main_dir, match_dev.uuid)
-        _check_dict = {"u": _uuid_path, "f": _fqdn_path}
+        _check_dict = {
+            "u": _uuid_path,
+            "f": _fqdn_path
+        }
         _found = {}
         for _cn, _path in _check_dict.items():
             if os.path.isdir(_path):
                 _found[_cn] = os.path.islink(_path)
         if not _found:
             # create structure
-            self.log("creating disk structure (dir / link) for {}".format(str(match_dev)))
+            self.log(
+                "creating disk structure (dir / link) for {}".format(
+                    str(match_dev)
+                )
+            )
             os.mkdir(_uuid_path)
             os.symlink(match_dev.uuid, _fqdn_path)
         else:
@@ -309,12 +381,21 @@ class HostMatcher(object):
                             logging_tools.LOG_LEVEL_WARN
                         )
                         shutil.rmtree(_check_dict["u"])
-                    self.log("renaming {} to {}".format(_check_dict["f"], _check_dict["u"]))
+                    self.log(
+                        "renaming {} to {}".format(
+                            _check_dict["f"],
+                            _check_dict["u"]
+                        )
+                    )
                     os.rename(_check_dict["f"], _check_dict["u"])
                     _found["u"] = False
                     del _found["f"]
                 if "u" in _found and "f" not in _found and not _found["u"]:
-                    self.log("creating FQDN link for {}".format(str(match_dev)))
+                    self.log(
+                        "creating FQDN link for {}".format(
+                            str(match_dev)
+                        )
+                    )
                     os.symlink(match_dev.uuid, _fqdn_path)
                 # if "f" not in _found:
                 #    self.log("creating FQDN dir for {}".format(unicode(match_dev)))
@@ -329,9 +410,17 @@ class HostMatcher(object):
                     try:
                         shutil.rmtree(_dir)
                     except IOError:
-                        self.log("error removing {}: {}".format(_dir, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "error removing {}: {}".format(
+                                _dir,
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                     else:
-                        self.log("removed tree below {}".format(_dir))
+                        self.log(
+                            "removed tree below {}".format(_dir)
+                        )
         return _fqdn_path
 
 
@@ -352,7 +441,9 @@ class ext_com(object):
         self.__log_com(
             "[ec {:d}{}] {}".format(
                 self.idx,
-                ", {}".format(self.__name) if self.__name else "",
+                ", {}".format(
+                    self.__name
+                ) if self.__name else "",
                 what,
             ),
             log_level
@@ -370,7 +461,11 @@ class ext_com(object):
                 stderr=subprocess.STDOUT,
                 close_fds=True
             )
-            self.log("start with pid {} (detached)".format(self.popen.pid))
+            self.log(
+                "start with pid {} (detached)".format(
+                    self.popen.pid
+                )
+            )
         else:
             try:
                 self.popen = subprocess.Popen(
@@ -380,7 +475,11 @@ class ext_com(object):
                     stdout=subprocess.PIPE
                 )
                 if self.debug:
-                    self.log("start with pid {}".format(self.popen.pid))
+                    self.log(
+                        "start with pid {}".format(
+                            self.popen.pid
+                        )
+                    )
             except OSError:
                 self.log(
                     "cannot start job: {}".format(
@@ -396,7 +495,12 @@ class ext_com(object):
             try:
                 return self.popen.communicate()
             except OSError:
-                self.log("error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error in communicate: {}".format(
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 return ("", "")
         else:
             return ("", "")
@@ -441,30 +545,53 @@ class CollectdHostInfo(object):
         import memcache
         CollectdHostInfo.entries = {}
         CollectdHostInfo.fc = fc
-        CollectdHostInfo.mc = memcache.Client(["{}:{:d}".format(global_config["MEMCACHE_HOST"], global_config["MEMCACHE_PORT"])])
+        CollectdHostInfo.mc = memcache.Client(
+            [
+                "{}:{:d}".format(
+                    global_config["MEMCACHE_HOST"],
+                    global_config["MEMCACHE_PORT"]
+                )
+            ]
+        )
 
     @staticmethod
     def host_update(hi):
         cur_time = time.time()
         # delete old entries
-        del_keys = [key for key, value in CollectdHostInfo.entries.items() if abs(value[0] - cur_time) > 15 * 60]
+        del_keys = [
+            key for key, value in CollectdHostInfo.entries.items() if abs(
+                value[0] - cur_time
+            ) > 15 * 60
+        ]
         if del_keys:
             for del_key in del_keys:
                 del CollectdHostInfo.entries[del_key]
         # set new entry
         CollectdHostInfo.entries[hi.uuid] = (cur_time, hi.name)
-        CollectdHostInfo.mc.set("cc_hc_list", json.dumps(CollectdHostInfo.entries))
+        CollectdHostInfo.mc.set(
+            "cc_hc_list", json.dumps(CollectdHostInfo.entries)
+        )
 
     def mc_key(self):
         return "cc_hc_{}".format(self.uuid)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com("[h {}] {}".format(self.name, what), log_level)
+        self.__log_com(
+            "[h {}] {}".format(
+                self.name,
+                what
+            ),
+            log_level
+        )
 
     def target_file(self, name, **kwargs):
         _tf, _exists = self.__target_files[name]
         if not _exists:
-            _created = CollectdHostInfo.fc._create_target_file(_tf, cols=self.__width.get(name, None), **kwargs)
+            _created = CollectdHostInfo.fc._create_target_file(
+                _tf,
+                cols=self.__width.get(name, None),
+                **kwargs
+            )
             if _created:
                 self.__target_files[name] = (_tf, True)
                 return _tf
@@ -479,7 +606,13 @@ class CollectdHostInfo(object):
     def feed_perfdata(self, pd_tuple):
         if pd_tuple not in self.__perfdata_count:
             self.__perfdata_count[pd_tuple] = 1
-            self.__target_files[pd_tuple] = (CollectdHostInfo.fc.get_pd_file_path(self.uuid, pd_tuple), False)
+            self.__target_files[pd_tuple] = (
+                CollectdHostInfo.fc.get_pd_file_path(
+                    self.uuid,
+                    pd_tuple
+                ),
+                False
+            )
         self.__perfdata_count[pd_tuple] -= 1
         if not self.__perfdata_count[pd_tuple]:
             self.__perfdata_count[pd_tuple] = 10
@@ -491,7 +624,9 @@ class CollectdHostInfo(object):
         return E.host_info(
             name=self.name,
             uuid=self.uuid,
-            last_update="{:d}".format(int(self.last_update or 0) or 0),
+            last_update="{:d}".format(
+                int(self.last_update or 0) or 0
+            ),
             keys="{:d}".format(len(self.__dict)),
             # update calls (full info)
             updates="{:d}".format(self.updates),
@@ -504,7 +639,9 @@ class CollectdHostInfo(object):
         h_info = self.get_host_info()
         for key in sorted(self.__dict.keys()):
             if key_filter.match(key):
-                h_info.append(self.__dict[key].get_key_info())
+                h_info.append(
+                    self.__dict[key].get_key_info()
+                )
         return h_info
 
     def update(self, _xml, _fc):
@@ -558,7 +695,12 @@ class CollectdHostInfo(object):
             del_keys = old_keys - new_keys
             for del_key in del_keys:
                 del self.__dict[del_key]
-            self.log("{} changed".format(logging_tools.get_plural("key", len(c_keys))), logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                "{} changed".format(
+                    logging_tools.get_plural("key", len(c_keys))
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
             return True
         else:
             return False
@@ -572,10 +714,16 @@ class CollectdHostInfo(object):
         self._store_json_to_memcached()
 
     def _store_json_to_memcached(self):
-        json_vector = [_value.get_json() for _value in self.__dict.values()]
+        json_vector = [
+            _value.get_json() for _value in self.__dict.values()
+        ]
         CollectdHostInfo.host_update(self)
         # set and ignore errors, default timeout is 2 minutes
-        CollectdHostInfo.mc.set(self.mc_key(), json.dumps(json_vector), self.__mc_timeout)
+        CollectdHostInfo.mc.set(
+            self.mc_key(),
+            json.dumps(json_vector),
+            self.__mc_timeout
+        )
 
     def transform(self, key, value, cur_time):
         self.last_update = cur_time
@@ -584,11 +732,20 @@ class CollectdHostInfo(object):
                 # format: key, value, multi-value flag
                 return (
                     self.__dict[key].name,
-                    self.__dict[key].transform(value, cur_time),
+                    self.__dict[key].transform(
+                        value,
+                        cur_time
+                    ),
                     False,
                 )
             except (ValueError, KeyError):
-                self.log("error transforming {}: {}".format(key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error transforming {}: {}".format(
+                        key,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 return (None, None, False)
         else:
             # key not known, skip
@@ -618,7 +775,10 @@ class CollectdHostInfo(object):
                             [
                                 str(
                                     self.transform(
-                                        "{}.{}".format(entry_name, _val.attrib["key"]),
+                                        "{}.{}".format(
+                                            entry_name,
+                                            _val.attrib["key"]
+                                        ),
                                         _val.attrib["value"],
                                         cur_time
                                     )[1]
@@ -630,5 +790,8 @@ class CollectdHostInfo(object):
                 )
         return values
 
-    def __unicode__(self):
-        return "{} ({})".format(self.name, self.uuid)
+    def __str__(self):
+        return "{} ({})".format(
+            self.name,
+            self.uuid
+        )

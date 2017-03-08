@@ -43,5 +43,9 @@ class LinuxLoadPerfdata(PerfdataObject):
         return self._wrap(
             _host_info,
             _xml,
-            [float(in_dict[key]) for key in ["load1", "load5", "load15"]]
+            [
+                float(in_dict[key]) for key in [
+                    "load1", "load5", "load15"
+                ]
+            ]
         )

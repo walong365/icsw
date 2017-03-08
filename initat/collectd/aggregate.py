@@ -30,8 +30,8 @@ from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device_group
-from .config import global_config
 from initat.tools import logging_tools, process_tools, server_mixins, threading_tools
+from .config import global_config
 
 
 class AGStruct(object):
@@ -109,11 +109,18 @@ class AGStruct(object):
             # add lut from foreigin uuid
             self.__lut[_uuid] = self.__lut[_found]
             _mdict["fqdn"] += 1
-        snames = {h_struct[_uuid][1].split(".")[0]: _uuid for _uuid in _um}
+        snames = {
+            h_struct[_uuid][1].split(".")[0]: _uuid for _uuid in _um
+        }
         for _found in set(snames.keys()) & self.__snames:
             _uuid = snames[_found]
             if _found in self.__prob_snames:
-                self.log("ignoring {} ({}, unsafe match)".format(_found, _uuid))
+                self.log(
+                    "ignoring {} ({}, unsafe match)".format(
+                        _found,
+                        _uuid
+                    )
+                )
             else:
                 self.__matched_uuids.add(_uuid)
                 _um.remove(_uuid)
@@ -124,7 +131,14 @@ class AGStruct(object):
         if sum(_mdict.values()):
             self.log(
                 "match info: {}".format(
-                    ", ".join(["{}={:d}".format(_key, _value) for _key, _value in _mdict.items() if _value])
+                    ", ".join(
+                        [
+                            "{}={:d}".format(
+                                _key,
+                                _value
+                            ) for _key, _value in _mdict.items() if _value
+                        ]
+                    )
                 )
             )
         # list of valid uuids for this run
@@ -132,12 +146,21 @@ class AGStruct(object):
         # build structure
         _comp_dict = {}
         for _valid_uuid in _valid_uuids:
-            _comp_dict.setdefault(self.__lut[_valid_uuid].group.uuid, []).append(_valid_uuid)
+            _comp_dict.setdefault(
+                self.__lut[_valid_uuid].group.uuid,
+                []
+            ).append(_valid_uuid)
         # list how to build to aggregates
-        _build_list = [(_key, self.__group_names[_key], _value) for _key, _value in _comp_dict.items()]
+        _build_list = [
+            (_key, self.__group_names[_key], _value) for _key, _value in _comp_dict.items()
+        ]
         if _build_list:
             # append sys list
-            _build_list.append((self.__sys_uuid, self.__sys_send_name, list(_comp_dict.keys())))
+            _build_list.append(
+                (
+                    self.__sys_uuid, self.__sys_send_name, list(_comp_dict.keys())
+                )
+            )
         return _build_list
 
     def set_last_update(self, h_dict):
@@ -268,7 +291,9 @@ class AGTopLevelStruct(object):
             )
         )
         # return a list of regexps so that one value can go into more than one aggregate
-        return [re.compile(_entry) for _entry in _list]
+        return [
+            re.compile(_entry) for _entry in _list
+        ]
 
     def filter(self, in_list):
         # filter in dict
@@ -343,8 +368,12 @@ class AGSink(object):
 
     def get_debug(self, num_src):
         # return debug info
-        _sinks = [_value.get_debug(num_src) for _value in self.key_sinks.values()]
-        _sinks = [_entry for _entry in _sinks if _entry]
+        _sinks = [
+            _value.get_debug(num_src) for _value in self.key_sinks.values()
+        ]
+        _sinks = [
+            _entry for _entry in _sinks if _entry
+        ]
         _total = len(self.key_sinks)
         return "ag_sink ({:d} keys): {:.1f}%; {}".format(
             _total,
@@ -378,7 +407,9 @@ class KeySink(object):
             return ""
 
     def get_vector(self):
-        return (self.format, self.key, self.info, self.unit, self.v_type, self.get_value(), self.base, self.factor)
+        return (
+            self.format, self.key, self.info, self.unit, self.v_type, self.get_value(), self.base, self.factor
+        )
 
     def get_value(self):
         if self.action == "sum":
@@ -389,7 +420,11 @@ class KeySink(object):
             else:
                 return 0
         else:
-            print("action '{}' not implemented for key_sink, return 0".format(self.action))
+            print(
+                "action '{}' not implemented for key_sink, return 0".format(
+                    self.action
+                )
+            )
             return 0
 
     @staticmethod
@@ -413,7 +448,10 @@ class AGObj(object):
         self.__re_dict = {}
         for _key in ag_xml.findall(".//key_list/key"):
             _tl = _key.attrib["top-level"]
-            _re = "^{}\\.{}".format(_tl.replace(".", "\\."), _key.attrib["match"])
+            _re = "^{}\\.{}".format(
+                _tl.replace(".", "\\."),
+                _key.attrib["match"]
+            )
             self.__re_list.append((_tl, _re))
             self.__re_dict.setdefault(_tl, []).append(_re)
         self.action = ag_xml.attrib["action"]
@@ -487,7 +525,9 @@ class AggregateProcess(threading_tools.icswProcessObj, server_mixins.Operational
         _ag_dir = global_config["AGGREGATE_DIR"]
         tls = AGTopLevelStruct(self.log)
         for _dir, _dirs, _files in os.walk(_ag_dir):
-            for _file in [_entry for _entry in _files if _entry.startswith("agg") and _entry.endswith(".xml")]:
+            for _file in [
+                _entry for _entry in _files if _entry.startswith("agg") and _entry.endswith(".xml")
+            ]:
                 _file = os.path.join(_dir, _file)
                 try:
                     cur_xml = etree.fromstring(open(_file, "rb").read())
@@ -521,18 +561,30 @@ class AggregateProcess(threading_tools.icswProcessObj, server_mixins.Operational
 
     def _update_struct(self):
         cur_time = time.time()
-        if self.__struct_update is None or abs(cur_time - self.__struct_update) > global_config["AGGREGATE_STRUCT_UPDATE"]:
+        if self.__struct_update is None or abs(
+            cur_time - self.__struct_update
+        ) > global_config["AGGREGATE_STRUCT_UPDATE"]:
             self.log("updating aggregate structure")
-            all_groups = device_group.objects.all().prefetch_related("device_group__domain_tree_node")
-            _sys_group = [group for group in all_groups if group.cluster_device_group][0]
-            _sys_md = [_dev for _dev in _sys_group.device_group.all() if _dev.is_meta_device][0]
+            all_groups = device_group.objects.all().prefetch_related(
+                "device_group__domain_tree_node"
+            )
+            _sys_group = [
+                group for group in all_groups if group.cluster_device_group
+            ][0]
+            _sys_md = [
+                _dev for _dev in _sys_group.device_group.all() if _dev.is_meta_device
+            ][0]
             _ags = AGStruct(self.log)
             _ags.set_system_group(_sys_group, _sys_md.uuid, _sys_md.full_name)
             for _group in all_groups:
                 if _group.cluster_device_group:
                     continue
-                _devs = [_dev for _dev in _group.device_group.all() if not _dev.is_meta_device]
-                _meta_dev = [_dev for _dev in _group.device_group.all() if _dev.is_meta_device][0]
+                _devs = [
+                    _dev for _dev in _group.device_group.all() if not _dev.is_meta_device
+                ]
+                _meta_dev = [
+                    _dev for _dev in _group.device_group.all() if _dev.is_meta_device
+                ][0]
                 cur_agg = AGDeviceGroup(_group.name, _meta_dev.uuid, _meta_dev.full_name)
                 _ags.add_group(cur_agg)
                 for _dev in _devs:
@@ -604,9 +656,16 @@ class AggregateProcess(threading_tools.icswProcessObj, server_mixins.Operational
                     if _agg_name not in _local_aggs:
                         _local_aggs[_agg_name] = self.ag_tls[_agg_name].new_sink()
                 for _target_agg, _ve in _v_list:
-                    [_local_aggs[_agg_name].feed_ve(_ve) for _agg_name in _target_agg]
+                    [
+                        _local_aggs[_agg_name].feed_ve(_ve) for _agg_name in _target_agg
+                    ]
         # build values for cluster-wide aggregation
-        _group_values = sum([_ag_sink.get_vector() for _ag_sink in _local_aggs.values()], [])
+        _group_values = sum(
+            [
+                _ag_sink.get_vector() for _ag_sink in _local_aggs.values()
+            ],
+            []
+        )
         if self.__debug:
             _num_src = len(v_dict)
             self.log(

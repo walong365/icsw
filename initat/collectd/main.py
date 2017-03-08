@@ -26,14 +26,16 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from initat.collectd.config import global_config
+from .config import global_config
 from initat.tools import configfile, process_tools
 import time
 
 
 def kill_previous():
     # check for already running rrdcached processes and kill them
-    proc_dict = process_tools.get_proc_list(proc_name_list=["rrdcached", "collectd"])
+    proc_dict = process_tools.get_proc_list(
+        proc_name_list=["rrdcached", "collectd"]
+    )
     if proc_dict:
         for _key in proc_dict.keys():
             try:
@@ -51,15 +53,47 @@ def kill_previous():
 def main():
     global_config.add_config_entries(
         [
-            ("RRD_DIR", configfile.StringConfigVar("/var/cache/rrd", help_string="directory of rrd-files on local disc", database=True)),
-            ("RRD_CACHED_DIR", configfile.StringConfigVar("/var/run/rrdcached", database=True)),
-            ("RRD_CACHED_SOCKET", configfile.StringConfigVar("/var/run/rrdcached/rrdcached.sock", database=True)),
-            ("RRD_STEP", configfile.IntegerConfigVar(60, help_string="RRD step value", database=True)),
-            ("AGGREGATE_DIR", configfile.StringConfigVar("/opt/cluster/share/collectd", help_string="base dir for collectd aggregates")),
+            (
+                "RRD_DIR",
+                configfile.StringConfigVar(
+                    "/var/cache/rrd",
+                    help_string="directory of rrd-files on local disc",
+                    database=True
+                )
+            ),
+            (
+                "RRD_CACHED_DIR",
+                configfile.StringConfigVar(
+                    "/var/run/rrdcached",
+                    database=True
+                )
+            ),
+            (
+                "RRD_CACHED_SOCKET",
+                configfile.StringConfigVar(
+                    "/var/run/rrdcached/rrdcached.sock",
+                    database=True
+                )
+            ),
+            (
+                "RRD_STEP",
+                configfile.IntegerConfigVar(
+                    60,
+                    help_string="RRD step value",
+                    database=True
+                )
+            ),
+            (
+                "AGGREGATE_DIR",
+                configfile.StringConfigVar(
+                    "/opt/cluster/share/collectd",
+                    help_string="base dir for collectd aggregates"
+                )
+            ),
         ]
     )
     kill_previous()
     # late load after population of global_config
-    from initat.collectd.server import server_process
+    from .server import server_process
     server_process().loop()
     os._exit(0)

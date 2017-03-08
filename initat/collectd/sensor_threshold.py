@@ -48,7 +48,9 @@ class Threshold(object):
         self.th = db_obj
         if db_obj.mv_value_entry.mv_struct_entry.se_type in ["mvl"]:
             # mvl, special handling
-            self.lookup_key = "{}.{:d}".format(db_obj.mv_value_entry.mv_struct_entry.key, db_obj.mv_value_entry.rra_idx)
+            self.lookup_key = "{}.{:d}".format(
+                db_obj.mv_value_entry.mv_struct_entry.key, db_obj.mv_value_entry.rra_idx
+            )
         else:
             self.lookup_key = self.key
         self.log("init '{}'".format(str(db_obj)))
@@ -58,7 +60,14 @@ class Threshold(object):
         self.reset_flags()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com("[TH {:d} {}] {}".format(self.th.idx, self.th.name, what), log_level)
+        self.__log_com(
+            "[TH {:d} {}] {}".format(
+                self.th.idx,
+                self.th.name,
+                what
+            ),
+            log_level
+        )
 
     def delete(self):
         self.log("removing threshold")
@@ -93,7 +102,12 @@ class Threshold(object):
 
     def set_ut(self, val):
         if val != self.__upper_triggered:
-            self.log("upper_triggered changes from {} to {}".format(self.__upper_triggered, val))
+            self.log(
+                "upper_triggered changes from {} to {}".format(
+                    self.__upper_triggered,
+                    val
+                )
+            )
             if val:
                 self.log_latest_values()
             self.__upper_triggered = val
@@ -105,7 +119,12 @@ class Threshold(object):
 
     def set_lt(self, val):
         if val != self.__lower_triggered:
-            self.log("lower_triggered changes from {} to {}".format(self.__lower_triggered, val))
+            self.log(
+                "lower_triggered changes from {} to {}".format(
+                    self.__lower_triggered,
+                    val
+                )
+            )
             if val:
                 self.log_latest_values()
             self.__lower_triggered = val
@@ -237,13 +256,17 @@ class Threshold(object):
             _message.extend(
                 [
                     "",
-                    "creating user was {}".format(str(self.th.create_user) if self.th.create_user_id else "---")
+                    "creating user was {}".format(
+                        str(self.th.create_user) if self.th.create_user_id else "---"
+                    )
                 ]
             )
             _message.extend(
                 [
                     "",
-                    "{} to notify:".format(logging_tools.get_plural("user", _to_users))
+                    "{} to notify:".format(
+                        logging_tools.get_plural("user", _to_users)
+                    )
                 ]
             )
             for _user in _to_users:
@@ -253,7 +276,9 @@ class Threshold(object):
                 _message.extend(
                     [
                         "",
-                        "{} to operate on:".format(logging_tools.get_plural("device", len(_devs)))
+                        "{} to operate on:".format(
+                            logging_tools.get_plural("device", len(_devs))
+                        )
                     ] + [
                         "    {}".format(str(_dev)) for _dev in _devs
                     ]
@@ -326,7 +351,10 @@ class ThresholdContainer(object):
         self.__log_com("[TC] {}".format(what), log_level)
 
     def _sync_disabled(self):
-        self.log("thresholds are globally disabled, not syncing", logging_tools.LOG_LEVEL_WARN)
+        self.log(
+            "thresholds are globally disabled, not syncing",
+            logging_tools.LOG_LEVEL_WARN
+        )
         self.dev_dict = {}
 
     def _sync_enabled(self):
@@ -344,10 +372,26 @@ class ThresholdContainer(object):
                 self.th_dict[_th.idx] = Threshold(self, _th, self.__log_com)
                 new_pks.add(_th.idx)
         if new_pks:
-            self.log("{} found".format(logging_tools.get_plural("new threshold", len(new_pks))))
+            self.log(
+                "{} found".format(
+                    logging_tools.get_plural(
+                        "new threshold",
+                        len(new_pks)
+                    )
+                )
+            )
         if remove_pks:
-            self.log("{} to delete".format(logging_tools.get_plural("old threshold", len(remove_pks))))
-            [self.th_dict[idx].delete() for idx in remove_pks]
+            self.log(
+                "{} to delete".format(
+                    logging_tools.get_plural(
+                        "old threshold",
+                        len(remove_pks)
+                    )
+                )
+            )
+            [
+                self.th_dict[idx].delete() for idx in remove_pks
+            ]
             for idx in remove_pks:
                 del self.th_dict[idx]
         self.dev_dict = {}
@@ -366,7 +410,10 @@ class ThresholdContainer(object):
         if not_found:
             in_com.set_result(
                 "triggered {}, {:d} not found".format(
-                    logging_tools.get_plural("sensor threshold", len(_sensor_list)),
+                    logging_tools.get_plural(
+                        "sensor threshold",
+                        len(_sensor_list)
+                    ),
                     not_found,
                 ),
                 server_command.SRV_REPLY_STATE_WARN
@@ -374,10 +421,15 @@ class ThresholdContainer(object):
         else:
             in_com.set_result(
                 "triggered {}".format(
-                    logging_tools.get_plural("sensor threshold", len(_sensor_list)),
+                    logging_tools.get_plural(
+                        "sensor threshold",
+                        len(_sensor_list)
+                    ),
                 ),
             )
-        [_sensor.trigger(_type, True) for _sensor, _type in _sensor_list]
+        [
+            _sensor.trigger(_type, True) for _sensor, _type in _sensor_list
+        ]
 
     def device_has_thresholds(self, dev_idx):
         return dev_idx in self.dev_dict
@@ -395,6 +447,9 @@ class ThresholdContainer(object):
             if key == "apc.ampere.used" and False:
                 # test code
                 _th = self.dev_dict[dev_idx][key]
-                for _val in [2.5, 2.8, 3.1, 4.0, 1.0, 3.0, 3.2, 3.1, 3.05, 3.01, 3.07, 3.12, 2.9, 3.01, 3.11]:
+                for _val in [
+                    2.5, 2.8, 3.1, 4.0, 1.0, 3.0, 3.2, 3.1,
+                    3.05, 3.01, 3.07, 3.12, 2.9, 3.01, 3.11
+                ]:
                     time.sleep(0.1)
                     _th.feed(_val)

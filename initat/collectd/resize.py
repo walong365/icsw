@@ -24,8 +24,8 @@ import stat
 import time
 
 from initat.cluster.backbone import db_tools
-from initat.collectd.config import global_config, MAX_FOUND
 from initat.tools import logging_tools, process_tools, rrd_tools, server_mixins, threading_tools
+from .config import global_config, MAX_FOUND
 from .rsync import RSyncMixin
 
 
@@ -40,7 +40,9 @@ class resize_process(threading_tools.icswProcessObj, server_mixins.OperationalEr
         db_tools.close_connection()
         self.rrd_cache_socket = global_config["RRD_CACHED_SOCKET"]
         self.rrd_root = global_config["RRD_DIR"]
-        cov_keys = [_key for _key in list(global_config.keys()) if _key.startswith("RRD_COVERAGE")]
+        cov_keys = [
+            _key for _key in list(global_config.keys()) if _key.startswith("RRD_COVERAGE")
+        ]
         self.rrd_coverage = [global_config[_key] for _key in cov_keys]
         self.log("RRD coverage: {}".format(", ".join(self.rrd_coverage)))
         self.register_timer(self.check_size, 6 * 3600, first_timeout=1)
@@ -51,22 +53,42 @@ class resize_process(threading_tools.icswProcessObj, server_mixins.OperationalEr
                 "enabling periodic RAM-to-disk sync from {} to {} every {}".format(
                     global_config["RRD_DIR"],
                     global_config["RRD_DISK_CACHE"],
-                    logging_tools.get_diff_time_str(global_config["RRD_DISK_CACHE_SYNC"]),
+                    logging_tools.get_diff_time_str(
+                        global_config["RRD_DISK_CACHE_SYNC"]
+                    ),
                 )
             )
-            self.register_timer(self.sync_from_ram_to_disk, global_config["RRD_DISK_CACHE_SYNC"])
+            self.register_timer(
+                self.sync_from_ram_to_disk,
+                global_config["RRD_DISK_CACHE_SYNC"]
+            )
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
 
     def get_tc_dict(self, step):
         if step not in self.tc_dict:
-            _dict = {_key: rrd_tools.RRA.parse_width_str(_key, step) for _key in self.rrd_coverage}
-            _dict = {_key: _value for _key, _value in _dict.items() if _value is not None}
+            _dict = {
+                _key: rrd_tools.RRA.parse_width_str(_key, step) for _key in self.rrd_coverage
+            }
+            _dict = {
+                _key: _value for _key, _value in _dict.items() if _value is not None
+            }
             self.tc_dict[step] = _dict
-            self.log("target coverage (step={:d}): {:d} entries".format(step, len(self.tc_dict)))
+            self.log(
+                "target coverage (step={:d}): {:d} entries".format(
+                    step,
+                    len(self.tc_dict)
+                )
+            )
             for _idx, _key in enumerate(sorted(_dict.keys()), 1):
-                self.log(" {:2d} :: {} -> {}".format(_idx, _key, _dict[_key]["name"]))
+                self.log(
+                    " {:2d} :: {} -> {}".format(
+                        _idx,
+                        _key,
+                        _dict[_key]["name"]
+                    )
+                )
         return self.tc_dict[step]
 
     def _disable_rrd_cached(self):
@@ -82,16 +104,25 @@ class resize_process(threading_tools.icswProcessObj, server_mixins.OperationalEr
         if not self.rrd_coverage:
             self.log("rrd_coverage is empty", logging_tools.LOG_LEVEL_WARN)
         elif not global_config["MODIFY_RRD_COVERAGE"]:
-            self.log("rrd_coverage modification is disabled", logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                "rrd_coverage modification is disabled",
+                logging_tools.LOG_LEVEL_WARN
+            )
         else:
             # improvement: create new files in a separate directory, move them (in batch mode, every
             # 20 RRDs or so) back to the main directory while rrdcached is stopped
             self.__rrd_cached_running = True
             s_time = time.time()
             _found, _changed = (0, 0)
-            self.log("checking sizes of RRD-graphs in {}".format(self.rrd_root))
+            self.log(
+                "checking sizes of RRD-graphs in {}".format(
+                    self.rrd_root
+                )
+            )
             for _dir, _dir_list, _file_list in os.walk(self.rrd_root):
-                _rrd_files = [_entry for _entry in _file_list if _entry.endswith(".rrd")]
+                _rrd_files = [
+                    _entry for _entry in _file_list if _entry.endswith(".rrd")
+                ]
                 for _rrd_file in sorted(_rrd_files):
                     if self.check_rrd_file(os.path.join(_dir, _rrd_file)):
                         _changed += 1
@@ -113,7 +144,14 @@ class resize_process(threading_tools.icswProcessObj, server_mixins.OperationalEr
 
     def find_best_tc(self, rra_name, tc_dict):
         _tw = rrd_tools.RRA.total_width(rra_name)
-        _min_key = min([(abs(_tw - _value["total"]), _key) for _key, _value in tc_dict.items()])[1]
+        _min_key = min(
+            [
+                (
+                    abs(_tw - _value["total"]),
+                    _key
+                ) for _key, _value in tc_dict.items()
+            ]
+        )[1]
         return _min_key
 
     def check_rrd_file(self, f_name):
@@ -122,23 +160,45 @@ class resize_process(threading_tools.icswProcessObj, server_mixins.OperationalEr
         try:
             _old_size = os.stat(f_name)[stat.ST_SIZE]
         except:
-            self.log("cannot get size of {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "cannot get size of {}: {}".format(
+                    f_name,
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             _old_size = 0
         else:
             if _old_size:
                 try:
-                    _rrd = rrd_tools.RRD(f_name, log_com=self.log, build_rras=False, verbose=self.__verbose)
+                    _rrd = rrd_tools.RRD(
+                        f_name,
+                        log_com=self.log,
+                        build_rras=False,
+                        verbose=self.__verbose
+                    )
                 except:
                     # check if file is not an rrd file
                     _content = open(f_name, "rb").read()
                     if f_name.endswith(".rrd") and _content[:3] != "RRD":
-                        self.log("file {} has no RRD header, trying to remove it".format(f_name), logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "file {} has no RRD header, trying to remove it".format(
+                                f_name
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                         try:
                             os.unlink(f_name)
                         except:
                             pass
                     else:
-                        self.log("cannot get info about {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "cannot get info about {}: {}".format(
+                                f_name,
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                         for _line in process_tools.icswExceptionInfo().log_lines:
                             self.log(_line, logging_tools.LOG_LEVEL_ERROR)
                 else:
@@ -155,15 +215,36 @@ class resize_process(threading_tools.icswProcessObj, server_mixins.OperationalEr
                             )
                         )
             else:
-                self.log("file {} is empty".format(f_name), logging_tools.LOG_LEVEL_WARN)
+                self.log(
+                    "file {} is empty".format(
+                        f_name
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
         return _changed
 
     def find_best_rra_name(self, rra_names, tc_dict, tc_key):
-        _min_key = min([(abs(rrd_tools.RRA.total_width(_name) - tc_dict[tc_key]["total"]), _name) for _name in rra_names])[1]
+        _min_key = min(
+            [
+                (
+                    abs(rrd_tools.RRA.total_width(_name) - tc_dict[tc_key]["total"]),
+                    _name
+                ) for _name in rra_names
+            ]
+        )[1]
         return _min_key
 
     def find_ref_rras(self, cf, rra_names):
-        return sorted(list(set([_entry for _entry in rra_names if _entry.startswith("RRA-{}-".format(cf))])), key=rrd_tools.RRA.total_width)
+        return sorted(
+            list(
+                set(
+                    [
+                        _entry for _entry in rra_names if _entry.startswith("RRA-{}-".format(cf))
+                    ]
+                )
+            ),
+            key=rrd_tools.RRA.total_width
+        )
 
     def check_rrd_file_2(self, f_name, _rrd):
         # flush cache
@@ -190,8 +271,16 @@ class resize_process(threading_tools.icswProcessObj, server_mixins.OperationalEr
             for _key in tc_dict.keys():
                 _short_src_rra_name = self.find_best_rra_name(_rrd["rra_short_names"], tc_dict, _key)
                 # find best srouce
-                _src_rra_names = [_name for _name in _rrd["rra_names"] if _name.endswith("-{}".format(_short_src_rra_name))]
-                self.log("for '{}' we will use '{}' ({})".format(_key, _short_src_rra_name, ", ".join(_src_rra_names)))
+                _src_rra_names = [
+                    _name for _name in _rrd["rra_names"] if _name.endswith("-{}".format(_short_src_rra_name))
+                ]
+                self.log(
+                    "for '{}' we will use '{}' ({})".format(
+                        _key,
+                        _short_src_rra_name,
+                        ", ".join(_src_rra_names)
+                    )
+                )
                 _tc_value = tc_dict[_key]
                 for _src_rra_name in _src_rra_names:
                     _src_rra = _rrd["rra_dict"][_src_rra_name]
@@ -212,7 +301,11 @@ class resize_process(threading_tools.icswProcessObj, server_mixins.OperationalEr
                             ref_rra=_src_rra,
                             log_com=_rrd.log,
                         )
-                        new_rra.fit_data([_rrd["rra_dict"][_name] for _name in self.find_ref_rras(_src_cf, _rrd["rra_names"])])
+                        new_rra.fit_data(
+                            [
+                                _rrd["rra_dict"][_name] for _name in self.find_ref_rras(_src_cf, _rrd["rra_names"])
+                            ]
+                        )
                         _rrd.add_rra(new_rra)
                     else:
                         new_rra = _src_rra
@@ -220,14 +313,39 @@ class resize_process(threading_tools.icswProcessObj, server_mixins.OperationalEr
             # delete old rras
             [_rrd.remove_rra(_del_name) for _del_name in _prev_names - _new_names]
             self.log("RRA list changed from")
-            self.log("  {}".format(", ".join(["{} ({:d})".format(_name, _prev_popcount[_name]) for _name in sorted(list(_prev_names))])))
+            self.log(
+                "  {}".format(
+                    ", ".join(
+                        [
+                            "{} ({:d})".format(
+                                _name,
+                                _prev_popcount[_name]
+                            ) for _name in sorted(list(_prev_names))
+                        ]
+                    )
+                )
+            )
             self.log("to")
-            self.log("  {}".format(", ".join(["{} ({:d})".format(_name, _new_popcount[_name]) for _name in sorted(list(_new_names))])))
+            self.log(
+                "  {}".format(
+                    ", ".join(
+                        [
+                            "{} ({:d})".format(
+                                _name,
+                                _new_popcount[_name]
+                            ) for _name in sorted(list(_new_names))
+                        ]
+                    )
+                )
+            )
             try:
                 open(f_name, "wb").write(_rrd.content())
             except:
                 self.log(
-                    "error writing RRA to {}: {}".format(f_name, process_tools.get_except_info()),
+                    "error writing RRA to {}: {}".format(
+                        f_name,
+                        process_tools.get_except_info()
+                    ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
             _changed = True

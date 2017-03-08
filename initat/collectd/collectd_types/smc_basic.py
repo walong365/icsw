@@ -28,13 +28,21 @@ from .base import PerfdataObject, perfdata_value
 
 
 class SMCChassisPSUPerfdata(PerfdataObject):
-    PD_RE = re.compile("^smcipmi\s+psu=(?P<psu_num>\d+)\s+temp=(?P<temp>\S+)\s+amps=(?P<amps>\S+)\s+fan1=(?P<fan1>\d+)\s+fan2=(?P<fan2>\d+)$")
+    PD_RE = re.compile(
+        "^smcipmi\s+psu=(?P<psu_num>\d+)\s+temp=(?P<temp>\S+)\s+amps=(?P<amps>\S+)\s+fan1=(?P<fan1>\d+)\s+fan2=(?P<fan2>\d+)$"
+    )
 
     def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(
             _host_info,
             _xml,
-            [int(in_dict["psu_num"]), float(in_dict["temp"]), float(in_dict["amps"]), int(in_dict["fan1"]), int(in_dict["fan2"])],
+            [
+                int(in_dict["psu_num"]),
+                float(in_dict["temp"]),
+                float(in_dict["amps"]),
+                int(in_dict["fan1"]),
+                int(in_dict["fan2"])
+            ],
             rsi=1,
         )
 

@@ -53,13 +53,26 @@ class PerfdataObject(object):
         pd_tuple = (self, self.get_type_instance(v_list))
         _send_info = _host_info.feed_perfdata(pd_tuple)
         if _send_info:
-            _send_xml = self.build_perfdata_info(_host_info, pd_tuple, v_list)  # mach_values
+            _send_xml = self.build_perfdata_info(
+                _host_info,
+                pd_tuple,
+                v_list
+            )  # mach_values
         else:
             _send_xml = None
         if not hasattr(self, "_key_list"):
             if _send_xml is None:
-                _send_xml = self.build_perfdata_info(_host_info, pd_tuple, v_list)  # mach_values
-            self._key_list = ["{}.{}".format(self.pd_name, _el.get("key")) for _el in _send_xml.findall(".//value")]
+                _send_xml = self.build_perfdata_info(
+                    _host_info,
+                    pd_tuple,
+                    v_list
+                )  # mach_values
+            self._key_list = [
+                "{}.{}".format(
+                    self.pd_name,
+                    _el.get("key")
+                ) for _el in _send_xml.findall(".//value")
+            ]
         # print "****", self.PD_NAME, self.get_type_instance(v_list)
         return [
             # tuple of
@@ -117,7 +130,11 @@ class PerfdataObject(object):
 
 class value(object):
     # somehow resembles MachineVectorEntry from hm_classes
-    __slots__ = ["name", "sane_name", "info", "unit", "base", "value", "factor", "v_type", "last_update", "set_value", "timeout"]
+    __slots__ = [
+        "name", "sane_name", "info", "unit", "base",
+        "value", "factor", "v_type", "last_update",
+        "set_value", "timeout"
+    ]
 
     def __init__(self, name):
         self.name = name

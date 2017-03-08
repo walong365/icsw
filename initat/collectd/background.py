@@ -26,13 +26,13 @@ import time
 from lxml import etree
 from lxml.builder import E
 
-from initat.collectd.collectd_struct import ext_com
-from initat.collectd.config import global_config
-from initat.snmp.sink import SNMPSink
-from initat.snmp.snmp_struct import value_cache
 from initat.cluster.backbone.models import DeviceLogEntry
 from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.snmp.sink import SNMPSink
+from initat.snmp.snmp_struct import value_cache
 from initat.tools import logging_tools, server_command, process_tools
+from .collectd_struct import ext_com
+from .config import global_config
 
 IPMI_LIMITS = ["ln", "lc", "lw", "uw", "uc", "un"]
 
@@ -91,8 +91,17 @@ def parse_ipmi(in_lines):
                 key, info, unit, base = parse_ipmi_type(parts[0], s_type)
                 if key:
                     # limit dict,
-                    limits = {key: l_val for key, l_val in zip(IPMI_LIMITS, [{"na": ""}.get(value, value) for value in parts[4:10]])}
-                    result[key] = (float(parts[1]), info, unit, base, limits)
+                    limits = {
+                        key: l_val for key, l_val in zip(
+                            IPMI_LIMITS,
+                            [
+                                {"na": ""}.get(value, value) for value in parts[4:10]
+                            ]
+                        )
+                    }
+                    result[key] = (
+                        float(parts[1]), info, unit, base, limits
+                    )
     return result
 
 
@@ -131,7 +140,10 @@ class SNMPJob(object):
                 self.ip,
                 self.snmp_version,
                 self.snmp_read_community,
-                logging_tools.get_plural("valid scheme", len(self.snmp_handlers)),
+                logging_tools.get_plural(
+                    "valid scheme",
+                    len(self.snmp_handlers)
+                ),
             )
         )
         return
@@ -171,7 +183,12 @@ class SNMPJob(object):
             self.running = True
             self.waiting_for = "{}:{:d}".format(self.id_str, self.counter)
             # see proc_data in snmp_relay_schemes
-            fetch_list = sum([_handler.collect_fetch() for _handler in self.snmp_handlers], [])
+            fetch_list = sum(
+                [
+                    _handler.collect_fetch() for _handler in self.snmp_handlers
+                ],
+                []
+            )
             self.bg_proc.spc.start_batch(
                 self.snmp_version,
                 self.ip,
@@ -187,7 +204,12 @@ class SNMPJob(object):
         self.running = False
         error_list, _ok_list, res_dict = res_list[0:3]
         if error_list:
-            self.log("error fetching SNMP data from {}".format(self.device_name), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error fetching SNMP data from {}".format(
+                    self.device_name
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
             headers = {
                 "name": self.device_name,
@@ -203,7 +225,12 @@ class SNMPJob(object):
             )
             for _handler in self.snmp_handlers:
                 try:
-                    _handler.collect_feed(res_dict, mv_tree=mv_tree, mon_info=mon_info, vc=self.__vcache)
+                    _handler.collect_feed(
+                        res_dict,
+                        mv_tree=mv_tree,
+                        mon_info=mon_info,
+                        vc=self.__vcache
+                    )
                 except:
                     self.log(
                         "error feeding for handler {} (IP {}): {}".format(
@@ -241,7 +268,9 @@ class SNMPJob(object):
                     self.waiting_for = None
                     self.running = False
         else:
-            if self.last_start is None or abs(int(time.time() - self.last_start)) >= self.run_every and not self.to_remove:
+            if self.last_start is None or abs(
+                int(time.time() - self.last_start)
+            ) >= self.run_every and not self.to_remove:
                 if start:
                     self._start_snmp_batch()
         return self.running
@@ -302,7 +331,10 @@ class SNMPJob(object):
         if _to_remove:
             SNMPJob.g_log(
                 "{} to remove: {}".format(
-                    logging_tools.get_plural("SNMP job", len(_to_remove)),
+                    logging_tools.get_plural(
+                        "SNMP job",
+                        len(_to_remove)
+                    ),
                     ", ".join(sorted(list(_to_remove)))
                 )
             )
@@ -322,7 +354,10 @@ class SNMPJob(object):
         if _to_delete:
             SNMPJob.g_log(
                 "removing {}: {}".format(
-                    logging_tools.get_plural("SNMP job", len(_to_delete)),
+                    logging_tools.get_plural(
+                        "SNMP job",
+                        len(_to_delete)
+                    ),
                     ", ".join(sorted(_to_delete))
                 ),
                 logging_tools.LOG_LEVEL_WARN
@@ -475,7 +510,9 @@ class BackgroundJob(object):
                     self.log(
                         "done (RC={:d}) in {} (stdout: {}{})".format(
                             self.result,
-                            logging_tools.get_diff_time_str(self.__ec.end_time - self.__ec.start_time),
+                            logging_tools.get_diff_time_str(
+                                self.__ec.end_time - self.__ec.start_time
+                            ),
                             logging_tools.get_plural("byte", len(stdout)),
                             ", stderr: {}".format(
                                 logging_tools.get_plural("byte", len(stderr))
@@ -484,7 +521,12 @@ class BackgroundJob(object):
                     )
                 if stdout and self.result == 0:
                     if self.builder is not None:
-                        _tree, _mon_info = self.builder.build(stdout, name=self.device_name, uuid=self.uuid, time="{:d}".format(int(self.last_start)))
+                        _tree, _mon_info = self.builder.build(
+                            stdout,
+                            name=self.device_name,
+                            uuid=self.uuid,
+                            time="{:d}".format(int(self.last_start))
+                        )
                         _num_mves = len(_tree.findall(".//mve"))
                         if not _num_mves:
                             DeviceLogEntry.new(
@@ -498,7 +540,12 @@ class BackgroundJob(object):
                         # monitoring
                         BackgroundJob.bg_proc.send_to_remote_server(
                             icswServiceEnum.monitor_server,
-                            str(server_command.srv_command(command="monitoring_info", mon_info=_mon_info))
+                            str(
+                                server_command.srv_command(
+                                    command="monitoring_info",
+                                    mon_info=_mon_info
+                                )
+                            )
                         )
                     else:
                         BackgroundJob.log("no builder set", logging_tools.LOG_LEVEL_ERROR)
@@ -515,9 +562,14 @@ class BackgroundJob(object):
                     )
                     self.log("error output follows, cmdline was '{}'".format(self.comline))
                     for line_num, line in enumerate(stderr.decode("utf-8").strip().split("\n")):
-                        self.log("  {:3d} {}".format(line_num + 1, line), logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "  {:3d} {}".format(line_num + 1, line),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
         else:
-            if self.last_start is None or abs(int(time.time() - self.last_start)) >= self.run_every and not self.to_remove:
+            if self.last_start is None or abs(
+                int(time.time() - self.last_start)
+            ) >= self.run_every and not self.to_remove:
                 if start:
                     self._start_ext_com()
         return self.running
