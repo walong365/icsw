@@ -136,7 +136,9 @@ class DeviceRecognition(object):
         # get IP-adresses (from IP)
         self.local_ips = list(
             net_ip.objects.filter(
-                Q(netdevice__device__name=self.short_host_name)
+                Q(netdevice__device__name=self.short_host_name) &
+                Q(netdevice__device__enabled=True) &
+                Q(netdevice__device__device_group__enabled=True)
             ).values_list("ip", flat=True)
         )
         # get configured IP-Adresses

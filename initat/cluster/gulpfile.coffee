@@ -165,8 +165,8 @@ sources = {
             "frontend/static/js/webfrontend_translation.js",
             "frontend/static/js/angular-gridster.js",
             "frontend/static/js/angular-promise-extras.js",
-            "frontend/static/js/react-15.4.1.js",
-            "frontend/static/js/react-dom-15.4.1.js",
+            "frontend/static/js/react-15.4.2.js",
+            "frontend/static/js/react-dom-15.4.2.js",
             # not needed ?
             # "frontend/static/js/react-draggable.js",
             "frontend/static/js/hotkeys.js",
