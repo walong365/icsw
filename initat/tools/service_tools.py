@@ -41,12 +41,25 @@ class ServiceHelper(object):
             self._service_command = self._service_command_i
             self._chkconfig = process_tools.find_file("chkconfig")
             self._service = process_tools.find_file("service")
-            self.log("classic init detected, chkconfig at {}, service at {}".format(self._chkconfig, self._service))
+            self.log(
+                "classic init detected, chkconfig at {}, service at {}".format(
+                    self._chkconfig,
+                    self._service
+                )
+            )
             self._get_init_services()
-        self.log("found {}".format(logging_tools.get_plural("service", len(self.__services))))
+        self.log(
+            "found {}".format(
+                logging_tools.get_plural("service", len(self.__services))
+            )
+        )
 
     def _get_systemd_services(self):
-        _stat, _out, _err = self._call_command("{} list-units -a --type=service".format(self._systemctl))
+        _stat, _out, _err = self._call_command(
+            "{} list-units -a --type=service".format(
+                self._systemctl
+            )
+        )
         for _line in _out.strip().split("\n")[1:-1]:
             try:
                 _key, _value = _line.strip().split(None, 1)
@@ -68,7 +81,11 @@ class ServiceHelper(object):
 
     def service_is_active(self, key):
         if self._method == "i":
-            return True if any([self.__services[key].count(_match) for _match in [":on", " on"]]) or self.__services[key] == "on" else False
+            return True if any(
+                [
+                    self.__services[key].count(_match) for _match in [":on", " on"]
+                ]
+            ) or self.__services[key] == "on" else False
         else:
             return True if self.__services[key].count(" active ") else False
 
@@ -92,7 +109,12 @@ class ServiceHelper(object):
                     self.__services[_key] = _value
 
     def _call_command(self, com_str):
-        _stat, _out, _err = process_tools.call_command(com_str, self.log, close_fds=True, log_stdout=False)
+        _stat, _out, _err = process_tools.call_command(
+            com_str,
+            self.log,
+            close_fds=True,
+            log_stdout=False
+        )
         _out = _out.decode("utf-8")
         _err = _err.decode("utf-8")
         return _stat, _out, _err
@@ -105,7 +127,12 @@ class ServiceHelper(object):
             if name in self.__services:
                 return name
             else:
-                self.log("service {} not known to chkconfig".format(name), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "service {} not known to chkconfig".format(
+                        name
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 return None
         else:
             if name in self.__services:
@@ -113,22 +140,33 @@ class ServiceHelper(object):
             elif "{}.service" in self.__services:
                 return "{}.service".format(name)
             else:
-                self.log("service {} not known to systemd".format(name), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "service {} not known to systemd".format(
+                        name
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 return None
 
     def find_services(self, name_re_str, **kwargs):
         active = kwargs.get("active", None)
         name_re = re.compile(name_re_str)
-        _result = [_key for _key in self.__services.keys() if name_re.match(_key)]
+        _result = [
+            _key for _key in self.__services.keys() if name_re.match(_key)
+        ]
         _act_str = {
             None: "ignore",
             True: "active",
             False: "inactive",
         }[active]
         if active is True:
-            _result = [_key for _key in _result if self.service_is_active(_key)]
+            _result = [
+                _key for _key in _result if self.service_is_active(_key)
+            ]
         elif active is False:
-            _result = [_key for _key in _result if not self.service_is_active(_key)]
+            _result = [
+                _key for _key in _result if not self.service_is_active(_key)
+            ]
         if not _result:
             self.log(
                 "found no services with name_re '{}' (active={})".format(

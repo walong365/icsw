@@ -25,6 +25,7 @@ import argparse
 import operator
 import os
 import time
+
 import zmq
 
 from initat.tools import process_tools, server_command, logging_tools
@@ -69,7 +70,12 @@ class ZMQConnection(object):
     def register_poller(self, zmq_socket, sock_fd, poll_type, callback):
         self.poller_handler.setdefault(zmq_socket, {})[poll_type] = callback
         if sock_fd in self.__registered:
-            self.poller.modify(zmq_socket, operator.ior(*list(self.poller_handler[zmq_socket].keys())))
+            self.poller.modify(
+                zmq_socket,
+                operator.ior(
+                    *list(self.poller_handler[zmq_socket].keys())
+                )
+            )
         else:
             self.poller.register(zmq_socket, poll_type)
             self.__registered.add(sock_fd)
@@ -88,7 +94,9 @@ class ZMQConnection(object):
         # handle connection to same conn_str during one run
         id_str = "{}{}".format(
             self.identity,
-            "{:d}".format(self.__mult_dict[conn_str]) if self.__mult_dict[conn_str] else ""
+            "{:d}".format(
+                self.__mult_dict[conn_str]
+            ) if self.__mult_dict[conn_str] else ""
         )
         self.num_connections += 1
         new_sock = process_tools.get_socket(
@@ -121,7 +129,11 @@ class ZMQConnection(object):
             sock_fd = new_sock.getsockopt(zmq.FD)
             if self.__ext_poller:
                 self.start_time = time.time()
-                self.__poller_base.register_poller(new_sock, zmq.POLLIN, self.__receive)
+                self.__poller_base.register_poller(
+                    new_sock,
+                    zmq.POLLIN,
+                    self.__receive
+                )
             else:
                 self.register_poller(new_sock, sock_fd, zmq.POLLIN, self.__receive)
                 # self.register_poller(new_sock, sock_fd, zmq.POLLERR, self.__show)
@@ -176,14 +188,22 @@ class ZMQConnection(object):
         return self._interpret_all()
 
     def _interpret_all(self):
-        return [self._interpret_result(com_type, self.__results[cur_fd]) for cur_fd, com_type in self.__add_list]
+        return [
+            self._interpret_result(
+                com_type,
+                self.__results[cur_fd]
+            ) for cur_fd, com_type in self.__add_list
+        ]
 
     def __show(self, sock_fd):
         print(sock_fd)
 
     def _close_socket(self, sock_fd):
         if self.__ext_poller:
-            self.__poller_base.unregister_poller(self.__socket_dict[sock_fd], zmq.POLLIN)
+            self.__poller_base.unregister_poller(
+                self.__socket_dict[sock_fd],
+                zmq.POLLIN
+            )
         else:
             self.unregister_poller(sock_fd)
         self.__socket_dict[sock_fd].close()
@@ -256,7 +276,9 @@ class SendCommand(object):
         if self.args.identity_string:
             self.identity_str = self.args.identity_string
         else:
-            self.identity_str = process_tools.zmq_identity_str(self.args.identity_substring)
+            self.identity_str = process_tools.zmq_identity_str(
+                self.args.identity_substring
+            )
         s_type = "DEALER" if not self.args.split else "PUSH"
         client = self.zmq_context.socket(getattr(zmq, s_type))
         client.setsockopt_string(zmq.IDENTITY, self.identity_str)
@@ -272,7 +294,11 @@ class SendCommand(object):
                 )
             )
         else:
-            conn_str = "{}://{}:{:d}".format(self.args.protocoll, self.args.host, self.args.port)
+            conn_str = "{}://{}:{:d}".format(
+                self.args.protocoll,
+                self.args.host,
+                self.args.port
+            )
         if self.args.split:
             recv_conn_str = "{}".format(
                 process_tools.get_zmq_ipc_name(
@@ -299,7 +325,11 @@ class SendCommand(object):
             )
         )
         if self.args.split:
-            self.verbose("receive connection string is '{}'".format(recv_conn_str))
+            self.verbose(
+                "receive connection string is '{}'".format(
+                    recv_conn_str
+                )
+            )
 
     def connect(self):
         try:
@@ -365,7 +395,9 @@ class SendCommand(object):
                 if kv_pair.count(":"):
                     key, value = kv_pair.split(":", 1)
                     if self.args.kv_path:
-                        srv_com["{}:{}".format(self.args.kv_path, key)] = value
+                        srv_com[
+                            "{}:{}".format(self.args.kv_path, key)
+                        ] = value
                     else:
                         srv_com[key] = value
                 else:
@@ -374,7 +406,12 @@ class SendCommand(object):
             for kva_pair in self.args.kva:
                 key, attr, value = kva_pair.split(":")
                 if self.args.kv_path:
-                    srv_com["{}:{}".format(self.args.kv_path, key)].attrib[attr] = value
+                    srv_com[
+                        "{}:{}".format(
+                            self.args.kv_path,
+                            key
+                        )
+                    ].attrib[attr] = value
                 else:
                     srv_com[key].attrib[attr] = value
         # not in raw mode, arg_list must always be set (even if empty)
@@ -406,7 +443,10 @@ class SendCommand(object):
             print(
                 "error timeout in receive() from {} after {}".format(
                     self.recv_conn_str or self.conn_str,
-                    logging_tools.get_plural("second", self.args.timeout)
+                    logging_tools.get_plural(
+                        "second",
+                        self.args.timeout
+                    )
                 )
             )
             timeout = True
@@ -415,13 +455,17 @@ class SendCommand(object):
         if timeout:
             self.verbose(
                 "communication took {}".format(
-                    logging_tools.get_diff_time_str(self.e_time - self.s_time),
+                    logging_tools.get_diff_time_str(
+                        self.e_time - self.s_time
+                    ),
                 )
             )
         else:
             self.verbose(
                 "communication took {}, received {:d} bytes".format(
-                    logging_tools.get_diff_time_str(self.e_time - self.s_time),
+                    logging_tools.get_diff_time_str(
+                        self.e_time - self.s_time
+                    ),
                     len(recv_str),
                 )
             )
@@ -431,17 +475,36 @@ class SendCommand(object):
         try:
             srv_reply = server_command.srv_command(source=recv_str)
         except:
-            print("cannot interpret reply: {}".format(process_tools.get_except_info()))
+            print(
+                "cannot interpret reply: {}".format(
+                    process_tools.get_except_info()
+                )
+            )
             print("reply was: {}".format(recv_str))
             srv_reply = None
             self.ret_state = 1
         else:
-            self.verbose("\nXML response (id: '{}'):\n{}\n".format(recv_id, srv_reply.pretty_print()))
+            self.verbose(
+                "\nXML response (id: '{}'):\n{}\n".format(
+                    recv_id,
+                    srv_reply.pretty_print()
+                )
+            )
             if "result" in srv_reply:
                 _result = srv_reply["result"]
                 if not self.args.quiet:
-                    print(srv_reply["result"].attrib.get("reply", "no reply attribute in result node"))
-                self.ret_state = int(srv_reply["result"].attrib.get("state", server_command.SRV_REPLY_STATE_UNSET))
+                    print(
+                        srv_reply["result"].attrib.get(
+                            "reply",
+                            "no reply attribute in result node"
+                        )
+                    )
+                self.ret_state = int(
+                    srv_reply["result"].attrib.get(
+                        "state",
+                        server_command.SRV_REPLY_STATE_UNSET
+                    )
+                )
             elif len(srv_reply.xpath(".//nodestatus", smart_strings=False)):
                 print(srv_reply.xpath(".//nodestatus", smart_strings=False)[0].text)
                 self.ret_state = 0

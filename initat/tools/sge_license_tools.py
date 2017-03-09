@@ -67,12 +67,21 @@ def get_sge_environment(log_com=None):
             if os.path.isfile(_file):
                 _sge_dict[_key.upper()] = open(_file, "r").read().strip()
             else:
-                _log(log_com, "Error, no {} environment variable set or defined in {}".format(_key.upper(), _file))
+                _log(
+                    log_com,
+                    "Error, no {} environment variable set or defined in {}".format(
+                        _key.upper(),
+                        _file
+                    )
+                )
         else:
             _sge_dict[_key.upper()] = os.environ[_key.upper()]
     arch_util = "{}/util/arch".format(_sge_dict["SGE_ROOT"])
     if not os.path.isfile(arch_util):
-        _log(log_com, "No arch-utility found in {}/util".format(_sge_dict["SGE_ROOT"]))
+        _log(
+            log_com,
+            "No arch-utility found in {}/util".format(_sge_dict["SGE_ROOT"])
+        )
         if log_com is None:
             sys.exit(1)
     _sge_stat, sge_arch = call_command(arch_util, log_com=log_com)
@@ -80,7 +89,13 @@ def get_sge_environment(log_com=None):
     for _bn in ["qconf", "qstat"]:
         _bin = "{}/bin/{}/{}".format(_sge_dict["SGE_ROOT"], sge_arch, _bn)
         if not os.path.isfile(_bin):
-            _log(log_com, "No {} command found under {}".format(_bn, _sge_dict["SGE_ROOT"]))
+            _log(
+                log_com,
+                "No {} command found under {}".format(
+                    _bn,
+                    _sge_dict["SGE_ROOT"]
+                )
+            )
             if log_com is None:
                 sys.exit(1)
         _sge_dict["{}_BIN".format(_bn.upper())] = _bin
@@ -101,7 +116,9 @@ def get_sge_complexes(sge_dict):
     defined_complexes = [
         _line for _line in complex_out.split("\n") if _line.strip() and not _line.strip().startswith("#")
     ]
-    return defined_complexes, [_line.split()[0] for _line in defined_complexes]
+    return defined_complexes, [
+        _line.split()[0] for _line in defined_complexes
+    ]
 
 
 class SGELicense(object):
@@ -680,7 +697,9 @@ def call_command(command, exit_on_fail=0, show_output=False, log_com=None):
                 log_com,
                 "Output of '{}': {}".format(
                     command,
-                    _out and "{}".format(logging_tools.get_plural("line", len(_out.split("\n")))) or "<no output>"
+                    _out and "{}".format(
+                        logging_tools.get_plural("line", len(_out.split("\n")))
+                    ) or "<no output>"
                 )
             )
             for _line in _out.split("\n"):
@@ -738,7 +757,10 @@ class LicenseFile(object):
             # server / port tuple
             _parsed = True
             self.server_list = [
-                LicenseServer("{}@{}".format(self.lic_file_def[1], self.lic_file_def[0]))
+                LicenseServer("{}@{}".format(
+                    self.lic_file_def[1],
+                    self.lic_file_def[0])
+                )
             ]
         if not _parsed:
             raise SyntaxError(
@@ -792,7 +814,12 @@ class LicenseCheck(object):
             ret_code, out = mock_license_call(com_line)
             out = out.encode("utf-8")
         else:
-            popen = subprocess.Popen(com_line, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            popen = subprocess.Popen(
+                com_line,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT
+            )
             ret_code = popen.wait()
             out = popen.stdout.read()
         return ret_code, out
@@ -884,7 +911,11 @@ class LicenseCheck(object):
         # license name
         lic_names = set(result.xpath(".//license_info/licenses/license/@name"))
         for lic_name in lic_names:
-            src_licenses = result.xpath(".//license_info/licenses/license[@name='{}']".format(lic_name))
+            src_licenses = result.xpath(
+                ".//license_info/licenses/license[@name='{}']".format(
+                    lic_name
+                )
+            )
             license = src_licenses.pop(0)
             _licenses.append(license)
             for _add_lic in src_licenses:
@@ -895,7 +926,11 @@ class LicenseCheck(object):
                         int(_add_lic.attrib.get(_attr_name, "0"))
                     )
                 for _version in _add_lic.findall("version"):
-                    _current_version = license.xpath(".//version[@version='{}']".format(_version.attrib["version"]))
+                    _current_version = license.xpath(
+                        ".//version[@version='{}']".format(
+                            _version.attrib["version"]
+                        )
+                    )
                     if len(_current_version):
                         if _version.find(".//usage") is not None:
                             # add usages
@@ -926,7 +961,11 @@ class LicenseCheck(object):
                 server_info = lparts[-1]
                 server_port, server_addr = server_info.split("@")
                 found_server.add(server_addr)
-                cur_srv = E.server(info=server_info, address=server_addr, port=server_port)
+                cur_srv = E.server(
+                    info=server_info,
+                    address=server_addr,
+                    port=server_port
+                )
                 ret_struct.find("license_servers").append(cur_srv)
             if cur_srv is not None:
                 if lline.count("license file"):
@@ -978,7 +1017,12 @@ class LicenseCheck(object):
                 else:
                     if cur_lic_version is not None:
                         try:
-                            self._feed_license_version(cur_lic, cur_lic_version, lparts, server_info)
+                            self._feed_license_version(
+                                cur_lic,
+                                cur_lic_version,
+                                lparts,
+                                server_info
+                            )
                         except:
                             self.log(
                                 "error feed license info {}: {}".format(
@@ -1000,7 +1044,9 @@ class LicenseCheck(object):
                 num=lparts[0],
                 target=" ".join(lparts[3:])
             ))
-            cur_lic.attrib["reserved"] = "{:d}".format(int(cur_lic.attrib["reserved"]) + int(lparts[0]))
+            cur_lic.attrib["reserved"] = "{:d}".format(
+                int(cur_lic.attrib["reserved"]) + int(lparts[0])
+            )
         else:
             if cur_lic_version.find("usages") is None:
                 cur_lic_version.append(E.usages())
@@ -1037,7 +1083,9 @@ class LicenseCheck(object):
                     client_long=lparts[1],
                     client_short=lparts[2].split(".")[0],
                     client_version=lparts[_client_idx][1:-1],
-                    checkout_time="{:.2f}".format(time.mktime(co_datetime.timetuple())),
+                    checkout_time="{:.2f}".format(
+                        time.mktime(co_datetime.timetuple())
+                    ),
                     server_info=server_info,
                 )
             )
@@ -1057,7 +1105,12 @@ class ExternalLicenses(object):
         ).dict
         self.__sge_dict = get_sge_environment(log_com=self.log)
         if self.__verbose:
-            self.log("init ExternalLicenses object with site '{}' in {}".format(self.__site, self.__base))
+            self.log(
+                "init ExternalLicenses object with site '{}' in {}".format(
+                    self.__site,
+                    self.__base
+                )
+            )
             self.log(get_sge_log_line(self.__sge_dict))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -1077,7 +1130,10 @@ class ExternalLicenses(object):
     def feed_xml_result(self, srv_result):
         # srv_result is an XML snippet
         update_usage(self.__license_dict, srv_result)
-        set_sge_used(self.__license_dict, parse_sge_used(self.__sge_dict, log_com=self.log))
+        set_sge_used(
+            self.__license_dict,
+            parse_sge_used(self.__sge_dict, log_com=self.log)
+        )
         for log_line, log_level in handle_complex_licenses(self.__license_dict):
             if log_level > logging_tools.LOG_LEVEL_WARN:
                 self.log(log_line, log_level)

@@ -74,7 +74,9 @@ class MeasureTime(object):
             self._log_com(
                 "{} took {}".format(
                     what,
-                    "{:>8.3f} ms".format(diff_time * 1000.) if diff_time < 2 else get_diff_time_str(diff_time),
+                    "{:>8.3f} ms".format(
+                        diff_time * 1000.
+                    ) if diff_time < 2 else get_diff_time_str(diff_time),
                 )
             )
         self._rel_time = cur_time
@@ -121,7 +123,11 @@ def get_relative_dt(dt_struct):
             elif diff_days == 0:
                 return dt_struct.strftime("today %H:%M:%S")
             else:
-                return dt_struct.strftime("%a, {:d} days ago %H:%M:%S".format(int(diff_days)))
+                return dt_struct.strftime(
+                    "%a, {:d} days ago %H:%M:%S".format(
+                        int(diff_days)
+                    )
+                )
     else:
         # in future
         diff_days = (
@@ -134,12 +140,20 @@ def get_relative_dt(dt_struct):
             elif diff_days == 0:
                 return dt_struct.strftime("today %H:%M:%S")
             else:
-                return dt_struct.strftime("%a, in {:d} days %H:%M:%S".format(int(diff_days)))
+                return dt_struct.strftime(
+                    "%a, in {:d} days %H:%M:%S".format(
+                        int(diff_days)
+                    )
+                )
     return dt_struct.strftime("%a, %d. %b %Y %H:%M:%S")
 
 
 def only_printable(in_str):
-    return "".join([_chr for _chr in in_str if _chr in string.printable])
+    return "".join(
+        [
+            _chr for _chr in in_str if _chr in string.printable
+        ]
+    )
 
 
 def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
@@ -257,13 +271,31 @@ def get_diff_time_str(diff_secs, **kwargs):
                     if abs_days > 365:
                         abs_years = int(abs_days / 365)
                         abs_days -= 365 * abs_years
-                        diff_str = "{:d}y {:3d}d {:02d}:{:02d}:{:02d}".format(abs_years, abs_days, abs_hours, abs_mins, abs_secs)
+                        diff_str = "{:d}y {:3d}d {:02d}:{:02d}:{:02d}".format(
+                            abs_years,
+                            abs_days,
+                            abs_hours,
+                            abs_mins,
+                            abs_secs
+                        )
                     else:
-                        diff_str = "{:d}d {:02d}:{:02d}:{:02d}".format(abs_days, abs_hours, abs_mins, abs_secs)
+                        diff_str = "{:d}d {:02d}:{:02d}:{:02d}".format(
+                            abs_days,
+                            abs_hours,
+                            abs_mins,
+                            abs_secs
+                        )
                 else:
-                    diff_str = "{:d}:{:02d}:{:02d}".format(abs_hours, abs_mins, abs_secs)
+                    diff_str = "{:d}:{:02d}:{:02d}".format(
+                        abs_hours,
+                        abs_mins,
+                        abs_secs
+                    )
             else:
-                diff_str = "{:d}:{:02d}".format(abs_mins, abs_secs)
+                diff_str = "{:d}:{:02d}".format(
+                    abs_mins,
+                    abs_secs
+                )
         else:
             diff_str = "{} {}".format(
                 "{:d}".format(abs_diffs) if is_int else "{:.2f}".format(abs_diffs),
@@ -305,7 +337,11 @@ class progress_counter(object):
         self.__action = action
         self.__total_count = total_count
         self.__start_count = total_count
-        self.__lc, self.__sum_lc, self.__print_every = (0, 0, kwargs.get("print_every", 1))
+        self.__lc, self.__sum_lc, self.__print_every = (
+            0,
+            0,
+            kwargs.get("print_every", 1)
+        )
         self.__log_command = kwargs.get("log_command", None)
 
     def _log(self, log_str, **kwargs):
@@ -403,7 +439,19 @@ class form_list(object):
 
     def __str__(self):
         if self.raw_mode:
-            out_lines = [";".join([self.header_dict.get(idx, "").strip() for idx in range(len(list(self.header_dict.keys())))])]
+            out_lines = [
+                ";".join(
+                    [
+                        self.header_dict.get(idx, "").strip() for idx in range(
+                            len(
+                                list(
+                                    self.header_dict.keys()
+                                )
+                            )
+                        )
+                    ]
+                )
+            ]
             for l_p in self.lines:
                 out_lines.append(";".join([str(x).strip() for x in l_p]))
         else:
@@ -708,7 +756,13 @@ def compress_list(ql, **kwargs):
                 pf_m.group("pef"),
                 pf_m.group("pof"),
             )
-            nc_dict.setdefault(pef, {}).setdefault(pof, {})[int(pf_m.group("num"))] = pf_m.group("num")
+            nc_dict.setdefault(
+                pef,
+                {}
+            ).setdefault(
+                pof,
+                {}
+            )[int(pf_m.group("num"))] = pf_m.group("num")
         else:
             # no match found
             unmatch_list.append(q_e)
@@ -731,7 +785,9 @@ def compress_list(ql, **kwargs):
                     l_num, l_idx = (e_num, e_idx)
             if pef:
                 nc_a += [add_p(pef, pof, s_num, l_num)]
-    return kwargs.get("separator", ", ").join(sorted(nc_a) + sorted(unmatch_list))
+    return kwargs.get("separator", ", ").join(
+        sorted(nc_a) + sorted(unmatch_list)
+    )
 
 
 def compress_num_list(ql, excl_list=[]):
@@ -816,7 +872,10 @@ class my_formatter(logging.Formatter):
         if self.__max_line_length and len(message.msg) > self.__max_line_length + 20:
             left = len(message.msg) - self.__max_line_length
             if left > 4:
-                message.msg = "{} ({:d} left)".format(message.msg[:self.__max_line_length], len(message.msg))
+                message.msg = "{} ({:d} left)".format(
+                    message.msg[:self.__max_line_length],
+                    len(message.msg)
+                )
         return logging.Formatter.format(self, message)
 
 
@@ -978,16 +1037,44 @@ def list_to_struct(in_list, **kwargs):
                 _pfs.add((int(_pf), _pf))
                 _dict.setdefault(_pf, []).append(_value[len(_pf):])
             _pfs = sorted(list(_pfs))
-            if len(_pfs) > 1 and len(set(["".join(_val) for _val in _dict.values()])) == 1:
+            if len(_pfs) > 1 and len(
+                set(
+                    [
+                        "".join(_val) for _val in _dict.values()
+                    ]
+                )
+            ) == 1:
                 # all values are the same, return compressed list
-                return [("[{}]".format(compress_num_list([_int for _int, _val in _pfs])), list_to_struct(list(_dict.values())[0], **kwargs))]
+                return [
+                    (
+                        "[{}]".format(
+                            compress_num_list([_int for _int, _val in _pfs])
+                        ),
+                        list_to_struct(list(_dict.values())[0], **kwargs)
+                    )
+                ]
             else:
                 _pfs = [_val for _int, _val in _pfs]
-                return [(_pf, list_to_struct(_dict[_pf], **kwargs)) for _pf in _pfs]
+                return [
+                    (
+                        _pf,
+                        list_to_struct(_dict[_pf], **kwargs)
+                    ) for _pf in _pfs
+                ]
         else:
             if len(_pfs[0]) < pf_min_size and min(len(_v) for _v in in_list) > pf_min_size:
                 _pfs = set(sorted([_value[:pf_min_size] for _value in in_list]))
-            return [(_pf, list_to_struct([_value[len(_pf):] for _value in in_list if _value[:len(_pf)] == _pf], **kwargs)) for _pf in _pfs]
+            return [
+                (
+                    _pf,
+                    list_to_struct(
+                        [
+                            _value[len(_pf):] for _value in in_list if _value[:len(_pf)] == _pf
+                        ],
+                        **kwargs
+                    )
+                ) for _pf in _pfs
+            ]
 
 
 def struct_to_string(in_struct):
@@ -1014,7 +1101,11 @@ def struct_to_string(in_struct):
 
 def reduce_list(in_list, **kwargs):
     _top_join_str = kwargs.pop("top_join_str", ",")
-    return _top_join_str.join([struct_to_string(_sub_list) for _sub_list in list_to_struct(in_list, **kwargs)])
+    return _top_join_str.join(
+        [
+            struct_to_string(_sub_list) for _sub_list in list_to_struct(in_list, **kwargs)
+        ]
+    )
 
 
 # delayed access functions to get_logger and other functions

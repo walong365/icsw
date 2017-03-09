@@ -73,7 +73,9 @@ class EggConsumeObject(object):
         from django.db.models import Q
         from initat.cluster.backbone.models import icswEggConsumer
         self.__global_config = global_config
-        _my_consumers = icswEggConsumer.objects.filter(Q(config_service_enum__enum_name=self.__global_config["SERVICE_ENUM_NAME"]))
+        _my_consumers = icswEggConsumer.objects.filter(
+            Q(config_service_enum__enum_name=self.__global_config["SERVICE_ENUM_NAME"])
+        )
         self.consumers = {_ec.action: _ec for _ec in _my_consumers}
         if not self.consumers:
             # something fishy
@@ -242,7 +244,9 @@ class ConfigCheckObject(object):
                     ]
                 )
             if "LOG_NAME" not in global_config:
-                _log_name = self._inst_xml[self.srv_type_enum.value.instance_name].attrib["name"]
+                _log_name = self._inst_xml[
+                    self.srv_type_enum.value.instance_name
+                ].attrib["name"]
                 if log_name_postfix:
                     _log_name = "{}-{}".format(
                         _log_name,
@@ -320,14 +324,22 @@ class ConfigCheckObject(object):
         _opts = [
             (
                 "PID_NAME",
-                configfile.StringConfigVar(self._inst_xml.get_pid_file_name(self._instance), source="instance", database=False)
+                configfile.StringConfigVar(
+                    self._inst_xml.get_pid_file_name(self._instance),
+                    source="instance",
+                    database=False
+                )
             ),
         ]
         for _name, _value in self._inst_xml.get_port_dict(self._instance).items():
             _opts.append(
                 (
                     "{}_PORT".format(_name.upper()),
-                    configfile.IntegerConfigVar(_value, source="instance", database=False)
+                    configfile.IntegerConfigVar(
+                        _value,
+                        source="instance",
+                        database=False
+                    )
                 ),
             )
         if self.srv_type_enum.value.server_service:
@@ -347,28 +359,47 @@ class ConfigCheckObject(object):
                     [
                         (
                             "SERVICE_ENUM_NAME",
-                            configfile.StringConfigVar(self.srv_type_enum.name),
+                            configfile.StringConfigVar(
+                                self.srv_type_enum.name
+                            ),
                         ),
                         (
                             "SERVER_SHORT_NAME",
-                            configfile.StringConfigVar(process_tools.get_machine_name(True)),
+                            configfile.StringConfigVar(
+                                process_tools.get_machine_name(True)
+                            ),
                         ),
                         (
                             "SERVER_IDX",
-                            configfile.IntegerConfigVar(self.__server_check.device.pk, database=False, source="instance")
+                            configfile.IntegerConfigVar(
+                                self.__server_check.device.pk,
+                                database=False,
+                                source="instance"
+                            )
                         ),
                         (
                             "CONFIG_IDX",
-                            configfile.IntegerConfigVar(self.__sc_result.config.pk, database=False, source="instance")
+                            configfile.IntegerConfigVar(
+                                self.__sc_result.config.pk,
+                                database=False,
+                                source="instance"
+                            )
                         ),
                         (
                             "EFFECTIVE_DEVICE_IDX",
-                            configfile.IntegerConfigVar(self.__sc_result.effective_device.pk, database=False, source="instance")
+                            configfile.IntegerConfigVar(
+                                self.__sc_result.effective_device.pk,
+                                database=False,
+                                source="instance"
+                            )
                         ),
                         (
                             "LOG_SOURCE_IDX",
                             configfile.IntegerConfigVar(
-                                LogSource.new(self.srv_type_enum.name, device=self.__sc_result.effective_device).pk,
+                                LogSource.new(
+                                    self.srv_type_enum.name,
+                                    device=self.__sc_result.effective_device
+                                ).pk,
                                 source="instance",
                             )
                         ),
@@ -550,9 +581,15 @@ class OperationalErrorMixin(threading_tools.ExceptionHandlingBase):
         try:
             from django.db import connection
         except:
-            self.log("cannot import connection from django.db", logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "cannot import connection from django.db",
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
-            self.log("operational error, closing db connection", logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "operational error, closing db connection",
+                logging_tools.LOG_LEVEL_ERROR
+            )
             try:
                 db_tools.close_connection()
             except:
@@ -618,7 +655,10 @@ class NetworkBindMixin(object):
                 (
                     True,
                     [
-                        "tcp://{}:{:d}".format(_local_ip, bind_port) for _local_ip in dev_r.local_ips
+                        "tcp://{}:{:d}".format(
+                            _local_ip,
+                            bind_port
+                        ) for _local_ip in dev_r.local_ips
                     ],
                     self.bind_id,
                     None,
@@ -631,7 +671,10 @@ class NetworkBindMixin(object):
                         (
                             False,
                             [
-                                "tcp://{}:{:d}".format(_virtual_ip, bind_port) for _virtual_ip in _ip_list
+                                "tcp://{}:{:d}".format(
+                                    _virtual_ip,
+                                    bind_port
+                                ) for _virtual_ip in _ip_list
                             ],
                             # ignore local device
                             get_server_uuid(_srv_type, _dev.uuid),
@@ -646,7 +689,11 @@ class NetworkBindMixin(object):
                     )
             master_bind_list.extend(_virt_list)
             # we have to bind to localhost but localhost is not present in bind_list, add master_bind
-            if bind_to_localhost and not any([_ip.startswith("127.") for _ip in _bind_ips]):
+            if bind_to_localhost and not any(
+                [
+                    _ip.startswith("127.") for _ip in _bind_ips
+                ]
+            ):
                 self.log(
                     "bind_to_localhost is set but not IP in range 127.0.0.0/8 found in list, adding virtual_bind",
                     logging_tools.LOG_LEVEL_WARN
@@ -688,7 +735,9 @@ class NetworkBindMixin(object):
                     self.log(
                         "bind_str '{}' (for {}) already used, skipping ...".format(
                             _bind_str,
-                            " device '{}'".format(bind_dev) if bind_dev is not None else " master device",
+                            " device '{}'".format(
+                                bind_dev
+                            ) if bind_dev is not None else " master device",
                         ),
                         logging_tools.LOG_LEVEL_ERROR
                     )
@@ -706,9 +755,21 @@ class NetworkBindMixin(object):
                         )
                         _errors.append(_bind_str)
                     else:
-                        self.log("bound {} to {} with id {}".format(_sock_type, _bind_str, bind_id))
+                        self.log(
+                            "bound {} to {} with id {}".format(
+                                _sock_type,
+                                _bind_str,
+                                bind_id
+                            )
+                        )
                         if pollin:
-                            self.register_poller(client, zmq.POLLIN, pollin, ext_call=ext_call, bind_id=bind_id)
+                            self.register_poller(
+                                client,
+                                zmq.POLLIN,
+                                pollin,
+                                ext_call=ext_call,
+                                bind_id=bind_id
+                            )
             if master_bind:
                 _main_socket = client
             else:
@@ -716,19 +777,30 @@ class NetworkBindMixin(object):
         setattr(self, main_socket_name, _main_socket)
         setattr(self, virtual_sockets_name, _virtual_sockets)
         if _errors and _need_all_binds:
-            raise ValueError("{} went wrong: {}".format(logging_tools.get_plural("bind", len(_errors)), ", ".join(_errors)))
+            raise ValueError(
+                "{} went wrong: {}".format(
+                    logging_tools.get_plural("bind", len(_errors)),
+                    ", ".join(_errors)
+                )
+            )
 
     def network_unbind(self, **kwargs):
         main_socket_name = kwargs.get("main_socket_name", "main_socket")
         virtual_sockets_name = kwargs.get("virtual_sockets_name", "virtual_sockets")
         _main_sock = getattr(self, main_socket_name, None)
         if _main_sock is not None:
-            self.log("closing socket '{}'".format(main_socket_name))
+            self.log(
+                "closing socket '{}'".format(main_socket_name)
+            )
             _main_sock.close()
             setattr(self, main_socket_name, None)
         _virt_socks = getattr(self, virtual_sockets_name, [])
         if _virt_socks:
-            self.log("closing {}".format(logging_tools.get_plural("virtual socket", len(_virt_socks))))
+            self.log(
+                "closing {}".format(
+                    logging_tools.get_plural("virtual socket", len(_virt_socks))
+                )
+            )
             [_virt.close() for _virt in _virt_socks]
             setattr(self, virtual_sockets_name, [])
 
@@ -885,10 +957,14 @@ class RemoteCallMixin(object):
                         )
                     else:
                         if msg_type == RemoteCallMessageType.flat:
-                            _reply = "unknown command '{}'".format(com_name)
+                            _reply = "unknown command '{}'".format(
+                                com_name
+                            )
                         else:
                             srv_com.set_result(
-                                "unknown command '{}'".format(com_name),
+                                "unknown command '{}'".format(
+                                    com_name
+                                ),
                                 server_command.SRV_REPLY_STATE_ERROR
                             )
                             _reply = srv_com
@@ -914,9 +990,15 @@ class RemoteCallMixin(object):
         if not hasattr(self, "remote_async_helper"):
             self.remote_async_helper = RemoteAsyncHelper(self)
             # callback to send result
-            self.register_func("remote_call_async_result", self.remote_call_async_result)
+            self.register_func(
+                "remote_call_async_result",
+                self.remote_call_async_result
+            )
             # callback to forget async helper entry
-            self.register_func("remote_call_async_done", self.remote_call_async_done)
+            self.register_func(
+                "remote_call_async_done",
+                self.remote_call_async_done
+            )
 
     def _send_remote_call_reply(self, zmq_sock, src_id, reply, msg_type, add_log=None):
         add_log = " ({})".format(add_log) if add_log is not None else ""
@@ -951,7 +1033,9 @@ class RemoteCallMixin(object):
         _src_proc, _src_pid, srv_com = args
         srv_com = server_command.srv_command(source=srv_com)
         # print("done")
-        _sock, _src_id, _reply, _msg_type, _log_str = self.remote_async_helper.result(srv_com)
+        _sock, _src_id, _reply, _msg_type, _log_str = self.remote_async_helper.result(
+            srv_com
+        )
         if _sock is not None:
             self._send_remote_call_reply(_sock, _src_id, _reply, _msg_type, _log_str)
 
@@ -1025,7 +1109,12 @@ class RemoteCallSignature(object):
             if self.target_process:
                 effective_target_func_name = self.target_process_func or self.func.__name__
                 # print 'effective target name', effective_target_func_name
-                instance.send_to_process(self.target_process, effective_target_func_name, str(_result), src_id=src_id)
+                instance.send_to_process(
+                    self.target_process,
+                    effective_target_func_name,
+                    str(_result),
+                    src_id=src_id
+                )
             else:
                 # local async call
                 pass
@@ -1042,7 +1131,13 @@ class RemoteServerAddressBase(object):
         self._last_error = None
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.mixin.log("[RSAb {}] {}".format(self.srv_type_enum.name, what), log_level)
+        self.mixin.log(
+            "[RSAb {}] {}".format(
+                self.srv_type_enum.name,
+                what
+            ),
+            log_level
+        )
 
     @property
     def valid(self):
@@ -1060,7 +1155,9 @@ class RemoteServerAddressBase(object):
         if not self._connected:
             _conn_str = self.connection_string
             try:
-                self.mixin.strs_com_socket.connect(self.connection_string)
+                self.mixin.strs_com_socket.connect(
+                    self.connection_string
+                )
             except:
                 self.log(
                     "error connecting to {}: {}".format(
@@ -1093,8 +1190,14 @@ class RemoteServerAddressBase(object):
                 _loop = False
                 # time.sleep(1)
                 try:
-                    self.mixin.strs_com_socket.send_unicode(self._uuid, zmq.DONTWAIT | zmq.SNDMORE)
-                    self.mixin.strs_com_socket.send_unicode(str(send_obj), zmq.DONTWAIT)
+                    self.mixin.strs_com_socket.send_unicode(
+                        self._uuid,
+                        zmq.DONTWAIT | zmq.SNDMORE
+                    )
+                    self.mixin.strs_com_socket.send_unicode(
+                        str(send_obj),
+                        zmq.DONTWAIT
+                    )
                 except zmq.error.ZMQError as e:
                     self.log(
                         "cannot send to '{}': {}".format(
@@ -1169,7 +1272,12 @@ class RemoteServerAddress(RemoteServerAddressBase):
                 if self.__latest_router_error and abs(self.__latest_router_error - cur_time) < 5:
                     pass
                 else:
-                    self.log("not found in router".format(self.srv_type_enum.name), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "not found in router".format(
+                            self.srv_type_enum.name
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                     self.__latest_router_error = cur_time
 
 
@@ -1181,7 +1289,13 @@ class RemoteServerAddressIP(RemoteServerAddressBase):
         self.__latest_router_error = None
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.mixin.log("[RSAIP {}] {}".format(self.srv_type_enum.name, what), log_level)
+        self.mixin.log(
+            "[RSAIP {}] {}".format(
+                self.srv_type_enum.name,
+                what
+            ),
+            log_level
+        )
 
     def check_for_address(self, instance, addr, dev_uuid):
         if not self.valid:
@@ -1313,14 +1427,19 @@ class GetRouteToDevicesMixin(object):
         for cur_dev in dev_list:
             routes = router_obj.get_ndl_ndl_pathes(
                 src_nds,
-                cur_dev.netdevice_set.all().values_list("pk", flat=True),
+                cur_dev.netdevice_set.all().values_list(
+                    "pk",
+                    flat=True
+                ),
                 only_endpoints=True,
                 add_penalty=True
             )
             cur_dev.target_ip = None
             if routes:
                 for route in sorted(routes):
-                    found_ips = net_ip.objects.filter(Q(netdevice=route[2]))
+                    found_ips = net_ip.objects.filter(
+                        Q(netdevice=route[2])
+                    )
                     if found_ips:
                         cur_dev.target_ip = found_ips[0].ip
                         break
