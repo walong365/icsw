@@ -25,7 +25,7 @@
         </div>
         <div ng-if="struct.data_loaded">
             <br/>
-            <uib-tabset active="struct.active_tab_index">
+            <uib-tabset>
                 <uib-tab ng-click="setup_tasks_tab_clicked()">
                     <uib-tab-heading>
                         <span>Setup Tasks</span>
@@ -423,9 +423,9 @@
 </script>
 
 <script type="text/ng-template" id="icsw.setup.tab.type.fqdn">
-    <icsw-config-category-tree-edit mode="device"></icsw-config-category-tree-edit>
+    <icsw-config-domain-name-tree></icsw-config-domain-name-tree>
 </script>
 
 <script type="text/ng-template" id="icsw.setup.tab.type.devcat">
-    <icsw-config-domain-name-tree></icsw-config-domain-name-tree>
+    <icsw-config-category-tree-edit mode="device"></icsw-config-category-tree-edit>
 </script>

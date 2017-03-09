@@ -69,8 +69,6 @@ setup_progress = angular.module(
 
         reload_timer: undefined
 
-        active_tab_index: 0
-
         system_completion: 0
 
         show_extended_information_button_value: "Off"
@@ -382,11 +380,6 @@ setup_progress = angular.module(
                 return
 
         $scope.struct.tabs.push(o)
-        $timeout(
-            () ->
-                $scope.struct.active_tab_index = $scope.struct.tabs.length + 2
-            0
-        )
 
     $scope.open_in_new_tab_for_system = (task) ->
         heading = task.header
@@ -410,16 +403,11 @@ setup_progress = angular.module(
                 return
 
         $scope.struct.tabs.push(o)
-        $timeout(
-            () ->
-                $scope.struct.active_tab_index = $scope.struct.tabs.length + 2
-            0
-        )
 
     $scope.close_tab = (to_be_closed_tab) ->
         $timeout(
             () ->
-                _.remove($scope.struct.tabs, (el) -> return el.type == to_be_closed_tab.type)
+                _.remove($scope.struct.tabs, to_be_closed_tab)
                 if $scope.struct.tabs.length == 0
                     perform_refresh_for_device_status(true)
             0
