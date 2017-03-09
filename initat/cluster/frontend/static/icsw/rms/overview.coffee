@@ -1255,7 +1255,7 @@ rms_module = angular.module(
     "icswRMSTools", "icswRMSHeaderStruct", "icswRMSSlotInfo", "icswRMSRunningStruct",
     "icswRMSWaitingStruct", "icswRMSDoneStruct", "icswRMSQueueStruct",
     "icswComplexModalService", "icswRMSJobVarStruct", "$window", "icswRMSSchedulerStruct",
-    "icswRRDGraphUserSettingService", "icswRRDGraphBasicSetting",
+    "icswGraphUserSettingService", "icswGraphBasicSetting",
 (
     $scope, $compile, Restangular, ICSW_SIGNALS, $templateCache,
     $q, icswAccessLevelService, $timeout, ICSW_URLS, $rootScope,
@@ -1263,7 +1263,7 @@ rms_module = angular.module(
     icswRMSTools, icswRMSHeaderStruct, icswRMSSlotInfo, icswRMSRunningStruct,
     icswRMSWaitingStruct, icswRMSDoneStruct, icswRMSQueueStruct,
     icswComplexModalService, icswRMSJobVarStruct, $window, icswRMSSchedulerStruct,
-    icswRRDGraphUserSettingService, icswRRDGraphBasicSetting,
+    icswGraphUserSettingService, icswGraphBasicSetting,
 ) ->
     icswAccessLevelService.install($scope)
 
@@ -1281,14 +1281,14 @@ rms_module = angular.module(
                         pk_list: angular.toJson(device_ids)
                     dataType: "json"
                 )
-                icswRRDGraphUserSettingService.load($scope.$id)
+                icswGraphUserSettingService.load($scope.$id)
             ]
         ).then(
             (data) ->
                 _header = data[0].header
                 _user_setting = data[1]
                 local_settings = _user_setting.get_default()
-                base_setting = new icswRRDGraphBasicSetting()
+                base_setting = new icswGraphBasicSetting()
                 base_setting.draw_on_init = true
                 base_setting.show_tree = false
                 base_setting.show_settings = false
@@ -1602,12 +1602,12 @@ rms_module = angular.module(
 ]).controller("icswRmsQueueTableCtrl",
 [
     "$scope", "icswRMSIOStruct", "ICSW_SIGNALS", "DeviceOverviewService", "$q",
-    "icswRRDGraphUserSettingService", "icswDeviceTreeService", "icswAccessLevelService",
-    "icswRRDGraphBasicSetting", "icswRRDGraphTools", "$timeout",
+    "icswGraphUserSettingService", "icswDeviceTreeService", "icswAccessLevelService",
+    "icswGraphBasicSetting", "icswGraphTools", "$timeout",
 (
     $scope, icswRMSIOStruct, ICSW_SIGNALS, DeviceOverviewService, $q,
-    icswRRDGraphUserSettingService, icswDeviceTreeService, icswAccessLevelService,
-    icswRRDGraphBasicSetting, icswRRDGraphTools, $timeout,
+    icswGraphUserSettingService, icswDeviceTreeService, icswAccessLevelService,
+    icswGraphBasicSetting, icswGraphTools, $timeout,
 ) ->
     $scope.local_struct = {
         # base data set
@@ -1670,7 +1670,7 @@ rms_module = angular.module(
         $scope.local_struct.load_called = true
         $q.all(
             [
-                icswRRDGraphUserSettingService.load($scope.$id)
+                icswGraphUserSettingService.load($scope.$id)
                 icswDeviceTreeService.load($scope.$id)
             ]
         ).then(
@@ -1683,8 +1683,8 @@ rms_module = angular.module(
                     _server = _routes["rms_server"][0]
                     _device = _dt.all_lut[_server[2]]
                     if _device?
-                        $scope.local_struct.graph_tree = icswRRDGraphTools.create_tree()
-                        base_setting = new icswRRDGraphBasicSetting(
+                        $scope.local_struct.graph_tree = icswGraphTools.create_tree()
+                        base_setting = new icswGraphBasicSetting(
                             {
                                 allow_crop: false
                                 show_tree: false
@@ -1695,7 +1695,7 @@ rms_module = angular.module(
                         )
                         _sel_keys = []
                         for queue in $scope.struct.queue_by_name_list
-                            cur_dr = icswRRDGraphTools.create_result($scope.local_struct.graph_tree)
+                            cur_dr = icswGraphTools.create_result($scope.local_struct.graph_tree)
                             _queue_name = _.replace(queue.name, ".", "_")
                             _sel_keys.push("^compound.sge.queue_#{_queue_name}$")
                             cur_dr.set_auto_select_re("^compound.sge.queue_#{_queue_name}$")
@@ -2362,10 +2362,10 @@ rms_module = angular.module(
     }
 ]).controller("icswRmsFairShareTreeCtrl",
 [
-    "$scope", "icswRRDGraphUserSettingService", "icswRRDGraphBasicSetting", "$q", "icswAccessLevelService"
+    "$scope", "icswGraphUserSettingService", "icswGraphBasicSetting", "$q", "icswAccessLevelService"
     "icswDeviceTreeService", "$rootScope", "ICSW_SIGNALS",
 (
-    $scope, icswRRDGraphUserSettingService, icswRRDGraphBasicSetting, $q, icswAccessLevelService,
+    $scope, icswGraphUserSettingService, icswGraphBasicSetting, $q, icswAccessLevelService,
     icswDeviceTreeService, $rootScope, ICSW_SIGNALS,
 ) ->
     # ???
@@ -2389,7 +2389,7 @@ rms_module = angular.module(
         $scope.struct.load_called = true
         $q.all(
             [
-                icswRRDGraphUserSettingService.load($scope.$id)
+                icswGraphUserSettingService.load($scope.$id)
                 icswDeviceTreeService.load($scope.$id)
             ]
         ).then(
@@ -2398,7 +2398,7 @@ rms_module = angular.module(
                 local_setting = _user_setting.get_default()
                 _user_setting.set_custom_size(local_setting, 1024, 400)
                 _dt = data[1]
-                base_setting = new icswRRDGraphBasicSetting()
+                base_setting = new icswGraphBasicSetting()
                 base_setting.draw_on_init = true
                 base_setting.show_tree = false
                 base_setting.show_settings = false

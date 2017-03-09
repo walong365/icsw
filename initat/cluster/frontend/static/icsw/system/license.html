@@ -225,14 +225,14 @@
 </script>
 
 <script type="text/ng-template" id="icsw.system.ova.graph">
-    <icsw-rrd-graph-remote
+    <icsw-graph-remote
         ng-if="struct.base_data_set"
         icsw-device-list="struct.devices"
         icsw-graph-setting="struct.local_setting"
         icsw-base-setting="struct.base_setting"
         icsw-from-date="struct.from_date"
         icsw-to-date="struct.to_date"
-    ></icsw-rrd-graph-remote>
+    ></icsw-graph-remote>
     <div uib-alert class="alert-warning" ng-if="struct.graph_errors">
         {{ struct.graph_errors }}
     </div>

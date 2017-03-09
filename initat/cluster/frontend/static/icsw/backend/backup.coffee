@@ -343,9 +343,9 @@ angular.module(
                 "parameter_i1", "parameter_i2", "parameter_i3", "parameter_i4",
             ]
 
-]).service("icswRRDGraphSettingBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+]).service("icswGraphSettingBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
 
-    class icswRRDGraphSettingBackupDefinition extends icswBackupDefinition
+    class icswGraphSettingBackupDefinition extends icswBackupDefinition
 
         constructor: () ->
             super()

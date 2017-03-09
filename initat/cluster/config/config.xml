@@ -236,7 +236,7 @@
             </icswData>
         </route>
         <route name="main.graph">
-            <stateData url="/graph" templateUrl="icsw.rrd.graph"/>
+            <stateData url="/graph" templateUrl="icsw.graph"/>
             <icswData pageTitle="Show Graphs">
                 <licenses>
                     <value>graphing</value>
@@ -247,6 +247,21 @@
                 </rights>
                 <description>
                     <infoText language="en">Visualize graphing results</infoText>
+                </description>
+            </icswData>
+        </route>
+        <route name="main.weathermap">
+            <stateData url="/weathermap" templateUrl="icsw.weathermap"/>
+            <icswData pageTitle="Weathermaps">
+                <!-- <licenses>
+                    <value>graphing</value>
+                </licenses> -->
+                <dashboardEntry sizeX_int="3" sizeY_int="3" allowState_bool="yes"/>
+                <!-- <rights>
+                    <value>backbone.device.show_graphs</value>
+                </rights> -->
+                <description>
+                    <infoText language="en">Visualize Device Performance values</infoText>
                 </description>
             </icswData>
         </route>
@@ -737,6 +752,7 @@
                 <menuEntry icon="fa-list" routeName="main.monitorov" name="Availability Overview"/>
                 <menuEntry icon="fa-pie-chart" routeName="main.statushistory" name="Availability Detail"/>
                 <menuEntry icon="fa-line-chart" routeName="main.graph" name="Graphs"/>
+                <menuEntry icon="fa-line-chart" routeName="main.weathermap" name="Weathermap"/>
                 <menuEntry icon="fa-code-fork" routeName="main.kpievaluation" name="KPI"/>
                 <menuEntry icon="fa-map-marker" routeName="main.monitorlocation" name="Locations"/>
             </routeSubGroup>
