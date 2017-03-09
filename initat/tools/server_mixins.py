@@ -114,7 +114,9 @@ class EggConsumeObject(object):
             _con = self.consumers[action]
             _result = []
             # get all pks
-            pk_list = [self._get_pk_from_object(cur_obj) for cur_obj in obj_def_list]
+            pk_list = [
+                self._get_pk_from_object(cur_obj) for cur_obj in obj_def_list
+            ]
             # ToDo, implement code for partially updates
             # print("*", pk_list)
             # egg_reqs = {

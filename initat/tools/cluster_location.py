@@ -130,7 +130,7 @@ class DeviceRecognition(object):
     def __init__(self, **kwargs):
         self.short_host_name = kwargs.get("short_host_name", process_tools.get_machine_name())
         try:
-            self.device = device.objects.get(Q(name=self.short_host_name))
+            self.device = device.all_enabled.get(Q(name=self.short_host_name))
         except device.DoesNotExist:
             self.device = None
         # get IP-adresses (from IP)
@@ -156,7 +156,7 @@ class DeviceRecognition(object):
         self.ip_lut = {}
         self.ip_r_lut = {}
         if self_ips:
-            _do = device.objects
+            _do = device.all_enabled
             # get IPs
             self.device_dict = {
                 cur_dev.pk: cur_dev for cur_dev in _do.filter(
