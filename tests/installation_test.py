@@ -1,4 +1,26 @@
 #!/usr/bin/python3-init -Ot
+#
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2012-2017 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of icsw-server
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 
 import datetime
 import subprocess
@@ -38,8 +60,8 @@ RESET_PW_SCRIPT = "from initat.cluster.backbone.models import user;" \
 
 
 def install_icsw_base_system(host, username, password, package_manager, machine_name):
-    package_dict = check_for_new_packages.check_for_new_packages()
-    icsw_version, _ = package_dict[machine_name]
+    package_dict = check_for_new_packages.get_current_release_dict()
+    icsw_version = package_dict[machine_name]
 
     # try to connect via ssh
     sys.stdout.write("Trying to connect via ssh ... ")
@@ -93,7 +115,8 @@ def install_icsw_base_system(host, username, password, package_manager, machine_
         ("Checking if icsw-client-3.0-{} is available ... ".format(icsw_version), icsw_client_version_command,
          expected_icsw_client_string),
         ("Installing icsw-server and icsw-client ... ", setup_command, None),
-        ("Performing icsw setup ... ", "/opt/cluster/sbin/icsw setup --ignore-existing --engine psql --port 5432",
+        ("Performing icsw setup ... ", "/opt/cluster/sbin/icsw setup --ignore-existing --engine psql --port 5432 "
+                                       "--host localhost --user cdbuser --database cdbase --passwd xxx",
          None),
         ("Resetting admin password ... ", '/opt/cluster/sbin/clustermanage.py shell -c "{}"'.format(RESET_PW_SCRIPT),
          None),
@@ -179,7 +202,7 @@ def reset_test_server(user, password, server_id, snapshot_id, machine_name):
             start_time = datetime.datetime.now()
             while True:
                 output = subprocess.check_output(args)
-                log_file.write(str.encode("*** Command executed: {}\n".format("".join(args))))
+                log_file.write(str.encode("*** Command executed: {}\n".format(" ".join(args))))
                 log_file.write(output)
 
                 if check_output:
@@ -193,7 +216,7 @@ def reset_test_server(user, password, server_id, snapshot_id, machine_name):
 
             end_time = datetime.datetime.now()
 
-            log_file.write(str.encode("*** Command ({}) execution took: {}\n".format("".join(args),
+            log_file.write(str.encode("*** Command ({}) execution took: {}\n".format(" ".join(args),
                                                                                      (end_time - start_time))))
             sys.stdout.write("done (execution took {})\n".format((end_time - start_time)))
             sys.stdout.flush()
