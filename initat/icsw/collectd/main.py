@@ -27,6 +27,8 @@ import zmq
 
 from initat.host_monitoring.hm_classes import MachineVectorEntry
 from initat.tools import logging_tools, process_tools, server_command
+from initat.collectd.constants import CollectdMCKeyEnum
+from initat.collectd.weathermap_helper import WMValue, WMTypeEnum
 
 
 class BaseCom(object):
@@ -95,7 +97,12 @@ class BaseCom(object):
             self.receive_tuple = (recv_id, recv_str)
             timeout = False
         else:
-            print("error timeout ({:.2f} > {:d})".format(time.time() - s_time, self.options.timeout))
+            print(
+                "error timeout ({:.2f} > {:d})".format(
+                    time.time() - s_time,
+                    self.options.timeout
+                )
+            )
             timeout = True
         e_time = time.time()
         if self.options.verbose:
@@ -141,6 +148,38 @@ class BaseCom(object):
                 print("no result tag found in reply")
                 self.ret_state = 2
 
+    def base_fetch(self, key_func):
+        _mc = self.get_mc()
+        hlist = json.loads(_mc.get(CollectdMCKeyEnum.main_key.value))
+        h_re = self.compile_re(self.options.host_filter)
+        v_dict = {
+            key: value for key, value in hlist.items() if h_re.match(value[1])
+        }
+        print(
+            "{} found : {}".format(
+                logging_tools.get_plural("host", len(v_dict)),
+                ", ".join(sorted([value[1] for value in v_dict.values()]))
+            )
+        )
+        k_dict = {
+            key: json.loads(
+                _mc.get(
+                    key_func(key)
+                )
+            ) for key in v_dict.keys()
+        }
+        sorted_uuids = sorted(v_dict, key=lambda x: v_dict[x][1])
+        for key in sorted_uuids:
+            value = v_dict[key]
+            print(
+                "{:30s} ({}) : last updated {}".format(
+                    value[1],
+                    key,
+                    time.ctime(value[0])
+                )
+            )
+        return v_dict, k_dict, sorted_uuids
+
 
 class HostListCom(BaseCom):
     class Meta:
@@ -148,10 +187,14 @@ class HostListCom(BaseCom):
 
     def fetch(self):
         _mc = self.get_mc()
-        hlist = json.loads(_mc.get("cc_hc_list"))
+        hlist = json.loads(_mc.get(CollectdMCKeyEnum.main_key.value))
         h_re = self.compile_re(self.options.host_filter)
-        v_dict = {key: value for key, value in hlist.items() if h_re.match(value[1])}
-        _h_uuid_dict = {_value[1]: _key for _key, _value in v_dict.items()}
+        v_dict = {
+            key: value for key, value in hlist.items() if h_re.match(value[1])
+        }
+        _h_uuid_dict = {
+            _value[1]: _key for _key, _value in v_dict.items()
+        }
         _h_names = sorted(_h_uuid_dict.keys())
         print(
             "{} found : {}".format(
@@ -162,7 +205,13 @@ class HostListCom(BaseCom):
         for _h_name in _h_names:
             key = _h_uuid_dict[_h_name]
             value = v_dict[key]
-            print("{:30s} ({}) : last updated {}".format(value[1], key, time.ctime(value[0])))
+            print(
+                "{:30s} ({}) : last updated {}".format(
+                    value[1],
+                    key,
+                    time.ctime(value[0])
+                )
+            )
         # print v_list
 
     def _interpret(self, srv_com):
@@ -203,36 +252,85 @@ class HostListCom(BaseCom):
             self.ret_state = 1
 
 
+class WmListCom(BaseCom):
+    class Meta:
+        command = "wm_list"
+
+    def fetch(self):
+        v_dict, k_dict, sorted_uuids = self.base_fetch(CollectdMCKeyEnum.wm_key.value)
+        v_re = self.compile_re(self.options.key_filter)
+        out_f = logging_tools.NewFormList()
+        # pprint.pprint(k_dict)
+        max_num_keys = 0
+        _list = []
+        for h_uuid in sorted_uuids:
+            h_struct = k_dict[h_uuid]
+            num_key = 0
+            for entry in sorted(h_struct, key=lambda x: x["key"]):
+                # print(entry)
+                if v_re.match(entry["key"]):
+                    num_key += 1
+                    entry["wm_type"] = WMTypeEnum(entry.pop("wm_type"))
+                    cur_mv = WMValue(**entry)
+                    _list.append((h_uuid, cur_mv))
+                    max_num_keys = max(max_num_keys, len(cur_mv.key.split(".")))
+        for h_uuid, entry in _list:
+            out_f.append(
+                [
+                    logging_tools.form_entry(v_dict[h_uuid][1], header="device")
+                ] + entry.get_form_entry(num_key, max_num_keys)
+            )
+        print(str(out_f))
+
+    def _interpret(self, srv_com):
+        h_list = srv_com.xpath(".//host_list", smart_strings=False)
+        if len(h_list):
+            h_list = h_list[0]
+            out_f = logging_tools.NewFormList()
+            print(
+                "got result for {}:".format(
+                    logging_tools.get_plural("host", int(h_list.attrib["entries"]))
+                )
+            )
+            max_num_keys = 0
+            _list = []
+            for host in h_list:
+                print(
+                    "{:<30s} ({:<40s}) : {:4d} keys, last update {}".format(
+                        host.attrib["name"],
+                        host.attrib["uuid"],
+                        int(host.attrib["keys"]),
+                        time.ctime(int(host.attrib["last_update"]))
+                    )
+                )
+                for num_key, key_el in enumerate(host):
+                    cur_wmv = WMValue.interpret_wm_info(key_el)
+                    _list.append((host.attrib["name"], cur_wmv))
+                    max_num_keys = max(max_num_keys, len(cur_wmv.key.split(".")))
+            for k_num, (h_name, entry) in enumerate(_list):
+                out_f.append(
+                    [
+                        logging_tools.form_entry(h_name, header="device")
+                    ] + entry.get_form_entry(k_num, max_num_keys)
+                )
+            print(str(out_f))
+        else:
+            print("No host_list found in result")
+            self.ret_state = 1
+
+
 class KeyListCom(BaseCom):
     class Meta:
         command = "key_list"
 
     def fetch(self):
-        _mc = self.get_mc()
-        hlist = json.loads(_mc.get("cc_hc_list"))
-        h_re = self.compile_re(self.options.host_filter)
+        v_dict, k_dict, sorted_uuids = self.base_fetch(CollectdMCKeyEnum.host_key.value)
         v_re = self.compile_re(self.options.key_filter)
-        v_dict = {
-            key: value for key, value in hlist.items() if h_re.match(value[1])
-        }
-        print(
-            "{} found : {}".format(
-                logging_tools.get_plural("host", len(v_dict)),
-                ", ".join(sorted([value[1] for value in v_dict.values()]))
-            )
-        )
-        k_dict = {
-            key: json.loads(_mc.get("cc_hc_{}".format(key))) for key in v_dict.keys()
-        }
-        _sorted_uuids = sorted(v_dict, cmp=lambda x, y: cmp(v_dict[x][1], v_dict[y][1]))
-        for key in _sorted_uuids:
-            value = v_dict[key]
-            print("{:30s} ({}) : last updated {}".format(value[1], key, time.ctime(value[0])))
         out_f = logging_tools.NewFormList()
         # pprint.pprint(k_dict)
         max_num_keys = 0
         _list = []
-        for h_uuid in _sorted_uuids:
+        for h_uuid in sorted_uuids:
             h_struct = k_dict[h_uuid]
             num_key = 0
             for entry in sorted(h_struct):
@@ -268,7 +366,11 @@ class KeyListCom(BaseCom):
         if len(h_list):
             h_list = h_list[0]
             out_f = logging_tools.NewFormList()
-            print("got result for {}:".format(logging_tools.get_plural("host", int(h_list.attrib["entries"]))))
+            print(
+                "got result for {}:".format(
+                    logging_tools.get_plural("host", int(h_list.attrib["entries"]))
+                )
+            )
             max_num_keys = 0
             _list = []
             for host in h_list:
@@ -297,19 +399,28 @@ class KeyListCom(BaseCom):
 
 
 def main(args):
-    com_list = ["host_list", "key_list"]
     other_args = args.arguments
     ret_state = 1
-    cc_name = "".join([sub_str.title() for sub_str in args.command.split("_")])
+    cc_name = "".join(
+        [
+            sub_str.title() for sub_str in args.command.split("_")
+        ]
+    )
     try:
         cur_com = globals()["{}Com".format(cc_name)](args, *other_args)
     except:
-        print("error init '{}': {}".format(args.command, process_tools.get_except_info()))
+        print(
+            "error init '{}': {}".format(
+                args.command,
+                process_tools.get_except_info()
+            )
+        )
+        # raise
         sys.exit(ret_state)
     if args.mode == "tcp":
         zmq_context = zmq.Context(1)
         client = zmq_context.socket(zmq.DEALER)
-        client.setsockopt(zmq.IDENTITY, cur_com["identity"].text)
+        client.setsockopt_unicode(zmq.IDENTITY, cur_com["*identity"])
         client.setsockopt(zmq.LINGER, args.timeout)
         was_ok = cur_com.send_and_receive(client)
         if was_ok:

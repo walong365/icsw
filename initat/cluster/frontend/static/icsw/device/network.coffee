@@ -1082,15 +1082,20 @@ angular.module(
         template: $templateCache.get("icsw.network.simple.overview")
         controller: "icswDeviceNetworkTotalCtrl"
     }
-]).directive("icswNetworkListServiceTabs", [
-    "$templateCache",
+]).directive("icswNetworkListServiceTab", [
+    "$templateCache", "$compile"
 (
-    $templateCache
+    $templateCache, $compile
 ) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("icsw.network.list.service.tabs")
+        scope: {
+            tab: "=icswTab"
+        }
         controller: "icswDeviceNetworkTotalCtrl"
+        link: (scope, element, attrs) ->
+            template_name = "icsw.network.list.service.tab"
+            element.append($compile($templateCache.get(template_name))(scope))
     }
 ]).controller("icswDeviceNetworkTotalCtrl", [
     "$scope", "icswNetworkListService"

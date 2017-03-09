@@ -88,12 +88,21 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             self.CC.CS["hm.access_class"] = HMAccessClassEnum.level0.value
             self.CC.CS.write()
         if HMInotifyProcess and not self.CC.CS["hm.disable.inotify.process"]:
-            self.add_process(HMInotifyProcess("inotify", busy_loop=True, kill_myself=True), start=True)
+            self.add_process(
+                HMInotifyProcess(
+                    "inotify",
+                    busy_loop=True,
+                    kill_myself=True
+                ),
+                start=True
+            )
         from initat.host_monitoring.modules import local_mc
         self.__delayed = []
         # Datastructure for managing long running checks:
         # A tuple of (Process, queue, zmq_socket, src_id, srv_com)
         self.long_running_checks = []
+        # vector socket receivers
+        self._vsr_list = []
         if not self.COM_open(local_mc, global_config["VERBOSE"], True):
             self._sigint("error init")
         self._init_network_sockets()
@@ -485,6 +494,14 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 cur_socket.setsockopt(zmq.RCVHWM, hwm_size)
                 if dst_func:
                     self.register_poller(cur_socket, zmq.POLLIN, dst_func)
+        if self._vsr_list:
+            self.log(
+                "registering {} to vector_socket".format(
+                    logging_tools.get_plural("receiver", len(self._vsr_list))
+                )
+            )
+            for _func in self._vsr_list:
+                self.register_poller(self.vector_socket, zmq.POLLIN, _func)
 
     def _close_external(self):
         for bind_ip, sock in zip(sorted(self.zmq_id_dict.keys()), self.socket_list):
@@ -550,8 +567,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         self.connection_info_dict = {}
 
     def register_vector_receiver(self, t_func):
-        pass
-        # self.register_poller(self.vector_socket, zmq.POLLIN, t_func)
+        self._vsr_list.append(t_func)
 
     def _recv_ext_command(self, zmq_sock):
         data = zmq_sock.recv_unicode()
