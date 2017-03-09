@@ -92,19 +92,38 @@ class Parser(object):
                     help="set export entry for modify [%(default)d=keep], info:\n{}".format(
                         "\n".join(
                             [
-                                "{:d}={}@{}".format(_key, hel.exp_dict[_key]["createdir"], hel.exp_dict[_key]["name"]) for _key in list(hel.exp_dict.keys())
+                                "{:d}={}@{}".format(
+                                    _key,
+                                    hel.exp_dict[_key]["createdir"],
+                                    hel.exp_dict[_key]["name"]
+                                ) for _key in list(hel.exp_dict.keys())
                             ]
                         )
                     ),
                 )
-            parser.add_argument("-Q", "--system-wide-quota", default=False, action="store_true", help="show system-wide quota [%(default)s]")
+            parser.add_argument(
+                "-Q",
+                "--system-wide-quota",
+                default=False,
+                action="store_true",
+                help="show system-wide quota [%(default)s]"
+            )
             parser.add_argument(
                 "--username",
                 default=_user_name,
-                choices=[s for s in user.objects.filter(Q(active=True) & Q(group__active=True)).values_list("login", flat=True)],
+                choices=[
+                    s for s in user.objects.filter(
+                        Q(active=True) & Q(group__active=True)
+                    ).values_list("login", flat=True)
+                ],
                 help="user to use for info and changepwd [%(default)s]"
             )
-            parser.add_argument("--timeout", default=10, type=int, help="timeout for server connections [%(default)d]")
+            parser.add_argument(
+                "--timeout",
+                default=10,
+                type=int,
+                help="timeout for server connections [%(default)d]"
+            )
 
     def _execute(self, opt_ns):
         from .main import user_main

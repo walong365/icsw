@@ -45,7 +45,12 @@ class DummyFile(object):
         self.__file_name = file_name
         self.__content = content
         self._existed = os.path.exists(self.__file_name)
-        print("File {} is {}".format(self.__file_name, "present" if self._existed else "not present"))
+        print(
+            "File {} is {}".format(
+                self.__file_name,
+                "present" if self._existed else "not present"
+            )
+        )
         if not self._existed:
             open(self.__file_name, "w").write(self.__content)
 
@@ -60,7 +65,12 @@ class DirSave(object):
         self.__dir_name = dir_name
         self.__tmp_dir = tempfile.mkdtemp()
         self.__min_idx = min_idx
-        print("Init DirSave for {} (min_idx={:d})".format(self.__dir_name, self.__min_idx))
+        print(
+            "Init DirSave for {} (min_idx={:d})".format(
+                self.__dir_name,
+                self.__min_idx
+            )
+        )
         self.save()
 
     def _match(self, f_name):
@@ -68,10 +78,14 @@ class DirSave(object):
 
     def save(self):
         self.__move_files = [
-            _entry for _entry in os.listdir(self.__dir_name) if _entry.endswith(".py") and self._match(_entry)
+            _entry for _entry in os.listdir(
+                self.__dir_name
+            ) if _entry.endswith(".py") and self._match(_entry)
         ]
         _del_files = [
-            _entry for _entry in os.listdir(self.__dir_name) if _entry.endswith(".pyc") or _entry.endswith(".pyo")
+            _entry for _entry in os.listdir(
+                self.__dir_name
+            ) if _entry.endswith(".pyc") or _entry.endswith(".pyo")
         ]
         print(
             "moving away migrations above {:04d}_* ({}) to {}, removing {}".format(
@@ -94,7 +108,16 @@ class DirSave(object):
                         )
                     )
         for _move_file in self.__move_files:
-            shutil.move(os.path.join(self.__dir_name, _move_file), os.path.join(self.__tmp_dir, _move_file))
+            shutil.move(
+                os.path.join(
+                    self.__dir_name,
+                    _move_file
+                ),
+                os.path.join(
+                    self.__tmp_dir,
+                    _move_file
+                )
+            )
 
     def restore(self, idx=None):
         if idx is not None:
@@ -109,7 +132,10 @@ class DirSave(object):
                 logging_tools.get_plural("file", len(__move_files)))
         )
         for _move_file in __move_files:
-            shutil.move(os.path.join(self.__tmp_dir, _move_file), os.path.join(self.__dir_name, _move_file))
+            shutil.move(
+                os.path.join(self.__tmp_dir, _move_file),
+                os.path.join(self.__dir_name, _move_file)
+            )
 
     def cleanup(self):
         shutil.rmtree(self.__tmp_dir)
@@ -118,7 +144,11 @@ class DirSave(object):
 def remove_pyco(start_dir):
     # remove pyc / pyo files
     _removed = []
-    print("remove pyc/pyo files in {} ... :".format(start_dir))
+    print(
+        "remove pyc/pyo files in {} ... :".format(
+            start_dir
+        )
+    )
     for _dir, _dir_list, _file_list in os.walk(start_dir):
         for _file in _file_list:
             if _file.endswith(".pyc") or _file.endswith(".pyo"):
@@ -126,4 +156,8 @@ def remove_pyco(start_dir):
                 _removed.append(_path)
                 os.unlink(_path)
     if _removed:
-        print("    removed {}".format(logging_tools.get_plural("file", len(_removed))))
+        print(
+            "    removed {}".format(
+                logging_tools.get_plural("file", len(_removed))
+            )
+        )

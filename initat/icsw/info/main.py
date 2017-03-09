@@ -31,7 +31,12 @@ def show_hm_help(options):
     from initat.host_monitoring.modules import local_mc
 
     def dummy_print(what, log_level=logging_tools.LOG_LEVEL_OK):
-        print("{} {}".format(logging_tools.get_log_level_str(log_level), what))
+        print(
+            "{} {}".format(
+                logging_tools.get_log_level_str(log_level),
+                what
+            )
+        )
 
     local_mc.set_log_command(dummy_print)
     local_mc.build_structure()
@@ -43,11 +48,21 @@ def show_hm_help(options):
 
     if options.update_json:
         if os.getuid() == 0 or __file__.startswith("/opt"):
-            raise ValueError("Not allowed to run update-json as root or in production environment")
+            raise ValueError(
+                "Not allowed to run update-json as root or in production environment"
+            )
         json_file = os.path.normpath(
             os.path.join(
                 # not beautiful but working
-                os.path.dirname(__file__), "..", "..", "..", "opt", "cluster", "share", "json_defs", JSON_DEFINITION_FILE
+                os.path.dirname(__file__),
+                "..",
+                "..",
+                "..",
+                "opt",
+                "cluster",
+                "share",
+                "json_defs",
+                JSON_DEFINITION_FILE
             )
         )
         if os.path.exists(json_file):
@@ -181,7 +196,9 @@ def show_overview(local_mc, valid_names):
                     header="create MCC",
                 ),
                 logging_tools.form_entry(
-                    ", ".join(cmd.Meta.alternate_names) if cmd.Meta.alternate_names else "---",
+                    ", ".join(
+                        cmd.Meta.alternate_names
+                    ) if cmd.Meta.alternate_names else "---",
                     header="Alternate names",
                 ),
                 logging_tools.form_entry(
@@ -227,7 +244,11 @@ def show_cs_help(options):
                         header="disabled",
                     ),
                     logging_tools.form_entry(
-                        ", ".join([_cfg.name for _cfg in com.Meta.needed_configs]) or "---",
+                        ", ".join(
+                            [
+                                _cfg.name for _cfg in com.Meta.needed_configs
+                            ]
+                        ) or "---",
                         header="configs"
                     ),
                     logging_tools.form_entry(

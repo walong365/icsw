@@ -30,8 +30,8 @@ import sys
 
 from initat.icsw import icsw_logging
 from initat.icsw.service import instance
-from initat.icsw.service.tools import query_local_meta_server
 from initat.tools import logging_tools, process_tools, server_command
+from ..service.tools import query_local_meta_server
 
 
 def _service_enum_show_command(options):
@@ -119,14 +119,32 @@ def _service_enum_show_command(options):
 
         if len(_change_list):
             print("")
-            print("{} moved to ConfigServiceEnum:".format(logging_tools.get_plural("Config", len(_change_list))))
+            print(
+                "{} moved to ConfigServiceEnum:".format(
+                    logging_tools.get_plural("Config", len(_change_list))
+                )
+            )
             for entry in _change_list:
-                print("    {} ({})".format(entry.name, str(entry.config_service_enum)))
+                print(
+                    "    {} ({})".format(
+                        entry.name,
+                        str(entry.config_service_enum)
+                    )
+                )
         if len(_create_list):
             print("")
-            print("{} created:".format(logging_tools.get_plural("Config", len(_create_list))))
+            print(
+                "{} created:".format(
+                    logging_tools.get_plural("Config", len(_create_list))
+                )
+            )
             for entry in _create_list:
-                print("    {} ({})".format(entry.name, str(entry.config_service_enum)))
+                print(
+                    "    {} ({})".format(
+                        entry.name,
+                        str(entry.config_service_enum)
+                    )
+                )
 
 
 def _domain_enum_show_command(options):
@@ -223,9 +241,15 @@ def show_command(options):
                 )
             else:
                 if options.full_strip:
-                    f_lines = [_line.strip() for _line in f_lines if _line.strip()]
+                    f_lines = [
+                        _line.strip() for _line in f_lines if _line.strip()
+                    ]
                 if options.remove_hashes:
-                    f_lines = [_line for _line in f_lines if (not _line.startswith("#") or _line.startswith("#!"))]
+                    f_lines = [
+                        _line for _line in f_lines if (
+                            not _line.startswith("#") or _line.startswith("#!")
+                        )
+                    ]
                 p_line = " " * 4
                 try:
                     out_lines.append(
@@ -233,14 +257,21 @@ def show_command(options):
                             obj_name,
                             "".join(
                                 [
-                                    "{}'{}',\n".format(p_line, _line.replace("'", '"').replace("\\", "\\\\")) for _line in f_lines
+                                    "{}'{}',\n".format(
+                                        p_line,
+                                        _line.replace("'", '"').replace("\\", "\\\\")
+                                    ) for _line in f_lines
                                 ]
                             )
                         )
                     )
                 except UnicodeDecodeError:
                     print()
-                    print("'{}' seems to be a binary file, please use -b switch".format(f_name))
+                    print(
+                        "'{}' seems to be a binary file, please use -b switch".format(
+                            f_name
+                        )
+                    )
                     print()
                     sys.exit(3)
             out_lines.append(

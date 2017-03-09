@@ -51,13 +51,23 @@ def get_users(cur_opts, log_com):
         )
     if cur_opts.user_filter != ".*":
         log_f = re.compile(cur_opts.user_filter)
-        all_users = [entry for entry in all_users if log_f.match(entry.login)]
+        all_users = [
+            entry for entry in all_users if log_f.match(entry.login)
+        ]
     if cur_opts.group_filter != ".*":
         log_f = re.compile(cur_opts.group_filter)
-        all_users = [entry for entry in all_users if log_f.match(entry.group.groupname)]
+        all_users = [
+            entry for entry in all_users if log_f.match(entry.group.groupname)
+        ]
     if cur_opts.with_email:
-        all_users = [entry for entry in all_users if entry.email.strip() and entry.email.count("@")]
-    print("{} in list".format(logging_tools.get_plural("User", len(all_users))))
+        all_users = [
+            entry for entry in all_users if entry.email.strip() and entry.email.count("@")
+        ]
+    print(
+        "{} in list".format(
+            logging_tools.get_plural("User", len(all_users))
+        )
+    )
     return all_users
 
 
@@ -94,7 +104,9 @@ def do_mail(cur_opts, log_com):
     if not cur_opts.message:
         print("No message given")
         sys.exit(-1)
-    message = (" ".join(cur_opts.message)).replace("\\n", "\n").strip()
+    message = (
+        " ".join(cur_opts.message)
+    ).replace("\\n", "\n").strip()
     my_mail = mail_tools.icswMail(cur_opts.subject, getattr(cur_opts, "from"), all_users, message)
     my_mail.set_server(cur_opts.server)
     m_stat, m_ret_f = my_mail.send_mail()
@@ -305,7 +317,11 @@ def do_info(cur_opts, log_com):
         num_qs = _user.user_quota_setting_set.all().count()
         if num_qs and cur_opts.system_wide_quota:
             print("")
-            print("{} found:".format(logging_tools.get_plural("system-wide quota setting", num_qs)))
+            print(
+                "{} found:".format(
+                    logging_tools.get_plural("system-wide quota setting", num_qs)
+                )
+            )
             for _qs in _user.user_quota_setting_set.all():
                 _bd = _qs.quota_capable_blockdevice
                 print(
@@ -416,9 +432,21 @@ def do_chpasswd(cur_opts, log_com):
     srv_com = server_command.srv_command(command="modify_password")
     srv_com["server_key:user_name"] = cur_opts.username
     print("changing password for user '{}'".format(cur_opts.username))
-    srv_com["server_key:old_password"] = base64.b64encode(bz2.compress(get_pass("please enter current password:")))
-    srv_com["server_key:new_password_1"] = base64.b64encode(bz2.compress(get_pass("please enter the new password:")))
-    srv_com["server_key:new_password_2"] = base64.b64encode(bz2.compress(get_pass("please reenter the new password:")))
+    srv_com["server_key:old_password"] = base64.b64encode(
+        bz2.compress(
+            get_pass("please enter current password:")
+        )
+    )
+    srv_com["server_key:new_password_1"] = base64.b64encode(
+        bz2.compress(
+            get_pass("please enter the new password:")
+        )
+    )
+    srv_com["server_key:new_password_2"] = base64.b64encode(
+        bz2.compress(
+            get_pass("please reenter the new password:")
+        )
+    )
     _conn = net_tools.ZMQConnection(
         "pwd_change_request",
         timeout=cur_opts.timeout,
@@ -427,7 +455,12 @@ def do_chpasswd(cur_opts, log_com):
     _result = _conn.loop()[0]
     _res_str, _res_state = _result.get_log_tuple()
     # _res_str, _res_state = ("ok", logging_tools.LOG_LEVEL_OK)
-    print("change gave [{}]: {}".format(logging_tools.get_log_level_str(_res_state), _res_str))
+    print(
+        "change gave [{}]: {}".format(
+            logging_tools.get_log_level_str(_res_state)
+            , _res_str
+        )
+    )
     if _res_state == logging_tools.LOG_LEVEL_OK:
         _conn = net_tools.ZMQConnection(
             "ldap_update_request",

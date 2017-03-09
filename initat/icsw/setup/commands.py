@@ -115,9 +115,13 @@ def call_ext_programm(args, **kwargs):
     _output = kwargs.get("output", False)
     _show_output = kwargs.get("show_output", False)
     if prog == "manage":
-        command = [os.path.join(ICSW_ROOT, "initat", "cluster", "manage.py")] + args
+        command = [
+            os.path.join(ICSW_ROOT, "initat", "cluster", "manage.py")
+        ] + args
     else:
-        command = [os.path.join(ICSW_ROOT, "initat", "icsw", "main.py")] + args
+        command = [
+            os.path.join(ICSW_ROOT, "initat", "icsw", "main.py")
+        ] + args
     com_str = " ".join(command)
     s_time = time.time()
     c_stat = 0
@@ -165,20 +169,33 @@ def _input(in_str, default, **kwargs):
     _choices = kwargs.get("choices", [])
     is_int = isinstance(default, int)
     if is_int:
-        _choice_str = ", ".join(["{:d}".format(_val) for _val in sorted(_choices)])
+        _choice_str = ", ".join(
+            [
+                "{:d}".format(_val) for _val in sorted(_choices)
+            ]
+        )
         _def_str = "{:d}".format(default)
     else:
         _choice_str = ", ".join(sorted(_choices))
         _def_str = default
     if _choices:
-        print("possible choices for {}: {}".format(in_str, _choice_str))
+        print(
+            "possible choices for {}: {}".format(
+                in_str,
+                _choice_str
+            )
+        )
     if len(_choices) == 1:
         return _choices[0]
     _cur_inp = None
 
     while sys.stdin.isatty():
         try:
-            sys.__stdout__.write("{:<30s} : ".format("{} ({})".format(in_str, _def_str)))
+            sys.__stdout__.write(
+                "{:<30s} : ".format(
+                    "{} ({})".format(in_str, _def_str)
+                )
+            )
             sys.__stdout__.flush()
             _cur_inp = input()
         except (KeyboardInterrupt, EOFError):
@@ -243,8 +260,16 @@ def enter_data(c_dict, opts):
 def init_webfrontend(opts):
     if False:
         for _what, _command, _target in [
-            ("collecting static", "collectstatic --noinput -c", None),
-            ("building url_list", "show_icsw_urls", os.path.join(ICSW_ROOT, "initat", "cluster", "frontend", "templates", "all_urls.html")),
+            (
+                "collecting static",
+                "collectstatic --noinput -c",
+                None
+            ),
+            (
+                "building url_list",
+                "show_icsw_urls",
+                os.path.join(ICSW_ROOT, "initat", "cluster", "frontend", "templates", "all_urls.html")
+            ),
         ]:
             print(_what)
             _success, _output = call_manage(_command.split(), output=True)
@@ -257,8 +282,16 @@ def init_webfrontend(opts):
                 )
                 open(_target, "w").write(_output)
     for _what, _command, _target in [
-        ("modify app.js", "inject_addons --srcfile /srv/www/init.at/icsw/app.js --modify --with-addons=yes", None),
-        ("modify main.html", "inject_addons --srcfile /srv/www/init.at/icsw/main.html --modify --with-addons=yes", None),
+        (
+            "modify app.js",
+            "inject_addons --srcfile /srv/www/init.at/icsw/app.js --modify --with-addons=yes",
+            None
+        ),
+        (
+            "modify main.html",
+            "inject_addons --srcfile /srv/www/init.at/icsw/main.html --modify --with-addons=yes",
+            None
+        ),
     ]:
         print(_what)
         _success, _output = call_manage(_command.split(), output=True)
@@ -373,7 +406,11 @@ def create_db_cf(opts):
             _cs["db.{}".format(_key.lower())] = c_dict[_key]
     _cs["db.info"] = "Database from {}".format(time.ctime())
     _cs.set_type("db.passwd", "password")
-    print("The file {} should be readable for root and the uwsgi processes".format(DB_CS_FILENAME))
+    print(
+        "The file {} should be readable for root and the uwsgi processes".format(
+            DB_CS_FILENAME
+        )
+    )
     try:
         _cs.write()
     except:
@@ -404,7 +441,12 @@ def check_migrations():
     for mig_dir in MIGRATION_DIRS:
         fm_dir = os.path.join(ICSW_ROOT, mig_dir, "migrations")
         if os.path.isdir(fm_dir):
-            print("Found an existing migration dir {} for {}".format(fm_dir, mig_dir))
+            print(
+                "Found an existing migration dir {} for {}".format(
+                    fm_dir,
+                    mig_dir
+                )
+            )
             any_found = True
     if any_found:
         print("please check your migrations")
@@ -446,7 +488,12 @@ class Migration(migrations.Migration):
     ]
 """
     )
-    _list_stat, _list_out = call_manage(["showmigrations", "backbone", "--no-color"], output=True)
+    _list_stat, _list_out = call_manage(
+        [
+            "showmigrations", "backbone", "--no-color"
+        ],
+        output=True
+    )
     dummy_mig.restore()
     ds0.restore()
     ds0.cleanup()
@@ -492,8 +539,20 @@ def migrate_app(_app, **kwargs):
         print("")
     else:
         print("calling makemigrations / migrate for app {}".format(_app))
-    call_manage(["makemigrations", _app.split(".")[-1], "--noinput"] + kwargs.get("make_args", []))
-    call_manage(["migrate", _app.split(".")[-1], "--noinput"] + kwargs.get("migrate_args", []))
+    call_manage(
+        [
+            "makemigrations",
+            _app.split(".")[-1],
+            "--noinput"
+        ] + kwargs.get("make_args", [])
+    )
+    call_manage(
+        [
+            "migrate",
+            _app.split(".")[-1],
+            "--noinput"
+        ] + kwargs.get("migrate_args", [])
+    )
 
 
 @SetupLogger
@@ -724,7 +783,11 @@ def check_db_rights():
         c_stat = os.stat(DB_CS_FILENAME)
         if c_stat[stat.ST_UID] == 0 & c_stat[stat.ST_GID]:
             if not c_stat.st_mode & stat.S_IROTH:
-                print("setting R_OTHER flag on {} (because owned by root.root)".format(DB_CS_FILENAME))
+                print(
+                    "setting R_OTHER flag on {} (because owned by root.root)".format(
+                        DB_CS_FILENAME
+                    )
+                )
                 os.chmod(DB_CS_FILENAME, c_stat.st_mode | stat.S_IROTH)
 
 

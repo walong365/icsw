@@ -106,7 +106,12 @@ def list_vars(opts):
         print("No job with SGE_ID '{}' found".format(opts.job_id))
         sys.exit(3)
     _vars = RMSJobVariable.objects.filter(Q(rms_job=_job)).order_by("name")
-    print("Found {} for {}".format(logging_tools.get_plural("variable", len(_vars)), str(_job)))
+    print(
+        "Found {} for {}".format(
+            logging_tools.get_plural("variable", len(_vars)),
+            str(_job)
+        )
+    )
     for _var in _vars:
         print(
             "{:<50s} ({:10s}): {:>30s} {}".format(
