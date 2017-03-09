@@ -100,7 +100,15 @@ class AssetBatchViewSet(viewsets.ViewSet):
 
         if "simple" in request.query_params:
             from initat.cluster.backbone.serializers import SimpleAssetBatchSerializer
-            serializer = SimpleAssetBatchSerializer(queryset, many=True)
+            if "truncate_result" in request.query_params:
+                new_queryset = []
+                for ab in queryset.order_by("-created"):
+                    new_queryset.append(ab)
+                    if len(new_queryset) == 10:
+                        break
+                serializer = SimpleAssetBatchSerializer(new_queryset, many=True)
+            else:
+                serializer = SimpleAssetBatchSerializer(queryset.order_by("-created"), many=True)
         else:
             from initat.cluster.backbone.serializers import AssetBatchSerializer
             serializer = AssetBatchSerializer(queryset, many=True)

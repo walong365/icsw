@@ -309,6 +309,7 @@ device_report_module = angular.module(
                     {
                         device_pks: angular.toJson((dev.idx for dev in devs))
                         simple: angular.toJson(1)
+                        truncate_result: angular.toJson(1)
                     }
                 )
             ]
@@ -345,7 +346,6 @@ device_report_module = angular.module(
                 $scope.set_duration_type("day", $scope.struct)
                 $scope.struct.$$reportstruct.startdate_dp = $scope.struct.$$reportstruct.startdate.toDate()
 
-
                 for scan in data[1]
                     if scan.is_finished_processing
                         if device_to_scan_lut[scan.device] == undefined
@@ -356,6 +356,14 @@ device_report_module = angular.module(
                         scan.$$report_option_string = "ID:" + scan.idx + " -- ScanTime:" + time_str
 
                         device_to_scan_lut[scan.device].push(scan)
+
+                for device_id in Object.keys(device_to_scan_lut)
+                    if device_to_scan_lut[device_id].length == 10
+                        o = {
+                            $$report_option_string: "Load _ALL_ scans (Warning: might take a long time)"
+                            idx: -1
+                        }
+                        device_to_scan_lut[device_id].push(o)
 
                 for dev in devs
                     dev.$$available_scans = []
@@ -881,10 +889,10 @@ device_report_module = angular.module(
 ]).directive("icswDeviceTreeReportRow",
 [
     "$templateCache", "$compile", "icswActiveSelectionService", "icswDeviceTreeService", "icswSimpleAjaxCall",
-    "ICSW_URLS", "icswReportHelperFunctions"
+    "ICSW_URLS", "icswReportHelperFunctions", "Restangular", "blockUI"
 (
     $templateCache, $compile, icswActiveSelectionService, icswDeviceTreeService, icswSimpleAjaxCall, ICSW_URLS,
-    icswReportHelperFunctions
+    icswReportHelperFunctions, Restangular, blockUI
 ) ->
     return {
         restrict: "EA"
@@ -934,18 +942,40 @@ device_report_module = angular.module(
                 icswReportHelperFunctions.disable_device_buttons(device)
 
                 idx_list = [device.idx]
+                if device.$$selected_assetbatch > 0
+                    icswSimpleAjaxCall({
+                        url: ICSW_URLS.REPORT_REPORT_DATA_AVAILABLE
+                        data:
+                            idx_list: idx_list
+                            assetbatch_id: device.$$selected_assetbatch
+                        dataType: 'json'
+                    }).then(
+                        (result) ->
+                            device_info_obj = result.pk_setting_dict[device.idx]
+                            icswReportHelperFunctions.enable_device_buttons(device, device_info_obj)
+                    )
+                else
+                    blockUI.start("Loading...")
+                    Restangular.all(ICSW_URLS.ASSET_GET_ASSETBATCH_LIST.slice(1)).getList(
+                        {
+                            device_pks: angular.toJson(idx_list)
+                            simple: angular.toJson(1)
+                        }
+                    ).then(
+                        (result) ->
+                            device.$$available_scans.length = 0
 
-                icswSimpleAjaxCall({
-                    url: ICSW_URLS.REPORT_REPORT_DATA_AVAILABLE
-                    data:
-                        idx_list: idx_list
-                        assetbatch_id: device.$$selected_assetbatch
-                    dataType: 'json'
-                }).then(
-                    (result) ->
-                        device_info_obj = result.pk_setting_dict[device.idx]
-                        icswReportHelperFunctions.enable_device_buttons(device, device_info_obj)
-                )
+                            for scan in result
+                                if scan.is_finished_processing
+                                    time_str = moment(scan.run_start_time).format("YYYY-MM-DD HH:mm:ss")
+                                    scan.$$report_option_string = "ID:" + scan.idx + " -- ScanTime:" + time_str
+                                    device.$$available_scans.push(scan)
+
+                            device.$$selected_assetbatch = "" + device.$$available_scans[0].idx
+                            blockUI.stop()
+
+                    )
+
 
             element.append(new_el(scope))
     }
