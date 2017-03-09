@@ -113,7 +113,7 @@ class WMValue(object):
             value=float(wm_el.attrib["value"])
         )
 
-    def get_form_entry(self, idx, max_num_keys):
+    def get_form_entry(self, max_num_keys):
         act_line = [
             logging_tools.form_entry(self.wm_type.value, header="Type"),
             logging_tools.form_entry(self.db_idx, header="db_idx"),
@@ -139,7 +139,6 @@ class WMValue(object):
             [
                 logging_tools.form_entry_right(val_str, header="value"),
                 logging_tools.form_entry_right(act_pf, header=" "),
-                logging_tools.form_entry("({:3d})".format(idx), header="idx"),
             ]
         )
         return act_line

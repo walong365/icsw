@@ -61,12 +61,47 @@ class Parser(object):
             dest="port",
             type=int
         )
-        parser.add_argument("-H", help="host [%(default)s] or server", default="localhost", dest="host")
-        parser.add_argument("-v", help="verbose mode [%(default)s]", default=False, dest="verbose", action="store_true")
-        parser.add_argument("-i", help="set identity substring [%(default)s]", type=str, default="cdf", dest="identity_string")
-        parser.add_argument("--host-filter", help="set filter for host name [%(default)s]", type=str, default=".*", dest="host_filter")
-        parser.add_argument("--key-filter", help="set filter for key name [%(default)s]", type=str, default=".*", dest="key_filter")
-        parser.add_argument("--mode", type=str, default="tcp", choices=["tcp", "memcached"], help="set access type [%(default)s]")
+        parser.add_argument(
+            "-H",
+            help="host [%(default)s] or server",
+            default="localhost",
+            dest="host"
+        )
+        parser.add_argument(
+            "-v",
+            help="verbose mode [%(default)s]",
+            default=False,
+            dest="verbose",
+            action="store_true"
+        )
+        parser.add_argument(
+            "-i",
+            help="set identity substring [%(default)s]",
+            type=str,
+            default="cdf",
+            dest="identity_string"
+        )
+        parser.add_argument(
+            "--host-filter",
+            help="set filter for host name [%(default)s]",
+            type=str,
+            default=".*",
+            dest="host_filter"
+        )
+        parser.add_argument(
+            "--key-filter",
+            help="set filter for key name [%(default)s]",
+            type=str,
+            default=".*",
+            dest="key_filter"
+        )
+        parser.add_argument(
+            "--mode",
+            type=str,
+            default="tcp",
+            choices=["tcp", "memcached"],
+            help="set access type [%(default)s]"
+        )
         parser.add_argument(
             "--mc-addr",
             type=str,
@@ -81,6 +116,13 @@ class Parser(object):
                 command=True
             ),
             help="port of memcached [%(default)d]"
+        )
+        parser.add_argument(
+            "--wm-sort",
+            choices=["default", "type", "value"],
+            default="default",
+            type=str,
+            help="WeatherMap Sort algorithm [%(default)s]",
         )
         return parser
 
