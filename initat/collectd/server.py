@@ -709,7 +709,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                         )
                     if _send_result:
                         try:
-                            zmq_sock.send_unicode(in_uuid.decode(), zmq.SNDMORE)
+                            zmq_sock.send_unicode(in_uuid, zmq.SNDMORE)
                             zmq_sock.send_unicode(str(in_com))
                         except:
                             self.log(
