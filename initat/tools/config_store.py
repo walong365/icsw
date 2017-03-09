@@ -23,14 +23,10 @@ simple interface to a file-base config store, file format is XML
 for password-types we need to add some encryption / message digest code via {algorithm}hash
 
 """
-try:
-    import grp
-except ImportError:
-    grp = None
 import os
 import stat
-
 from enum import Enum
+
 from lxml import etree
 from lxml.builder import E
 
@@ -138,7 +134,9 @@ class ConfigVar(object):
             if _type == "int":
                 _val = int(_val)
             elif _type == "bool":
-                _val = True if _val.lower() in ["y", "yes", "1", "true"] else False
+                _val = True if _val.lower() in [
+                    "y", "yes", "1", "true"
+                ] else False
             elif _type == "password":
                 _val = _val
         except:
@@ -151,7 +149,11 @@ class ConfigVar(object):
                 )
             )
         else:
-            return ConfigVar(_name, _val, descr=el.get("description", ""))
+            return ConfigVar(
+                _name,
+                _val,
+                descr=el.get("description", "")
+            )
 
     def get_element(self):
         if self._type == "int":
@@ -232,7 +234,12 @@ class ConfigStore(object):
                     log_level
                 )
             else:
-                print("{} {}".format(logging_tools.get_log_level_str(log_level), what))
+                print(
+                    "{} {}".format(
+                        logging_tools.get_log_level_str(log_level),
+                        what
+                    )
+                )
 
     @staticmethod
     def remove_store(name):
@@ -264,12 +271,18 @@ class ConfigStore(object):
         # return all valid store names
         return sorted(
             [
-                entry[:-11] for entry in os.listdir(CONFIG_STORE_ROOT) if entry.endswith("_config.xml")
+                entry[:-11] for entry in os.listdir(
+                    CONFIG_STORE_ROOT
+                ) if entry.endswith("_config.xml")
             ]
         )
 
     @property
     def idg_gid(self):
+        try:
+            import grp
+        except ImportError:
+            grp = None
         if ConfigStore.IDG_GID is None:
             try:
                 ConfigStore.IDG_GID = grp.getgrnam("idg").gr_gid
@@ -306,11 +319,18 @@ class ConfigStore(object):
                 )
             else:
                 if _stat[stat.ST_SIZE] == 0:
-                    self.log("ConfigStore at '{}' is empty, deleting...".format(_read_name))
+                    self.log(
+                        "ConfigStore at '{}' is empty, deleting...".format(
+                            _read_name
+                        )
+                    )
                     try:
                         os.unlink(_read_name)
                     except:
-                        self.log("cannot delete, ignoring...", logging_tools.LOG_LEVEL_CRITICAL)
+                        self.log(
+                            "cannot delete, ignoring...",
+                            logging_tools.LOG_LEVEL_CRITICAL
+                        )
                 else:
                     _ng = etree.RelaxNG(etree.fromstring(CS_NG))
                     _valid = _ng.validate(_tree)
@@ -319,14 +339,19 @@ class ConfigStore(object):
                         self.name = _tree.get("name", "")
                         self.__access_mode_is_valid = False
                         try:
-                            self.__access_mode = getattr(AccessModeEnum, _tree.get("access-mode", "global").upper())
+                            self.__access_mode = getattr(
+                                AccessModeEnum,
+                                _tree.get("access-mode", "global").upper()
+                            )
                         except:
                             self.__access_mode = AccessModeEnum.GLOBAL
                         if self.__required_access_mode is not None and self.__required_access_mode != self.__access_mode:
                             self.__access_mode = self.__required_access_mode
                         # try to guess access mode
                         _t_mode = ACCESS_MODE_DICT[self.__access_mode]["mode"]
-                        if (self.__mode & ~(_t_mode | stat.S_IFREG)) | _t_mode == _t_mode and self.__gid == self.idg_gid:
+                        if (
+                            self.__mode & ~(_t_mode | stat.S_IFREG)
+                        ) | _t_mode == _t_mode and self.__gid == self.idg_gid:
                             self.__access_mode_is_ok = True
                         else:
                             self.__access_mode_is_ok = False
@@ -426,7 +451,9 @@ class ConfigStore(object):
         return "{} and {} defined, {}, access mode is {} {}".format(
             logging_tools.get_plural("key", len(list(self.keys()))),
             logging_tools.get_plural("value", len(self.vars)),
-            "prefix is '{}'".format(self.prefix) if self.prefix else "no prefix defined",
+            "prefix is '{}'".format(
+                self.prefix
+            ) if self.prefix else "no prefix defined",
             "valid" if self.access_mode_is_ok else "invalid",
             self.__access_mode,
         )
@@ -493,7 +520,9 @@ class ConfigStore(object):
             if self.prefix:
                 _keys = set()
                 for _key in list(self.vars.keys()):
-                    if _key.startswith("{}_".format(self.prefix)) and _key.count("_") > 1:
+                    if _key.startswith(
+                        "{}_".format(self.prefix)
+                    ) and _key.count("_") > 1:
                         _keys.add(_key.split("_")[1])
                     else:
                         if not only_dict:
@@ -515,11 +544,19 @@ class ConfigStore(object):
                 if _r_dict:
                     return _r_dict
                 else:
-                    raise ConfigStoreError("no dict-type structure with key {} found".format(key))
+                    raise ConfigStoreError(
+                        "no dict-type structure with key {} found".format(
+                            key
+                        )
+                    )
             else:
                 return self.vars[key].get_value()
         else:
-            raise ConfigStoreError("ConfigStore {} not valid".format(self.name))
+            raise ConfigStoreError(
+                "ConfigStore {} not valid".format(
+                    self.name
+                )
+            )
 
     def get(self, key, default):
         if self.tree_valid:
@@ -528,13 +565,21 @@ class ConfigStore(object):
             else:
                 return default
         else:
-            raise ConfigStoreError("ConfigStore {} not valid".format(self.name))
+            raise ConfigStoreError(
+                "ConfigStore {} not valid".format(
+                    self.name
+                )
+            )
 
     def __delitem__(self, key):
         if self.tree_valid:
             del self.vars[key]
         else:
-            raise ConfigStoreError("ConfigStore {} not valid".format(self.name))
+            raise ConfigStoreError(
+                "ConfigStore {} not valid".format(
+                    self.name
+                )
+            )
 
     def __setitem__(self, key, value):
         if isinstance(value, dict):
@@ -547,7 +592,12 @@ class ConfigStore(object):
                     )
                     self.vars[_full_key] = ConfigVar(_full_key, _svalue)
             else:
-                raise ConfigStoreError("prefix needed to set dict-type values ({} -> {})".format(key, str(value)))
+                raise ConfigStoreError(
+                    "prefix needed to set dict-type values ({} -> {})".format(
+                        key,
+                        str(value)
+                    )
+                )
         else:
             if key in self:
                 _descr = self.vars[key].description

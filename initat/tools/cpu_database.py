@@ -28,7 +28,9 @@ from lxml import etree
 class CPUId(object):
     def __init__(self, source: bytes=None, parse: bool=False):
         if source is None:
-            of = getoutput("/opt/cluster/bin/lstopo-no-graphics --no-io --no-bridges --of xml").encode("utf-8")
+            of = getoutput(
+                "/opt/cluster/bin/lstopo-no-graphics --no-io --no-bridges --of xml"
+            ).encode("utf-8")
             self.raw = of
         else:
             self.raw = source
@@ -42,21 +44,46 @@ class CPUId(object):
             caches = {}
             cores = {}
             for _cache in _pack.findall(".//object[@type='Cache']"):
-                core_idxs = [int(_core.attrib["os_index"]) for _core in _cache.findall(".//object[@type='Core']")]
+                core_idxs = [
+                    int(_core.attrib["os_index"]) for _core in _cache.findall(
+                        ".//object[@type='Core']"
+                    )
+                ]
                 depth = int(_cache.attrib["depth"])
                 size = int(_cache.attrib["cache_size"])
                 cache_type = int(_cache.attrib["cache_type"])
-                caches.setdefault(depth, {}).setdefault(cache_type, []).append((size, core_idxs))
+                caches.setdefault(
+                    depth,
+                    {}
+                ).setdefault(
+                    cache_type,
+                    []
+                ).append((size, core_idxs))
                 for core_idx in core_idxs:
-                    cores.setdefault(core_idx, {}).setdefault(depth, {}).setdefault(cache_type, []).append(size)
+                    cores.setdefault(
+                        core_idx,
+                        {}
+                    ).setdefault(
+                        depth,
+                        {}
+                    ).setdefault(
+                        cache_type,
+                        []
+                    ).append(size)
             packages.append(
                 {
                     "caches": caches,
                     "cores": cores,
                     "id": "{}.{}.{}".format(
-                        _pack.find("info[@name='CPUFamilyNumber']").attrib["value"],
-                        _pack.find("info[@name='CPUModelNumber']").attrib["value"],
-                        _pack.find("info[@name='CPUStepping']").attrib["value"],
+                        _pack.find(
+                            "info[@name='CPUFamilyNumber']"
+                        ).attrib["value"],
+                        _pack.find(
+                            "info[@name='CPUModelNumber']"
+                        ).attrib["value"],
+                        _pack.find(
+                            "info[@name='CPUStepping']"
+                        ).attrib["value"],
                     )
                 }
             )
@@ -68,12 +95,24 @@ class CPUId(object):
         size_f = []
         for _depth in sorted(_core.keys()):
             _size = sum(sum(_core[_depth].values(), []))
-            size_f.append(logging_tools.get_size_str(_size, strip_spaces=True, to_int=True)[:-1].replace(" ", ""))
-        return "{}_{}".format("".join(size_f), _pack["id"])
+            size_f.append(
+                logging_tools.get_size_str(
+                    _size,
+                    strip_spaces=True,
+                    to_int=True
+                )[:-1].replace(" ", ""))
+        return "{}_{}".format(
+            "".join(size_f),
+            _pack["id"]
+        )
 
     @property
     def num_cores(self):
-        return sum(len(_pack["cores"].keys()) for _pack in self.packages)
+        return sum(
+            len(
+                _pack["cores"].keys()
+            ) for _pack in self.packages
+        )
 
 
 def get_cpuid():

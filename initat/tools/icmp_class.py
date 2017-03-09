@@ -75,7 +75,9 @@ class ip_packet(object):
         self.payload = payload
         self.options = options
         if options:
-            raise NotImplementedError("Options are not implemented yet.")
+            raise NotImplementedError(
+                "Options are not implemented yet."
+            )
         self.checksum = 0
         self.tot_len = self.ihl + len(payload)
         self.checksum = _checksum(self.packed())
@@ -83,7 +85,9 @@ class ip_packet(object):
     def packed(self):
         """ return packed version """
         if len(self.options) > 0:
-            raise NotImplementedError("Options packing is not implemented")
+            raise NotImplementedError(
+                "Options packing is not implemented"
+            )
         data = struct.pack(
             b"!BBHHHBBH4s4s",
             self.ihlversion,
@@ -133,7 +137,9 @@ def _parse_ip_packet(data):
     more_fragments = (flags_fragment & 0x2000 != 0)
     # If there are options, parse them
     if ihl > 20:
-        raise NotImplementedError("Unable to handle packets with options!")
+        raise NotImplementedError(
+            "Unable to handle packets with options!"
+        )
     payload = data[20:]
     return ip_packet(
         src_addr,
@@ -259,7 +265,10 @@ class icmp_destination_unreachable(icmp_datagram):
     }
 
     def __repr__(self):
-        return self.code_dict.get(self.code, "Unknown error code '{}'".format(self.code))
+        return self.code_dict.get(
+            self.code,
+            "Unknown error code '{}'".format(self.code)
+        )
 
     def unpack(self):
         self.original_ippacket = _parse_ip_packet(self.data[4:])
@@ -332,7 +341,10 @@ class icmp_protocol(object):  # protocol.AbstractDatagramProtocol):
                 self.__key_error_num += 1
                 act_time = time.time()
                 if self.__last_key_error is None or abs(act_time - self.__last_key_error) > 2:
-                    err_str = "Decoding of type '{:d}' datagrams not supported (counted: {:d})".format(packet_type, self.__key_error_num)
+                    err_str = "Decoding of type '{:d}' datagrams not supported (counted: {:d})".format(
+                        packet_type,
+                        self.__key_error_num
+                    )
                     if self._log_errors:
                         self.log(err_str, logging_tools.LOG_LEVEL_CRITICAL)
                     else:
@@ -341,7 +353,12 @@ class icmp_protocol(object):  # protocol.AbstractDatagramProtocol):
                     self.__key_error_num = 0
             except struct.error:
                 dgram = None
-                self.log("error decoding raw data (len was {:d})".format(len(data)), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error decoding raw data (len was {:d})".format(
+                        len(data)
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
         return dgram
 
     def send_echo(self, addr, data="init.at NOCTUA/CORVUS ping data", ident=None):
