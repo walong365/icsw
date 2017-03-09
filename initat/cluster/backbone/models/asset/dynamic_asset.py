@@ -510,10 +510,6 @@ class AssetRun(models.Model):
                 getattr(self, function_name)(self.raw_result)
                 self.save()
 
-    def _generate_assets_package_nrpe(self, data):
-        _ = data
-        self._generate_assets_package()
-
     def _generate_assets_package_hm(self, tree):
         _ = tree
         self._generate_assets_package()
@@ -604,9 +600,6 @@ class AssetRun(models.Model):
 
         self.asset_batch.save()
 
-    def _generate_assets_hardware_nrpe(self, data):
-        self._generate_assets_hardware(etree.fromstring(data))
-
     def _generate_assets_hardware_hm(self, tree):
         blob = tree.xpath('ns0:lstopo_dump', namespaces=tree.nsmap)[0].text
         xml_str = bz2.decompress(base64.b64decode(blob))
@@ -651,45 +644,6 @@ class AssetRun(models.Model):
         for _path, _el in _struct_lut.items():
             _el.info_list = json.dumps(_el._info_dict)
             _el.save()
-
-    def _generate_assets_license_nrpe(self, data):
-        l = json.loads(data)
-        for (name, licensekey) in l:
-            new_lic = AssetLicenseEntry(
-                name=name,
-                license_key=licensekey,
-                asset_run=self,
-            )
-            new_lic.save()
-
-    def _generate_assets_pending_update_nrpe(self, data):
-        l = json.loads(data)
-        self.asset_batch.pending_updates_status = 1
-        for (name, optional) in l:
-            asset_update_entry = AssetUpdateEntry.objects.filter(
-                name=name,
-                version="",
-                release="",
-                kb_idx=0,
-                install_date=None,
-                status="",
-                optional=optional,
-                installed=False,
-                new_version=""
-                )
-            if asset_update_entry:
-                asset_update_entry = asset_update_entry[0]
-            else:
-                asset_update_entry = AssetUpdateEntry(
-                    name=name,
-                    installed=False,
-                    optional=optional,
-                )
-                asset_update_entry.save()
-
-            self.asset_batch.pending_updates.add(asset_update_entry)
-            self.asset_batch.pending_updates_status = 2
-        self.asset_batch.save()
 
     def _generate_assets_pending_update_hm(self, tree):
         package_format = tree.xpath('ns0:format', namespaces=tree.nsmap)
@@ -788,44 +742,6 @@ class AssetRun(models.Model):
                 self.asset_batch.installed_updates_status = 2
         self.asset_batch.save()
 
-    def _generate_assets_update_nrpe(self, data):
-        l = json.loads(data)
-        self.asset_batch.installed_updates_status = 1
-        for (name, up_date, status) in l:
-            asset_update_entry = AssetUpdateEntry.objects.filter(
-                name=name,
-                version="",
-                release="",
-                kb_idx=0,
-                install_date=dateparse.parse_datetime(up_date),
-                status=status,
-                optional=False,
-                installed=True,
-                new_version=""
-                )
-            if asset_update_entry:
-                asset_update_entry = asset_update_entry[0]
-            else:
-                asset_update_entry = AssetUpdateEntry(
-                    name=name,
-                    install_date=dateparse.parse_datetime(up_date),
-                    status=status,
-                    optional=False,
-                    installed=True
-                )
-                asset_update_entry.save()
-
-            self.asset_batch.installed_updates.add(asset_update_entry)
-            self.asset_batch.installed_updates_status = 2
-        self.asset_batch.save()
-
-    def _generate_assets_process_nrpe(self, data):
-        l = json.loads(data)
-        process_dict = {
-            int(pid): {"name": name} for name, pid in l
-        }
-        self._generate_assets_process(process_dict)
-
     def _generate_assets_process_hm(self, tree):
         blob = tree.xpath('ns0:process_tree', namespaces=tree.nsmap)[0]\
             .text
@@ -840,59 +756,6 @@ class AssetRun(models.Model):
                 asset_run=self,
             )
             new_proc.save()
-
-    def _generate_assets_pci_nrpe(self, data):
-        info_dicts = []
-        info_dict = {}
-        for line in data.decode().split("\r\n"):
-            if len(line) == 0:
-                if len(info_dict) > 0:
-                    info_dicts.append(info_dict)
-                    info_dict = {}
-            if line.startswith("Slot:"):
-                info_dict['slot'] = line.split("\t", 1)[1]
-
-                comps = info_dict['slot'].split(":")
-                bus = comps[0]
-
-                comps = comps[1].split(".")
-                slot = comps[0]
-                func = comps[1]
-
-                info_dict['bus'] = bus
-                info_dict['slot'] = slot
-                info_dict['func'] = func
-            elif line.startswith("Class:"):
-                info_dict['class'] = line.split("\t", 1)[1]
-            elif line.startswith("Vendor:"):
-                info_dict['vendor'] = line.split("\t", 1)[1]
-            elif line.startswith("Device:"):
-                info_dict['device'] = line.split("\t", 1)[1]
-            elif line.startswith("SVendor:"):
-                info_dict['svendor'] = line.split("\t", 1)[1]
-            elif line.startswith("SDevice:"):
-                info_dict['sdevice'] = line.split("\t", 1)[1]
-            elif line.startswith("Rev:"):
-                info_dict['rev'] = line.split("\t", 1)[1]
-
-        for info_dict in info_dicts:
-            new_pci = AssetPCIEntry(
-                asset_run=self,
-                domain=0,
-                bus=int(info_dict['bus'], 16) if 'bus' in info_dict else 0,
-                slot=int(info_dict['slot'], 16) if 'slot' in info_dict else 0,
-                func=int(info_dict['func'], 16) if 'func' in info_dict else 0,
-                pci_class=0,
-                subclass=0,
-                device=0,
-                vendor=0,
-                revision=int(info_dict['rev'], 16) if 'rev' in info_dict else 0,
-                pci_classname=info_dict['class'],
-                subclassname=info_dict['class'],
-                devicename=info_dict['device'],
-                vendorname=info_dict['vendor'],
-            )
-            new_pci.save()
 
     def _generate_assets_pci_hm(self, tree):
         pci_dump_format = tree.xpath('ns0:pci_type', namespaces=tree.nsmap)
@@ -979,15 +842,6 @@ class AssetRun(models.Model):
                     vendorname=info_dict['vendor'],
                 )
                 new_pci.save()
-
-    def _generate_assets_dmi_nrpe(self, blob):
-        _lines = []
-        for line in blob.decode().split("\r\n"):
-            _lines.append(line)
-            if line == "End Of Table":
-                break
-        xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(_lines))
-        self._generate_assets_dmi(xml)
 
     def _generate_assets_dmi_hm(self, tree):
         dmi_type = tree.xpath('ns0:dmi_type', namespaces=tree.nsmap)
