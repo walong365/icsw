@@ -25,7 +25,6 @@
 import datetime
 import json
 import logging
-import re
 import sys
 import threading
 import time
@@ -436,7 +435,7 @@ class get_rms_current_json(View, RMSJsonMixin):
         else:
             h_dict = {}
         # required keys
-        req_keys = re.compile("^(load\.(1|5|15)$)|(mem\.(avail|free|used)\..*)$")
+        # req_keys = re.compile("^(load\.(1|5|15)$)|(mem\.(avail|free|used)\..*)$")
         # resolve to full host names / dev_pks / uuids
         _dev_dict = {
             _name: {
@@ -458,7 +457,7 @@ class get_rms_current_json(View, RMSJsonMixin):
                 try:
                     _value_list = json.loads(
                         _mcc.get(
-                            CollectdMCKeyEnum.host_key.value(_struct["uuid"])
+                            CollectdMCKeyEnum.wm_key.value(_struct["uuid"])
                         )
                     )
                 except:
@@ -469,9 +468,9 @@ class get_rms_current_json(View, RMSJsonMixin):
                         )
                     )
                 else:
-                    for _list in _value_list:
-                        if req_keys.match(_list[1]):
-                            _struct["values"][_list[1]] = _list[5] * _list[7]
+                    _struct["values"] = {
+                        _entry["key"]: _entry["value"] for _entry in _value_list
+                    }
 
         fc_dict = {}
         cur_time = time.time()

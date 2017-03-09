@@ -34,6 +34,8 @@ from lxml.builder import E
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, rms_user, rms_accounting_record, \
     rms_accounting_run, RMSAggregationLevelEnum
+from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.icsw.service.instance import InstanceXML
 from initat.host_monitoring import hm_classes
 from initat.tools import logging_tools, process_tools, server_command, \
     sge_tools, threading_tools
@@ -58,7 +60,12 @@ class QueueInfo(object):
         self.used += _u
         self.count += 1
         # count states
-        for _short, _attr in [("E", "error"), ("d", "disabled"), ("u", "unknown"), ("a", "alarm")]:
+        for _short, _attr in [
+            ("E", "error"),
+            ("d", "disabled"),
+            ("u", "unknown"),
+            ("a", "alarm")
+        ]:
             if _short in _state:
                 setattr(self, _attr, getattr(self, _attr) + _t)
 
@@ -69,7 +76,7 @@ class QueueInfo(object):
     def __repr__(self):
         return str(self)
 
-    def __unicode__(self):
+    def __str__(self):
         return "{:d} used, {:d} total, {:d} reserved".format(
             self.used,
             self.total,
@@ -107,7 +114,7 @@ class RMSMonProcess(threading_tools.icswProcessObj):
         self.register_func("job_ended", self._job_ended)
         self.register_func("full_reload", self._full_reload)
         # job stop/start info
-        self.register_timer(self._update_nodes, 30)
+        self.register_timer(self._update_nodes, 30, first_timeout=5)
         if global_config["TRACE_FAIRSHARE"]:
             self.log("register fairshare tracer")
             self.register_timer(self._update_fairshare, 60, instant=True)
@@ -138,7 +145,11 @@ class RMSMonProcess(threading_tools.icswProcessObj):
         vector_socket.setsockopt(zmq.LINGER, 0)
         vector_socket.connect(_v_conn_str)
         self.vector_socket = vector_socket
-        _c_conn_str = "tcp://localhost:8002"
+        c_port = InstanceXML(quiet=True).get_port_dict(
+            icswServiceEnum.collectd_server,
+            ptype="receive",
+        )
+        _c_conn_str = "tcp://127.0.0.1:{:d}".format(c_port)
         collectd_socket = self.zmq_context.socket(zmq.PUSH)
         collectd_socket.setsockopt(zmq.LINGER, 0)
         collectd_socket.setsockopt(zmq.IMMEDIATE, 1)
