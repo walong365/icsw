@@ -30,11 +30,11 @@ import time
 import dateutil.parser
 from lxml import etree
 
-from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum, get_available_licenses
-from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, \
-    ICSW_XML_NS_MAP, LICENSE_USAGE_GRACE_PERIOD
 from initat.constants import CLUSTER_DIR
 from initat.tools import process_tools, server_command, logging_tools
+from .available_licenses import LicenseEnum, get_available_licenses
+from .models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, \
+    ICSW_XML_NS_MAP, LICENSE_USAGE_GRACE_PERIOD
 
 CERT_DIR = os.path.join(CLUSTER_DIR, "share/cert")
 

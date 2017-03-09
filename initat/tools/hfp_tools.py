@@ -24,6 +24,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone.models import HardwareFingerPrint, device
 from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.cluster.backbone.models.functions import memoize_with_expiry
 
 
 def create_db_entry(device_obj, hfp):
@@ -43,10 +44,13 @@ def create_db_entry(device_obj, hfp):
     return cur_hfp
 
 
+@memoize_with_expiry(expiry_time=10)
 def get_server_fp(serialize=False):
     _devs_with_server = {
         _dev.pk: _dev for _dev in device.objects.filter(
-            Q(device_config__config__config_service_enum__enum_name=icswServiceEnum.cluster_server.name)
+            Q(
+                device_config__config__config_service_enum__enum_name=icswServiceEnum.cluster_server.name
+            )
         ).select_related(
             "domain_tree_node",
         ).prefetch_related(
@@ -57,7 +61,9 @@ def get_server_fp(serialize=False):
     for _dev in _devs_with_server.values():
         _s_dict[_dev.pk] = {
             "name": _dev.full_name,
-            "fingerprints": [_fp.fingerprint for _fp in _dev.hardwarefingerprint_set.all()],
+            "fingerprints": [
+                _fp.fingerprint for _fp in _dev.hardwarefingerprint_set.all()
+            ],
             "pk": _dev.pk
         }
     if serialize:
@@ -78,10 +84,19 @@ def server_dict_is_valid(s_dict):
         for _srv in s_dict.values():
             _num_fp = len(_srv["fingerprints"])
             if not _num_fp:
-                _logs.append("server '{}' has no valid fingerprint".format(_srv["name"]))
+                _logs.append(
+                    "server '{}' has no valid fingerprint".format(
+                        _srv["name"]
+                    )
+                )
                 _valid = False
             elif _num_fp > 1:
-                _logs.append("server '{}' has {:d} fingerprints".format(_srv["name"], _num_fp))
+                _logs.append(
+                    "server '{}' has {:d} fingerprints".format(
+                        _srv["name"],
+                        _num_fp
+                    )
+                )
                 _valid = False
     if _valid:
         _logs.append("Server Fingerprint is valid")
