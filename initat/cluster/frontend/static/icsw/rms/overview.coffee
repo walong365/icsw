@@ -1404,7 +1404,6 @@ rms_module = angular.module(
                 $scope.struct.user = data[1].user
                 $scope.struct.rms_operator = $scope.acl_modify(null, "backbone.user.rms_operator")
                 $scope.struct.loading = false
-                console.log "s0"
                 $scope.struct.rms = {
                     running: new icswRMSRunningStruct(data[2].running_headers, $scope.struct)
                     waiting: new icswRMSWaitingStruct(data[2].waiting_headers, $scope.struct)
@@ -1412,7 +1411,6 @@ rms_module = angular.module(
                     queue: new icswRMSQueueStruct(data[2].node_headers, $scope.struct)
                     sched: new icswRMSSchedulerStruct($scope.struct)
                 }
-                console.log "s1"
                 # apply user settings
                 _u = $scope.struct.icsw_user
                 for key of $scope.struct.rms

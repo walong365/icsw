@@ -25,7 +25,6 @@
 import datetime
 import json
 import logging
-import re
 import sys
 import threading
 import time
@@ -469,10 +468,9 @@ class get_rms_current_json(View, RMSJsonMixin):
                         )
                     )
                 else:
-                    for _list in _value_list:
-                        print("*", _value_list)
-                        # if req_keys.match(_list[1]):
-                        #    _struct["values"][_list[1]] = _list[5] * _list[7]
+                    _struct["values"] = {
+                        _entry["key"]: _entry["value"] for _entry in _value_list
+                    }
 
         fc_dict = {}
         cur_time = time.time()
