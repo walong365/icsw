@@ -391,12 +391,13 @@ setup_progress = angular.module(
         }
 
         if task.name == "devices"
-            if task.fulfilled
-                o.devices_available = true
-                o.heading = "Device Tree"
-            else
-                o.devices_available = false
-                o.heading = "Create new Device"
+            o.heading = "Create new Device"
+#            if task.fulfilled
+#                o.devices_available = true
+#                o.heading = "Device Tree"
+#            else
+#                o.devices_available = false
+#                o.heading = "Create new Device"
 
         for tab in $scope.struct.tabs
             if tab.heading == o.heading
