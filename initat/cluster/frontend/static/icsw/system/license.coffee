@@ -434,10 +434,10 @@ angular.module(
     }
 ]).controller("icswOvaDisplayGraphCtrl",
 [
-    "$scope", "icswRRDGraphUserSettingService", "icswRRDGraphBasicSetting", "$q", "icswAccessLevelService"
+    "$scope", "icswGraphUserSettingService", "icswGraphBasicSetting", "$q", "icswAccessLevelService"
     "icswDeviceTreeService", "$rootScope", "ICSW_SIGNALS",
 (
-    $scope, icswRRDGraphUserSettingService, icswRRDGraphBasicSetting, $q, icswAccessLevelService,
+    $scope, icswGraphUserSettingService, icswGraphBasicSetting, $q, icswAccessLevelService,
     icswDeviceTreeService, $rootScope, ICSW_SIGNALS,
 ) ->
     # ???
@@ -463,7 +463,7 @@ angular.module(
         $scope.struct.load_called = true
         $q.all(
             [
-                icswRRDGraphUserSettingService.load($scope.$id)
+                icswGraphUserSettingService.load($scope.$id)
                 icswDeviceTreeService.load($scope.$id)
             ]
         ).then(
@@ -473,7 +473,7 @@ angular.module(
                 _user_setting.set_custom_size(local_setting, 1024, 400)
                 local_setting.hide_empty = false
                 _dt = data[1]
-                base_setting = new icswRRDGraphBasicSetting()
+                base_setting = new icswGraphBasicSetting()
                 base_setting.draw_on_init = true
                 base_setting.show_tree = false
                 base_setting.show_settings = false

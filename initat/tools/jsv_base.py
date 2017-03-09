@@ -104,7 +104,9 @@ class JSVBase(object):
                     self.show_params()
                     self.show_envs()
                 else:
-                    self.send_command("ERROR JSV script got unknown command " + jsv_line[0])
+                    self.send_command(
+                        "ERROR JSV script got unknown command " + jsv_line[0]
+                    )
         except EOFError:
             pass
         self.log("end")
@@ -116,7 +118,11 @@ class JSVBase(object):
             self.send_command("STARTED")
             self.__state = "started"
         else:
-            self.send_command("ERROR JSV script got START but is in state {}".format(self.__state))
+            self.send_command(
+                "ERROR JSV script got START but is in state {}".format(
+                    self.__state
+                )
+            )
 
     def handle_begin_command(self):
         if self.__state == "started":
@@ -125,7 +131,11 @@ class JSVBase(object):
             self.clear_params()
             self.clear_envs()
         else:
-            self.send_command("ERROR JSV script got BEGIN but is in state {}".format(self.__state))
+            self.send_command(
+                "ERROR JSV script got BEGIN but is in state {}".format(
+                    self.__state
+                )
+            )
 
     def handle_param_command(self, param, value):
         self.param[param] = {}
@@ -160,31 +170,61 @@ class JSVBase(object):
 
     def accept(self, reason="everything ok"):
         if self.__state == "verifying":
-            self.send_command("RESULT STATE ACCEPT {}".format(reason))
+            self.send_command(
+                "RESULT STATE ACCEPT {}".format(reason)
+            )
             self.__state = "initialized"
         else:
-            self.send_command("ERROR JSV script tried to send RESULT but was in state {}".format(self.__state))
+            self.send_command(
+                "ERROR JSV script tried to send RESULT but was in state {}".format(
+                    self.__state
+                )
+            )
 
     def correct(self, reason="something changed"):
         if self.__state == "verifying":
-            self.send_command("RESULT STATE CORRECT {}".format(reason))
+            self.send_command(
+                "RESULT STATE CORRECT {}".format(
+                    reason
+                )
+            )
             self.__state = "initialized"
         else:
-            self.send_command("ERROR JSV script tried to send RESULT but was in state {}".format(self.__state))
+            self.send_command(
+                "ERROR JSV script tried to send RESULT but was in state {}".format(
+                    self.__state
+                )
+            )
 
     def reject(self, reason="rejected"):
         if self.__state == "verifying":
-            self.send_command("RESULT STATE REJECT {}".format(reason))
+            self.send_command(
+                "RESULT STATE REJECT {}".format(
+                    reason
+                )
+            )
             self.__state = "initialized"
         else:
-            self.send_command("ERROR JSV script tried to send RESULT but was in state {}".format(self.__state))
+            self.send_command(
+                "ERROR JSV script tried to send RESULT but was in state {}".format(
+                    self.__state
+                )
+            )
 
     def reject_wait(self, reason="rejected, wait"):
         if self.__state == "verifying":
-            self.send_command("RESULT STATE REJECT_WAIT {}".format(reason))
+            self.send_command(
+                "RESULT STATE REJECT_WAIT {}".format(
+                    reason
+                )
+            )
             self.__state = "initialized"
         else:
-            self.send_command("ERROR JSV script tried to send RESULT but was in state {}".format(self.__state))
+            self.send_command(
+                "ERROR JSV script tried to send RESULT but was in state {}".format(
+                    self.__state
+                )
+            )
 
     def clear_envs(self):
         self.env = {}

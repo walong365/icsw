@@ -205,10 +205,10 @@
                         <span ng-show="!result.list.length" class="label label-warning">
                             Awaiting data
                         </span>
-                        <icsw-rrd-graph-list-graph
+                        <icsw-graph-list-graph
                             icsw-graph="result.list[0]"
                             ng-if="result.list.length"
-                        ></icsw-rrd-graph-list-graph>
+                        ></icsw-graph-list-graph>
                     </div>
                 </div>
             </div>
@@ -919,22 +919,22 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rms.node.rrd">
-    <icsw-rrd-graph-remote
+    <icsw-graph-remote
         icsw-device-list="devices"
         icsw-graph-setting="local_settings"
         icsw-base-setting="base_setting"
-    ></icsw-rrd-graph-remote>
+    ></icsw-graph-remote>
 </script>
 
 <script type="text/ng-template" id="icsw.rms.fair.share.tree">
-    <icsw-rrd-graph-remote
+    <icsw-graph-remote
         ng-if="struct.base_data_set"
         icsw-device-list="struct.devices"
         icsw-graph-setting="struct.local_setting"
         icsw-base-setting="struct.base_setting"
         icsw-from-date="struct.from_date"
         icsw-to-date="struct.to_date"
-    ></icsw-rrd-graph-remote>
+    ></icsw-graph-remote>
 </script>
 
 <script type="text/ng-template" id="icsw.rms.queue.overview">

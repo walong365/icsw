@@ -40,7 +40,11 @@ class IPv4(object):
                 self.inv_parts.reverse()
                 # print "+",in_value, self.parts, self.inv_parts, "*<br>"
             else:
-                raise ValueError("error parsing IP address '{}'".format(in_value))
+                raise ValueError(
+                    "error parsing IP address '{}'".format(
+                        in_value
+                    )
+                )
         elif isinstance(in_value, list):
             if isinstance(in_value[0], int):
                 # value is a list of integer
@@ -62,7 +66,14 @@ class IPv4(object):
 
     def _update_rep(self):
         self.__str_rep = ".".join([str(_val) for _val in self.parts])
-        self.__int_rep = int("".join(["{:02x}".format(_val) for _val in self.parts]), 16)
+        self.__int_rep = int(
+            "".join(
+                [
+                    "{:02x}".format(_val) for _val in self.parts
+                ]
+            ),
+            16
+        )
 
     def value(self):
         bin_ip, mult = (0, 1)
@@ -95,13 +106,31 @@ class IPv4(object):
         return len(str(self))
 
     def __invert__(self):
-        return IPv4(".".join([str(255 - x) for x in self.parts]))
+        return IPv4(
+            ".".join(
+                [
+                    str(255 - x) for x in self.parts
+                ]
+            )
+        )
 
     def __and__(self, other):
-        return IPv4(".".join([str(x & y) for x, y in zip(self.parts, other.parts)]))
+        return IPv4(
+            ".".join(
+                [
+                    str(x & y) for x, y in zip(self.parts, other.parts)
+                ]
+            )
+        )
 
     def __or__(self, other):
-        return IPv4(".".join([str(x | y) for x, y in zip(self.parts, other.parts)]))
+        return IPv4(
+            ".".join(
+                [
+                    str(x | y) for x, y in zip(self.parts, other.parts)
+                ]
+            )
+        )
 
     def __eq__(self, other):
         return self.parts == other.parts
@@ -123,9 +152,20 @@ class IPv4(object):
                 ov += 1
             new_v[i] = new_val
         if ov:
-            raise ValueError("Overflow while adding IPv4 addresses {} and {}".format(str(self), str(other)))
+            raise ValueError(
+                "Overflow while adding IPv4 addresses {} and {}".format(
+                    str(self),
+                    str(other)
+                )
+            )
         else:
-            return IPv4(".".join([str(x) for x in new_v]))
+            return IPv4(
+                ".".join(
+                    [
+                        str(x) for x in new_v
+                    ]
+                )
+            )
 
     def __lt__(self, other):
         for i in range(4):
@@ -171,7 +211,10 @@ class IPv4(object):
     def find_matching_network(self, nw_list):
         match_list = []
         for nw_stuff in nw_list:
-            network, netmask = (IPv4(nw_stuff.network), IPv4(nw_stuff.netmask))
+            network, netmask = (
+                IPv4(nw_stuff.network),
+                IPv4(nw_stuff.netmask)
+            )
             if self & netmask == network:
                 match_list.append((netmask.netmask_bits(), nw_stuff))
         return sorted(match_list, reverse=True, key=lambda x: x[0])

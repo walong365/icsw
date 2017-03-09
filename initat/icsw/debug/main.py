@@ -46,7 +46,11 @@ def clear_current(options):
 
 def modify(options):
     for _var in ICSW_DEBUG_VARS:
-        print(_var.create_export_line(getattr(options, _var.option_name)))
+        print(
+            _var.create_export_line(
+                getattr(options, _var.option_name)
+            )
+        )
 
 
 def main(options):

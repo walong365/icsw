@@ -51,7 +51,9 @@ class BaseConfigVar(object):
         if kw_keys:
             print(
                 "*** {} for _conf_var('{}') left: {} ***".format(
-                    logging_tools.get_plural("keyword argument", len(kw_keys)),
+                    logging_tools.get_plural(
+                        "keyword argument", len(kw_keys)
+                    ),
                     str(self.value),
                     ", ".join(sorted(kw_keys)),
                 )
@@ -59,8 +61,12 @@ class BaseConfigVar(object):
 
     def serialize(self):
         if self.descr in ["Blob"]:
-            _val = base64.b64encode(bz2.compress(self.value)).decode("ascii")
-            _def_val = base64.b64encode(bz2.compress(self.__default_val)).decode("ascii")
+            _val = base64.b64encode(
+                bz2.compress(self.value)
+            ).decode("ascii")
+            _def_val = base64.b64encode(
+                bz2.compress(self.__default_val)
+            ).decode("ascii")
         else:
             _val = self.value
             _def_val = self.__default_val
@@ -133,16 +139,26 @@ class BaseConfigVar(object):
         try:
             r_val = self.str_to_val(val)
         except TypeError:
-            raise TypeError("Type Error for value {}".format(str(val)))
+            raise TypeError(
+                "Type Error for value {}".format(
+                    str(val)
+                )
+            )
         except ValueError:
-            raise ValueError("Value Error for value {}".format(str(val)))
+            raise ValueError(
+                "Value Error for value {}".format(
+                    str(val)
+                )
+            )
         else:
             if isinstance(r_val, tuple) or isinstance(r_val, list):
                 _c_val = set(r_val)
             else:
                 _c_val = set([r_val])
             self.value = r_val
-            if source and (source != "default" or self.source == "default"):
+            if source and (
+                source != "default" or self.source == "default"
+            ):
                 self.source = source
 
     def __str__(self):
@@ -311,7 +327,11 @@ class ProcessBasedDict(object):
             _json = json.loads(ser_str)
             _is_blob = _json["descr"] in ["Blob"]
             if _is_blob:
-                _json["default_value"] = bz2.decompress(base64.b64decode(_json["default_value"]))
+                _json["default_value"] = bz2.decompress(
+                    base64.b64decode(
+                        _json["default_value"]
+                    )
+                )
             # get correct variable type for instantiation
             _obj = {
                 # "Timedelta": timedelta_c_var,
@@ -325,7 +345,11 @@ class ProcessBasedDict(object):
                 "Integer": IntegerConfigVar,
             }[_json["descr"]](_json["default_value"], **_json["kwargs"])
             if _is_blob:
-                _obj.value = bz2.decompress(base64.b64decode(_json["value"]))
+                _obj.value = bz2.decompress(
+                    base64.b64decode(
+                        _json["value"]
+                    )
+                )
             else:
                 _obj.value = _json["value"]
             # print("*", self.__process_obj.name, key, self._dict[key], "->",  _obj)
@@ -353,7 +377,12 @@ class ProcessBasedDict(object):
             self._keys.add(key)
         self._dict[key] = value
         if self.__process_obj:
-            self.__process_obj.send_to_all_processes("gc_operation", "change", key, self._dict[key].serialize())
+            self.__process_obj.send_to_all_processes(
+                "gc_operation",
+                "change",
+                key,
+                self._dict[key].serialize()
+            )
 
     def __getitem__(self, key):
         return self._dict[key]
@@ -365,12 +394,21 @@ class ProcessBasedDict(object):
         if self.__process_obj:
             # we will get the message back if we send this from a child process
             # so we have to check for key existance in the delete operation above
-            self.__process_obj.send_to_all_processes("gc_operation", "delete", key)
+            self.__process_obj.send_to_all_processes(
+                "gc_operation",
+                "delete",
+                key
+            )
 
     def key_changed(self, key):
         # called when a key has changed from Configuration
         if self.__process_obj:
-            self.__process_obj.send_to_all_processes("gc_operation", "change", key, self._dict[key].serialize())
+            self.__process_obj.send_to_all_processes(
+                "gc_operation",
+                "change",
+                key,
+                self._dict[key].serialize()
+            )
 
 
 class ConfigKeyError(object):
@@ -388,7 +426,12 @@ class ConfigKeyError(object):
         try:
             return self._func(*args, **kwargs)
         except KeyError:
-            raise KeyError("Key {} not defined ({})".format(args[0], self.config.key_info))
+            raise KeyError(
+                "Key {} not defined ({})".format(
+                    args[0],
+                    self.config.key_info
+                )
+            )
 
 
 class Configuration(object):
@@ -441,7 +484,11 @@ class Configuration(object):
 
     def add_config_entries(self, entries, **kwargs):
         if isinstance(entries, dict):
-            entries = sorted([(key, value) for key, value in entries.items()])
+            entries = sorted(
+                [
+                    (key, value) for key, value in entries.items()
+                ]
+            )
         self.__c_dict.update_mode = True
         for key, value in entries:
             # check for override of database flag
@@ -452,7 +499,11 @@ class Configuration(object):
 
     @property
     def key_info(self):
-        return "{}".format(", ".join(sorted(self.__c_dict.keys())))
+        return "{}".format(
+            ", ".join(
+                sorted(self.__c_dict.keys())
+            )
+        )
 
     @ConfigKeyError
     def pretty_print(self, key):
@@ -495,7 +546,11 @@ class Configuration(object):
                     f_obj.append(
                         [
                             logging_tools.form_entry(key),
-                            logging_tools.form_entry("list with {}:".format(logging_tools.get_plural("entry", len(pv)))),
+                            logging_tools.form_entry(
+                                "list with {}:".format(
+                                    logging_tools.get_plural("entry", len(pv))
+                                )
+                            ),
                             logging_tools.form_entry(self.get_type(key)),
                             logging_tools.form_entry(self.get_source(key)),
                         ]
@@ -513,9 +568,21 @@ class Configuration(object):
                     f_obj.append(
                         [
                             logging_tools.form_entry(key, header="key"),
-                            logging_tools.form_entry(self.pretty_print(key), header="value"),
-                            logging_tools.form_entry(self.get_type(key), pre_str=", (", post_str=" from ", header="type"),
-                            logging_tools.form_entry(self.get_source(key), post_str=")", header="source"),
+                            logging_tools.form_entry(
+                                self.pretty_print(key),
+                                header="value"
+                            ),
+                            logging_tools.form_entry(
+                                self.get_type(key),
+                                pre_str=", (",
+                                post_str=" from ",
+                                header="type"
+                            ),
+                            logging_tools.form_entry(
+                                self.get_source(key),
+                                post_str=")",
+                                header="source"
+                            ),
                         ]
                     )
             ret_str = str(f_obj).split("\n")
@@ -578,7 +645,11 @@ class Configuration(object):
                 src_sql_obj = _VAR_LUT[short].objects
                 if init_list:
                     src_sql_obj = src_sql_obj.filter(
-                        Q(name__in=[var_name for var_name, _var_value in init_list])
+                        Q(
+                            name__in=[
+                                var_name for var_name, _var_value in init_list
+                            ]
+                        )
                     )
                 for db_rec in src_sql_obj.filter(
                     Q(config=sc_result.config) &
@@ -587,13 +658,25 @@ class Configuration(object):
                     var_name = db_rec.name
                     source = "{}_table (pk={})".format(short, db_rec.pk)
                     if isinstance(db_rec.value, array.array):
-                        new_val = configfile.StringConfigVar(db_rec.value.tostring(), source=source)
+                        new_val = configfile.StringConfigVar(
+                            db_rec.value.tostring(),
+                            source=source
+                        )
                     elif short == "int":
-                        new_val = configfile.IntegerConfigVar(int(db_rec.value), source=source)
+                        new_val = configfile.IntegerConfigVar(
+                            int(db_rec.value),
+                            source=source
+                        )
                     elif short == "bool":
-                        new_val = configfile.BoolConfigVar(bool(db_rec.value), source=source)
+                        new_val = configfile.BoolConfigVar(
+                            bool(db_rec.value),
+                            source=source
+                        )
                     else:
-                        new_val = configfile.StringConfigVar(db_rec.value, source=source)
+                        new_val = configfile.StringConfigVar(
+                            db_rec.value,
+                            source=source
+                        )
                     _present_in_config = var_name in self
                     if _present_in_config:
                         # copy settings from config
@@ -610,8 +693,10 @@ class Configuration(object):
             if descr:
                 descr = " ".join(
                     [
-                        entry for entry in descr.strip().split() if not entry.count("(default)")
-                        ]
+                        entry for entry in descr.strip().split() if not entry.count(
+                            "(default)"
+                        )
+                    ]
                 )
             return descr
 
@@ -630,7 +715,13 @@ class Configuration(object):
                 var_obj = type_dict.get(self.get_type(key), None)
                 # print key, var_obj, self.database(key)
                 if var_obj is not None and self.database(key):
-                    other_types = set([value for _key, value in list(type_dict.items()) if _key != self.get_type(key)])
+                    other_types = set(
+                        [
+                            value for _key, value in list(
+                                type_dict.items()
+                            ) if _key != self.get_type(key)
+                        ]
+                    )
                     # var global / local
                     var_range_name = "global"
                     # build real var name
@@ -639,7 +730,11 @@ class Configuration(object):
                         cur_var = var_obj.objects.get(
                             Q(name=real_k_name) &
                             Q(config=sc_result.config) &
-                            (Q(device=0) | Q(device=None) | Q(device=sc_result.effective_device.pk))
+                            (
+                                Q(device=0) |
+                                Q(device=None) |
+                                Q(device=sc_result.effective_device.pk)
+                            )
                         )
                     except var_obj.DoesNotExist:
                         # check other types
@@ -647,8 +742,12 @@ class Configuration(object):
                         for other_var_obj in other_types:
                             try:
                                 other_var = other_var_obj.objects.get(
-                                    Q(name=real_k_name) & Q(config=sc_result.config) & (
-                                        Q(device=0) | Q(device=None) | Q(device=sc_result.effective_device.pk)
+                                    Q(name=real_k_name) &
+                                    Q(config=sc_result.config) &
+                                    (
+                                        Q(device=0) |
+                                        Q(device=None) |
+                                        Q(device=sc_result.effective_device.pk)
                                     )
                                 )
                             except other_var_obj.DoesNotExist:
@@ -681,7 +780,9 @@ class Configuration(object):
                             sc_result.config.name,
                             sc_result.effective_device.name,
                         )
-                    if new_descr and new_descr != _cur_descr and _cur_descr.count("default value from"):
+                    if new_descr and new_descr != _cur_descr and _cur_descr.count(
+                        "default value from"
+                    ):
                         cur_var.description = new_descr
                         cur_var.save(update_fields=["description"])
                 else:

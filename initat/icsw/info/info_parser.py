@@ -39,11 +39,36 @@ class Parser(object):
                     "cluster-server"
                 ]
             )
-        parser.add_argument("--subsys", type=str, default=_choices[0], choices=_choices, help="show command info for given subsystem [%(default)s]")
-        parser.add_argument("--detail", default=False, action="store_true", help="show detailed help [%(default)s]")
-        parser.add_argument("--no-overview", default=True, dest="overview", action="store_false", help="show overview [%(default)s]")
-        parser.add_argument("--update-json", default=False, action="store_true", help="update json file for all defined commands [%(default)s]")
-        parser.add_argument("args", nargs="*")
+        parser.add_argument(
+            "--subsys",
+            type=str,
+            default=_choices[0],
+            choices=_choices,
+            help="show command info for given subsystem [%(default)s]"
+        )
+        parser.add_argument(
+            "--detail",
+            default=False,
+            action="store_true",
+            help="show detailed help [%(default)s]"
+        )
+        parser.add_argument(
+            "--no-overview",
+            default=True,
+            dest="overview",
+            action="store_false",
+            help="show overview [%(default)s]"
+        )
+        parser.add_argument(
+            "--update-json",
+            default=False,
+            action="store_true",
+            help="update json file for all defined commands [%(default)s]"
+        )
+        parser.add_argument(
+            "args",
+            nargs="*"
+        )
 
         return parser
 

@@ -39,8 +39,17 @@ class Parser(object):
                     "cluster-server"
                 ]
             )
-        parser.add_argument("--subsys", type=str, default=_choices[0], choices=_choices, help="show command info for given subsystem [%(default)s]")
-        parser.add_argument("args", nargs="+")
+        parser.add_argument(
+            "--subsys",
+            type=str,
+            default=_choices[0],
+            choices=_choices,
+            help="show command info for given subsystem [%(default)s]"
+        )
+        parser.add_argument(
+            "args",
+            nargs="+"
+        )
 
         return parser
 

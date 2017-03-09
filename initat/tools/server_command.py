@@ -84,7 +84,10 @@ def log_level_to_srv_reply(log_level):
 
 def srv_reply_state_is_valid(srv_reply_state):
     return srv_reply_state in [
-        SRV_REPLY_STATE_CRITICAL, SRV_REPLY_STATE_ERROR, SRV_REPLY_STATE_OK, SRV_REPLY_STATE_WARN
+        SRV_REPLY_STATE_CRITICAL,
+        SRV_REPLY_STATE_ERROR,
+        SRV_REPLY_STATE_OK,
+        SRV_REPLY_STATE_WARN
     ]
 
 
@@ -146,7 +149,9 @@ class srv_command(object):
                         raise e
             elif isinstance(kwargs["source"], bytes):
                 try:
-                    self.__tree = etree.fromstring(kwargs["source"].decode("utf-8"))
+                    self.__tree = etree.fromstring(
+                        kwargs["source"].decode("utf-8")
+                    )
                 except XMLSyntaxError as e:
                     if "Huge input lookup" in e.msg:
                         # allows sending/receiving of server commands with large (>=10MiB) payload
@@ -192,7 +197,13 @@ class srv_command(object):
     def set_result(self, ret_str, level=SRV_REPLY_STATE_OK):
         if "result" not in self:
             self["result"] = None
-        if level not in [SRV_REPLY_STATE_ERROR, SRV_REPLY_STATE_WARN, SRV_REPLY_STATE_OK, SRV_REPLY_STATE_CRITICAL, SRV_REPLY_STATE_UNSET]:
+        if level not in [
+            SRV_REPLY_STATE_ERROR,
+            SRV_REPLY_STATE_WARN,
+            SRV_REPLY_STATE_OK,
+            SRV_REPLY_STATE_CRITICAL,
+            SRV_REPLY_STATE_UNSET
+        ]:
             raise ValueError("srv_com_level '{}' not valid".format(level))
         self["result"].attrib.update(
             {
@@ -206,7 +217,10 @@ class srv_command(object):
             return ("no result node found", SRV_REPLY_STATE_CRITICAL)
         else:
             _attrib = self["result"].attrib
-            return (_attrib.get("reply", "no reply-string set"), int(_attrib.get("state", "{:d}".format(SRV_REPLY_STATE_OK))))
+            return (
+                _attrib.get("reply", "no reply-string set"),
+                int(_attrib.get("state", "{:d}".format(SRV_REPLY_STATE_OK)))
+            )
 
     def builder(self, tag_name=None, *args, **kwargs):
         if tag_name is None:
@@ -285,8 +299,18 @@ class srv_command(object):
             return default
 
     def __contains__(self, key):
-        xpath_str = "/ns:ics_batch/{}".format("/".join(["ns:{}".format(sub_arg) for sub_arg in key.split(":")]))
-        xpath_res = self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns": XML_NS})
+        xpath_str = "/ns:ics_batch/{}".format(
+            "/".join(
+                [
+                    "ns:{}".format(sub_arg) for sub_arg in key.split(":")
+                ]
+            )
+        )
+        xpath_res = self.__tree.xpath(
+            xpath_str,
+            smart_strings=False,
+            namespaces={"ns": XML_NS}
+        )
         return True if len(xpath_res) else False
 
     def get_element(self, key):
@@ -300,7 +324,11 @@ class srv_command(object):
             )
         else:
             xpath_str = "/ns:ics_batch"
-        return self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns": XML_NS})
+        return self.__tree.xpath(
+            xpath_str,
+            smart_strings=False,
+            namespaces={"ns": XML_NS}
+        )
 
     def __delitem__(self, key):
         xpath_res = self.get_element(key)
@@ -350,8 +378,18 @@ class srv_command(object):
             self._element(value, cur_element)
 
     def delete_subtree(self, key):
-        xpath_str = "/ns:ics_batch/{}".format("/".join(["ns:{}".format(sub_arg) for sub_arg in key.split(":")]))
-        for result in self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns": XML_NS}):
+        xpath_str = "/ns:ics_batch/{}".format(
+            "/".join(
+                [
+                    "ns:{}".format(sub_arg) for sub_arg in key.split(":")
+                ]
+            )
+        )
+        for result in self.__tree.xpath(
+            xpath_str,
+            smart_strings=False,
+            namespaces={"ns": XML_NS}
+        ):
             result.getparent().remove(result)
 
     def _element(self, value, cur_element=None):
@@ -425,7 +463,11 @@ class srv_command(object):
     def _create_element(self, key):
         """ creates all element(s) down to key.split(":") """
         xpath_str = "/ns:ics_batch"
-        cur_element = self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns": XML_NS})
+        cur_element = self.__tree.xpath(
+            xpath_str,
+            smart_strings=False,
+            namespaces={"ns": XML_NS}
+        )
         if len(cur_element):
             _with_ns = True
         else:
@@ -473,7 +515,9 @@ class srv_command(object):
                 value = int(value)
             elif el_type == "bool":
                 if isinstance(value, str):
-                    value = True if len(value) and value[0].lower() in ["t", "1", "y"] else False
+                    value = True if len(value) and value[0].lower() in [
+                        "t", "1", "y"
+                    ] else False
                 else:
                     value = bool(value)
             elif el_type == "date":
@@ -490,8 +534,18 @@ class srv_command(object):
 
     def get(self, key, def_value=None):
         # get does NOT support the automatic interpretation of elements via the "*{key}" snytax (and never will ...)
-        xpath_str = ".//{}".format("/".join(["ns:{}".format(sub_arg) for sub_arg in key.split(":")]))
-        xpath_res = self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns": XML_NS})
+        xpath_str = ".//{}".format(
+            "/".join(
+                [
+                    "ns:{}".format(sub_arg) for sub_arg in key.split(":")
+                ]
+            )
+        )
+        xpath_res = self.__tree.xpath(
+            xpath_str,
+            smart_strings=False,
+            namespaces={"ns": XML_NS}
+        )
         if len(xpath_res) == 1:
             return xpath_res[0].text
         elif len(xpath_res) > 1:
@@ -500,7 +554,11 @@ class srv_command(object):
             return def_value
 
     def update_source(self):
-        _source = self.__tree.xpath(".//ns:source", smart_strings=False, namespaces={"ns": XML_NS})
+        _source = self.__tree.xpath(
+            ".//ns:source",
+            smart_strings=False,
+            namespaces={"ns": XML_NS}
+        )
         if len(_source):
             _source[0].attrib.update(
                 {
@@ -514,7 +572,11 @@ class srv_command(object):
 
     @property
     def sendcounter(self):
-        _source = self.__tree.xpath(".//ns:source", smart_strings=False, namespaces={"ns": XML_NS})
+        _source = self.__tree.xpath(
+            ".//ns:source",
+            smart_strings=False,
+            namespaces={"ns": XML_NS}
+        )
         if len(_source):
             return int(_source[0].attrib.get("sendcounter", 0))
 

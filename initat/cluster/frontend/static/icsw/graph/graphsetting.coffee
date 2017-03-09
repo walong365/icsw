@@ -19,17 +19,17 @@
 #
 
 angular.module(
-    "icsw.rrd.graphsetting",
+    "icsw.graphsetting",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).service("icswRRDGraphBasicSetting",
+).service("icswGraphBasicSetting",
 [
     "$q",
 (
     $q,
 ) ->
-    class icswRRDGraphBasicSetting
+    class icswGraphBasicSetting
         constructor: (args) ->
             # settings switch visible
             @display_settings_switch = true
@@ -80,13 +80,13 @@ angular.module(
             else
                 @auto_select_re = null
 
-]).service("icswRRDGraphBaseSetting",
+]).service("icswGraphBaseSetting",
 [
     "$q", "ICSW_URLS", "Restangular",
 (
     $q, ICSW_URLS, Restangular
 ) ->
-    class icswRRDGraphBaseSetting
+    class icswGraphBaseSetting
         constructor: (size_list, timeshift_list, forecast_list, timeframe_list, sensor_action_list) ->
             @size_list = []
             @timeshift_list = []
@@ -157,13 +157,13 @@ angular.module(
             for size_e in @size_list
                 size_e.info = "#{size_e.name} (#{size_e.width} x #{size_e.height})"
 
-]).service("icswRRDGraphBaseSettingService",
+]).service("icswGraphBaseSettingService",
 [
     "$q", "ICSW_URLS", "Restangular",
-    "icswRRDGraphBaseSetting", "icswTreeBase";
+    "icswGraphBaseSetting", "icswTreeBase";
 (
     $q, ICSW_URLS, Restangular,
-    icswRRDGraphBaseSetting, icswTreeBase,
+    icswGraphBaseSetting, icswTreeBase,
 ) ->
     rest_map = [
         ICSW_URLS.REST_GRAPH_SETTING_SIZE_LIST
@@ -173,19 +173,19 @@ angular.module(
         ICSW_URLS.REST_SENSOR_ACTION_LIST
     ]
     return new icswTreeBase(
-        "RRDGraphBaseSetting"
-        icswRRDGraphBaseSetting
+        "GraphBaseSetting"
+        icswGraphBaseSetting
         rest_map
         ""
     )
 
-]).service("icswRRDGraphUserSetting",
+]).service("icswGraphUserSetting",
 [
     "$q", "ICSW_URLS", "Restangular",
 (
     $q, ICSW_URLS, Restangular
 ) ->
-    class icswRRDGraphUserSetting
+    class icswGraphUserSetting
         constructor: (s_list, th_list, @base, user) ->
             @user = user.user
             @list = []
@@ -343,13 +343,13 @@ angular.module(
             )
             return d.promise
 
-]).service("icswRRDGraphUserSettingService",
+]).service("icswGraphUserSettingService",
 [
     "ICSW_URLS", "icswUserService",
-    "icswRRDGraphBaseSettingService", "icswRRDGraphUserSetting", "icswTreeBase",
+    "icswGraphBaseSettingService", "icswGraphUserSetting", "icswTreeBase",
 (
     ICSW_URLS, icswUserService, 
-    icswRRDGraphBaseSettingService, icswRRDGraphUserSetting, icswTreeBase,
+    icswGraphBaseSettingService, icswGraphUserSetting, icswTreeBase,
 ) ->
     rest_map = [
         ICSW_URLS.REST_GRAPH_SETTING_LIST
@@ -358,18 +358,18 @@ angular.module(
     class LocalTree extends icswTreeBase
         extra_calls: (client) =>
             return [
-                icswRRDGraphBaseSettingService.load(client)
+                icswGraphBaseSettingService.load(client)
                 icswUserService.load(client)
             ]
 
     return new LocalTree(
-        "RRDGraphUserSettings"
-        icswRRDGraphUserSetting
+        "GraphUserSettings"
+        icswGraphUserSetting
         rest_map
         ""
     )
 
-]).directive("icswRrdGraphSetting",
+]).directive("icswGraphSetting",
 [
     "$templateCache",
 (
@@ -378,17 +378,17 @@ angular.module(
     return {
         scope: true
         restrict: "EA"
-        template: $templateCache.get("icsw.rrd.graphsetting.overview")
-        controller: "icswRrdGraphSettingCtrl"
+        template: $templateCache.get("icsw.graphsetting.overview")
+        controller: "icswGraphSettingCtrl"
     }
-]).controller("icswRrdGraphSettingCtrl",
+]).controller("icswGraphSettingCtrl",
 [
-    "$scope", "icswRRDGraphUserSettingService", "$compile", "icswComplexModalService",
-    "blockUI", "toaster", "icswToolsSimpleModalService", "icswRRDGraphSettingBackup", "$q",
+    "$scope", "icswGraphUserSettingService", "$compile", "icswComplexModalService",
+    "blockUI", "toaster", "icswToolsSimpleModalService", "icswGraphSettingBackup", "$q",
     "$templateCache",
 (
-    $scope, icswRRDGraphUserSettingService, $compile, icswComplexModalService,
-    blockUI, toaster, icswToolsSimpleModalService, icswRRDGraphSettingBackup, $q,
+    $scope, icswGraphUserSettingService, $compile, icswComplexModalService,
+    blockUI, toaster, icswToolsSimpleModalService, icswGraphSettingBackup, $q,
     $templateCache,
 ) ->
     $scope.struct = {
@@ -399,7 +399,7 @@ angular.module(
     }
 
     load = () ->
-        icswRRDGraphUserSettingService.load($scope.$id).then(
+        icswGraphUserSettingService.load($scope.$id).then(
             (data) ->
                 $scope.struct.settings = data
                 $scope.struct.current = $scope.struct.settings.get_active()
@@ -433,7 +433,7 @@ angular.module(
             prev: sub_scope.user_setting.get_active()
         }
         # to check for changes
-        bu_obj = new icswRRDGraphSettingBackup()
+        bu_obj = new icswGraphSettingBackup()
         bu_obj.create_backup(sub_scope.vars.current)
 
         # flags for current changed and name is new (== new setting can be created)
@@ -501,7 +501,7 @@ angular.module(
 
         icswComplexModalService(
             {
-                message: $compile($templateCache.get("icsw.rrd.graphsetting.modify"))(sub_scope)
+                message: $compile($templateCache.get("icsw.graphsetting.modify"))(sub_scope)
                 title: "RRD Graph Settings"
                 closable: true
                 ok_label: "Close"
@@ -568,11 +568,11 @@ angular.module(
             @to_date_mom = to_mom
             @mom_to_date()
 
-]).directive("icswRrdGraphTimeFrame",
+]).directive("icswGraphTimeFrame",
 [
-    "$templateCache", "icswRRDGraphBaseSettingService", "$compile", "$timeout", "toaster",
+    "$templateCache", "icswGraphBaseSettingService", "$compile", "$timeout", "toaster",
 (
-    $templateCache, icswRRDGraphBaseSettingService, $compile, $timeout, toaster
+    $templateCache, icswGraphBaseSettingService, $compile, $timeout, toaster
 ) ->
     return {
         scope: true
@@ -580,7 +580,7 @@ angular.module(
         scope:
             timeframe: "="
             detail: "@"
-        template: $templateCache.get("icsw.rrd.graphsetting.timeframe")
+        template: $templateCache.get("icsw.graphsetting.timeframe")
         link: (scope, el, attrs) ->
             if parseInt(if scope.detail? then scope.detail else "0")
                 scope.show_detail = true
@@ -653,7 +653,7 @@ angular.module(
             scope.open_calendar = ($event, picker) ->
                 scope[picker].open = true
 
-            icswRRDGraphBaseSettingService.load(scope.$id).then(
+            icswGraphBaseSettingService.load(scope.$id).then(
                 (base) ->
                     scope.timeframes = base.timeframe_list
                     scope.val.current = scope.timeframes[0]

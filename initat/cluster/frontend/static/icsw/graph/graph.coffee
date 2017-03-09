@@ -22,26 +22,26 @@ DT_FORM = "YYYY-MM-DD HH:mm ZZ"
 DT_FORM_DISPLAY = "dd, D. MMM YYYY HH:mm:ss"
 
 angular.module(
-    "icsw.rrd.graph",
+    "icsw.graph",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters",
-        "restangular", "icsw.rrd.graphsetting",
+        "restangular", "icsw.graphsetting",
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.graph")
-]).service("icswRRDGraphTools",
+]).service("icswGraphTools",
 [
     "$q", "icswDeviceTreeHelperService", "icswReactTreeConfig",
     "icswDeviceTreeService", "icswTools", "icswSimpleAjaxCall", "ICSW_URLS",
-    "toaster", "$timeout", "icswRRDGraphBasicSetting", "icswTimeFrameService",
-    "icswRRDGraphUserSettingService", "icswParseXMLResponseService",
+    "toaster", "$timeout", "icswGraphBasicSetting", "icswTimeFrameService",
+    "icswGraphUserSettingService", "icswParseXMLResponseService",
     "icswUserGroupRoleTreeService", "icswSavedSelectionService",
     "icswWebSocketService", "ICSW_ENUMS",
 (
     $q, icswDeviceTreeHelperService, icswReactTreeConfig,
     icswDeviceTreeService, icswTools, icswSimpleAjaxCall, ICSW_URLS,
-    toaster, $timeout, icswRRDGraphBasicSetting, icswTimeFrameService,
-    icswRRDGraphUserSettingService, icswParseXMLResponseService,
+    toaster, $timeout, icswGraphBasicSetting, icswTimeFrameService,
+    icswGraphUserSettingService, icswParseXMLResponseService,
     icswUserGroupRoleTreeService, icswSavedSelectionService,
     icswWebSocketService, ICSW_ENUMS,
 
@@ -79,7 +79,7 @@ angular.module(
             _idx++
         return _idx
 
-    class icswRRDSensor
+    class icswSensor
         constructor: (@graph, @json, sth_dict) ->
             @mvs_id = parseInt(@json.db_key.split(".")[0])
             @mvv_id = parseInt(@json.db_key.split(".")[1])
@@ -105,7 +105,7 @@ angular.module(
                 for _entry in sth_dict[@mvv_id]
                     @thresholds.push(_entry)
 
-    class icswRRDDisplayGraph
+    class icswDisplayGraph
         constructor: (@num, @xml, @graph_result) ->
             #@user_settings, @user_group_role_tree, @selection_list, @device_tree) ->
             # state, has the values
@@ -177,7 +177,7 @@ angular.module(
                     if value.db_key.match(/\d+\.\d+/)
                         # only a valid sensor when the db-idx has a device (no compound displays)
                         @num_sensors++
-                        @sensors.push(new icswRRDSensor(@, value, @graph_result.tree.user_settings.threshold_lut_by_mvv_id))
+                        @sensors.push(new icswSensor(@, value, @graph_result.tree.user_settings.threshold_lut_by_mvv_id))
             @sensors = _.sortBy(@sensors, (sensor) -> return sensor.mv_key)
             @num_sensors = @sensors.length
             @change_notifier.notify("feed_result")
@@ -224,7 +224,7 @@ angular.module(
                 _mins = parseInt(@crop_width / 60)
                 toaster.pop("warning", "", "selected timeframe is too narrow (#{_mins} < 10 min)")
 
-    class icswRRDGraphResult
+    class icswGraphResult
         # holds all resulting graphs
         constructor: (@tree) ->
             @list = []
@@ -317,7 +317,7 @@ angular.module(
                 @num++
                 if graph_key not of @matrix
                     @matrix[graph_key] = {}
-                cur_graph = new icswRRDDisplayGraph(
+                cur_graph = new icswDisplayGraph(
                     @num
                     graph
                     @
@@ -358,7 +358,7 @@ angular.module(
                         for _name, _value of @name_lut
                             console.warn " - #{_name}"
 
-    class icswRRDGraphReactTree extends icswReactTreeConfig
+    class icswGraphReactTree extends icswReactTreeConfig
         constructor: (@_refresh_call, @_selection_changed, args) ->
             super(args)
 
@@ -421,11 +421,11 @@ angular.module(
                     )
             return _rv
 
-    class icswRRDGraphTree
+    class icswGraphTree
         # holds all data for graphing
         constructor: () ->
-            @id = icswTools.get_unique_id("RRDGraphTree")
-            @base_setting = new icswRRDGraphBasicSetting()
+            @id = icswTools.get_unique_id("GraphTree")
+            @base_setting = new icswGraphBasicSetting()
             @custom_setting = undefined
             @timeframe = new icswTimeFrameService()
             # created graphs, could be more than one
@@ -434,7 +434,7 @@ angular.module(
             @num_drawing = 0
             # selected entries
             @cur_selected = []
-            @tree = new icswRRDGraphReactTree(
+            @tree = new icswGraphReactTree(
                 @refresh
                 @selection_changed
                 {
@@ -493,14 +493,14 @@ angular.module(
                 [
                     icswDeviceTreeService.load(@id)
                     # needed for graphs
-                    icswRRDGraphUserSettingService.load(@id)
+                    icswGraphUserSettingService.load(@id)
                     icswUserGroupRoleTreeService.load(@id)
                     icswSavedSelectionService.load_selections(@id)
                 ]
             ).then(
                 (data) =>
                     @device_tree = data[0]
-                    # user settings (RRDGraphUserSetting)
+                    # user settings (GraphUserSetting)
                     @user_settings = data[1]
                     # user / group / role tree
                     @user_group_role_tree = data[2]
@@ -793,19 +793,19 @@ angular.module(
 
     return {
         create_tree: () =>
-            return new icswRRDGraphTree()
+            return new icswGraphTree()
         create_result: (tree) =>
-            return new icswRRDGraphResult(tree)
+            return new icswGraphResult(tree)
     }
 ]).controller("icswGraphOverviewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswSimpleAjaxCall",
-    "icswParseXMLResponseService", "toaster", "icswUserService", "icswRRDGraphTools",
+    "icswParseXMLResponseService", "toaster", "icswUserService", "icswGraphTools",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, $timeout, ICSW_URLS, icswSimpleAjaxCall,
-    icswParseXMLResponseService, toaster, icswUserService, icswRRDGraphTools,
+    icswParseXMLResponseService, toaster, icswUserService, icswGraphTools,
 ) ->
         # none, all or selected
         $scope.job_modes = [
@@ -823,8 +823,8 @@ angular.module(
         }
 
         # graph tree
-        $scope.graph_tree = icswRRDGraphTools.create_tree()
-        $scope.graph_result = icswRRDGraphTools.create_result($scope.graph_tree)
+        $scope.graph_tree = icswGraphTools.create_tree()
+        $scope.graph_result = icswGraphTools.create_result($scope.graph_tree)
 
         $scope.new_devsel = (dev_list) ->
             $scope.graph_tree.set_devices(dev_list)
@@ -847,7 +847,7 @@ angular.module(
         $scope.$on("$destroy", () ->
             $scope.graph_tree.close()
         )
-]).directive("icswRrdGraphNormal",
+]).directive("icswGraphNormal",
 [
     "$templateCache",
 (
@@ -855,10 +855,10 @@ angular.module(
 ) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("icsw.rrd.graph.overview")
+        template: $templateCache.get("icsw.graph.overview")
         controller: "icswGraphOverviewCtrl"
     }
-]).directive("icswRrdGraphRemote",
+]).directive("icswGraphRemote",
 [
     "$templateCache",
 (
@@ -866,7 +866,7 @@ angular.module(
 ) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("icsw.rrd.graph.overview")
+        template: $templateCache.get("icsw.graph.overview")
         controller: "icswGraphOverviewCtrl"
         scope: {
             icsw_graph_setting: "=icswGraphSetting"
@@ -889,7 +889,7 @@ angular.module(
             if scope.from_date?
                 scope.graph_tree.timeframe.set_from_to_mom(scope.from_date, scope.to_date)
     }
-]).directive("icswRrdGraphResult",
+]).directive("icswGraphResult",
 [
     "$templateCache", "$compile",
 (
@@ -901,7 +901,7 @@ angular.module(
         scope: {
             graph_result: "=icswGraphResult"
         }
-        template: $templateCache.get("icsw.rrd.graph.list.header")
+        template: $templateCache.get("icsw.graph.list.header")
         link: (scope, element, attr) ->
             scope.$$graph_keys = []
             scope.$watch(
@@ -913,11 +913,11 @@ angular.module(
                             scope.$$graph_keys.push(entry)
             )
     }
-]).service("icswRRDGraphDisplayReact",
+]).service("icswGraphDisplayReact",
 [
-    "$q", "icswRRDSensorDialogService", "ICSW_SIGNALS", "$window", "ICSW_URLS",
+    "$q", "icswSensorDialogService", "ICSW_SIGNALS", "$window", "ICSW_URLS",
 (
-    $q, icswRRDSensorDialogService, ICSW_SIGNALS, $window, ICSW_URLS,
+    $q, icswSensorDialogService, ICSW_SIGNALS, $window, ICSW_URLS,
 ) ->
     {div, text, h4, span, button, img, br} = React.DOM
     return React.createClass(
@@ -1007,7 +1007,7 @@ angular.module(
                                 type: "button"
                                 className: "btn btn-xs btn-primary"
                                 onClick: (event) =>
-                                    icswRRDSensorDialogService(_graph).then(
+                                    icswSensorDialogService(_graph).then(
                                         () ->
                                     )
                             }
@@ -1145,11 +1145,11 @@ angular.module(
                     _graph_list
                 )
     )
-]).directive("icswRrdGraphListGraph",
+]).directive("icswGraphListGraph",
 [
-    "$templateCache", "$compile", "icswRRDGraphDisplayReact",
+    "$templateCache", "$compile", "icswGraphDisplayReact",
 (
-    $templateCache, $compile, icswRRDGraphDisplayReact,
+    $templateCache, $compile, icswGraphDisplayReact,
 ) ->
     return {
         restrict: "E"
@@ -1157,11 +1157,11 @@ angular.module(
         scope: {
             graph: "=icswGraph"
         }
-        # template: $templateCache.get("icsw.rrd.graph.list.graph")
+        # template: $templateCache.get("icsw.graph.list.graph")
         link: (scope, element, attr) ->
             _el = ReactDOM.render(
                 React.createElement(
-                    icswRRDGraphDisplayReact
+                    icswGraphDisplayReact
                     {
                         graph: scope.graph
                     }
@@ -1181,7 +1181,7 @@ angular.module(
             )
     }
     # console.log "S", $scope.graph
-]).directive("icswRrdGraphThreshold",
+]).directive("icswGraphThreshold",
 [
     "$templateCache",
 (
@@ -1189,7 +1189,7 @@ angular.module(
 ) ->
     return {
         restrict: "AE"
-        template: $templateCache.get("icsw.rrd.graph.threshold.overview")
+        template: $templateCache.get("icsw.graph.threshold.overview")
         link: (scope, el, attr) ->
             scope.toggle_enabled = (type) ->
                 scope.threshold["#{type}_enabled"] = !scope.threshold["#{type}_enabled"]
@@ -1225,16 +1225,16 @@ angular.module(
                     return "---"
 
     }
-]).service("icswRRDSensorDialogService",
+]).service("icswSensorDialogService",
 [
     "$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS",
     "icswToolsSimpleModalService", "$timeout", "icswSimpleAjaxCall",
-    "icswComplexModalService", "icswRRDThresholdDialogService",
+    "icswComplexModalService", "icswThresholdDialogService",
     "$rootScope",
 (
     $q, $compile, $templateCache, Restangular, ICSW_URLS,
     icswToolsSimpleModalService, $timeout, icswSimpleAjaxCall,
-    icswComplexModalService, icswRRDThresholdDialogService,
+    icswComplexModalService, icswThresholdDialogService,
     $rootScope,
 ) ->
     return (graph) ->
@@ -1268,18 +1268,18 @@ angular.module(
             )
 
         sub_scope.modify_threshold = (sensor, threshold) ->
-            icswRRDThresholdDialogService(false, sub_scope, sensor, threshold)
+            icswThresholdDialogService(false, sub_scope, sensor, threshold)
 
         sub_scope.create_new_threshold = (sensor) ->
             threshold = sensor.graph.graph_result.tree.user_settings.get_new_threshold(sensor)
-            icswRRDThresholdDialogService(true, sub_scope, sensor, threshold)
+            icswThresholdDialogService(true, sub_scope, sensor, threshold)
 
         sub_scope.graph = graph
 
         def = $q.defer()
         icswComplexModalService(
             {
-                message: $compile($templateCache.get("icsw.rrd.graph.sensor"))(sub_scope)
+                message: $compile($templateCache.get("icsw.graph.sensor"))(sub_scope)
                 title: "Modify / Create Sensors (" + graph.get_sensor_info() + ", " + graph.get_threshold_info() + ")"
                 css_class: "modal-wide"
                 ok_label: "Close"
@@ -1294,7 +1294,7 @@ angular.module(
                 def.resolve("closed")
         )
         return def.promise
-]).service("icswRRDThresholdDialogService",
+]).service("icswThresholdDialogService",
 [
     "$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS",
     "icswToolsSimpleModalService", "$timeout", "icswSimpleAjaxCall",
@@ -1337,7 +1337,7 @@ angular.module(
             console.log "la", idx
         icswComplexModalService(
             {
-                message: $compile($templateCache.get("icsw.rrd.graph.threshold.form"))(th_scope)
+                message: $compile($templateCache.get("icsw.graph.threshold.form"))(th_scope)
                 title: title
                 ok_label: if create then "Create" else "Modify"
                 ok_callback: (modal) ->
@@ -1373,7 +1373,7 @@ angular.module(
                 th_scope.$destroy()
         )
 ]).factory(
-    "icswRRDVectorInfoFactory"
+    "icswVectorInfoFactory"
     [() ->
         return React.createClass(
             {
@@ -1404,11 +1404,11 @@ angular.module(
             }
         )
     ]
-).directive("icswRrdVectorInfo",
+).directive("icswVectorInfo",
 [
-    "icswRRDVectorInfoFactory",
+    "icswVectorInfoFactory",
 (
-    icswRRDVectorInfoFactory
+    icswVectorInfoFactory
 ) ->
     return {
         restrict: "EA"
@@ -1420,7 +1420,7 @@ angular.module(
                 "vectorInfo",
                 (new_val) ->
                     ReactDOM.render(
-                        React.createElement(icswRRDVectorInfoFactory, new_val)
+                        React.createElement(icswVectorInfoFactory, new_val)
                         el[0]
                     )
                 true

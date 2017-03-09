@@ -55,67 +55,98 @@ class Parser(object):
     def add_db_group(self):
         group = self.parser.add_argument_group("database options")
         group.add_argument(
-            "--engine", choices=AVAILABLE_DATABASES,
+            "--engine",
+            choices=AVAILABLE_DATABASES,
             help="choose database engine [%(default)s]", 
         )
         group.add_argument(
-            "--user", type=str,
+            "--user",
+            type=str,
             help="set name of database user"
         )
         group.add_argument(
-            "--passwd", type=str,
+            "--passwd",
+            type=str,
             help="set password for database user"
         )
         group.add_argument(
-            "--database", type=str, help="set name of cluster database"
+            "--database",
+            type=str,
+            help="set name of cluster database"
         )
         group.add_argument(
-            "--host", type=str, help="set database host"
+            "--host",
+            type=str,
+            help="set database host"
         )
         group.add_argument(
-            "--port", type=int, help="set database port"
+            "--port",
+            type=int,
+            help="set database port"
         )
         group.add_argument(
-            "--ignore-existing", default=False, action="store_true",
-            help="Ignore existing db.cf file {} [%(default)s]".format(DB_CS_FILENAME)
+            "--ignore-existing",
+            default=False,
+            action="store_true",
+            help="Ignore existing db.cf file {} [%(default)s]".format(
+                DB_CS_FILENAME
+            )
         )
         group.add_argument(
-            "--use-existing", default=False, action="store_true",
-            help="use existing db.cf file {} [%(default)s]".format(DB_CS_FILENAME)
+            "--use-existing",
+            default=False,
+            action="store_true",
+            help="use existing db.cf file {} [%(default)s]".format(
+                DB_CS_FILENAME
+            )
         )
 
     def add_migration_group(self):
         group = self.parser.add_argument_group("migration options")
         group.add_argument(
-            "--clear-migrations", default=False, action="store_true",
+            "--clear-migrations",
+            default=False,
+            action="store_true",
             help="clear migrations before database creationg [%(default)s]"
         )
         group.add_argument(
-            "--no-initial-data", default=False, action="store_true",
+            "--no-initial-data",
+            default=False,
+            action="store_true",
             help="disable inserting of initial data [%(default)s], only useful" 
             " for the migration from an older version of the clustersoftware"
         )
         group.add_argument(
-            "--migrate", default=False, action="store_true",
+            "--migrate",
+            default=False,
+            action="store_true",
             help="migrate current cluster database [%(default)s]"
         )
 
     def add_creation_group(self):
         group = self.parser.add_argument_group("database creation options")
         group.add_argument(
-            "--superuser", default="admin", type=str,
+            "--superuser",
+            default="admin",
+            type=str,
             help="name of the superuser [%(default)s]"
         )
         group.add_argument(
-            "--email", default="admin@localhost", type=str,
+            "--email",
+            default="admin@localhost",
+            type=str,
             help="admin address of superuser [%(default)s]"
         )
         group.add_argument(
-            "--no-superuser", default=False, action="store_true",
+            "--no-superuser",
+            default=False,
+            action="store_true",
             help="do not create a superuser [%(default)s]"
         )
         group.add_argument(
-            "--system-group-name", default="system", type=str,
+            "--system-group-name",
+            default="system",
+            type=str,
             help="name of system group [%(default)s]"
         )
 

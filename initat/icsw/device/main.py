@@ -28,8 +28,8 @@ from django.db.models import Q
 from initat.cluster.backbone import routing
 from initat.cluster.backbone.models import device, device_group
 from initat.cluster.backbone.models.functions import to_system_tz
-from initat.icsw.service.instance import InstanceXML
-from initat.tools import logging_tools, net_tools, server_command, process_tools
+from initat.tools import logging_tools, net_tools, server_command
+from ..service.instance import InstanceXML
 
 
 class JoinedLogs(object):
@@ -45,7 +45,12 @@ class JoinedLogs(object):
             print("no log records found")
         else:
             for _key in sorted(self._records.keys()):
-                print("{} records ({})".format(_key, logging_tools.get_plural("entry", len(self._records[_key]))))
+                print(
+                    "{} records ({})".format(
+                        _key,
+                        logging_tools.get_plural("entry", len(self._records[_key]))
+                    )
+                )
                 _prev_day = None
                 for _entry in sorted(self._records[_key]):
                     _cur_day = datetime.date(_entry[0].year, _entry[0].month, _entry[0].day)
@@ -88,12 +93,19 @@ class JoinedLogs(object):
 
 
 def device_info(opt_ns, cur_dev, j_logs):
-    print("Information about device '{}' (full name {}, devicegroup {})".format(
-        str(cur_dev),
-        str(cur_dev.full_name),
-        str(cur_dev.device_group))
+    print(
+        "Information about device '{}' (full name {}, devicegroup {})".format(
+            str(cur_dev),
+            str(cur_dev.full_name),
+            str(cur_dev.device_group)
+        )
     )
-    print("UUID is '{}', database-ID is {:d}".format(cur_dev.uuid, cur_dev.pk))
+    print(
+        "UUID is '{}', database-ID is {:d}".format(
+            cur_dev.uuid,
+            cur_dev.pk
+        )
+    )
     if opt_ns.ip:
         net_devs = cur_dev.netdevice_set.all().order_by("devname")
         if len(net_devs):
@@ -113,11 +125,19 @@ def device_info(opt_ns, cur_dev, j_logs):
         print("")
     if opt_ns.boot:
         if opt_ns.join_logs:
-            j_logs.feed("boot", cur_dev, cur_dev.deviceboothistory_set.all())
+            j_logs.feed(
+                "boot",
+                cur_dev,
+                cur_dev.deviceboothistory_set.all()
+            )
         else:
             if cur_dev.deviceboothistory_set.count():
                 _brs = cur_dev.deviceboothistory_set.all()
-                print("found {}".format(logging_tools.get_plural("boot record", len(_brs))))
+                print(
+                    "found {}".format(
+                        logging_tools.get_plural("boot record", len(_brs))
+                    )
+                )
                 for _entry in _brs:
                     print(j_logs.format_boot_record(_entry))
             else:
@@ -125,12 +145,19 @@ def device_info(opt_ns, cur_dev, j_logs):
 
 
 def device_syslog(opt_ns, cur_dev, j_logs):
-    print("Information about device '{}' (full name {}, devicegroup {})".format(
-        str(cur_dev),
-        str(cur_dev.full_name),
-        str(cur_dev.device_group))
+    print(
+        "Information about device '{}' (full name {}, devicegroup {})".format(
+            str(cur_dev),
+            str(cur_dev.full_name),
+            str(cur_dev.device_group)
+        )
     )
-    print("UUID is '{}', database-ID is {:d}".format(cur_dev.uuid, cur_dev.pk))
+    print(
+        "UUID is '{}', database-ID is {:d}".format(
+            cur_dev.uuid,
+            cur_dev.pk
+        )
+    )
     _cr = routing.SrvTypeRouting(force=True, ignore_errors=True)
     _ST = "logcheck-server"
     if _ST in _cr.service_types:
@@ -165,7 +192,9 @@ def device_syslog(opt_ns, cur_dev, j_logs):
             _lines = _result.xpath("ns:lines", start_el=_dev)[0]
             _rates = _result.xpath("ns:rates", start_el=_dev)
             if _rates:
-                _rates = {int(_el.get("timeframe")): float(_el.get("rate")) for _el in _rates[0]}
+                _rates = {
+                    int(_el.get("timeframe")): float(_el.get("rate")) for _el in _rates[0]
+                }
                 print(
                     "rate info: {}".format(
                         ", ".join(
@@ -213,7 +242,12 @@ def show_vector(_dev):
         "mvstructentry_set__mvvalueentry_set",
     )[0]
     print()
-    print("showing {} ({:d} structural entries)".format(str(_mv), len(_mv.mvstructentry_set.all())))
+    print(
+        "showing {} ({:d} structural entries)".format(
+            str(_mv),
+            len(_mv.mvstructentry_set.all())
+        )
+    )
     for _struct in _mv.mvstructentry_set.all():
         _key = _struct.key
         print(" {:<40s}  + {}".format(_key, str(_struct)))
@@ -250,10 +284,14 @@ def remove_graph(_dev, opt_ns):
 def dev_main(opt_ns):
     # resolve devices
     dev_dict = {
-        _dev.name: _dev for _dev in device.objects.filter(Q(name__in=opt_ns.dev))
+        _dev.name: _dev for _dev in device.objects.filter(
+            Q(name__in=opt_ns.dev)
+        )
     }
     if opt_ns.groupname:
-        for _dev in device.objects.filter(Q(device_group__name__in=opt_ns.groupname.split(","))):
+        for _dev in device.objects.filter(
+            Q(device_group__name__in=opt_ns.groupname.split(","))
+        ):
             dev_dict[_dev.name] = _dev
     _unres = set(opt_ns.dev) - set(dev_dict.keys())
     print(
@@ -297,12 +335,17 @@ def overview_main(opt_ns):
             print(_dev.pk)
     else:
         print("Group structure")
-        for _devg in device_group.objects.all().prefetch_related("device_group"):
+        for _devg in device_group.objects.all().prefetch_related(
+            "device_group"
+        ):
             print(
                 "G [pk={:4d}] {}, {}".format(
                     _devg.pk,
                     str(_devg),
-                    logging_tools.get_plural("device", _devg.device_group.all().count()),
+                    logging_tools.get_plural(
+                        "device",
+                        _devg.device_group.all().count()
+                    ),
                 )
             )
             if opt_ns.devices:

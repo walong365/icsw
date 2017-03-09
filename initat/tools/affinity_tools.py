@@ -38,7 +38,12 @@ def find_file(file_name, s_path=None):
         s_path = [s_path]
     s_path.extend(
         [
-            "/opt/cluster/sbin", "/opt/cluster/bin", "/bin", "/usr/bin", "/sbin", "/usr/sbin"
+            "/opt/cluster/sbin",
+            "/opt/cluster/bin",
+            "/bin",
+            "/usr/bin",
+            "/sbin",
+            "/usr/sbin"
         ]
     )
     for cur_path in s_path:
@@ -51,7 +56,9 @@ class CoreDistribution(object):
     def __init__(self, cpu_c, num_cpu):
         self.cpu_container = cpu_c
         self.num_cpu = num_cpu
-        _stat, _out = self.cpu_container.dist_call("--single --taskset {:d}".format(self.num_cpu))
+        _stat, _out = self.cpu_container.dist_call(
+            "--single --taskset {:d}".format(self.num_cpu)
+        )
         self.taskset = [int(_part, 16) for _part in _out.split("\n")]
         self.cpunum = [CPU_MASKS[_set] for _set in self.taskset]
 
@@ -96,7 +103,10 @@ class CPUContainer(dict):
             _entry[1] for _entry in list(
                 sorted(
                     [
-                        (value.usage["t"], key) for key, value in self.items() if key not in excl_list
+                        (
+                            value.usage["t"],
+                            key
+                        ) for key, value in self.items() if key not in excl_list
                     ]
                 )
             )
@@ -104,10 +114,14 @@ class CPUContainer(dict):
         return free_list
 
     def ts_call(self, com_line):
-        return subprocess.getstatusoutput("{} {}".format(self.taskset_bin, com_line))
+        return subprocess.getstatusoutput(
+            "{} {}".format(self.taskset_bin, com_line)
+        )
 
     def dist_call(self, com_line):
-        return subprocess.getstatusoutput("{} {}".format(self.hwloc_distrib_bin, com_line))
+        return subprocess.getstatusoutput(
+            "{} {}".format(self.hwloc_distrib_bin, com_line)
+        )
 
     def get_usage_str(self):
         return "|".join(
@@ -144,7 +158,8 @@ class CPUStruct(object):
 
 class ProcStruct(object):
     __slots__ = (
-        "pid", "act_mask", "single_cpu_num", "stat", "usage", "name", "cpu_container",
+        "pid", "act_mask", "single_cpu_num", "stat",
+        "usage", "name", "cpu_container",
         "job_id", "task_id",
     )
 
@@ -225,17 +240,23 @@ class ProcStruct(object):
         self.act_mask = self._get_mask()
 
     def _get_mask(self):
-        c_stat, c_out = self.cpu_container.ts_call("-p {:d}".format(self.pid))
+        c_stat, c_out = self.cpu_container.ts_call(
+            "-p {:d}".format(self.pid)
+        )
         if c_stat:
             return MAX_MASK
         else:
             return int(c_out.strip().split()[-1], 16)
 
     def _set_mask(self, t_cpu):
-        return self.cpu_container.ts_call("-pc {:d} {:d}".format(t_cpu, self.pid))
+        return self.cpu_container.ts_call(
+            "-pc {:d} {:d}".format(t_cpu, self.pid)
+        )
 
     def _clear_mask(self):
-        return self.cpu_container.ts_call("-p {:x} {:d}".format(MAX_MASK, self.pid))
+        return self.cpu_container.ts_call(
+            "-p {:x} {:d}".format(MAX_MASK, self.pid)
+        )
 
     def __unicode__(self):
         return "{} [{:d}]".format(self.name, self.pid)

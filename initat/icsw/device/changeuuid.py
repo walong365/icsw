@@ -60,9 +60,19 @@ def main(opt_ns):
     new_uuid = uuid_tools.get_uuid(renew=True)
     _check_uuid = uuid_tools.get_uuid()
     if _check_uuid == cur_uuid:
-        print(" *** error changing uuid from {} to {}".format(cur_uuid, new_uuid))
+        print(
+            " *** error changing uuid from {} to {}".format(
+                cur_uuid,
+                new_uuid
+            )
+        )
         sys.exit(-1)
     else:
-        print("changed uuid from {} to {}".format(cur_uuid, new_uuid))
+        print(
+            "changed uuid from {} to {}".format(
+                cur_uuid,
+                new_uuid
+            )
+        )
         restart_services()
         sys.exit(0)

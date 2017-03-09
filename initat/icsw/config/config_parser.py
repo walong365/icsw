@@ -82,25 +82,41 @@ class Parser(object):
         parser = child_parser.add_parser("show", help="show config open(s) for NOCTUA / CORVUS")
         parser.set_defaults(childcom="show")
         parser.add_argument(
-            "-s", dest="full_strip", default=False, action="store_true", help="strip all empty lines from file [%(default)s]"
+            "-s",
+            dest="full_strip",
+            default=False,
+            action="store_true",
+            help="strip all empty lines from file [%(default)s]"
         )
         parser.add_argument(
-            "-c", dest="remove_hashes", default=False, action="store_true",
+            "-c",
+            dest="remove_hashes",
+            default=False,
+            action="store_true",
             help="remove all lines starting with hashes from file [%(default)s]"
         )
-        parser.add_argument("-b", dest="binary", default=False, action="store_true", help="treat files as binaries [%(default)s]")
         parser.add_argument(
-            "--short-path", dest="short_path", default=False, action="store_true",
+            "-b",
+            dest="binary",
+            default=False,
+            action="store_true",
+            help="treat files as binaries [%(default)s]"
+        )
+        parser.add_argument(
+            "--short-path",
+            dest="short_path",
+            default=False,
+            action="store_true",
             help="use short path for file objects [%(default)s]"
         )
         parser.add_argument("files", nargs="+", help="files to operate on")
 
     def _add_role_parser(self, child_parser):
         parser = child_parser.add_parser(
-                "role",
-                help="do an automatic configuration based on the intended "
-                     "usage of the server"
-                )
+            "role",
+            help="do an automatic configuration based on the intended "
+                 "usage of the server"
+            )
         parser.set_defaults(childcom="role")
         parser.add_argument('role', choices=['noctua'])
 

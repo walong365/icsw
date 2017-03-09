@@ -1,0 +1,12 @@
+<script type="text/ng-template" id="icsw.weathermap">
+    <icsw-weathermap-overview icsw-sel-man="0"></icsw-weathermap-overview>
+</script>
+
+<script type="text/ng-template" id="icsw.weathermap.overview">
+    <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching Data from Server ...</div>
+    <div class="container-fluid" ng-if="struct.data_valid">
+        <h3>
+            Weathermap ({{ struct.devices.length }} devices)
+        </h3>
+    </div>
+</script>

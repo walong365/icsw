@@ -40,7 +40,9 @@ class db_device_variable(object):
         self.__var_name = var_name
         self.__var_type, self.__description = (None, kwargs.get("description", "not set"))
         try:
-            act_dv = device_variable.objects.get(Q(name=var_name) & Q(device=self.__device))
+            act_dv = device_variable.objects.get(
+                Q(name=var_name) & Q(device=self.__device)
+            )
         except device_variable.DoesNotExist:
             self.__act_dv = None
             self.__var_value = None
@@ -50,7 +52,13 @@ class db_device_variable(object):
                 var_type=act_dv.var_type,
                 description=act_dv.description,
             )
-            self.set_value(getattr(act_dv, "val_%s" % (self.__var_type_name)), type_ok=True)
+            self.set_value(
+                getattr(
+                    act_dv,
+                    "val_{}".format(self.__var_type_name)
+                ),
+                type_ok=True
+            )
         self.set_stuff(**kwargs)
         if "value" in kwargs:
             self.set_value(kwargs["value"])
@@ -62,7 +70,11 @@ class db_device_variable(object):
         if self.__act_dv:
             self.__act_dv.description = self.__description
             self.__act_dv.var_type = self.__var_type
-            setattr(self.__act_dv, "val_{}".format(self.__var_type_name), self.__var_value)
+            setattr(
+                self.__act_dv,
+                "val_{}".format(self.__var_type_name),
+                self.__var_value
+            )
         else:
             self.__act_dv = device_variable(
                 description=self.__description,
@@ -70,7 +82,11 @@ class db_device_variable(object):
                 name=self.__var_name,
                 device=self.__device
             )
-            setattr(self.__act_dv, "val_{}".format(self.__var_type_name), self.__var_value)
+            setattr(
+                self.__act_dv,
+                "val_{}".format(self.__var_type_name),
+                self.__var_value
+            )
         self.__act_dv.save()
 
     def is_set(self):
@@ -118,7 +134,11 @@ class DeviceRecognition(object):
         except device.DoesNotExist:
             self.device = None
         # get IP-adresses (from IP)
-        self.local_ips = list(net_ip.objects.filter(Q(netdevice__device__name=self.short_host_name)).values_list("ip", flat=True))
+        self.local_ips = list(
+            net_ip.objects.filter(
+                Q(netdevice__device__name=self.short_host_name)
+            ).values_list("ip", flat=True)
+        )
         # get configured IP-Adresses
         ipv4_dict = {
             cur_if_name: [
@@ -130,7 +150,9 @@ class DeviceRecognition(object):
             ] if 2 in value
         }
         # remove loopback addresses
-        self_ips = [_ip for _ip in sum(list(ipv4_dict.values()), []) if not _ip.startswith("127.")]
+        self_ips = [
+            _ip for _ip in sum(list(ipv4_dict.values()), []) if not _ip.startswith("127.")
+        ]
         self.ip_lut = {}
         self.ip_r_lut = {}
         if self_ips:
@@ -149,9 +171,18 @@ class DeviceRecognition(object):
             # build lut
             for _dev in self.device_dict.values():
                 # gather all ips
-                _dev_ips = sum([list(_ndev.net_ip_set.all()) for _ndev in _dev.netdevice_set.all()], [])
+                _dev_ips = sum(
+                    [
+                        list(
+                            _ndev.net_ip_set.all()
+                        ) for _ndev in _dev.netdevice_set.all()
+                    ],
+                    []
+                )
                 # filter for valid ips (no loopback addresses)
-                _dev_ips = [_ip.ip for _ip in _dev_ips if _ip.network.network_type.identifier != "l" and not _ip.ip.startswith("127.")]
+                _dev_ips = [
+                    _ip.ip for _ip in _dev_ips if _ip.network.network_type.identifier != "l" and not _ip.ip.startswith("127.")
+                ]
                 for _dev_ip in _dev_ips:
                     self.ip_lut[_dev_ip] = _dev
                 self.ip_r_lut[_dev] = _dev_ips

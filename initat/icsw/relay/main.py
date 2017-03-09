@@ -43,7 +43,11 @@ class HRSink(dict):
 
     def feed(self, key, value):
         if not value.startswith("urn:uuid:"):
-            print("correcting value '{}' by adding urn:uuid: prefix".format(value))
+            print(
+                "correcting value '{}' by adding urn:uuid: prefix".format(
+                    value
+                )
+            )
             value = "urn:uuid:{}".format(value)
         # check for service postfix
         if value.count(":") > 2:

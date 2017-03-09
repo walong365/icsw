@@ -1,8 +1,8 @@
-<script type="text/ng-template" id="icsw.rrd.graph">
-    <icsw-rrd-graph-normal icsw-sel-man="0"></icsw-rrd-graph-normal>
+<script type="text/ng-template" id="icsw.graph">
+    <icsw-graph-normal icsw-sel-man="0"></icsw-graph-normal>
 </script>
 
-<script type="text/ng-template" id="icsw.rrd.graph.overview">
+<script type="text/ng-template" id="icsw.graph.overview">
     <div class="container-fluid">
         <div>
             <h3>
@@ -35,7 +35,7 @@
                     <th>Vector Info</th>
                     <td>
                         <div class="input-group form-inline">
-                            <icsw-rrd-vector-info vector-info="graph_tree.vector_data"></icsw-rrd-vector-info>
+                            <icsw-vector-info vector-info="graph_tree.vector_data"></icsw-vector-info>
                         </div>
                     </td>
                 </tr>
@@ -43,7 +43,7 @@
                     <th>Settings</th>
                     <td>
                         <div class="input-group form-inline">
-                            <icsw-rrd-graph-setting></icsw-rrd-graph-setting>
+                            <icsw-graph-setting></icsw-graph-setting>
                             <button
                                 class="btn btn-success btn-xs"
                                 ng-disabled="!graph_tree.cur_selected.length || !graph_tree.timeframe.valid"
@@ -60,7 +60,7 @@
                     <th>Timeframe</th>
                     <td>
                         <div class="input-group form-inline">
-                            <icsw-rrd-graph-time-frame timeframe="graph_tree.timeframe" detail="1"></icsw-rrd-graph-time-frame>
+                            <icsw-graph-time-frame timeframe="graph_tree.timeframe" detail="1"></icsw-graph-time-frame>
                         </div>
                     </td>
                 </tr>
@@ -131,15 +131,15 @@
                 ng-class="graph_tree.base_setting.show_tree && 'col-md-9' || 'col-md-12'"
                 ng-show="graph_result.list.length"
             >
-                <icsw-rrd-graph-result
+                <icsw-graph-result
                     icsw-graph-result="graph_result"
-                ></icsw-rrd-graph-result>
+                ></icsw-graph-result>
             </div>
         </div>
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.rrd.graph.list.header">
+<script type="text/ng-template" id="icsw.graph.list.header">
     <div>
         <h3>
             <ng-pluralize
@@ -153,16 +153,16 @@
         <table class="table-condensed">
             <tr ng-repeat="gkey in $$graph_keys">
                 <td ng-repeat="(dkey, graph) in graph_result.matrix[gkey]" style="vertical-align:top;">
-                    <icsw-rrd-graph-list-graph
+                    <icsw-graph-list-graph
                         icsw-graph="graph"
-                    ></icsw-rrd-graph-list-graph>
+                    ></icsw-graph-list-graph>
                 </td>
             </tr>
         </table>
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.rrd.graph.sensor">
+<script type="text/ng-template" id="icsw.graph.sensor">
     <div ng-cloak>
         <uib-accordion close-others="false">
             <div uib-accordion-group class="panel-default" ng-repeat="sensor in graph.sensors" is-open="sensor.open">
@@ -186,7 +186,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr ng-repeat="threshold in sensor.thresholds" icsw-rrd-graph-threshold sensor="sensor">
+                            <tr ng-repeat="threshold in sensor.thresholds" icsw-graph-threshold sensor="sensor">
                             </tr>
                         </tbody>
                     </table>
@@ -204,7 +204,7 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.rrd.graph.threshold.overview">
+<script type="text/ng-template" id="icsw.graph.threshold.overview">
     <td>{{ threshold.name }}</td>
     <td>{{ resolve_user() }}</td>
     <td>{{ threshold.lower_value | number: 4 }}</td>
@@ -236,7 +236,7 @@
     </td>
 </script>
 
-<script type="text/ng-template" id="icsw.rrd.graph.threshold.form">
+<script type="text/ng-template" id="icsw.graph.threshold.form">
     <form class="form-horizontal" name="form_data">
         <h3>Threshold Definition</h3>
         <fieldset>

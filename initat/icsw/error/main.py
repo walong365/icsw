@@ -105,7 +105,14 @@ class ErrorRecord(object):
 
     def show_lines(self):
         f_str = "%%3d (%%%ds) : %%s" % (max([len(x) for x, _y in self.__lines]))
-        return "\n".join([f_str % (l_idx, state, line) for (state, line), l_idx in zip(self.__lines, range(len(self.__lines)))])
+        return "\n".join(
+            [
+                f_str % (l_idx, state, line) for (state, line), l_idx in zip(
+                    self.__lines,
+                    range(len(self.__lines))
+                )
+            ]
+        )
 
     def __repr__(self):
         return "error from pid {:d} ({})".format(
@@ -129,23 +136,53 @@ def main(options):
         if process_tools.find_file("xz"):
             _pf = ".xz"
             _compr = "J"
-            c_stat, out = subprocess.getstatusoutput("tar cpJf {}{} {}".format(new_file_name, _pf, err_file_name))
+            c_stat, out = subprocess.getstatusoutput(
+                "tar cpJf {}{} {}".format(
+                    new_file_name,
+                    _pf,
+                    err_file_name
+                )
+            )
         elif process_tools.find_file("bzip2"):
             _pf = ".bz2"
             _compr = "j"
-            c_stat, out = subprocess.getstatusoutput("tar cpjf {}{} {}".format(new_file_name, _pf, err_file_name))
+            c_stat, out = subprocess.getstatusoutput(
+                "tar cpjf {}{} {}".format(
+                    new_file_name,
+                    _pf,
+                    err_file_name
+                )
+            )
         else:
             _pf = ""
             _compr = ""
-        print("taring {} to {}{} ...".format(err_file_name, new_file_name, _pf))
-        c_stat, out = subprocess.getstatusoutput("tar cp{}f {}{} {}".format(_compr, new_file_name, _pf, err_file_name))
+        print(
+            "taring {} to {}{} ...".format(
+                err_file_name,
+                new_file_name,
+                _pf
+            )
+        )
+        c_stat, out = subprocess.getstatusoutput(
+            "tar cp{}f {}{} {}".format(
+                _compr,
+                new_file_name,
+                _pf,
+                err_file_name
+            )
+        )
         if c_stat:
             print("*** error (%d): %s" % (c_stat, out))
         else:
             os.unlink(err_file_name)
         sys.exit(c_stat)
     try:
-        err_lines = [line.strip() for line in open(err_file_name, "r").read().split("\n") if line.count("[ES ")]
+        err_lines = [
+            line.strip() for line in open(
+                err_file_name,
+                "r"
+            ).read().split("\n") if line.count("[ES ")
+        ]
     except IOError:
         print(
             "Cannot read '{}': {}".format(
@@ -182,7 +219,12 @@ def main(options):
             info_parts.pop(0)
             info_parts.pop(0)
         except:
-            print("Error pre-parsing line '{}': {}".format(line, process_tools.get_except_info()))
+            print(
+                "Error pre-parsing line '{}': {}".format(
+                    line,
+                    process_tools.get_except_info()
+                )
+            )
         else:
             try:
                 _struct = json.loads(bz2.decompress(base64.b64decode(_chunk)))
@@ -217,7 +259,12 @@ def main(options):
                 if err_line.strip() or not options.noempty:
                     act_err.add_line(line_date, line_state, err_line)
             except:
-                print("Error parsing line '%s': %s" % (line, process_tools.get_except_info()))
+                print(
+                    "Error parsing line '{}': {}".format(
+                        line,
+                        process_tools.get_except_info()
+                    )
+                )
 
     print(
         "Found {}".format(
