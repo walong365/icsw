@@ -48,7 +48,8 @@ from initat.tools.server_mixins import GetRouteToDevicesMixin, ICSWBasePool, \
 from .aggregate import AggregateProcess
 from .background import SNMPJob, BackgroundJob, IPMIBuilder
 from .collectd_struct import CollectdHostInfo, ext_com, HostMatcher, FileCreator
-from .config import global_config, IPC_SOCK_SNMP
+from .config import global_config
+from .constants import IPC_SOCK_SNMP
 from .dbsync import SyncProcess
 from .resize import resize_process
 from .rsync import RSyncMixin
@@ -667,6 +668,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         if self._still_active("received XML data"):
             if len(in_data) == 2:
                 in_uuid, in_xml = in_data
+                in_uuid = in_uuid.decode("utf-8")
                 try:
                     in_com = server_command.srv_command(source=in_xml)
                 except:
@@ -681,8 +683,8 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                     _send_result = True
                     com_text = in_com["command"].text
                     self.log("got command {} from {}".format(com_text, in_uuid))
-                    if com_text in ["host_list", "key_list"]:
-                        self._handle_hk_command(in_com, com_text)
+                    if com_text in ["host_list", "key_list", "wm_list"]:
+                        self._handle_hkw_command(in_com, com_text)
                     elif com_text in ["sync_sensor_threshold"]:
                         self._sync_sensor_threshold(in_com)
                     elif com_text == "trigger_sensor_threshold":
@@ -1300,7 +1302,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         BackgroundJob.check_jobs(start=self.__snmp_running)
         SNMPJob.check_jobs(start=self.__snmp_running)
 
-    def _handle_hk_command(self, in_com, com_text):
+    def _handle_hkw_command(self, in_com, com_text):
         h_filter, k_filter = (
             in_com.get("host_filter", ".*"),
             in_com.get("key_filter", ".*")
@@ -1354,6 +1356,11 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             result = E.host_list(entries="{:d}".format(len(match_uuids)))
             for cur_uuid in match_uuids:
                 result.append(self.__hosts[cur_uuid].get_key_list(key_filter))
+            in_com["result"] = result
+        elif com_text == "wm_list":
+            result = E.host_list(entries="{:d}".format(len(match_uuids)))
+            for cur_uuid in match_uuids:
+                result.append(self.__hosts[cur_uuid].get_wm_list(key_filter))
             in_com["result"] = result
         in_com.set_result("got command {}".format(com_text))
 

@@ -25,7 +25,8 @@ import time
 
 from initat.cluster.backbone import db_tools
 from initat.tools import logging_tools, process_tools, rrd_tools, server_mixins, threading_tools
-from .config import global_config, MAX_FOUND
+from .config import global_config
+from .constants import MAX_FOUND
 from .rsync import RSyncMixin
 
 

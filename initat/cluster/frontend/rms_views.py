@@ -395,6 +395,7 @@ class get_rms_current_json(View, RMSJsonMixin):
     def post(self, request):
         import memcache
         from initat.tools import sge_tools
+        from initat.collectd.constants import CollectdMCKeyEnum
         _post = request.POST
         my_sge_info = get_sge_info()
         my_sge_info.update()
@@ -429,7 +430,7 @@ class get_rms_current_json(View, RMSJsonMixin):
                 )
             ]
         )
-        h_dict_raw = _mcc.get("cc_hc_list")
+        h_dict_raw = _mcc.get(CollectdMCKeyEnum.main_key.value)
         if h_dict_raw:
             h_dict = json.loads(h_dict_raw)
         else:
@@ -455,7 +456,11 @@ class get_rms_current_json(View, RMSJsonMixin):
         for _name, _struct in _dev_dict.items():
             if _struct["uuid"] in h_dict:
                 try:
-                    _value_list = json.loads(_mcc.get("cc_hc_{}".format(_struct["uuid"])))
+                    _value_list = json.loads(
+                        _mcc.get(
+                            CollectdMCKeyEnum.host_key.value(_struct["uuid"])
+                        )
+                    )
                 except:
                     logger.error(
                         "error decoding json.loads: {}".format(

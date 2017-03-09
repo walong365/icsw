@@ -32,6 +32,7 @@ from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device_group
 from initat.tools import logging_tools, process_tools, server_mixins, threading_tools
 from .config import global_config
+from .constants import CollectdMCKeyEnum
 
 
 class AGStruct(object):
@@ -598,7 +599,7 @@ class AggregateProcess(threading_tools.icswProcessObj, server_mixins.Operational
 
     def _fetch_hosts(self, mc):
         try:
-            h_dict = json.loads(mc.get("cc_hc_list"))
+            h_dict = json.loads(mc.get(CollectdMCKeyEnum.main_key.value))
         except:
             self.log(
                 "error fetching host_list: {}".format(
@@ -619,7 +620,7 @@ class AggregateProcess(threading_tools.icswProcessObj, server_mixins.Operational
         # error lists
         _warn_c_list, _error_ce_list = ([], [])
         for _key in _uuid_list:
-            _val = mc.get("cc_hc_{}".format(_key))
+            _val = mc.get(CollectdMCKeyEnum.host_key.value(_key))
             if _val is not None:
                 v_dict[_key] = self.ag_tls.filter(json.loads(_val))
                 self.__vector_filter_cache[_key] = v_dict[_key]

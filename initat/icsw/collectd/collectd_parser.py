@@ -32,7 +32,7 @@ class Parser(object):
         from initat.cluster.backbone.server_enums import icswServiceEnum
         parser = sub_parser.add_parser("collectd", help="collectd helper commands")
         parser.set_defaults(subcom="collectd", execute=self._execute)
-        com_list = ["host_list", "key_list"]
+        com_list = ["host_list", "key_list", "wm_list"]
         parser.add_argument(
             "command",
             type=str,
@@ -67,7 +67,12 @@ class Parser(object):
         parser.add_argument("--host-filter", help="set filter for host name [%(default)s]", type=str, default=".*", dest="host_filter")
         parser.add_argument("--key-filter", help="set filter for key name [%(default)s]", type=str, default=".*", dest="key_filter")
         parser.add_argument("--mode", type=str, default="tcp", choices=["tcp", "memcached"], help="set access type [%(default)s]")
-        parser.add_argument("--mc-addr", type=str, default="127.0.0.1", help="address of memcached [%(default)s]")
+        parser.add_argument(
+            "--mc-addr",
+            type=str,
+            default="127.0.0.1",
+            help="address of memcached [%(default)s]"
+        )
         parser.add_argument(
             "--mc-port",
             type=int,

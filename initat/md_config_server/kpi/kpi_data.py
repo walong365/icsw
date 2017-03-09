@@ -35,6 +35,7 @@ from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiRR
 from initat.md_sync_server.common import LiveSocket
 from initat.tools import logging_tools
 from functools import reduce
+from initat.collectd.constants import CollectdMCKeyEnum
 
 
 class KpiData(object):
@@ -266,7 +267,7 @@ class KpiData(object):
         )
         host_rrd_data = {}
         try:
-            host_list_mc = mc.get("cc_hc_list")
+            host_list_mc = mc.get(CollectdMCKeyEnum.main_key.value)
             if host_list_mc is None:
                 raise Exception("host list is None")
         except Exception as e:
@@ -294,7 +295,7 @@ class KpiData(object):
                             )
                         )
 
-                    host_mc = mc.get("cc_hc_{}".format(host_uuid))
+                    host_mc = mc.get(CollectdMCKeyEnum.host_key.value(host_uuid))
                     if host_mc is not None:
                         values_list = json.loads(host_mc)
 

@@ -26,6 +26,7 @@ import rrdtool
 import shutil
 import subprocess
 import time
+import re
 
 from django.db.models import Q
 from lxml.builder import E
@@ -34,6 +35,8 @@ from initat.cluster.backbone.models import device
 from initat.tools import logging_tools, process_tools, rrd_tools, server_mixins
 from .collectd_types.base import collectdMVValue, PerfdataObject
 from .config import global_config
+from .constants import CollectdMCKeyEnum
+from .weathermap_helper import WMMatcher
 
 
 class FileCreator(object):
@@ -536,6 +539,7 @@ class CollectdHostInfo(object):
                 "enabled" if self.store_to_disk else "disabled",
             )
         )
+        self.wmm = WMMatcher(self)
         self.__mc_timeout = global_config["MEMCACHE_TIMEOUT"]
         # for perfdata values, init with one to trigger send on first feed
         self.__perfdata_count = {}
@@ -569,11 +573,9 @@ class CollectdHostInfo(object):
         # set new entry
         CollectdHostInfo.entries[hi.uuid] = (cur_time, hi.name)
         CollectdHostInfo.mc.set(
-            "cc_hc_list", json.dumps(CollectdHostInfo.entries)
+            CollectdMCKeyEnum.main_key.value,
+            json.dumps(CollectdHostInfo.entries)
         )
-
-    def mc_key(self):
-        return "cc_hc_{}".format(self.uuid)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(
@@ -628,6 +630,7 @@ class CollectdHostInfo(object):
                 int(self.last_update or 0) or 0
             ),
             keys="{:d}".format(len(self.__dict)),
+            wm_key="{:d}".format(len(self.wmm._wm_dict)),
             # update calls (full info)
             updates="{:d}".format(self.updates),
             # store calls (short info)
@@ -642,6 +645,11 @@ class CollectdHostInfo(object):
                 h_info.append(
                     self.__dict[key].get_key_info()
                 )
+        return h_info
+
+    def get_wm_list(self, key_filter):
+        h_info = self.get_host_info()
+        self.wmm.append_to_host_info(h_info, key_filter)
         return h_info
 
     def update(self, _xml, _fc):
@@ -717,15 +725,21 @@ class CollectdHostInfo(object):
         json_vector = [
             _value.get_json() for _value in self.__dict.values()
         ]
+        # check for weathermap updates
+        # print("*", self.device.idx, wm_json)
         CollectdHostInfo.host_update(self)
         # import pprint
-        # print("*", self.mc_key())
-        # pprint.pprint(json_vector)
+        mc_struct = self.wmm.feed_vector(self.__dict)
         # set and ignore errors, default timeout is 2 minutes
         CollectdHostInfo.mc.set(
-            self.mc_key(),
+            CollectdMCKeyEnum.host_key.value(self.device),
             json.dumps(json_vector),
-            self.__mc_timeout
+            self.__mc_timeout,
+        )
+        CollectdHostInfo.mc.set(
+            CollectdMCKeyEnum.wm_key.value(self.device),
+            json.dumps(mc_struct),
+            self.__mc_timeout,
         )
 
     def transform(self, key, value, cur_time):
