@@ -24,7 +24,6 @@ from lxml.builder import E
 
 
 class CPerfDataValue(object):
-
     def __init__(self, name, info, unit="1", v_type="f", key="", rrd_spec="GAUGE:0:100", base=1):
         self.name = name
         self.info = info
@@ -172,6 +171,10 @@ class collectdMVValue(object):
 
     def transform(self, value, cur_time):
         self.set_value(value, cur_time)
+        return self.real_value
+
+    @property
+    def real_value(self):
         return self.value * self.factor
 
     def get_key_info(self):

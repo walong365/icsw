@@ -19,17 +19,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" base constants and config """
+""" config for collectd """
 
 from initat.tools import process_tools, configfile
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
-IPC_SOCK_SNMP = process_tools.get_zmq_ipc_name(
-    "snmp",
-    connect_to_root_instance=True,
-    s_name="collectd-init"
-)
-
-# constant, change to limit RRDs to be converted at once
-MAX_FOUND = 0
