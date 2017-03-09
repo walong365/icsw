@@ -404,10 +404,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.setup.tab.type.devices">
-    <div>
-        <icsw-device-tree-overview ng-if="tab.devices_available"></icsw-device-tree-overview>
-        <icsw-device-create-mask ng-if="!tab.devices_available"></icsw-device-create-mask>
-    </div>
+    <icsw-device-create-mask></icsw-device-create-mask>
 </script>
 
 <script type="text/ng-template" id="icsw.setup.tab.type.monitoring_checks">
