@@ -259,40 +259,31 @@ class WmListCom(BaseCom):
     def fetch(self):
         v_dict, k_dict, sorted_uuids = self.base_fetch(CollectdMCKeyEnum.wm_key.value)
         v_re = self.compile_re(self.options.key_filter)
-        out_f = logging_tools.NewFormList()
         # pprint.pprint(k_dict)
-        max_num_keys = 0
         _list = []
         for h_uuid in sorted_uuids:
             h_struct = k_dict[h_uuid]
-            num_key = 0
-            for entry in sorted(h_struct, key=lambda x: x["key"]):
+            for entry in h_struct:
                 # print(entry)
                 if v_re.match(entry["key"]):
-                    num_key += 1
                     entry["wm_type"] = WMTypeEnum(entry.pop("wm_type"))
-                    cur_mv = WMValue(**entry)
-                    _list.append((h_uuid, cur_mv))
-                    max_num_keys = max(max_num_keys, len(cur_mv.key.split(".")))
-        for h_uuid, entry in _list:
-            out_f.append(
-                [
-                    logging_tools.form_entry(v_dict[h_uuid][1], header="device")
-                ] + entry.get_form_entry(num_key, max_num_keys)
-            )
-        print(str(out_f))
+                    _list.append(
+                        (
+                            v_dict[h_uuid][1],
+                            WMValue(**entry)
+                        )
+                    )
+        self._display(_list)
 
     def _interpret(self, srv_com):
         h_list = srv_com.xpath(".//host_list", smart_strings=False)
         if len(h_list):
             h_list = h_list[0]
-            out_f = logging_tools.NewFormList()
             print(
                 "got result for {}:".format(
                     logging_tools.get_plural("host", int(h_list.attrib["entries"]))
                 )
             )
-            max_num_keys = 0
             _list = []
             for host in h_list:
                 print(
@@ -303,20 +294,45 @@ class WmListCom(BaseCom):
                         time.ctime(int(host.attrib["last_update"]))
                     )
                 )
-                for num_key, key_el in enumerate(host):
-                    cur_wmv = WMValue.interpret_wm_info(key_el)
-                    _list.append((host.attrib["name"], cur_wmv))
-                    max_num_keys = max(max_num_keys, len(cur_wmv.key.split(".")))
-            for k_num, (h_name, entry) in enumerate(_list):
-                out_f.append(
-                    [
-                        logging_tools.form_entry(h_name, header="device")
-                    ] + entry.get_form_entry(k_num, max_num_keys)
-                )
-            print(str(out_f))
+                for key_el in host:
+                    _list.append(
+                        (
+                            host.attrib["name"],
+                            WMValue.interpret_wm_info(key_el)
+                        )
+                    )
+            self._display(_list)
         else:
             print("No host_list found in result")
             self.ret_state = 1
+
+    def _display(self, in_list: list):
+        print(self.options.wm_sort)
+        if len(in_list):
+            max_num_keys = max(
+                [
+                    len(cur_wmv.key.split(".")) for h_name, cur_wmv in in_list
+                ]
+            )
+            if self.options.wm_sort == "default":
+                # sort according to device / key
+                in_list.sort(key=lambda x: "{}{}".format(x[0], x[1].key))
+            elif self.options.wm_sort == "type":
+                # sort according to type / device / key
+                in_list.sort(key=lambda x: "{}{}{}".format(x[1].wm_type.value, x[0], x[1].key))
+            elif self.options.wm_sort == "value":
+                # sort according to type / value
+                in_list.sort(key=lambda x: (x[1].wm_type.value, -x[1].value))
+            out_f = logging_tools.NewFormList()
+            for h_name, entry in in_list:
+                out_f.append(
+                    [
+                        logging_tools.form_entry(h_name, header="device")
+                    ] + entry.get_form_entry(max_num_keys)
+                )
+            print(str(out_f))
+        else:
+            print("Nothing to show")
 
 
 class KeyListCom(BaseCom):
