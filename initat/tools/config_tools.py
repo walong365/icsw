@@ -36,8 +36,6 @@ import netifaces
 import time
 import hashlib
 
-# print(hashlib.algorithms)
-
 from django.db.models import Q, Count
 
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
@@ -150,12 +148,20 @@ class RouterObject(object):
             )
             # peer dict
             self.peer_dict, self.simple_peer_dict = ({}, {})
-            all_peers = peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id", "penalty")
+            all_peers = peer_information.objects.all().values_list(
+                "s_netdevice_id", "d_netdevice_id", "penalty"
+            )
             for s_nd_id, d_nd_id, penalty in all_peers:
                 if s_nd_id in self.nd_lut and d_nd_id in self.nd_lut:
-                    self.peer_dict[(s_nd_id, d_nd_id)] = penalty + self.nd_dict[s_nd_id][3] + self.nd_dict[d_nd_id][3]
-                    self.peer_dict[(d_nd_id, s_nd_id)] = penalty + self.nd_dict[s_nd_id][3] + self.nd_dict[d_nd_id][3]
-                    self.simple_peer_dict[(s_nd_id, d_nd_id)] = penalty
+                    self.peer_dict[
+                        (s_nd_id, d_nd_id)
+                    ] = penalty + self.nd_dict[s_nd_id][3] + self.nd_dict[d_nd_id][3]
+                    self.peer_dict[
+                        (d_nd_id, s_nd_id)
+                    ] = penalty + self.nd_dict[s_nd_id][3] + self.nd_dict[d_nd_id][3]
+                    self.simple_peer_dict[
+                        (s_nd_id, d_nd_id)
+                    ] = penalty
             # add simple peers for device-internal networks
             for nd_list in self.dev_dict.values():
                 route_nds = [cur_nd for cur_nd in nd_list if cur_nd[4]]
@@ -192,17 +198,35 @@ class RouterObject(object):
             self.__cur_gen = latest_gen
 
     def get_penalty(self, in_path):
-        return sum([self.peer_dict[(in_path[idx], in_path[idx + 1])] for idx in range(len(in_path) - 1)]) + \
-            sum([self.nd_dict[entry][3] for entry in in_path])
+        return sum(
+            [
+                self.peer_dict[
+                    (
+                        in_path[idx],
+                        in_path[idx + 1]
+                    )
+                ] for idx in range(len(in_path) - 1)
+            ]
+        ) + sum(
+            [
+                self.nd_dict[entry][3] for entry in in_path
+            ]
+        )
 
     def add_penalty(self, in_path):
         return (self.get_penalty(in_path), in_path)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if hasattr(self.__log_com, "log"):
-            self.__log_com.log(log_level, "[router] {}".format(what))
+            self.__log_com.log(
+                log_level,
+                "[router] {}".format(what)
+            )
         else:
-            self.__log_com("[router] {}".format(what), log_level)
+            self.__log_com(
+                "[router] {}".format(what),
+                log_level
+            )
 
     def get_ndl_ndl_pathes(self, s_list, d_list, **kwargs):
         import networkx
@@ -309,9 +333,11 @@ class TopologyObject(object):
                 # add further rings
                 for _idx in range(int(self.__graph_mode[-1])):
                     new_dev_pks = set(
-                        device.objects.filter(
+                        device.all_enabled.filter(
                             Q(netdevice__peer_s_netdevice__d_netdevice__device__in=_dev_pks)  # self.dev_dict.keys())
-                        ).values_list("idx", flat=True)) | set(device.objects.filter(
+                        ).values_list("idx", flat=True)
+                    ) | set(
+                        device.all_enabled.filter(
                             Q(netdevice__peer_d_netdevice__s_netdevice__device__in=_dev_pks)  # self.dev_dict.keys())
                         ).values_list("idx", flat=True)
                     )
@@ -345,7 +371,7 @@ class TopologyObject(object):
                         break
         if self.__only_allowed_device_groups:
             # print self.__user
-            _allowed_dev_pks = device.objects.filter(
+            _allowed_dev_pks = device.all_enabled.filter(
                 Q(device_group__in=self.__user.get_allowed_object_list("backbone.device.access_device_group"))
             ).values_list("pk", flat=True)
             _dev_pks &= _allowed_dev_pks
@@ -403,7 +429,9 @@ class TopologyObject(object):
         self.add_nodes(_dev_pks)
         self.add_edges()
         # add num_nds / num_peers (only nds)
-        for _dev_pk, _num_nds in device.objects.filter(Q(pk__in=_dev_pks)).annotate(num_nds=Count("netdevice")).values_list("pk", "num_nds"):
+        for _dev_pk, _num_nds in device.all_enabled.filter(
+            Q(pk__in=_dev_pks)
+        ).annotate(num_nds=Count("netdevice")).values_list("pk", "num_nds"):
             self.nx.node[_dev_pk]["num_nds"] = _num_nds
         e_time = time.time()
         self.log(
@@ -437,7 +465,9 @@ def get_config_var_list(config_obj, config_dev):
         src_sql_obj = _VAR_LUT[short].objects
         for db_rec in src_sql_obj.filter(
             (
-                Q(device=0) | Q(device=None) | Q(device=config_dev.pk)
+                Q(device=0) |
+                Q(device=None) |
+                Q(device=config_dev.pk)
             ) & (
                 Q(config=config_obj)
             ) & (
@@ -733,7 +763,7 @@ class icswServerCheck(object):
                                     else:
                                         # via meta device
                                         _result.set_fields(
-                                            effective_device=device.objects.select_related(
+                                            effective_device=device.all_enabled.select_related(
                                                 "domain_tree_node"
                                             ).get(
                                                 Q(device_group=self.device.device_group_id) &
@@ -878,7 +908,7 @@ class icswServerCheck(object):
             }
         _enum_names = _enum_lut.keys()
         # get a unique list of devices for which the requested services are related
-        dev_list = device.objects.select_related("domain_tree_node").filter(
+        dev_list = device.all_enabled.select_related("domain_tree_node").filter(
             Q(device_config__config__config_service_enum__enum_name__in=_enum_names)
         ).values_list(
             "idx",
@@ -922,7 +952,7 @@ class icswServerCheck(object):
                     if _result.config is None:
                         _result.set_fields(
                             config=_config,
-                            effective_device=device.objects.get(Q(idx=dev_idx)),
+                            effective_device=device.all_enabled.get(Q(idx=dev_idx)),
                         )
                         _result.set_srv_info(
                             "virtual",
@@ -1242,7 +1272,7 @@ class icswDeviceWithConfig(dict):
             )
         # we dont use complex prefetching here because we rely on our clever dn_cache
         dev_dict = {
-            cur_dev.pk: cur_dev for cur_dev in device.objects.select_related(
+            cur_dev.pk: cur_dev for cur_dev in device.all_enabled.select_related(
                 "domain_tree_node"
             ).filter(
                 Q(pk__in=[key[1] for key in dev_conf_dict.keys()] + list(md_set))
