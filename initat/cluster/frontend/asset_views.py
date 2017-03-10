@@ -72,7 +72,9 @@ class AssetBatchViewSet(viewsets.ViewSet):
         from initat.cluster.backbone.models import AssetBatch
 
         if "simple" in request.query_params:
-            prefetch_list = []
+            prefetch_list = [
+                "device"
+            ]
         else:
             prefetch_list = [
                 "installed_packages",
@@ -101,11 +103,17 @@ class AssetBatchViewSet(viewsets.ViewSet):
         if "simple" in request.query_params:
             from initat.cluster.backbone.serializers import SimpleAssetBatchSerializer
             if "truncate_result" in request.query_params:
-                new_queryset = []
+                from collections import defaultdict
+                asset_batches_per_device = defaultdict(list)
+
                 for ab in queryset.order_by("-created"):
-                    new_queryset.append(ab)
-                    if len(new_queryset) == 10:
-                        break
+                    if len(asset_batches_per_device[ab.device]) < 10:
+                        asset_batches_per_device[ab.device].append(ab)
+
+                new_queryset = []
+                for _device in asset_batches_per_device.keys():
+                    new_queryset.extend(asset_batches_per_device[_device])
+
                 serializer = SimpleAssetBatchSerializer(new_queryset, many=True)
             else:
                 serializer = SimpleAssetBatchSerializer(queryset.order_by("-created"), many=True)

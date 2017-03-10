@@ -77,6 +77,8 @@ class ReportGenerationProcess(threading_tools.icswProcessObj):
 
             report_generator.generate_report()
         except Exception:
+            report_history.progress = -2
+            report_history.save()
             self.log(traceback.format_exc(), logging_tools.LOG_LEVEL_CRITICAL)
 
         self.send_pool_message("report_finished", report_history_id)

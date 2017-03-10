@@ -51,7 +51,7 @@ device_report_module = angular.module(
     "icswDispatcherSettingTreeService", "Restangular", "icswActiveSelectionService",
     "icswComplexModalService", "$interval", "icswUserService", "icswAssetHelperFunctions",
     "$http", "icswReportHelperFunctions", "icswToolsSimpleModalService", "DeviceOverviewService",
-    "icswStatusHistorySettings"
+    "icswStatusHistorySettings", "toaster"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, FileUploader, icswCSRFService
@@ -59,7 +59,7 @@ device_report_module = angular.module(
     icswDispatcherSettingTreeService, Restangular, icswActiveSelectionService,
     icswComplexModalService, $interval, icswUserService, icswAssetHelperFunctions,
     $http, icswReportHelperFunctions, icswToolsSimpleModalService, DeviceOverviewService,
-    icswStatusHistorySettings
+    icswStatusHistorySettings, toaster
 ) ->
     $scope.struct = {
         # list of devices
@@ -563,14 +563,18 @@ device_report_module = angular.module(
                                                     refresh_available_reports()
                                                     $scope.struct.generate_progress = 0
                                                 (not_ok) ->
-                                                    console.log not_ok
-
                                                     $scope.struct.report_generating = false
                                                     $scope.struct.generate_button_disabled = false
                                                     $interval.cancel($scope.struct.generate_interval)
                                                     $scope.struct.generate_progress = 0
 
                                             )
+                                        else if data.progress == -2
+                                            toaster.pop("error", "", "Unhandled exception during report generation. Check (report server) log files for detailed information.")
+                                            $scope.struct.report_generating = false
+                                            $scope.struct.generate_button_disabled = false
+                                            $interval.cancel($scope.struct.generate_interval)
+                                            $scope.struct.generate_progress = 0
                                 )
                         , 1000)
                 else
