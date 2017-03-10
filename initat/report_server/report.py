@@ -387,10 +387,11 @@ class DeviceReport(GenericReport):
             return self.report_settings["hardware_report_selected"]
 
 
-class ReportGenerator(object):
-    class __DummyRequest(object):
-        pass
+class DummyRequest(object):
+    pass
 
+
+class ReportGenerator(object):
     def __init__(self, report_settings, devices, report_history):
         self.data = ""
 
@@ -550,7 +551,8 @@ class ReportGenerator(object):
 
         return data
 
-    def _get_data_for_availability_overview_report(self, report, _device):
+    @staticmethod
+    def _get_availability_report_init_tuples(report):
         start_time = int(report.report_settings["availability_timeframe_start"])
         chart_info_map = [
             ("24 Hours", "day"),
@@ -558,8 +560,14 @@ class ReportGenerator(object):
             ("Monthly", "month"),
         ]
 
+        return chart_info_map, start_time
+
+    @staticmethod
+    def _get_data_for_availability_overview_report(report, _device):
+        chart_info_map, start_time = ReportGenerator._get_availability_report_init_tuples(report)
+
         for line_header, duration_type in chart_info_map:
-            dummy_request = self.__DummyRequest()
+            dummy_request = DummyRequest()
             dummy_request.GET = {
                 "device_ids": "[{}]".format(_device.idx),
                 "date": start_time,
@@ -577,6 +585,27 @@ class ReportGenerator(object):
             service_state_data = _device_status_history_util.get_hist_service_data_from_request(dummy_request)
 
             yield (line_header, duration_type, timespan, host_state_data, service_state_data)
+
+    @staticmethod
+    def _get_data_for_availability_detail_report(report, _device, for_host=True):
+        chart_info_map, start_time = ReportGenerator._get_availability_report_init_tuples(report)
+
+        for line_header, duration_type in chart_info_map:
+            dummy_request = DummyRequest()
+            dummy_request.GET = {
+                "device_ids": "[{}]".format(_device.idx),
+                "date": start_time,
+                "duration_type": duration_type
+            }
+
+            timespans = _device_status_history_util.get_timespans_db_from_request(dummy_request)
+            timespan = None
+            if timespans:
+                timespan = timespans[0]
+
+            line_graph_data = _device_status_history_util.get_line_graph_data(dummy_request, for_host=for_host)
+
+            yield (line_header, duration_type, timespan, line_graph_data)
 
 
 class ColoredRule(Rule):
@@ -1112,35 +1141,15 @@ class PDFReportGenerator(ReportGenerator):
         return doc, elements, report, _buffer, available_width, style_sheet, t_head
 
     def __generate_device_availability_detailed_service_report(self, _device, report_settings, root_report):
-        # get and add charts
-        start_time = int(root_report.report_settings["availability_timeframe_start"])
-        chart_info_map = [
-            ("24 Hours", "day"),
-            ("Weekly", "week"),
-            ("Monthly", "month"),
-        ]
-
-        for line_header, duration_type in chart_info_map:
+        for info_tuple in self._get_data_for_availability_detail_report(root_report, _device, for_host=False):
+            line_header, duration_type, timespan, line_graph_data = info_tuple
             # add state graphs
             pdf_tuples = self.__initialize_basic_pdf_template(_device, report_settings, root_report,
                                                               "Availability Timeline (Service) {}".format(line_header))
             doc, elements, report, _buffer, available_width, style_sheet, t_head = pdf_tuples
 
-            dummy_request = self.__DummyRequest()
-            dummy_request.GET = {
-                "device_ids": "[{}]".format(_device.idx),
-                "date": start_time,
-                "duration_type": duration_type
-            }
-
             service_type_to_line_graph_data_dict = {}
 
-            timespans = _device_status_history_util.get_timespans_db_from_request(dummy_request)
-            timespan = None
-            if timespans:
-                timespan = timespans[0]
-
-            line_graph_data = _device_status_history_util.get_line_graph_data(dummy_request, for_host=False)
             list_of_threes = []
             if line_graph_data and timespan:
                 three_list = []
@@ -1262,31 +1271,13 @@ class PDFReportGenerator(ReportGenerator):
         body_data = []
 
         # get and add charts
-        start_time = int(report.report_settings["availability_timeframe_start"])
-        chart_info_map = [
-            ("24 Hours", "day"),
-            ("Weekly", "week"),
-            ("Monthly", "month"),
-        ]
-
         timespan_to_line_graph_data_dict = {}
 
-        for line_header, duration_type in chart_info_map:
-            dummy_request = self.__DummyRequest()
-            dummy_request.GET = {
-                "device_ids": "[{}]".format(_device.idx),
-                "date": start_time,
-                "duration_type": duration_type
-            }
-
-            timespans = _device_status_history_util.get_timespans_db_from_request(dummy_request)
-            timespan = None
-            if timespans:
-                timespan = timespans[0]
+        for info_tuple in self._get_data_for_availability_detail_report(report, _device, for_host=True):
+            line_header, duration_type, timespan, line_graph_data = info_tuple
 
             row = []
 
-            line_graph_data = _device_status_history_util.get_line_graph_data(dummy_request, for_host=True)
             if line_graph_data and timespan:
                 line_graph_data = line_graph_data[_device.idx]
                 timespan_to_line_graph_data_dict[duration_type] = line_graph_data
@@ -1329,6 +1320,7 @@ class PDFReportGenerator(ReportGenerator):
             return
 
         root_report = report
+        chart_info_map, start_time = ReportGenerator._get_availability_report_init_tuples(report)
         for line_header, duration_type in chart_info_map:
             if duration_type not in timespan_to_line_graph_data_dict:
                 continue
@@ -2249,14 +2241,14 @@ class PDFReportGenerator(ReportGenerator):
 
         try:
             doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
-        except:
+        except Exception as e:
+            logger.info("PDF generation for 'hardware_report' failed, error was: {}".format(str(e)))
             report.number_of_pages = pages_tmp
-            elements = []
-            elements.append(KeepTogether(t_head))
-            elements.append(KeepTogether(Spacer(1, 30)))
+            elements = [KeepTogether(t_head),
+                        KeepTogether(Spacer(1, 30))]
 
             text_block = Paragraph('<para leftIndent="20"><b>Failed to generate hardware report!</b></para>',
-                style_sheet["BodyText"])
+                                   style_sheet["BodyText"])
             elements.append(text_block)
 
             doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
@@ -2800,6 +2792,9 @@ class XlsxReportGenerator(ReportGenerator):
             if device_report.report_settings["availability_overview_selected"]:
                 self.__generate_device_availability_overview_report(_device, workbook, device_report)
 
+            if device_report.report_settings["availability_details_selected"]:
+                self.__generate_device_availability_detailed_report(_device, workbook, device_report)
+
             selected_runs = select_assetruns_for_device(_device, self.device_settings[_device.idx]["assetbatch_id"])
 
             for ar in selected_runs:
@@ -2964,6 +2959,44 @@ class XlsxReportGenerator(ReportGenerator):
         report_history_obj.write_data(self.data)
         report_history_obj.progress = -1
         report_history_obj.save()
+
+    def __generate_device_availability_detailed_report(self, _device, workbook, root_report):
+        for info_tuple in self._get_data_for_availability_detail_report(root_report, _device, for_host=True):
+            line_header, duration_type, timespan, line_graph_data = info_tuple
+
+            sheet = workbook.create_sheet()
+            sheet.title = "Avail. Log (Host) {}".format(line_header)
+
+            sheet.append(["Event Timestamp", "State", "Message"])
+
+            if timespan and line_graph_data and _device.idx in line_graph_data:
+                line_graph_data = line_graph_data[_device.idx]
+
+                for state_dict in line_graph_data:
+                    row = [
+                        state_dict["date"].strftime(ASSET_DATETIMEFORMAT),
+                        HOST_STATE_TYPE_TRANSFORMATION[state_dict["state"]],
+                        state_dict["msg"]
+                    ]
+                    sheet.append(row)
+
+        for info_tuple in self._get_data_for_availability_detail_report(root_report, _device, for_host=False):
+            line_header, duration_type, timespan, line_graph_data = info_tuple
+
+            for line_graph_tuple in line_graph_data.keys():
+                device_idx, check_name = line_graph_tuple
+                check_name = check_name.split(",")[-1]
+                sheet = workbook.create_sheet()
+                sheet.title = "Log ({}) {}".format(check_name, line_header)
+                sheet.append(["Event Timestamp", "State", "Message"])
+
+                for state_dict in line_graph_data[line_graph_tuple]:
+                    row = [
+                        state_dict["date"].strftime(ASSET_DATETIMEFORMAT),
+                        SERVICE_STATE_TYPE_TRANSFORMATION[state_dict["state"]],
+                        state_dict["msg"]
+                    ]
+                    sheet.append(row)
 
     def __generate_device_availability_overview_report(self, _device, workbook, root_report):
         host_sheet = workbook.create_sheet()
