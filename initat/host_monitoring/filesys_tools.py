@@ -76,9 +76,16 @@ def set_file_content(srv_com, log_com):
     for file_entry in srv_com.xpath(".//ns:file", smart_strings=False):
         try:
             if "encoding" in file_entry.attrib:
-                codecs.open(file_entry.attrib["name"], "w", file_entry.attrib["encoding"]).write(file_entry.text)
+                codecs.open(
+                    file_entry.attrib["name"],
+                    "w",
+                    file_entry.attrib["encoding"]
+                ).write(file_entry.text)
             else:
-                open(file_entry.attrib["name"], "r").write(file_entry.text)
+                open(
+                    file_entry.attrib["name"],
+                    "r"
+                ).write(file_entry.text)
         except:
             file_entry.attrib["error"] = "1"
             file_entry.attrib["error_str"] = process_tools.get_except_info()
@@ -107,7 +114,11 @@ def get_dir_tree(srv_com, log_com):
                 add_el.append(
                     E.file(
                         name=new_file,
-                        size="{:d}".format(os.stat(os.path.join(cur_dir, new_file))[stat.ST_SIZE]),
+                        size="{:d}".format(
+                            os.stat(
+                                os.path.join(cur_dir, new_file)
+                            )[stat.ST_SIZE]
+                        ),
                     )
                 )
         for cur_idx, cur_el in enumerate(top_el.findall(".//*")):
@@ -152,13 +163,19 @@ def get_file_content(srv_com, log_com, **kwargs):
                 cur_size = os.stat(file_entry.attrib["name"])[stat.ST_SIZE]
             except:
                 file_entry.attrib["error"] = "1"
-                file_entry.attrib["error_str"] = "error stating: {}".format(process_tools.get_except_info())
+                file_entry.attrib["error_str"] = "error stating: {}".format(
+                    process_tools.get_except_info()
+                )
             else:
                 if cur_size <= max_size:
                     try:
                         if "encoding" in file_entry.attrib:
                             try:
-                                content = codecs.open(file_entry.attrib["name"], "r", file_entry.attrib["encoding"]).read()
+                                content = codecs.open(
+                                    file_entry.attrib["name"],
+                                    "r",
+                                    file_entry.attrib["encoding"]
+                                ).read()
                             except UnicodeDecodeError:
                                 # try without encoding
                                 content = open(file_entry.attrib["name"], "r").read()
@@ -166,7 +183,9 @@ def get_file_content(srv_com, log_com, **kwargs):
                             content = open(file_entry.attrib["name"], "r").read()
                     except:
                         file_entry.attrib["error"] = "1"
-                        file_entry.attrib["error_str"] = "error reading: {}".format(process_tools.get_except_info())
+                        file_entry.attrib["error_str"] = "error reading: {}".format(
+                            process_tools.get_except_info()
+                        )
                     else:
                         try:
                             if int(file_entry.get("base64", "0")):
@@ -178,7 +197,9 @@ def get_file_content(srv_com, log_com, **kwargs):
                                     file_entry.text = content.decode("utf-8", errors="ignore")
                         except:
                             file_entry.attrib["error"] = "1"
-                            file_entry.attrib["error_str"] = "error setting content: {}".format(process_tools.get_except_info())
+                            file_entry.attrib["error_str"] = "error setting content: {}".format(
+                                process_tools.get_except_info()
+                            )
                         else:
                             file_entry.attrib["error"] = "0"
                             file_entry.attrib["size"] = "{:d}".format(len(content))

@@ -68,7 +68,9 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
 
     def _check_timeout(self):
         cur_time = time.time()
-        _to_del = [key for key, value in self.__work_dict.items() if abs(value["start"] - cur_time) > 60]
+        _to_del = [
+            key for key, value in self.__work_dict.items() if abs(value["start"] - cur_time) > 60
+        ]
         if _to_del:
             _unhandled = [key for key in _to_del if key not in self.__handled]
             self.log(
@@ -92,7 +94,11 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
             self.log(
                 "ping to {} ({}; {:d}, {:.2f}) [{}]".format(
                     logging_tools.get_plural("target", len(target_list)),
-                    ", ".join([_entry or "<resolve error>" for _entry in target_list]),
+                    ", ".join(
+                        [
+                            _entry or "<resolve error>" for _entry in target_list
+                        ]
+                    ),
                     num_pings,
                     timeout,
                     seq_str
@@ -100,9 +106,18 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
             )
         cur_time = time.time()
         if len(target_list) > 1:
-            seq_list = ["group_{:d}".format(idx) for idx in range(self.__group_idx, self.__group_idx + len(target_list))]
+            seq_list = [
+                "group_{:d}".format(
+                    idx
+                ) for idx in range(
+                    self.__group_idx,
+                    self.__group_idx + len(target_list)
+                )
+            ]
             self.__group_idx += len(target_list)
-            self.__group_dict[seq_str] = dict([(cur_seq_str, None) for cur_seq_str in seq_list])
+            self.__group_dict[seq_str] = {
+                cur_seq_str: None for cur_seq_str in seq_list
+            }
             for cur_seq_str in seq_list:
                 self.__group_dict[cur_seq_str] = seq_str
         else:
@@ -138,7 +153,15 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
             self.log(
                 "{} in flight: {}, {} waiting for timeout: {}".format(
                     logging_tools.get_plural("ping", self.__pings_in_flight),
-                    ", ".join(sorted([value["host"] for key, value in self.__work_dict.items() if key not in self.__handled])),
+                    ", ".join(
+                        sorted(
+                            [
+                                value[
+                                    "host"
+                                ] for key, value in self.__work_dict.items() if key not in self.__handled
+                            ]
+                        )
+                    ),
                     logging_tools.get_plural("ping", len(_wft)),
                     ", ".join(sorted(_wft)),
                 )
@@ -175,16 +198,30 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
                         value["next_send"] = cur_time + value["slide_time"]
                         self.__seqno_dict[self.echo_seqno] = key
                         if value["sent"] < value["num"]:
-                            self.__process.register_timer(self._update, value["slide_time"] + 0.001, oneshot=True, data=key)
+                            self.__process.register_timer(
+                                self._update,
+                                value["slide_time"] + 0.001,
+                                oneshot=True,
+                                data=key
+                            )
                         if value["sent"] == 1:
                             # register final timeout
                             # print "reg_to", key, value["timeout"]
-                            self.__process.register_timer(self._update, value["timeout"], oneshot=True, data=key)
+                            self.__process.register_timer(
+                                self._update,
+                                value["timeout"],
+                                oneshot=True,
+                                data=key
+                            )
             # check for timeout
             # print value["sent_list"]
             if not from_reply:
                 # only check timeouts when called from reactor via callLater
-                for seq_to in [s_key for s_key, _s_value in value["sent_list"].items() if cur_time >= value["end"] and s_key not in value["recv_list"]]:
+                for seq_to in [
+                    s_key for s_key, _s_value in value[
+                        "sent_list"
+                    ].items() if cur_time >= value["end"] and s_key not in value["recv_list"]
+                ]:
                     value["recv_fail"] += 1
                     value["recv_list"][seq_to] = None
             # check for ping finish
@@ -197,14 +234,35 @@ class HMIcmpProtocol(icmp_class.icmp_protocol):
                 ]
                 if key in self.__group_dict:
                     t_seq_str = self.__group_dict[key]
-                    self.__group_dict[t_seq_str][key] = (value["host"], value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
-                    if len([t_key for t_key, value in self.__group_dict[t_seq_str].items() if value is None]) == 0:
+                    self.__group_dict[t_seq_str][key] = (
+                        value["host"],
+                        value["sent"],
+                        value["recv_ok"],
+                        all_times,
+                        ", ".join(value["error_list"])
+                    )
+                    if len(
+                        [
+                            t_key for t_key, value in self.__group_dict[
+                                t_seq_str
+                            ].items() if value is None
+                        ]
+                    ) == 0:
                         # group done
-                        self.__process.send_ping_result(t_seq_str, list(self.__group_dict[t_seq_str].values()))
+                        self.__process.send_ping_result(
+                            t_seq_str,
+                            list(self.__group_dict[t_seq_str].values())
+                        )
                         del self.__group_dict[t_seq_str]
                     del self.__group_dict[key]
                 else:
-                    self.__process.send_ping_result(key, value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
+                    self.__process.send_ping_result(
+                        key,
+                        value["sent"],
+                        value["recv_ok"],
+                        all_times,
+                        ", ".join(value["error_list"])
+                    )
                 self.__handled.add(key)  # del self[key]
                 self.__pings_in_flight -= 1
         else:
@@ -271,7 +329,12 @@ class TCPCon(object):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-            self.__process.send_result(self.src_id, str(self.srv_com), "error resolving host '{}'".format(self._host), True)
+            self.__process.send_result(
+                self.src_id,
+                str(self.srv_com),
+                "error resolving host '{}'".format(self._host),
+                True
+            )
             # no need to set registered flag because we dont add us to the list of pending connections
             # self.__registered = False
         else:
@@ -294,12 +357,13 @@ class TCPCon(object):
             except socket.error as _err:
                 errno = _err.errno
                 if errno != 115:
-                    self.log("error while bind to ({}, {:d}): {}".format(self._host, self._port, errno))
-
-            # if errno
-            # print errno
-            # time.sleep(0.1)
-        # self._send()
+                    self.log(
+                        "error while bind to ({}, {:d}): {}".format(
+                            self._host,
+                            self._port,
+                            errno
+                        )
+                    )
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
@@ -312,7 +376,12 @@ class TCPCon(object):
         )
 
     def _error(self, sock):
-        self.log("POLLERR in hm_direct for socket {}".format(str(sock)), logging_tools.LOG_LEVEL_ERROR)
+        self.log(
+            "POLLERR in hm_direct for socket {}".format(
+                str(sock)
+            ),
+            logging_tools.LOG_LEVEL_ERROR
+        )
         _err_str = "error in sending"
         self.__process.send_result(self.src_id, str(self.srv_com), _err_str, True)
         self.close()
@@ -396,7 +465,11 @@ class SocketProcess(threading_tools.icswProcessObj):
         self.__extra_twisted_threads = 0
         # print self.start_kwargs
         if self.start_kwargs.get("icmp", True):
-            self.icmp_protocol = HMIcmpProtocol(self, self.__log_template, debug=self.global_config["DEBUG"])
+            self.icmp_protocol = HMIcmpProtocol(
+                self,
+                self.__log_template,
+                debug=self.global_config["DEBUG"]
+            )
             # reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
             # reactor.listen_ICMP(self.icmp_protocol)
             self.register_func("ping", self._ping)
@@ -437,7 +510,15 @@ class SocketProcess(threading_tools.icswProcessObj):
     def _resolved(self, *args, **kwargs):
         _id, _addr_list = args[:2]
         # build new argument lis
-        new_args = tuple([self.__pending_dict[_id][0]] + [_addr_list] + list(self.__pending_dict[_id][2:]))
+        new_args = tuple(
+            [
+                self.__pending_dict[_id][0]
+            ] + [
+                _addr_list
+            ] + list(
+                self.__pending_dict[_id][2:]
+            )
+        )
         del self.__pending_dict[_id]
         self.icmp_protocol.ping(*new_args)
 
@@ -445,10 +526,21 @@ class SocketProcess(threading_tools.icswProcessObj):
         self.__log_template.log(log_level, what)
 
     def send_result(self, src_id, srv_com, data, is_error):
-        self.send_pool_message("socket_result", src_id, srv_com, data, is_error, target="main")
+        self.send_pool_message(
+            "socket_result",
+            src_id,
+            srv_com,
+            data,
+            is_error,
+            target="main"
+        )
 
     def send_ping_result(self, *args):
-        self.send_pool_message("socket_ping_result", *args, target="main")  # src_id, srv_com, data, target="main")
+        self.send_pool_message(
+            "socket_ping_result",
+            *args,
+            target="main"
+        )  # src_id, srv_com, data, target="main")
 
     def loop_post(self):
         # self.twisted_observer.close()

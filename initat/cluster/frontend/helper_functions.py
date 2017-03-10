@@ -22,14 +22,16 @@
 
 """ helper functions for the init.at clustersoftware """
 
+import json
 import time
+
 from django.conf import settings
 from django.http import HttpResponse
 from lxml import etree
 from lxml.builder import E
 
 from initat.cluster.backbone import routing
-from initat.tools import logging_tools, net_tools
+from initat.tools import logging_tools, net_tools, process_tools
 
 
 class XMLWrapper(object):
@@ -419,3 +421,79 @@ def contact_server(request, srv_type_enum, send_com, **kwargs):
         return result
     else:
         return result, _log_lines
+
+
+class CollectdMCHelper(object):
+    def __init__(self, logger: object):
+        # memcached port and address
+        self._MC_SETTINGS = None
+        # logger
+        self._logger = logger
+        # memcache client
+        self._mc = None
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self._logger.log(log_level, "[CMH] {}".format(what))
+
+    def _ensure_settings(self):
+        from initat.icsw.service.instance import InstanceXML
+        from initat.cluster.backbone.server_enums import icswServiceEnum
+        if self._MC_SETTINGS is None:
+            self._MC_SETTINGS = {
+                "PORT": InstanceXML(
+                    quiet=True
+                ).get_port_dict(
+                    icswServiceEnum.memcached,
+                    command=True
+                ),
+                "ADDRESS": "127.0.0.1",
+            }
+            self.log("set basic data")
+
+    def _ensure_client(self):
+        import memcache
+        if self._mc is None:
+            self._mc = memcache.Client(
+                [
+                    "{}:{:d}".format(
+                        self._MC_SETTINGS["ADDRESS"],
+                        self._MC_SETTINGS["PORT"]
+                    )
+                ]
+            )
+
+    def get_weathermap_data(self, uuid_list: list) -> dict:
+        from initat.collectd.constants import CollectdMCKeyEnum
+        """
+        return weathermap data for the given uuid list
+        :param dev_list: list of uuids
+        :return: dict, uuid -> value_list
+        """
+        self._ensure_settings()
+        self._ensure_client()
+        h_dict_raw = self._mc.get(CollectdMCKeyEnum.main_key.value)
+        if h_dict_raw:
+            h_dict = json.loads(h_dict_raw)
+        else:
+            h_dict = {}
+
+        # result dictionary
+        result = {}
+        for uuid in uuid_list:
+            if uuid in h_dict:
+                try:
+                    _value_list = json.loads(
+                        self._mc.get(
+                            CollectdMCKeyEnum.wm_key.value(uuid)
+                        )
+                    )
+                except:
+                    self.log(
+                        "error decoding json.loads: {}".format(
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                else:
+                    result[uuid] = _value_list
+        return result

@@ -37,7 +37,12 @@ def ClientCode(global_config):
     if ICSW_DEBUG_MODE:
         # dummy logger of module loader
         def dummy_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-            print("{} {}".format(logging_tools.get_log_level_str(log_level), what))
+            print(
+                "{} {}".format(
+                    logging_tools.get_log_level_str(log_level),
+                    what
+                )
+            )
 
         local_mc.set_log_command(dummy_log)
     local_mc.build_structure(None, None)
@@ -58,7 +63,10 @@ def ClientCode(global_config):
         try:
             cur_ns, rest = com_struct.handle_commandline(arg_list)
         except ValueError as what:
-            ret = ExtReturn(limits.mon_STATE_CRITICAL, "error parsing: {}".format(what.args[1]))
+            ret = ExtReturn(
+                limits.mon_STATE_CRITICAL,
+                "error parsing: {}".format(what.args[1])
+            )
         else:
             # see also struct.py in collrelay
             if hasattr(cur_ns, "arguments"):
@@ -83,7 +91,10 @@ def ClientCode(global_config):
                     icswServiceEnum.host_monitoring,
                     command=True
                 ):
-                    error_result = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
+                    error_result = result.xpath(
+                        ".//ns:result[@state != '0']",
+                        smart_strings=False
+                    )
                     if error_result:
                         error_result = error_result[0]
                         ret = ExtReturn(
@@ -92,16 +103,23 @@ def ClientCode(global_config):
                         )
                     else:
                         if hasattr(com_struct, "interpret"):
-                            ret = ExtReturn.get_ext_return(com_struct.interpret(result, cur_ns))
+                            ret = ExtReturn.get_ext_return(
+                                com_struct.interpret(result, cur_ns)
+                            )
                         else:
                             _result = result.xpath(".//ns:result", smart_strings=False)[0]
                             ret = ExtReturn(
-                                server_command.srv_reply_to_nag_state(int(_result.attrib["state"])),
+                                server_command.srv_reply_to_nag_state(
+                                    int(_result.attrib["state"])
+                                ),
                                 result.attrib["reply"]
                             )
                 else:
                     ret_str, ret_state = result.get_log_tuple()
-                    ret = ExtReturn(server_command.srv_reply_to_nag_state(ret_state), ret_str)
+                    ret = ExtReturn(
+                        server_command.srv_reply_to_nag_state(ret_state),
+                        ret_str
+                    )
             else:
                 ret = ExtReturn(limits.mon_STATE_CRITICAL, "timeout")
     else:

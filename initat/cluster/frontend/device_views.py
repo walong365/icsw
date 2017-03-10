@@ -52,9 +52,11 @@ from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabil
     AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer, device_variable_scope_serializer, StaticAssetSerializer, DeviceClassSerializer, \
     dvs_allowed_name_serializer, DeviceLogEntrySerializer
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
+from .helper_functions import xml_wrapper, contact_server, CollectdMCHelper
 
 logger = logging.getLogger("cluster.device")
+
+mc_helper = CollectdMCHelper(logger)
 
 
 class change_devices(View):
@@ -1579,3 +1581,17 @@ class RemoteViewerConfigLoader(View):
         # import pprint
         # pprint.pprint(config)
         return HttpResponse(json.dumps({"config": config}))
+
+
+class WeatherMapData(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        dev_idxs = json.loads(request.POST["device_idxs"])
+        uuid_dict = {
+            _value["uuid"]: _value["idx"] for _value in device.objects.filter(
+                Q(idx__in=dev_idxs)
+            ).values("idx", "uuid")
+        }
+        print("*", uuid_dict)
+        wm_dict = mc_helper.get_weathermap_data(uuid_dict.keys())
+        return HttpResponse(json.dumps(wm_dict))

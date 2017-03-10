@@ -878,7 +878,10 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             cur_hc.send(cur_mes, com_struct)
             self.__old_send_lut[cur_mes.src_id] = cur_hc
         else:
-            cur_hc.return_error(cur_mes, "command '{}' not defined on relayer".format(com_name))
+            cur_hc.return_error(
+                cur_mes,
+                "command '{}' not defined on relayer".format(com_name)
+            )
 
     def _send_to_old_nhm_service(self, src_id, srv_com, xml_input):
         conn_str = "tcp://{}:{:d}".format(

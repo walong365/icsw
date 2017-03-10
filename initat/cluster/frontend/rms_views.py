@@ -45,9 +45,8 @@ from initat.cluster.backbone.models import rms_job_run, device
 from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.cluster.backbone.serializers import rms_job_run_serializer
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.icsw.service.instance import InstanceXML
-from initat.tools import logging_tools, server_command, process_tools
-from .helper_functions import contact_server, xml_wrapper
+from initat.tools import logging_tools, server_command
+from .helper_functions import contact_server, xml_wrapper, CollectdMCHelper
 
 RMS_ADDON_KEYS = [
     key for key in list(
@@ -386,15 +385,14 @@ class get_rms_done_json(View):
         )
 
 
+mc_helper = CollectdMCHelper(logger)
+
+
 class get_rms_current_json(View, RMSJsonMixin):
-    # memcached port and address
-    _MC_SETTINGS = None
 
     @method_decorator(login_required)
     def post(self, request):
-        import memcache
         from initat.tools import sge_tools
-        from initat.collectd.constants import CollectdMCKeyEnum
         _post = request.POST
         my_sge_info = get_sge_info()
         my_sge_info.update()
@@ -410,32 +408,6 @@ class get_rms_current_json(View, RMSJsonMixin):
         # load values
         # get name of all hosts
         _host_names = node_list.xpath(".//node/host/text()")
-        # memcache client
-        if self._MC_SETTINGS is None:
-            self._MC_SETTINGS = {
-                "PORT": InstanceXML(
-                    quiet=True
-                ).get_port_dict(
-                    icswServiceEnum.memcached,
-                    command=True
-                ),
-                "ADDRESS": "127.0.0.1",
-            }
-        _mcc = memcache.Client(
-            [
-                "{}:{:d}".format(
-                    self._MC_SETTINGS["ADDRESS"],
-                    self._MC_SETTINGS["PORT"]
-                )
-            ]
-        )
-        h_dict_raw = _mcc.get(CollectdMCKeyEnum.main_key.value)
-        if h_dict_raw:
-            h_dict = json.loads(h_dict_raw)
-        else:
-            h_dict = {}
-        # required keys
-        # req_keys = re.compile("^(load\.(1|5|15)$)|(mem\.(avail|free|used)\..*)$")
         # resolve to full host names / dev_pks / uuids
         _dev_dict = {
             _name: {
@@ -452,25 +424,11 @@ class get_rms_current_json(View, RMSJsonMixin):
         _rev_lut = {
             _value["idx"]: _key for _key, _value in _dev_dict.items()
         }
+        mv_dict = mc_helper.get_weathermap_data([_struct["uuid"] for _struct in _dev_dict.values()])
         for _name, _struct in _dev_dict.items():
-            if _struct["uuid"] in h_dict:
-                try:
-                    _value_list = json.loads(
-                        _mcc.get(
-                            CollectdMCKeyEnum.wm_key.value(_struct["uuid"])
-                        )
-                    )
-                except:
-                    logger.error(
-                        "error decoding json.loads: {}".format(
-                            process_tools.get_except_info()
-
-                        )
-                    )
-                else:
-                    _struct["values"] = {
-                        _entry["key"]: _entry["value"] for _entry in _value_list
-                    }
+            _struct["values"] = {
+                _entry["key"]: _entry["value"] for _entry in mv_dict.get(_struct["uuid"], [])
+            }
 
         fc_dict = {}
         cur_time = time.time()

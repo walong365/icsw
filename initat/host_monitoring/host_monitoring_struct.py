@@ -133,7 +133,9 @@ class SimpleCounter(object):
                     self._list.count(_value),
                     _value,
                     self._lut.get(_value, ""),
-                ) for _value in sorted(self._ok + self._warn + self._error) if self._list.count(_value)
+                ) for _value in sorted(
+                    self._ok + self._warn + self._error
+                ) if self._list.count(_value)
             ]
         ) or "empty list in SCounter"
         if self._prefix:
@@ -153,7 +155,10 @@ class SRProbe(object):
         self.__time = time.time()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.host_con.log("[probe for {}] {}".format(self.host_con.conn_str, what), log_level)
+        self.host_con.log(
+            "[probe for {}] {}".format(self.host_con.conn_str, what),
+            log_level
+        )
 
     @property
     def send(self):
@@ -244,7 +249,9 @@ class HostConnection(object):
             )
         )
         # router socket
-        id_str = "relayer_rtr_{}".format(process_tools.get_machine_name())
+        id_str = "relayer_rtr_{}".format(
+            process_tools.get_machine_name()
+        )
         new_sock = process_tools.get_socket(
             cls.relayer_process.zmq_context,
             "ROUTER",
@@ -284,7 +291,9 @@ class HostConnection(object):
     def get_hc_tcp(cls, conn_str, **kwargs):
         if (False, conn_str) not in cls.hc_dict:
             if ICSW_DEBUG_MODE:
-                cls.relayer_process.log("new TCP HostConnection for '{}'".format(conn_str))
+                cls.relayer_process.log(
+                    "new TCP HostConnection for '{}'".format(conn_str)
+                )
             cur_hc = cls(conn_str, **kwargs)
         else:
             cur_hc = cls.hc_dict[(False, conn_str)]
@@ -307,7 +316,10 @@ class HostConnection(object):
         cls.relayer_process.log("[hc] {}".format(what), log_level)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        HostConnection.relayer_process.log("[hc {}] {}".format(self.__conn_str, what), log_level)
+        HostConnection.relayer_process.log(
+            "[hc {}] {}".format(self.__conn_str, what),
+            log_level
+        )
 
     def check_timeout(self, cur_time):
         # check all messages for current cls
@@ -372,7 +384,9 @@ class HostConnection(object):
         except:
             self.return_error(
                 host_mes,
-                "error parsing arguments: {}".format(process_tools.get_except_info())
+                "error parsing arguments: {}".format(
+                    process_tools.get_except_info()
+                )
             )
         else:
             if not self.tcp_con:
@@ -443,7 +457,11 @@ class HostConnection(object):
                     if self.retrigger_state == HostConnectionReTriggerEnum.init:
                         # check current state
                         self.retrigger_state = HostConnectionReTriggerEnum.sent
-                        if HostConnection.zmq_discovery.has_mapping(self.conn_str) and not HostConnection.zmq_discovery.is_pending(self.conn_str):
+                        if HostConnection.zmq_discovery.has_mapping(
+                            self.conn_str
+                        ) and not HostConnection.zmq_discovery.is_pending(
+                            self.conn_str
+                        ):
                             self.log("triggering discovery run, clear resue flag")
                             HostConnection.zmq_discovery(
                                 server_command.srv_command(
@@ -466,7 +484,10 @@ class HostConnection(object):
                 )
 
     def send_result(self, host_mes, result=None):
-        _result, _src_socket = host_mes.get_result(result, HostConnection.relayer_process)
+        _result, _src_socket = host_mes.get_result(
+            result,
+            HostConnection.relayer_process
+        )
         if host_mes.xml_input:
             # determine returning socket
             if _src_socket == "ipc":

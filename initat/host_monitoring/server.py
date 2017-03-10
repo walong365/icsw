@@ -169,7 +169,13 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             try:
                 _ret_val = cur_mod.reload()
             except:
-                self.log("error calling reload() for {}: {}".format(cur_mod.name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error calling reload() for {}: {}".format(
+                        cur_mod.name,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 if _ret_val != "N/A":
                     self.log("called reload() for {}".format(cur_mod.name))
@@ -189,7 +195,12 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 else:
                     self.log("enabled KSM")
             else:
-                self.log("ksm_dir '{}' not found".format(ksm_dir), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "ksm_dir '{}' not found".format(
+                        ksm_dir
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
         else:
             self.log("KSM not touched")
 
@@ -209,7 +220,9 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             huge_dir = "/sys/kernel/mm/hugepages/"
             mem_total = int(
                 [
-                    line for line in open("/proc/meminfo", "r").read().lower().split("\n") if line.startswith("memtotal")
+                    line for line in open(
+                        "/proc/meminfo", "r"
+                    ).read().lower().split("\n") if line.startswith("memtotal")
                 ][0].split()[1]
             ) * 1024
             mem_to_map = mem_total * self.CC.CS["hm.hugepage.percentage"] / 100
@@ -280,9 +293,19 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                                                 logging_tools.LOG_LEVEL_ERROR
                                             )
                                         else:
-                                            self.log("wrote {:d} to {}".format(num_pages, pages_file))
+                                            self.log(
+                                                "wrote {:d} to {}".format(
+                                                    num_pages,
+                                                    pages_file
+                                                )
+                                            )
             else:
-                self.log("huge_dir '{}' not found".format(huge_dir), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "huge_dir '{}' not found".format(
+                        huge_dir
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
         else:
             self.log("hugepages not touched")
 
@@ -367,7 +390,13 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 access_mode=config_store.AccessModeEnum.LOCAL,
                 fix_access_mode=True,
             )
-            for _idx, _key in enumerate(["*"] + sorted([_key for _key in list(zmq_id_dict.keys()) if _key not in ["*"]])):
+            for _idx, _key in enumerate(
+                ["*"] + sorted(
+                    [
+                        _key for _key in list(zmq_id_dict.keys()) if _key not in ["*"]
+                    ]
+                )
+            ):
                 _cs["{:d}".format(_idx)] = {
                     "address": _key,
                     "uuid": zmq_id_dict[_key][0],
@@ -463,7 +492,12 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 try:
                     os.unlink(file_name)
                 except:
-                    self.log("... {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "... {}".format(
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
             wait_iter = 0
             while os.path.exists(file_name) and wait_iter < 100:
                 self.log("socket {} still exists, waiting".format(sock_name))
@@ -504,7 +538,10 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 self.register_poller(self.vector_socket, zmq.POLLIN, _func)
 
     def _close_external(self):
-        for bind_ip, sock in zip(sorted(self.zmq_id_dict.keys()), self.socket_list):
+        for bind_ip, sock in zip(
+            sorted(self.zmq_id_dict.keys()),
+            self.socket_list
+        ):
             _conn_str = "tcp://{}:{:d}".format(
                 bind_ip,
                 self.global_config["COMMAND_PORT"]
@@ -606,7 +643,11 @@ class ServerCode(ICSWBasePool, HMHRMixin):
     def _check_connection(self):
         TIMEOUT_SECS = 60
         cur_time = time.time()
-        mis_ids = [key for key, value in self.connection_info_dict.items() if abs(value - cur_time) > TIMEOUT_SECS]
+        mis_ids = [
+            key for key, value in self.connection_info_dict.items() if abs(
+                value - cur_time
+            ) > TIMEOUT_SECS
+        ]
         if mis_ids:
             self.log(
                 "no messages received from {} after {}: {}".format(
@@ -696,7 +737,11 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             elif delayed:
                 # delayed is a subprocess_struct
                 delayed.set_send_stuff(self, src_id, zmq_sock)
-                com_usage = len([True for cur_del in self.__delayed if cur_del.command == cur_com])
+                com_usage = len(
+                    [
+                        True for cur_del in self.__delayed if cur_del.command == cur_com
+                    ]
+                )
                 # print "CU", com_usage, [cur_del.target_host for cur_del in self.__delayed]
                 if com_usage > delayed.Meta.max_usage:
                     srv_com.set_result(
@@ -744,7 +789,9 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         info_str = "got command '{}' from '{}', took {}".format(
             srv_com["command"].text,
             srv_com["source"].attrib["host"],
-            logging_tools.get_diff_time_str(abs(c_time - float(srv_com["result"].attrib["start_time"])))
+            logging_tools.get_diff_time_str(
+                abs(c_time - float(srv_com["result"].attrib["start_time"]))
+            )
         )
         if int(srv_com["result"].attrib["state"]) != server_command.SRV_REPLY_STATE_OK:
             info_str = "{}, result is {} ({})".format(
@@ -758,8 +805,17 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         if self.__debug:
             self.log(info_str, log_level)
         srv_com.update_source()
-        zmq_sock.send_unicode(src_id, zmq.SNDMORE)
-        zmq_sock.send_string(str(srv_com))
+        try:
+            zmq_sock.send_unicode(src_id, zmq.SNDMORE)
+            zmq_sock.send_string(str(srv_com))
+        except:
+            self.log(
+                "error sending return to {}".format(src_id),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            self.log(
+                "srv_com: {}".format(str(srv_com))
+            )
         del srv_com
 
     def _check_delayed(self):

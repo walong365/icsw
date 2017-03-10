@@ -72,10 +72,15 @@ class IPCCommandHandler(object):
                     com_part = cur_str[cur_size + 1:]
                     arg_list.append(cur_str[:cur_size])
                 if com_part:
-                    raise ValueError("not fully parsed ({})".format(com_part))
+                    raise ValueError(
+                        "not fully parsed ({})".format(com_part)
+                    )
                 else:
                     cur_com = arg_list.pop(0) if arg_list else ""
-                    srv_com = server_command.srv_command(command=cur_com, identity=src_id)
+                    srv_com = server_command.srv_command(
+                        command=cur_com,
+                        identity=src_id
+                    )
                     _e = srv_com.builder()
                     srv_com[""].extend(
                         [
@@ -84,13 +89,24 @@ class IPCCommandHandler(object):
                             _e.timeout(parts[2]),
                             _e.raw_connect(parts[3]),
                             _e.arguments(
-                                *[getattr(_e, "arg{:d}".format(arg_idx))(arg) for arg_idx, arg in enumerate(arg_list)]
+                                *[
+                                    getattr(
+                                        _e,
+                                        "arg{:d}".format(arg_idx)
+                                    )(arg) for arg_idx, arg in enumerate(arg_list)
+                                ]
                             ),
                             _e.arg_list(" ".join(arg_list)),
                         ]
                     )
             except:
-                self.log("error parsing {}: {}".format(data, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error parsing {}: {}".format(
+                        data,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 srv_com = None
         else:
             src_id, srv_com = (None, None)
@@ -123,7 +139,10 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
     )
     client_send.connect(send_conn_str)
     client_recv.connect(recv_conn_str)
-    srv_com = server_command.srv_command(command=command, identity=identity_str)
+    srv_com = server_command.srv_command(
+        command=command,
+        identity=identity_str
+    )
     srv_com["host"] = target_host
     srv_com["raw"] = "True"
     srv_com["arg_list"] = " ".join(args)
@@ -154,5 +173,9 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
             raise
     else:
         # srv_reply = None
-        raise SystemError("timeout ({:d} seconds) exceeded".format(int(cur_timeout)))
+        raise SystemError(
+            "timeout ({:d} seconds) exceeded".format(
+                int(cur_timeout)
+            )
+        )
     return srv_reply

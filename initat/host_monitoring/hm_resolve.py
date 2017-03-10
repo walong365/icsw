@@ -80,7 +80,13 @@ class ResolveProcess(threading_tools.icswProcessObj):
                 else:
                     result = socket.gethostbyname(addr)
             except:
-                self.log("cannot resolve {}: {}".format(addr, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "cannot resolve {}: {}".format(
+                        addr,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 result = None
             self.__cache[addr] = CacheEntry(addr, result)
         return result
@@ -97,4 +103,11 @@ class ResolveProcess(threading_tools.icswProcessObj):
             )
         for _src_proc, _cur_mes in r_list:
             _id, _addr_list = _cur_mes["args"][:2]
-            self.send_pool_message("resolved", _id, [self._resolve_addr(_addr, overload=overload) for _addr in _addr_list], target="socket")
+            self.send_pool_message(
+                "resolved",
+                _id,
+                [
+                    self._resolve_addr(_addr, overload=overload) for _addr in _addr_list
+                ],
+                target="socket"
+            )

@@ -31,10 +31,12 @@ angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswSimpleAjaxCall",
     "icswParseXMLResponseService", "toaster", "icswUserService", "icswGraphTools",
+    "icswDeviceTreeHelperService", "icswDeviceTreeService",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, $timeout, ICSW_URLS, icswSimpleAjaxCall,
     icswParseXMLResponseService, toaster, icswUserService, icswGraphTools,
+    icswDeviceTreeHelperService, icswDeviceTreeService,
 ) ->
     $scope.struct = {
         # device tree
@@ -51,8 +53,30 @@ angular.module(
         for dev in dev_list
             if not dev.is_meta_device
                 $scope.struct.devices.push(dev)
-        $scope.struct.loading = false
-        $scope.struct.data_valid = true
+        $q.all(
+            [
+                icswDeviceTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.device_tree = data[0]
+                hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+                $scope.struct.device_tree.enrich_devices(hs, ["network_info"]).then(
+                    (done) ->
+                        console.log "d"
+                        icswSimpleAjaxCall(
+                            url: ICSW_URLS.DEVICE_GET_WEATHERMAP_DATA
+                            dataType: "json"
+                            data:
+                                device_idxs: angular.toJson((dev.idx for dev in $scope.struct.devices))
+                        ).then(
+                            (result) ->
+                                console.log "*", result
+                                $scope.struct.loading = false
+                                $scope.struct.data_valid = true
+                        )
+                )
+        )
 
     $scope.$on("$destroy", () ->
     )

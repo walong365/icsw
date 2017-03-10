@@ -11,6 +11,7 @@
     "gulp-ccr-parallel": "^0.1.0",
     "gulp-changed": "^2.0.0",
     "gulp-chef": "^0.1.2",
+    "gulp-shell": "0.6.3",
     "gulp-cjsx": "^4.1.0",
     "gulp-clean-dest": "^0.2.0",
     "gulp-coffee": "^2.3.4",
@@ -36,7 +37,7 @@
     "gulp-sourcemaps": "^2.4.1",
     "gulp-strip-debug": "^1.1.0",
     "gulp-typescript": "^3.1.5",
-    // do not update, gulp-uglify==2.1.0 is buggy
+    "#": "do not update, gulp-uglify==2.1.0 is buggy",
     "gulp-uglify": "==2.0.1",
     "gulp-wait": "0.0.2",
     "gulp-webserver": "^0.9.1",
