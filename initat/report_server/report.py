@@ -62,6 +62,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 from reportlab import rl_config
 
+# restore proper expanduser function
 os.path.expanduser = old_expanduser
 
 from unidecode import unidecode
@@ -387,6 +388,9 @@ class DeviceReport(GenericReport):
 
 
 class ReportGenerator(object):
+    class __DummyRequest(object):
+        pass
+
     def __init__(self, report_settings, devices, report_history):
         self.data = ""
 
@@ -546,6 +550,34 @@ class ReportGenerator(object):
 
         return data
 
+    def _get_data_for_availability_overview_report(self, report, _device):
+        start_time = int(report.report_settings["availability_timeframe_start"])
+        chart_info_map = [
+            ("24 Hours", "day"),
+            ("Weekly", "week"),
+            ("Monthly", "month"),
+        ]
+
+        for line_header, duration_type in chart_info_map:
+            dummy_request = self.__DummyRequest()
+            dummy_request.GET = {
+                "device_ids": "[{}]".format(_device.idx),
+                "date": start_time,
+                "duration_type": duration_type
+            }
+
+            timespans = _device_status_history_util.get_timespans_db_from_request(dummy_request)
+            timespan = None
+            if timespans:
+                timespan = timespans[0]
+
+            host_state_data = _device_status_history_util.get_hist_device_data_from_request(dummy_request)
+
+            dummy_request.GET["merge_services"] = 1
+            service_state_data = _device_status_history_util.get_hist_service_data_from_request(dummy_request)
+
+            yield (line_header, duration_type, timespan, host_state_data, service_state_data)
+
 
 class ColoredRule(Rule):
     def __init__(self, pos, width, thickness=1.0, report=None, hexcolor=None):
@@ -647,9 +679,6 @@ class TabbedCanvas(Canvas):
 
 
 class PDFReportGenerator(ReportGenerator):
-    class __DummyRequest(object):
-        pass
-
     def __init__(self, _settings, devices, report_history):
         super(PDFReportGenerator, self).__init__(_settings, devices, report_history)
 
@@ -722,7 +751,7 @@ class PDFReportGenerator(ReportGenerator):
             label_transformation = HOST_STATE_TYPE_TRANSFORMATION
         else:
             color_map = SERVICE_STATUS_COLOR_MAP
-            label_transformation = SERVICE_TRANS_TYPE_TRANSFORMATION
+            label_transformation = SERVICE_STATE_TYPE_TRANSFORMATION
 
         pie_data = []
         pie_labels = []
@@ -1197,7 +1226,7 @@ class PDFReportGenerator(ReportGenerator):
                 for state_dict in data:
                     state_dict["date"] = state_dict["date"].replace(tzinfo=tz.tzutc()).astimezone(tz.tzlocal()).\
                         strftime(ASSET_DATETIMEFORMAT)
-                    state_dict["state"] = SERVICE_TRANS_TYPE_TRANSFORMATION[state_dict["state"]]
+                    state_dict["state"] = SERVICE_STATE_TYPE_TRANSFORMATION[state_dict["state"]]
 
                 rpt = PollyReportsReport(data)
 
@@ -1355,28 +1384,12 @@ class PDFReportGenerator(ReportGenerator):
         body_data = []
 
         # get and add charts
-        start_time = int(report.report_settings["availability_timeframe_start"])
-        chart_info_map = [
-            ("24 Hours", "day"),
-            ("Weekly", "week"),
-            ("Monthly", "month"),
-        ]
 
-        for line_header, duration_type in chart_info_map:
+        for availability_tuples in self._get_data_for_availability_overview_report(report, _device):
+            line_header, duration_type, timespan, host_state_data, service_state_data = availability_tuples
+
             row = []
-            dummy_request = self.__DummyRequest()
-            dummy_request.GET = {
-                "device_ids": "[{}]".format(_device.idx),
-                "date": start_time,
-                "duration_type": duration_type
-            }
 
-            timespans = _device_status_history_util.get_timespans_db_from_request(dummy_request)
-            timespan = None
-            if timespans:
-                timespan = timespans[0]
-
-            host_state_data = _device_status_history_util.get_hist_device_data_from_request(dummy_request)
             if host_state_data and host_state_data[_device.idx]:
                 row.append(self.__create_pie_chart_from_state_data(state_data=host_state_data[_device.idx],
                                                                    description="Host Status",
@@ -1386,8 +1399,6 @@ class PDFReportGenerator(ReportGenerator):
             else:
                 row.append("No host state data found!")
 
-            dummy_request.GET["merge_services"] = 1
-            service_state_data = _device_status_history_util.get_hist_service_data_from_request(dummy_request)
             if service_state_data and service_state_data[_device.idx]:
                 row.append(self.__create_pie_chart_from_state_data(state_data=service_state_data[_device.idx],
                                                                    description="Service Status",
@@ -2786,6 +2797,9 @@ class XlsxReportGenerator(ReportGenerator):
             self.__generate_device_overview(_device, workbook)
             device_report = DeviceReport(_device, self.device_settings[_device.idx], _device.full_name)
 
+            if device_report.report_settings["availability_overview_selected"]:
+                self.__generate_device_availability_overview_report(_device, workbook, device_report)
+
             selected_runs = select_assetruns_for_device(_device, self.device_settings[_device.idx]["assetbatch_id"])
 
             for ar in selected_runs:
@@ -2950,6 +2964,53 @@ class XlsxReportGenerator(ReportGenerator):
         report_history_obj.write_data(self.data)
         report_history_obj.progress = -1
         report_history_obj.save()
+
+    def __generate_device_availability_overview_report(self, _device, workbook, root_report):
+        host_sheet = workbook.create_sheet()
+        host_sheet.title = "Availability Overview (Host)"
+
+        service_sheet = workbook.create_sheet()
+        service_sheet.title = "Availability Overview (Service)"
+
+        header = ["Timerange", "Timerange Start", "Timerange End"]
+        for keyname in sorted(HOST_STATE_TYPE_TRANSFORMATION.keys()):
+            header.append(HOST_STATE_TYPE_TRANSFORMATION[keyname])
+
+        host_sheet.append(header)
+
+        header = header[:3]
+        for keyname in sorted(SERVICE_STATE_TYPE_TRANSFORMATION):
+            header.append(SERVICE_STATE_TYPE_TRANSFORMATION[keyname])
+
+        service_sheet.append(header)
+
+        for availability_tuples in self._get_data_for_availability_overview_report(root_report, _device):
+            line_header, duration_type, timespan, host_state_data, service_state_data = availability_tuples
+
+            loop_tuples = [(HOST_STATE_TYPE_TRANSFORMATION, host_sheet, host_state_data),
+                           (SERVICE_STATE_TYPE_TRANSFORMATION, service_sheet, service_state_data)]
+            for state_transformation, sheet, state_data in loop_tuples:
+                row = [line_header, "N/A", "N/A"]
+                for _ in state_transformation.keys():
+                    row.append("N/A")
+
+                if timespan and state_data and _device.idx in state_data:
+                    row = [line_header]
+                    state_data = state_data[_device.idx]
+                    row.append(timespan.start_date.strftime(ASSET_DATETIMEFORMAT))
+                    row.append(timespan.end_date.strftime(ASSET_DATETIMEFORMAT))
+
+                    state_congregate = {}
+                    for state_dict in state_data:
+                        state_congregate[state_dict["state"]] = state_dict["value"]
+
+                    for keyname in sorted(state_transformation.keys()):
+                        if keyname in state_congregate:
+                            row.append(state_congregate[keyname])
+                        else:
+                            row.append(0)
+
+                sheet.append(row)
 
     def __generate_user_group_overview_report(self):
         workbook = Workbook()
@@ -3581,7 +3642,7 @@ HOST_STATE_TYPE_TRANSFORMATION = {
     }
 
 
-SERVICE_TRANS_TYPE_TRANSFORMATION = {
+SERVICE_STATE_TYPE_TRANSFORMATION = {
     k: v.capitalize() for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES
     }
 
@@ -3716,7 +3777,7 @@ class LineHistoryRect(_DrawingEditorMixin, Drawing):
         else:
             color_map = SERVICE_STATUS_COLOR_MAP
             size_ratios = SERVICE_STATUS_SIZE_RATIOS
-            state_transformation = SERVICE_TRANS_TYPE_TRANSFORMATION
+            state_transformation = SERVICE_STATE_TYPE_TRANSFORMATION
 
         start_date = timespan.start_date.replace(tzinfo=tz.tzlocal())
         end_date = timespan.end_date.replace(tzinfo=tz.tzlocal())
