@@ -237,7 +237,7 @@ def basic_availability_test(host):
     )
     driver.maximize_window()
 
-    driver.log_in('admin', 'abc123', delay=60)
+    driver.simple_log_in('admin', 'abc123')
     title = driver.title
 
     if title and title == 'Dashboard':

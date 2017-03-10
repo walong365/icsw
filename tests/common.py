@@ -73,6 +73,14 @@ class Webdriver(webdriver.Remote):
         time.sleep(2.5)
         return tmp
 
+    def simple_log_in(self, user, password):
+        self.get(self.base_url)
+        self.find_element_by_name('username').send_keys(user)
+        self.find_element_by_name('password').send_keys(password)
+        self.find_element_by_name('button').click()
+        xpath_logged_in = '//a[@href="#!/main/devtree"]'
+        self.find_element_by_xpath(xpath_logged_in)
+
     def log_in(self, user, password, delay=1):
         self.get(self.base_url)
         time.sleep(delay)
@@ -81,7 +89,7 @@ class Webdriver(webdriver.Remote):
         self.find_element_by_name('button').click()
         self.wait_overlay()
         # confirm the warning about a concurrent login
-        xpath_logged_in = '//a[@href="#!/main/dashboard"]'
+        xpath_logged_in = '//a[@href="#!/main/devtree"]'
         find_elements = [
             ('concurrent', '//div[@class="bootstrap-dialog-message" and '
                 'starts-with(., "Another user is already using this '
