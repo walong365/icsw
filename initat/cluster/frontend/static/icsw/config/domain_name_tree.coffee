@@ -88,7 +88,7 @@ angular.module(
     }
     $scope.reload = () ->
         $scope.struct.data_valid = false
-        icswDomainTreeService.load($scope.$id).then(
+        icswDomainTreeService.reload($scope.$id).then(
             (tree) ->
                 $scope.struct.disp_tree = new icswConfigDomainNameTreeService(
                     (cmd, arg) =>
@@ -101,7 +101,7 @@ angular.module(
                         else if cmd == "edit_entry"
                             $scope.create_or_edit(null, false, arg)
                         else
-                            console.error "unknwon callback command '#{cmd}'"
+                            console.error "unkown callback command '#{cmd}'"
                     {
                         show_selection_buttons: false
                         show_select: false
@@ -241,6 +241,9 @@ angular.module(
                         if create
                             $scope.struct.tree.create_domain_tree_node_entry(sub_scope.edit_obj).then(
                                 (ok) ->
+                                    $scope.struct.tree = undefined
+                                    $scope.struct.disp_tree = undefined
+                                    $scope.reload()
                                     d.resolve("created")
                                 (notok) ->
                                     d.reject("not created")
