@@ -262,6 +262,11 @@ device_patterns = [
         device_views.RemoteViewerConfigLoader.as_view(),
         name="remote_viewer_config_loader"
     ),
+    url(
+        r"^get_weathermap_data$",
+        device_views.WeatherMapData.as_view(),
+        name="get_weathermap_data",
+    )
 ]
 
 

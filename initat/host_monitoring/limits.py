@@ -106,7 +106,14 @@ class range_parameter(object):
 
 
 class limits(object):
-    __slots__ = ["warn_val", "crit_val", "warn_val_f", "crit_val_f", "add_flags", "add_vars"]
+    __slots__ = [
+        "warn_val",
+        "crit_val",
+        "warn_val_f",
+        "crit_val_f",
+        "add_flags",
+        "add_vars"
+    ]
 
     def __init__(self, warn_val=None, crit_val=None, add_flags=None):
         self.warn_val, self.warn_val_f = (None, None)

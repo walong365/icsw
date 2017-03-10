@@ -61,7 +61,11 @@ class MCPortList(object):
 
     def get_port_spec(self):
         if self.port_specs:
-            return ", ".join([_ps.get_port_spec() for _ps in self.port_specs])
+            return ", ".join(
+                [
+                    _ps.get_port_spec() for _ps in self.port_specs
+                ]
+            )
         else:
             return "none"
 
@@ -728,7 +732,10 @@ class MonitoringCommand(MMMCBase):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if hasattr(self, "module"):
-            self.module.main_proc.log("[{}] {}".format(self.Meta.name, what), log_level)
+            self.module.main_proc.log(
+                "[{}] {}".format(self.Meta.name, what),
+                log_level
+            )
         else:
             self.__log_cache.append((what, log_level))
 
@@ -793,7 +800,9 @@ class MonitoringCommand(MMMCBase):
         return self.hash_object.hexdigest()
 
     def get_json_dump(self, prev_file):
-        _prev_instance = [cmd for cmd in prev_file["command_list"] if cmd["uuid"] == self.Meta.uuid]
+        _prev_instance = [
+            cmd for cmd in prev_file["command_list"] if cmd["uuid"] == self.Meta.uuid
+        ]
         if len(_prev_instance):
             _prev_instance = _prev_instance[0]
         else:
@@ -802,7 +811,9 @@ class MonitoringCommand(MMMCBase):
             _version = _prev_instance.get("version", 1)
             if _prev_instance["checksum"] != self.checksum:
                 _version += 1
-                print("increasing version of {} to {:d}".format(self.Meta.name, _version))
+                print(
+                    "increasing version of {} to {:d}".format(self.Meta.name, _version)
+                )
         else:
             _version = 1
         return {
@@ -901,7 +912,15 @@ class MachineVectorEntry(object):
         act_line = []
         sub_keys = (self.name.split(".") + [""] * max_num_keys)[0:max_num_keys]
         for key_idx, sub_key in zip(range(max_num_keys), sub_keys):
-            act_line.append(logging_tools.form_entry("{}{}".format("" if (key_idx == 0 or sub_key == "") else ".", sub_key), header="key{:d}".format(key_idx)))
+            act_line.append(
+                logging_tools.form_entry(
+                    "{}{}".format(
+                        "" if (key_idx == 0 or sub_key == "") else ".",
+                        sub_key
+                    ),
+                    header="key{:d}".format(key_idx)
+                )
+            )
         # check for unknow
         if self.value is None:
             # unknown value
@@ -914,7 +933,12 @@ class MachineVectorEntry(object):
                 logging_tools.form_entry_right(act_pf, header=" "),
                 logging_tools.form_entry(self.unit, header="unit"),
                 logging_tools.form_entry("({:3d})".format(idx), header="idx"),
-                logging_tools.form_entry("{:d}".format(self.valid_until) if self.valid_until else "---", header="valid_until"),
+                logging_tools.form_entry(
+                    "{:d}".format(
+                        self.valid_until
+                    ) if self.valid_until else "---",
+                    header="valid_until"
+                ),
                 logging_tools.form_entry(self._build_info_string(), header="info")
             ]
         )
@@ -968,7 +992,9 @@ class MachineVectorEntry(object):
             ("factor", 1)
         ]:
             if getattr(self, key) != ns_value:
-                kwargs[key] = "{:d}".format(int(getattr(self, key)))
+                kwargs[key] = "{:d}".format(
+                    int(getattr(self, key))
+                )
         return builder("mve", **kwargs)
 
     def build_json(self):

@@ -33,7 +33,9 @@ __all__ = [
 class icswAppBaseServiceEnumClass(object):
     def __init__(self, *args):
         if not isinstance(args[0], icswServiceEnumBaseClient):
-            raise ValueError("value of serviceEnum has to be an instance of icswServiceEnumBaseClient")
+            raise ValueError(
+                "value of serviceEnum has to be an instance of icswServiceEnumBaseClient"
+            )
 
 
 # this gets initialised as soon as this module is imported so import this only
@@ -88,7 +90,13 @@ class client_enums(Enum):
 def init_app_enum():
     global icswServiceEnum
     from initat.icsw.service import instance
-    icswServiceEnum = Enum(value="icswClientEnum", names=[(entry.name, entry.value) for entry in client_enums], type=icswAppBaseServiceEnumClass)
+    icswServiceEnum = Enum(
+        value="icswClientEnum",
+        names=[
+            (entry.name, entry.value) for entry in client_enums
+        ],
+        type=icswAppBaseServiceEnumClass
+    )
     _xml = instance.InstanceXML(quiet=True)
     for _inst in _xml.get_all_instances():
         if _xml.get_attrib(_inst)["runs_on"] in ["client"] or _inst.find("ignore-missing-database") is not None:

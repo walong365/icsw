@@ -287,7 +287,9 @@ class MappingDB(object):
                 else:
                     # step 1: find match connections
                     mc_list = [
-                        entry for entry in conn_results if entry["connection_uuid"] == mapping_obj.connection_uuid
+                        entry for entry in conn_results if entry[
+                            "connection_uuid"
+                        ] == mapping_obj.connection_uuid
                     ]
                     if mc_list and mapping_obj.dynamic_uuid:
                         if len(mc_list) > 1:

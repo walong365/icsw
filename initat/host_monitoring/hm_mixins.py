@@ -34,7 +34,9 @@ class HMHRMixin(object):
         if enable_filter:
             # read access level and platform
             _platform = PLATFORM_SYSTEM_TYPE
-            _access_class = HMAccessClassEnum(self.CC.CS["hm.access_class"])
+            _access_class = HMAccessClassEnum(
+                self.CC.CS["hm.access_class"]
+            )
         else:
             _platform = None
             _access_class = None

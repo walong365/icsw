@@ -213,7 +213,9 @@ class ZMQDiscovery(object):
         self.src_id = src_id
         self.xml_input = xml_input
         cur_time = time.time()
-        if self.conn_str in ZMQDiscovery.last_try and abs(ZMQDiscovery.last_try[self.conn_str] - cur_time) < 60:
+        if self.conn_str in ZMQDiscovery.last_try and abs(
+            ZMQDiscovery.last_try[self.conn_str] - cur_time
+        ) < 60:
             # need 60 seconds between tries
             self.socket = None
             self.send_return("last 0MQ discovery less than 60 seconds ago")
@@ -313,9 +315,17 @@ class ZMQDiscovery(object):
                 if self.src_id:
                     # reinject
                     if self.port == self.hm_port:
-                        ZMQDiscovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
+                        ZMQDiscovery.relayer_process._send_to_client(
+                            self.src_id,
+                            self.srv_com,
+                            self.xml_input
+                        )
                     else:
-                        ZMQDiscovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
+                        ZMQDiscovery.relayer_process._send_to_nhm_service(
+                            self.src_id,
+                            self.srv_com,
+                            self.xml_input
+                        )
                 else:
                     self.log(
                         "no src_id set, was internal ID check",
@@ -363,7 +373,7 @@ class ZMQDiscovery(object):
         )
         # cls.db_map.clear()
         #
-        if cls.db_map.not_empty():  #  and False:
+        if cls.db_map.not_empty():  # and False:
             # SQLite not empty
             _log("read mapping from SQLite")
             num_read = 0
