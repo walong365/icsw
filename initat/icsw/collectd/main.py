@@ -266,7 +266,7 @@ class WmListCom(BaseCom):
             for entry in h_struct:
                 # print(entry)
                 if v_re.match(entry["key"]):
-                    entry["wm_type"] = WMTypeEnum(entry.pop("wm_type"))
+                    entry["wm_type"] = getattr(WMTypeEnum, entry.pop("wm_type"))
                     _list.append(
                         (
                             v_dict[h_uuid][1],

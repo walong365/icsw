@@ -37,7 +37,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from initat.cluster.backbone.models import device, cd_connection, kernel, image, partition_table, status, network, mac_ignore
+from initat.cluster.backbone.models import device, cd_connection, kernel, image, \
+    partition_table, status, network, mac_ignore
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import logging_tools, server_command
 
@@ -89,7 +90,12 @@ class get_boot_info_json(View):
                 ]
             )
             result = contact_server(
-                request, icswServiceEnum.mother_server, srv_com, timeout=10, log_result=False, connection_id="webfrontend_status"
+                request,
+                icswServiceEnum.mother_server,
+                srv_com,
+                timeout=10,
+                log_result=False,
+                connection_id="webfrontend_status"
             )
         else:
             result = None
@@ -190,12 +196,16 @@ class update_device(View):
                         update_list.add("target state")
                         _mother_commands.add("refresh")
                 if _en["i"]:
-                    new_image = image.objects.get(Q(pk=dev_data["new_image"])) if dev_data.get("new_image", None) else None
+                    new_image = image.objects.get(
+                        Q(pk=dev_data["new_image"])
+                    ) if dev_data.get("new_image", None) else None
                     if new_image != cur_dev.new_image:
                         cur_dev.new_image = new_image
                         update_list.add("image")
                 if _en["k"]:
-                    new_kernel = kernel.objects.get(Q(pk=dev_data["new_kernel"])) if dev_data.get("new_kernel", None) else None
+                    new_kernel = kernel.objects.get(
+                        Q(pk=dev_data["new_kernel"])
+                    ) if dev_data.get("new_kernel", None) else None
                     new_stage1_flavour = dev_data.get("stage1_flavour", "")
                     new_kernel_append = dev_data.get("kernel_append", "")
                     if new_kernel != cur_dev.new_kernel or new_stage1_flavour != cur_dev.stage1_flavour or new_kernel_append != cur_dev.kernel_append:
@@ -205,7 +215,9 @@ class update_device(View):
                         update_list.add("kernel")
                         _mother_commands.add("refresh")
                 if _en["p"]:
-                    new_part = partition_table.objects.get(Q(pk=dev_data["partition_table"])) if dev_data["partition_table"] else None
+                    new_part = partition_table.objects.get(
+                        Q(pk=dev_data["partition_table"])
+                    ) if dev_data["partition_table"] else None
                     if new_part != cur_dev.partition_table:
                         cur_dev.partition_table = new_part
                         update_list.add("partition")
@@ -246,10 +258,20 @@ class update_device(View):
                 srv_com["devices"] = srv_com.builder(
                     "devices",
                     *[
-                        srv_com.builder("device", name=cur_dev.name, pk="{:d}".format(cur_dev.pk)) for cur_dev in all_devs
+                        srv_com.builder(
+                            "device",
+                            name=cur_dev.name,
+                            pk="{:d}".format(cur_dev.pk)
+                        ) for cur_dev in all_devs
                     ]
                 )
-                _res = contact_server(request, icswServiceEnum.mother_server, srv_com, timeout=10, connection_id="webfrontend_refresh")
+                _res = contact_server(
+                    request,
+                    icswServiceEnum.mother_server,
+                    srv_com,
+                    timeout=10,
+                    connection_id="webfrontend_refresh"
+                )
         if _all_update_list:
             if len(all_devs) > 1:
                 dev_info_str = "{}: {}".format(
@@ -292,7 +314,11 @@ class soft_control(View):
         srv_com["devices"] = srv_com.builder(
             "devices",
             *[
-                srv_com.builder("device", soft_command=soft_state, pk="{:d}".format(cur_dev.pk)) for cur_dev in cur_devs.values()
+                srv_com.builder(
+                    "device",
+                    soft_command=soft_state,
+                    pk="{:d}".format(cur_dev.pk)
+                ) for cur_dev in cur_devs.values()
             ]
         )
         result = contact_server(request, icswServiceEnum.mother_server, srv_com, timeout=10, log_result=False)
@@ -305,7 +331,13 @@ class soft_control(View):
                 request.xml_response.info(
                     "sent {} to {}".format(
                         soft_state,
-                        logging_tools.reduce_list(sorted([cur_devs[int(_pk)].full_name for _pk in _ok_list])),
+                        logging_tools.reduce_list(
+                            sorted(
+                                [
+                                    cur_devs[int(_pk)].full_name for _pk in _ok_list
+                                ]
+                            )
+                        ),
                     ),
                     logger
                 )
@@ -313,7 +345,13 @@ class soft_control(View):
                 request.xml_response.warn(
                     "unable to send {} to {}".format(
                         soft_state,
-                        logging_tools.reduce_list(sorted([cur_devs[int(_pk)].full_name for _pk in _error_list])),
+                        logging_tools.reduce_list(
+                            sorted(
+                                [
+                                    cur_devs[int(_pk)].full_name for _pk in _error_list
+                                ]
+                            )
+                        ),
                     ),
                     logger
                 )

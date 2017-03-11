@@ -167,4 +167,5 @@ class upload_license_file(View):
                         )
                     )
                     # srv_com = server_command.srv_command(command="check_license_violations")
-                    # contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=60, log_error=True, log_result=False)
+                    # contact_server(request, icswServiceEnum.cluster_server,
+                    #  srv_com, timeout=60, log_error=True, log_result=False)

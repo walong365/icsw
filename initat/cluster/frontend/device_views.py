@@ -49,8 +49,9 @@ from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabil
     partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, \
     snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer, \
     SensorThresholdSerializer, package_device_connection_serializer, DispatcherLinkSerializer, \
-    AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer, device_variable_scope_serializer, StaticAssetSerializer, DeviceClassSerializer, \
-    dvs_allowed_name_serializer, DeviceLogEntrySerializer
+    AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer, device_variable_scope_serializer, \
+    StaticAssetSerializer, DeviceClassSerializer, dvs_allowed_name_serializer, \
+    DeviceLogEntrySerializer
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from .helper_functions import xml_wrapper, contact_server, CollectdMCHelper
 
@@ -78,7 +79,11 @@ class change_devices(View):
                 else:
                     error_msgs.append((obj.name, can_delete_answer.msg))
             if num_deleted > 0:
-                request.xml_response.info("delete {}".format(logging_tools.get_plural("device", num_deleted)))
+                request.xml_response.info(
+                    "delete {}".format(
+                        logging_tools.get_plural("device", num_deleted)
+                    )
+                )
             for pk, msg in error_msgs:
                 request.xml_response.error("Failed to delete {}: {}".format(pk, msg))
         else:
@@ -91,7 +96,13 @@ class change_devices(View):
             }
             # build change_dict
             c_dict = {
-                key[7:]: c_dict.get(key[7:], def_dict.get(key[7:], None)) for key in c_dict.keys() if key.startswith("change_") and c_dict[key]
+                key[7:]: c_dict.get(
+                    key[7:],
+                    def_dict.get(
+                        key[7:],
+                        None
+                    )
+                ) for key in c_dict.keys() if key.startswith("change_") and c_dict[key]
             }
             # resolve foreign keys
             res_c_dict = {
@@ -138,7 +149,11 @@ class change_devices(View):
                     dev_changes += 1
             request.xml_response["changed"] = dev_changes
             request.xml_response["json_changes"] = json.dumps(changes_json)
-            request.xml_response.info("changed settings of {}".format(logging_tools.get_plural("device", dev_changes)))
+            request.xml_response.info(
+                "changed settings of {}".format(
+                    logging_tools.get_plural("device", dev_changes)
+                )
+            )
 
 
 class select_parents(View):
@@ -181,7 +196,12 @@ class manual_connection(View):
             val = re_dict[key]
             if val.count("#"):
                 parts = val.split("#")
-                val = ("(%s)(%s)(%s)" % (parts[0], "#" * (len(parts) - 1), parts[-1])).replace("()", "").replace("#", "\d")
+                val = (
+                    "(%s)(%s)(%s)" % (
+                        parts[0],
+                        "#" * (len(parts) - 1),
+                        parts[-1])
+                ).replace("()", "").replace("#", "\d")
             re_dict[key] = re.compile("^%s$" % (val))
         # all cd / non-cd devices
         # FIXME
@@ -226,14 +246,22 @@ class manual_connection(View):
             try:
                 new_cd.save()
             except ValidationError:
-                request.xml_response.error("error creating: {}".format(process_tools.get_except_info()), logger)
+                request.xml_response.error(
+                    "error creating: {}".format(process_tools.get_except_info()),
+                    logger
+                )
                 for del_cd in created_cons:
                     del_cd.delete()
             else:
                 created_cons.append(new_cd)
         if m_keys:
             if created_cons:
-                request.xml_response.info("created {}".format(logging_tools.get_plural("connection", len(m_keys))), logger)
+                request.xml_response.info(
+                    "created {}".format(
+                        logging_tools.get_plural("connection", len(m_keys))
+                    ),
+                    logger
+                )
         else:
             request.xml_response.warn("found no matching devices", logger)
 
@@ -314,9 +342,19 @@ class get_device_location(View):
     def get(self, request):
         if "devices" in request.GET:
             _dev_pks = json.loads(request.GET["devices"])
-            _mapping_list = list(category.objects.filter(Q(device__in=_dev_pks) & Q(full_name__startswith="/location/")).values_list("device__pk", "pk"))
+            _mapping_list = list(
+                category.objects.filter(
+                    Q(device__in=_dev_pks) & Q(full_name__startswith="/location/")
+                ).values_list(
+                    "device__pk", "pk"
+                )
+            )
         else:
-            _mapping_list = list(category.objects.filter(Q(full_name__startswith="/location/")).values_list("device__pk", "pk"))
+            _mapping_list = list(
+                category.objects.filter(
+                    Q(full_name__startswith="/location/")
+                ).values_list("device__pk", "pk")
+            )
         return HttpResponse(json.dumps(_mapping_list), content_type="application/json")
 
 
@@ -708,7 +746,12 @@ class create_device(permission_required_mixin, View):
                     try:
                         cur_ip.save()
                     except:
-                        request.xml_response.error("cannot create IP: {}".format(process_tools.get_except_info()), logger=logger)
+                        request.xml_response.error(
+                            "cannot create IP: {}".format(
+                                process_tools.get_except_info()
+                            ),
+                            logger=logger
+                        )
                         _create_ok = False
         if cur_dev is not None:
             if _create_ok:
@@ -1179,7 +1222,9 @@ class GraphingDataDeviceTask(DeviceTask):
             _dict['perform_special_action'] = True
             _dict['perform_special_action_text'] = "Push graphing config"
 
-            if rrd_modification_dict and _device.idx in rrd_modification_dict and rrd_modification_dict[_device.idx] > 0:
+            if rrd_modification_dict and _device.idx in rrd_modification_dict and rrd_modification_dict[
+                _device.idx
+            ] > 0:
                 _now = datetime.datetime.now()
                 modification_time = datetime.datetime.fromtimestamp(rrd_modification_dict[_device.idx])
 
@@ -1205,8 +1250,9 @@ class GraphingDataDeviceTask(DeviceTask):
 
             try:
                 if _device.flags_and_settings.graph_enslavement_start:
-                    seconds_since_graph_setup = \
-                        (datetime.datetime.now(tz=pytz.utc) - _device.flags_and_settings.graph_enslavement_start).total_seconds()
+                    seconds_since_graph_setup = (
+                        datetime.datetime.now(tz=pytz.utc) - _device.flags_and_settings.graph_enslavement_start
+                    ).total_seconds()
                 else:
                     seconds_since_graph_setup = 0
 
@@ -1463,12 +1509,42 @@ class FQDNSystemTask(SystemTask):
 
 
 SystemTask.setup()
-DeviceSystemTask("devices", "Devices", "Add at least one Device to the system", 25)
-MonitoringCheckSystemTask("monitoring_checks", "Monitoring checks", "Add at least one monitoring check to the system", 25)
-UserSystemTask("users", "Users", "Add at least one user to the system (excluding the admin user)", 25)
-LocationSystemTask("locations", "Locations", "Add at least one location to the system", 25)
-FQDNSystemTask("fqdn", "FQDN", "Add at least one Domain name tree entry", 25)
-DeviceCategorySystemTask("devcat", "Device Categories", "Add at at least one device category", 40)
+DeviceSystemTask(
+    "devices",
+    "Devices",
+    "Add at least one Device to the system",
+    25
+)
+MonitoringCheckSystemTask(
+    "monitoring_checks",
+    "Monitoring checks",
+    "Add at least one monitoring check to the system",
+    25
+)
+UserSystemTask(
+    "users",
+    "Users",
+    "Add at least one user to the system (excluding the admin user)",
+    25
+)
+LocationSystemTask(
+    "locations",
+    "Locations",
+    "Add at least one location to the system",
+    25
+)
+FQDNSystemTask(
+    "fqdn",
+    "FQDN",
+    "Add at least one Domain name tree entry",
+    25
+)
+DeviceCategorySystemTask(
+    "devcat",
+    "Device Categories",
+    "Add at at least one device category",
+    40
+)
 
 
 # todo move somwhere sane
@@ -1592,6 +1668,8 @@ class WeatherMapData(View):
                 Q(idx__in=dev_idxs)
             ).values("idx", "uuid")
         }
-        print("*", uuid_dict)
-        wm_dict = mc_helper.get_weathermap_data(uuid_dict.keys())
+        wm_dict = mc_helper.get_weathermap_data(
+            uuid_dict.keys(),
+            map_result=True
+        )
         return HttpResponse(json.dumps(wm_dict))

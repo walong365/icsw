@@ -78,7 +78,13 @@ class sync_users(View):
             )
             srv_com = server_command.srv_command(command="create_user_home")
             srv_com["server_key:username"] = create_user.login
-            _result = contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=30, target_server_id=create_user.export.device_id)
+            _result = contact_server(
+                request,
+                icswServiceEnum.cluster_server,
+                srv_com,
+                timeout=30,
+                target_server_id=create_user.export.device_id
+            )
         # force sync_users
         request.user.save()
         if config_tools.icswServerCheck(service_type_enum=icswServiceEnum.monitor_server).effective_device:
@@ -128,14 +134,18 @@ class change_object_permission(View):
                         csw_object_permission=csw_objp,
                         level=level
                     )
-                    request.xml_response["new_obj"] = json.dumps(user_object_permission_serializer(new_obj).data)
+                    request.xml_response["new_obj"] = json.dumps(
+                        user_object_permission_serializer(new_obj).data
+                    )
                 else:
                     new_obj = group_object_permission.objects.create(
                         group=auth_obj,
                         csw_object_permission=csw_objp,
                         level=level
                     )
-                    request.xml_response["new_obj"] = json.dumps(group_object_permission_serializer(new_obj).data)
+                    request.xml_response["new_obj"] = json.dumps(
+                        group_object_permission_serializer(new_obj).data
+                    )
                 request.xml_response.info(
                     "added csw_object_permission {} to {}".format(
                         str(csw_objp),
@@ -186,9 +196,13 @@ class change_object_permission(View):
                     )
                 else:
                     if auth_obj._meta.model_name == "user":
-                        user_object_permission.objects.filter(Q(csw_object_permission=csw_objp) & Q(user=auth_obj)).delete()
+                        user_object_permission.objects.filter(
+                            Q(csw_object_permission=csw_objp) & Q(user=auth_obj)
+                        ).delete()
                     else:
-                        group_object_permission.objects.filter(Q(csw_object_permission=csw_objp) & Q(group=auth_obj)).delete()
+                        group_object_permission.objects.filter(
+                            Q(csw_object_permission=csw_objp) & Q(group=auth_obj)
+                        ).delete()
                     request.xml_response.info(
                         "removed csw_object_permission {} from {}".format(
                             str(csw_objp),

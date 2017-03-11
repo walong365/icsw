@@ -72,11 +72,32 @@ def _get_node_rrd(request, dev_pks):
             if len(node_results) and node_results[0].text:
                 return HttpResponse(node_results[0].text, content_type="application/json")
             else:
-                return HttpResponse(json.dumps({"error": "no node results"}), content_type="application/json")
+                return HttpResponse(
+                    json.dumps(
+                        {
+                            "error": "no node results"
+                        }
+                    ),
+                    content_type="application/json"
+                )
         else:
-            return HttpResponse(json.dumps({"error": _log_str}), content_type="application/json")
+            return HttpResponse(
+                json.dumps(
+                    {
+                        "error": _log_str
+                    }
+                ),
+                content_type="application/json"
+            )
     else:
-        return HttpResponse(json.dumps({"error": ", ".join([_line for _level, _line in _log_lines])}), content_type="application/json")
+        return HttpResponse(
+            json.dumps(
+                {
+                    "error": ", ".join([_line for _level, _line in _log_lines])
+                }
+            ),
+            content_type="application/json"
+        )
 
 
 class graph_rrds(View):
@@ -93,7 +114,9 @@ class graph_rrds(View):
             json.loads(_post["keys"])
         )
         srv_com["device_list"] = E.device_list(
-            *[E.device(pk="{:d}".format(int(dev_pk))) for dev_pk in pk_list]
+            *[
+                E.device(pk="{:d}".format(int(dev_pk))) for dev_pk in pk_list
+            ]
         )
         # simply copy the graph-keys as a json dump
         srv_com["graph_key_list"] = json.dumps(graph_keys)

@@ -234,7 +234,8 @@ class change_category(View):
                     _added.append((_obj.idx, sc_cat.idx))
                     if sc_cat.single_select:
                         _single_del_list = [
-                            _del_cat for _del_cat in _obj.categories.all() if _del_cat != sc_cat and _del_cat.single_select
+                            _del_cat for _del_cat in _obj.categories.all(
+                            ) if _del_cat != sc_cat and _del_cat.single_select
                         ]
                         if len(_single_del_list):
                             dev_ss_removed.append(_obj)
@@ -319,7 +320,14 @@ class CalculateKpiPreview(View):
         srv_com = server_command.srv_command(command="calculate_kpi_preview")
         srv_com["kpi_serialized"] = request.POST['kpi_serialized']
         srv_com['dev_mon_cat_tuples'] = request.POST['dev_mon_cat_tuples']
-        result = contact_server(request, icswServiceEnum.monitor_server, srv_com, log_error=True, log_result=False, timeout=120)
+        result = contact_server(
+            request,
+            icswServiceEnum.monitor_server,
+            srv_com,
+            log_error=True,
+            log_result=False,
+            timeout=120
+        )
         if result:
             request.xml_response['kpi_set'] = result.get('kpi_set', json.dumps(None))
             request.xml_response['kpi_error_report'] = result.get('kpi_error_report', json.dumps(None))

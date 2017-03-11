@@ -165,7 +165,10 @@ class alter_config(View):
                         request.xml_response.info("removed meta config {}".format(str(config_obj)), logger)
                     else:
                         # device configs set for devices in device_group
-                        to_remove = device_config.objects.filter(Q(config=config_obj) & Q(device__device_group=meta_obj.device_group))
+                        to_remove = device_config.objects.filter(
+                            Q(config=config_obj) &
+                            Q(device__device_group=meta_obj.device_group)
+                        )
                         # check if we can safely set the meta device_config
                         set_meta = True
                         if len(to_remove):
@@ -232,7 +235,9 @@ class alter_config(View):
                             )
                         else:
                             delete_object(request, meta_dc, xml_log=False)
-                            for set_dev in meta_obj.device_group.device_group.all().exclude(Q(pk__in=[meta_obj.pk, device_obj.pk])):
+                            for set_dev in meta_obj.device_group.device_group.all().exclude(
+                                Q(pk__in=[meta_obj.pk, device_obj.pk])
+                            ):
                                 device_config(
                                     device=set_dev,
                                     config=config_obj,
@@ -304,7 +309,9 @@ class alter_config(View):
                         )
                     elif meta_checked and not local_checked:
                         mc_obj.devices.remove(meta_obj)
-                        for set_dev in meta_obj.device_group.device_group.all().exclude(Q(pk__in=[meta_obj.pk, device_obj.pk])):
+                        for set_dev in meta_obj.device_group.device_group.all().exclude(
+                            Q(pk__in=[meta_obj.pk, device_obj.pk])
+                        ):
                             mc_obj.devices.add(set_dev)
                         request.xml_response.warn(
                             "removed meta MonCheck {} and added {}".format(
@@ -492,7 +499,12 @@ class generate_config(View):
                         # if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK or True:
                         cur_dev = dev_dict[int(dev_node.attrib["pk"])]
                         # build tree
-                        cur_tree = ConfigTreeStruct(cur_dev, ConfigTreeNode.objects.filter(Q(device=cur_dev)).select_related("writtenconfigfile"))
+                        cur_tree = ConfigTreeStruct(
+                            cur_dev,
+                            ConfigTreeNode.objects.filter(
+                                Q(device=cur_dev)
+                            ).select_related("writtenconfigfile")
+                        )
                         res_node["config_tree"] = cur_tree.get_dict()
                 else:
                     # config server not running, return dummy entry
@@ -574,7 +586,11 @@ class upload_config(View):
             for _config in _tree.findall(".//config"):
                 c_el = interpret_xml("list-item", _config, {})
                 mapping = {"config": c_el.findtext("name")}
-                for targ_list in ["mon_check_command", "config_bool", "config_str", "config_int", "config_blob", "config_script"]:
+                for targ_list in [
+                    "mon_check_command", "config_bool",
+                    "config_str", "config_int",
+                    "config_blob", "config_script"
+                ]:
                     c_el.append(getattr(E, "{}_set".format(targ_list))())
                 new_tree.append(c_el)
                 for sub_el in _config.xpath(
@@ -664,7 +680,7 @@ class handle_cached_config(View):
         for _entry in _struct["list"]:
             if _entry["name"] == _post["name"]:
                 # make a copy because take_config alters entry
-                _entry["_taken"] = self._take_config(request, copy.deepcopy(_entry))  # , config_catalog.objects.get(Q(pk=_post["catalog"])))
+                _entry["_taken"] = self._take_config(request, copy.deepcopy(_entry))
                 store_cached_upload(_struct)
 
     def _handle_ignore(self, request, _struct, _post):
@@ -699,7 +715,8 @@ class handle_cached_config(View):
                 logger=logger
             )
             _take = False
-        # we create the config with a dummy name to simplify matching of vars / scripts / monccs against configs with same name but different catalogs
+        # we create the config with a dummy name to simplify matching of vars / scripts /
+        # monccs against configs with same name but different catalogs
         dummy_name = "_ul_config_{:d}".format(int(time.time()))
         taken = False
         if _take:
@@ -797,7 +814,11 @@ class get_device_cvars(View):
                 for sub_el in dev_node:
                     res_node.append(sub_el)
                 request.xml_response["result"].append(res_node)
-                request.xml_response.log(int(dev_node.attrib["state_level"]), dev_node.attrib["info_str"], logger=logger)
+                request.xml_response.log(
+                    int(dev_node.attrib["state_level"]),
+                    dev_node.attrib["info_str"],
+                    logger=logger
+                )
 
 
 class copy_mon(View):

@@ -109,9 +109,13 @@ class CopyNetwork(View):
             # read peer_informations
             src_nds = source_dev.netdevice_set.all().values_list("pk", flat=True)
             peer_dict = {}
-            for peer_info in peer_information.objects.filter(Q(s_netdevice__in=src_nds) | Q(d_netdevice__in=src_nds)):
-                s_local, d_local = (peer_info.s_netdevice_id in src_nds,
-                                    peer_info.d_netdevice_id in src_nds)
+            for peer_info in peer_information.objects.filter(
+                Q(s_netdevice__in=src_nds) | Q(d_netdevice__in=src_nds)
+            ):
+                s_local, d_local = (
+                    peer_info.s_netdevice_id in src_nds,
+                    peer_info.d_netdevice_id in src_nds
+                )
                 # print "*", s_local, d_local
                 if s_local and d_local:
                     if peer_info.s_netdevice_id != peer_info.d_netdevice_id:

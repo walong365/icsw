@@ -41,7 +41,7 @@ from .config import global_config
 _WM_LIST = [
     "net\.(?P<netdevice>.*)\.(?P<ndspec>.*)",
     "load\.(?P<loadval>\d+)",
-    "mem\.(avail|free|used)\.(?P<memspec>.*)",
+    "mem\.(?P<memspec>(avail|free|used).*)",
 ]
 
 WM_KEYS = re.compile(
@@ -51,10 +51,127 @@ WM_KEYS = re.compile(
 )
 
 
+class WMTypeSpec(object):
+    def __init__(self, name: str, has_sub_values: False):
+        self.name = name
+        # subvalues (like network if-idx)
+        self.has_sub_values = has_sub_values
+
+    def struct_build_helper(self, new_entry, tl_dict):
+        # add new entry to top_level dict and honor sub_value setting
+        if self.has_sub_values:
+            _add_dict = tl_dict.setdefault(
+                new_entry["db_idx"], {}
+            )
+        else:
+            _add_dict = tl_dict
+        _add_dict[new_entry["spec"]] = {
+            _k: new_entry[_k] for _k in {"key", "value"}
+        }
+
+    @property
+    def dummy_parsed(self):
+        return {
+            "cmp_value": 0.0,
+            "display": {},
+        }
+
+    def salt_values(self, in_dict):
+        if self.has_sub_values:
+            for db_idx, sub_dict in in_dict.items():
+                sub_dict[".parsed"] = self.salt_dict(sub_dict)
+        else:
+            in_dict[".parsed"] = self.salt_dict(in_dict)
+
+    def has_keys(self, in_dict: dict, req_set: set) -> bool:
+        return set(in_dict.keys() & req_set) == req_set
+
+    def val_dict(self, in_dict: dict, key_set: set=None) -> dict:
+        if key_set:
+            return {
+                k: v["value"] for k, v in in_dict.items() if k in key_set
+            }
+        else:
+            return {
+                k: v["value"] for k, v in in_dict.items()
+            }
+
+
+class WMTypeSpecNetwork(WMTypeSpec):
+    class Meta:
+        main_keys = {"rx", "tx"}
+
+    def __init__(self):
+        super(WMTypeSpecNetwork, self).__init__("network", True)
+
+    def salt_dict(self, in_dict: dict) -> dict:
+        if self.has_keys(in_dict, self.Meta.main_keys):
+            _v_dict = self.val_dict(in_dict, self.Meta.main_keys)
+            return {
+                "cmp_value": max(_v_dict.values()),
+                "display": {
+                    _k: logging_tools.get_size_str(
+                        _v_dict[_k],
+                        per_second=True,
+                        strip_spaces=True,
+                    ) for _k in self.Meta.main_keys
+                }
+            }
+        else:
+            return self.dummy_parsed
+
+
+class WMTypeSpecLoad(WMTypeSpec):
+    class Meta:
+        main_keys = {"1", "5", "15"}
+
+    def __init__(self):
+        super(WMTypeSpecLoad, self).__init__("load", False)
+
+    def salt_dict(self, in_dict: dict) -> dict:
+        if self.has_keys(in_dict, self.Meta.main_keys):
+            _v_dict = self.val_dict(in_dict)
+            max_value = max(_v_dict.values())
+            return {
+                "cmp_value": max_value,
+                "display": {
+                    _k: "{:.2f}".format(
+                        _v_dict[_k]
+                    ) for _k in self.Meta.main_keys
+                }
+            }
+        else:
+            return self.dummy_parsed
+
+
+class WMTypeSpecMemory(WMTypeSpec):
+    class Meta:
+        main_keys = {"avail.phys", "free.phys"}
+
+    def __init__(self):
+        super(WMTypeSpecMemory, self).__init__("memory", False)
+
+    def salt_dict(self, in_dict: dict) -> dict:
+        if self.has_keys(in_dict, self.Meta.main_keys):
+            _v_dict = self.val_dict(in_dict, self.Meta.main_keys)
+            return {
+                "cmp_value": 100. * (
+                    _v_dict["avail.phys"] - _v_dict["free.phys"]
+                ) / _v_dict["avail.phys"],
+                "display": {
+                    _k.split(".")[0]: logging_tools.get_size_str(
+                        _v_dict[_k]
+                    ) for _k in self.Meta.main_keys
+                }
+            }
+        else:
+            return self.dummy_parsed
+
+
 class WMTypeEnum(Enum):
-    network = "network"
-    load = "load"
-    memory = "memory"
+    network = WMTypeSpecNetwork()
+    load = WMTypeSpecLoad()
+    memory = WMTypeSpecMemory()
 
 
 @attr.s(slots=True)
@@ -88,7 +205,7 @@ class WMValue(object):
     def get_json_dump(self):
         return {
             "key": self.key,
-            "wm_type": self.wm_type.value,
+            "wm_type": self.wm_type.value.name,
             "db_idx": self.db_idx,
             "spec": self.spec,
             "value": self.value,
@@ -98,7 +215,7 @@ class WMValue(object):
         return E.key(
             key=self.key,
             value=str(self.value),
-            wm_type=str(self.wm_type.value),
+            wm_type=str(self.wm_type.value.name),
             db_idx="{:d}".format(self.db_idx),
             spec=self.spec,
         )
@@ -107,7 +224,7 @@ class WMValue(object):
     def interpret_wm_info(cls, wm_el):
         return cls(
             key=wm_el.attrib["key"],
-            wm_type=WMTypeEnum(wm_el.attrib["wm_type"]),
+            wm_type=getattr(WMTypeEnum, wm_el.attrib["wm_type"]),
             db_idx=int(wm_el.attrib["db_idx"]),
             spec=wm_el.attrib["spec"],
             value=float(wm_el.attrib["value"])
@@ -115,7 +232,11 @@ class WMValue(object):
 
     def get_form_entry(self, max_num_keys):
         act_line = [
-            logging_tools.form_entry(self.wm_type.value, header="Type"),
+            logging_tools.form_entry(self.wm_type.value.name, header="Type"),
+            logging_tools.form_entry_center(
+                "yes" if self.wm_type.value.has_sub_values else "no",
+                header="SubValue"
+            ),
             logging_tools.form_entry(self.db_idx, header="db_idx"),
             logging_tools.form_entry(self.spec, header="Spec"),
         ]

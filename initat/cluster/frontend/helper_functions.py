@@ -24,7 +24,7 @@
 
 import json
 import time
-
+from collections import defaultdict
 from django.conf import settings
 from django.http import HttpResponse
 from lxml import etree
@@ -32,6 +32,7 @@ from lxml.builder import E
 
 from initat.cluster.backbone import routing
 from initat.tools import logging_tools, net_tools, process_tools
+from initat.collectd.weathermap_helper import WMTypeEnum
 
 
 class XMLWrapper(object):
@@ -462,7 +463,25 @@ class CollectdMCHelper(object):
                 ]
             )
 
-    def get_weathermap_data(self, uuid_list: list) -> dict:
+    def _map_result(self, v_list: list) -> dict:
+        # map value list v_list to weathermap_dict
+        result = defaultdict(dict)
+        for entry in v_list:
+            wm_type = getattr(WMTypeEnum, entry["wm_type"])
+            wm_type.value.struct_build_helper(entry, result[wm_type.value.name])
+        # result format:
+        # wm_type -> {}
+        # ... {spec} -> {key=, value=}
+        #  or {db_idx} -> {spec} -> {key=, value=}
+
+        # add more preparsed values
+        for wm_type, sub_dict in result.items():
+            getattr(WMTypeEnum, wm_type).value.salt_values(sub_dict)
+        # import pprint
+        # pprint.pprint(result)
+        return result
+
+    def get_weathermap_data(self, uuid_list: list, map_result: bool=False) -> dict:
         from initat.collectd.constants import CollectdMCKeyEnum
         """
         return weathermap data for the given uuid list
@@ -495,5 +514,8 @@ class CollectdMCHelper(object):
                         logging_tools.LOG_LEVEL_ERROR
                     )
                 else:
-                    result[uuid] = _value_list
+                    if map_result:
+                        result[uuid] = self._map_result(_value_list)
+                    else:
+                        result[uuid] = _value_list
         return result

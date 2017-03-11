@@ -8,5 +8,57 @@
         <h3>
             Weathermap ({{ struct.devices.length }} devices)
         </h3>
+        <table
+            st-table="wmen_displayed"
+            st-safe-src="struct.wm_entries.network"
+            class="table table-condensed table-striped table-hover"
+            style="width:auto;"
+        >
+            <thead>
+                <tr>
+                    <td colspan="99">
+                        <div class="form-inline">
+                            <div
+                                icsw-tools-pagination
+                                st-displayed-pages="11"
+                                st-items-by-page="15"
+                                possible-items-by-page="15,30,100,200"
+                                class="pull-left"
+                            ></div>
+                            &nbsp;
+                            <input
+                                class="form-control"
+                                st-search="$$filter_field"
+                                placeholder="filter"
+                            />
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th st-sort="entry.device.$$print_name" st-sort-default="true">Name</th>
+                    <th st-sort="entry.wm_type">WMType</th>
+                    <th st-sort="entry.spec">Spec</th>
+                    <th st-sort="entry.$$cmp_value">Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr
+                    ng-repeat="entry in wmen_displayed"
+                >
+                    <td>
+                        {{ entry.device.$$print_name }}
+                    </td>
+                    <td class="text-center">
+                        {{ entry.wm_type }}
+                    </td>
+                    <td class="text-center">
+                        {{ entry.spec }}
+                    </td>
+                    <td>
+                        {{ entry.$$display_value }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </script>
